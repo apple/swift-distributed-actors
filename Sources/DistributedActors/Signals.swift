@@ -14,11 +14,8 @@
 
 import _Distributed
 
-/// Signals are additional messages which are passed using the system channel and may be handled by actors.
+/// Signals special types of messages messages which are passed using the system channel and may be handled by actors.
 /// They inform the actors about various lifecycle events which the actor may want to react to.
-///
-/// They are separate from the message protocol of an Actor (the `M` in `_ActorRef<M>`)
-/// since these signals are independently useful regardless of protocol that an actor speaks externally.
 ///
 /// Signals will never be "dropped" by the transport layer, thus you may assume their delivery will always
 /// take place (e.g. for actor termination), and build your programs around this assumption of their guaranteed delivery.
@@ -44,7 +41,7 @@ public enum Signals {
     /// careful releasing of resources is generally not a good idea.
     ///
     /// Failing during processing of this signal will abort the restart process, and irrecoverably fail the actor.
-    public struct PreRestart: Signal {
+    public struct _PreRestart: Signal {
         @usableFromInline
         init() {}
     }
@@ -53,8 +50,8 @@ public enum Signals {
     ///
     /// This signal can be handled just like any other signal, using `_Behavior.receiveSignal((_ActorContext<Message>, Signal) throws -> _Behavior<Message>)`,
     /// however the `_Behavior` returned by the closure will always be ignored and the actor will proceed to its `Terminated` state.
-    /// In other words, it is not possible to stop the actor from terminating once it has received the PostStop signal.
-    public struct PostStop: Sendable, Signal {
+    /// In other words, it is not possible to stop the actor from terminating once it has received the _PostStop signal.
+    public struct _PostStop: Sendable, Signal {
         @usableFromInline
         init() {}
     }
@@ -70,7 +67,7 @@ public enum Signals {
     /// The class is open only for expansion by other Transports which may need to carry additional information
     /// explaining the reason for an actor having terminated.
     ///
-    /// - SeeAlso: `ChildTerminated` which is sent specifically to a parent-actor once its child has terminated.
+    /// - SeeAlso: `_ChildTerminated` which is sent specifically to a parent-actor once its child has terminated.
     open class Terminated: @unchecked Sendable, Signal, CustomStringConvertible {
         /// Address of the terminated actor.
         public let address: ActorAddress
@@ -119,11 +116,11 @@ public enum Signals {
     ///
     /// It is possible, because of the special relationship parent-child actors enjoy, to spawn a child actor using the
     /// `.escalate` strategy, which means that if the child fails, it will populate the `escalation` failure reason of
-    /// the `ChildTerminated` signal. Propagating failure reasons is not supported through `watch`-ed actors, and is only
+    /// the `_ChildTerminated` signal. Propagating failure reasons is not supported through `watch`-ed actors, and is only
     /// available to parent-child pairs.
     ///
     /// This `escalation` failure can be used by the parent to manually decide if it should also fail, spawn a replacement child,
-    /// or perform any other action. Not that spawning another actor in response to `ChildTerminated` means losing
+    /// or perform any other action. Not that spawning another actor in response to `_ChildTerminated` means losing
     /// the child's mailbox; unlike using the `.restart` supervision strategy, which keeps the mailbox, but instantiates
     /// a new instance of the child behavior.
     ///
@@ -139,18 +136,18 @@ public enum Signals {
     /// this pattern is useful when one wants to bubble up failures all the way to the guardian actors (`/user`, or `/system`),
     /// in which case the system will issue a configured termination action (see `ActorSystemSettings.guardianFailureHandling`).
     ///
-    /// - Note: Note that `ChildTerminated` IS-A `Terminated` so unless you need to specifically react to a child terminating,
+    /// - Note: Note that `_ChildTerminated` IS-A `Terminated` so unless you need to specifically react to a child terminating,
     ///         you may choose to handle all `Terminated` signals the same way.
     ///
     /// - SeeAlso: `Terminated` which is sent when a watched actor terminates.
-    public final class ChildTerminated: Terminated {
+    public final class _ChildTerminated: Terminated {
         /// Filled with the error that caused the child actor to terminate.
         /// This kind of information is only known to the parent, which may decide to perform
         /// some action based on the error, i.e. proactively stop other children or spawn another worker
         /// targeting a different resource URI (e.g. if error indicates that the previously used resource is too busy).
-        public let escalation: Supervision.Failure?
+        public let escalation: _Supervision.Failure?
 
-        public init(address: ActorAddress, escalation: Supervision.Failure?) {
+        public init(address: ActorAddress, escalation: _Supervision.Failure?) {
             self.escalation = escalation
             super.init(address: address, existenceConfirmed: true)
         }
@@ -162,7 +159,7 @@ public enum Signals {
             } else {
                 reason = ""
             }
-            return "ChildTerminated(\(self.address)\(reason))"
+            return "_ChildTerminated(\(self.address)\(reason))"
         }
     }
 }

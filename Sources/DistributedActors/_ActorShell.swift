@@ -158,7 +158,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
         self._props = props
         self._log = Logger.make(system.log, path: address.path)
 
-        self.supervisor = Supervision.supervisorFor(system, initialBehavior: behavior, props: props.supervision)
+        self.supervisor = _Supervision.supervisorFor(system, initialBehavior: behavior, props: props.supervision)
         self._deathWatch = DeathWatchImpl(nodeDeathWatcher: system._nodeDeathWatcher ?? system.deadLetters.adapted())
 
         self.namingContext = ActorNamingContext()
@@ -330,14 +330,14 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
             // escalation takes precedence over death watch in terms of how we report errors
             case .escalating(let failure):
                 // we only populate `escalation` if the child is escalating
-                let terminated = Signals.ChildTerminated(address: ref.address, escalation: failure)
+                let terminated = Signals._ChildTerminated(address: ref.address, escalation: failure)
                 try self.interpretChildTerminatedSignal(who: ref, terminated: terminated)
 
             case .stopped:
-                let terminated = Signals.ChildTerminated(address: ref.address, escalation: nil)
+                let terminated = Signals._ChildTerminated(address: ref.address, escalation: nil)
                 try self.interpretChildTerminatedSignal(who: ref, terminated: terminated)
             case .failed:
-                let terminated = Signals.ChildTerminated(address: ref.address, escalation: nil)
+                let terminated = Signals._ChildTerminated(address: ref.address, escalation: nil)
                 try self.interpretChildTerminatedSignal(who: ref, terminated: terminated)
             }
 
@@ -454,7 +454,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
     }
 
     @usableFromInline
-    internal func _escalate(failure: Supervision.Failure) -> _Behavior<Message> {
+    internal func _escalate(failure: _Supervision.Failure) -> _Behavior<Message> {
         self.behavior = self.behavior.fail(cause: failure)
 
         return self.behavior
@@ -474,7 +474,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
     /// Used by supervision, from failure recovery.
     /// In such case the cell must be restarted while the mailbox remain in-tact.
     ///
-    /// - Warning: This call MAY throw if user code would throw in reaction to interpreting `PreRestart`;
+    /// - Warning: This call MAY throw if user code would throw in reaction to interpreting `_PreRestart`;
     ///            If this happens the actor MUST be terminated immediately as we suspect things went very bad™ somehow.
     @inlinable public func _restartPrepare() throws {
         self.children.stopAll(includeAdapters: false)
@@ -482,7 +482,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
 
         /// Yes, we ignore the behavior returned by pre-restart on purpose, the supervisor decided what we should `become`,
         /// and we can not change this decision; at least not in the current scheme (which is simple and good enough for most cases).
-        _ = try self.behavior.interpretSignal(context: self, signal: Signals.PreRestart())
+        _ = try self.behavior.interpretSignal(context: self, signal: Signals._PreRestart())
 
         // NOT interpreting Start yet, as it may have to be done after a delay
     }
@@ -571,12 +571,12 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
         //
         // note that even though the parent can (and often does) `watch(child)`, we filter it out from
         // our `watchedBy` set, since otherwise we would have to filter it out when sending the terminated back.
-        // correctness is ensured though, since the parent always receives the `ChildTerminated`.
+        // correctness is ensured though, since the parent always receives the `_ChildTerminated`.
         self.notifyParentOfTermination()
         self.notifyWatchersOfTermination()
 
         do {
-            _ = try self.behavior.interpretSignal(context: self, signal: Signals.PostStop())
+            _ = try self.behavior.interpretSignal(context: self, signal: Signals._PostStop())
         } catch {
             // TODO: should probably .escalate instead;
             self.log.error("Exception in postStop. Supervision will NOT be applied. Error \(error)")
@@ -883,7 +883,7 @@ extension _ActorShell {
     }
 
     @inlinable
-    internal func interpretChildTerminatedSignal(who terminatedRef: AddressableActorRef, terminated: Signals.ChildTerminated) throws {
+    internal func interpretChildTerminatedSignal(who terminatedRef: AddressableActorRef, terminated: Signals._ChildTerminated) throws {
         #if SACT_TRACE_ACTOR_SHELL
         self.log.info("Received \(terminated)")
         #endif

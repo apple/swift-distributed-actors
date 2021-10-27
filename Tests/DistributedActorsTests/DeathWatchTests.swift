@@ -429,7 +429,7 @@ final class DeathWatchTests: ActorSystemXCTestCase {
         terminated.address.path.shouldEqual(try! ActorPath._user.appending("parent").appending("stopper"))
         terminated.existenceConfirmed.shouldBeTrue()
         terminated.nodeTerminated.shouldBeFalse()
-        terminated.shouldBe(Signals.ChildTerminated.self)
+        terminated.shouldBe(Signals._ChildTerminated.self)
         try p.expectNoMessage(for: .milliseconds(200))
     }
 

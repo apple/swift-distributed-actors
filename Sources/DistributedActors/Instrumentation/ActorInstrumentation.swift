@@ -21,7 +21,7 @@ public protocol ActorInstrumentation {
 
     func actorSpawned()
     func actorStopped()
-    func actorFailed(failure: Supervision.Failure)
+    func actorFailed(failure: _Supervision.Failure)
 
     func actorTold(message: Any, from: ActorAddress?)
 
@@ -44,7 +44,7 @@ struct NoopActorInstrumentation: ActorInstrumentation {
 
     public func actorSpawned() {}
     public func actorStopped() {}
-    public func actorFailed(failure: Supervision.Failure) {}
+    public func actorFailed(failure: _Supervision.Failure) {}
 
     public func actorMailboxRunStarted(mailboxCount: Int) {}
     public func actorMailboxRunCompleted(processed: Int) {}

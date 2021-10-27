@@ -374,7 +374,7 @@ extension OperationLogClusterReceptionist {
         context.timers.startSingle(key: timerKey, message: _ReceptionistDelayedListingFlushTick(key: key), delay: flushDelay)
     }
 
-    func onDelayedListingFlushTick(context: _ActorContext<ReceptionistMessage>, message: _ReceptionistDelayedListingFlushTick) {
+    func onDelayedListingFlushTick(context: _ActorContext<_ReceptionistMessage>, message: _ReceptionistDelayedListingFlushTick) {
         context.log.trace("Delayed listing flush: \(message.key)")
 
         self.notifySubscribers(of: message.key)
@@ -674,7 +674,7 @@ extension OperationLogClusterReceptionist {
 // MARK: Termination handling
 
 extension OperationLogClusterReceptionist {
-    private func onTerminated(context: _ActorContext<ReceptionistMessage>, terminated: Signals.Terminated) {
+    private func onTerminated(context: _ActorContext<_ReceptionistMessage>, terminated: Signals.Terminated) {
         if terminated.address == ActorAddress._receptionist(on: terminated.address.uniqueNode, for: .actorRefs) {
             context.log.debug("Watched receptionist terminated: \(terminated)")
             self.onReceptionistTerminated(context, terminated: terminated)

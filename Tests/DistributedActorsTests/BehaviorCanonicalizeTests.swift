@@ -191,7 +191,7 @@ final class BehaviorCanonicalizeTests: ActorSystemXCTestCase {
         let behavior: _Behavior<String> = _Behavior.receiveMessage { _ in
             .stop
         }.receiveSignal { _, signal in
-            if signal is Signals.PostStop {
+            if signal is Signals._PostStop {
                 p.tell("postStop")
             }
             return .same

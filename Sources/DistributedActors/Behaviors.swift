@@ -214,22 +214,22 @@ extension _Behavior {
 
     /// A stopped behavior signifies that the actor will cease processing messages (they will be drained to dead letters),
     /// and the actor itself will stop. Return this behavior to stop your actors. The last assigned behavior
-    /// will be used to handle the `PostStop` signal after the actor has stopped. This allows users to use
+    /// will be used to handle the `_PostStop` signal after the actor has stopped. This allows users to use
     /// the same signal handler (chain) to process all events.
     ///
-    /// - SeeAlso: `stop(_:)` and `stop(postStop:) overloads for adding cleanup code to be executed upon receipt of PostStop signal.
+    /// - SeeAlso: `stop(_:)` and `stop(postStop:) overloads for adding cleanup code to be executed upon receipt of _PostStop signal.
     public static var stop: _Behavior<Message> {
         _Behavior.stop(postStop: nil, reason: .stopMyself)
     }
 
     /// A stopped behavior signifies that the actor will cease processing messages (they will be drained to dead letters),
     /// and the actor itself will stop. Return this behavior to stop your actors. This is a convenience overload that
-    /// allows users to specify a closure that will only be called on receipt of `PostStop` and therefore does not
+    /// allows users to specify a closure that will only be called on receipt of `_PostStop` and therefore does not
     /// need to get the signal passed in. It also does not need to return a new behavior, as the actor is already stopping.
     public static func stop(_ postStop: @escaping (_ActorContext<Message>) throws -> Void) -> _Behavior<Message> {
         _Behavior.stop(
             postStop: _Behavior.receiveSignal { context, signal in
-                if signal is Signals.PostStop {
+                if signal is Signals._PostStop {
                     try postStop(context)
                 }
                 return .stop // will be ignored
@@ -240,7 +240,7 @@ extension _Behavior {
 
     /// A stopped behavior signifies that the actor will cease processing messages (they will be drained to dead letters),
     /// and the actor itself will stop. Return this behavior to stop your actors. If a `postStop` behavior is
-    /// set, it will be used to handle the `PostStop` signal after the actor has stopped. Otherwise the last
+    /// set, it will be used to handle the `_PostStop` signal after the actor has stopped. Otherwise the last
     /// assigned behavior will be used. This allows users to use the same signal handler (chain) to process
     /// all events.
     public static func stop(postStop: _Behavior<Message>) -> _Behavior<Message> {
@@ -444,7 +444,7 @@ internal extension _Behavior {
     /// - parameters
     ///   - error: cause of the actor's failing.
     @usableFromInline
-    func fail(cause: Supervision.Failure) -> _Behavior<Message> {
+    func fail(cause: _Supervision.Failure) -> _Behavior<Message> {
         _Behavior(underlying: __Behavior<Message>.failed(behavior: self, cause: cause))
     }
 }
@@ -460,7 +460,7 @@ internal enum __Behavior<Message: ActorMessage> {
     case receiveMessageAsync(_ handle: @Sendable (Message) async throws -> _Behavior<Message>)
 
     indirect case stop(postStop: _Behavior<Message>?, reason: StopReason)
-    indirect case failed(behavior: _Behavior<Message>, cause: Supervision.Failure)
+    indirect case failed(behavior: _Behavior<Message>, cause: _Supervision.Failure)
 
     indirect case signalHandling(
         handleMessage: _Behavior<Message>,
@@ -489,7 +489,7 @@ internal enum StopReason {
     /// a stop was requested by the parent, i.e. `context.stop(child:)`
     case stopByParent
     /// the actor experienced a failure that was not handled by supervision
-    case failure(Supervision.Failure)
+    case failure(_Supervision.Failure)
 }
 
 public enum IllegalBehaviorError<Message: ActorMessage>: Error {

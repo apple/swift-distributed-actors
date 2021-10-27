@@ -45,7 +45,7 @@ final class TerminatedInterceptor<Message: ActorMessage>: _Interceptor<Message> 
         switch signal {
         case let terminated as Signals.Terminated:
             self.probe.tell(terminated) // we forward all termination signals to someone
-        case is Signals.PostStop:
+        case is Signals._PostStop:
             () // ok
         default:
             fatalError("Other signal: \(signal)")
@@ -183,7 +183,7 @@ final class InterceptorTests: ActorSystemXCTestCase {
         p.watch(ref)
         ref.tell("test")
 
-        try p.expectMessage("intercepted:PostStop()")
+        try p.expectMessage("intercepted:_PostStop()")
         try p.expectMessage("postStop")
         try p.expectTerminated(ref)
     }

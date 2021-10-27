@@ -27,7 +27,7 @@ import Logging
 ///
 /// - SeeAlso: `SystemReceptionist`
 public struct Receptionist {
-    public typealias Message = ReceptionistMessage
+    public typealias Message = _ReceptionistMessage
 
     // Implementation notes: // TODO: Intercept messages to register at remote receptionist, and handle locally?
     // Receptionist messages are a bit special. Technically we CAN allow sending them over to remotes
@@ -359,7 +359,7 @@ extension _ActorRef: _ReceptionistGuest {
 ///     - `Receptionist.Register`
 ///     - `Receptionist.Subscribe`
 /// :nodoc: INTERNAL API
-public class ReceptionistMessage: Codable, @unchecked Sendable {}
+public class _ReceptionistMessage: Codable, @unchecked Sendable {}
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: internal untyped protocols
@@ -367,7 +367,7 @@ public class ReceptionistMessage: Codable, @unchecked Sendable {}
 internal typealias FullyQualifiedTypeName = String
 
 /// :nodoc: INTERNAL API
-public class _AnyRegister: ReceptionistMessage, NonTransportableActorMessage, CustomStringConvertible {
+public class _AnyRegister: _ReceptionistMessage, NonTransportableActorMessage, CustomStringConvertible {
     var _addressableActorRef: AddressableActorRef { undefined() }
     var _key: AnyReceptionKey { undefined() }
 
@@ -380,7 +380,7 @@ public class _AnyRegister: ReceptionistMessage, NonTransportableActorMessage, Cu
     }
 }
 
-public class _Lookup: ReceptionistMessage, NonTransportableActorMessage {
+public class _Lookup: _ReceptionistMessage, NonTransportableActorMessage {
     let _key: AnyReceptionKey
 
     init(_key: AnyReceptionKey) {
@@ -486,7 +486,7 @@ public struct AnyReceptionKey: ReceptionKeyProtocol, Sendable, Codable, Hashable
     }
 }
 
-public class _Subscribe: ReceptionistMessage, NonTransportableActorMessage {
+public class _Subscribe: _ReceptionistMessage, NonTransportableActorMessage {
     var _key: AnyReceptionKey {
         fatalErrorBacktrace("failed \(#function)")
     }
@@ -546,7 +546,7 @@ internal protocol ListingRequest {
     func replyWith(_ refs: Set<AddressableActorRef>)
 }
 
-internal final class _ReceptionistDelayedListingFlushTick: ReceptionistMessage, NonTransportableActorMessage {
+internal final class _ReceptionistDelayedListingFlushTick: _ReceptionistMessage, NonTransportableActorMessage {
     let key: AnyReceptionKey
 
     init(key: AnyReceptionKey) {
