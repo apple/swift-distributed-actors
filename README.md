@@ -238,6 +238,9 @@ Do build documentation run:
 ./scripts/docs/generate_docc.sh
 ```
 
+Upon first invocation, this will download and build the `docc` tool. Subsequent invocations will be fast, as only the 
+initial call has to download and build the tool itself. 
+
 And to preview and browse the documentation as a web-page, run: 
 
 ```asciidoc
