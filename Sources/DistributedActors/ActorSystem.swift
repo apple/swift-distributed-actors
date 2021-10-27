@@ -127,9 +127,9 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
     private let shutdownLock = Lock()
 
     /// Greater than 0 shutdown has been initiated / is in progress.
-    private let shutdownFlag = Atomic(value: 0)
+    private let shutdownFlag: UnsafeAtomic<Int> = .create(0)
     internal var isShuttingDown: Bool {
-        self.shutdownFlag.load() > 0
+        self.shutdownFlag.load(ordering: .sequentiallyConsistent) > 0
     }
 
     /// Exposes `NIO.MultiThreadedEventLoopGroup` used by this system.
@@ -137,9 +137,9 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
     public let _eventLoopGroup: MultiThreadedEventLoopGroup
 
     #if SACT_TESTS_LEAKS
-    static let actorSystemInitCounter: Atomic<Int> = Atomic(value: 0)
-    let userCellInitCounter: Atomic<Int> = Atomic(value: 0)
-    let userMailboxInitCounter: Atomic<Int> = Atomic(value: 0)
+    static let actorSystemInitCounter: UnsafeAtomic<Int> = .create(0)
+    let userCellInitCounter: UnsafeAtomic<Int> = .create(0)
+    let userMailboxInitCounter: UnsafeAtomic<Int> = .create(0)
     #endif
 
     /// Creates a named ActorSystem
@@ -295,7 +295,7 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
         }
 
         #if SACT_TESTS_LEAKS
-        _ = ActorSystem.actorSystemInitCounter.add(1)
+        _ = ActorSystem.actorSystemInitCounter.loadThenWrappingIncrement(ordering: .relaxed)
         #endif
 
         _ = self.metrics // force init of metrics
@@ -349,11 +349,16 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
         }
     }
 
-    #if SACT_TESTS_LEAKS
     deinit {
-        _ = ActorSystem.actorSystemInitCounter.sub(1)
+        self.shutdownFlag.destroy()
+
+        #if SACT_TESTS_LEAKS
+        ActorSystem.actorSystemInitCounter.loadThenWrappingDecrement(ordering: .relaxed)
+
+        self.userCellInitCounter.destroy()
+        self.userMailboxInitCounter.destroy()
+        #endif
     }
-    #endif
 
     public struct Shutdown {
         private let receptacle: BlockingReceptacle<Error?>
@@ -388,7 +393,7 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
     /// - Returns: A `Shutdown` value that can be waited upon until the system has completed the shutdown.
     @discardableResult
     public func shutdown(queue: DispatchQueue = DispatchQueue.global(), afterShutdownCompleted: @escaping (Error?) -> Void = { _ in () }) -> Shutdown {
-        guard self.shutdownFlag.add(1) == 0 else {
+        guard self.shutdownFlag.loadThenWrappingIncrement(by: 1, ordering: .relaxed) == 0 else {
             // shutdown already kicked off by someone else
             afterShutdownCompleted(nil)
             return Shutdown(receptacle: self.shutdownReceptacle)

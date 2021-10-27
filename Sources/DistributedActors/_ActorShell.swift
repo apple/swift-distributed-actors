@@ -171,7 +171,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
         // system actors may change over time and they are also not relevant for
         // this type of test.
         if address.segments.first?.value == "user" {
-            _ = system.userCellInitCounter.add(1)
+            system.userCellInitCounter.loadThenWrappingIncrement(ordering: .relaxed)
         }
         #endif
 
@@ -186,7 +186,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
         traceLog_Cell("deinit cell \(self._address)")
         #if SACT_TESTS_LEAKS
         if self.address.segments.first?.value == "user" {
-            _ = self.system.userCellInitCounter.sub(1)
+            self.system.userCellInitCounter.loadThenWrappingDecrement(ordering: .relaxed)
         }
         #endif
         self.instrumentation.actorStopped()

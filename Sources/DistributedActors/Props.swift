@@ -114,7 +114,7 @@ public enum DispatcherProps {
 
     /// WARNING: Use with Caution!
     ///
-    /// This dispatcher will keep a real dedicated Thread for this actor. This is very rarely something you want,
+    /// This dispatcher will keep a real dedicated _Thread for this actor. This is very rarely something you want,
     // unless designing an actor that is intended to spin without others interrupting it on some resource and may block on it etc.
     case pinnedThread // TODO: implement pinned thread dispatcher
     // TODO: CPU Affinity when pinning

@@ -15,6 +15,7 @@
 @testable import DistributedActors
 import DistributedActorsConcurrencyHelpers
 import DistributedActorsTestKit
+import Atomics
 import NIO
 import XCTest
 
@@ -103,7 +104,7 @@ final class EventStreamTests: ActorSystemXCTestCase {
             }
 
             Task {
-                while !consumer.running.load() {
+                while !consumer.running.load(ordering: .relaxed) {
                     try await Task.sleep(nanoseconds: 3_000_000)
                 }
 
@@ -115,9 +116,9 @@ final class EventStreamTests: ActorSystemXCTestCase {
     }
 }
 
-private struct EventStreamConsumer<Event: ActorMessage> {
-    let running: Atomic<Bool> = Atomic(value: false)
-    let counter: Atomic<Int> = Atomic(value: 0)
+private final class EventStreamConsumer<Event: ActorMessage>: @unchecked Sendable {
+    let running: UnsafeAtomic<Bool> = .create(false)
+    let counter: UnsafeAtomic<Int> = .create(0)
 
     private let events: EventStream<Event>
     private let eventHandler: (Event) throws -> Void
@@ -127,23 +128,30 @@ private struct EventStreamConsumer<Event: ActorMessage> {
         self.eventHandler = eventHandler
     }
 
+    deinit {
+        self.running.destroy()
+        self.counter.destroy()
+    }
+
     func consume(_ n: Int) async throws {
         let iterator = self.events.makeAsyncIterator()
 
         while !iterator.ready {
             try? await Task.sleep(nanoseconds: 3_000_000)
         }
-        guard self.running.compareAndExchange(expected: false, desired: true) else { return }
+        guard self.running.compareExchange(expected: false, desired: true, ordering: .relaxed).exchanged else {
+            return
+        }
 
         while let event = await iterator.next() {
-            _ = self.counter.add(1)
+            _ = self.counter.loadThenWrappingIncrement(ordering: .relaxed)
             try self.eventHandler(event)
 
-            if self.counter.load() >= n {
+            if self.counter.load(ordering: .relaxed) >= n {
                 break
             }
         }
 
-        _ = self.running.compareAndExchange(expected: true, desired: false)
+        self.running.store(false, ordering: .relaxed)
     }
 }

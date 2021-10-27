@@ -51,7 +51,7 @@ extension _FixedThreadPool: InternalMessageDispatcher {
     }
 }
 
-// MARK: Calling Thread Dispatcher
+// MARK: Calling _Thread Dispatcher
 
 /// Use with great caution!! Hijacks the calling thread to execute the actor.
 ///

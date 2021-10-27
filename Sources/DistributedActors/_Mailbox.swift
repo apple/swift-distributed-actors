@@ -13,6 +13,9 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsConcurrencyHelpers
+import Atomics
+
+// FIXME(swift) the entire Mailbox infrastructure is now superseded with Swift's built-in runtime; this will be removed shortly
 
 internal enum MailboxBitMasks {
     static let activations: UInt64 = 0b0000_0000_0000_0000_0000_0000_0000_0111_1111_1111_1111_1111_1111_1111_1111_1111
@@ -53,7 +56,7 @@ internal enum MailboxBitMasks {
 
 internal final class _Mailbox<Message: ActorMessage> {
     weak var shell: _ActorShell<Message>?
-    let _status: Atomic<UInt64> = Atomic(value: 0)
+    let _status: UnsafeAtomic<UInt64> = .create(0)
     let userMessages: MPSCLinkedQueue<Payload>
     let systemMessages: MPSCLinkedQueue<_SystemMessage>
     let capacity: UInt32
@@ -67,7 +70,7 @@ internal final class _Mailbox<Message: ActorMessage> {
     init(shell: _ActorShell<Message>, capacity: UInt32, maxRunLength: UInt32 = 100) {
         #if SACT_TESTS_LEAKS
         if shell.address.segments.first?.value == "user" {
-            _ = shell._system?.userMailboxInitCounter.add(1)
+            _ = shell._system?.userMailboxInitCounter.loadThenWrappingIncrement(ordering: .relaxed)
         }
         #endif
         self.shell = shell
@@ -82,15 +85,14 @@ internal final class _Mailbox<Message: ActorMessage> {
         self.serializeAllMessages = shell.system.settings.serialization.serializeLocalMessages
     }
 
-    #if SACT_TESTS_LEAKS
     deinit {
+        self._status.destroy()
         #if SACT_TESTS_LEAKS
         if self.address.segments.first?.value == "user" {
-            _ = self.deadLetters._system?.userMailboxInitCounter.sub(1)
+            _ = self.deadLetters._system?.userMailboxInitCounter.loadThenWrappingDecrement(ordering: .relaxed)
         }
         #endif
     }
-    #endif
 
     /// **CAUTION**: For testing purposes only. Not safe to use for actually running actors.
     init(system: ActorSystem, capacity: UInt32, maxRunLength: UInt32 = 100) {
@@ -158,6 +160,7 @@ internal final class _Mailbox<Message: ActorMessage> {
 
     @inlinable
     func enqueueUserMessage(_ envelope: Payload) -> EnqueueDirective {
+        traceLog_Mailbox(self.address.path, "INCREMENT MESSAGE COUNT")
         let oldStatus = self.incrementMessageCount()
         guard oldStatus.messageCount < self.capacity else {
             // If we passed the maximum capacity of the user queue, we can't enqueue more
@@ -598,23 +601,31 @@ internal final class _Mailbox<Message: ActorMessage> {
     }
 
     func incrementMessageCount() -> Status {
-        Status(self._status.add(MailboxBitMasks.singleUserMessage))
+        Status(self._status.loadThenWrappingIncrement(
+            by: MailboxBitMasks.singleUserMessage,
+            ordering: .sequentiallyConsistent))
     }
 
     func decrementMessageCount() -> Status {
-        Status(self._status.sub(MailboxBitMasks.singleUserMessage))
+        Status(self._status.loadThenWrappingDecrement(
+            by: MailboxBitMasks.singleUserMessage,
+            ordering: .sequentiallyConsistent))
     }
 
     func decrementActivations(by count: UInt64) -> Status {
-        Status(self._status.sub(count))
+        Status(self._status.loadThenWrappingDecrement(
+            by: count,
+            ordering: .sequentiallyConsistent))
     }
 
     var status: Status {
-        Status(self._status.load())
+        Status(self._status.load(ordering: .sequentiallyConsistent))
     }
 
     func setHasSystemMessages() -> Status {
-        Status(self._status.or(MailboxBitMasks.hasSystemMessages))
+        Status(self._status.loadThenBitwiseOr(
+            with: MailboxBitMasks.hasSystemMessages,
+            ordering: .sequentiallyConsistent))
     }
 
     // Checks if the 'has system messages' bit is set and if it is, unsets it and
@@ -624,7 +635,9 @@ internal final class _Mailbox<Message: ActorMessage> {
     func setProcessingSystemMessages() -> Status {
         let status = self.status
         if status.hasSystemMessages {
-            return Status(self._status.xor(MailboxBitMasks.becomeSysMsgProcessingXor, order: .acq_rel))
+            return Status(self._status.loadThenBitwiseXor(
+                with: MailboxBitMasks.becomeSysMsgProcessingXor,
+                ordering: .sequentiallyConsistent))
         }
 
         return status
@@ -632,7 +645,9 @@ internal final class _Mailbox<Message: ActorMessage> {
 
     @discardableResult
     func setTerminating() -> Status {
-        Status(self._status.or(MailboxBitMasks.terminating))
+        Status(self._status.loadThenBitwiseOr(
+            with: MailboxBitMasks.terminating,
+            ordering: .sequentiallyConsistent))
     }
 
     @discardableResult
@@ -642,17 +657,23 @@ internal final class _Mailbox<Message: ActorMessage> {
 
     @discardableResult
     func setClosed() -> Status {
-        Status(self._status.or(MailboxBitMasks.closed))
+        Status(self._status.loadThenBitwiseOr(
+            with: MailboxBitMasks.closed,
+            ordering: .sequentiallyConsistent))
     }
 
     @discardableResult
     func setStatusSuspended() -> Status {
-        Status(self._status.or(MailboxBitMasks.suspended))
+        Status(self._status.loadThenBitwiseOr(
+            with: MailboxBitMasks.suspended,
+            ordering: .sequentiallyConsistent))
     }
 
     @discardableResult
     func resetStatusSuspended() -> Status {
-        Status(self._status.and(MailboxBitMasks.unsuspend))
+        Status(self._status.loadThenBitwiseAnd(
+            with: MailboxBitMasks.unsuspend,
+            ordering: .sequentiallyConsistent))
     }
 }
 

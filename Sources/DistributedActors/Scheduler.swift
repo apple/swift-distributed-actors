@@ -14,6 +14,7 @@
 
 import Dispatch
 import DistributedActorsConcurrencyHelpers
+import Atomics
 
 @usableFromInline
 protocol Cancelable {
@@ -38,15 +39,19 @@ internal protocol Scheduler: Sendable {
 }
 
 final class FlagCancelable: Cancelable, @unchecked Sendable {
-    private let flag = Atomic<Bool>(value: false)
+    private let flag: UnsafeAtomic<Bool> = .create(false)
 
+    deinit { 
+        self.flag.destroy()
+    }
+    
     func cancel() {
-        _ = self.flag.compareAndExchange(expected: false, desired: true)
+        _ = self.flag.compareExchange(expected: false, desired: true, ordering: .relaxed)
     }
 
     @usableFromInline
     var isCanceled: Bool {
-        self.flag.load()
+        self.flag.load(ordering: .relaxed)
     }
 }
 
