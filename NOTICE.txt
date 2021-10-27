@@ -26,6 +26,8 @@ components that this product depends on.
 
 -------------------------------------------------------------------------------
 
+---
+
 This product contains some modified data-structures from Apple/Swift-NIO.
 
   * LICENSE (Apache 2.0):
@@ -41,3 +43,21 @@ This product contains "cpp_magic.h" from Thomas Nixon & Jonathan Heathcote's uSH
     * https://github.com/18sg/uSHET/blob/master/LICENSE
   * HOMEPAGE:
     * https://github.com/18sg/uSHET
+
+---
+
+This project was influenced by:
+
+* Akka
+  * LICENSE (Apache License 2.0):
+    * https://github.com/akka/akka/blob/master/LICENSE
+  * HOMEPAGE:
+    * https://akka.io
+
+* Erlang/OTP
+  * LICENSE (Apache License 2.0):
+    * https://github.com/erlang/otp/blob/master/LICENSE.txt
+  * HOMEPAGE:
+    * https://www.erlang.org
+    * https://github.com/erlang/otp
+
