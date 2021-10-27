@@ -33,22 +33,22 @@ public final class RemoteClusterActorPersonality<Message: ActorMessage> {
         self.system.personalDeadLetters(recipient: self.address)
     }
 
-//     // Implementation notes:
-//     //
-//     // Goal: we want to hand out the ref as soon as possible and then if someone uses it they may pay the for accessing
-//     // the associations there;
-//     //
-//     // Problem:
-//     // - obtaining an association will hit a lock currently, since it is stored in this associations map
-//     //   - even if we do a concurrent map, it still is more expensive
-//     //
-//     // Observations:
-//     // - we only need the association for the first send -- we can then hit the shared data-structure, and cache the association / remote control here
-//     // - not all actor refs will be send to perhaps, so we can avoid hitting the shared structure at all sometimes
-//     //
-//     // The structure of the shell is such that the only thing that is a field in the class is this associations / remote controls map,
-//     // which refs access. all other state is not accessible by anyone else since it is hidden in the actor itself.
-//    private var _cachedAssociation: ManagedAtomicLazyReference<Association>
+     // Implementation notes:
+     //
+     // Goal: we want to hand out the ref as soon as possible and then if someone uses it they may pay the for accessing
+     // the associations there;
+     //
+     // Problem:
+     // - obtaining an association will hit a lock currently, since it is stored in this associations map
+     //   - even if we do a concurrent map, it still is more expensive
+     //
+     // Observations:
+     // - we only need the association for the first send -- we can then hit the shared data-structure, and cache the association / remote control here
+     // - not all actor refs will be send to perhaps, so we can avoid hitting the shared structure at all sometimes
+     //
+     // The structure of the shell is such that the only thing that is a field in the class is this associations / remote controls map,
+     // which refs access. all other state is not accessible by anyone else since it is hidden in the actor itself.
+    private var _cachedAssociation: ManagedAtomicLazyReference<Association>
 
     // TODO: move instrumentation into the transport?
     @usableFromInline
@@ -57,7 +57,7 @@ public final class RemoteClusterActorPersonality<Message: ActorMessage> {
     init(shell: ClusterShell, address: ActorAddress, system: ActorSystem) {
         precondition(address._isRemote, "RemoteActorRef MUST be remote. ActorAddress was: \(String(reflecting: address))")
 
-//        self._cachedAssociation = ManagedAtomicLazyReference()
+        self._cachedAssociation = ManagedAtomicLazyReference()
 
         // Ensure we store as .remote, so printouts work as expected (and include the explicit address)
         var address = address
@@ -101,19 +101,17 @@ public final class RemoteClusterActorPersonality<Message: ActorMessage> {
     }
 
     private var association: ClusterShell.StoredAssociationState {
-//        if let assoc = self._cachedAssociation.load() {
-//            return .association(assoc)
-//        }
+        if let assoc = self._cachedAssociation.load() {
+            return .association(assoc)
+        }
 
         let associationState = self.clusterShell.getEnsureAssociation(with: self.address.uniqueNode)
-//        switch associationState {
-//        case .association(let assoc):
-//            self._cachedAssociation.storeIfNilThenLoad(Association)
-//            return .association(assoc)
-//        default:
-//            return associationState
-//        }
-        return associationState
+        switch associationState {
+        case .association(let assoc):
+            return .association(self._cachedAssociation.storeIfNilThenLoad(assoc))
+        default:
+            return associationState
+        }
     }
 
     func _unsafeAssumeCast<NewMessage: ActorMessage>(to: NewMessage.Type) -> RemoteClusterActorPersonality<NewMessage> {

@@ -76,7 +76,7 @@ distributed actor Juliet: LifecycleWatchSupport, CustomStringConvertible {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Tests
 
-final class LifecycleWatchTests: ActorSystemXCTestCase {
+final class LifecycleWatchTests: ActorSystemXCTestCase, @unchecked Sendable {
 
     func test_watch_shouldTriggerTerminatedWhenWatchedActorDeinits() throws {
         try runAsyncAndBlock {
