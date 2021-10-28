@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-/// :nodoc: INTERNAL API: May change without any prior notice. User code should ALWAYS interact with `Signal` and NEVER with `_SystemMessage`.
+/// INTERNAL API: May change without any prior notice. User code should ALWAYS interact with `Signal` and NEVER with `_SystemMessage`.
 ///
 /// Messages sent only internally by the `ActorSystem` and actor internals.
 /// These messages MUST NOT ever be sent directly by user-land.

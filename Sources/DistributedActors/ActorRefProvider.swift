@@ -33,7 +33,7 @@ internal protocol _ActorRefProvider: _ActorTreeTraversable {
     func _spawn<Message>(
         system: ActorSystem,
         behavior: _Behavior<Message>, address: ActorAddress,
-        dispatcher: MessageDispatcher, props: Props,
+        dispatcher: MessageDispatcher, props: _Props,
         startImmediately: Bool
     ) throws -> _ActorRef<Message>
         where Message: ActorMessage
@@ -78,7 +78,7 @@ extension RemoteActorRefProvider {
     func _spawn<Message>(
         system: ActorSystem,
         behavior: _Behavior<Message>, address: ActorAddress,
-        dispatcher: MessageDispatcher, props: Props,
+        dispatcher: MessageDispatcher, props: _Props,
         startImmediately: Bool
     ) throws -> _ActorRef<Message>
         where Message: ActorMessage {
@@ -142,7 +142,7 @@ internal struct LocalActorRefProvider: _ActorRefProvider {
     func _spawn<Message>(
         system: ActorSystem,
         behavior: _Behavior<Message>, address: ActorAddress,
-        dispatcher: MessageDispatcher, props: Props,
+        dispatcher: MessageDispatcher, props: _Props,
         startImmediately: Bool
     ) throws -> _ActorRef<Message>
         where Message: ActorMessage {
@@ -192,7 +192,7 @@ extension LocalActorRefProvider {
     }
 }
 
-/// :nodoc: INTERNAL API
+/// INTERNAL API
 public protocol _ActorTreeTraversable {
     func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T>
 
@@ -273,7 +273,7 @@ internal struct CompositeActorTreeTraversable: _ActorTreeTraversable {
     }
 }
 
-/// :nodoc: INTERNAL API: May change without any prior notice.
+/// INTERNAL API: May change without any prior notice.
 public struct TraversalContext<T> {
     var depth: Int
     var accumulated: [T]
@@ -323,7 +323,7 @@ public struct TraversalContext<T> {
     }
 }
 
-/// :nodoc: INTERNAL API: May change without any prior notice.
+/// INTERNAL API: May change without any prior notice.
 public struct ResolveContext<Message: ActorMessage> {
     /// The "remaining path" of the resolve being performed
     public var selectorSegments: ArraySlice<ActorPathSegment>
@@ -358,7 +358,7 @@ public struct ResolveContext<Message: ActorMessage> {
     }
 }
 
-/// :nodoc: INTERNAL API: Not intended to be used by end users.
+/// INTERNAL API: Not intended to be used by end users.
 ///
 /// Directives that steer the traversal state machine (which, however, always remains depth-first).
 public enum _TraversalDirective<T> {
@@ -369,7 +369,7 @@ public enum _TraversalDirective<T> {
     case abort(Error)
 }
 
-/// :nodoc: INTERNAL API: Not intended to be used by end users.
+/// INTERNAL API: Not intended to be used by end users.
 public enum _TraversalResult<T> {
     case result(T)
     case results([T])

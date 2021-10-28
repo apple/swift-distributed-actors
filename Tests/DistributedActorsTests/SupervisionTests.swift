@@ -84,16 +84,16 @@ final class SupervisionTests: ActorSystemXCTestCase {
         _ = { () -> Void in
             let behavior: _Behavior<String> = undefined()
             _ = try self.system._spawn("example", behavior)
-            _ = try self.system._spawn("example", props: Props(), behavior)
+            _ = try self.system._spawn("example", props: _Props(), behavior)
             _ = try self.system._spawn("example", props: .dispatcher(.pinnedThread), behavior)
-            _ = try self.system._spawn("example", props: Props().dispatcher(.pinnedThread).supervision(strategy: .stop), behavior)
+            _ = try self.system._spawn("example", props: _Props().dispatcher(.pinnedThread).supervision(strategy: .stop), behavior)
             _ = try self.system._spawn("example", props: .supervision(strategy: .restart(atMost: 5, within: .seconds(1))), behavior)
             _ = try self.system._spawn("example", props: .supervision(strategy: .restart(atMost: 5, within: .effectivelyInfinite)), behavior)
 
             // chaining
             _ = try self.system._spawn(
                 "example",
-                props: Props()
+                props: _Props()
                     .supervision(strategy: .restart(atMost: 5, within: .effectivelyInfinite))
                     .dispatcher(.pinnedThread)
                     .mailbox(.default(capacity: 122, onOverflow: .crash)),
@@ -102,7 +102,7 @@ final class SupervisionTests: ActorSystemXCTestCase {
 
             _ = try self.system._spawn(
                 "example",
-                props: Props()
+                props: _Props()
                     .supervision(strategy: .restart(atMost: 5, within: .seconds(1)), forErrorType: EasilyCatchableError.self)
                     .supervision(strategy: .restart(atMost: 5, within: .effectivelyInfinite))
                     .supervision(strategy: .restart(atMost: 5, within: .effectivelyInfinite)),
@@ -153,7 +153,7 @@ final class SupervisionTests: ActorSystemXCTestCase {
         let parentBehavior: _Behavior<Never> = .setup { context in
             let _: _ActorRef<FaultyMessage> = try context._spawn(
                 "\(runName)-erroring-2",
-                props: Props().supervision(strategy: .restart(atMost: 2, within: .seconds(1))),
+                props: _Props().supervision(strategy: .restart(atMost: 2, within: .seconds(1))),
                 self.faulty(probe: p.ref)
             )
 
@@ -202,7 +202,7 @@ final class SupervisionTests: ActorSystemXCTestCase {
         let parentBehavior: _Behavior<Never> = .setup { context in
             let _: _ActorRef<FaultyMessage> = try context._spawn(
                 "\(runName)-failing-2",
-                props: Props().supervision(strategy: .restart(atMost: 3, within: .seconds(1), backoff: backoff)),
+                props: _Props().supervision(strategy: .restart(atMost: 3, within: .seconds(1), backoff: backoff)),
                 self.faulty(probe: p.ref)
             )
 
@@ -265,7 +265,7 @@ final class SupervisionTests: ActorSystemXCTestCase {
         let parentBehavior: _Behavior<Never> = .setup { context in
             let _: _ActorRef<FaultyMessage> = try context._spawn(
                 "\(runName)-exponentialBackingOff",
-                props: Props().supervision(strategy: .restart(atMost: 10, within: nil, backoff: backoff)),
+                props: _Props().supervision(strategy: .restart(atMost: 10, within: nil, backoff: backoff)),
                 self.faulty(probe: p.ref)
             )
 
@@ -775,7 +775,7 @@ final class SupervisionTests: ActorSystemXCTestCase {
 
         let faultyWorker = try system._spawn(
             "compositeFailures-1",
-            props: Props()
+            props: _Props()
                 .supervision(strategy: .restart(atMost: 1, within: nil), forErrorType: CatchMeError.self)
                 .supervision(strategy: .restart(atMost: 1, within: nil), forErrorType: EasilyCatchableError.self),
             self.faulty(probe: probe.ref)
@@ -1069,7 +1069,7 @@ final class SupervisionTests: ActorSystemXCTestCase {
             }
         }
 
-        let ref = try system._spawn(.anonymous, props: Props.supervision(strategy: .restart(atMost: 1, within: .seconds(1))), behavior)
+        let ref = try system._spawn(.anonymous, props: _Props.supervision(strategy: .restart(atMost: 1, within: .seconds(1))), behavior)
 
         try p.expectMessage("starting")
         ref.tell("suspend")
@@ -1103,7 +1103,7 @@ final class SupervisionTests: ActorSystemXCTestCase {
             }
         }
 
-        let ref = try system._spawn(.anonymous, props: Props.supervision(strategy: .restart(atMost: 1, within: .seconds(1))), behavior)
+        let ref = try system._spawn(.anonymous, props: _Props.supervision(strategy: .restart(atMost: 1, within: .seconds(1))), behavior)
 
         try p.expectMessage("starting")
         ref.tell("suspend")

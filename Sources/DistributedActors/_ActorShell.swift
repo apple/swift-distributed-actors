@@ -20,7 +20,7 @@ import NIO
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Actor internals
 
-/// :nodoc: INTERNAL API
+/// INTERNAL API
 ///
 /// The shell is responsible for interpreting messages using the current behavior.
 /// In simplified terms, it can be thought of as "the actual actor," as it is the most central piece where
@@ -40,7 +40,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
     @usableFromInline
     let _address: ActorAddress
 
-    let _props: Props
+    let _props: _Props
 
     var namingContext: ActorNamingContext
 
@@ -96,13 +96,13 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: Timers
+    // MARK: _BehaviorTimers
 
-    public override var timers: Timers<Message> {
+    public override var timers: _BehaviorTimers<Message> {
         self._timers
     }
 
-    lazy var _timers: Timers<Message> = Timers(context: self)
+    lazy var _timers: _BehaviorTimers<Message> = _BehaviorTimers(context: self)
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Fault handling infrastructure
@@ -147,7 +147,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
     internal init(
         system: ActorSystem, parent: AddressableActorRef,
         behavior: _Behavior<Message>, address: ActorAddress,
-        props: Props, dispatcher: MessageDispatcher
+        props: _Props, dispatcher: MessageDispatcher
     ) {
         self._system = system
         self._parent = parent
@@ -195,7 +195,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
         self._system = nil
     }
 
-    /// :nodoc: INTERNAL API: MUST be called immediately after constructing the cell and ref,
+    /// INTERNAL API: MUST be called immediately after constructing the cell and ref,
     /// as the actor needs to access its ref from its context during setup or other behavior reductions
     internal func set(ref: _ActorCell<Message>) {
         self._myCell = ref // TODO: atomic?
@@ -231,7 +231,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
         .init(.cell(self._myCell))
     }
 
-    public override var props: Props {
+    public override var props: _Props {
         self._props
     }
 
@@ -633,7 +633,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
     public override func _spawn<M>(
         _ naming: ActorNaming,
         of type: M.Type = M.self,
-        props: Props = Props(),
+        props: _Props = _Props(),
         file: String = #file, line: UInt = #line,
         _ behavior: _Behavior<M>
     ) throws -> _ActorRef<M>
@@ -646,7 +646,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
     public override func _spawnWatch<Message>(
         _ naming: ActorNaming,
         of type: Message.Type = Message.self,
-        props: Props = Props(),
+        props: _Props = _Props(),
         file: String = #file, line: UInt = #line,
         _ behavior: _Behavior<Message>
     ) throws -> _ActorRef<Message>
@@ -683,10 +683,10 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Sub Receive
 
-    var subReceives: [AnySubReceiveId: ((SubMessageCarry) throws -> _Behavior<Message>, AbstractAdapter)] = [:]
+    var subReceives: [_AnySubReceiveId: ((SubMessageCarry) throws -> _Behavior<Message>, _AbstractAdapter)] = [:]
 
     @usableFromInline
-    override func subReceive(identifiedBy identifier: AnySubReceiveId) -> ((SubMessageCarry) throws -> _Behavior<Message>)? {
+    override func subReceive(identifiedBy identifier: _AnySubReceiveId) -> ((SubMessageCarry) throws -> _Behavior<Message>)? {
         self.subReceives[identifier]?.0
     }
 
@@ -703,7 +703,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
                 return .same
             }
 
-            let identifier = AnySubReceiveId(id)
+            let identifier = _AnySubReceiveId(id)
             if let (_, existingRef) = self.subReceives[identifier] {
                 self.subReceives[identifier] = (wrappedClosure, existingRef)
                 guard let adapter = existingRef as? SubReceiveAdapter<SubMessage, Message> else {
@@ -1026,7 +1026,7 @@ extension AbstractShellProtocol {
 }
 
 internal extension _ActorContext {
-    /// :nodoc: INTERNAL API: UNSAFE, DO NOT TOUCH.
+    /// INTERNAL API: UNSAFE, DO NOT TOUCH.
     @usableFromInline
     var _downcastUnsafe: _ActorShell<Message> {
         switch self {

@@ -131,20 +131,20 @@ public class Serialization {
         // TODO: do we HAVE to do this in the Receptionist?
         settings.register(Receptionist.Message.self, serializerID: .doNotSerialize)
         settings.register(DistributedActors.OpLogDistributedReceptionist.Message.self, serializerID: .foundationJSON)
-        settings.register(OperationLogClusterReceptionist.AckOps.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
+        settings.register(_OperationLogClusterReceptionist.AckOps.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
 
         // FIXME: This will go away once https://github.com/apple/swift/pull/30318 is merged and we can rely on summoning types
-        settings.register(OperationLogClusterReceptionist.PushOps.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
+        settings.register(_OperationLogClusterReceptionist.PushOps.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
         settings.register(DistributedActors.OpLogDistributedReceptionist.PushOps.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
         settings.registerInbound(
-            OperationLogClusterReceptionist.PushOps.self,
-            hint: "DistributedActors.\(OperationLogClusterReceptionist.PushOps.self)", serializerID: .default
+            _OperationLogClusterReceptionist.PushOps.self,
+            hint: "DistributedActors.\(_OperationLogClusterReceptionist.PushOps.self)", serializerID: .default
         )
         // FIXME: This will go away once https://github.com/apple/swift/pull/30318 is merged and we can rely on summoning types
-        settings.registerInbound(OperationLogClusterReceptionist.AckOps.self, hint: "_ReceptionistMessage", serializerID: .default)
+        settings.registerInbound(_OperationLogClusterReceptionist.AckOps.self, hint: "_ReceptionistMessage", serializerID: .default)
         settings.registerInbound(
-            OperationLogClusterReceptionist.AckOps.self,
-            hint: "DistributedActors.\(OperationLogClusterReceptionist.AckOps.self)", serializerID: .default
+            _OperationLogClusterReceptionist.AckOps.self,
+            hint: "DistributedActors.\(_OperationLogClusterReceptionist.AckOps.self)", serializerID: .default
         )
 
         // swim failure detector
@@ -665,7 +665,8 @@ internal struct MetaType<T>: Hashable, CustomStringConvertible {
 }
 
 // TODO: remove and always just use the Any.Type
-public protocol AnyMetaType {
+@usableFromInline
+protocol AnyMetaType {
     var asHashable: AnyHashable { get }
 
     /// Performs equality check of the underlying meta type object identifiers.

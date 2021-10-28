@@ -40,7 +40,7 @@ extension ClusterReceptionist {
                 switch self {
                 case .opLogSync:
                     let instrumentation = settings.instrumentation.makeReceptionistInstrumentation()
-                    return OperationLogClusterReceptionist(settings: settings.cluster.receptionist, instrumentation: instrumentation).behavior
+                    return _OperationLogClusterReceptionist(settings: settings.cluster.receptionist, instrumentation: instrumentation).behavior
                 }
             }
         }

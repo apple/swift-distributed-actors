@@ -84,7 +84,7 @@ extension ActorTestKit {
         return ActorTestProbe({ probeBehavior in
 
                 // TODO: allow configuring dispatcher for the probe or always use the calling thread one
-                var testProbeProps = Props()
+                var testProbeProps = _Props()
                 #if SACT_PROBE_CALLING_THREAD
                 testProbeProps.dispatcher = .callingThread
                 #endif
@@ -341,7 +341,7 @@ public final class Mock_ActorContext<Message: ActorMessage>: _ActorContext<Messa
         }
     }
 
-    public override var props: Props {
+    public override var props: _Props {
         .init() // mock impl
     }
 
@@ -364,7 +364,7 @@ public final class Mock_ActorContext<Message: ActorMessage>: _ActorContext<Messa
 
     @discardableResult
     public override func _spawn<M>(
-        _ naming: ActorNaming, of type: M.Type = M.self, props: Props = Props(),
+        _ naming: ActorNaming, of type: M.Type = M.self, props: _Props = _Props(),
         file: String = #file, line: UInt = #line,
         _ behavior: _Behavior<M>
     ) throws -> _ActorRef<M>
@@ -374,7 +374,7 @@ public final class Mock_ActorContext<Message: ActorMessage>: _ActorContext<Messa
 
     @discardableResult
     public override func _spawnWatch<M>(
-        _ naming: ActorNaming, of type: M.Type = M.self, props: Props = Props(),
+        _ naming: ActorNaming, of type: M.Type = M.self, props: _Props = _Props(),
         file: String = #file, line: UInt = #line,
         _ behavior: _Behavior<M>
     ) throws -> _ActorRef<M>

@@ -29,12 +29,12 @@ extension AnyProtobufRepresentable {
     }
 }
 
-public protocol AnyPublicProtobufRepresentable: AnyProtobufRepresentable {}
+public protocol _AnyPublicProtobufRepresentable: AnyProtobufRepresentable {}
 
 /// A protocol that facilitates conversion between Swift and protobuf messages.
 ///
 /// - SeeAlso: `ActorMessage`
-public protocol ProtobufRepresentable: AnyPublicProtobufRepresentable {
+public protocol ProtobufRepresentable: _AnyPublicProtobufRepresentable {
     associatedtype ProtobufRepresentation: SwiftProtobuf.Message
 
     /// Convert this `ProtobufRepresentable` instance to an instance of type `ProtobufRepresentation`.

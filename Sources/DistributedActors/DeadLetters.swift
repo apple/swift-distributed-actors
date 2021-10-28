@@ -32,8 +32,9 @@ import Logging
 /// ### Trivia
 /// The term dead letters, or rather "dead letter office" originates from the postal system, where undeliverable
 /// mail would be called such, and shipped to one specific place to deal with these letters.
-/// See also [Dead letter office](https://en.wikipedia.org/wiki/Dead_letter_office) on Wikipedia.
-public struct DeadLetter: NonTransportableActorMessage { // TODO: make it also remote
+///
+/// - SeeAlso: [Dead letter office](https://en.wikipedia.org/wiki/Dead_letter_office) on Wikipedia.
+public struct DeadLetter: NonTransportableActorMessage {
     let message: Any
     let recipient: ActorAddress?
 
@@ -88,8 +89,6 @@ extension ActorSystem {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Dead letter office
 
-/// :nodoc: INTERNAL API: May change without any prior notice.
-///
 /// Special actor ref personality, which can handle `DeadLetter`s.
 ///
 /// Dead letters are messages or signals which were unable to be delivered to recipient, e.g. because the recipient
@@ -110,7 +109,7 @@ extension ActorSystem {
 /// watching an actor which is terminated, may result in the `watch` system message be delivered to dead letters,
 /// in which case this property of dead letters will notify the watching actor that the "watchee" had already terminated.
 /// In these situations Terminated would be marked as `existenceConfirmed: false`.
-
+///
 /// ## Dead References
 ///
 /// An `ActorAddress` pointing to a local actor, yet obtained via clustered communication MAY be resolved as so called "dead reference".
@@ -132,6 +131,8 @@ extension ActorSystem {
 /// result in dead letters. The difference here is that in this case the actor _existed_ and the `_ActorRef` _was valid_ at some point in time.
 /// Dead references on the other hand have never, and will never be valid, meaning it is useful to distinguish them for debugging and logging purposes,
 /// but not for anything more -- users shall assume that their communication is correct and only debug why a dead reference appeared if it indeed does happen.
+///
+/// - SeeAlso: [Dead letter office](https://en.wikipedia.org/wiki/Dead_letter_office) on Wikipedia.
 public final class DeadLetterOffice {
     let _address: ActorAddress
     let log: Logger

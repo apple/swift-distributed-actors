@@ -12,10 +12,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-/// :nodoc: INTERNAL API: May change without any prior notice.
+/// INTERNAL API: May change without any prior notice.
 ///
 // TODO: can this instead be a CellDelegate?
-public protocol AbstractAdapter: _ActorTreeTraversable {
+public protocol _AbstractAdapter: _ActorTreeTraversable {
     var fromType: Any.Type { get }
 
     var address: ActorAddress { get }
@@ -31,7 +31,7 @@ public protocol AbstractAdapter: _ActorTreeTraversable {
     var system: ActorSystem? { get }
 }
 
-/// :nodoc: Not intended to be used by end users.
+/// Not intended to be used by end users.
 ///
 /// An `_ActorRefAdapter` is a special `_ActorRef` that is used to expose a different
 /// interface than the adapted actor actually has, by applying a converter function
@@ -40,7 +40,7 @@ public protocol AbstractAdapter: _ActorTreeTraversable {
 /// The adapter can be watched and shares the lifecycle with the adapted actor,
 /// meaning that it will terminate when the actor terminates. It will survive
 /// restarts after failures.
-internal final class _ActorRefAdapter<To: ActorMessage>: AbstractAdapter {
+internal final class _ActorRefAdapter<To: ActorMessage>: _AbstractAdapter {
     public let fromType: Any.Type
     private let target: _ActorRef<To>
     let address: ActorAddress
@@ -184,10 +184,10 @@ extension _ActorRefAdapter {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: DeadLetterAdapter
 
-/// :nodoc: Not intended to be used by end users.
+/// Not intended to be used by end users.
 ///
 /// Wraps the `DeadLettersActorRef` to get properly typed deadLetters refs.
-internal final class _DeadLetterAdapterPersonality: AbstractAdapter {
+internal final class _DeadLetterAdapterPersonality: _AbstractAdapter {
     public let fromType: Any.Type = Never.self
 
     let deadLetters: _ActorRef<DeadLetter>
@@ -234,11 +234,11 @@ internal final class _DeadLetterAdapterPersonality: AbstractAdapter {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: SubReceiveAdapter
 
-internal final class SubReceiveAdapter<Message: ActorMessage, OwnerMessage: ActorMessage>: AbstractAdapter {
+internal final class SubReceiveAdapter<Message: ActorMessage, OwnerMessage: ActorMessage>: _AbstractAdapter {
     internal let fromType: Any.Type
 
     private let target: _ActorRef<OwnerMessage>
-    private let identifier: AnySubReceiveId
+    private let identifier: _AnySubReceiveId
     private let adapterAddress: ActorAddress
     private var watchers: Set<AddressableActorRef>?
     private let lock = _Mutex()
@@ -249,7 +249,7 @@ internal final class SubReceiveAdapter<Message: ActorMessage, OwnerMessage: Acto
 
     let deadLetters: _ActorRef<DeadLetter>
 
-    init(_ type: Message.Type, owner ref: _ActorRef<OwnerMessage>, address: ActorAddress, identifier: AnySubReceiveId) {
+    init(_ type: Message.Type, owner ref: _ActorRef<OwnerMessage>, address: ActorAddress, identifier: _AnySubReceiveId) {
         self.fromType = Message.self
         self.target = ref
         self.adapterAddress = address

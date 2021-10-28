@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-extension OperationLogClusterReceptionist.ReceptionistOp {
+extension _OperationLogClusterReceptionist.ReceptionistOp {
     public enum DiscriminatorKeys: String, Codable {
         case register
         case remove

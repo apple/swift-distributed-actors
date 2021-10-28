@@ -135,7 +135,7 @@ class ActorDocExamples: XCTestCase {
 
     func example_props() throws {
         // tag::props_example[]
-        let props = Props()
+        let props = _Props()
         // end::props_example[]
         _ = props // silence not-used warning
     }
@@ -310,7 +310,7 @@ class ActorDocExamples: XCTestCase {
 
 // tag::suggested_props_pattern[]
 struct ExampleWorker {
-    public static var suggested: (_Behavior<WorkerMessages>, Props) {
+    public static var suggested: (_Behavior<WorkerMessages>, _Props) {
         return (behavior, ExampleWorker.props)
     }
 
@@ -319,7 +319,7 @@ struct ExampleWorker {
         return .same
     }
 
-    internal static var props: Props = Props().dispatcher(.pinnedThread)
+    internal static var props: _Props = _Props().dispatcher(.pinnedThread)
 }
 
 enum WorkerMessages: String, Codable {

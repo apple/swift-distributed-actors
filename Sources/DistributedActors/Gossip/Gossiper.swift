@@ -34,7 +34,7 @@ enum Gossiper {
         _ context: _ActorRefFactory,
         name naming: ActorNaming,
         settings: Settings,
-        props: Props = .init(),
+        props: _Props = .init(),
         makeLogic: @escaping (Logic.Context) -> Logic
     ) throws -> GossiperControl<Envelope, Acknowledgement>
         where Logic: GossipLogic, Logic.Gossip == Envelope, Logic.Acknowledgement == Acknowledgement {

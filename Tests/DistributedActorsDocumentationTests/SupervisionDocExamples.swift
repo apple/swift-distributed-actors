@@ -26,7 +26,7 @@ class SupervisionDocExamples {
         let context: _ActorContext<String> = undefined()
 
         // tag::supervise_props[]
-        let props = Props() // <1>
+        let props = _Props() // <1>
             .supervision(strategy: .restart(atMost: 2, within: .seconds(1))) // <2>
         // potentially more props configuration here ...
 
@@ -147,7 +147,7 @@ class SupervisionDocExamples {
 //
 //        let thrower = try system._spawn(
 //            "thrower",
-//            props: Props()
+//            props: _Props()
 //                .supervision(strategy: .restart(atMost: 10, within: nil), forErrorType: CatchThisError.self), // <2>
 //            // .supervision(strategy: .stop, forAll: .failures) // (implicitly appended always) // <3>
 //            throwerBehavior

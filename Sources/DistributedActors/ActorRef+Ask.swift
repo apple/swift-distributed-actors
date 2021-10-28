@@ -251,7 +251,7 @@ extension AskResponse {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Ask Actor
 
-/// :nodoc: Used to receive a single response to a message when using `_ActorRef.ask`.extension EventLoopFuture: _AsyncResult {
+/// Used to receive a single response to a message when using `_ActorRef.ask`.extension EventLoopFuture: _AsyncResult {
 /// Will either complete the `AskResponse` with the first message received, or fail
 /// it with a `TimeoutError` is no response is received within the specified timeout.
 ///

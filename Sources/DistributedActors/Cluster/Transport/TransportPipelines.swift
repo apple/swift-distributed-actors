@@ -298,9 +298,9 @@ final class OutboundSerializationHandler: ChannelOutboundHandler {
     typealias OutboundOut = Wire.Envelope
 
     let log: Logger
-    let serializationPool: SerializationPool
+    let serializationPool: _SerializationPool
 
-    init(log: Logger, serializationPool: SerializationPool) {
+    init(log: Logger, serializationPool: _SerializationPool) {
         self.log = log
         self.serializationPool = serializationPool
     }
@@ -364,7 +364,7 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
     private let system: ActorSystem
     private let clusterShell: ClusterShell.Ref
 
-    private let serializationPool: SerializationPool
+    private let serializationPool: _SerializationPool
 
     internal let outboundSystemMessages: OutboundSystemMessageRedelivery
     internal let inboundSystemMessages: InboundSystemMessages
@@ -376,7 +376,7 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
         log: Logger,
         system: ActorSystem,
         cluster: ClusterShell.Ref,
-        serializationPool: SerializationPool,
+        serializationPool: _SerializationPool,
         outbound: OutboundSystemMessageRedelivery,
         inbound: InboundSystemMessages
     ) {
@@ -612,9 +612,9 @@ private final class UserMessageHandler: ChannelInboundHandler {
     let log: Logger
 
     let system: ActorSystem
-    let serializationPool: SerializationPool
+    let serializationPool: _SerializationPool
 
-    init(log: Logger, system: ActorSystem, serializationPool: SerializationPool) {
+    init(log: Logger, system: ActorSystem, serializationPool: _SerializationPool) {
         self.log = log
         self.system = system
         self.serializationPool = serializationPool
@@ -686,7 +686,7 @@ private final class DumpRawBytesDebugHandler: ChannelInboundHandler {
 // MARK: "Server side" / accepting connections
 
 extension ClusterShell {
-    internal func bootstrapServerSide(system: ActorSystem, shell: ClusterShell.Ref, bindAddress: UniqueNode, settings: ClusterSettings, serializationPool: SerializationPool) -> EventLoopFuture<Channel> {
+    internal func bootstrapServerSide(system: ActorSystem, shell: ClusterShell.Ref, bindAddress: UniqueNode, settings: ClusterSettings, serializationPool: _SerializationPool) -> EventLoopFuture<Channel> {
         let group: EventLoopGroup = settings.eventLoopGroup ?? settings.makeDefaultEventLoopGroup() // TODO: share the loop with client side?
 
         let bootstrap = ServerBootstrap(group: group)
@@ -749,7 +749,7 @@ extension ClusterShell {
         return bootstrap.bind(host: bindAddress.node.host, port: Int(bindAddress.node.port)) // TODO: separate setup from using it
     }
 
-    internal func bootstrapClientSide(system: ActorSystem, shell: ClusterShell.Ref, targetNode: Node, handshakeOffer: Wire.HandshakeOffer, settings: ClusterSettings, serializationPool: SerializationPool) -> EventLoopFuture<Channel> {
+    internal func bootstrapClientSide(system: ActorSystem, shell: ClusterShell.Ref, targetNode: Node, handshakeOffer: Wire.HandshakeOffer, settings: ClusterSettings, serializationPool: _SerializationPool) -> EventLoopFuture<Channel> {
         let group: EventLoopGroup = settings.eventLoopGroup ?? settings.makeDefaultEventLoopGroup()
 
         // TODO: Implement "setup" inside settings, so that parts of bootstrap can be done there, e.g. by end users without digging into remoting internals

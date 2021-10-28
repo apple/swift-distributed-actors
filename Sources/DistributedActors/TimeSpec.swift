@@ -24,13 +24,13 @@ import NIO
 
 private let NANOS = 1_000_000_000
 
-/// :nodoc: Not intended for general use. TODO: Make internal if possible.
+/// Not intended for general use. TODO: Make internal if possible.
 @usableFromInline
 internal typealias TimeSpec = timespec
 
 // TODO: move to Time.swift?
 
-/// :nodoc: Not intended for general use. TOD
+/// Not intended for general use. TOD
 internal extension TimeSpec {
     @usableFromInline
     static func from(timeAmount amount: TimeAmount) -> timespec {

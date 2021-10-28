@@ -16,20 +16,20 @@ import Dispatch
 import NIO
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Props
+// MARK: _Props
 
-/// `Props` configure an Actors' properties such as mailbox, dispatcher as well as supervision semantics.
+/// `_Props` configure an Actors' properties such as mailbox, dispatcher as well as supervision semantics.
 ///
-/// `Props` can easily changed in-line using the fluent APIs provided.
+/// `_Props` can easily changed in-line using the fluent APIs provided.
 /// Functions starting with `add...` are additive, i.e. they add another setting of the same kind to the props (possibly
 /// overriding a previously existing one), while functions starting with `with...` are replacement functions, always
 /// replacing the entire inner props with the new one
 ///
-/// Naming mnemonic: "Props" are what an theater actor may use during a performance.
+/// Naming mnemonic: "_Props" are what an theater actor may use during a performance.
 /// For example, a skull would be a classic example of a "prop" used while performing the William Shakespeare's
 /// Hamlet Act III, scene 1, saying "To be, or not to be, that is the question: [...]." In the same sense,
 /// props for Swift Distributed Actors are accompanying objects/settings, which help the actor perform its duties.
-public struct Props: @unchecked Sendable {
+public struct _Props: @unchecked Sendable {
     public var mailbox: MailboxProps
     public var dispatcher: DispatcherProps
 
@@ -71,24 +71,24 @@ public struct Props: @unchecked Sendable {
     /// TODO(distributed): workaround for passing settings to specific actor instance when creating them.
     ///                    We may want to formalize a way to do this with initializer params instead.
     @TaskLocal
-    internal static var forSpawn: Props = Props()
+    internal static var forSpawn: _Props = _Props()
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Dispatcher Props
+// MARK: Dispatcher _Props
 
 // TODO: likely better as class hierarchy, by we'll see...
 
-public extension Props {
-    /// Creates a new `Props` with default values, and overrides the `dispatcher` with the provided one.
-    static func dispatcher(_ dispatcher: DispatcherProps) -> Props {
-        var props = Props()
+public extension _Props {
+    /// Creates a new `_Props` with default values, and overrides the `dispatcher` with the provided one.
+    static func dispatcher(_ dispatcher: DispatcherProps) -> _Props {
+        var props = _Props()
         props.dispatcher = dispatcher
         return props
     }
 
-    /// Creates copy of this `Props` changing the dispatcher props, useful for setting a few options in-line when spawning actors.
-    func dispatcher(_ dispatcher: DispatcherProps) -> Props {
+    /// Creates copy of this `_Props` changing the dispatcher props, useful for setting a few options in-line when spawning actors.
+    func dispatcher(_ dispatcher: DispatcherProps) -> _Props {
         var props = self
         props.dispatcher = dispatcher
         return props
@@ -146,18 +146,18 @@ public enum DispatcherProps {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Mailbox Props
+// MARK: Mailbox _Props
 
-extension Props {
-    /// Creates a new `Props` with default values, and overrides the `mailbox` with the provided one.
-    public static func mailbox(_ mailbox: MailboxProps) -> Props {
-        var props = Props()
+extension _Props {
+    /// Creates a new `_Props` with default values, and overrides the `mailbox` with the provided one.
+    public static func mailbox(_ mailbox: MailboxProps) -> _Props {
+        var props = _Props()
         props.mailbox = mailbox
         return props
     }
 
-    /// Creates copy of this `Props` changing the `mailbox` props.
-    public func mailbox(_ mailbox: MailboxProps) -> Props {
+    /// Creates copy of this `_Props` changing the `mailbox` props.
+    public func mailbox(_ mailbox: MailboxProps) -> _Props {
         var props = self
         props.mailbox = mailbox
         return props
@@ -187,12 +187,12 @@ public enum MailboxOverflowStrategy: Sendable {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Internal Props settings
+// MARK: Internal _Props settings
 
-extension Props {
-    /// Shorthand for `Props()._asSellKnown`
-    /// - SeeAlso: `Props._asWellKnown`
-    public static let _wellKnown: Self = Props()._asWellKnown
+extension _Props {
+    /// Shorthand for `_Props()._asSellKnown`
+    /// - SeeAlso: `_Props._asWellKnown`
+    public static let _wellKnown: Self = _Props()._asWellKnown
 
     /// Use with great care, and ONLY if a path is known to only ever be occupied by the one and only actor that is going to be spawned using this well known identity.
     /// Allows spawning actors with "well known" identity (meaning the unique actor incarnation identifier will be set to `ActorIncarnation.wellKnown`).

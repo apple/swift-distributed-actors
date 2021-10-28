@@ -67,7 +67,7 @@ public struct WorkerPool<Message: ActorMessage> {
     public static func _spawn(
         _ factory: _ActorRefFactory,
         _ naming: ActorNaming,
-        props: Props = Props(),
+        props: _Props = _Props(),
         select selector: WorkerPool<Message>.Selector,
         file: String = #file, line: UInt = #line
     ) throws -> WorkerPoolRef<Message> {

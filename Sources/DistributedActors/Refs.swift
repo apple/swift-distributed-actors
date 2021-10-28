@@ -24,15 +24,15 @@ import struct NIO.ByteBuffer
 /// Represents a reference to an actor.
 /// All communication between actors is handled _through_ actor refs, which guarantee their isolation remains intact.
 public struct _ActorRef<Message: ActorMessage>: @unchecked Sendable, _ReceivesMessages, _DeathWatchable, _ReceivesSystemMessages {
-    /// :nodoc: INTERNAL API: May change without further notice.
+    /// INTERNAL API: May change without further notice.
     /// The actor ref is "aware" whether it represents a local, remote or otherwise special actor.
     ///
     /// Adj. self-conscious: feeling undue awareness of oneself, one's appearance, or one's actions.
     public enum Personality {
         // TODO(distributed): introduce new 'distributed actor' personality that replaces all other ones
         case cell(_ActorCell<Message>)
-        case remote(RemoteClusterActorPersonality<Message>)
-        case adapter(AbstractAdapter)
+        case remote(_RemoteClusterActorPersonality<Message>)
+        case adapter(_AbstractAdapter)
         case guardian(_Guardian)
         case delegate(_CellDelegate<Message>)
         case deadLetters(DeadLetterOffice)
@@ -40,7 +40,7 @@ public struct _ActorRef<Message: ActorMessage>: @unchecked Sendable, _ReceivesMe
 
     internal let personality: Personality
 
-    /// :nodoc: INTERNAL API: May change without further notice.
+    /// INTERNAL API: May change without further notice.
     public init(_ personality: Personality) {
         self.personality = personality
     }
@@ -160,33 +160,33 @@ public protocol _ReceivesMessages: Sendable, Codable {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Internal implementation classes
 
-/// :nodoc: INTERNAL API: Only for use by the actor system itself
+/// INTERNAL API: Only for use by the actor system itself
 public protocol _ReceivesSystemMessages: Codable {
     var address: ActorAddress { get }
     var path: ActorPath { get }
 
-    /// :nodoc: INTERNAL API causing an immediate send of a system message to target actor.
+    /// INTERNAL API causing an immediate send of a system message to target actor.
     /// System messages are given stronger delivery guarantees in a distributed setting than "user" messages.
     func _sendSystemMessage(_ message: _SystemMessage, file: String, line: UInt)
 
-    /// :nodoc: INTERNAL API: This way remoting sends messages
+    /// INTERNAL API: This way remoting sends messages
     ///
     /// - Reminder: DO NOT use this to deliver messages from the network, deserialization and delivery,
     ///   must be performed in "one go" by `_deserializeDeliver`.
     func _tellOrDeadLetter(_ message: Any, file: String, line: UInt) // TODO: This must die?
 
-    // :nodoc: INTERNAL API
+    // INTERNAL API
     func _dropAsDeadLetter(_ message: Any, file: String, line: UInt)
 
-    /// :nodoc: INTERNAL API: This way remoting sends messages
+    /// INTERNAL API: This way remoting sends messages
     func _deserializeDeliver(
         _ messageBytes: Serialization.Buffer, using manifest: Serialization.Manifest,
-        on pool: SerializationPool,
+        on pool: _SerializationPool,
         file: String, line: UInt
     )
 
-    /// :nodoc: INTERNAL API
-    func _unsafeGetRemotePersonality<M: ActorMessage>(_ type: M.Type) -> RemoteClusterActorPersonality<M>
+    /// INTERNAL API
+    func _unsafeGetRemotePersonality<M: ActorMessage>(_ type: M.Type) -> _RemoteClusterActorPersonality<M>
 }
 
 extension _ReceivesSystemMessages {
@@ -251,7 +251,7 @@ extension _ActorRef {
 
     public func _deserializeDeliver(
         _ messageBytes: Serialization.Buffer, using manifest: Serialization.Manifest,
-        on pool: SerializationPool,
+        on pool: _SerializationPool,
         file: String = #file, line: UInt = #line
     ) {
         let deserializationStartTime: DispatchTime?
@@ -301,7 +301,7 @@ extension _ActorRef {
         )
     }
 
-    public func _unsafeGetRemotePersonality<M: ActorMessage>(_ type: M.Type = M.self) -> RemoteClusterActorPersonality<M> {
+    public func _unsafeGetRemotePersonality<M: ActorMessage>(_ type: M.Type = M.self) -> _RemoteClusterActorPersonality<M> {
         switch self.personality {
         case .remote(let personality):
             return personality._unsafeAssumeCast(to: type)
@@ -329,7 +329,7 @@ extension _ActorRef {
     }
 }
 
-/// :nodoc: INTERNAL API: HERE BE DRAGONS.
+/// INTERNAL API: HERE BE DRAGONS.
 ///
 /// A "cell" containing the real actor as well as its mailbox.
 ///
@@ -385,7 +385,7 @@ public final class _ActorCell<Message: ActorMessage> {
     }
 
     @usableFromInline
-    func sendSubMessage<SubMessage>(_ message: SubMessage, identifier: AnySubReceiveId, subReceiveAddress: ActorAddress, file: String = #file, line: UInt = #line) {
+    func sendSubMessage<SubMessage>(_ message: SubMessage, identifier: _AnySubReceiveId, subReceiveAddress: ActorAddress, file: String = #file, line: UInt = #line) {
         traceLog_Mailbox(self.address.path, "sendSubMessage from \(file):\(line) to: \(self)")
         let carry = SubMessageCarry(identifier: identifier, message: message, subReceiveAddress: subReceiveAddress)
         self.mailbox.sendMessage(envelope: Payload(payload: .subMessage(carry)), file: file, line: line)
@@ -411,7 +411,7 @@ extension _ActorCell: CustomDebugStringConvertible {
 public extension _ActorRef where Message == DeadLetter {
     /// Simplified `adapt` method for dead letters, since it is known how the adaptation function looks like.
     func adapt<IncomingMessage>(from: IncomingMessage.Type) -> _ActorRef<IncomingMessage> {
-        let adapter: AbstractAdapter = _DeadLetterAdapterPersonality(self._deadLetters, deadRecipient: self.address)
+        let adapter: _AbstractAdapter = _DeadLetterAdapterPersonality(self._deadLetters, deadRecipient: self.address)
         return .init(.adapter(adapter))
     }
 
@@ -424,7 +424,7 @@ public extension _ActorRef where Message == DeadLetter {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Cell Delegate
 
-/// :nodoc: INTERNAL API: May change without prior notice.
+/// INTERNAL API: May change without prior notice.
 /// EXTENSION POINT: Can be used to offer `_ActorRef`s to other "special" entities, such as other `_InternalActorTransport`s etc.
 ///
 /// Similar to an `ActorCell` but for some delegated actual "entity".
@@ -455,7 +455,7 @@ open class _CellDelegate<Message: ActorMessage> {
         fatalError("Not implemented: \(#function), called from \(file):\(line)")
     }
 
-    open func sendSubMessage<SubMessage>(_ message: SubMessage, identifier: AnySubReceiveId, subReceiveAddress: ActorAddress, file: String = #file, line: UInt = #line) {
+    open func sendSubMessage<SubMessage>(_ message: SubMessage, identifier: _AnySubReceiveId, subReceiveAddress: ActorAddress, file: String = #file, line: UInt = #line) {
         fatalError("Not implemented: \(#function), called from \(file):\(line)")
     }
 
@@ -502,7 +502,7 @@ internal struct TheOneWhoHasNoParent: _ReceivesSystemMessages { // FIXME: fix th
     @usableFromInline
     internal func _deserializeDeliver(
         _ messageBytes: Serialization.Buffer, using manifest: Serialization.Manifest,
-        on pool: SerializationPool,
+        on pool: _SerializationPool,
         file: String = #file, line: UInt = #line
     ) {
         CDistributedActorsMailbox.sact_dump_backtrace()
@@ -515,7 +515,7 @@ internal struct TheOneWhoHasNoParent: _ReceivesSystemMessages { // FIXME: fix th
     }
 
     @usableFromInline
-    internal func _unsafeGetRemotePersonality<M: ActorMessage>(_ type: M.Type = M.self) -> RemoteClusterActorPersonality<M> {
+    internal func _unsafeGetRemotePersonality<M: ActorMessage>(_ type: M.Type = M.self) -> _RemoteClusterActorPersonality<M> {
         CDistributedActorsMailbox.sact_dump_backtrace()
         fatalError("The \(self.address) actor MUST NOT be interacted with directly!")
     }
@@ -531,7 +531,7 @@ extension TheOneWhoHasNoParent: CustomStringConvertible, CustomDebugStringConver
     }
 }
 
-/// :nodoc: INTERNAL API: May change without any prior notice.
+/// INTERNAL API: May change without any prior notice.
 ///
 /// Represents the an "top level" actor which is the parent of all actors spawned on by the system itself
 /// (unlike actors spawned from within other actors, by using `context._spawn`).
