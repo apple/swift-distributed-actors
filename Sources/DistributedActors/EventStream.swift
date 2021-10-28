@@ -67,7 +67,7 @@ public struct EventStream<Event: ActorMessage>: AsyncSequence {
     public class AsyncIterator: AsyncIteratorProtocol {
         var underlying: AsyncStream<Event>.Iterator!
 
-        private let subscribed: UnsafeAtomic<Bool> = .create(false)
+        private let subscribed: ManagedAtomic<Bool> = .init(false)
 
         // TODO: clean this up since it's used by tests only (e.g., EventStreamConsumer)
         var ready: Bool {
@@ -90,7 +90,7 @@ public struct EventStream<Event: ActorMessage>: AsyncSequence {
         }
 
         deinit {
-            self.subscribed.destroy()
+//            self.subscribed.destroy()
         }
 
         public func next() async -> Event? {

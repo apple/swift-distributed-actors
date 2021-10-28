@@ -40,11 +40,11 @@ private class BoxedClosure {
 public class _Thread {
     private let thread: pthread_t
     private let lock: _Mutex
-    private var isRunning: UnsafeAtomic<Bool>
+    private var isRunning: ManagedAtomic<Bool>
 
     public init(_ f: @escaping () -> Void) throws {
         let lock = _Mutex()
-        let isRunning = UnsafeAtomic<Bool>.create(true)
+        let isRunning = ManagedAtomic<Bool>(true)
         let ref = Unmanaged.passRetained(BoxedClosure {
             defer {
                 lock.synchronized {
@@ -78,7 +78,7 @@ public class _Thread {
     }
 
     deinit {
-        self.isRunning.destroy()
+//        self.isRunning.destroy()
     }
 
     public func cancel() {

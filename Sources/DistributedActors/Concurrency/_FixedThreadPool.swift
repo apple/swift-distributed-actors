@@ -50,15 +50,16 @@ public final class _FixedThreadPool {
     private var workers: [Worker] = []
 
     @usableFromInline
-    internal let stopping: UnsafeAtomic<Bool> = .create(false)
+    internal let stopping: ManagedAtomic<Bool>
 
     @usableFromInline
-    internal let runningWorkers: UnsafeAtomic<Int>
+    internal let runningWorkers: ManagedAtomic<Int>
 
     internal let allThreadsStopped: BlockingReceptacle<Void> = BlockingReceptacle()
 
     public init(_ threadCount: Int) throws {
-        self.runningWorkers = UnsafeAtomic.create(threadCount)
+        self.stopping = .init(false)
+        self.runningWorkers = .init(threadCount)
 
         for _ in 1 ... threadCount {
             let worker = Worker()
@@ -91,8 +92,8 @@ public final class _FixedThreadPool {
     }
 
     deinit {
-        self.stopping.destroy()
-        self.runningWorkers.destroy()
+//        self.stopping.destroy()
+//        self.runningWorkers.destroy()
     }
 
     /// Initiates shutdown of the pool. Active threads will complete processing

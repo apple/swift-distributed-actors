@@ -39,10 +39,10 @@ internal protocol Scheduler: Sendable {
 }
 
 final class FlagCancelable: Cancelable, @unchecked Sendable {
-    private let flag: UnsafeAtomic<Bool> = .create(false)
+    private let flag: ManagedAtomic<Bool> = .init(false)
 
     deinit { 
-        self.flag.destroy()
+//        self.flag.destroy()
     }
     
     func cancel() {
