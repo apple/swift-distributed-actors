@@ -44,7 +44,7 @@ extension __DistributedClusterActor {
     }
 }
 
-extension AnyActorIdentity: ProtobufRepresentable {
+extension AnyActorIdentity: _ProtobufRepresentable {
     public typealias ProtobufRepresentation = _ProtoActorIdentity
 
     public func toProto(context: Serialization.Context) throws -> _ProtoActorIdentity {

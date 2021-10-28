@@ -79,7 +79,7 @@ extension TimerKey: ExpressibleByStringLiteral, ExpressibleByStringInterpolation
     }
 }
 
-public final class Timers<Message: ActorMessage> {
+public final class _BehaviorTimers<Message: ActorMessage> {
     @usableFromInline
     internal var timerGen: Int = 0
 
@@ -208,7 +208,7 @@ public final class Timers<Message: ActorMessage> {
         }
 }
 
-extension Timers {
+extension _BehaviorTimers {
     @usableFromInline
     internal var metadata: Logger.Metadata {
         [
@@ -220,7 +220,7 @@ extension Timers {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Internal System Timer capabilities
 
-internal extension Timers {
+internal extension _BehaviorTimers {
     @usableFromInline
     struct ScheduledResume<T> {
         let token: T

@@ -325,14 +325,17 @@ internal final class DistributedReceptionistStorage {
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 
-/// Represents a local subscription (for `receptionist.subscribe`) for a specific key
-internal final class AnyDistributedReceptionListingSubscription: Hashable {
+/// Represents a local subscription (for `receptionist.subscribe`) for a specific key.
+internal final class AnyDistributedReceptionListingSubscription: Hashable, @unchecked Sendable {
     let subscriptionID: ObjectIdentifier
     let key: AnyDistributedReceptionKey
 
     /// Offer a new listing to the subscription stream. // FIXME: implement this by offering single elements (!!!)
     private let onNext: @Sendable (AnyDistributedActor) -> Void
-    var seenActorRegistrations: VersionVector
+
+    /// We very carefully only modify this from the owning actor (receptionist).
+    /// TODO: It would be lovely to be able to express this in the type system as "actor owned" or "actor local" to some actor instance.
+    private var seenActorRegistrations: VersionVector
 
     init(subscriptionID: ObjectIdentifier,
          key: AnyDistributedReceptionKey,

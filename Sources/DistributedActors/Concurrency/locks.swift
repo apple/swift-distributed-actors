@@ -18,7 +18,7 @@ import Darwin
 import Glibc
 #endif
 
-/// :nodoc: Not intended to be used by end users.
+/// Not intended to be used by end users.
 // FIXME: Why is this here and not in concurrency helpers?
 public final class _Mutex {
     @usableFromInline
@@ -114,7 +114,7 @@ public final class _Mutex {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Blocking Receptacle
 
-/// :nodoc: Not intended to be used by end users.
+/// Not intended to be used by end users.
 ///
 /// Similar to `_LinkedBlockingQueue` however specialized for a single element.
 /// Used most often as "await until something happens" mechanism.
@@ -177,7 +177,7 @@ internal final class BlockingReceptacle<Value> {
 
 // ------------ "locks.swift" of the proposal
 
-/// :nodoc: Not intended to be used by end users.
+/// Not intended to be used by end users.
 ///
 /// A threading lock based on `libpthread` instead of `libdispatch`.
 ///
@@ -227,7 +227,7 @@ internal final class ReadWriteLock {
     }
 }
 
-/// :nodoc: Not intended to be used by end users.
+/// Not intended to be used by end users.
 extension ReadWriteLock {
     /// Acquire the reader lock for the duration of the given block.
     ///

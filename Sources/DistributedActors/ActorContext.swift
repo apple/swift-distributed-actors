@@ -24,17 +24,17 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
 
     /// Returns `ActorSystem` which this context belongs to.
     public var system: ActorSystem {
-        undefined()
+        _undefined()
     }
 
     /// Uniquely identifies this actor in the cluster.
     public var address: ActorAddress {
-        undefined()
+        _undefined()
     }
 
     /// Local path under which this actor resides within the actor tree.
     public var path: ActorPath {
-        undefined()
+        _undefined()
     }
 
     /// Name of this actor.
@@ -46,7 +46,7 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
     // We can safely make it a `lazy var` without synchronization as `_ActorContext` is required to only be accessed in "its own"
     // Actor, which means that we always have guaranteed synchronization in place and no concurrent access should take place.
     public var name: String {
-        undefined()
+        _undefined()
     }
 
     /// The actor reference to _this_ actor.
@@ -58,30 +58,30 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
     // and it's important to keep in mind the actors are "like people", so having this talk about "myself" is important IMHO
     // to get developers into the right mindset.
     public var myself: _ActorRef<Message> {
-        undefined()
+        _undefined()
     }
 
     /// Provides context metadata aware `Logger`
     public var log: Logger {
         get {
-            undefined()
+            _undefined()
         }
         set { // has to become settable
             fatalError()
         }
     }
 
-    /// `Props` which were used when spawning this actor.
-    public var props: Props {
-        undefined()
+    /// `_Props` which were used when spawning this actor.
+    public var props: _Props {
+        _undefined()
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: Timers
+    // MARK: _BehaviorTimers
 
     /// Allows setting up and canceling timers, bound to the lifecycle of this actor.
-    public var timers: Timers<Message> {
-        undefined()
+    public var timers: _BehaviorTimers<Message> {
+        _undefined()
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -92,7 +92,7 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
     /// Exists solely for Actorables, should not be used in the Behavior style API.
     /// MUST be invoked from inside the actor (i.e. not concurrently).
     internal func _forceStop() {
-        undefined()
+        _undefined()
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -104,7 +104,7 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
         with terminationMessage: Message? = nil,
         file: String = #file, line: UInt = #line
     ) -> Watchee where Watchee: _DeathWatchable {
-        undefined()
+        _undefined()
     }
 
     @discardableResult
@@ -112,7 +112,7 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
         _ watchee: Watchee,
         file: String = #file, line: UInt = #line
     ) -> Watchee where Watchee: _DeathWatchable {
-        undefined()
+        _undefined()
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -122,12 +122,12 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
     public func _spawn<M>(
         _ naming: ActorNaming,
         of type: M.Type = M.self,
-        props: Props = Props(),
+        props: _Props = _Props(),
         file: String = #file, line: UInt = #line,
         _ behavior: _Behavior<M>
     ) throws -> _ActorRef<M>
         where M: ActorMessage {
-        undefined()
+        _undefined()
     }
 
     /// Spawn a child actor and start watching it to get notified about termination.
@@ -140,12 +140,12 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
     public func _spawnWatch<M>(
         _ naming: ActorNaming,
         of type: M.Type = M.self,
-        props: Props = Props(),
+        props: _Props = _Props(),
         file: String = #file, line: UInt = #line,
         _ behavior: _Behavior<M>
     ) throws -> _ActorRef<M>
         where M: ActorMessage {
-        undefined()
+        _undefined()
     }
 
     /// Container of spawned child actors.
@@ -155,7 +155,7 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
     /// since looking up actors by name has an inherent seek cost associated with it.
     public var children: _Children {
         get {
-            undefined()
+            _undefined()
         }
         set {
             fatalError()
@@ -173,13 +173,13 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
     ///           An actor may not terminate another's child actors. Attempting to stop `myself` using this method will
     ///           also throw, as the proper way of stopping oneself is returning a `_Behavior.stop`.
     public func stop<M>(child ref: _ActorRef<M>) throws where M: ActorMessage {
-        return undefined()
+        return _undefined()
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Actor Suspension Mechanisms
 
-    /// :nodoc: Not intended to be used by end users.
+    /// Not intended to be used by end users.
     ///
     /// Turns a closure into an `AsynchronousCallback` that is executed in the context of this actor. It is safe to close over and modify
     /// internal actor state from within an `AsynchronousCallback`.
@@ -196,7 +196,7 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
         }
     }
 
-    /// :nodoc: Not intended to be used by end users.
+    /// Not intended to be used by end users.
     ///
     /// Turns a closure into an `AsynchronousCallback` that is executed in the context of this actor. It is safe to close over and modify
     /// internal actor state from within an `AsynchronousCallback`.
@@ -347,7 +347,7 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
     /// `Message`, or if not all `From` messages are of interest for this particular actor.
     public func messageAdapter<From>(from type: From.Type, adapt: @escaping (From) -> Message?) -> _ActorRef<From>
         where From: ActorMessage {
-        return undefined()
+        return _undefined()
     }
 
     /// Creates an `_ActorRef` that can receive messages of the specified type, but executed in the same
@@ -362,7 +362,7 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
     /// the new behavior.
     public func subReceive<SubMessage>(_: _SubReceiveId<SubMessage>, _: SubMessage.Type, _: @escaping (SubMessage) throws -> Void) -> _ActorRef<SubMessage>
         where SubMessage: ActorMessage {
-        return undefined()
+        return _undefined()
     }
 
     /// Creates an `_ActorRef` that can receive messages of the specified type, but executed in the same
@@ -380,8 +380,8 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
     }
 
     @usableFromInline
-    func subReceive(identifiedBy identifier: AnySubReceiveId) -> ((SubMessageCarry) throws -> _Behavior<Message>)? {
-        undefined()
+    func subReceive(identifiedBy identifier: _AnySubReceiveId) -> ((SubMessageCarry) throws -> _Behavior<Message>)? {
+        _undefined()
     }
 }
 
@@ -410,8 +410,8 @@ extension _SubReceiveId: ExpressibleByStringLiteral, ExpressibleByStringInterpol
     }
 }
 
-/// :nodoc: INTERNAL API
-public struct AnySubReceiveId: Hashable, Equatable {
+// TODO(distributed): sub-receives will be removed shortly, thanks to actors in the language there are other ways to solve this.
+public struct _AnySubReceiveId: Hashable, Equatable {
     let underlying: AnyHashable
 
     init<SubMessage>(_ id: _SubReceiveId<SubMessage>) {

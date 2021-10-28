@@ -119,7 +119,7 @@ public class Serialization {
         settings.register(_Done.self)
         settings.register(Result<_Done, ErrorEnvelope>.self)
 
-        settings.register(Wire.Envelope.self, hint: Wire.Envelope.typeHint, serializerID: .protobufRepresentable, alsoRegisterActorRef: false)
+        settings.register(Wire.Envelope.self, hint: Wire.Envelope.typeHint, serializerID: ._ProtobufRepresentable, alsoRegisterActorRef: false)
         settings.register(ClusterShell.Message.self)
         settings.register(Cluster.Event.self)
         settings.register(Cluster.MembershipGossip.self)
@@ -131,20 +131,20 @@ public class Serialization {
         // TODO: do we HAVE to do this in the Receptionist?
         settings.register(Receptionist.Message.self, serializerID: .doNotSerialize)
         settings.register(DistributedActors.OpLogDistributedReceptionist.Message.self, serializerID: .foundationJSON)
-        settings.register(OperationLogClusterReceptionist.AckOps.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
+        settings.register(_OperationLogClusterReceptionist.AckOps.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
 
         // FIXME: This will go away once https://github.com/apple/swift/pull/30318 is merged and we can rely on summoning types
-        settings.register(OperationLogClusterReceptionist.PushOps.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
+        settings.register(_OperationLogClusterReceptionist.PushOps.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
         settings.register(DistributedActors.OpLogDistributedReceptionist.PushOps.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
         settings.registerInbound(
-            OperationLogClusterReceptionist.PushOps.self,
-            hint: "DistributedActors.\(OperationLogClusterReceptionist.PushOps.self)", serializerID: .default
+            _OperationLogClusterReceptionist.PushOps.self,
+            hint: "DistributedActors.\(_OperationLogClusterReceptionist.PushOps.self)", serializerID: .default
         )
         // FIXME: This will go away once https://github.com/apple/swift/pull/30318 is merged and we can rely on summoning types
-        settings.registerInbound(OperationLogClusterReceptionist.AckOps.self, hint: "_ReceptionistMessage", serializerID: .default)
+        settings.registerInbound(_OperationLogClusterReceptionist.AckOps.self, hint: "_ReceptionistMessage", serializerID: .default)
         settings.registerInbound(
-            OperationLogClusterReceptionist.AckOps.self,
-            hint: "DistributedActors.\(OperationLogClusterReceptionist.AckOps.self)", serializerID: .default
+            _OperationLogClusterReceptionist.AckOps.self,
+            hint: "DistributedActors.\(_OperationLogClusterReceptionist.AckOps.self)", serializerID: .default
         )
 
         // swim failure detector
@@ -157,8 +157,8 @@ public class Serialization {
         settings.register(ActorAddress.self, serializerID: .foundationJSON) // TODO: this was protobuf
         settings.register(AnyActorIdentity.self, serializerID: .foundationJSON)
         settings.register(ReplicaID.self, serializerID: .foundationJSON)
-        settings.register(VersionDot.self, serializerID: .protobufRepresentable)
-        settings.register(VersionVector.self, serializerID: .protobufRepresentable)
+        settings.register(VersionDot.self, serializerID: ._ProtobufRepresentable)
+        settings.register(VersionVector.self, serializerID: ._ProtobufRepresentable)
 
         // errors
         settings.register(ErrorEnvelope.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
@@ -320,7 +320,7 @@ extension Serialization {
             serializer.setSerializationContext(self.context)
             return serializer
 
-        case Serialization.SerializerID.protobufRepresentable:
+        case Serialization.SerializerID._ProtobufRepresentable:
             // TODO: determine what custom one to use, proto or what else
             return _TopLevelBytesBlobSerializer<Message>(allocator: self.allocator, context: self.context)
 
@@ -439,7 +439,7 @@ extension Serialization {
                         """
                     )
 
-                case .protobufRepresentable:
+                case ._ProtobufRepresentable:
                     let encoder = TopLevelProtobufBlobEncoder(allocator: self.allocator)
                     encoder.userInfo[.actorTransportKey] = self.context.system
                     encoder.userInfo[.actorSerializationContext] = self.context
@@ -563,7 +563,7 @@ extension Serialization {
                         """
                     )
 
-                case .protobufRepresentable:
+                case ._ProtobufRepresentable:
                     let decoder = TopLevelProtobufBlobDecoder()
                     decoder.userInfo[.actorTransportKey] = self.context.system
                     decoder.userInfo[.actorSerializationContext] = self.context
@@ -665,7 +665,8 @@ internal struct MetaType<T>: Hashable, CustomStringConvertible {
 }
 
 // TODO: remove and always just use the Any.Type
-public protocol AnyMetaType {
+@usableFromInline
+protocol AnyMetaType {
     var asHashable: AnyHashable { get }
 
     /// Performs equality check of the underlying meta type object identifiers.

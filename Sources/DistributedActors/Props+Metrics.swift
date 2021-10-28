@@ -17,9 +17,9 @@ import Dispatch
 import NIO
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Metrics Props
+// MARK: Metrics _Props
 
-extension Props {
+extension _Props {
     /// It is too often too much to report metrics for every single actor, and thus metrics are often better reported in groups.
     /// Since actors may be running various behaviors, it is best to explicitly tag spawned actors with which group they should be reporting metrics to.
     ///
@@ -29,8 +29,8 @@ extension Props {
         group: String,
         measure activeMetrics: ActiveMetricsOptionSet,
         _ configure: (inout MetricsProps) -> Void = { _ in () }
-    ) -> Props {
-        Props().metrics(group: group, measure: activeMetrics) { configure(&$0) }
+    ) -> _Props {
+        _Props().metrics(group: group, measure: activeMetrics) { configure(&$0) }
     }
 
     /// It is too often too much to report metrics for every single actor, and thus metrics are often better reported in groups.
@@ -42,7 +42,7 @@ extension Props {
         group: String,
         measure activeMetrics: ActiveMetricsOptionSet,
         _ configure: (inout MetricsProps) -> Void = { _ in () }
-    ) -> Props {
+    ) -> _Props {
         var props = self
         var metricsProps = MetricsProps(group: group, active: activeMetrics)
         configure(&metricsProps)

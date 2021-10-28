@@ -28,14 +28,14 @@ extension SWIM {
     typealias Shell = SWIMActorShell
 }
 
-public protocol AnySWIMMessage {}
+public protocol _AnySWIMMessage {}
 
-extension SWIM.Message: AnySWIMMessage {}
+extension SWIM.Message: _AnySWIMMessage {}
 
-extension SWIM.PingResponse: AnySWIMMessage {}
+extension SWIM.PingResponse: _AnySWIMMessage {}
 
 /// :nodoc:
-extension _ActorRef: SWIMAddressablePeer where Message: AnySWIMMessage {
+extension _ActorRef: SWIMAddressablePeer where Message: _AnySWIMMessage {
     public var node: ClusterMembership.Node {
         .init(protocol: self.address.uniqueNode.node.protocol, host: self.address.uniqueNode.host, port: self.address.uniqueNode.port, uid: self.address.uniqueNode.nid.value)
     }

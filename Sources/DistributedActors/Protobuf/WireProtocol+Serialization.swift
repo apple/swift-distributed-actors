@@ -24,7 +24,7 @@ enum WireEnvelopeError: Error {
     case emptyRecipient
 }
 
-extension Wire.Envelope: ProtobufRepresentable {
+extension Wire.Envelope: _ProtobufRepresentable {
     public typealias ProtobufRepresentation = _ProtoEnvelope
 
     public func toProto(context: Serialization.Context) throws -> ProtobufRepresentation {

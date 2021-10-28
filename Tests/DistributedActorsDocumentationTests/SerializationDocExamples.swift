@@ -84,7 +84,7 @@ extension ParkingTicketMessage {
 // MARK: Serialization example - protobuf messages
 
 // tag::serialization_protobuf_messages[]
-enum ParkingGarageStatus: ProtobufRepresentable {
+enum ParkingGarageStatus: _ProtobufRepresentable {
     case available
     case full
 }
@@ -136,7 +136,7 @@ enum CustomlyEncodedMessage: Codable, NonTransportableActorMessage {
 // end::serialization_custom_messages[]
 
 class SerializationDocExamples {
-    lazy var system: ActorSystem = undefined(hint: "Examples, not intended to be run")
+    lazy var system: ActorSystem = _undefined(hint: "Examples, not intended to be run")
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Serialized Codable messages
@@ -295,7 +295,7 @@ class SerializationDocExamples {
         }
 
         override func deserialize(from buffer: Serialization.Buffer) throws -> ContainsActorRef {
-            let address: ActorAddress = undefined(hint: "your favourite serialization")
+            let address: ActorAddress = _undefined(hint: "your favourite serialization")
             guard let context = self.context else {
                 throw CustomCodingError.serializationContextNotAvailable
             }

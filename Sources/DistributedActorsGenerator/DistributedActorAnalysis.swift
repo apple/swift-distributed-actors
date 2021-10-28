@@ -393,8 +393,11 @@ struct ResolveDistributedActors {
 // MARK: Check type is Distributed
 
 extension ClassDeclSyntax {
+    var isActor: Bool {
+        classOrActorKeyword.text == "actor"
+    }
+
     var isDistributedActor: Bool {
-        let isActor = classOrActorKeyword.text == "actor"
         guard isActor else {
             return false
         }

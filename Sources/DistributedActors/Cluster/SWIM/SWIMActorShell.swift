@@ -546,8 +546,8 @@ extension SWIMActorShell {
     static let name: String = "swim"
     static let naming: ActorNaming = .unique(SWIMActorShell.name)
 
-    static var props: Props {
-        Props
+    static var props: _Props {
+        _Props
             ._wellKnown
             .metrics(group: "swim.shell", measure: [.serialization, .deserialization])
     }

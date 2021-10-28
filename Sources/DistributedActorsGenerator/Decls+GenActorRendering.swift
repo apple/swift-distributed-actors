@@ -121,7 +121,7 @@ extension Rendering {
                                 // try await instance.postStop(context: context)
                                 return .stop
                             case let terminated as Signals.Terminated:
-                                if let watcher = instance as? (DistributedActor & DistributedActors.LifecycleWatchSupport) { // TODO: cleanup once LifecycleWatchSupport implies DistributedActor
+                                if let watcher = instance as? (DistributedActor & DistributedActors.LifecycleWatch) { // TODO: cleanup once LifecycleWatch implies DistributedActor
                                      try await watcher.whenLocal { __secretlyKnownToBeLocal in 
                                          try await __secretlyKnownToBeLocal._receiveActorTerminated(identity: terminated.identity)
                                      }

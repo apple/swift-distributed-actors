@@ -21,33 +21,33 @@ import SwiftProtobuf
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Protobuf representations
 
-public protocol AnyProtobufRepresentable: ActorMessage, SerializationRepresentable {}
+public protocol Any_ProtobufRepresentable: ActorMessage, SerializationRepresentable {}
 
-extension AnyProtobufRepresentable {
+extension Any_ProtobufRepresentable {
     public static var defaultSerializerID: Serialization.SerializerID? {
-        .protobufRepresentable
+        ._ProtobufRepresentable
     }
 }
 
-public protocol AnyPublicProtobufRepresentable: AnyProtobufRepresentable {}
+public protocol _AnyPublic_ProtobufRepresentable: Any_ProtobufRepresentable {}
 
 /// A protocol that facilitates conversion between Swift and protobuf messages.
 ///
 /// - SeeAlso: `ActorMessage`
-public protocol ProtobufRepresentable: AnyPublicProtobufRepresentable {
+public protocol _ProtobufRepresentable: _AnyPublic_ProtobufRepresentable {
     associatedtype ProtobufRepresentation: SwiftProtobuf.Message
 
-    /// Convert this `ProtobufRepresentable` instance to an instance of type `ProtobufRepresentation`.
+    /// Convert this `_ProtobufRepresentable` instance to an instance of type `ProtobufRepresentation`.
     func toProto(context: Serialization.Context) throws -> ProtobufRepresentation
 
-    /// Initialize a `ProtobufRepresentable` instance from the given `ProtobufRepresentation` instance.
+    /// Initialize a `_ProtobufRepresentable` instance from the given `ProtobufRepresentation` instance.
     init(fromProto proto: ProtobufRepresentation, context: Serialization.Context) throws
 }
 
 // Implementation note:
 // This conformance is a bit weird, and it is not usually going to be invoked through Codable
 // however it could, so we allow for this use case.
-extension ProtobufRepresentable {
+extension _ProtobufRepresentable {
     public init(from decoder: Decoder) throws {
         guard let context = decoder.actorSerializationContext else {
             throw SerializationError.missingSerializationContext(decoder, Self.self)
@@ -78,8 +78,8 @@ extension ProtobufRepresentable {
 
 /// This protocol is for internal protobuf-serializable messages only.
 ///
-/// We need a protocol separate from `ProtobufRepresentable` because otherwise we would be forced to make internal types public.
-internal protocol InternalProtobufRepresentable: AnyProtobufRepresentable {
+/// We need a protocol separate from `_ProtobufRepresentable` because otherwise we would be forced to make internal types public.
+internal protocol Internal_ProtobufRepresentable: Any_ProtobufRepresentable {
     associatedtype ProtobufRepresentation: SwiftProtobuf.Message
 
     init(from decoder: Decoder) throws
@@ -92,7 +92,7 @@ internal protocol InternalProtobufRepresentable: AnyProtobufRepresentable {
 // Implementation note:
 // This conformance is a bit weird, and it is not usually going to be invoked through Codable
 // however it could, so we allow for this use case.
-extension InternalProtobufRepresentable {
+extension Internal_ProtobufRepresentable {
     init(from decoder: Decoder) throws {
         guard let context = decoder.actorSerializationContext else {
             throw SerializationError.missingSerializationContext(decoder, Self.self)
@@ -121,9 +121,9 @@ extension InternalProtobufRepresentable {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Codable -- ProtobufRepresentable --> Protocol Buffers
+// MARK: Codable -- _ProtobufRepresentable --> Protocol Buffers
 
-extension InternalProtobufRepresentable {
+extension Internal_ProtobufRepresentable {
     init(context: Serialization.Context, from buffer: Serialization.Buffer, using manifest: Serialization.Manifest) throws {
         let proto = try ProtobufRepresentation(serializedData: buffer.readData())
         try self.init(fromProto: proto, context: context)
@@ -134,7 +134,7 @@ extension InternalProtobufRepresentable {
     }
 }
 
-extension ProtobufRepresentable {
+extension _ProtobufRepresentable {
     public init(context: Serialization.Context, from buffer: Serialization.Buffer, using manifest: Serialization.Manifest) throws {
         let proto = try ProtobufRepresentation(serializedData: buffer.readData())
         try self.init(fromProto: proto, context: context)

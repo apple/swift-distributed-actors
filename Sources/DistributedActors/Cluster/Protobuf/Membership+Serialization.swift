@@ -17,7 +17,7 @@ import Foundation
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Serialization
 
-extension Cluster.Membership: ProtobufRepresentable {
+extension Cluster.Membership: _ProtobufRepresentable {
     public typealias ProtobufRepresentation = _ProtoClusterMembership
 
     public func toProto(context: Serialization.Context) throws -> _ProtoClusterMembership {
@@ -46,7 +46,7 @@ extension Cluster.Membership: ProtobufRepresentable {
     }
 }
 
-extension Cluster.Member: ProtobufRepresentable {
+extension Cluster.Member: _ProtobufRepresentable {
     public typealias ProtobufRepresentation = _ProtoClusterMember
 
     public func toProto(context: Serialization.Context) throws -> ProtobufRepresentation {
@@ -71,7 +71,7 @@ extension Cluster.Member: ProtobufRepresentable {
     }
 }
 
-// not conforming to InternalProtobufRepresentable since it is a raw `enum` not a Message
+// not conforming to Internal_ProtobufRepresentable since it is a raw `enum` not a Message
 extension Cluster.MemberReachability {
     func toProto(context: Serialization.Context) throws -> _ProtoClusterMemberReachability {
         switch self {
@@ -96,7 +96,7 @@ extension Cluster.MemberReachability {
     }
 }
 
-// not conforming to InternalProtobufRepresentable since this is a raw `enum` not a Message
+// not conforming to Internal_ProtobufRepresentable since this is a raw `enum` not a Message
 extension Cluster.MemberStatus {
     func toProto(context: Serialization.Context) -> _ProtoClusterMemberStatus {
         var proto = _ProtoClusterMemberStatus()

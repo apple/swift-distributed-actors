@@ -33,8 +33,8 @@ extension Serialization {
             switch self.value {
             case SerializerID.doNotSerialize.value:
                 return "serializerID:doNotSerialize(\(self.value))"
-            case SerializerID.protobufRepresentable.value:
-                return "serializerID:protobufRepresentable(\(self.value))"
+            case SerializerID._ProtobufRepresentable.value:
+                return "serializerID:_ProtobufRepresentable(\(self.value))"
             case SerializerID.specializedWithTypeHint.value:
                 return "serializerID:specialized(\(self.value))"
             case SerializerID.foundationJSON.value:
@@ -70,7 +70,7 @@ extension Serialization.SerializerID {
     public static let doNotSerialize: SerializerID = 0
 
     public static let specializedWithTypeHint: SerializerID = 1
-    public static let protobufRepresentable: SerializerID = 2
+    public static let _ProtobufRepresentable: SerializerID = 2
 
     public static let foundationJSON: SerializerID = 3
     public static let foundationPropertyListBinary: SerializerID = 4
@@ -79,9 +79,9 @@ extension Serialization.SerializerID {
     // ... -- || --
     // ... reserved = 16
 
-    /// Helper function to never accidentally register a not-AnyProtobufRepresentable as such.
-    public static func checkProtobufRepresentable<M: AnyProtobufRepresentable>(_ type: M.Type) -> SerializerID {
-        .protobufRepresentable
+    /// Helper function to never accidentally register a not-Any_ProtobufRepresentable as such.
+    public static func check_ProtobufRepresentable<M: Any_ProtobufRepresentable>(_ type: M.Type) -> SerializerID {
+        ._ProtobufRepresentable
     }
 
     // ~~~~~~~~~~~~~~~~ users may use ids above 16 ~~~~~~~~~~~~~~~~
@@ -95,17 +95,17 @@ extension Serialization {
     /// in order to allow fine grained evolution and payload size savings.
     internal enum ReservedID {
         internal static let SystemMessage: SerializerID = .doNotSerialize
-        internal static let SystemMessageACK: SerializerID = .checkProtobufRepresentable(_SystemMessage.ACK.self)
-        internal static let SystemMessageNACK: SerializerID = .checkProtobufRepresentable(_SystemMessage.NACK.self)
-        internal static let SystemMessageEnvelope: SerializerID = .checkProtobufRepresentable(DistributedActors.SystemMessageEnvelope.self)
+        internal static let SystemMessageACK: SerializerID = .check_ProtobufRepresentable(_SystemMessage.ACK.self)
+        internal static let SystemMessageNACK: SerializerID = .check_ProtobufRepresentable(_SystemMessage.NACK.self)
+        internal static let SystemMessageEnvelope: SerializerID = .check_ProtobufRepresentable(DistributedActors.SystemMessageEnvelope.self)
 
-        internal static let ActorAddress: SerializerID = .checkProtobufRepresentable(DistributedActors.ActorAddress.self)
+        internal static let ActorAddress: SerializerID = .check_ProtobufRepresentable(DistributedActors.ActorAddress.self)
 
-        internal static let ClusterShellMessage: SerializerID = .checkProtobufRepresentable(ClusterShell.Message.self)
-        internal static let ClusterEvent: SerializerID = .checkProtobufRepresentable(Cluster.Event.self)
+        internal static let ClusterShellMessage: SerializerID = .check_ProtobufRepresentable(ClusterShell.Message.self)
+        internal static let ClusterEvent: SerializerID = .check_ProtobufRepresentable(Cluster.Event.self)
 
-        internal static let SWIMMessage: SerializerID = .checkProtobufRepresentable(SWIM.Message.self)
-        internal static let SWIMPingResponse: SerializerID = .checkProtobufRepresentable(SWIM.PingResponse.self)
+        internal static let SWIMMessage: SerializerID = .check_ProtobufRepresentable(SWIM.Message.self)
+        internal static let SWIMPingResponse: SerializerID = .check_ProtobufRepresentable(SWIM.PingResponse.self)
 
         // op log receptionist
         internal static let PushOps: SerializerID = .foundationJSON

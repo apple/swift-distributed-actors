@@ -254,7 +254,7 @@ private func bench_actors_ping_pong(numActors: Int) -> (Int) -> Void {
 
         let time = SwiftBenchmarkTools.Timer().getTimeAsInt() - startNanoTime
 
-        pprint("    \(totalNumMessages) messages by \(numActors) actors took: \(time.milliseconds) ms (total: \(totalNumMessages / time.milliseconds * 1000) msg/s)")
+        print("    \(totalNumMessages) messages by \(numActors) actors took: \(time.milliseconds) ms (total: \(totalNumMessages / time.milliseconds * 1000) msg/s)")
         try! system.shutdown().wait()
     }
 }

@@ -27,8 +27,8 @@ import NIO
 /// a given set of actors often sends large messages, which would have otherwise stalled the sending of other high-priority
 /// (e.g. system) messages.
 ///
-// Implementation note: This should be internal, but is forced to be public by `_deserializeDeliver`
-public final class SerializationPool {
+// TODO: This should be internal, but is forced to be public by `_deserializeDeliver` on references.
+public final class _SerializationPool {
     @usableFromInline
     internal let serialization: Serialization
     @usableFromInline

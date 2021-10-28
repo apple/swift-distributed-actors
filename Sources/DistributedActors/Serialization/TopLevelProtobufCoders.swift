@@ -94,14 +94,14 @@ struct TopLevelProtobufBlobSingleValueEncodingContainer: SingleValueEncodingCont
 
     func encode<T>(_ value: T) throws where T: Encodable {
         switch value {
-        case let repr as AnyProtobufRepresentable:
+        case let repr as Any_ProtobufRepresentable:
             try repr.encode(to: self.superEncoder)
         case let data as Data:
             try self.superEncoder.store(data: data)
         case let bytes as [UInt8]:
             try self.superEncoder.store(bytes: bytes)
         default:
-            throw SerializationError.unableToSerialize(hint: "Attempted encode \(T.self) into a \(Self.self) which only supports ProtobufRepresentable")
+            throw SerializationError.unableToSerialize(hint: "Attempted encode \(T.self) into a \(Self.self) which only supports _ProtobufRepresentable")
         }
     }
 
@@ -198,12 +198,12 @@ class TopLevelProtobufBlobDecoder: _TopLevelBlobDecoder {
     func decode<T>(_ type: T.Type, from buffer: Serialization.Buffer) throws -> T where T: Decodable {
         self.buffer = buffer
 
-        if let P = type as? AnyProtobufRepresentable.Type {
+        if let P = type as? Any_ProtobufRepresentable.Type {
             return try P.init(from: self) as! T // explicit .init() is required here (!)
-        } else if let P = type as? AnyPublicProtobufRepresentable.Type {
+        } else if let P = type as? _AnyPublic_ProtobufRepresentable.Type {
             return try P.init(from: self) as! T // explicit .init() is required here (!)
         } else {
-            return fatalErrorBacktrace("\(Self.self) is not able to decode \(T.self) as it isn't a ProtobufRepresentable type!")
+            return fatalErrorBacktrace("\(Self.self) is not able to decode \(T.self) as it isn't a _ProtobufRepresentable type!")
         }
     }
 }

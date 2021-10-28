@@ -17,7 +17,7 @@ import NIO
 
 internal enum Child {
     case cell(AbstractShellProtocol)
-    case adapter(AbstractAdapter)
+    case adapter(_AbstractAdapter)
 }
 
 /// Represents all the (current) children this behavior actor has spawned.
@@ -77,7 +77,7 @@ public class _Children {
         }
     }
 
-    internal func insert<R: AbstractAdapter>(_ adapterRef: R) {
+    internal func insert<R: _AbstractAdapter>(_ adapterRef: R) {
         self.rwLock.withWriterLockVoid {
             self.container[adapterRef.address.name] = .adapter(adapterRef)
         }
@@ -110,7 +110,7 @@ public class _Children {
         }
     }
 
-    /// :nodoc: INTERNAL API: Only the ActorCell may mutate its children collection (as a result of spawning or stopping them).
+    /// INTERNAL API: Only the ActorCell may mutate its children collection (as a result of spawning or stopping them).
     /// Returns: `true` upon successful removal of the ref identified by passed in path, `false` otherwise
     @usableFromInline
     @discardableResult
@@ -127,7 +127,7 @@ public class _Children {
         }
     }
 
-    /// :nodoc: INTERNAL API: Only the ActorCell may mutate its children collection (as a result of spawning or stopping them).
+    /// INTERNAL API: Only the ActorCell may mutate its children collection (as a result of spawning or stopping them).
     ///
     /// Once marked as stopping the actor MUST be sent a `.stop` system message.
     ///
@@ -277,7 +277,7 @@ extension _Children {
         }
     }
 
-    /// :nodoc: INTERNAL API: Normally users should know what children they spawned and stop them more explicitly
+    /// INTERNAL API: Normally users should know what children they spawned and stop them more explicitly
     // We may open this up once it is requested enough however...
     public func stopAll(includeAdapters: Bool = true) {
         self.rwLock.withWriterLockVoid {
@@ -308,7 +308,7 @@ extension _Children {
 // MARK: Internal shell operations
 
 extension _ActorShell {
-    internal func _spawn<M>(_ naming: ActorNaming, props: Props, _ behavior: _Behavior<M>) throws -> _ActorRef<M> {
+    internal func _spawn<M>(_ naming: ActorNaming, props: _Props, _ behavior: _Behavior<M>) throws -> _ActorRef<M> {
         let name = naming.makeName(&self.namingContext)
 
         try behavior.validateAsInitial()

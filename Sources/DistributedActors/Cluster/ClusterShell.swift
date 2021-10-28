@@ -216,8 +216,8 @@ internal class ClusterShell {
 
     // `_serializationPool` is only used when `start()` is invoked, and there it is set immediately as well
     // any earlier access to the pool is a bug (in our library) and must be treated as such.
-    private var _serializationPool: SerializationPool?
-    internal var serializationPool: SerializationPool {
+    private var _serializationPool: _SerializationPool?
+    internal var serializationPool: _SerializationPool {
         guard let pool = self._serializationPool else {
             fatalError("BUG! Tried to access serializationPool on \(self) and it was nil! Please report this on the issue tracker.")
         }
@@ -261,7 +261,7 @@ internal class ClusterShell {
     /// Actually starts the shell which kicks off binding to a port, and all further cluster work
     internal func lazyStart(system: ActorSystem, clusterEvents: EventStream<Cluster.Event>) throws -> LazyStart<Message> {
         let instrumentation = system.settings.instrumentation.makeInternalActorTransportInstrumentation()
-        self._serializationPool = try SerializationPool(settings: .default, serialization: system.serialization, instrumentation: instrumentation)
+        self._serializationPool = try _SerializationPool(settings: .default, serialization: system.serialization, instrumentation: instrumentation)
         self.clusterEvents = clusterEvents
 
         // TODO: concurrency... lock the ref as others may read it?
@@ -279,7 +279,7 @@ internal class ClusterShell {
     /// Actually starts the shell which kicks off binding to a port, and all further cluster work
     internal func start(system: ActorSystem, clusterEvents: EventStream<Cluster.Event>) throws -> _ActorRef<Message> {
         let instrumentation = system.settings.instrumentation.makeInternalActorTransportInstrumentation()
-        self._serializationPool = try SerializationPool(settings: .default, serialization: system.serialization, instrumentation: instrumentation)
+        self._serializationPool = try _SerializationPool(settings: .default, serialization: system.serialization, instrumentation: instrumentation)
         self.clusterEvents = clusterEvents
 
         let ref = try system._spawnSystemActor(ClusterShell.naming, self.bind(), props: self.props)
@@ -356,8 +356,8 @@ internal class ClusterShell {
         return self.bind()
     }
 
-    private let props: Props =
-        Props()
+    private let props: _Props =
+        _Props()
             .supervision(strategy: .escalate) // always escalate failures, if this actor fails we're in big trouble -> terminate the system
             ._asWellKnown
 }

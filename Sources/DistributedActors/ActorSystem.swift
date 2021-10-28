@@ -44,7 +44,7 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
     }
 
     internal let lifecycleWatchLock = Lock()
-    internal var _lifecycleWatches: [AnyActorIdentity: LifecycleWatch] = [:]
+    internal var _lifecycleWatches: [AnyActorIdentity: LifecycleWatchContainer] = [:]
 
     private let dispatcher: InternalMessageDispatcher
 
@@ -285,7 +285,7 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
         let lazyReceptionist = try! self._prepareSystemActor(Receptionist.naming, receptionistBehavior, props: ._wellKnown)
         self._receptionistRef = lazyReceptionist.ref
 
-        Props.$forSpawn.withValue(OpLogDistributedReceptionist.props) {
+        _Props.$forSpawn.withValue(OpLogDistributedReceptionist.props) {
             let receptionist = OpLogDistributedReceptionist(
                 settings: self.settings.cluster.receptionist,
                 transport: self
@@ -472,7 +472,7 @@ extension ActorSystem: CustomStringConvertible {
 extension ActorSystem: _ActorRefFactory {
     @discardableResult
     public func _spawn<Message>(
-            _ naming: ActorNaming, of type: Message.Type = Message.self, props: Props = Props(),
+            _ naming: ActorNaming, of type: Message.Type = Message.self, props: _Props = _Props(),
             file: String = #file, line: UInt = #line,
             _ behavior: _Behavior<Message>
     ) throws -> _ActorRef<Message> where Message: ActorMessage {
@@ -480,7 +480,7 @@ extension ActorSystem: _ActorRefFactory {
         return try self._spawn(using: self.userProvider, behavior, name: naming, props: props)
     }
 
-    /// :nodoc: INTERNAL API
+    /// INTERNAL API
     ///
     /// Implementation note:
     /// `wellKnown` here means that the actor always exists and must be addressable without receiving a reference / path to it. This is for example necessary
@@ -488,7 +488,7 @@ extension ActorSystem: _ActorRefFactory {
     /// This also means that there will only be one instance of that actor that will stay alive for the whole lifetime of the system.
     /// Appropriate supervision strategies should be configured for these types of actors.
     public func _spawnSystemActor<Message>(
-            _ naming: ActorNaming, _ behavior: _Behavior<Message>, props: Props = Props()
+            _ naming: ActorNaming, _ behavior: _Behavior<Message>, props: _Props = _Props()
     ) throws -> _ActorRef<Message>
             where Message: ActorMessage {
         try self.serialization._ensureSerializer(Message.self)
@@ -506,7 +506,7 @@ extension ActorSystem: _ActorRefFactory {
     ///
     /// **CAUTION** This methods MUST NOT be used from outside of `ActorSystem.init`.
     internal func _prepareSystemActor<Message>(
-            _ naming: ActorNaming, _ behavior: _Behavior<Message>, props: Props = Props()
+            _ naming: ActorNaming, _ behavior: _Behavior<Message>, props: _Props = _Props()
     ) throws -> LazyStart<Message>
             where Message: ActorMessage {
         // try self._serialization._ensureSerializer(Message.self)
@@ -517,7 +517,7 @@ extension ActorSystem: _ActorRefFactory {
     // Actual spawn implementation, minus the leading "$" check on names;
     internal func _spawn<Message>(
             using provider: _ActorRefProvider,
-            _ behavior: _Behavior<Message>, name naming: ActorNaming, props: Props = Props(),
+            _ behavior: _Behavior<Message>, name naming: ActorNaming, props: _Props = _Props(),
             startImmediately: Bool = true
     ) throws -> _ActorRef<Message>
             where Message: ActorMessage {
@@ -560,7 +560,7 @@ extension ActorSystem: _ActorRefFactory {
     // Actual spawn implementation, minus the leading "$" check on names;
     internal func _spawn<Message>(
             using provider: _ActorRefProvider,
-            _ behavior: _Behavior<Message>, address: ActorAddress, props: Props = Props(),
+            _ behavior: _Behavior<Message>, address: ActorAddress, props: _Props = _Props(),
             startImmediately: Bool = true
     ) throws -> _ActorRef<Message>
             where Message: ActorMessage {
@@ -589,7 +589,7 @@ extension ActorSystem: _ActorRefFactory {
     }
 
     // Reserve an actor address.
-    internal func _reserveName<Act>(type: Act.Type, props: Props) throws -> ActorAddress where Act: DistributedActor {
+    internal func _reserveName<Act>(type: Act.Type, props: _Props) throws -> ActorAddress where Act: DistributedActor {
         let incarnation: ActorIncarnation = props._wellKnown ? .wellKnown : .random()
         guard let provider = (props._systemActor ? self.systemProvider : self.userProvider) else {
             fatalError("Unable to obtain system/user actor provider") // TODO(distributed): just throw here instead
@@ -623,7 +623,7 @@ extension ActorSystem: _ActorRefFactory {
             fatalError("Cannot spawn distributed actor with \(Self.self) transport and non-\(ActorAddress.self) identity! Was: \(id)")
         }
 
-        var props = Props.forSpawn
+        var props = _Props.forSpawn
         props._distributedActor = true
 
         let provider: _ActorRefProvider
@@ -682,7 +682,7 @@ extension ActorSystem: _ActorTreeTraversable {
         self._traverseAll(visit)
     }
 
-    /// :nodoc: INTERNAL API: Not intended to be used by end users.
+    /// INTERNAL API: Not intended to be used by end users.
     public func _resolve<Message: ActorMessage>(context: ResolveContext<Message>) -> _ActorRef<Message> {
 //        if let serialization = context.system._serialization {
         do {
@@ -805,7 +805,7 @@ extension ActorSystem {
     public func assignIdentity<Act>(_ actorType: Act.Type) -> AnyActorIdentity
             where Act: DistributedActor {
 
-        let props = Props.forSpawn // TODO(distributed): rather we'd want to be passed a param through here
+        let props = _Props.forSpawn // TODO(distributed): rather we'd want to be passed a param through here
         let address = try! self._reserveName(type: Act.self, props: props)
 
         log.warning("Assign identity", metadata: [
@@ -848,8 +848,8 @@ extension ActorSystem {
                 return
             }
 
-            if let watcher = actor as? LifecycleWatchSupport & DistributedActor {
-                func doMakeLifecycleWatch<Watcher: LifecycleWatchSupport & DistributedActor>(watcher: Watcher) {
+            if let watcher = actor as? LifecycleWatch & DistributedActor {
+                func doMakeLifecycleWatch<Watcher: LifecycleWatch & DistributedActor>(watcher: Watcher) {
                     _ = self._makeLifecycleWatch(watcher: watcher)
                 }
                 _openExistential(watcher, do: doMakeLifecycleWatch)

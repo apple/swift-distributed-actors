@@ -29,12 +29,12 @@ open class Serializer<Message> {
     public init() {}
 
     open func serialize(_ message: Message) throws -> Serialization.Buffer {
-        undefined()
+        _undefined()
     }
 
     // TODO: does this stay like this?
     open func deserialize(from buffer: Serialization.Buffer) throws -> Message {
-        undefined()
+        _undefined()
     }
 
     /// Invoked _once_ by `Serialization` during system startup, providing additional context bound to
@@ -93,7 +93,11 @@ internal class NonTransportableSerializer<Message>: Serializer<Message> {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Serializers: AnySerializer
 
-// TODO: We may be able to remove the Serializer infrastructure and rely on Coders if we're able to generalize them
+/// Abstracts over different Encoder/Decoder and other serialization mechanisms.
+///
+/// Serializers may directly work on ``NIO.ByteBuffer`` or on ``Foundation.Data``.
+///
+/// - Warning: This type may be replaced if we managed to pull Combine's "TopLevelEncoder" types into stdlib.
 public protocol AnySerializer {
     func trySerialize(_ message: Any) throws -> Serialization.Buffer
 

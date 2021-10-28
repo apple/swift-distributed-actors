@@ -761,14 +761,14 @@ internal struct SubMessageCarry: CustomStringConvertible {
     @usableFromInline
     class _Storage {
         @usableFromInline
-        let identifier: AnySubReceiveId
+        let identifier: _AnySubReceiveId
         @usableFromInline
         let message: Any
         @usableFromInline
         let subReceiveAddress: ActorAddress
 
         @usableFromInline
-        init(identifier: AnySubReceiveId, message: Any, subReceiveAddress: ActorAddress) {
+        init(identifier: _AnySubReceiveId, message: Any, subReceiveAddress: ActorAddress) {
             self.identifier = identifier
             self.message = message
             self.subReceiveAddress = subReceiveAddress
@@ -778,12 +778,12 @@ internal struct SubMessageCarry: CustomStringConvertible {
     let _storage: _Storage
 
     @usableFromInline
-    init(identifier: AnySubReceiveId, message: Any, subReceiveAddress: ActorAddress) {
+    init(identifier: _AnySubReceiveId, message: Any, subReceiveAddress: ActorAddress) {
         self._storage = .init(identifier: identifier, message: message, subReceiveAddress: subReceiveAddress)
     }
 
     @usableFromInline
-    var identifier: AnySubReceiveId {
+    var identifier: _AnySubReceiveId {
         self._storage.identifier
     }
 
@@ -817,7 +817,7 @@ internal enum ActorRunResult {
     case closed
 }
 
-/// :nodoc: INTERNAL API
+/// INTERNAL API
 public struct _MessageProcessingFailure: Error {
     let messageDescription: String
     let backtrace: [String] // TODO: Could be worth it to carry it as struct rather than the raw string?

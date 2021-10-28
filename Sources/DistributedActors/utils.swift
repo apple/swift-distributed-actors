@@ -17,22 +17,22 @@ import DistributedActorsConcurrencyHelpers
 import Foundation
 
 /**
- * `undefined()` pretends to be able to produce a value of any type `T` which can
+ * `_undefined()` pretends to be able to produce a value of any type `T` which can
  * be very useful whilst writing a program. It happens that you need a value
  * (which can be a function as well) of a certain type but you can't produce it
- * just yet. However, you can always temporarily replace it by `undefined()`.
+ * just yet. However, you can always temporarily replace it by `_undefined()`.
  *
  * Inspired by Haskell's
  * [undefined](http://hackage.haskell.org/package/base-4.7.0.2/docs/Prelude.html#v:undefined).
  *
- * Invoking `undefined()` will crash your program.
+ * Invoking `_undefined()` will crash your program.
  *
  * Some examples:
  *
- *  - `let x : String = undefined()`
+ *  - `let x : String = _undefined()`
  *  - `let f : String -> Int? = undefined("string to optional int function")`
- *  - `return undefined() /* in any function */ `
- *  - `let x : String = (undefined() as Int -> String)(42)`
+ *  - `return _undefined() /* in any function */ `
+ *  - `let x : String = (_undefined() as Int -> String)(42)`
  *  - ...
  *
  * What a crash looks like:
@@ -41,24 +41,21 @@ import Foundation
  *
  * Originally from: Johannes Weiss (MIT licensed) https://github.com/weissi/swift-undefined
  */
-// TODO: make those internal again
-public func undefined<T>(hint: String = "", function: StaticString = #function, file: StaticString = #file, line: UInt = #line) -> T {
+public func _undefined<T>(hint: String = "", function: StaticString = #function, file: StaticString = #file, line: UInt = #line) -> T {
     let message = hint == "" ? "" : ": \(hint)"
     fatalError("undefined \(function) -> \(T.self)\(message)", file: file, line: line)
 }
 
-public func undefined(hint: String = "", function: StaticString = #function, file: StaticString = #file, line: UInt = #line) -> Never {
+public func _undefined(hint: String = "", function: StaticString = #function, file: StaticString = #file, line: UInt = #line) -> Never {
     let message = hint == "" ? "" : ": \(hint)"
     fatalError("undefined \(function) -> Never \(message)", file: file, line: line)
 }
 
-// TODO: make those internal again
-public func TODO<T>(_ hint: String, function: StaticString = #function, file: StaticString = #file, line: UInt = #line) -> T {
+func TODO<T>(_ hint: String, function: StaticString = #function, file: StaticString = #file, line: UInt = #line) -> T {
     fatalError("TODO(\(function)): \(hint)", file: file, line: line)
 }
 
-// TODO: make those internal again
-public func FIXME<T>(_ hint: String, function: StaticString = #function, file: StaticString = #file, line: UInt = #line) -> T {
+func FIXME<T>(_ hint: String, function: StaticString = #function, file: StaticString = #file, line: UInt = #line) -> T {
     fatalError("TODO(\(function)): \(hint)", file: file, line: line)
 }
 
@@ -82,7 +79,7 @@ private func _createTimeFormatter() -> DateFormatter {
 }
 
 /// Short for "pretty print", useful for debug tracing
-public func pprint(_ message: String, file: String = #file, line: UInt = #line) {
+func pprint(_ message: String, file: String = #file, line: UInt = #line) {
     print("""
     [pprint]\
     [\(_createTimeFormatter().string(from: Date()))] \
@@ -92,7 +89,7 @@ public func pprint(_ message: String, file: String = #file, line: UInt = #line) 
     """)
 }
 
-public func pprint(_ message: StaticString, file: String = #file, line: UInt = #line) {
+func pprint(_ message: StaticString, file: String = #file, line: UInt = #line) {
     print("""
     [pprint]\
     [\(_createTimeFormatter().string(from: Date()))] \
@@ -108,7 +105,7 @@ internal let CONSOLE_YELLOW = "\u{001B}[0;33m"
 internal let CONSOLE_GREEN = "\u{001B}[0;32m"
 
 /// Like [pprint] but yellow, use for things that are better not to miss.
-public func pnote(_ message: String, file: StaticString = #file, line: UInt = #line) {
+func pnote(_ message: String, file: StaticString = #file, line: UInt = #line) {
     print("""
     \(CONSOLE_YELLOW)\
     [\(_createTimeFormatter().string(from: Date()))] \
@@ -118,7 +115,7 @@ public func pnote(_ message: String, file: StaticString = #file, line: UInt = #l
 }
 
 /// Like [pprint] but green, use for notable "good" output.
-public func pinfo(_ message: String, file: StaticString = #file, line: UInt = #line) {
+func pinfo(_ message: String, file: StaticString = #file, line: UInt = #line) {
     print("""
     \(CONSOLE_GREEN)\
     [\(_createTimeFormatter().string(from: Date()))] \
@@ -141,7 +138,7 @@ internal func _hackyPThreadThreadId() -> String {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Functions used for debug tracing, eventually likely to be removed
 
-/// :nodoc: INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
+/// INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
 @inlinable
 internal func traceLog_DeathWatch(_ message: @autoclosure () -> String, file: String = #file, line: UInt = #line) {
     #if SACT_TRACE_DEATHWATCH
@@ -149,7 +146,7 @@ internal func traceLog_DeathWatch(_ message: @autoclosure () -> String, file: St
     #endif
 }
 
-/// :nodoc: INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
+/// INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
 @inlinable
 internal func traceLog_Mailbox(_ path: ActorPath?, _ message: @autoclosure () -> String, file: String = #file, line: UInt = #line) {
     #if SACT_TRACE_MAILBOX
@@ -157,7 +154,7 @@ internal func traceLog_Mailbox(_ path: ActorPath?, _ message: @autoclosure () ->
     #endif
 }
 
-/// :nodoc: INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
+/// INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
 @inlinable
 internal func traceLog_Cell(_ message: @autoclosure () -> String, file: String = #file, line: UInt = #line) {
     #if SACT_TRACE_ACTOR_CELL
@@ -165,7 +162,7 @@ internal func traceLog_Cell(_ message: @autoclosure () -> String, file: String =
     #endif
 }
 
-/// :nodoc: INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
+/// INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
 @inlinable
 internal func traceLog_Probe(_ message: @autoclosure () -> String, file: String = #file, line: UInt = #line) {
     #if SACT_TRACE_PROBE
@@ -173,7 +170,7 @@ internal func traceLog_Probe(_ message: @autoclosure () -> String, file: String 
     #endif
 }
 
-/// :nodoc: INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
+/// INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
 @inlinable
 @inline(__always)
 internal func traceLog_Supervision(_ message: @autoclosure () -> String, file: String = #file, line: UInt = #line) {
@@ -182,7 +179,7 @@ internal func traceLog_Supervision(_ message: @autoclosure () -> String, file: S
     #endif
 }
 
-/// :nodoc: INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
+/// INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
 @inlinable
 @inline(__always)
 func traceLog_Serialization(_ message: @autoclosure () -> String, file: String = #file, line: UInt = #line) {
@@ -191,7 +188,7 @@ func traceLog_Serialization(_ message: @autoclosure () -> String, file: String =
     #endif
 }
 
-/// :nodoc: INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
+/// INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
 @inlinable
 @inline(__always)
 func traceLog_Remote(_ node: UniqueNode, _ message: @autoclosure () -> String, file: String = #file, line: UInt = #line) {

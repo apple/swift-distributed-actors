@@ -19,7 +19,7 @@ import Foundation
 import XCTest
 
 final class _ActorRefReceptionistTests: ActorSystemXCTestCase {
-    let receptionistBehavior = OperationLogClusterReceptionist(settings: .default).behavior
+    let receptionistBehavior = _OperationLogClusterReceptionist(settings: .default).behavior
 
     func test_receptionist_shouldRespondWithRegisteredRefsForKey() throws {
         let receptionist = SystemReceptionist(ref: try system._spawn("receptionist", self.receptionistBehavior))

@@ -47,7 +47,7 @@ extension Reception {
 
         internal func _unsafeAsActorRef(_ addressable: AddressableActorRef) -> _ActorRef<Guest.Message> {
             if addressable.isRemote() {
-                let remotePersonality: RemoteClusterActorPersonality<Guest.Message> = addressable.ref._unsafeGetRemotePersonality(Guest.Message.self)
+                let remotePersonality: _RemoteClusterActorPersonality<Guest.Message> = addressable.ref._unsafeGetRemotePersonality(Guest.Message.self)
                 return _ActorRef(.remote(remotePersonality))
             } else {
                 guard let ref = addressable.ref as? _ActorRef<Guest.Message> else {

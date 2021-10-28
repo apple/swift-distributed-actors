@@ -16,7 +16,6 @@ extension _ActorContext {
     /// Receptionist wrapper, offering convenience functions for registering _this_ actor with the receptionist.
     ///
     /// - SeeAlso: `DistributedActors.Receptionist`, for the system wide receptionist API
-    /// - SeeAlso: `Actor<M>.Receptionist`, for the receptionist wrapper specific to actorable actors
     public var receptionist: _ActorContext<Message>.Receptionist {
         Self.Receptionist(context: self)
     }

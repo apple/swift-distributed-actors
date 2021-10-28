@@ -17,7 +17,7 @@ import Foundation
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Serialization
 
-extension Cluster.Event: ProtobufRepresentable {
+extension Cluster.Event: _ProtobufRepresentable {
     public typealias ProtobufRepresentation = _ProtoClusterEvent
 
     public func toProto(context: Serialization.Context) throws -> _ProtoClusterEvent {
@@ -52,7 +52,7 @@ extension Cluster.Event: ProtobufRepresentable {
     }
 }
 
-extension Cluster.MembershipChange: ProtobufRepresentable {
+extension Cluster.MembershipChange: _ProtobufRepresentable {
     public typealias ProtobufRepresentation = _ProtoClusterMembershipChange
 
     public func toProto(context: Serialization.Context) throws -> ProtobufRepresentation {
@@ -80,7 +80,7 @@ extension Cluster.MembershipChange: ProtobufRepresentable {
     }
 }
 
-extension Cluster.LeadershipChange: ProtobufRepresentable {
+extension Cluster.LeadershipChange: _ProtobufRepresentable {
     public typealias ProtobufRepresentation = _ProtoClusterLeadershipChange
 
     public func toProto(context: Serialization.Context) throws -> ProtobufRepresentation {

@@ -19,7 +19,7 @@ import Logging
 // MARK: General _ReceptionistOperations
 
 /// Specifically to be implemented ONLY by `system.receptionist` i.e. the `SystemReceptionist`.
-public protocol BaseReceptionistOperations {
+public protocol _BaseReceptionistOperations {
     /// Registers passed in `actor` in the systems receptionist with given id.
     ///
     /// - Parameters:
@@ -51,7 +51,7 @@ public protocol BaseReceptionistOperations {
         to key: Reception.Key<Guest>
     ) where Guest: _ReceptionistGuest
 
-    /// Perform a *single* lookup for an `Actor<Act>` identified by the passed in `key`.
+    /// Perform a *single* lookup for an actor identified by the passed in `key`.
     ///
     /// - Parameters:
     ///   - key: selects which actors we are interested in.
@@ -61,7 +61,7 @@ public protocol BaseReceptionistOperations {
     ) -> AskResponse<Reception.Listing<Guest>>
         where Guest: _ReceptionistGuest
 
-    /// Perform a *single* lookup for an `Actor<Act>` identified by the passed in `key`.
+    /// Perform a *single* lookup for an actor identified by the passed in `key`.
     ///
     /// - Parameters:
     ///   - key: selects which actors we are interested in.
@@ -72,7 +72,7 @@ public protocol BaseReceptionistOperations {
     ) where Guest: _ReceptionistGuest
 }
 
-public protocol _ReceptionistOperations: BaseReceptionistOperations {
+public protocol _ReceptionistOperations: _BaseReceptionistOperations {
     var _system: ActorSystem { get }
 }
 

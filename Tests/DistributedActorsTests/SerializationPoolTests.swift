@@ -116,7 +116,7 @@ final class SerializationPoolTests: XCTestCase {
     }
 
     func test_serializationPool_shouldSerializeMessagesInDefaultGroupOnCallingThread() throws {
-        let serializationPool = try SerializationPool(settings: .default, serialization: system.serialization)
+        let serializationPool = try _SerializationPool(settings: .default, serialization: system.serialization)
         defer { serializationPool.shutdown() }
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
@@ -147,7 +147,7 @@ final class SerializationPoolTests: XCTestCase {
     }
 
     func test_serializationPool_shouldSerializeMessagesInTheSameNonDefaultGroupInSequence() throws {
-        let serializationPool = try SerializationPool(settings: SerializationPoolSettings(serializationGroups: [[self.actorPath1, self.actorPath2]]), serialization: self.system.serialization)
+        let serializationPool = try _SerializationPool(settings: SerializationPoolSettings(serializationGroups: [[self.actorPath1, self.actorPath2]]), serialization: self.system.serialization)
         defer { serializationPool.shutdown() }
 
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
@@ -182,7 +182,7 @@ final class SerializationPoolTests: XCTestCase {
     }
 
     func test_serializationPool_shouldSerializeMessagesInDifferentNonDefaultGroupsInParallel() throws {
-        let serializationPool = try SerializationPool(settings: SerializationPoolSettings(serializationGroups: [[self.actorPath1], [self.actorPath2]]), serialization: self.system.serialization)
+        let serializationPool = try _SerializationPool(settings: SerializationPoolSettings(serializationGroups: [[self.actorPath1], [self.actorPath2]]), serialization: self.system.serialization)
         defer { serializationPool.shutdown() }
 
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
@@ -216,7 +216,7 @@ final class SerializationPoolTests: XCTestCase {
     }
 
     func test_serializationPool_shouldDeserializeMessagesInDefaultGroupOnCallingThread() throws {
-        let serializationPool = try SerializationPool(settings: .default, serialization: self.system.serialization)
+        let serializationPool = try _SerializationPool(settings: .default, serialization: self.system.serialization)
         defer { serializationPool.shutdown() }
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
         let json = "{}"
@@ -253,7 +253,7 @@ final class SerializationPoolTests: XCTestCase {
     }
 
     func test_serializationPool_shouldDeserializeMessagesInTheSameNonDefaultGroupInSequence() throws {
-        let serializationPool = try SerializationPool(settings: SerializationPoolSettings(serializationGroups: [[self.actorPath1, self.actorPath2]]), serialization: self.system.serialization)
+        let serializationPool = try _SerializationPool(settings: SerializationPoolSettings(serializationGroups: [[self.actorPath1, self.actorPath2]]), serialization: self.system.serialization)
         defer { serializationPool.shutdown() }
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
         let json = "{}"
@@ -294,7 +294,7 @@ final class SerializationPoolTests: XCTestCase {
     }
 
     func test_serializationPool_shouldDeserializeMessagesInDifferentNonDefaultGroupsInParallel() throws {
-        let serializationPool = try SerializationPool(settings: SerializationPoolSettings(serializationGroups: [[self.actorPath1], [self.actorPath2]]), serialization: self.system.serialization)
+        let serializationPool = try _SerializationPool(settings: SerializationPoolSettings(serializationGroups: [[self.actorPath1], [self.actorPath2]]), serialization: self.system.serialization)
         defer { serializationPool.shutdown() }
 
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
@@ -332,7 +332,7 @@ final class SerializationPoolTests: XCTestCase {
     }
 
     func test_serializationPool_shouldExecuteSerializationAndDeserializationGroupsOnSeparateWorkerPools() throws {
-        let serializationPool = try SerializationPool(settings: SerializationPoolSettings(serializationGroups: [[self.actorPath1]]), serialization: self.system.serialization)
+        let serializationPool = try _SerializationPool(settings: SerializationPoolSettings(serializationGroups: [[self.actorPath1]]), serialization: self.system.serialization)
         defer { serializationPool.shutdown() }
 
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
