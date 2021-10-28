@@ -119,7 +119,7 @@ public class Serialization {
         settings.register(_Done.self)
         settings.register(Result<_Done, ErrorEnvelope>.self)
 
-        settings.register(Wire.Envelope.self, hint: Wire.Envelope.typeHint, serializerID: .protobufRepresentable, alsoRegisterActorRef: false)
+        settings.register(Wire.Envelope.self, hint: Wire.Envelope.typeHint, serializerID: ._ProtobufRepresentable, alsoRegisterActorRef: false)
         settings.register(ClusterShell.Message.self)
         settings.register(Cluster.Event.self)
         settings.register(Cluster.MembershipGossip.self)
@@ -157,8 +157,8 @@ public class Serialization {
         settings.register(ActorAddress.self, serializerID: .foundationJSON) // TODO: this was protobuf
         settings.register(AnyActorIdentity.self, serializerID: .foundationJSON)
         settings.register(ReplicaID.self, serializerID: .foundationJSON)
-        settings.register(VersionDot.self, serializerID: .protobufRepresentable)
-        settings.register(VersionVector.self, serializerID: .protobufRepresentable)
+        settings.register(VersionDot.self, serializerID: ._ProtobufRepresentable)
+        settings.register(VersionVector.self, serializerID: ._ProtobufRepresentable)
 
         // errors
         settings.register(ErrorEnvelope.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
@@ -320,7 +320,7 @@ extension Serialization {
             serializer.setSerializationContext(self.context)
             return serializer
 
-        case Serialization.SerializerID.protobufRepresentable:
+        case Serialization.SerializerID._ProtobufRepresentable:
             // TODO: determine what custom one to use, proto or what else
             return _TopLevelBytesBlobSerializer<Message>(allocator: self.allocator, context: self.context)
 
@@ -439,7 +439,7 @@ extension Serialization {
                         """
                     )
 
-                case .protobufRepresentable:
+                case ._ProtobufRepresentable:
                     let encoder = TopLevelProtobufBlobEncoder(allocator: self.allocator)
                     encoder.userInfo[.actorTransportKey] = self.context.system
                     encoder.userInfo[.actorSerializationContext] = self.context
@@ -563,7 +563,7 @@ extension Serialization {
                         """
                     )
 
-                case .protobufRepresentable:
+                case ._ProtobufRepresentable:
                     let decoder = TopLevelProtobufBlobDecoder()
                     decoder.userInfo[.actorTransportKey] = self.context.system
                     decoder.userInfo[.actorSerializationContext] = self.context

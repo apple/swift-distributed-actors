@@ -105,7 +105,7 @@ extension Logger {
 }
 
 // TODO: implement logging infrastructure - pipe as messages to dedicated logging actor
-public struct ActorOriginLogHandler: LogHandler {
+struct ActorOriginLogHandler: LogHandler {
     public static func _createFormatter() -> DateFormatter {
         let formatter = DateFormatter()
         formatter.dateFormat = "y-MM-dd H:m:ss.SSSS"
@@ -137,7 +137,7 @@ public struct ActorOriginLogHandler: LogHandler {
         )
     }
 
-    public init(_ system: ActorSystem, identifier: String? = nil) {
+    init(_ system: ActorSystem, identifier: String? = nil) {
         self.init(
             LoggingContext(
                 logger: system.log,
@@ -148,7 +148,7 @@ public struct ActorOriginLogHandler: LogHandler {
         )
     }
 
-    public func log(level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata?, file: String, function: String, line: UInt) {
+    func log(level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata?, file: String, function: String, line: UInt) {
         // TODO: this actually would be dispatching to the logging infra (has ticket)
 
         let logMessage = LogMessage(
@@ -235,7 +235,7 @@ public struct ActorOriginLogHandler: LogHandler {
     }
 
     // TODO: hope to remove this one
-    public subscript(metadataKey metadataKey: String) -> Logger.Metadata.Value? {
+    subscript(metadataKey metadataKey: String) -> Logger.Metadata.Value? {
         get {
             self.context[metadataKey: metadataKey]
         }
@@ -244,7 +244,7 @@ public struct ActorOriginLogHandler: LogHandler {
         }
     }
 
-    public var logLevel: Logger.Level {
+    var logLevel: Logger.Level {
         get {
             self.targetLogger.logLevel
         }
@@ -254,7 +254,7 @@ public struct ActorOriginLogHandler: LogHandler {
     }
 
     // TODO: This seems worse to implement since I can't pass through my "reads of lazy cause rendering"
-    public var metadata: Logger.Metadata {
+    var metadata: Logger.Metadata {
         get {
             self.context.metadata
         }

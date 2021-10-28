@@ -15,7 +15,7 @@
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: _ProtoActorAddress
 
-extension ActorAddress: ProtobufRepresentable {
+extension ActorAddress: _ProtobufRepresentable {
     public typealias ProtobufRepresentation = _ProtoActorAddress
 
     public func toProto(context: Serialization.Context) throws -> _ProtoActorAddress {
@@ -39,7 +39,7 @@ extension ActorAddress: ProtobufRepresentable {
     }
 }
 
-extension UniqueNode: ProtobufRepresentable {
+extension UniqueNode: _ProtobufRepresentable {
     public typealias ProtobufRepresentation = _ProtoUniqueNode
 
     public func toProto(context: Serialization.Context) throws -> _ProtoUniqueNode {
@@ -65,7 +65,7 @@ extension UniqueNode: ProtobufRepresentable {
     }
 }
 
-extension _ActorRef: ProtobufRepresentable {
+extension _ActorRef: _ProtobufRepresentable {
     public typealias ProtobufRepresentation = _ProtoActorAddress
 
     public func toProto(context: Serialization.Context) throws -> _ProtoActorAddress {

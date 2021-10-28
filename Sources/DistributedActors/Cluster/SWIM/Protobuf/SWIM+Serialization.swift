@@ -19,7 +19,7 @@ import SWIM
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Serialization
 
-extension SWIM.Message: ProtobufRepresentable {
+extension SWIM.Message: _ProtobufRepresentable {
     public typealias ProtobufRepresentation = _ProtoSWIMRemoteMessage
 
     public func toProto(context: Serialization.Context) throws -> ProtobufRepresentation {
@@ -35,7 +35,7 @@ extension SWIM.Message: ProtobufRepresentable {
     }
 }
 
-extension SWIM.RemoteMessage: ProtobufRepresentable {
+extension SWIM.RemoteMessage: _ProtobufRepresentable {
     public typealias ProtobufRepresentation = _ProtoSWIMRemoteMessage
 
     public func toProto(context: Serialization.Context) throws -> ProtobufRepresentation {
@@ -91,7 +91,7 @@ extension SWIM.RemoteMessage: ProtobufRepresentable {
     }
 }
 
-extension SWIM.Status: ProtobufRepresentable {
+extension SWIM.Status: _ProtobufRepresentable {
     public typealias ProtobufRepresentation = _ProtoSWIMStatus
 
     public func toProto(context: Serialization.Context) throws -> _ProtoSWIMStatus {
@@ -134,7 +134,7 @@ extension SWIM.Status: ProtobufRepresentable {
     }
 }
 
-extension SWIM.GossipPayload: ProtobufRepresentable {
+extension SWIM.GossipPayload: _ProtobufRepresentable {
     public typealias ProtobufRepresentation = _ProtoSWIMGossipPayload
 
     public func toProto(context: Serialization.Context) throws -> _ProtoSWIMGossipPayload {
@@ -160,7 +160,7 @@ extension SWIM.GossipPayload: ProtobufRepresentable {
     }
 }
 
-extension SWIM.Member: ProtobufRepresentable {
+extension SWIM.Member: _ProtobufRepresentable {
     public typealias ProtobufRepresentation = _ProtoSWIMMember
 
     public func toProto(context: Serialization.Context) throws -> _ProtoSWIMMember {
@@ -183,7 +183,7 @@ extension SWIM.Member: ProtobufRepresentable {
     }
 }
 
-extension SWIM.PingResponse: ProtobufRepresentable {
+extension SWIM.PingResponse: _ProtobufRepresentable {
     public typealias ProtobufRepresentation = _ProtoSWIMPingResponse
 
     public func toProto(context: Serialization.Context) throws -> _ProtoSWIMPingResponse {
@@ -234,7 +234,7 @@ extension SWIM.PingResponse: ProtobufRepresentable {
     }
 }
 
-extension ClusterMembership.Node: ProtobufRepresentable {
+extension ClusterMembership.Node: _ProtobufRepresentable {
     public typealias ProtobufRepresentation = _ProtoUniqueNode
 
     public func toProto(context: Serialization.Context) throws -> ProtobufRepresentation {

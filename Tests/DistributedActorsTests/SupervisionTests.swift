@@ -82,7 +82,7 @@ final class SupervisionTests: ActorSystemXCTestCase {
 
     func compileOnlyDSLReadabilityTest() {
         _ = { () -> Void in
-            let behavior: _Behavior<String> = undefined()
+            let behavior: _Behavior<String> = _undefined()
             _ = try self.system._spawn("example", behavior)
             _ = try self.system._spawn("example", props: _Props(), behavior)
             _ = try self.system._spawn("example", props: .dispatcher(.pinnedThread), behavior)

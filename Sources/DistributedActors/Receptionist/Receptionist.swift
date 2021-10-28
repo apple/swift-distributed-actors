@@ -333,7 +333,7 @@ extension ActorAddress {
 
 /// Represents an entity that is able to register with the `Receptionist`.
 ///
-/// It is either an `_ActorRef<Message>` or an `Actor<Act>`.
+/// It is either an `_ActorRef<Message>`.
 public protocol _ReceptionistGuest {
     associatedtype Message: Codable
 
@@ -368,11 +368,11 @@ internal typealias FullyQualifiedTypeName = String
 
 /// INTERNAL API
 public class _AnyRegister: _ReceptionistMessage, NonTransportableActorMessage, CustomStringConvertible {
-    var _addressableActorRef: AddressableActorRef { undefined() }
-    var _key: AnyReceptionKey { undefined() }
+    var _addressableActorRef: AddressableActorRef { _undefined() }
+    var _key: AnyReceptionKey { _undefined() }
 
     func replyRegistered() {
-        undefined()
+        _undefined()
     }
 
     public var description: String {
@@ -393,11 +393,11 @@ public class _Lookup: _ReceptionistMessage, NonTransportableActorMessage {
     }
 
     func replyWith(_ refs: Set<AddressableActorRef>) {
-        undefined()
+        _undefined()
     }
 
     func replyWith(_ refs: [AddressableActorRef]) {
-        undefined()
+        _undefined()
     }
 }
 

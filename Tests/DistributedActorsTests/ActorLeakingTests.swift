@@ -214,7 +214,7 @@ final class ActorLeakingTests: ActorSystemXCTestCase {
             lock.lock()
             return .stop
         }
-        let ref = try system._spawn(.anonymous, props: _Props().mailbox(MailboxProps.default(capacity: 1)), behavior)
+        let ref = try system._spawn(.anonymous, props: _Props().mailbox(_MailboxProps.default(capacity: 1)), behavior)
 
         // this will cause the actor to block and fill the mailbox, so the next message should be dropped and deallocated
         ref.tell(LeakTestMessage(nil))

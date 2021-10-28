@@ -17,7 +17,7 @@ import Foundation
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Serialization
 
-extension ClusterShell.Message: InternalProtobufRepresentable {
+extension ClusterShell.Message: Internal_ProtobufRepresentable {
     typealias ProtobufRepresentation = _ProtoClusterShellMessage
 
     // FIXME: change this completely

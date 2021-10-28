@@ -81,7 +81,7 @@ final class MembershipSerializationTests: ActorSystemXCTestCase {
         pinfo("  Manifest.serializerID: \(serialized.manifest.serializerID)")
         pinfo("  Manifest.hint:         \(optional: serialized.manifest.hint)")
 
-        serialized.manifest.serializerID.shouldEqual(Serialization.SerializerID.protobufRepresentable)
+        serialized.manifest.serializerID.shouldEqual(Serialization.SerializerID._ProtobufRepresentable)
         serialized.buffer.count.shouldEqual(2105)
 
         let back = try system.serialization.deserialize(as: Cluster.MembershipGossip.self, from: serialized)

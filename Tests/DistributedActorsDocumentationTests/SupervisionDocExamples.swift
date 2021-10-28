@@ -19,11 +19,11 @@ import DistributedActors
 // end::imports[]
 
 class SupervisionDocExamples {
-    lazy var system: ActorSystem = undefined(hint: "Examples, not intended to be run")
+    lazy var system: ActorSystem = _undefined(hint: "Examples, not intended to be run")
 
     func supervise_props() throws {
-        let greeterBehavior: _Behavior<String> = undefined()
-        let context: _ActorContext<String> = undefined()
+        let greeterBehavior: _Behavior<String> = _undefined()
+        let context: _ActorContext<String> = _undefined()
 
         // tag::supervise_props[]
         let props = _Props() // <1>
@@ -40,8 +40,8 @@ class SupervisionDocExamples {
     }
 
     func supervise_inline() throws {
-        let greeterBehavior: _Behavior<String> = undefined()
-        let context: _ActorContext<String> = undefined()
+        let greeterBehavior: _Behavior<String> = _undefined()
+        let context: _ActorContext<String> = _undefined()
 
         // tag::supervise_inline[]
         let greeterRef = try context._spawn(

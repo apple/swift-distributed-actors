@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-extension Cluster.MembershipGossip: ProtobufRepresentable {
+extension Cluster.MembershipGossip: _ProtobufRepresentable {
     typealias ProtobufRepresentation = _ProtoClusterMembershipGossip
 
     public func toProto(context: Serialization.Context) throws -> ProtobufRepresentation {
