@@ -234,7 +234,7 @@ toolchains.
 
 Do build documentation run:
 
-```asciidoc
+```bash
 ./scripts/docs/generate_docc.sh
 ```
 
@@ -243,7 +243,7 @@ initial call has to download and build the tool itself.
 
 And to preview and browse the documentation as a web-page, run: 
 
-```asciidoc
+```bash
 ./scripts/docs/preview_docc.sh
 ```
 
