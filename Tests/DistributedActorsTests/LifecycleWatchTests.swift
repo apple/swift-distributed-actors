@@ -22,7 +22,7 @@ import XCTest
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Romeo
 
-distributed actor Romeo: LifecycleWatchSupport, CustomStringConvertible {
+distributed actor Romeo: LifecycleWatch, CustomStringConvertible {
     let probe: ActorTestProbe<String>
 
     lazy var log = Logger(actor: self)
@@ -48,7 +48,7 @@ distributed actor Romeo: LifecycleWatchSupport, CustomStringConvertible {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Juliet
 
-distributed actor Juliet: LifecycleWatchSupport, CustomStringConvertible {
+distributed actor Juliet: LifecycleWatch, CustomStringConvertible {
     let probe: ActorTestProbe<String>
 
     init(probe: ActorTestProbe<String>, transport: ActorTransport) {

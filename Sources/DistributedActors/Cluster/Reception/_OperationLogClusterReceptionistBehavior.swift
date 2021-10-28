@@ -20,135 +20,7 @@ import Logging
 /// ClusterReceptionist namespace
 public enum ClusterReceptionist {}
 
-/// Cluster-aware (atomic broadcast style, push/pull-gossip) Receptionist implementation.
-///
-/// ### Intended usage / Optimization choices
-/// This Receptionist implementation is optimized towards small to medium clusters clusters (many tens of nodes) with much actor churn,
-/// rather than wide (hundreds of nodes) clusters with few registered actors. This implementation is guided by a pragmatic view of
-/// how most actor clusters operate, and also in face of the lack of built-in sharding or "virtual namespace" (yet),
-/// which would normally be the way to handle millions of actors and tracking their locations (by "sharding" them and
-/// moving and tracking them in groups).
-///
-/// The current implementation gives priority to streaming large amounts of refs between peers, without exceeding
-/// a maximum batch size (thus avoiding too large messages, which would lead to head of line blocking of other messages,
-/// including heartbeats etc).
-///
-/// We will re-consider and re-implement this receptionist given other requirements, or allow selecting its mode of operation
-/// in the future. E.g. a CRDT based receptionist would be preferable for wide clusters, as we can then avoid the "origin"
-/// peer having to stream all data to all peer receptionists. This approach however risks having to gossip a full state
-/// when a new nodes join, or potentially for keys where we are unable to propagate _just deltas_. We hope that a future
-/// CRDT replicator will be smart enough that we can replace this implementation without fear of too-large messages being
-/// put on the wire. We can achieve this in a number of ways (chunking full-state sync into a series of deltas anyway).
-/// We will revisit this topic as we implement more advanced CRDT replicators.
-///
-/// ### Protocol
-/// The protocol works on sending individual updates (operations, kind of like an operation based CRDT replicator would),
-/// rather than replicating "the entire set of actors registered under a key". The general implementation can be seen as
-/// operation-log replication, where each receptionist "owns" its own log and others ask for "replays" of this log once
-/// they notice they are behind (i.e. the last sequence nr they observed of the log is older than the latest available).
-/// Once other receptionists notice (due to periodic ack gossip carrying "latest observed sequence nrs" of all other receptionists)
-/// a receptionist which's sequence nr is newer than they have observed from it, they initiate a pull by sending an
-/// an `ack(until: latestAppliedSeqNrFromTarget)`. This causes the owner of the data to initiate a replay of the operations
-/// from the `ack.until` sequence nr.
-///
-/// There are a number of optimizations possible here which will be discussed below, though not all are implemented today.
-/// As usual in such schemes, log compaction becomes an important topic, though today we do not offer advanced compaction yet.
-// TODO: compact the log whenever we know all members of the cluster have seen
-// TODO: Optimization: gap collapsing: [+a,+b,+c,-c] -> [+a,+b,gap(until:4)]
-// TODO: Optimization: head collapsing: [+a,+b,+c,-b,-a] -> [gap(until:2),+c,-b]
-///
-/// The protocol can be visualized identical state machines acting on incoming operation logs (which inherently separate,
-/// and not affecting each other's), like so:
-///
-/// ```
-///                                                     +---------------+
-///                                                     |  rec B (@2)   | // Upon receipt of (1), notice that should pull from A,
-///                                                 +-->>  A@3,B@2,C@4  | // since A@3 < A@10. It would send (ack <A@3,...>) to initiate a pull.
-///      +--------------+       (1)                 |   +---------------+
-///      |  rec A (@10) >>---(ack <B@2,...>)--------+
-///      | A@10,B@2,C@4 <<---(ops [op,op,...] <>)---+   +---------------+
-///      +--------------+       (2)                 |   |   rec C (@9)  | // Caused a different `ack` from A, C knows that A is "behind",
-///                                                 +--<< A@10,B@2,C@9  | // and thus replicates its log to A by sending (2) PushOps.
-///                                                     +---------------+ // A will confirm and eventually the two peers are in-sync.
-///
-/// pull == ack - acknowledgements serve also as pull messages, if the ack-ed receptionist sees there is more data to be sent, it does so
-///
-/// <v> - collection of "latest known" seqNr
-/// op  - versioned operation, when applying an op we know up to which `X@n` n seqNr our state has been forwarded to.
-/// ```
-///
-/// #### Observation: Single-writer property of receptionist logs, as they are always "local to a receptionist":
-/// Each receptionist only takes care of "their own" actors (i.e. on their own nodes), thus they are the authoritative
-/// single-writer source of any information if a ref is registered or not. This is why we can rely on the 1:1 replaying
-/// of events. Only a given node's receptionist takes care of the local register/remove, and later on gets pulled for this
-/// information by other receptionists -- the other peers will never remove an actor "owned" by another node, unless that
-/// node's receptionist tells them to do so. This also means we do not have to watch every single actor that is spread throughout the cluster.
-///
-/// #### Observation: Fast streaming when needed / periodic small seqNr dissemination
-/// It is worth noting that the protocol works effectively in "one mode," meaning that there is no explicit "streaming from a peer"
-/// and later "just gossiping" mode. The same message (`AckOps`) is used both to cause a pull, confirmation of receipt of a `PushOps` as well as just spread observed sequence
-/// number observations.
-///
-// TODO: slow/fast ticks: When we know there's nothing new to share with others, we use the slow tick (which should be increased to 5 seconds or less)
-///       when we received a register() or observed an "ahead" receptionist, we should schedule a "fast tick" in order to more quickly spread this information
-///       This should still be done on a delay, e.g. if we are receiving many registrations, we want to get the benefit of batching them up before sending after all
-///       The fast tick could be 1s or 0.5s for example as a default.
-///
-/// #### Optimization: "Blip" Registration Replication Avoidance TODO: This is done "automatically" once we do log compaction
-/// We define a "blip registration" as a registration of an actor, which immediately (or very quickly) after registering
-/// terminates. It can be argued it is NOT useful to replicate the very existence of such short lived actor to other peers,
-/// as even if they'd act on the `register`, it'd be immediately followed by `remove` and/or a termination signal.
-///
-/// Thanks to the op-log replication scheme, where we gossip pushes in "batch", we can notice such blips and avoid pushing them
-/// completely to other nodes. could also avoid sending to peers "blips" i.e. actors which register and immediately terminate.
-/// This remains to be debated, but one could argue it is NOT helpful to replicate such short lived ref at all,
-/// if we already know it has terminated, thus we can avoid other nodes acting on this ref which they'd immediately
-/// be notified has been terminated already.
-///
-/// The tradeoff here is that subscribing to a key may not be used to get "total number of actors that ever registered under this key globally."
-/// We believe this is a sensible tradeoff, as receptionists are only about current and live actors, it MAY however cause weird initialization lockups,
-/// where we "know" an actor should have spawned somewhere and registered, but we never see it -- this pattern seems very fragile though so it seems
-/// to make sense to discourage it.
-///
-/// ### Overall protocol outline
-/// The goal of the protocol is to replicate a log of "ops" (`register` and `remove` operations), among all receptionists within the cluster.
-/// This is achieved by implementing atomic broadcast in the form of replay and re-delivery (pull/acknowledgement driven) of these operations.
-/// The operations are replicated directly from the "origin" receptionist ("the receptionist local to the actors which register with it"),
-/// to all other peer receptionists by means of them pulling for the ops, once they realize they are "behind." Receptionists periodically
-/// gossip their "observed sequence numbers", which is a set of `Receptionist@SequenceNr`. When a receptionist notices that for a given
-/// remote receptionist an observed `seqNr` is _lower_ than it has already _applied_ to its state, it performs an ack/pull from that node directly.
-///
-/// This protocol requires that peers communicate with the "origin" receptionist of an actor to obtain its registration,
-/// and therefore is NOT a full gossip implementation. The gossip is only used to detect that a pull shall be performed,
-/// and the pull from thereon happens directly between those peers, which the recipient MAY flow control if it so wanted to; TODO: more detailed flow control rather than just the maxChunk?
-///
-/// Discussion, Upside: This method as upsides which reflect the p2p nature of actor communication, e.g.: Since to obtain a registration of an actor
-/// on node `A`, we must communicate with node `A`, this means that if we CANNOT for whatever reason communicate with it (e.g. unreachability),
-/// even if we got the reference registration, and emitted it to users, it may end up not being useful.
-///
-/// Discussion, Downside: Unlike in a full peer to peer gossip replicated receptionist implementation, nodes MUST communicate with the
-/// origin receptionist to obtain refs from it. This can cause a "popular node" to get overwhelmed with having to stream to many other
-/// nodes its members... In this implementation we considered the tradeoffs and consider smaller clusters but large amounts of actors
-/// to be the dominant usage pattern, and thus are less worried about the large fan-out/in-cast of these ops streams. This may change
-/// as we face larger clusters and we'd love to explore a full CRDT based implementation that DOES NOT need to full-state-sync periodically
-/// (which is the reason we avoided an CRDT implementation in the first place today, as we would have to perform a full-state sync of a potentially
-/// _very large_ Dictionary<Key: Set<_ActorRef<T>>).
-///
-/// 1) Members form a cluster, each has exactly one well known receptionist
-/// 2) Upon joining, the new receptionist introduces itself and pulls, by sending ack(until: 0)
-/// 3) All receptionists receive this and start a replay for it, from the `0`
-///
-/// Gossip, of Latest Op SeqNr:
-/// - Receptionists gossip about their latestSequenceNr (each has a sequence Nr, associated with add/remove it performs)
-/// 1) When a receptionist receives gossip, it looks at the numbers, and if it notices ANY receptionist where it is "behind",
-///    i.e. we know A@4, but gossip claims it is @10, then we send to it `ack(4)` which causes the receptionist to reply with
-///    its latest information
-///  - Pushed information is batched (!), i.e the pushed would send only e.g. 50 updates, yet still inform us with its
-///   latest SeqNr, and we'd notice that actually bu now it already is @100, thus we `ack(50)`, and it continues the sending.
-///   (Note that we simply always `ack(latest)` and if in the meantime the pusher got more updates, it'll push those to us as well.
-///
-/// - SeeAlso: [Wikipedia: Atomic broadcast](https://en.wikipedia.org/wiki/Atomic_broadcast)
-public final class OperationLogClusterReceptionist {
+public final class _OperationLogClusterReceptionist {
     typealias Message = Receptionist.Message
     typealias ReceptionistRef = _ActorRef<Message>
 
@@ -294,7 +166,7 @@ public final class OperationLogClusterReceptionist {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Receptionist API impl
 
-extension OperationLogClusterReceptionist {
+extension _OperationLogClusterReceptionist {
     private func onSubscribe(context: _ActorContext<Message>, message: _Subscribe) throws {
         let boxedMessage = message._boxed
         let anyKey = message._key
@@ -356,7 +228,7 @@ extension OperationLogClusterReceptionist {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Delayed (Listing Notification) Flush
 
-extension OperationLogClusterReceptionist {
+extension _OperationLogClusterReceptionist {
     func ensureDelayedListingFlush(of key: AnyReceptionKey, context: _ActorContext<Message>) {
         let timerKey = self.flushTimerKey(key)
 
@@ -402,7 +274,7 @@ extension OperationLogClusterReceptionist {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Op replication
 
-extension OperationLogClusterReceptionist {
+extension _OperationLogClusterReceptionist {
     /// Received a push of ops; apply them to the local view of the key space (storage).
     ///
     /// The incoming ops will be until some max SeqNr, once we have applied them all,
@@ -601,7 +473,7 @@ extension OperationLogClusterReceptionist {
     }
 
     /// Receive an Ack and potentially continue streaming ops to peer if still pending operations available.
-    private func receiveAckOps(_ context: _ActorContext<Message>, until: UInt64, by peer: _ActorRef<OperationLogClusterReceptionist.Message>) {
+    private func receiveAckOps(_ context: _ActorContext<Message>, until: UInt64, by peer: _ActorRef<_OperationLogClusterReceptionist.Message>) {
         guard var replayer = self.peerReceptionistReplayers[peer] else {
             context.log.trace("Received a confirmation until \(until) from \(peer) but no replayer available for it, ignoring")
             return
@@ -673,7 +545,7 @@ extension OperationLogClusterReceptionist {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Termination handling
 
-extension OperationLogClusterReceptionist {
+extension _OperationLogClusterReceptionist {
     private func onTerminated(context: _ActorContext<_ReceptionistMessage>, terminated: Signals.Terminated) {
         if terminated.address == ActorAddress._receptionist(on: terminated.address.uniqueNode, for: .actorRefs) {
             context.log.debug("Watched receptionist terminated: \(terminated)")
@@ -708,7 +580,7 @@ extension OperationLogClusterReceptionist {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Handle Cluster Events
 
-extension OperationLogClusterReceptionist {
+extension _OperationLogClusterReceptionist {
     private func onClusterEvent(_ context: _ActorContext<Message>, event: Cluster.Event) {
         switch event {
         case .snapshot(let snapshot):
@@ -744,7 +616,7 @@ extension OperationLogClusterReceptionist {
         }
     }
 
-    private func onNewClusterMember(_ context: _ActorContext<OperationLogClusterReceptionist.Message>, change: Cluster.MembershipChange) {
+    private func onNewClusterMember(_ context: _ActorContext<_OperationLogClusterReceptionist.Message>, change: Cluster.MembershipChange) {
         guard change.previousStatus == nil else {
             return // not a new member
         }
@@ -769,7 +641,7 @@ extension OperationLogClusterReceptionist {
         self.replicateOpsBatch(context, to: remoteReceptionist)
     }
 
-    private func pruneClusterMember(_ context: _ActorContext<OperationLogClusterReceptionist.Message>, removedNode: UniqueNode) {
+    private func pruneClusterMember(_ context: _ActorContext<_OperationLogClusterReceptionist.Message>, removedNode: UniqueNode) {
         context.log.trace("Pruning cluster member: \(removedNode)")
         let terminatedReceptionistAddress = ActorAddress._receptionist(on: removedNode, for: .actorRefs)
         let equalityHackPeerRef = _ActorRef<Message>(.deadLetters(.init(context.log, address: terminatedReceptionistAddress, system: nil)))
@@ -798,7 +670,7 @@ extension OperationLogClusterReceptionist {
 // ==== ------------------------------------------------------------------------------------------------------------
 // MARK: Extra Messages
 
-extension OperationLogClusterReceptionist {
+extension _OperationLogClusterReceptionist {
     /// Confirms that the remote peer receptionist has received Ops up until the given element,
     /// allows us to push more elements
     class PushOps: Receptionist.Message {
@@ -935,7 +807,7 @@ extension OperationLogClusterReceptionist {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Tracelog
 
-extension OperationLogClusterReceptionist {
+extension _OperationLogClusterReceptionist {
     /// Optional "dump all messages" logging.
     ///
     /// Enabled by `Settings.traceLogLevel` or `-DSACT_TRACELOG_RECEPTIONIST`

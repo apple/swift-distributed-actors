@@ -38,8 +38,8 @@ internal class ActorSingletonProxy<Message: ActorMessage> {
     /// The strategy that determines which node the singleton will be allocated
     private let allocationStrategy: ActorSingletonAllocationStrategy
 
-    /// Props of the singleton behavior
-    private let singletonProps: Props?
+    /// _Props of the singleton behavior
+    private let singletonProps: _Props?
     /// The singleton behavior.
     /// If `nil`, then this node is not a candidate for hosting the singleton. It would result
     /// in a failure if `allocationStrategy` selects this node by mistake.
@@ -57,7 +57,7 @@ internal class ActorSingletonProxy<Message: ActorMessage> {
     /// Message buffer in case singleton `ref` is `nil`
     private let buffer: StashBuffer<Message>
 
-    init(settings: ActorSingletonSettings, allocationStrategy: ActorSingletonAllocationStrategy, props: Props? = nil, _ behavior: _Behavior<Message>? = nil) {
+    init(settings: ActorSingletonSettings, allocationStrategy: ActorSingletonAllocationStrategy, props: _Props? = nil, _ behavior: _Behavior<Message>? = nil) {
         self.settings = settings
         self.allocationStrategy = allocationStrategy
         self.singletonProps = props
@@ -132,7 +132,7 @@ internal class ActorSingletonProxy<Message: ActorMessage> {
         // Spawn the manager then tell it to spawn the singleton actor
         self.managerRef = try context.system._spawnSystemActor(
             "singletonManager-\(self.settings.name)",
-            ActorSingletonManager(settings: self.settings, props: self.singletonProps ?? Props(), singletonBehavior).behavior,
+            ActorSingletonManager(settings: self.settings, props: self.singletonProps ?? _Props(), singletonBehavior).behavior,
             props: ._wellKnown
         )
         // Need the manager to tell us the ref because we can't resolve it due to random incarnation

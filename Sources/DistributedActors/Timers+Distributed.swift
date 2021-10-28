@@ -36,9 +36,9 @@ struct DistributedActorTimerEvent {
 
 /// Creates and manages timers which may only be accessed from the actor that owns it.
 ///
-/// Timers are bound to this objects lifecycle, i.e. when the actor owning this object is deallocated,
+/// _BehaviorTimers are bound to this objects lifecycle, i.e. when the actor owning this object is deallocated,
 /// and the `ActorTimers` are deallocated as well, all timers associated with it are cancelled.
-// TODO(distributed): rename once we're able to hide or remove `Timers`
+// TODO(distributed): rename once we're able to hide or remove `_BehaviorTimers`
 public final class ActorTimers<Act: DistributedActor> {
 
     @usableFromInline

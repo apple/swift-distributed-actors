@@ -24,15 +24,15 @@ internal class ActorSingletonManager<Message: ActorMessage> {
     /// Settings for the `ActorSingleton`
     private let settings: ActorSingletonSettings
 
-    /// Props of the singleton behavior
-    private let singletonProps: Props
+    /// _Props of the singleton behavior
+    private let singletonProps: _Props
     /// The singleton behavior
     private let singletonBehavior: _Behavior<Message>
 
     /// The singleton ref
     private var singleton: _ActorRef<Message>?
 
-    init(settings: ActorSingletonSettings, props: Props, _ behavior: _Behavior<Message>) {
+    init(settings: ActorSingletonSettings, props: _Props, _ behavior: _Behavior<Message>) {
         self.settings = settings
         self.singletonProps = props
         self.singletonBehavior = behavior

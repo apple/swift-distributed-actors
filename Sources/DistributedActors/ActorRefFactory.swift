@@ -51,7 +51,7 @@ public protocol _ActorRefFactory {
     func _spawn<Message>(
         _ naming: ActorNaming,
         of type: Message.Type,
-        props: Props,
+        props: _Props,
         file: String, line: UInt,
         _ behavior: _Behavior<Message>
     ) throws -> _ActorRef<Message> where Message: ActorMessage

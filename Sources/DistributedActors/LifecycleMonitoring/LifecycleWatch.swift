@@ -16,9 +16,14 @@ import Dispatch
 import _Distributed
 import NIO
 
-// FIXME(distributed): we can't express the Self: Distributed actor, because the runtime does not understand "hop to distributed actor" - rdar://84054772
-//public protocol LifecycleWatchSupport where Self: DistributedActor {
-public protocol LifecycleWatchSupport {
+
+/// Provides a distributed actor with the ability to "watch" other actors lifecycles.
+///
+/// - Warning: This protocol can only be adopted by DistributedActors, and will gain `where Self: DistributedActor' however a compiler limitation currently prevents us from doing that
+public protocol LifecycleWatch {
+    // FIXME(distributed): we can't express the Self: Distributed actor, because the runtime does not understand "hop to distributed actor" - rdar://84054772
+    //public protocol LifecycleWatch where Self: DistributedActor {
+
     nonisolated var actorTransport: ActorTransport { get } // FIXME: replace with DistributedActor conformance
     nonisolated var id: AnyActorIdentity { get } // FIXME: replace with DistributedActor conformance
 }
@@ -26,7 +31,7 @@ public protocol LifecycleWatchSupport {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Lifecycle Watch API
 
-extension LifecycleWatchSupport {
+extension LifecycleWatch {
 
     @discardableResult
     public func watchTermination<Watchee>(
@@ -85,13 +90,13 @@ extension LifecycleWatchSupport {
     ///
     /// - Returns: the passed in watchee reference for easy chaining `e.g. return context.unwatch(ref)`
     @discardableResult
-    func unwatch<Watchee>(
+    public func unwatch<Watchee>(
             _ watchee: Watchee,
             file: String = #file, line: UInt = #line
     ) -> Watchee where Self: DistributedActor, Watchee: DistributedActor  {
         // TODO(distributed): reimplement this as self.id as? _ActorContext which will have the watch things.
         guard let system = self.actorTransport._unwrapActorSystem else {
-            fatalError("TODO: handle more gracefully") // TODO: handle more gracefully, i.e. say that we can't watch that actor
+            fatalError("Can't \(#function) \(watchee) @ (\(watchee.id)), does not seem to be managed by ActorSystem") // TODO: handle more gracefully, i.e. say that we can't watch that actor
         }
 
         guard let watch = system._getLifecycleWatch(watcher: self) else {
@@ -105,14 +110,14 @@ extension LifecycleWatchSupport {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: "Internal" functions made to make the watch signals work
 
-extension LifecycleWatchSupport {
+extension LifecycleWatch {
     /// Function invoked by the actor transport when a distributed termination is detected.
     public func _receiveActorTerminated(identity: AnyActorIdentity) async throws where Self: DistributedActor {
         guard let system = self.actorTransport._unwrapActorSystem else {
             return // TODO: error instead
         }
 
-        guard let watch: LifecycleWatch = system._getLifecycleWatch(watcher: self) else {
+        guard let watch: LifecycleWatchContainer = system._getLifecycleWatch(watcher: self) else {
             return
         }
 
@@ -125,20 +130,20 @@ extension LifecycleWatchSupport {
 
 extension ActorSystem {
 
-    public func _makeLifecycleWatch<Watcher: LifecycleWatchSupport & DistributedActor>(watcher: Watcher) -> LifecycleWatch {
+    public func _makeLifecycleWatch<Watcher: LifecycleWatch & DistributedActor>(watcher: Watcher) -> LifecycleWatchContainer {
         return self.lifecycleWatchLock.withLock {
             if let watch = self._lifecycleWatches[watcher.id] {
                 return watch
             }
 
-            let watch = LifecycleWatch(watcher)
+            let watch = LifecycleWatchContainer(watcher)
             self._lifecycleWatches[watcher.id] = watch
             return watch
         }
     }
 
-    // public func _getWatch<DA: DistributedActor>(_ actor: DA) -> LifecycleWatch? {
-    public func _getLifecycleWatch<Watcher: LifecycleWatchSupport & DistributedActor>(watcher: Watcher) -> LifecycleWatch? {
+    // public func _getWatch<DA: DistributedActor>(_ actor: DA) -> LifecycleWatchContainer? {
+    public func _getLifecycleWatch<Watcher: LifecycleWatch & DistributedActor>(watcher: Watcher) -> LifecycleWatchContainer? {
         return self.lifecycleWatchLock.withLock {
             return self._lifecycleWatches[watcher.id]
         }
@@ -146,12 +151,15 @@ extension ActorSystem {
 
 }
 
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: LifecycleWatchContainer
+
 /// Implements watching distributed actors for termination.
 ///
 /// Termination of local actors is simply whenever they deinitialize.
 /// Remote actors are considered terminated when they deinitialize, same as local actors,
 /// or when the node hosting them is declared `.down`.
-public final class LifecycleWatch {
+public final class LifecycleWatchContainer {
 
     private weak var myself: DistributedActor? // TODO: make this just store the address instead?
     private let myselfID: AnyActorIdentity
@@ -165,7 +173,7 @@ public final class LifecycleWatch {
 
     // FIXME(distributed): use the Transport typealias to restrict that the transport has watch support
     init<Act>(_ myself: Act) where Act: DistributedActor {
-        traceLog_DeathWatch("Make LifecycleWatch owned by \(myself.id)")
+        traceLog_DeathWatch("Make LifecycleWatchContainer owned by \(myself.id)")
         self.myself = myself
         self.myselfID = myself.id
         let system = myself.actorTransport._forceUnwrapActorSystem
@@ -174,7 +182,7 @@ public final class LifecycleWatch {
     }
 
     deinit {
-        traceLog_DeathWatch("Deinit LifecycleWatch owned by \(myselfID)")
+        traceLog_DeathWatch("Deinit LifecycleWatchContainer owned by \(myselfID)")
         for watched in watching.values {
             nodeDeathWatcher?.tell(.removeWatcher(watcherIdentity: myselfID))
         }
@@ -184,7 +192,7 @@ public final class LifecycleWatch {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: perform watch/unwatch
 
-extension LifecycleWatch {
+extension LifecycleWatchContainer {
 
 
     /// Performed by the sending side of "watch", therefore the `watcher` should equal `context.myself`
@@ -299,9 +307,6 @@ extension LifecycleWatch {
 
     /// Performs cleanup of references to the dead actor.
     public func receiveTerminated(_ terminated: Signals.Terminated){
-//        // refs are compared ONLY by address, thus we can make such mock reference, and it will be properly remove the right "real" refs from the collections below
-//        let mockRefForEquality = _ActorRef<Never>(.deadLetters(.init(.init(label: "x"), address: terminated.address, system: nil))).asAddressable
-        // let terminatedIdentity = terminated.address.asAnyActorIdentity
         self.receiveTerminated(terminated.address.asAnyActorIdentity)
     }
 
@@ -374,10 +379,6 @@ extension LifecycleWatch {
     private func subscribeNodeTerminatedEvents(
             watchedAddress: ActorAddress,
             file: String = #file, line: UInt = #line) {
-//        guard watchedAddress._isRemote else {
-//            return
-//        }
-//        self.nodeDeathWatcher.tell(.remoteActorWatched(watcher: AddressableActorRef(myself), remoteNode: watchedAddress.uniqueNode), file: file, line: line)
         guard let id = myself?.id else {
             return
         }
@@ -391,12 +392,6 @@ extension LifecycleWatch {
                         return
                     }
                     myselfRef._sendSystemMessage(.nodeTerminated(uniqueNode), file: file, line: line)
-//                    // FIXME: OMG WE NEED whenLocal
-//                    if let myself = myself {
-//                        whenLocal(myself) { (isolated myself: LifecycleWatchSupport) in
-//                            myself.receiveNodeTerminated()
-//                        }
-//                    }
                 }))
     }
 }

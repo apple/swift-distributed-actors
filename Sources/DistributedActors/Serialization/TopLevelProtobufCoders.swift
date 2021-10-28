@@ -200,7 +200,7 @@ class TopLevelProtobufBlobDecoder: _TopLevelBlobDecoder {
 
         if let P = type as? AnyProtobufRepresentable.Type {
             return try P.init(from: self) as! T // explicit .init() is required here (!)
-        } else if let P = type as? AnyPublicProtobufRepresentable.Type {
+        } else if let P = type as? _AnyPublicProtobufRepresentable.Type {
             return try P.init(from: self) as! T // explicit .init() is required here (!)
         } else {
             return fatalErrorBacktrace("\(Self.self) is not able to decode \(T.self) as it isn't a ProtobufRepresentable type!")

@@ -71,16 +71,16 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
         }
     }
 
-    /// `Props` which were used when spawning this actor.
-    public var props: Props {
+    /// `_Props` which were used when spawning this actor.
+    public var props: _Props {
         undefined()
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: Timers
+    // MARK: _BehaviorTimers
 
     /// Allows setting up and canceling timers, bound to the lifecycle of this actor.
-    public var timers: Timers<Message> {
+    public var timers: _BehaviorTimers<Message> {
         undefined()
     }
 
@@ -122,7 +122,7 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
     public func _spawn<M>(
         _ naming: ActorNaming,
         of type: M.Type = M.self,
-        props: Props = Props(),
+        props: _Props = _Props(),
         file: String = #file, line: UInt = #line,
         _ behavior: _Behavior<M>
     ) throws -> _ActorRef<M>
@@ -140,7 +140,7 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
     public func _spawnWatch<M>(
         _ naming: ActorNaming,
         of type: M.Type = M.self,
-        props: Props = Props(),
+        props: _Props = _Props(),
         file: String = #file, line: UInt = #line,
         _ behavior: _Behavior<M>
     ) throws -> _ActorRef<M>
@@ -179,7 +179,7 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Actor Suspension Mechanisms
 
-    /// :nodoc: Not intended to be used by end users.
+    /// Not intended to be used by end users.
     ///
     /// Turns a closure into an `AsynchronousCallback` that is executed in the context of this actor. It is safe to close over and modify
     /// internal actor state from within an `AsynchronousCallback`.
@@ -196,7 +196,7 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
         }
     }
 
-    /// :nodoc: Not intended to be used by end users.
+    /// Not intended to be used by end users.
     ///
     /// Turns a closure into an `AsynchronousCallback` that is executed in the context of this actor. It is safe to close over and modify
     /// internal actor state from within an `AsynchronousCallback`.
@@ -380,7 +380,7 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
     }
 
     @usableFromInline
-    func subReceive(identifiedBy identifier: AnySubReceiveId) -> ((SubMessageCarry) throws -> _Behavior<Message>)? {
+    func subReceive(identifiedBy identifier: _AnySubReceiveId) -> ((SubMessageCarry) throws -> _Behavior<Message>)? {
         undefined()
     }
 }
@@ -410,8 +410,8 @@ extension _SubReceiveId: ExpressibleByStringLiteral, ExpressibleByStringInterpol
     }
 }
 
-/// :nodoc: INTERNAL API
-public struct AnySubReceiveId: Hashable, Equatable {
+// TODO(distributed): sub-receives will be removed shortly, thanks to actors in the language there are other ways to solve this.
+public struct _AnySubReceiveId: Hashable, Equatable {
     let underlying: AnyHashable
 
     init<SubMessage>(_ id: _SubReceiveId<SubMessage>) {

@@ -41,56 +41,56 @@ public struct _SupervisionProps {
     }
 }
 
-public extension Props {
-    /// Creates a new `Props` appending an supervisor for the selected `Error` type, useful for setting a few options in-line when spawning actors.
+public extension _Props {
+    /// Creates a new `_Props` appending an supervisor for the selected `Error` type, useful for setting a few options in-line when spawning actors.
     ///
     /// Note that order in which overlapping selectors/types are added to the chain matters.
     ///
     /// - Parameters:
     ///   - strategy: supervision strategy to apply for the given class of failures
     ///   - forErrorType: error type selector, determining for what type of error the given supervisor should perform its logic.
-    static func supervision(strategy: _SupervisionStrategy, forErrorType errorType: Error.Type) -> Props {
-        var props = Props()
+    static func supervision(strategy: _SupervisionStrategy, forErrorType errorType: Error.Type) -> _Props {
+        var props = _Props()
         props.supervise(strategy: strategy, forErrorType: errorType)
         return props
     }
 
-    /// Creates a new `Props` appending an supervisor for the selected failure type, useful for setting a few options in-line when spawning actors.
+    /// Creates a new `_Props` appending an supervisor for the selected failure type, useful for setting a few options in-line when spawning actors.
     ///
     /// Note that order in which overlapping selectors/types are added to the chain matters.
     ///
     /// - Parameters:
     ///   - strategy: supervision strategy to apply for the given class of failures
     ///   - forAll: failure type selector, working as a "catch all" for the specific types of failures.
-    static func supervision(strategy: _SupervisionStrategy, forAll selector: _Supervise.All = .failures) -> Props {
+    static func supervision(strategy: _SupervisionStrategy, forAll selector: _Supervise.All = .failures) -> _Props {
         self.supervision(strategy: strategy, forErrorType: _Supervise.internalErrorTypeFor(selector: selector))
     }
 
-    /// Creates a new `Props` appending an supervisor for the selected `Error` type, useful for setting a few options in-line when spawning actors.
+    /// Creates a new `_Props` appending an supervisor for the selected `Error` type, useful for setting a few options in-line when spawning actors.
     ///
     /// Note that order in which overlapping selectors/types are added to the chain matters.
     ///
     /// - Parameters:
     ///   - strategy: supervision strategy to apply for the given class of failures
     ///   - forErrorType: error type selector, determining for what type of error the given supervisor should perform its logic.
-    func supervision(strategy: _SupervisionStrategy, forErrorType errorType: Error.Type) -> Props {
+    func supervision(strategy: _SupervisionStrategy, forErrorType errorType: Error.Type) -> _Props {
         var props = self
         props.supervise(strategy: strategy, forErrorType: errorType)
         return props
     }
 
-    /// Creates a new `Props` appending an supervisor for the selected failure type, useful for setting a few options in-line when spawning actors.
+    /// Creates a new `_Props` appending an supervisor for the selected failure type, useful for setting a few options in-line when spawning actors.
     ///
     /// Note that order in which overlapping selectors/types are added to the chain matters.
     ///
     /// - Parameters:
     ///   - strategy: supervision strategy to apply for the given class of failures
     ///   - forAll: failure type selector, working as a "catch all" for the specific types of failures.
-    func supervision(strategy: _SupervisionStrategy, forAll selector: _Supervise.All = .failures) -> Props {
+    func supervision(strategy: _SupervisionStrategy, forAll selector: _Supervise.All = .failures) -> _Props {
         self.supervision(strategy: strategy, forErrorType: _Supervise.internalErrorTypeFor(selector: selector))
     }
 
-    /// Adds another supervisor for the selected `Error` type to the chain of existing supervisors in this `Props`.
+    /// Adds another supervisor for the selected `Error` type to the chain of existing supervisors in this `_Props`.
     ///
     /// Note that order in which overlapping selectors/types are added to the chain matters.
     ///
@@ -101,7 +101,7 @@ public extension Props {
         self.supervision.add(strategy: strategy, forErrorType: errorType)
     }
 
-    /// Adds another supervisor for the selected failure type to the chain of existing supervisors in this `Props`.
+    /// Adds another supervisor for the selected failure type to the chain of existing supervisors in this `_Props`.
     ///
     /// Note that order in which overlapping selectors/types are added to the chain matters.
     ///
@@ -167,7 +167,7 @@ public extension Props {
 /// Backoffs are tremendously useful in building resilient retrying systems, as they allow the avoidance of thundering situations,
 /// in case a fault caused multiple actors to fail for the same reason (e.g. the failure of a shared resource).
 public enum _SupervisionStrategy {
-    /// Default supervision strategy applied to all actors, unless a different one is selected in their `Props`.
+    /// Default supervision strategy applied to all actors, unless a different one is selected in their `_Props`.
     ///
     /// Semantically equivalent to not applying any supervision strategy at all, since not applying a strategy
     /// also means that upon encountering a failure the given actor is terminated and all of its watchers are terminated.

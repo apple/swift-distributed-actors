@@ -14,7 +14,7 @@
 
 import NIO
 
-/// :nodoc: Not intended for general use.
+/// Not intended for general use.
 public final class _LinkedBlockingQueue<A>: @unchecked Sendable {
     @usableFromInline
     final class Node<A>: @unchecked Sendable {

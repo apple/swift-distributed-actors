@@ -14,7 +14,7 @@
 
 import Atomics
 
-/// :nodoc: INTERNAL API: May change without any prior notice.
+/// INTERNAL API: May change without any prior notice.
 ///
 /// Represents a reference to a remote actor.
 ///
@@ -23,7 +23,7 @@ import Atomics
 /// by being sent from a remote note, one can safely assume that the actor _existed_, however nothing
 /// is clear about its current lifecycle state (it may have already terminated the moment the message was sent,
 /// or even before then). To obtain lifecycle status of this actor the usual strategy of watching it needs to be employed.
-public final class RemoteClusterActorPersonality<Message: ActorMessage> {
+public final class _RemoteClusterActorPersonality<Message: ActorMessage> {
     let address: ActorAddress
 
     let clusterShell: ClusterShell
@@ -132,7 +132,7 @@ public final class RemoteClusterActorPersonality<Message: ActorMessage> {
         }
     }
 
-    func _unsafeAssumeCast<NewMessage: ActorMessage>(to: NewMessage.Type) -> RemoteClusterActorPersonality<NewMessage> {
-        RemoteClusterActorPersonality<NewMessage>(shell: self.clusterShell, address: self.address, system: self.system)
+    func _unsafeAssumeCast<NewMessage: ActorMessage>(to: NewMessage.Type) -> _RemoteClusterActorPersonality<NewMessage> {
+        _RemoteClusterActorPersonality<NewMessage>(shell: self.clusterShell, address: self.address, system: self.system)
     }
 }

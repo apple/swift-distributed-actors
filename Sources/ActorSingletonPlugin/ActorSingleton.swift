@@ -22,8 +22,8 @@ internal final class ActorSingleton<Message: ActorMessage> {
     /// Settings for the `ActorSingleton`
     let settings: ActorSingletonSettings
 
-    /// Props of singleton behavior
-    let props: Props?
+    /// _Props of singleton behavior
+    let props: _Props?
     /// The singleton behavior.
     /// If `nil`, then this instance will be proxy-only and it will never run the actual actor.
     let behavior: _Behavior<Message>?
@@ -38,7 +38,7 @@ internal final class ActorSingleton<Message: ActorMessage> {
         }
     }
 
-    init(settings: ActorSingletonSettings, props: Props?, _ behavior: _Behavior<Message>?) {
+    init(settings: ActorSingletonSettings, props: _Props?, _ behavior: _Behavior<Message>?) {
         self.settings = settings
         self.props = props
         self.behavior = behavior

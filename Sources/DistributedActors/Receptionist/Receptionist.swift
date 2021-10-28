@@ -37,7 +37,7 @@ public struct Receptionist {
 
     internal static let naming: ActorNaming = .unique("receptionist-ref")
 
-    /// :nodoc: INTERNAL API
+    /// INTERNAL API
     /// When sent to receptionist will register the specified `_ActorRef` under the given `Reception.Key`
     public class Register<Guest: _ReceptionistGuest>: _AnyRegister {
         public let guest: Guest
@@ -72,7 +72,7 @@ public struct Receptionist {
         }
     }
 
-    /// :nodoc: INTERNAL API
+    /// INTERNAL API
     /// Used to lookup `_ActorRef`s for the given `Reception.Key`
     public class Lookup<Guest: _ReceptionistGuest>: _Lookup, ListingRequest, CustomStringConvertible {
         public let key: Reception.Key<Guest>
@@ -97,7 +97,7 @@ public struct Receptionist {
         }
     }
 
-    /// :nodoc: INTERNAL API
+    /// INTERNAL API
     /// Subscribe to periodic updates of the specified key
     public class Subscribe<Guest: _ReceptionistGuest>: _Subscribe, ListingRequest, CustomStringConvertible {
         public let key: Reception.Key<Guest>
@@ -358,7 +358,7 @@ extension _ActorRef: _ReceptionistGuest {
 ///     - `Receptionist.Lookup`
 ///     - `Receptionist.Register`
 ///     - `Receptionist.Subscribe`
-/// :nodoc: INTERNAL API
+/// INTERNAL API
 public class _ReceptionistMessage: Codable, @unchecked Sendable {}
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -366,7 +366,7 @@ public class _ReceptionistMessage: Codable, @unchecked Sendable {}
 
 internal typealias FullyQualifiedTypeName = String
 
-/// :nodoc: INTERNAL API
+/// INTERNAL API
 public class _AnyRegister: _ReceptionistMessage, NonTransportableActorMessage, CustomStringConvertible {
     var _addressableActorRef: AddressableActorRef { undefined() }
     var _key: AnyReceptionKey { undefined() }
@@ -401,7 +401,7 @@ public class _Lookup: _ReceptionistMessage, NonTransportableActorMessage {
     }
 }
 
-/// :nodoc: INTERNAL API
+/// INTERNAL API
 protocol ReceptionKeyProtocol {
     var id: String { get }
     var guestType: Any.Type { get }
