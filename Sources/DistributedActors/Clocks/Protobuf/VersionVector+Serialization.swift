@@ -17,7 +17,7 @@ import _Distributed
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ReplicaID
 
-extension ReplicaID: ProtobufRepresentable {
+extension ReplicaID: _ProtobufRepresentable {
     public typealias ProtobufRepresentation = _ProtoVersionReplicaID
 
     public func toProto(context: Serialization.Context) throws -> _ProtoVersionReplicaID {
@@ -59,7 +59,7 @@ extension ReplicaID: ProtobufRepresentable {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: VersionVector
 
-extension VersionVector: ProtobufRepresentable {
+extension VersionVector: _ProtobufRepresentable {
     public typealias ProtobufRepresentation = _ProtoVersionVector
 
     public func toProto(context: Serialization.Context) throws -> _ProtoVersionVector {
@@ -118,7 +118,7 @@ extension VersionVector: ProtobufRepresentable {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: VersionDot
 
-extension VersionDot: ProtobufRepresentable {
+extension VersionDot: _ProtobufRepresentable {
     public typealias ProtobufRepresentation = _ProtoVersionDot
 
     public func toProto(context: Serialization.Context) throws -> _ProtoVersionDot {

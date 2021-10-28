@@ -19,7 +19,7 @@ import SwiftProtobuf
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ACK / NACK
 
-extension _SystemMessage.ACK: InternalProtobufRepresentable {
+extension _SystemMessage.ACK: Internal_ProtobufRepresentable {
     typealias ProtobufRepresentation = _ProtoSystemMessageACK
 
     func toProto(context: Serialization.Context) -> _ProtoSystemMessageACK {
@@ -33,7 +33,7 @@ extension _SystemMessage.ACK: InternalProtobufRepresentable {
     }
 }
 
-extension _SystemMessage.NACK: InternalProtobufRepresentable {
+extension _SystemMessage.NACK: Internal_ProtobufRepresentable {
     typealias ProtobufRepresentation = _ProtoSystemMessageNACK
 
     func toProto(context: Serialization.Context) -> _ProtoSystemMessageNACK {
@@ -50,7 +50,7 @@ extension _SystemMessage.NACK: InternalProtobufRepresentable {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: SystemMessageEnvelope
 
-extension SystemMessageEnvelope: InternalProtobufRepresentable {
+extension SystemMessageEnvelope: Internal_ProtobufRepresentable {
     typealias ProtobufRepresentation = _ProtoSystemMessageEnvelope
 
     func toProto(context: Serialization.Context) throws -> _ProtoSystemMessageEnvelope {
@@ -69,7 +69,7 @@ extension SystemMessageEnvelope: InternalProtobufRepresentable {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: SystemMessage
 
-extension _SystemMessage: ProtobufRepresentable {
+extension _SystemMessage: _ProtobufRepresentable {
     public typealias ProtobufRepresentation = _ProtoSystemMessage
 
     public func toProto(context: Serialization.Context) throws -> _ProtoSystemMessage {

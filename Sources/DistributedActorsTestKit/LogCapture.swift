@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import DistributedActors
+@testable import DistributedActors
 import DistributedActorsConcurrencyHelpers
 import struct Foundation.Date
 @testable import Logging

@@ -29,7 +29,6 @@ public protocol DowningStrategy {
     func onTimeout(_ member: Cluster.Member) -> DowningStrategyDirective
 }
 
-/// EXPERIMENTAL: NOT STABLE API
 public enum DowningStrategyDirective {
     case none
     case markAsDown(Set<Cluster.Member>)
@@ -41,7 +40,6 @@ public enum DowningStrategyDirective {
     }
 }
 
-/// EXPERIMENTAL: NOT STABLE API
 public enum DowningStrategyMessage: NonTransportableActorMessage {
     case timeout(Cluster.Member)
 }

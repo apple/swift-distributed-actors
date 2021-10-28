@@ -47,7 +47,7 @@ final class SWIMSerializationTests: ActorSystemXCTestCase {
         try self.shared_serializationRoundtrip(pingReq)
     }
 
-    func shared_serializationRoundtrip<T: ProtobufRepresentable>(_ obj: T) throws {
+    func shared_serializationRoundtrip<T: _ProtobufRepresentable>(_ obj: T) throws {
         let serialized = try system.serialization.serialize(obj)
         let deserialized = try system.serialization.deserialize(as: T.self, from: serialized)
         "\(obj)".shouldEqual("\(deserialized)")

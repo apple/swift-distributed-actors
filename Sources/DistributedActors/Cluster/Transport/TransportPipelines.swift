@@ -277,7 +277,7 @@ private final class WireEnvelopeHandler: ChannelDuplexHandler {
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         let buffer = self.unwrapInboundIn(data)
         do {
-            let knownSpecializedWireEnvelopeManifest = Serialization.Manifest(serializerID: .protobufRepresentable, hint: Wire.Envelope.typeHint)
+            let knownSpecializedWireEnvelopeManifest = Serialization.Manifest(serializerID: ._ProtobufRepresentable, hint: Wire.Envelope.typeHint)
             let envelope = try self.serialization.deserialize(as: Wire.Envelope.self, from: .nioByteBuffer(buffer), using: knownSpecializedWireEnvelopeManifest)
             context.fireChannelRead(self.wrapInboundOut(envelope))
         } catch {

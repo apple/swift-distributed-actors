@@ -552,14 +552,14 @@ internal class Supervisor<Message: ActorMessage> {
     ///
     /// The returned `SupervisionDirective` will be interpreted appropriately.
     open func handleFailure(_ context: _ActorContext<Message>, target: _Behavior<Message>, failure: _Supervision.Failure, processingType: ProcessingType) throws -> SupervisionDirective<Message> {
-        undefined()
+        _undefined()
     }
 
     /// Implement and return `true` if this supervisor can handle the failure or not.
     /// If `false` is returned and other supervisors are present, they will be tied in order, until a supervisor which
     /// can handle the failure is found, or if no such supervisor exists the failure will cause the actor to crash (as expected).
     open func canHandle(failure: _Supervision.Failure) -> Bool {
-        undefined()
+        _undefined()
     }
 
     /// Invoked when wrapping (with this `Supervisor`) a `Behavior` that already is supervised.
@@ -567,7 +567,7 @@ internal class Supervisor<Message: ActorMessage> {
     /// The method is always invoked _on_ the existing supervisor with the "new" supervisor.
     /// If this method returns `true` the new supervisor will be dropped and no wrapping will be performed.
     func isSame(as other: Supervisor<Message>) -> Bool {
-        undefined()
+        _undefined()
     }
 
     var descriptionForLogs: String {

@@ -17,22 +17,22 @@ import DistributedActorsConcurrencyHelpers
 import Foundation
 
 /**
- * `undefined()` pretends to be able to produce a value of any type `T` which can
+ * `_undefined()` pretends to be able to produce a value of any type `T` which can
  * be very useful whilst writing a program. It happens that you need a value
  * (which can be a function as well) of a certain type but you can't produce it
- * just yet. However, you can always temporarily replace it by `undefined()`.
+ * just yet. However, you can always temporarily replace it by `_undefined()`.
  *
  * Inspired by Haskell's
  * [undefined](http://hackage.haskell.org/package/base-4.7.0.2/docs/Prelude.html#v:undefined).
  *
- * Invoking `undefined()` will crash your program.
+ * Invoking `_undefined()` will crash your program.
  *
  * Some examples:
  *
- *  - `let x : String = undefined()`
+ *  - `let x : String = _undefined()`
  *  - `let f : String -> Int? = undefined("string to optional int function")`
- *  - `return undefined() /* in any function */ `
- *  - `let x : String = (undefined() as Int -> String)(42)`
+ *  - `return _undefined() /* in any function */ `
+ *  - `let x : String = (_undefined() as Int -> String)(42)`
  *  - ...
  *
  * What a crash looks like:
@@ -41,24 +41,21 @@ import Foundation
  *
  * Originally from: Johannes Weiss (MIT licensed) https://github.com/weissi/swift-undefined
  */
-// TODO: make those internal again
-public func undefined<T>(hint: String = "", function: StaticString = #function, file: StaticString = #file, line: UInt = #line) -> T {
+public func _undefined<T>(hint: String = "", function: StaticString = #function, file: StaticString = #file, line: UInt = #line) -> T {
     let message = hint == "" ? "" : ": \(hint)"
     fatalError("undefined \(function) -> \(T.self)\(message)", file: file, line: line)
 }
 
-public func undefined(hint: String = "", function: StaticString = #function, file: StaticString = #file, line: UInt = #line) -> Never {
+public func _undefined(hint: String = "", function: StaticString = #function, file: StaticString = #file, line: UInt = #line) -> Never {
     let message = hint == "" ? "" : ": \(hint)"
     fatalError("undefined \(function) -> Never \(message)", file: file, line: line)
 }
 
-// TODO: make those internal again
-public func TODO<T>(_ hint: String, function: StaticString = #function, file: StaticString = #file, line: UInt = #line) -> T {
+func TODO<T>(_ hint: String, function: StaticString = #function, file: StaticString = #file, line: UInt = #line) -> T {
     fatalError("TODO(\(function)): \(hint)", file: file, line: line)
 }
 
-// TODO: make those internal again
-public func FIXME<T>(_ hint: String, function: StaticString = #function, file: StaticString = #file, line: UInt = #line) -> T {
+func FIXME<T>(_ hint: String, function: StaticString = #function, file: StaticString = #file, line: UInt = #line) -> T {
     fatalError("TODO(\(function)): \(hint)", file: file, line: line)
 }
 

@@ -63,10 +63,10 @@ extension Serialization.Manifest: CustomStringConvertible {
     }
 }
 
-extension Serialization.Manifest: ProtobufRepresentable {
+extension Serialization.Manifest: _ProtobufRepresentable {
     public typealias ProtobufRepresentation = _ProtoManifest
 
-    // ProtobufRepresentable conformance
+    // _ProtobufRepresentable conformance
     public func toProto(context: Serialization.Context) throws -> ProtobufRepresentation {
         self.toProto()
     }
@@ -81,7 +81,7 @@ extension Serialization.Manifest: ProtobufRepresentable {
         return proto
     }
 
-    // ProtobufRepresentable conformance
+    // _ProtobufRepresentable conformance
     public init(fromProto proto: ProtobufRepresentation, context: Serialization.Context) throws {
         self.init(fromProto: proto)
     }
@@ -111,8 +111,8 @@ extension Serialization {
         let hint: String = Self.getTypeHint(messageType)
 
         let manifest: Manifest?
-        if messageType is AnyProtobufRepresentable.Type {
-            manifest = Manifest(serializerID: .protobufRepresentable, hint: hint)
+        if messageType is Any_ProtobufRepresentable.Type {
+            manifest = Manifest(serializerID: ._ProtobufRepresentable, hint: hint)
         } else if messageType is Codable.Type {
             manifest = Manifest(serializerID: self.settings.defaultSerializerID, hint: hint)
         } else if messageType is NonTransportableActorMessage.Type {

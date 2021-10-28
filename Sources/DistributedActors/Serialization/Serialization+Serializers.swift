@@ -29,12 +29,12 @@ open class Serializer<Message> {
     public init() {}
 
     open func serialize(_ message: Message) throws -> Serialization.Buffer {
-        undefined()
+        _undefined()
     }
 
     // TODO: does this stay like this?
     open func deserialize(from buffer: Serialization.Buffer) throws -> Message {
-        undefined()
+        _undefined()
     }
 
     /// Invoked _once_ by `Serialization` during system startup, providing additional context bound to

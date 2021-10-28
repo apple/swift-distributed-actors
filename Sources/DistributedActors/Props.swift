@@ -30,8 +30,8 @@ import NIO
 /// Hamlet Act III, scene 1, saying "To be, or not to be, that is the question: [...]." In the same sense,
 /// props for Swift Distributed Actors are accompanying objects/settings, which help the actor perform its duties.
 public struct _Props: @unchecked Sendable {
-    public var mailbox: MailboxProps
-    public var dispatcher: DispatcherProps
+    public var mailbox: _MailboxProps
+    public var dispatcher: _DispatcherProps
 
     // _Supervision properties will be removed.
     // This type of "parent/child" supervision and the entire actor tree will be removed.
@@ -58,8 +58,8 @@ public struct _Props: @unchecked Sendable {
     @usableFromInline
     internal var _distributedActor: Bool = false
 
-    public init(mailbox: MailboxProps = .default(),
-                dispatcher: DispatcherProps = .default,
+    public init(mailbox: _MailboxProps = .default(),
+                dispatcher: _DispatcherProps = .default,
                 supervision: _SupervisionProps = .default,
                 metrics: MetricsProps = .disabled) {
         self.mailbox = mailbox
@@ -81,14 +81,14 @@ public struct _Props: @unchecked Sendable {
 
 public extension _Props {
     /// Creates a new `_Props` with default values, and overrides the `dispatcher` with the provided one.
-    static func dispatcher(_ dispatcher: DispatcherProps) -> _Props {
+    static func dispatcher(_ dispatcher: _DispatcherProps) -> _Props {
         var props = _Props()
         props.dispatcher = dispatcher
         return props
     }
 
     /// Creates copy of this `_Props` changing the dispatcher props, useful for setting a few options in-line when spawning actors.
-    func dispatcher(_ dispatcher: DispatcherProps) -> _Props {
+    func dispatcher(_ dispatcher: _DispatcherProps) -> _Props {
         var props = self
         props.dispatcher = dispatcher
         return props
@@ -98,7 +98,7 @@ public extension _Props {
 /// Configuring dispatchers should only be associated with actual research if the change is indeed beneficial.
 /// In the vast majority of cases the default thread pool backed implementation should perform the best for typical workloads.
 // TODO: Eventually: probably also best as not enum but a bunch of factories?
-public enum DispatcherProps {
+public enum _DispatcherProps {
     /// Lets runtime determine the default dispatcher
     case `default`
 
@@ -150,25 +150,25 @@ public enum DispatcherProps {
 
 extension _Props {
     /// Creates a new `_Props` with default values, and overrides the `mailbox` with the provided one.
-    public static func mailbox(_ mailbox: MailboxProps) -> _Props {
+    public static func mailbox(_ mailbox: _MailboxProps) -> _Props {
         var props = _Props()
         props.mailbox = mailbox
         return props
     }
 
     /// Creates copy of this `_Props` changing the `mailbox` props.
-    public func mailbox(_ mailbox: MailboxProps) -> _Props {
+    public func mailbox(_ mailbox: _MailboxProps) -> _Props {
         var props = self
         props.mailbox = mailbox
         return props
     }
 }
 
-public enum MailboxProps: Sendable {
+public enum _MailboxProps: Sendable {
     /// Default mailbox.
     case `default`(capacity: UInt32, onOverflow: MailboxOverflowStrategy)
 
-    public static func `default`(capacity: UInt32 = UInt32.max) -> MailboxProps {
+    public static func `default`(capacity: UInt32 = UInt32.max) -> _MailboxProps {
         .default(capacity: capacity, onOverflow: .crash)
     }
 

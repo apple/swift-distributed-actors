@@ -119,13 +119,13 @@ extension Serialization.Settings {
         let hint = hintOverride ?? Serialization.getTypeHint(type)
 
         // TODO: add test for sending raw SwiftProtobuf.Message
-        if overrideSerializerID == SerializerID.protobufRepresentable {
+        if overrideSerializerID == SerializerID._ProtobufRepresentable {
             precondition(
-                type is AnyProtobufRepresentable.Type || type is SwiftProtobuf.Message.Type,
+                type is Any_ProtobufRepresentable.Type || type is SwiftProtobuf.Message.Type,
                 """
                 Attempted to register \(String(reflecting: type)) as \
                 serializable using \(reflecting: overrideSerializerID), \
-                yet the type does NOT conform to ProtobufRepresentable or SwiftProtobuf.Message 
+                yet the type does NOT conform to _ProtobufRepresentable or SwiftProtobuf.Message 
                 """
             )
         }
