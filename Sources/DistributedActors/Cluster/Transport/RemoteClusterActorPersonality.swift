@@ -33,21 +33,39 @@ public final class RemoteClusterActorPersonality<Message: ActorMessage> {
         self.system.personalDeadLetters(recipient: self.address)
     }
 
-     // Implementation notes:
-     //
-     // Goal: we want to hand out the ref as soon as possible and then if someone uses it they may pay the for accessing
-     // the associations there;
-     //
-     // Problem:
-     // - obtaining an association will hit a lock currently, since it is stored in this associations map
-     //   - even if we do a concurrent map, it still is more expensive
-     //
-     // Observations:
-     // - we only need the association for the first send -- we can then hit the shared data-structure, and cache the association / remote control here
-     // - not all actor refs will be send to perhaps, so we can avoid hitting the shared structure at all sometimes
-     //
-     // The structure of the shell is such that the only thing that is a field in the class is this associations / remote controls map,
-     // which refs access. all other state is not accessible by anyone else since it is hidden in the actor itself.
+    // Implementation notes:
+    //
+    // We want to hand out the ref (that contains this remote personality) as soon as possible. I.e. a resolve of an actor
+    // does not have to wait for the connection to be established, we can immediately return it, kick off handshakes,
+    // and once the actor wants to send messages -- perhaps we've already completed the handshake and can directly send
+    // messages onto the network.
+    //
+    // These associations are unique, and we must obtain "the" association that the cluster has established, or worse,
+    // is in the middle of establishing. Associations handle sending messages "through" them, so as long as we get the
+    // right one, message send order remains correct.
+    //
+    // The cluster actor maintains a lock protected, nonisolated, dictionary of unique nodes to associations.
+    // We basically need to perform that lock+get(for:node)+unlock every time we'd like to send a message.
+    // This would be terrible, because this associations dictionary is shared for all actors in the system -- so the
+    // more actors, and more remote nodes the slower this access becomes (the lock is going to be highly contended).
+    //
+    // Problem:
+    // - obtaining an association is accessing a highly contended lock
+    // - messages may be sent to remote actors from *any* thread
+    //
+    // Observations:
+    // - an association is always the same for a given actor reference (or rather, per unique node)
+    // - we don't need to have any association at hand in the reference, until we actually try to send messages to the remote actor
+    //   - this enables us to kick off handshakes "in the background" and only once we try to send to it, we obtain it
+    //     from the in-flight association dance the cluster is doing for us
+    //
+    // Solution:
+    // - upon first message send, we don't have an association yet, so we attempt to load it from the cluster
+    //   - this is relatively heavy, we need to lock for the duration of the read, as well as lookup the association in a hashmap
+    //     - we may even end up causing an association to be created AFAIR.
+    // - this will succeed, one way or another (a dead system, or handshake-in-flight, or ready association)
+    // - store this association in a `ManagedAtomicLazyReference` and every subsequent time we want to send a message,
+    //   we only pay the cost of this atomic read, rather than the expensive hashmap lookup and locking!
     private var _cachedAssociation: ManagedAtomicLazyReference<Association>
 
     // TODO: move instrumentation into the transport?
