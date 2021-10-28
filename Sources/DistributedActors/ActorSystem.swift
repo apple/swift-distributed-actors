@@ -127,7 +127,7 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
     private let shutdownLock = Lock()
 
     /// Greater than 0 shutdown has been initiated / is in progress.
-    private let shutdownFlag: UnsafeAtomic<Int> = .create(0)
+    private let shutdownFlag: ManagedAtomic<Int> = .init(0)
     internal var isShuttingDown: Bool {
         self.shutdownFlag.load(ordering: .sequentiallyConsistent) > 0
     }
@@ -137,9 +137,9 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
     public let _eventLoopGroup: MultiThreadedEventLoopGroup
 
     #if SACT_TESTS_LEAKS
-    static let actorSystemInitCounter: UnsafeAtomic<Int> = .create(0)
-    let userCellInitCounter: UnsafeAtomic<Int> = .create(0)
-    let userMailboxInitCounter: UnsafeAtomic<Int> = .create(0)
+    static let actorSystemInitCounter: ManagedAtomic<Int> = .init(0)
+    let userCellInitCounter: ManagedAtomic<Int> = .init(0)
+    let userMailboxInitCounter: ManagedAtomic<Int> = .init(0)
     #endif
 
     /// Creates a named ActorSystem
@@ -350,13 +350,13 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
     }
 
     deinit {
-        self.shutdownFlag.destroy()
+//        self.shutdownFlag.destroy()
 
         #if SACT_TESTS_LEAKS
         ActorSystem.actorSystemInitCounter.loadThenWrappingDecrement(ordering: .relaxed)
 
-        self.userCellInitCounter.destroy()
-        self.userMailboxInitCounter.destroy()
+//        self.userCellInitCounter.destroy()
+//        self.userMailboxInitCounter.destroy()
         #endif
     }
 
@@ -441,7 +441,7 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
 
     public var cluster: ClusterControl {
         guard let clusterControl = self._clusterControl else {
-            fatalError("BUG! Tried to access clusterControl on \(self) and it was nil! Please report this on the issue tracker.")
+            fatalError("BUG! Tried to access clusterControl on \(self.settings.cluster.node) and it was nil! Please report this on the issue tracker.")
         }
 
         return clusterControl

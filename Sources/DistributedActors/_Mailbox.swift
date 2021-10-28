@@ -56,7 +56,7 @@ internal enum MailboxBitMasks {
 
 internal final class _Mailbox<Message: ActorMessage> {
     weak var shell: _ActorShell<Message>?
-    let _status: UnsafeAtomic<UInt64> = .create(0)
+    let _status: ManagedAtomic<UInt64> = .init(0)
     let userMessages: MPSCLinkedQueue<Payload>
     let systemMessages: MPSCLinkedQueue<_SystemMessage>
     let capacity: UInt32
@@ -86,7 +86,7 @@ internal final class _Mailbox<Message: ActorMessage> {
     }
 
     deinit {
-        self._status.destroy()
+//        self._status.destroy()
         #if SACT_TESTS_LEAKS
         if self.address.segments.first?.value == "user" {
             _ = self.deadLetters._system?.userMailboxInitCounter.loadThenWrappingDecrement(ordering: .relaxed)

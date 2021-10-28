@@ -19,11 +19,11 @@ import SwiftBenchmarkTools
 
 @usableFromInline
 internal class BenchmarkLatchPersonality<Message: Codable>: _CellDelegate<Message> {
-    let startTime: UnsafeAtomic<UInt64> = .create(0)
+    let startTime: ManagedAtomic<UInt64> = .init(0)
     let receptacle = BlockingReceptacle<Message>()
 
     deinit {
-        startTime.destroy()
+//        startTime.destroy()
     }
 
     override func sendMessage(_ message: Message, file: String = #file, line: UInt = #line) {

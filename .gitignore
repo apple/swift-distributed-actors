@@ -21,7 +21,7 @@ Samples/swift-distributed-actors-samples.xcodeproj
 SwiftDistributedActors.xcworkspace
 .xcode
 .idea
-IntegrationTests/tests_04_cluster/.build
+IntegrationTests/tests_01_cluster/.build
 
 # rendered docs output dirs
 /reference/

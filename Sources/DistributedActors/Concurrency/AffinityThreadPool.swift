@@ -28,12 +28,12 @@ internal final class AffinityThreadPool {
     @usableFromInline
     internal let workerCount: Int
     @usableFromInline
-    internal let stopped: UnsafeAtomic<Bool>
+    internal let stopped: ManagedAtomic<Bool>
 
     internal init(workerCount: Int) throws {
         var workers: [Worker] = []
         self.workerCount = workerCount
-        self.stopped = .create(false)
+        self.stopped = .init(false)
 
         for _ in 0 ..< workerCount {
             workers.append(try Worker(stopped: self.stopped))
@@ -43,7 +43,7 @@ internal final class AffinityThreadPool {
     }
 
     deinit {
-        self.stopped.destroy()
+//        self.stopped.destroy()
     }
 
     /// Executes `task` on the specified worker thread.
@@ -75,7 +75,7 @@ internal final class AffinityThreadPool {
         internal let taskQueue: _LinkedBlockingQueue<() -> Void>
         private let thread: _Thread
 
-        internal init(stopped: UnsafeAtomic<Bool>) throws {
+        internal init(stopped: ManagedAtomic<Bool>) throws {
             let queue: _LinkedBlockingQueue<() -> Void> = _LinkedBlockingQueue()
             let thread = try _Thread {
                 while !stopped.load(ordering: .acquiring) {
