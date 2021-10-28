@@ -117,8 +117,38 @@ $TOOLCHAIN/usr/bin/swift test
 
 #### Note on `DYLD_LIBRARY_PATH`
 
-Currently it is a known limitation of the toolchains that one has to export the `DYLD_LIBRARY_PATH` environment variable 
+It is a known limitation of the toolchains that one has to export the `DYLD_LIBRARY_PATH` environment variable 
 with the path to where the `TOOLCHAIN` stores the _Distributed library.
+
+Normal `swift build` and `swift test` invocations should work fine without the environment variable.
+However, invocations like `swift test --filter` may end up crashing as follows:
+
+```
+# expected to fail
+-> % swift test --filter Receptionist
+...
+error: signalled(6): /Library/Developer/Toolchains/swift-DEVELOPMENT-SNAPSHOT-2021-10-26-a.xctoolchain/usr/libexec/swift/pm/swiftpm-xctest-helper /Users/ktoso/code/swift-distributed-actors/.build/x86_64-apple-macosx/debug/swift-distributed-actorsPackageTests.xctest /var/folders/w1/hmg_v8p532d800g08jtqtddc0000gn/T/TemporaryFile.cfl1uX output:
+    dyld[72407]: Library not loaded: @rpath/XCTest.framework/Versions/A/XCTest
+```
+
+```
+# expected to fail
+-> % xctest .build/x86_64-apple-macosx/debug/swift-distributed-actorsPackageTests.xctest
+2021-10-28 15:34:20.890 xctest[69943:24184188] The bundle “swift-distributed-actorsPackageTests.xctest” couldn’t be loaded. Try reinstalling the bundle.
+2021-10-28 15:34:20.890 xctest[69943:24184188] (dlopen(/Users/ktoso/code/swift-distributed-actors/.build/x86_64-apple-macosx/debug/swift-distributed-actorsPackageTests.xctest/Contents/MacOS/swift-distributed-actorsPackageTests, 0x0109): Library not loaded: /usr/lib/swift/libswift_Distributed.dylib
+  Referenced from: /Users/ktoso/code/swift-distributed-actors/.build/x86_64-apple-macosx/debug/swift-distributed-actorsPackageTests.xctest/Contents/MacOS/swift-distributed-actorsPackageTests
+  Reason: tried: '/usr/lib/swift/libswift_Distributed.dylib' (no such file), '/usr/local/lib/libswift_Distributed.dylib' (no such file), '/usr/lib/libswift_Distributed.dylib' (no such file))
+```
+
+If you see such issue, you may need to provide the dynamic library path pointing at the specific toolchain you are
+using to build the project, like this:
+
+```swift
+DYLD_LIBRARY_PATH="$TOOLCHAIN/usr/lib/swift/macosx/" <command>
+```
+
+For running only a specific test file, please refer to [Running filtered tests](#running-filtered-tests),
+which is hitting a similar limitation.
 
 #### Swift Syntax dependency versions
 
