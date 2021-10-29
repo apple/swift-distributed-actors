@@ -88,4 +88,4 @@ In the case of formatting issues, you can then `git add` the formatting changes,
 
 ## How to contribute your work
 
-Please open a pull request at https://github.com/apple/swift-metrics. Make sure the CI passes, and then wait for code review.
+Please open a pull request at https://github.com/apple/swift-distributed-actors. Make sure the CI passes, and then wait for code review.
