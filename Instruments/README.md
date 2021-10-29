@@ -23,4 +23,4 @@ as their visualizations help understand more about how the actor system is funct
 
 ## Screenshots (may be not super up to date)
 
-![](Screen Shot 2020-07-06 at 12.27.35.png)
+<img src="./Screen Shot 2020-07-06 at 12.27.35.png" />
