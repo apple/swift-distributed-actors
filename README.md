@@ -115,9 +115,6 @@ export TOOLCHAIN=/Library/Developer/Toolchains/swift-DEVELOPMENT-SNAPSHOT-2021-1
 
 # Just build the project
 $TOOLCHAIN/usr/bin/swift build --build-tests
-
-# Build and run all tests
-$TOOLCHAIN/usr/bin/swift test
 ```
 
 #### Running tests & configuring `DYLD_LIBRARY_PATH`
