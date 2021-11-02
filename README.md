@@ -115,21 +115,20 @@ export TOOLCHAIN=/Library/Developer/Toolchains/swift-DEVELOPMENT-SNAPSHOT-2021-1
 
 # Just build the project
 $TOOLCHAIN/usr/bin/swift build --build-tests
-
-# Build and run all tests
-$TOOLCHAIN/usr/bin/swift test
 ```
 
-#### Note on `DYLD_LIBRARY_PATH`
+#### Running tests & configuring `DYLD_LIBRARY_PATH`
 
 It is a known limitation of the toolchains that one has to export the `DYLD_LIBRARY_PATH` environment variable 
 with the path to where the `TOOLCHAIN` stores the _Distributed library.
 
-Normal `swift build` and `swift test` invocations should work fine without the environment variable.
-However, invocations like `swift test --filter` may end up crashing as follows:
+It is possible to `swift build` the project without passing additional environment variables, however in order to run anything, we must provide the location of the `_Distributed` library *in the custom toolchain* to the dynamic linker as we start the binary.
+
+To do this on macOS, you have to use the `DYLD_LIBRARY_PATH`. For security reasons, unless you have System Integrity Protection turned off, this environment variable is automatically stripped out when a process creates a child process. This is why we need to invoke the _specific_ `xctest` binary, rather than leave it to SwiftPM to handle.
+
+**Plain `swift test` invocations are expected to fail like this:**
 
 ```
-# expected to fail
 -> % swift test --filter Receptionist
 ...
 error: signalled(6): /Library/Developer/Toolchains/swift-DEVELOPMENT-SNAPSHOT-2021-10-26-a.xctoolchain/usr/libexec/swift/pm/swiftpm-xctest-helper /Users/ktoso/code/swift-distributed-actors/.build/x86_64-apple-macosx/debug/swift-distributed-actorsPackageTests.xctest /var/folders/w1/hmg_v8p532d800g08jtqtddc0000gn/T/TemporaryFile.cfl1uX output:
@@ -144,6 +143,37 @@ error: signalled(6): /Library/Developer/Toolchains/swift-DEVELOPMENT-SNAPSHOT-20
   Referenced from: /Users/ktoso/code/swift-distributed-actors/.build/x86_64-apple-macosx/debug/swift-distributed-actorsPackageTests.xctest/Contents/MacOS/swift-distributed-actorsPackageTests
   Reason: tried: '/usr/lib/swift/libswift_Distributed.dylib' (no such file), '/usr/local/lib/libswift_Distributed.dylib' (no such file), '/usr/lib/libswift_Distributed.dylib' (no such file))
 ```
+
+Instead, you must find the `xctest` binary in XCode:
+
+```
+-> % find /Applications/Xcode-Latest.app  | grep xctest
+/Applications/Xcode-Latest.app/Contents/Developer/usr/bin/xctest
+
+-> % export XCTEST_BINARY=/Applications/Xcode-Latest.app/Contents/Developer/usr/bin/xctest
+```
+
+Then, you can use:
+
+```
+clear
+echo $TOOLCHAIN
+echo
+
+$TOOLCHAIN/usr/bin/swift build --build-tests && \
+DYLD_LIBRARY_PATH="$TOOLCHAIN/usr/lib/swift/macosx/" $XCTEST_BINARY \
+  .build/x86_64-apple-macosx/debug/swift-distributed-actorsPackageTests.xctest
+```
+
+or the following, in order to run only the test class `DistributedReceptionistTests`:
+
+```
+$TOOLCHAIN/usr/bin/swift build --build-tests && \
+DYLD_LIBRARY_PATH="$TOOLCHAIN/usr/lib/swift/macosx/" $XCTEST_BINARY \
+  -XCTest "DistributedActorsTests.DistributedReceptionistTests" \
+  .build/x86_64-apple-macosx/debug/swift-distributed-actorsPackageTests.xctest
+```
+
 
 If you see such issue, you may need to provide the dynamic library path pointing at the specific toolchain you are
 using to build the project, like this:
@@ -173,14 +203,40 @@ This is a current limitation that will be lifted as we remove our dependency on 
 
 #### Xcode
 
-Xcode currently will not properly highlight the new keywords (e.g. `distributed actor`), so editing may be slightly annoying for the time being.
+Because this project relies on un-released, experimental features, that are not part of Swift 5.5, currently there is _no Xcode_ which can just open and edit the project.
 
-Xcode should be able to build the project if the appropriate **compatible toolchain** is selected though.
+This is partially because of the experimental plugin APIs changed between 5.5 and 5.6 (they were experimental, and hidden, so this was expected), and as such the current Xcode builds don't undertstand the Package manifest.
+
+Once we get rid of source generation steps in this project, this should simplify the Xcode editing experience by a lot.
+
+For now, you should be able to remove all the `.plugin(` definitions from Package.swift, and edit the project like that.
+Then, you must use the command line (as shown above) to build and test the project -- node though that the plugins are necessary to compile the project.
+
+> We are aware of how painful this process is, and will eventually be able to resolve it. Please bear with us as we work through the early phases of this new language feature work.
 
 **Other IDEs**
 It should be possible to open and edit this project in other IDEs. Please note though that since we are using an unreleased Swift 5.6-dev version,
 some syntax in the Package.swift may not be recognized by those IDE's yet. For example, you may need to comment out all the `.plugin` sections
 declarations, in order to import the project into CLion. Once the project is imported though, you can continue using it as usual.
+
+
+**CLion**
+
+> Contributed by [Moritz Lang on the forums](https://forums.swift.org/t/are-there-notes-or-docs-on-how-to-use-a-nightly-development-snapshot-with-projects-swift-distributed-actors/53170/3)
+
+I found the following to work for me, but only using CLion:
+
+* Set the Swift toolchain in CLion to the latest nightly one (for me that was 10-28)
+* Remove the `.plugin` from Package.swift in some other editor (NOT CLion)
+* Open the project in CLion, resolve the Swift package dependencies
+* Close CLion
+* Re-add the `.plugin` to Package.swift
+* Re-open the project in CLion, but DO NOT resolve Swift packages within CLion
+* Add `DYLD_LIBRARY_PATH` to the run configuration
+* Build/Run tests 🎉
+
+I suspect the reason this works is that CLion stores that it already resolved the dependencies inside the .idea folder. Additionally, CLion invokes the build command with the --skip-update flag.
+
 
 #### Warnings
 
@@ -217,39 +273,6 @@ DYLD_LIBRARY_PATH="$TOOLCHAIN/usr/lib/swift/macosx/" \
   $TOOLCHAIN/usr/bin/swift run \
   --package-path Samples \
   SampleDiningPhilosophers dist 
-```
-
-### Running filtered tests
-
-Due to some limitations in SwiftPM right now running tests with `swift test --filter` does not work with a customized toolchain as we need to do here.
-You can instead build the tests and run them:
-
-```
-echo "TOOLCHAIN=$TOOLCHAIN"
- 
-$TOOLCHAIN/usr/bin/swift build --build-tests && 
-  DYLD_LIBRARY_PATH="$TOOLCHAIN/usr/lib/swift/macosx/" \
-  xctest -XCTest "DistributedActorsTests.DistributedReceptionistTests" \
-  .build/x86_64-apple-macosx/debug/swift-distributed-actorsPackageTests.xctest
- ```
-
-This allows filtering for some specific test class. Again, limitation is something that we should be able to lift in the future,
-and originates from the need of using nightly toolchains to get the latest `_Distributed` module loaded by the `xctest` process.
-
-## Linux / Docker
-
-You can use the provided docker images to debug and execute tests inside docker:
-
-```
-docker-compose -f docker/docker-compose.yaml -f docker/docker-compose.2104.main.yaml run shell
-```
-
-```
-# run all tests
-docker-compose -f docker/docker-compose.yaml -f docker/docker-compose.2004.main.yaml run test
-
-# run only unit tests (no integration tests)
-docker-compose -f docker/docker-compose.yaml -f docker/docker-compose.2004.main.yaml run unit-tests
 ```
 
 ## Documentation
