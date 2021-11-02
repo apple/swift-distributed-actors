@@ -254,7 +254,7 @@ dependencies += [
 #if swift(>=5.6)
 dependencies.append(
       // Works with: swift-PR-39654-1170.xctoolchain
-    .package(url: "https://github.com/apple/swift-syntax.git", revision: "b8e4a69237f9dfa362268dddaef8793bc694dc6f")
+    .package(url: "https://github.com/apple/swift-syntax.git", revision: "d59aea8902b42db7fd2383dffbab7a3ba98341ba")
 //    .package(url: "https://github.com/apple/swift-syntax.git", branch: "main")
 )
 #else
