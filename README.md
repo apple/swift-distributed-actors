@@ -203,16 +203,7 @@ This is a current limitation that will be lifted as we remove our dependency on 
 
 #### Xcode
 
-Because this project relies on un-released, experimental features, that are not part of Swift 5.5, currently there is _no Xcode_ which can just open and edit the project.
-
-This is partially because of the experimental plugin APIs changed between 5.5 and 5.6 (they were experimental, and hidden, so this was expected), and as such the current Xcode builds don't undertstand the Package manifest.
-
-Once we get rid of source generation steps in this project, this should simplify the Xcode editing experience by a lot.
-
-For now, you should be able to remove all the `.plugin(` definitions from Package.swift, and edit the project like that.
-Then, you must use the command line (as shown above) to build and test the project -- node though that the plugins are necessary to compile the project.
-
-> We are aware of how painful this process is, and will eventually be able to resolve it. Please bear with us as we work through the early phases of this new language feature work.
+Editing in Xcode is currently unsupported. This project depends on work in progress language features; once they mature enough, editing in Xcode will become available.
 
 **Other IDEs**
 It should be possible to open and edit this project in other IDEs. Please note though that since we are using an unreleased Swift 5.6-dev version,
