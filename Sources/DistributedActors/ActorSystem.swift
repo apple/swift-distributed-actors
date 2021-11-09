@@ -270,8 +270,8 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
 
             initializationLock.withWriterLockVoid {
                 self._cluster = nil
-                _ = self._clusterControlStore.storeIfNilThenLoad(Box(ClusterControl(self.settings.cluster, clusterRef: self.deadLetters.adapted(), eventStream: clusterEvents)))
             }
+            _ = self._clusterControlStore.storeIfNilThenLoad(Box(ClusterControl(self.settings.cluster, clusterRef: self.deadLetters.adapted(), eventStream: clusterEvents)))
         }
 
         // node watcher MUST be prepared before receptionist (or any other actor) because it (and all actors) need it if we're running clustered
@@ -287,9 +287,7 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
                 customBehavior: ClusterEventStream.Shell.behavior
             )
             let clusterRef = try! cluster.start(system: self, clusterEvents: clusterEvents) // only spawns when cluster is initialized
-            initializationLock.withWriterLockVoid {
-                _ = self._clusterControlStore.storeIfNilThenLoad(Box(ClusterControl(settings.cluster, clusterRef: clusterRef, eventStream: clusterEvents)))
-            }
+            _ = self._clusterControlStore.storeIfNilThenLoad(Box(ClusterControl(settings.cluster, clusterRef: clusterRef, eventStream: clusterEvents)))
 
             // Node watcher MUST be started AFTER cluster and clusterEvents
             lazyNodeDeathWatcher = try! self._prepareSystemActor(
