@@ -104,7 +104,7 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Cluster
-    internal class Box<T> {
+    internal final class Box<T> {
         var value: T
         init(_ value: T) {
             self.value = value
