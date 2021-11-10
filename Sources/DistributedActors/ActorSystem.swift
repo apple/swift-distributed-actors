@@ -100,20 +100,37 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Metrics
 
-    // TODO: Use ManagedAtomicLazyReference to store this
-    private lazy var _metrics: ActorSystemMetrics = ActorSystemMetrics(self.settings.metrics)
-    internal var metrics: ActorSystemMetrics {
-        self._metrics
-    }
+    internal let metrics: ActorSystemMetrics
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Cluster
+    internal final class Box<T> {
+        var value: T
+        init(_ value: T) {
+            self.value = value
+        }
+    }
 
     // initialized during startup
     // TODO: Use ManagedAtomicLazyReference to store this
     internal var _cluster: ClusterShell?
-    internal var _clusterControl: ClusterControl?
-    internal var _nodeDeathWatcher: NodeDeathWatcherShell.Ref?
+
+    private let _clusterControlStore: ManagedAtomicLazyReference<Box<ClusterControl>>
+    public var cluster: ClusterControl {
+        guard let box = _clusterControlStore.load() else {
+            fatalError("Somehow attempted to load system.cluster before it was initialized!")
+        }
+        return box.value
+    }
+
+    internal let _nodeDeathWatcherStore: ManagedAtomicLazyReference<Box<NodeDeathWatcherShell.Ref?>>
+    internal var _nodeDeathWatcher: NodeDeathWatcherShell.Ref? {
+        guard let box = _nodeDeathWatcherStore.load() else {
+            fatalError("Somehow attempted to load system.nodeDeathWatcher before it was initialized!")
+        }
+        return box.value
+    }
+    
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Logging
@@ -206,9 +223,12 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
         }
         self.settings = settings
         self.log = settings.logging.baseLogger
+        self.metrics = ActorSystemMetrics(settings.metrics)
 
         self._receptionistStore = ManagedAtomicLazyReference()
         self._serialization = ManagedAtomicLazyReference()
+        self._clusterControlStore = ManagedAtomicLazyReference()
+        self._nodeDeathWatcherStore = ManagedAtomicLazyReference()
 
         // vvv~~~~~~~~~~~~~~~~~~~ all properties initialized, self can be shared ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~vvv //
 
@@ -250,8 +270,8 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
 
             initializationLock.withWriterLockVoid {
                 self._cluster = nil
-                self._clusterControl = ClusterControl(self.settings.cluster, clusterRef: self.deadLetters.adapted(), eventStream: clusterEvents)
             }
+            _ = self._clusterControlStore.storeIfNilThenLoad(Box(ClusterControl(self.settings.cluster, clusterRef: self.deadLetters.adapted(), eventStream: clusterEvents)))
         }
 
         // node watcher MUST be prepared before receptionist (or any other actor) because it (and all actors) need it if we're running clustered
@@ -267,9 +287,7 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
                 customBehavior: ClusterEventStream.Shell.behavior
             )
             let clusterRef = try! cluster.start(system: self, clusterEvents: clusterEvents) // only spawns when cluster is initialized
-            initializationLock.withWriterLockVoid {
-                self._clusterControl = ClusterControl(settings.cluster, clusterRef: clusterRef, eventStream: clusterEvents)
-            }
+            _ = self._clusterControlStore.storeIfNilThenLoad(Box(ClusterControl(settings.cluster, clusterRef: clusterRef, eventStream: clusterEvents)))
 
             // Node watcher MUST be started AFTER cluster and clusterEvents
             lazyNodeDeathWatcher = try! self._prepareSystemActor(
@@ -277,7 +295,9 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
                     NodeDeathWatcherShell.behavior(clusterEvents: clusterEvents),
                     props: ._wellKnown
             )
-            self._nodeDeathWatcher = lazyNodeDeathWatcher?.ref
+            self._nodeDeathWatcherStore.storeIfNilThenLoad(Box(lazyNodeDeathWatcher!.ref))
+        } else {
+            self._nodeDeathWatcherStore.storeIfNilThenLoad(Box(nil))
         }
 
         // OLD receptionist // TODO(distributed): remove when possible
@@ -437,14 +457,6 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
         }
 
         return Shutdown(receptacle: self.shutdownReceptacle)
-    }
-
-    public var cluster: ClusterControl {
-        guard let clusterControl = self._clusterControl else {
-            fatalError("BUG! Tried to access clusterControl on \(self.settings.cluster.node) and it was nil! Please report this on the issue tracker.")
-        }
-
-        return clusterControl
     }
 }
 

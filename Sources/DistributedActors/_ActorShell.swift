@@ -159,7 +159,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
         self._log = Logger.make(system.log, path: address.path)
 
         self.supervisor = _Supervision.supervisorFor(system, initialBehavior: behavior, props: props.supervision)
-        self._deathWatch = DeathWatchImpl(nodeDeathWatcher: system._nodeDeathWatcher ?? system.deadLetters.adapted())
+        self._deathWatch = DeathWatchImpl(nodeDeathWatcher: system._nodeDeathWatcherStore.load()?.value ?? system.deadLetters.adapted())
 
         self.namingContext = ActorNamingContext()
 
