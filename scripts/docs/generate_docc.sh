@@ -47,30 +47,11 @@ declare -r build_path_linux="$build_path/"
 declare -r docc_source_path="$root_path/.build/swift-docc"
 declare -r docc_render_source_path="$root_path/.build/swift-docc-render"
 
-# Prepare and build docc
-if [[ ! -d "$docc_source_path" ]]; then
-  git clone https://github.com/apple/swift-docc.git "$docc_source_path"
-  cd $docc_source_path
+# Accessing the docc from toolchains
 
-  if [[ ! -d "$docc_source_path/$build_path" ]]; then
-    swift build -c release
-  fi
-else
-  echo "Assuming docc is built..."
-fi
+export TOOLCHAIN=/Library/Developer/Toolchains/swift-DEVELOPMENT-SNAPSHOT-2021-11-20-a.xctoolchain
 
-
-if [[ ! -d "$docc_render_source_path" ]]; then
-  git clone https://github.com/apple/swift-docc-render.git "$docc_render_source_path"
-  cd $docc_render_source_path
-
-  npm install
-  npm run build
-else
-  echo "Assuming docc-render is built..."
-fi
-
-export DOCC_HTML_DIR=$docc_render_source_path/dist
+$TOOLCHAIN/docc
 
 # Build documentation
 
