@@ -24,7 +24,10 @@ public struct ClusterControl {
     /// Settings the cluster node is configured with.
     public let settings: ClusterSettings
 
-    /// Read only view of the settings in use by the cluster.
+    /// Sequence of cluster events.
+    ///
+    /// This sequence begins with a snapshot of the current cluster state and continues with events representing changes
+    /// since the snapshot.
     public let events: EventStream<Cluster.Event>
 
     /// Offers a snapshot of membership, which may be used to perform ad-hoc tests against the membership.
