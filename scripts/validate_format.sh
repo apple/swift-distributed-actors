@@ -19,9 +19,6 @@ set -u
 command -v swiftformat >/dev/null 2>&1 || { echo >&2 "'swiftformat' could not be found. Please ensure it is installed and on the PATH."; exit 1; }
 
 printf "=> Checking format... "
-# check wether the config is ok
-swiftformat --dryrun . >/dev/null || { echo >&2 "'swiftformat' invocation failed."; exit 1; }
-
 # format the code and exit with error if it was not formatted correctly
 FIRST_OUT="$(git status --porcelain)"
 swiftformat . > /dev/null 2>&1
