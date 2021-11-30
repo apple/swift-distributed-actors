@@ -19,12 +19,13 @@ set -u
 command -v swiftformat >/dev/null 2>&1 || { echo >&2 "'swiftformat' could not be found. Please ensure it is installed and on the PATH."; exit 1; }
 
 printf "=> Checking format... "
-FIRST_OUT="$(git status --porcelain)"
-swiftformat . > /dev/null 2>&1
-SECOND_OUT="$(git status --porcelain)"
-if [[ "$FIRST_OUT" != "$SECOND_OUT" ]]; then
+# check wether the config is ok
+swiftformat --dryrun . >/dev/null || { echo >&2 "'swiftformat' invocation failed."; exit 1; }
+
+# check wether the code is formatted correctly
+swiftformat . --lint
+if [ $? -ne 0 ]; then
   printf "\033[0;31mformatting issues!\033[0m\n"
-  git --no-pager diff
   exit 1
 else
   printf "\033[0;32mokay.\033[0m\n"
