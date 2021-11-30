@@ -21,7 +21,7 @@ command -v swiftformat >/dev/null 2>&1 || { echo >&2 "'swiftformat' could not be
 printf "=> Checking format... "
 # format the code and exit with error if it was not formatted correctly
 FIRST_OUT="$(git status --porcelain)"
-swiftformat . > /dev/null 2>&1
+swiftformat . > /dev/null || { echo >&2 "'swiftformat' invocation failed"; exit 1; }
 SECOND_OUT="$(git status --porcelain)"
 if [[ "$FIRST_OUT" != "$SECOND_OUT" ]]; then
   printf "\033[0;31mformatting issues!\033[0m\n"
