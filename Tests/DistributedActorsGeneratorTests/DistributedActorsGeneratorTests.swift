@@ -12,18 +12,18 @@
 ////
 ////===----------------------------------------------------------------------===//
 //
-//import DistributedActors
-//@testable import DistributedActorsGenerator
-//import DistributedActorsTestKit
-//import Foundation
-//import XCTest
+// import DistributedActors
+// @testable import DistributedActorsGenerator
+// import DistributedActorsTestKit
+// import Foundation
+// import XCTest
 //
-//import _Distributed
+// import _Distributed
 //
 //// ==== ----------------------------------------------------------------------------------------------------------------
 //// MARK: Actor
 //
-//distributed actor TestDistributedActor {
+// distributed actor TestDistributedActor {
 //
 //    distributed func greet(name: String) -> String {
 //        print("ACTOR [\(self) \((self.id.underlying as! ActorAddress).detailedDescription)] RECEIVED \(#function)")
@@ -34,12 +34,12 @@
 //    private func priv() -> String {
 //        "ignore this in source gen"
 //    }
-//}
+// }
 //
 //// ==== ----------------------------------------------------------------------------------------------------------------
 //// MARK: Tests
 //
-//final class DistributedActorsGeneratorTests: ClusteredActorSystemsXCTestCase {
+// final class DistributedActorsGeneratorTests: ClusteredActorSystemsXCTestCase {
 //
 //    override func configureLogCapture(settings: inout LogCapture.Settings) {
 //        settings.excludeActorPaths = [
@@ -104,9 +104,9 @@
 //            reply.shouldEqual("Hello, Caplin!")
 //        }
 //    }
-//}
+// }
 //
-//extension DistributedActorsGeneratorTests {
+// extension DistributedActorsGeneratorTests {
 //
 //    private func generate(source: String, target: String, buckets: Int? = nil) throws {
 //        var productsDirectory: URL {
@@ -153,5 +153,5 @@
 //    struct StringError: Error {
 //        let description: String
 //    }
-//}
+// }
 //

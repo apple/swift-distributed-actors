@@ -254,18 +254,21 @@ public struct ReplicaID: Hashable {
             default: return false
             }
         }
+
         var isActorIdentity: Bool {
             switch self {
             case .actorIdentity: return true
             default: return false
             }
         }
+
         var isUniqueNode: Bool {
             switch self {
             case .uniqueNode: return true
             default: return false
             }
         }
+
         var isUniqueNodeID: Bool {
             switch self {
             case .uniqueNodeID: return true

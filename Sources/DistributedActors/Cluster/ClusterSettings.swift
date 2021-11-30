@@ -44,6 +44,7 @@ public struct ClusterSettings {
         self.bindHost = host
         self.bindPort = port
     }
+
     public mutating func disable() {
         self.enabled = false
     }

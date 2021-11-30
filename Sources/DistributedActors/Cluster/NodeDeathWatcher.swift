@@ -43,13 +43,13 @@ internal final class NodeDeathWatcherInstance: NodeDeathWatcher {
     struct WatcherAndCallback: Hashable {
         /// Address of the local watcher which had issued this watch
         let watcherIdentity: AnyActorIdentity
-        let callback: @Sendable (UniqueNode) async -> ()
+        let callback: @Sendable(UniqueNode) async -> Void
 
         func hash(into hasher: inout Hasher) {
-            hasher.combine(watcherIdentity)
+            hasher.combine(self.watcherIdentity)
         }
 
-        static func ==(lhs: WatcherAndCallback, rhs: WatcherAndCallback) -> Bool {
+        static func == (lhs: WatcherAndCallback, rhs: WatcherAndCallback) -> Bool {
             lhs.watcherIdentity == rhs.watcherIdentity
         }
     }
@@ -87,9 +87,9 @@ internal final class NodeDeathWatcherInstance: NodeDeathWatcher {
     }
 
     func onActorWatched(
-            on remoteNode: UniqueNode,
-            by watcher: AnyActorIdentity,
-            whenTerminated nodeTerminatedFn: @escaping @Sendable (UniqueNode) async -> ()
+        on remoteNode: UniqueNode,
+        by watcher: AnyActorIdentity,
+        whenTerminated nodeTerminatedFn: @escaping @Sendable(UniqueNode) async -> Void
     ) {
         guard !self.nodeTombstones.contains(remoteNode) else {
             // the system the watcher is attempting to watch has terminated before the watch has been processed,
@@ -173,7 +173,7 @@ enum NodeDeathWatcherShell {
     /// it would be possible however to allow implementing the raw protocol by user actors if we ever see the need for it.
     internal enum Message: NonTransportableActorMessage {
         case remoteActorWatched(watcher: AddressableActorRef, remoteNode: UniqueNode)
-        case remoteDistributedActorWatched(remoteNode: UniqueNode, watcherIdentity: AnyActorIdentity, nodeTerminated: @Sendable (UniqueNode) async -> ())
+        case remoteDistributedActorWatched(remoteNode: UniqueNode, watcherIdentity: AnyActorIdentity, nodeTerminated: @Sendable(UniqueNode) async -> Void)
         case removeWatcher(watcherIdentity: AnyActorIdentity)
         case membershipSnapshot(Cluster.Membership)
         case membershipChange(Cluster.MembershipChange)

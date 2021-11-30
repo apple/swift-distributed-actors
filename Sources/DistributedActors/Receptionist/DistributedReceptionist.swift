@@ -28,7 +28,6 @@ import Logging
 public protocol DistributedReceptionist
 //        : Actor // FIXME(swift): ActorConformances cause us to crash here, will fix
 {
-
     /// Registers passed in distributed actor in the systems receptionist with given id.
     ///
     /// - Parameters:
@@ -36,22 +35,21 @@ public protocol DistributedReceptionist
     ///   - id: id used for the key identifier. E.g. when aiming to register all instances of "Sensor" in the same group,
     ///         the recommended id is "all/sensors".
     func register<Guest>(
-            _ guest: Guest,
-            with key: DistributedReception.Key<Guest>
-            // TODO(distributed): should gain a "retain (or not)" version, the receptionist can keep alive actors, but sometimes we don't want that, it depends
+        _ guest: Guest,
+        with key: DistributedReception.Key<Guest>
+        // TODO(distributed): should gain a "retain (or not)" version, the receptionist can keep alive actors, but sometimes we don't want that, it depends
     ) async where Guest: DistributedActor & __DistributedClusterActor
 
     /// Subscribe to changes in checked-in actors under given `key`.
     func subscribe<Guest>(to key: DistributedReception.Key<Guest>) async -> DistributedReception.GuestListing<Guest>
-            where Guest: DistributedActor & __DistributedClusterActor
+        where Guest: DistributedActor & __DistributedClusterActor
 
     /// Perform a *single* lookup for a distributed actor identified by the passed in `key`.
     ///
     /// - Parameters:
     ///   - key: selects which actors we are interested in.
     func lookup<Guest>(_ key: DistributedReception.Key<Guest>) async -> Set<Guest>
-            where Guest: DistributedActor & __DistributedClusterActor
-
+        where Guest: DistributedActor & __DistributedClusterActor
 }
 
 extension DistributedReception {
@@ -67,7 +65,7 @@ extension DistributedReception {
         }
 
         public func makeAsyncIterator() -> AsyncIterator {
-            AsyncIterator(receptionist: receptionist, key: key)
+            AsyncIterator(receptionist: self.receptionist, key: self.key)
         }
 
         public class AsyncIterator: AsyncIteratorProtocol {
@@ -85,7 +83,8 @@ extension DistributedReception {
                             case .enqueued:
                                 () // ok
                             }
-                    })
+                        }
+                    )
 
                     Task { // FIXME(swift): really would like for this to be send{} and not Task{}
                         await __secretlyKnownToBeLocal._subscribe(subscription: anySubscribe)
@@ -100,7 +99,7 @@ extension DistributedReception {
             }
 
             public func next() async -> Element? {
-                await underlying.next()
+                await self.underlying.next()
             }
         }
     }
@@ -128,10 +127,10 @@ internal struct VersionedRegistration: Hashable {
     }
 
     func hash(into hasher: inout Hasher) {
-        hasher.combine(actor)
+        hasher.combine(self.actor)
     }
 
-    static func ==(lhs: VersionedRegistration, rhs: VersionedRegistration) -> Bool {
+    static func == (lhs: VersionedRegistration, rhs: VersionedRegistration) -> Bool {
         if lhs.actor != rhs.actor {
             return false
         }
@@ -162,7 +161,7 @@ internal final class DistributedReceptionistStorage {
     func addRegistration<Guest>(sequenced: OpLog<ReceptionistOp>.SequencedOp,
                                 key: AnyDistributedReceptionKey,
                                 guest: Guest) -> Bool
-            where Guest: DistributedActor & __DistributedClusterActor {
+        where Guest: DistributedActor & __DistributedClusterActor {
         guard sequenced.op.isRegister else {
             fatalError("\(#function) can only be called with .register operations, was: \(sequenced)")
         }
@@ -181,7 +180,7 @@ internal final class DistributedReceptionistStorage {
     }
 
     func removeRegistration<Guest>(key: AnyDistributedReceptionKey, guest: Guest) -> Set<VersionedRegistration>?
-            where Guest: DistributedActor & __DistributedClusterActor {
+        where Guest: DistributedActor & __DistributedClusterActor {
         let address = guest.id._forceUnwrapActorAddress
 
         _ = self.removeFromKeyMappings(guest.asAnyDistributedActor)
@@ -320,7 +319,6 @@ internal final class DistributedReceptionistStorage {
     private func addGuestKeyMapping(identity: AnyActorIdentity, key: AnyDistributedReceptionKey) {
         self._identityToRegisteredKeys[identity, default: []].insert(key)
     }
-
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -331,15 +329,15 @@ internal final class AnyDistributedReceptionListingSubscription: Hashable, @unch
     let key: AnyDistributedReceptionKey
 
     /// Offer a new listing to the subscription stream. // FIXME: implement this by offering single elements (!!!)
-    private let onNext: @Sendable (AnyDistributedActor) -> Void
+    private let onNext: @Sendable(AnyDistributedActor) -> Void
 
     /// We very carefully only modify this from the owning actor (receptionist).
-    /// TODO: It would be lovely to be able to express this in the type system as "actor owned" or "actor local" to some actor instance.
+    // TODO: It would be lovely to be able to express this in the type system as "actor owned" or "actor local" to some actor instance.
     private var seenActorRegistrations: VersionVector
 
     init(subscriptionID: ObjectIdentifier,
          key: AnyDistributedReceptionKey,
-         onNext: @escaping @Sendable (AnyDistributedActor) -> Void) {
+         onNext: @escaping @Sendable(AnyDistributedActor) -> Void) {
         self.subscriptionID = subscriptionID
         self.key = key
         self.onNext = onNext
@@ -360,10 +358,10 @@ internal final class AnyDistributedReceptionListingSubscription: Hashable, @unch
     /// to emit the value. If it didn't advance the local "seen" version vector, it means we've already
     /// seen this actor in this specific stream, and don't need to emit it again.
     func tryOffer(registration: VersionedRegistration) {
-        let oldSeenRegistrations = seenActorRegistrations
-        seenActorRegistrations.merge(other: registration.version)
+        let oldSeenRegistrations = self.seenActorRegistrations
+        self.seenActorRegistrations.merge(other: registration.version)
 
-        switch seenActorRegistrations.compareTo(oldSeenRegistrations) {
+        switch self.seenActorRegistrations.compareTo(oldSeenRegistrations) {
         case .same:
             // the seen vector was unaffected by the merge, which means that the
             // incoming registration version was already seen, and thus we don't need to emit it again
@@ -371,21 +369,20 @@ internal final class AnyDistributedReceptionListingSubscription: Hashable, @unch
         case .happenedAfter:
             // the incoming registration has not yet been seen before,
             // which means that we should emit the actor to the stream.
-            onNext(registration.actor)
-        case  .concurrent:
+            self.onNext(registration.actor)
+        case .concurrent:
             fatalError("""
-                       It should not be possible for a version vector to be concurrent with a PAST version of itself before the merge
-                          Previously: \(oldSeenRegistrations)
-                          Current: \(seenActorRegistrations)
-                       """)
+            It should not be possible for a version vector to be concurrent with a PAST version of itself before the merge
+               Previously: \(oldSeenRegistrations)
+               Current: \(self.seenActorRegistrations)
+            """)
         case .happenedBefore:
             fatalError("""
-                       It should not be possible for a *merged* version vector to be in the PAST as compared with itself before the merge
-                          Previously: \(oldSeenRegistrations)
-                          Current: \(seenActorRegistrations)
-                       """)
+            It should not be possible for a *merged* version vector to be in the PAST as compared with itself before the merge
+               Previously: \(oldSeenRegistrations)
+               Current: \(self.seenActorRegistrations)
+            """)
         }
-
     }
 
     static func == (lhs: AnyDistributedReceptionListingSubscription, rhs: AnyDistributedReceptionListingSubscription) -> Bool {

@@ -136,7 +136,7 @@ extension ActorSystem {
 public final class DeadLetterOffice {
     let _address: ActorAddress
     let log: Logger
-     weak var system: ActorSystem?
+    weak var system: ActorSystem?
     let isShuttingDown: () -> Bool
 
     init(_ log: Logger, address: ActorAddress, system: ActorSystem?) {

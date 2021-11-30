@@ -41,5 +41,4 @@ final class ActorSingletonPluginTests: ActorSystemXCTestCase {
         proxyRef.tell(.greet(name: "Charlene", replyTo: replyProbe.ref))
         try replyProbe.expectMessage("Hello Charlene!")
     }
-
 }

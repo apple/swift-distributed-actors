@@ -40,7 +40,6 @@ extension DistributedReception.Key {
     fileprivate static var unknown: DistributedReception.Key<Forwarder> {
         "unknown"
     }
-
 }
 
 final class DistributedReceptionistTests: ActorSystemXCTestCase {
@@ -239,5 +238,4 @@ final class DistributedReceptionistTests: ActorSystemXCTestCase {
 //        let listing1 = try lookupProbe.expectMessage()
 //        listing1.count.shouldEqual(3)
 //    }
-
 }

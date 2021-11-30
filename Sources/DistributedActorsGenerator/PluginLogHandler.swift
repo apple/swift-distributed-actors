@@ -26,7 +26,6 @@ import WASILibc
 #endif
 
 struct PluginLogHandler: LogHandler {
-
     private let label: String
 
     public var logLevel: Logger.Level = .info

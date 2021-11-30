@@ -57,7 +57,7 @@ struct SamplePrettyLogHandler: LogHandler {
         self.label = label
     }
 
-    /// TODO: this implementation of getting a nice printout is a bit messy, but good enough for our sample apps
+    // TODO: this implementation of getting a nice printout is a bit messy, but good enough for our sample apps
     public func log(level: Logger.Level,
                     message: Logger.Message,
                     metadata: Logger.Metadata?,
@@ -65,7 +65,6 @@ struct SamplePrettyLogHandler: LogHandler {
                     file: String,
                     function: String,
                     line: UInt) {
-
         var metadataString: String = ""
         var nodeInfo: String = ""
 
@@ -89,13 +88,13 @@ struct SamplePrettyLogHandler: LogHandler {
                 var allString = "\n// \"\(key)\": \(valueDescription)"
                 if allString.contains("\n") {
                     allString = String(
-                            allString.split(separator: "\n").map { valueLine in
-                                if valueLine.starts(with: "// ") {
-                                    return "\(valueLine)\n"
-                                } else {
-                                    return "// \(valueLine)\n"
-                                }
-                            }.joined(separator: "")
+                        allString.split(separator: "\n").map { valueLine in
+                            if valueLine.starts(with: "// ") {
+                                return "\(valueLine)\n"
+                            } else {
+                                return "// \(valueLine)\n"
+                            }
+                        }.joined(separator: "")
                     )
                 }
                 metadataString.append(allString)
@@ -103,12 +102,10 @@ struct SamplePrettyLogHandler: LogHandler {
             metadataString = String(metadataString.dropLast(1))
         }
 
-
         let file = file.split(separator: "/").last ?? ""
         let line = line
         print("\(self.timestamp()) [\(file):\(line)] [\(nodeInfo)\(Self.CONSOLE_BOLD)\(label)\(Self.CONSOLE_RESET)] [\(level)] \(message)\(metadataString)")
     }
-
 
     internal func prettyPrint(metadata: Logger.MetadataValue) -> String {
         var valueDescription = ""

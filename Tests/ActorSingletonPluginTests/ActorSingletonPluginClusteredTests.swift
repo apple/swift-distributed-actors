@@ -290,7 +290,7 @@ struct GreeterSingleton {
     }
 
     var behavior: _Behavior<Message> {
-        .receive { context, message in
+        .receive { _, message in
             switch message {
             case .greet(let name, let replyTo):
                 replyTo.tell("\(self.greeting) \(name)!")

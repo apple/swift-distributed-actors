@@ -414,7 +414,7 @@ extension DistributedMessageDecl {
     func renderDynamicFunctionReplacementAttr(printer: inout CodePrinter) {
         var replacedFuncIdent = "_remote_\(self.name)"
         replacedFuncIdent += "("
-        replacedFuncIdent += renderFuncParams(forFuncIdentifier: true)
+        replacedFuncIdent += self.renderFuncParams(forFuncIdentifier: true)
         replacedFuncIdent += ")"
         printer.print("  @_dynamicReplacement(for:\(replacedFuncIdent))")
     }
@@ -486,7 +486,7 @@ extension DistributedMessageDecl {
             }
         }.joined(separator: forFuncIdentifier ? ":" : ", ")
 
-        if forFuncIdentifier && !self.params.isEmpty {
+        if forFuncIdentifier, !self.params.isEmpty {
             result += ":"
         }
         return result
@@ -553,7 +553,6 @@ extension DistributedMessageDecl {
 
     /// Implements the generated func _remote_method(...) by passing the parameters as a message, by telling or asking.
     func renderTellOrAskMessage(boxWith boxProtocol: DistributedActorDecl? = nil, printer: inout CodePrinter) {
-
         // TODO: make this nicer... the ID could serve as the ref
         printer.print("guard let system = self.actorTransport as? ActorSystem else {")
         printer.indent()
@@ -642,7 +641,7 @@ extension DistributedMessageDecl.ReturnType {
              .nioEventLoopFuture(let t),
              .actorReply(let t),
              .askResponse(let t),
-            .type(let t):
+             .type(let t):
             return " async throws -> \(t)"
         }
     }
@@ -709,7 +708,6 @@ extension DistributedMessageDecl.ReturnType {
 }
 
 extension DistributedFuncDecl {
-
     func renderRemoteImplFunc(_ actor: DistributedActorDecl, printer: inout CodePrinter) throws {
         self.message.renderFunc(printer: &printer, actor: actor) { printer in
             message.renderTellOrAskMessage(boxWith: nil, printer: &printer)

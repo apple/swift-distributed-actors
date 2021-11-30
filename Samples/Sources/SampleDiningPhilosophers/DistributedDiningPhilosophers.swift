@@ -15,7 +15,6 @@
 import DistributedActors
 
 final class DistributedDiningPhilosophers {
-
     private var forks: [Fork] = []
     private var philosophers: [Philosopher] = []
 
@@ -43,12 +42,11 @@ final class DistributedDiningPhilosophers {
         systemA.cluster.join(node: systemC.settings.cluster.node)
         systemC.cluster.join(node: systemB.settings.cluster.node)
 
-
         print("waiting for cluster to form...")
         while !(
-                systemA.cluster.membershipSnapshot.count(withStatus: .up) == systems.count &&
-                        systemB.cluster.membershipSnapshot.count(withStatus: .up) == systems.count &&
-                        systemC.cluster.membershipSnapshot.count(withStatus: .up) == systems.count) {
+            systemA.cluster.membershipSnapshot.count(withStatus: .up) == systems.count &&
+                systemB.cluster.membershipSnapshot.count(withStatus: .up) == systems.count &&
+                systemC.cluster.membershipSnapshot.count(withStatus: .up) == systems.count) {
             let nanosInSecond: UInt64 = 1_000_000_000
             try await Task.sleep(nanoseconds: 1 * nanosInSecond)
         }
@@ -64,7 +62,7 @@ final class DistributedDiningPhilosophers {
         // Node C
         let fork4 = Fork(name: "fork-4", transport: systemC)
         let fork5 = Fork(name: "fork-5", transport: systemC)
-        self.forks = [fork1, fork2, fork3 , fork4, fork5]
+        self.forks = [fork1, fork2, fork3, fork4, fork5]
 
         // 5 philosophers, sitting in a circle, with the forks between them:
         self.philosophers = [
@@ -79,6 +77,5 @@ final class DistributedDiningPhilosophers {
         ]
 
         try systemA.park(atMost: time)
-
     }
 }

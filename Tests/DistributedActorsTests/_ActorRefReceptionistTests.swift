@@ -58,7 +58,6 @@ final class _ActorRefReceptionistTests: ActorSystemXCTestCase {
         try probe.expectMessagesInAnyOrder(["forwardedA:test", "forwardedB:test"])
     }
 
-
     func test_receptionist_shouldRespondWithEmptyRefForUnknownKey() throws {
         let receptionist = SystemReceptionist(ref: try system._spawn("receptionist", self.receptionistBehavior))
         let lookupProbe: ActorTestProbe<Reception.Listing<_ActorRef<String>>> = self.testKit.makeTestProbe()

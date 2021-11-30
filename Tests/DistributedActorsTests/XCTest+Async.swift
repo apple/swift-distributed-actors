@@ -18,10 +18,9 @@ import XCTest
 
 import _Distributed
 
-fileprivate let defaultRunAndBlockTimeout: TimeAmount = .seconds(60)
+private let defaultRunAndBlockTimeout: TimeAmount = .seconds(60)
 
 extension XCTestCase {
-
     // FIXME(distributed): remove once XCTest supports async functions on Linux
     func runAsyncAndBlock(
         timeout: TimeAmount = defaultRunAndBlockTimeout,

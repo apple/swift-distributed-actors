@@ -12,10 +12,10 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Atomics
 @testable import DistributedActors
 import DistributedActorsConcurrencyHelpers
 import DistributedActorsTestKit
-import Atomics
 import Foundation
 import XCTest
 

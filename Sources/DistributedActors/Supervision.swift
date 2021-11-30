@@ -440,15 +440,17 @@ internal class Supervisor<Message: ActorMessage> {
     internal final func interpretSupervised(target: _Behavior<Message>, context: _ActorContext<Message>, closure: @escaping () throws -> _Behavior<Message>) throws -> _Behavior<Message> {
         traceLog_Supervision("CALLING CLOSURE: \(target)")
         return try self.interpretSupervised0(
-                target: target, context: context, processingAction: .continuation(closure))
+            target: target, context: context, processingAction: .continuation(closure)
+        )
     }
 
     @inlinable
     internal final func startSupervised(target: _Behavior<Message>, context: _ActorContext<Message>) throws -> _Behavior<Message> {
         traceLog_Supervision("CALLING START")
         return try self.interpretSupervised0(
-                target: target, context: context,
-                processingAction: .start)
+            target: target, context: context,
+            processingAction: .start
+        )
     }
 
     /// Implements all directives, which supervisor implementations may yield to instruct how we should (if at all) restart an actor.
@@ -456,8 +458,9 @@ internal class Supervisor<Message: ActorMessage> {
     @inline(__always)
     final func interpretSupervised0(target: _Behavior<Message>, context: _ActorContext<Message>, processingAction: ProcessingAction<Message>) throws -> _Behavior<Message> {
         try self.interpretSupervised0(
-                target: target, context: context,
-                processingAction: processingAction, nFoldFailureDepth: 1) // 1 since we already have "one failure"
+            target: target, context: context,
+            processingAction: processingAction, nFoldFailureDepth: 1
+        ) // 1 since we already have "one failure"
     }
 
     @inlinable

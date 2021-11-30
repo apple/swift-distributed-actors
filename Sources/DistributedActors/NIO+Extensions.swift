@@ -87,4 +87,3 @@ internal extension ByteBuffer {
             "\(formatBytes(bytes: buf.readBytes(length: buf.readableBytes)!))" + suffix
     }
 }
-

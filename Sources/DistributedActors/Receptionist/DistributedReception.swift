@@ -31,8 +31,8 @@ extension DistributedReception {
     /// actors which do not opt-into discovery by registering themselves WILL NOT be discovered using this, or any other, key).
     // FIXME(distributed): __DistributedClusterActor must go away, we don't need to be aware of `Message`
     public struct Key<Guest: DistributedActor & __DistributedClusterActor>: Codable, Sendable,
-            ExpressibleByStringLiteral, ExpressibleByStringInterpolation,
-            CustomStringConvertible {
+        ExpressibleByStringLiteral, ExpressibleByStringInterpolation,
+        CustomStringConvertible {
         public let id: String
         public var guestType: Any.Type {
             Guest.self
@@ -52,7 +52,7 @@ extension DistributedReception {
         }
 
         internal var asAnyKey: AnyDistributedReceptionKey {
-             AnyDistributedReceptionKey(self)
+            AnyDistributedReceptionKey(self)
         }
 
         public var description: String {
@@ -133,11 +133,10 @@ struct AnyDistributedReceptionKey: Sendable, Codable, Hashable, CustomStringConv
     }
 }
 
-
 //// ==== ----------------------------------------------------------------------------------------------------------------
 //// MARK: DistributedReception Listing
 //
-//extension DistributedReception {
+// extension DistributedReception {
 //    /// Response to `Lookup` and `Subscribe` requests.
 //    /// A listing MAY be empty.
 //    public struct Listing<Guest: _ReceptionistGuest>: Equatable, CustomStringConvertible {
@@ -168,9 +167,9 @@ struct AnyDistributedReceptionKey: Sendable, Codable, Hashable, CustomStringConv
 //            lhs.underlying == rhs.underlying
 //        }
 //    }
-//}
+// }
 
-//extension DistributedReception.Listing where Guest: DistributedActor {
+// extension DistributedReception.Listing where Guest: DistributedActor {
 //    /// Retrieve all listed actor references, mapping them to their appropriate type.
 //    /// Note that this operation is lazy and has to iterate over all the actors when performing the
 //    /// iteration.
@@ -210,38 +209,38 @@ struct AnyDistributedReceptionKey: Sendable, Codable, Hashable, CustomStringConv
 //            self.key._unsafeAsActorRef($0)
 //        }
 //    }
-//}
+// }
 //
-//protocol AnyReceptionistListing: ActorMessage {
+// protocol AnyReceptionistListing: ActorMessage {
 //    // For comparing if two listings are equal
 //    var refsAsAnyHashable: AnyHashable { get }
-//}
+// }
 //
-//extension AnyReceptionistListing {
+// extension AnyReceptionistListing {
 //    func unsafeUnwrapAs<T: AnyReceptionistListing>(_ listingType: T.Type) -> T {
 //        guard let unwrapped = self as? T else {
 //            fatalError("Type mismatch, expected: [\(T.self)] got [\(type(of: self as Any))]")
 //        }
 //        return unwrapped
 //    }
-//}
+// }
 //
-//protocol ReceptionistListing: AnyReceptionistListing, Equatable {
+// protocol ReceptionistListing: AnyReceptionistListing, Equatable {
 //    associatedtype Message: ActorMessage
 //
 //    var refs: Set<_ActorRef<Message>> { get }
-//}
+// }
 //
-//extension ReceptionistListing {
+// extension ReceptionistListing {
 //    var refsAsAnyHashable: AnyHashable {
 //        AnyHashable(self.refs)
 //    }
-//}
+// }
 
 //// ==== ----------------------------------------------------------------------------------------------------------------
 //// MARK: DistributedReception Registered
 //
-//extension DistributedReception {
+// extension DistributedReception {
 //    /// Response to a `Register` message
 //    public final class Registered<Guest: _ReceptionistGuest>: NonTransportableActorMessage, CustomStringConvertible {
 //        internal let _guest: Guest
@@ -256,18 +255,18 @@ struct AnyDistributedReceptionKey: Sendable, Codable, Hashable, CustomStringConv
 //            "DistributedReception.Registered(guest: \(self._guest), key: \(self.key))"
 //        }
 //    }
-//}
+// }
 //
-//extension DistributedReception.Registered where Guest: _ReceivesMessages {
+// extension DistributedReception.Registered where Guest: _ReceivesMessages {
 //    internal var ref: _ActorRef<Guest.Message> {
 //        self._guest._ref
 //    }
-//}
+// }
 //
-//extension DistributedReception.Registered where Guest: DistributedActor {
+// extension DistributedReception.Registered where Guest: DistributedActor {
 //    public var actor: Guest {
 //        let system = self._guest.actorTransport._forceUnwrapActorSystem
 //
 //        return try! Guest.resolve(self._guest._ref.asAddressable.asAnyActorIdentity, using: system) // FIXME: cleanup these APIs, should never need throws, resolve earlier
 //    }
-//}
+// }

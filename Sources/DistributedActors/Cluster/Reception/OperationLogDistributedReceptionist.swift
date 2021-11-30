@@ -85,7 +85,7 @@ import Logging
 /// number observations.
 ///
 /// #### Optimization: "Blip" Registration Replication Avoidance
-/// TODO: This is done "automatically" once we do log compaction
+// TODO: This is done "automatically" once we do log compaction
 /// We define a "blip registration" as a registration of an actor, which immediately (or very quickly) after registering
 /// terminates. It can be argued it is NOT useful to replicate the very existence of such short lived actor to other peers,
 /// as even if they'd act on the `register`, it'd be immediately followed by `remove` and/or a termination signal.
@@ -237,7 +237,7 @@ distributed actor OpLogDistributedReceptionist: DistributedReceptionist, CustomS
     static var props: _Props {
         var ps = _Props()
         ps._knownActorName = ActorPath.distributedActorReceptionist.name
-        ps._systemActor =  true
+        ps._systemActor = true
         ps._wellKnown = true
         return ps
     }
@@ -256,7 +256,7 @@ distributed actor OpLogDistributedReceptionist: DistributedReceptionist, CustomS
         self.peerReceptionistReplayers = [:]
 
         self.nextPeriodicAckPermittedDeadline = [:]
-        
+
         self.observedSequenceNrs = .empty
         self.appliedSequenceNrs = .empty
 
@@ -291,14 +291,12 @@ distributed actor OpLogDistributedReceptionist: DistributedReceptionist, CustomS
     nonisolated var description: String {
         "\(Self.self)(\(id.underlying))"
     }
-
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Receptionist API impl
 
 extension OpLogDistributedReceptionist: LifecycleWatch {
-
     func register<Guest>(
         _ guest: Guest,
         with key: DistributedReception.Key<Guest>
@@ -328,7 +326,6 @@ extension OpLogDistributedReceptionist: LifecycleWatch {
 
             watchTermination(of: guest) { onActorTerminated(identity: $0) }
 
-
             log.debug(
                 "Registered [\(address)] for key [\(key)]",
                 metadata: [
@@ -355,7 +352,7 @@ extension OpLogDistributedReceptionist: LifecycleWatch {
     func subscribe<Guest>(
         to key: DistributedReception.Key<Guest>
     ) async -> DistributedReception.GuestListing<Guest>
-            where Guest: DistributedActor & __DistributedClusterActor {
+        where Guest: DistributedActor & __DistributedClusterActor {
         DistributedReception.GuestListing<Guest>(receptionist: self, key: key)
     }
 
@@ -365,7 +362,7 @@ extension OpLogDistributedReceptionist: LifecycleWatch {
         if self.storage.addSubscription(key: subscription.key, subscription: subscription) {
             // self.instrumentation.actorSubscribed(key: anyKey, address: self.id._unwrapActorAddress) // FIXME: remove the address parameter, it does not make sense anymore
             log.trace("Subscribed async sequence to \(subscription.key) actors", metadata: [
-                "subscription/key": "\(subscription.key)"
+                "subscription/key": "\(subscription.key)",
             ])
         }
     }
@@ -379,7 +376,6 @@ extension OpLogDistributedReceptionist: LifecycleWatch {
         self.storage.removeSubscription(key: subscription.key, subscription: subscription)
     }
 
-
     func lookup<Guest>(_ key: DistributedReception.Key<Guest>) async -> Set<Guest>
         where Guest: DistributedActor & __DistributedClusterActor {
         let registrations = self.storage.registrations(forKey: key.asAnyKey) ?? []
@@ -390,10 +386,10 @@ extension OpLogDistributedReceptionist: LifecycleWatch {
         })
 
         assert(guests.count == registrations.count, """
-                                                    Was unable to map some registrations to \(Guest.self). 
-                                                      Registrations: \(registrations)
-                                                      Guests:        \(guests)
-                                                    """)
+        Was unable to map some registrations to \(Guest.self). 
+          Registrations: \(registrations)
+          Guests:        \(guests)
+        """)
         return guests
     }
 }
@@ -457,8 +453,6 @@ extension OpLogDistributedReceptionist {
 // MARK: Op replication
 
 extension OpLogDistributedReceptionist {
-
-
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Handling Ops
 
@@ -482,12 +476,12 @@ extension OpLogDistributedReceptionist {
         })
 
         log.trace(
-                "Received \(push.sequencedOps.count) ops",
-                metadata: [
-                    "receptionist/peer": "\(push.peer.id.underlying)",
-                    "receptionist/lastKnownSeqNrAtPeer": "\(lastAppliedSeqNrAtPeer)",
-                    "receptionist/opsToApply": Logger.Metadata.Value.array(opsToApply.map { Logger.Metadata.Value.string("\($0)") }),
-                ]
+            "Received \(push.sequencedOps.count) ops",
+            metadata: [
+                "receptionist/peer": "\(push.peer.id.underlying)",
+                "receptionist/lastKnownSeqNrAtPeer": "\(lastAppliedSeqNrAtPeer)",
+                "receptionist/opsToApply": Logger.Metadata.Value.array(opsToApply.map { Logger.Metadata.Value.string("\($0)") }),
+            ]
         )
 
         /// Collect which keys have been updated during this push, so we can publish updated listings for them.
@@ -510,7 +504,7 @@ extension OpLogDistributedReceptionist {
         // we will do so below in any case, regardless if we are behind or not; See (4) for ACKing the peer
         for replica in push.observedSeqNrs.replicaIDs
             where replica != peerReplicaId && replica != myselfReplicaID &&
-                    self.observedSequenceNrs[replica] < push.observedSeqNrs[replica] {
+            self.observedSequenceNrs[replica] < push.observedSeqNrs[replica] {
             switch replica.storage {
             case .actorIdentity(let identity):
                 self.sendAckOps(receptionistIdentity: identity)
@@ -586,8 +580,10 @@ extension OpLogDistributedReceptionist {
         maybeReceptionistRef: ReceptionistRef? = nil
     ) {
         let receptionistAddress = receptionistIdentity._forceUnwrapActorAddress
-        assert(maybeReceptionistRef == nil || maybeReceptionistRef?.id._forceUnwrapActorAddress == receptionistAddress,
-                "Provided receptionistRef does NOT match passed Address, this is a bug in receptionist.")
+        assert(
+            maybeReceptionistRef == nil || maybeReceptionistRef?.id._forceUnwrapActorAddress == receptionistAddress,
+            "Provided receptionistRef does NOT match passed Address, this is a bug in receptionist."
+        )
         guard case .remote = receptionistAddress._location else {
             return // this would mean we tried to pull from a "local" receptionist, bail out
         }
@@ -609,13 +605,12 @@ extension OpLogDistributedReceptionist {
                 return fatalErrorBacktrace("Unable to resolve receptionist: \(receptionistIdentity)")
             }
         }
-            // peerReceptionistRef = system._resolve(context: .init(address: receptionistAddress, system: system))
+        // peerReceptionistRef = system._resolve(context: .init(address: receptionistAddress, system: system))
 
         // Get the latest seqNr of the op that we have applied to our state
         // If we never applied anything, this automatically is `0`, and by sending an `ack(0)`,
         // we effectively initiate the "first pull"
         let latestAppliedSeqNrFromPeer = self.appliedSequenceNrs[.actorIdentity(receptionistIdentity)]
-
 
 //        let ack = AckOps(
 //            appliedUntil: latestAppliedSeqNrFromPeer,
@@ -689,7 +684,6 @@ extension OpLogDistributedReceptionist {
         }
     }
 
-
     /// Receive an Ack and potentially continue streaming ops to peer if still pending operations available.
     distributed func ackOps(until: UInt64, by peer: ReceptionistRef) {
         guard var replayer = self.peerReceptionistReplayers[peer] else {
@@ -716,7 +710,7 @@ extension OpLogDistributedReceptionist {
 
         guard let replayer = self.peerReceptionistReplayers[peer] else {
             log.trace("Attempting to continue replay but no replayer available for it, ignoring", metadata: [
-                "receptionist/peer": "\(peer.id.underlying)"
+                "receptionist/peer": "\(peer.id.underlying)",
             ])
             return
         }
@@ -778,7 +772,6 @@ extension OpLogDistributedReceptionist {
     }
 }
 
-
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Termination handling
 
@@ -791,10 +784,10 @@ extension OpLogDistributedReceptionist {
 
         if address == ActorAddress._receptionist(on: address.uniqueNode, for: .distributedActors) {
             log.debug("Watched receptionist terminated: \(identity)")
-            receptionistTerminated(identity: identity)
+            self.receptionistTerminated(identity: identity)
         } else {
             log.debug("Watched actor terminated: \(identity.underlying)")
-            actorTerminated(identity: identity)
+            self.actorTerminated(identity: identity)
         }
     }
 
@@ -811,8 +804,8 @@ extension OpLogDistributedReceptionist {
         let wasRegisteredWithKeys = self.storage.removeFromKeyMappings(equalityHackRef.asAnyDistributedActor)
 
         for key in wasRegisteredWithKeys.registeredUnderKeys {
-            addOperation(.remove(key: key, identity: identity))
-            publishListings(forKey: key)
+            self.addOperation(.remove(key: key, identity: identity))
+            self.publishListings(forKey: key)
         }
 
         log.trace("Actor terminated \(identity), and removed from receptionist.")
@@ -914,7 +907,6 @@ extension OpLogDistributedReceptionist {
 // MARK: Extra Messages
 
 extension OpLogDistributedReceptionist {
-
     /// Confirms that the remote peer receptionist has received Ops up until the given element,
     /// allows us to push more elements
     final class PushOps: Receptionist.Message {
@@ -934,8 +926,10 @@ extension OpLogDistributedReceptionist {
         init(peer: OpLogDistributedReceptionist,
              observedSeqNrs: VersionVector,
              sequencedOps: [OpLog<ReceptionistOp>.SequencedOp]) {
-            precondition(observedSeqNrs.replicaIDs.allSatisfy { $0.storage.isActorIdentity },
-                    "All observed IDs must be keyed with actor identity replica IDs (of the receptionists), was: \(observedSeqNrs)")
+            precondition(
+                observedSeqNrs.replicaIDs.allSatisfy { $0.storage.isActorIdentity },
+                "All observed IDs must be keyed with actor identity replica IDs (of the receptionists), was: \(observedSeqNrs)"
+            )
             self.peer = peer
             self.observedSeqNrs = observedSeqNrs
             self.sequencedOps = sequencedOps
@@ -1040,7 +1034,7 @@ extension OpLogDistributedReceptionist {
 //// ==== ----------------------------------------------------------------------------------------------------------------
 //// MARK: Tracelog
 //
-//extension OpLogDistributedReceptionist {
+// extension OpLogDistributedReceptionist {
 //    /// Optional "dump all messages" logging.
 //    ///
 //    /// Enabled by `Settings.traceLogLevel` or `-DSACT_TRACELOG_RECEPTIONIST`
@@ -1076,4 +1070,4 @@ extension OpLogDistributedReceptionist {
 //            }
 //        }
 //    }
-//}
+// }

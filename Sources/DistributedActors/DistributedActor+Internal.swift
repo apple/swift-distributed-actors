@@ -22,10 +22,10 @@ extension AnyActorIdentity {
     var _forceUnwrapActorAddress: ActorAddress {
         guard let address = self._unwrapActorAddress else {
             fatalError("""
-                       Cannot unwrap \(ActorAddress.self) from \(Self.self). 
-                       Cluster currently does not support any other ActorIdentity types.
-                       Underlying type was: \(type(of: self.underlying))
-                       """)
+            Cannot unwrap \(ActorAddress.self) from \(Self.self). 
+            Cluster currently does not support any other ActorIdentity types.
+            Underlying type was: \(type(of: self.underlying))
+            """)
         }
 
         return address
@@ -40,9 +40,9 @@ extension ActorTransport {
     var _forceUnwrapActorSystem: ActorSystem {
         guard let system = self._unwrapActorSystem else {
             fatalError("""
-                       Cannot unwrap \(ActorSystem.self) from \(Self.self). 
-                       Cluster does not support mixing transports. Instance was: \(self) 
-                       """)
+            Cannot unwrap \(ActorSystem.self) from \(Self.self). 
+            Cluster does not support mixing transports. Instance was: \(self) 
+            """)
         }
 
         return system
@@ -64,16 +64,16 @@ struct AnyDistributedActor: Sendable, Hashable {
 
     @usableFromInline
     var id: AnyActorIdentity {
-        underlying.id
+        self.underlying.id
     }
 
     @usableFromInline
     var actorTransport: ActorTransport {
-        underlying.actorTransport
+        self.underlying.actorTransport
     }
 
     @usableFromInline
-    func `force`<T: DistributedActor>(as _: T.Type) -> T {
+    func force<T: DistributedActor>(as _: T.Type) -> T {
 //        if let cast = underlying as? T {
 //            return cast
 //        }
@@ -83,16 +83,16 @@ struct AnyDistributedActor: Sendable, Hashable {
             return resolved
         }
 
-        return fatalErrorBacktrace("Failed to cast [\(underlying)]\(reflecting: type(of: underlying)) or resolve \(underlying.id) as \(reflecting: T.self)")
+        return fatalErrorBacktrace("Failed to cast [\(self.underlying)]\(reflecting: type(of: self.underlying)) or resolve \(self.underlying.id) as \(reflecting: T.self)")
     }
 
     @usableFromInline
     func hash(into hasher: inout Hasher) {
-        underlying.id.hash(into: &hasher)
+        self.underlying.id.hash(into: &hasher)
     }
 
     @usableFromInline
-    static func ==(lhs: AnyDistributedActor, rhs: AnyDistributedActor) -> Bool {
+    static func == (lhs: AnyDistributedActor, rhs: AnyDistributedActor) -> Bool {
         lhs.id == rhs.id
     }
 }
@@ -107,4 +107,3 @@ distributed actor StubDistributedActor {
     // TODO: this is just to prevent a DI crash because of enums without cases and Codable
     distributed func _noop() {}
 }
-

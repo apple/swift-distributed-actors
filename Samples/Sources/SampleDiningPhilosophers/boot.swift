@@ -13,8 +13,8 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
-import NIO
 import Logging
+import NIO
 
 /*
  * Swift Distributed Actors implementation of the classic "Dining Philosophers" problem.
@@ -28,22 +28,22 @@ import Logging
  */
 
 @main struct Main {
-  static func main() async {
-    print("===-----------------------------------------------------===")
-    print("|            Dining Philosophers Sample App               |")
-    print("|                                                         |")
-    print("| USAGE: swift run SampleDiningPhilosophers [dist]        |")
-    print("===-----------------------------------------------------===")
+    static func main() async {
+        print("===-----------------------------------------------------===")
+        print("|            Dining Philosophers Sample App               |")
+        print("|                                                         |")
+        print("| USAGE: swift run SampleDiningPhilosophers [dist]        |")
+        print("===-----------------------------------------------------===")
 
-    LoggingSystem.bootstrap(SamplePrettyLogHandler.init)
+        LoggingSystem.bootstrap(SamplePrettyLogHandler.init)
 
-    let time = TimeAmount.seconds(20)
+        let time = TimeAmount.seconds(20)
 
-    switch CommandLine.arguments.dropFirst().first {
-    case "dist":
-      try! await DistributedDiningPhilosophers().run(for: time)
-    default:
-      try! DiningPhilosophers().run(for: time)
+        switch CommandLine.arguments.dropFirst().first {
+        case "dist":
+            try! await DistributedDiningPhilosophers().run(for: time)
+        default:
+            try! DiningPhilosophers().run(for: time)
+        }
     }
-  }
 }

@@ -18,7 +18,6 @@ import Logging
 ///
 /// Downing strategies can focus on inspecting the membership and issuing timers if needed.
 public protocol DowningStrategy {
-
     /// Invoked whenever the cluster emits an event.
     ///
     /// - Parameter event: cluster event that just ocurred

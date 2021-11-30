@@ -107,7 +107,7 @@ distributed actor Philosopher: CustomStringConvertible {
         }
         Task {
             do {
-            try await self.rightFork.putBack()
+                try await self.rightFork.putBack()
             } catch {
                 self.log.warning("Failed putting back fork \(leftFork): \(error)")
             }
@@ -162,6 +162,7 @@ extension TimerKey {
     static let becomeHungry: Self = "become-hungry"
     static let finishEating: Self = "finish-eating"
 }
+
 extension Philosopher {
     private enum State: Equatable {
         case thinking

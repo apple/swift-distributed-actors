@@ -12,9 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Atomics
 import DistributedActorsConcurrencyHelpers
 import Foundation
-import Atomics
 
 // TODO: Discuss naming of `Worker`
 private final class Worker {

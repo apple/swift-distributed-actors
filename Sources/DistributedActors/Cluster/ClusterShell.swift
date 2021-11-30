@@ -234,7 +234,7 @@ internal class ClusterShell {
 
     private var _ref: ClusterShell.Ref?
     var ref: ClusterShell.Ref {
-        refLock.lock()
+        self.refLock.lock()
         defer { refLock.unlock() }
 
         // since this is initiated during system startup, nil should never happen

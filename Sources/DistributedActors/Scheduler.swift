@@ -12,9 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Atomics
 import Dispatch
 import DistributedActorsConcurrencyHelpers
-import Atomics
 
 @usableFromInline
 protocol Cancelable {
@@ -41,10 +41,10 @@ internal protocol Scheduler: Sendable {
 final class FlagCancelable: Cancelable, @unchecked Sendable {
     private let flag: ManagedAtomic<Bool> = .init(false)
 
-    deinit { 
+    deinit {
 //        self.flag.destroy()
     }
-    
+
     func cancel() {
         _ = self.flag.compareExchange(expected: false, desired: true, ordering: .relaxed)
     }
@@ -71,7 +71,7 @@ extension DispatchQueue: Scheduler, @unchecked Sendable {
     }
 
     func scheduleOnceAsync(delay: TimeAmount, _ f: @Sendable @escaping () async -> Void) -> Cancelable {
-        let workItem = DispatchWorkItem { () -> () in
+        let workItem = DispatchWorkItem { () -> Void in
             Task {
                 await f()
             }

@@ -36,7 +36,6 @@ public protocol __DistributedClusterActor: __AnyDistributedClusterActor {
 }
 
 extension __DistributedClusterActor {
-
     // FIXME(distributed): this is not enough since we can't get the Message associated type protocol by casting...
     public static func _spawn(instance: Self, on system: ActorSystem) -> _ActorRef<Message> {
         let behavior = makeBehavior(instance: instance)
