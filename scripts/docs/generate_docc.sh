@@ -51,7 +51,7 @@ declare -r docc_render_source_path="$root_path/.build/swift-docc-render"
 
 export TOOLCHAIN=/Library/Developer/Toolchains/swift-DEVELOPMENT-SNAPSHOT-2021-11-20-a.xctoolchain
 
-$TOOLCHAIN/docc
+ls $TOOLCHAIN/usr/bin/docc
 
 # Build documentation
 
