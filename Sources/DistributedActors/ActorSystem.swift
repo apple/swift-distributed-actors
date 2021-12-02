@@ -112,8 +112,13 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
     }
 
     // initialized during startup
-    // TODO: Use ManagedAtomicLazyReference to store this
-    internal var _cluster: ClusterShell?
+    private let _clusterStore: ManagedAtomicLazyReference<Box<ClusterShell?>>
+    internal var _cluster: ClusterShell? {
+        guard let box = _clusterStore.load() else {
+            fatalError("Somehow attempted to load system._cluster before it was initialized!")
+        }
+        return box.value
+    }
 
     private let _clusterControlStore: ManagedAtomicLazyReference<Box<ClusterControl>>
     public var cluster: ClusterControl {
@@ -226,6 +231,7 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
 
         self._receptionistStore = ManagedAtomicLazyReference()
         self._serialization = ManagedAtomicLazyReference()
+        self._clusterStore = ManagedAtomicLazyReference()
         self._clusterControlStore = ManagedAtomicLazyReference()
         self._nodeDeathWatcherStore = ManagedAtomicLazyReference()
 
@@ -247,9 +253,7 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
 
         if settings.cluster.enabled {
             let cluster = ClusterShell(selfNode: settings.cluster.uniqueBindNode)
-            initializationLock.withWriterLockVoid {
-                self._cluster = cluster
-            }
+            _ = self._clusterStore.storeIfNilThenLoad(Box(cluster))
             effectiveUserProvider = RemoteActorRefProvider(settings: settings, cluster: cluster, localProvider: localUserProvider)
             effectiveSystemProvider = RemoteActorRefProvider(settings: settings, cluster: cluster, localProvider: localSystemProvider)
         }
@@ -267,9 +271,7 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
                 customBehavior: ClusterEventStream.Shell.behavior
             )
 
-            initializationLock.withWriterLockVoid {
-                self._cluster = nil
-            }
+            _ = self._clusterStore.storeIfNilThenLoad(Box(nil))
             _ = self._clusterControlStore.storeIfNilThenLoad(Box(ClusterControl(self.settings.cluster, clusterRef: self.deadLetters.adapted(), eventStream: clusterEvents)))
         }
 
@@ -446,10 +448,12 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
 
             /// Only once we've shutdown all dispatchers and loops, we clear cycles between the serialization and system,
             /// as they should never be invoked anymore.
+            /*
             self.lazyInitializationLock.withWriterLockVoid {
                 // self._serialization = nil // FIXME: need to release serialization
-                self._cluster = nil
             }
+            */
+            _ = self._clusterStore.storeIfNilThenLoad(Box(nil))
 
             self.shutdownReceptacle.offerOnce(nil)
             afterShutdownCompleted(nil)
