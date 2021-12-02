@@ -21,7 +21,7 @@ import Logging
 /// Cluster-aware (atomic broadcast style, push/pull-gossip) Receptionist implementation.
 ///
 /// ### Intended usage / Optimization choices
-/// This Receptionist implementation is optimized towards small to medium clusters clusters (many tens of nodes) with much actor churn,
+/// This Receptionist implementation is optimized towards small to medium clusters (many tens of nodes) with much actor churn,
 /// rather than wide (hundreds of nodes) clusters with few registered actors. This implementation is guided by a pragmatic view of
 /// how most actor clusters operate, and also in face of the lack of built-in sharding or "virtual namespace" (yet),
 /// which would normally be the way to handle millions of actors and tracking their locations (by "sharding" them and
