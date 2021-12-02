@@ -6,11 +6,11 @@ import PackageDescription
 var globalSwiftSettings: [SwiftSetting]
 
 var globalConcurrencyFlags: [String] = [
-  "-Xfrontend", "-enable-experimental-distributed",
+    "-Xfrontend", "-enable-experimental-distributed",
 ]
 
 globalSwiftSettings = [
-  SwiftSetting.unsafeFlags(globalConcurrencyFlags),
+    SwiftSetting.unsafeFlags(globalConcurrencyFlags),
 ]
 
 var targets: [PackageDescription.Target] = [
@@ -24,11 +24,11 @@ var targets: [PackageDescription.Target] = [
         ],
         path: "Sources/SampleDiningPhilosophers",
         exclude: [
-          "dining-philosopher-fsm.graffle",
-          "dining-philosopher-fsm.svg",
+            "dining-philosopher-fsm.graffle",
+            "dining-philosopher-fsm.svg",
         ],
         plugins: [
-          .plugin(name: "DistributedActorsGeneratorPlugin", package: "swift-distributed-actors"),
+            .plugin(name: "DistributedActorsGeneratorPlugin", package: "swift-distributed-actors"),
         ]
     ),
 
@@ -49,7 +49,6 @@ var dependencies: [Package.Dependency] = [
     .package(name: "swift-distributed-actors", path: "../"),
 
     // ~~~~~~~ only for samples ~~~~~~~
-
 ]
 
 let package = Package(
@@ -71,14 +70,14 @@ let package = Package(
     dependencies: dependencies,
 
     targets: targets.map { target in
-      var swiftSettings = target.swiftSettings ?? []
-      if target.type != .plugin {
-        swiftSettings.append(contentsOf: globalSwiftSettings)
-      }
-      if !swiftSettings.isEmpty {
-        target.swiftSettings = swiftSettings
-      }
-      return target
+        var swiftSettings = target.swiftSettings ?? []
+        if target.type != .plugin {
+            swiftSettings.append(contentsOf: globalSwiftSettings)
+        }
+        if !swiftSettings.isEmpty {
+            target.swiftSettings = swiftSettings
+        }
+        return target
     },
 
     cxxLanguageStandard: .cxx11

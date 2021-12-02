@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-import DistributedActorsConcurrencyHelpers
 import Atomics
+import DistributedActorsConcurrencyHelpers
 
 @usableFromInline
 internal enum AffinityThreadPoolError: Error {

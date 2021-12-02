@@ -50,7 +50,6 @@ extension _Behavior {
 // MARK: Async Message handling
 
 extension _Behavior {
-
     func receiveAsync0(_ recv: @Sendable @escaping (Message) async throws -> _Behavior<Message>,
                        context: _ActorContext<Message>,
                        message: Message) -> _Behavior<Message> {
@@ -121,8 +120,11 @@ extension _Behavior {
     func receiveSignalAsync(
         context: _ActorContext<Message>,
         signal: Signal,
-        handleSignal: @escaping @Sendable (_ActorContext<Message>, Signal
-    ) async throws -> _Behavior<Message>) -> _Behavior<Message> {
+        handleSignal: @escaping @Sendable(
+            _ActorContext<Message>,
+            Signal
+        ) async throws -> _Behavior<Message>
+    ) -> _Behavior<Message> {
         .setup { context in
             receiveSignalAsync0(handleSignal, context: context, signal: signal)
         }
@@ -296,7 +298,7 @@ extension _Behavior {
     }
 
     public func _receiveSignalAsync(
-        _ handle: @escaping @Sendable (_ActorContext<Message>, Signal) async throws -> _Behavior<Message>
+        _ handle: @escaping @Sendable(_ActorContext<Message>, Signal) async throws -> _Behavior<Message>
     ) -> _Behavior<Message> {
         _Behavior(
             underlying: .signalHandlingAsync(
@@ -404,11 +406,12 @@ internal extension _Behavior {
     static func signalHandling(handleMessage: _Behavior<Message>, handleSignal: @escaping (_ActorContext<Message>, Signal) throws -> _Behavior<Message>) -> _Behavior<Message> {
         _Behavior(underlying: .signalHandling(handleMessage: handleMessage, handleSignal: handleSignal))
     }
+
     /// Allows handling signals such as termination or lifecycle events.
     @usableFromInline
     static func signalHandlingAsync(
         handleMessage: _Behavior<Message>,
-        handleSignal: @escaping @Sendable (_ActorContext<Message>, Signal) async throws -> _Behavior<Message>
+        handleSignal: @escaping @Sendable(_ActorContext<Message>, Signal) async throws -> _Behavior<Message>
     ) -> _Behavior<Message> {
         _Behavior(underlying: .signalHandlingAsync(handleMessage: handleMessage, handleSignal: handleSignal))
     }
@@ -454,10 +457,10 @@ internal enum __Behavior<Message: ActorMessage> {
     case setup(_ onStart: (_ActorContext<Message>) throws -> _Behavior<Message>)
 
     case receive(_ handle: (_ActorContext<Message>, Message) throws -> _Behavior<Message>)
-    case receiveAsync(_ handle: @Sendable (_ActorContext<Message>, Message) async throws -> _Behavior<Message>)
+    case receiveAsync(_ handle: @Sendable(_ActorContext<Message>, Message) async throws -> _Behavior<Message>)
 
     case receiveMessage(_ handle: (Message) throws -> _Behavior<Message>)
-    case receiveMessageAsync(_ handle: @Sendable (Message) async throws -> _Behavior<Message>)
+    case receiveMessageAsync(_ handle: @Sendable(Message) async throws -> _Behavior<Message>)
 
     indirect case stop(postStop: _Behavior<Message>?, reason: StopReason)
     indirect case failed(behavior: _Behavior<Message>, cause: _Supervision.Failure)
@@ -468,7 +471,7 @@ internal enum __Behavior<Message: ActorMessage> {
     )
     indirect case signalHandlingAsync(
         handleMessage: _Behavior<Message>,
-        handleSignal: @Sendable (_ActorContext<Message>, Signal) async throws -> _Behavior<Message>
+        handleSignal: @Sendable(_ActorContext<Message>, Signal) async throws -> _Behavior<Message>
     )
     case same
     case ignore
@@ -614,12 +617,12 @@ public extension _Behavior {
 
         case .setup:
             return fatalErrorBacktrace("""
-                                       Illegal attempt to interpret message with .setup behavior! Behaviors MUST be canonicalized before interpreting. This is a bug, please open a ticket. 
-                                         System: \(context.system)
-                                         Address: \(context.address.detailedDescription)
-                                         Message: \(message): \(type(of: message))
-                                         _Behavior: \(self)
-                                       """, file: file, line: line)
+            Illegal attempt to interpret message with .setup behavior! Behaviors MUST be canonicalized before interpreting. This is a bug, please open a ticket. 
+              System: \(context.system)
+              Address: \(context.address.detailedDescription)
+              Message: \(message): \(type(of: message))
+              _Behavior: \(self)
+            """, file: file, line: line)
 
         case .stop:
             return .unhandled
@@ -886,7 +889,7 @@ internal extension _Behavior {
 
                 case .receive, .receiveMessage:
                     return canonical
-                 case .receiveAsync, .receiveMessageAsync:
+                case .receiveAsync, .receiveMessageAsync:
                     return canonical
                 }
             }

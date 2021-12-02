@@ -51,7 +51,6 @@ extension DistributedReception.Key {
     }
 }
 
-
 final class OpLogDistributedReceptionistClusteredTests: ClusteredActorSystemsXCTestCase {
     override func configureLogCapture(settings: inout LogCapture.Settings) {
         settings.excludeActorPaths = [

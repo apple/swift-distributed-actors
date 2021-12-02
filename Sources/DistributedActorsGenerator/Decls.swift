@@ -17,7 +17,7 @@ import SwiftSyntax
 struct DistributedActorDecl: Hashable {
     enum DeclType {
         case `protocol`
-        case `distributedActor`
+        case distributedActor
     }
 
     /// File where the actorable was defined
@@ -155,11 +155,11 @@ struct DistributedActorDecl: Hashable {
     }
 
     func hash(into hasher: inout Hasher) {
-        hasher.combine(declaredWithin)
-        hasher.combine(name)
+        hasher.combine(self.declaredWithin)
+        hasher.combine(self.name)
     }
 
-    static func ==(lhs: DistributedActorDecl, rhs: DistributedActorDecl) -> Bool {
+    static func == (lhs: DistributedActorDecl, rhs: DistributedActorDecl) -> Bool {
         if lhs.declaredWithin != rhs.declaredWithin {
             return false
         }

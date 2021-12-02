@@ -15,7 +15,6 @@
 import DistributedActors
 
 final class DiningPhilosophers {
-
     private var forks: [Fork] = []
     private var philosophers: [Philosopher] = []
 

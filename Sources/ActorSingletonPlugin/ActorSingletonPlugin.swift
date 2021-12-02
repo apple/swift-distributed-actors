@@ -57,7 +57,6 @@ public final class ActorSingletonPlugin {
             return proxy
         }
     }
-
 }
 
 extension ActorSingletonPlugin {
@@ -91,7 +90,6 @@ extension ActorSingletonPlugin: Plugin {
         }
         return .success(())
     }
-
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -133,5 +131,4 @@ public struct ActorSingletonControl {
     public func ref<Message>(of type: Message.Type, name: String) throws -> _ActorRef<Message> {
         try self.singletonPlugin.ref(of: type, name: name, system: self.system)
     }
-
 }

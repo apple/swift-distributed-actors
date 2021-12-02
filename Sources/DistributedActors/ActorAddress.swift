@@ -186,10 +186,10 @@ extension ActorAddress {
     public var _asRemote: Self {
         let remote = Self(remote: self.uniqueNode, path: self.path, incarnation: self.incarnation)
         print("""
-              AS REMOTE: 
-                was local: \(self.detailedDescription)
-                remote   : \(remote.detailedDescription)
-              """)
+        AS REMOTE: 
+          was local: \(self.detailedDescription)
+          remote   : \(remote.detailedDescription)
+        """)
         return remote
     }
 
@@ -198,10 +198,10 @@ extension ActorAddress {
     public var _asLocal: Self {
         let local = Self(local: self.uniqueNode, path: self.path, incarnation: self.incarnation)
         print("""
-              AS LOCAL: 
-                was remote: \(self.detailedDescription)
-                local     : \(local.detailedDescription)
-              """)
+        AS LOCAL: 
+          was remote: \(self.detailedDescription)
+          local     : \(local.detailedDescription)
+        """)
         return local
     }
 }

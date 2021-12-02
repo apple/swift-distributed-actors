@@ -74,7 +74,6 @@ internal final class LoggingContext {
 ///
 /// The preferred way of obtaining a logger for an actor or system is `context.log` or `system.log`, rather than creating new ones.
 extension Logger {
-
     /// Create a logger specific to this actor.
     // TODO(distributed): reconsider if this is the best pattern?
     public init<Act: DistributedActor>(actor: Act) {

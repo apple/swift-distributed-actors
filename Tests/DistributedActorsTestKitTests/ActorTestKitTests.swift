@@ -161,5 +161,4 @@ final class ActorTestKitTests: XCTestCase {
             within: .seconds(3)
         )
     }
-
 }

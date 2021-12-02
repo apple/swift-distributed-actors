@@ -12,11 +12,11 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Atomics
 @testable import DistributedActors
 import DistributedActorsConcurrencyHelpers // for TimeSource
 import DistributedActorsTestKit
 import Foundation
-import Atomics
 @testable import SWIM
 import XCTest
 

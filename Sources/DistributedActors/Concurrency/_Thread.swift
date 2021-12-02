@@ -18,8 +18,8 @@ import Darwin
 import Glibc
 #endif
 
-import DistributedActorsConcurrencyHelpers
 import Atomics
+import DistributedActorsConcurrencyHelpers
 import NIO
 
 /// Not intended for general use.

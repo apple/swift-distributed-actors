@@ -23,4 +23,3 @@
 --disable redundantInit
 --disable redundantGet
 --disable redundantReturn
---disable redundantType

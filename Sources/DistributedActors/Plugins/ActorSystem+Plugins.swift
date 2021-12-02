@@ -23,7 +23,6 @@ public protocol AnyPlugin {
     /// Stops the plugin.
     // TODO: move to async function
     func stop(_ system: ActorSystem) -> Result<Void, Error>
-
 }
 
 /// A plugin provides specific features and capabilities (e.g., singleton) to an `ActorSystem`.
@@ -58,7 +57,6 @@ internal struct BoxedPlugin: AnyPlugin {
     func stop(_ system: ActorSystem) -> Result<Void, Error> {
         self.underlying.stop(system)
     }
-
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------

@@ -12,9 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Atomics
 import DistributedActors
 import DistributedActorsConcurrencyHelpers
-import Atomics
 import SwiftBenchmarkTools
 
 @usableFromInline

@@ -81,7 +81,8 @@ extension ActorTestKit {
             name = ActorTestProbe<Message>.naming.makeName(&self.namingContext)
         }
 
-        return ActorTestProbe({ probeBehavior in
+        return ActorTestProbe(
+            { probeBehavior in
 
                 // TODO: allow configuring dispatcher for the probe or always use the calling thread one
                 var testProbeProps = _Props()
@@ -503,5 +504,4 @@ extension ActorTestKit {
             }
         }
     }
-
 }

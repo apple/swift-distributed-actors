@@ -42,5 +42,4 @@ class ActorSingletonDocExamples {
         singletonProxyRef.tell("Jane Doe") // <1>
         // end::proxy-ref[]
     }
-
 }

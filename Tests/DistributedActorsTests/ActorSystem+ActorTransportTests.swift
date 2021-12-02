@@ -17,7 +17,6 @@ import DistributedActorsTestKit
 import XCTest
 
 final class ActorSystemTransportTests: ActorSystemXCTestCase, @unchecked Sendable {
-
     func test_system_shouldAssignIdentityAndReadyActor() throws {
         try runAsyncAndBlock {
             let first = self.setUpNode("first") { settings in

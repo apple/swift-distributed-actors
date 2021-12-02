@@ -690,7 +690,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
         self.subReceives[identifier]?.0
     }
 
-    override public func subReceive<SubMessage>(_ id: _SubReceiveId<SubMessage>, _ subType: SubMessage.Type, _ closure: @escaping (SubMessage) throws -> Void) -> _ActorRef<SubMessage>
+    public override func subReceive<SubMessage>(_ id: _SubReceiveId<SubMessage>, _ subType: SubMessage.Type, _ closure: @escaping (SubMessage) throws -> Void) -> _ActorRef<SubMessage>
         where SubMessage: ActorMessage {
         do {
             let wrappedClosure: (SubMessageCarry) throws -> _Behavior<Message> = { carry in
@@ -830,7 +830,6 @@ extension _ActorShell {
             case .customMessage(let customTerminatedMessage):
                 next = try self.supervisor.interpretSupervised(target: self.behavior, context: self, message: customTerminatedMessage)
             }
-
         }
 
         switch next.underlying {

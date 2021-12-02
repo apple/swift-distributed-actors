@@ -12,10 +12,10 @@
 //
 //===----------------------------------------------------------------------===//
 
+import _Distributed
 import Dispatch
 import Logging
 import struct NIO.TimeAmount
-import _Distributed
 
 @usableFromInline
 struct Timer<Message> { // FIXME(distributed): deprecate and remove in favor of DistributedActorTimers

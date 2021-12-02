@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-import CDistributedActorsMailbox
 import _Distributed
+import CDistributedActorsMailbox
 import Logging
 import NIO
 import NIOFoundationCompat

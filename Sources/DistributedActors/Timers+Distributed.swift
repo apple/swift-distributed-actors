@@ -40,7 +40,6 @@ struct DistributedActorTimerEvent {
 /// and the `ActorTimers` are deallocated as well, all timers associated with it are cancelled.
 // TODO(distributed): rename once we're able to hide or remove `_BehaviorTimers`
 public final class ActorTimers<Act: DistributedActor> {
-
     @usableFromInline
     internal let ownerID: ActorIdentity // TODO: can be just identity
 
@@ -156,5 +155,4 @@ public final class ActorTimers<Act: DistributedActor> {
 //        }
         self.installedTimers[key] = DistributedActorTimer(key: key, repeated: repeated, handle: handle)
     }
-
 }

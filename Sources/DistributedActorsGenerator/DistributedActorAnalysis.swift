@@ -28,8 +28,9 @@ final class GatherDistributedActors: SyntaxVisitor {
 
     let basePath: Directory
     var moduleName: String {
-        basePath.name
+        self.basePath.name
     }
+
     let path: File
 
     var imports: [String] = []
@@ -212,7 +213,7 @@ final class GatherDistributedActors: SyntaxVisitor {
             $0.name.tokenKind
         } ?? []
 
-        guard node.isDistributedFunc else  {
+        guard node.isDistributedFunc else {
             return .skipChildren
         }
 
@@ -398,7 +399,7 @@ extension ClassDeclSyntax {
     }
 
     var isDistributedActor: Bool {
-        guard isActor else {
+        guard self.isActor else {
             return false
         }
 
@@ -406,7 +407,7 @@ extension ClassDeclSyntax {
             return false
         }
 
-        for mod in mods where mod.name.text ==  "distributed" {
+        for mod in mods where mod.name.text == "distributed" {
             return true
         }
 
@@ -421,7 +422,7 @@ extension FunctionDeclSyntax {
         }
 
         for mod in mods {
-            if mod.name.text ==  "distributed" {
+            if mod.name.text == "distributed" {
                 return true
             }
         }
@@ -463,7 +464,6 @@ final class IsDistributedActorProtocolVisitor: SyntaxVisitor {
         return .visitChildren
     }
 
-
     override func visit(_: StructDeclSyntax) -> SyntaxVisitorContinueKind {
         .skipChildren
     }
@@ -479,5 +479,4 @@ final class IsDistributedActorProtocolVisitor: SyntaxVisitor {
     override func visit(_: EnumDeclSyntax) -> SyntaxVisitorContinueKind {
         .skipChildren
     }
-
 }

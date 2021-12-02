@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-import DistributedActorsConcurrencyHelpers
 import Atomics
+import DistributedActorsConcurrencyHelpers
 
 // FIXME(swift) the entire Mailbox infrastructure is now superseded with Swift's built-in runtime; this will be removed shortly
 
@@ -110,7 +110,6 @@ internal final class _Mailbox<Message: ActorMessage> {
 
     @inlinable
     func sendMessage(envelope: Payload, file: String, line: UInt) {
-
         if self.serializeAllMessages {
             var messageDescription = "[\(envelope.payload)]"
             do {
@@ -314,10 +313,10 @@ internal final class _Mailbox<Message: ActorMessage> {
 
         guard oldStatus.isTerminating else {
             fatalError("""
-                       !!! BUG !!! Tombstone was attempted to be enqueued at not terminating actor.
-                       Address: \(self.address)
-                       System: \(self.shell?._system?.description ?? "<no system>")
-                       """)
+            !!! BUG !!! Tombstone was attempted to be enqueued at not terminating actor.
+            Address: \(self.address)
+            System: \(self.shell?._system?.description ?? "<no system>")
+            """)
         }
 
         self.systemMessages.enqueue(.tombstone)
@@ -393,8 +392,8 @@ internal final class _Mailbox<Message: ActorMessage> {
 
         if status.hasSystemMessages {
             while runResult != .shouldStop,
-                  runResult != .closed,
-                  let message = self.systemMessages.dequeue() {
+                runResult != .closed,
+                let message = self.systemMessages.dequeue() {
                 do {
                     try runResult = shell.interpretSystemMessage(message: message)
                 } catch {
@@ -603,19 +602,22 @@ internal final class _Mailbox<Message: ActorMessage> {
     func incrementMessageCount() -> Status {
         Status(self._status.loadThenWrappingIncrement(
             by: MailboxBitMasks.singleUserMessage,
-            ordering: .sequentiallyConsistent))
+            ordering: .sequentiallyConsistent
+        ))
     }
 
     func decrementMessageCount() -> Status {
         Status(self._status.loadThenWrappingDecrement(
             by: MailboxBitMasks.singleUserMessage,
-            ordering: .sequentiallyConsistent))
+            ordering: .sequentiallyConsistent
+        ))
     }
 
     func decrementActivations(by count: UInt64) -> Status {
         Status(self._status.loadThenWrappingDecrement(
             by: count,
-            ordering: .sequentiallyConsistent))
+            ordering: .sequentiallyConsistent
+        ))
     }
 
     var status: Status {
@@ -625,7 +627,8 @@ internal final class _Mailbox<Message: ActorMessage> {
     func setHasSystemMessages() -> Status {
         Status(self._status.loadThenBitwiseOr(
             with: MailboxBitMasks.hasSystemMessages,
-            ordering: .sequentiallyConsistent))
+            ordering: .sequentiallyConsistent
+        ))
     }
 
     // Checks if the 'has system messages' bit is set and if it is, unsets it and
@@ -637,7 +640,8 @@ internal final class _Mailbox<Message: ActorMessage> {
         if status.hasSystemMessages {
             return Status(self._status.loadThenBitwiseXor(
                 with: MailboxBitMasks.becomeSysMsgProcessingXor,
-                ordering: .sequentiallyConsistent))
+                ordering: .sequentiallyConsistent
+            ))
         }
 
         return status
@@ -647,7 +651,8 @@ internal final class _Mailbox<Message: ActorMessage> {
     func setTerminating() -> Status {
         Status(self._status.loadThenBitwiseOr(
             with: MailboxBitMasks.terminating,
-            ordering: .sequentiallyConsistent))
+            ordering: .sequentiallyConsistent
+        ))
     }
 
     @discardableResult
@@ -659,21 +664,24 @@ internal final class _Mailbox<Message: ActorMessage> {
     func setClosed() -> Status {
         Status(self._status.loadThenBitwiseOr(
             with: MailboxBitMasks.closed,
-            ordering: .sequentiallyConsistent))
+            ordering: .sequentiallyConsistent
+        ))
     }
 
     @discardableResult
     func setStatusSuspended() -> Status {
         Status(self._status.loadThenBitwiseOr(
             with: MailboxBitMasks.suspended,
-            ordering: .sequentiallyConsistent))
+            ordering: .sequentiallyConsistent
+        ))
     }
 
     @discardableResult
     func resetStatusSuspended() -> Status {
         Status(self._status.loadThenBitwiseAnd(
             with: MailboxBitMasks.unsuspend,
-            ordering: .sequentiallyConsistent))
+            ordering: .sequentiallyConsistent
+        ))
     }
 }
 

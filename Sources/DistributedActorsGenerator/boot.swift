@@ -54,7 +54,6 @@ public struct GenerateActorsCommand: ParsableCommand {
 
 extension GenerateActorsCommand {
     public func run() throws {
-
         // Configure a logger that looks and feels more natural in the build log output
         LoggingSystem.bootstrap(PluginLogHandler.init)
 
