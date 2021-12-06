@@ -144,7 +144,7 @@ error: signalled(6): /Library/Developer/Toolchains/swift-DEVELOPMENT-SNAPSHOT-20
   Reason: tried: '/usr/lib/swift/libswift_Distributed.dylib' (no such file), '/usr/local/lib/libswift_Distributed.dylib' (no such file), '/usr/lib/libswift_Distributed.dylib' (no such file))
 ```
 
-Instead, you must find the `xctest` binary in XCode:
+Instead, you must find the `xctest` binary in Xcode:
 
 ```
 -> % find /Applications/Xcode-Latest.app  | grep xctest
