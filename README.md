@@ -105,13 +105,13 @@ As such, it is necessary to download and use nightly built toolchains to develop
 
 Distributed actors require "latest" nightly toolchains to build correctly.
 
-At this point in time, the **2021-10-26 nightly toolchain** is sufficient to build the project.
+At this point in time, the **2021-11-02 nightly toolchain** is sufficient to build the project.
 You can download it from [https://swift.org/download/](https://swift.org/download/).
 
 ```
 # Export the toolchain (nightly snapshot or pull-request generated toolchain), e.g.:
 
-export TOOLCHAIN=/Library/Developer/Toolchains/swift-DEVELOPMENT-SNAPSHOT-2021-10-26-a.xctoolchain
+export TOOLCHAIN=/Library/Developer/Toolchains/swift-DEVELOPMENT-SNAPSHOT-2021-11-02-a.xctoolchain
 
 # Just build the project
 $TOOLCHAIN/usr/bin/swift build --build-tests
@@ -272,18 +272,13 @@ Only an initial version of API documentation is available right now. This is mos
 library is expected to change intensely, along with the evolving language proposal on which this library depends.
 
 You can build API documentation by running the Swift DocC compiler. The [recently released DocC compiler](https://swift.org/blog/swift-docc/) is an official part of the Swift
-project, however it is so new, that it does not ship with official toolchains yet. Therefore, we provide scripts that
-automate the building and previewing documentation for you. Those will not be necessary once DocC begins to ship with  
-toolchains.
+project, and it ships with the recent nightly toolchains.
 
 Do build documentation run:
 
 ```bash
 ./scripts/docs/generate_docc.sh
 ```
-
-Upon first invocation, this will download and build the `docc` tool. Subsequent invocations will be fast, as only the 
-initial call has to download and build the tool itself. 
 
 And to preview and browse the documentation as a web-page, run: 
 

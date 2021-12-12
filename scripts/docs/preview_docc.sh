@@ -36,13 +36,10 @@ modules=(
   DistributedActorsTestKit
 )
 
-declare -r build_path_linux=".build/x86_64-unknown-linux-gnu"
-declare -r docc_source_path="$root_path/.build/swift-docc"
-declare -r docc_render_source_path="$root_path/.build/swift-docc-render"
+declare -r SWIFT_DOCC="$TOOLCHAIN/usr/bin/docc"
+export DOCC_HTML_DIR="$TOOLCHAIN/usr/share/docc/render"
 
-export DOCC_HTML_DIR="$docc_render_source_path/dist"
-
-./.build/swift-docc/.build/release/docc preview $root_path/Docs/DistributedActors.docc \
+$SWIFT_DOCC preview $root_path/Docs/DistributedActors.docc \
   --fallback-display-name DistributedActors \
   --fallback-bundle-identifier org.swift.preview.DistributedActors \
   --fallback-bundle-version "$version" \
