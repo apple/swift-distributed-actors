@@ -392,8 +392,6 @@ extension ClusterShellState {
 
         let change: Cluster.MembershipChange?
         if let replacedMember = self.membership.member(handshake.remoteNode.node) {
-            //self.membership.mark(replacedMember.uniqueNode, as: .down)
-            //self._latestGossip.pruneMember(replacedMember)
             change = self.membership.applyMembershipChange(Cluster.MembershipChange(replaced: replacedMember, by: Cluster.Member(node: handshake.remoteNode, status: .joining)))
         } else {
             change = self.membership.applyMembershipChange(Cluster.MembershipChange(member: Cluster.Member(node: handshake.remoteNode, status: .joining)))
