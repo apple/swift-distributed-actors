@@ -134,7 +134,7 @@ final class MembershipTests: XCTestCase {
         )
 
         membership.members(atLeast: .joining).count.shouldEqual(3)
-        membership.members(atLeast: .down).count.shouldEqual(1  )
+        membership.members(atLeast: .down).count.shouldEqual(1)
         let memberNode = membership.uniqueMember(change.member.uniqueNode)
         memberNode?.status.shouldEqual(Cluster.MemberStatus.up)
     }
