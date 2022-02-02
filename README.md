@@ -296,6 +296,13 @@ Starting Local Preview Server
 
 You can then keep this preview server running, and re-run the `generate_docc.sh` script to keep updating the browsed documentation.
 
+## Integration tests
+
+Integration tests include running actual multiple nodes of a cluster and e.g. killing them off to test the recovery mechanisms of the cluster.
+
+Requirements:
+- macOS: `brew install coreutils` to install `stdbuf`
+
 ## Supported Versions
 
 Swift: 
