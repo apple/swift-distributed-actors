@@ -31,8 +31,6 @@ let system = ActorSystem("System") { settings in
 
     settings.cluster.swim.probeInterval = .milliseconds(300)
     settings.cluster.swim.pingTimeout = .milliseconds(100)
-
-    //settings.cluster.downingStrategy = .timeout()
 }
 
 let ref = try system.spawn(
