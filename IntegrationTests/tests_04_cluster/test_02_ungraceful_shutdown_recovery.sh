@@ -28,7 +28,7 @@ declare -r second_logs=/tmp/sact_second.out
 declare -r third_logs=/tmp/sact_third.out
 rm -f ${first_logs}
 rm -f ${second_logs}
-rm -f ${thrid_logs}
+rm -f ${third_logs}
 
 stdbuf -i0 -o0 -e0 swift run it_Clustered_swim_ungraceful_shutdown 7337 > ${first_logs} 2>&1 &
 declare -r first_pid=$(echo $!)
