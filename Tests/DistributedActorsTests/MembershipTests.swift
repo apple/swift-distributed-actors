@@ -133,7 +133,8 @@ final class MembershipTests: XCTestCase {
             Cluster.MembershipChange(member: self.memberB, toStatus: .down)
         )
 
-        membership.members(atLeast: .joining).count.shouldEqual(2)
+        membership.members(atLeast: .joining).count.shouldEqual(3)
+        membership.members(atLeast: .down).count.shouldEqual(1  )
         let memberNode = membership.uniqueMember(change.member.uniqueNode)
         memberNode?.status.shouldEqual(Cluster.MemberStatus.up)
     }
@@ -349,7 +350,7 @@ final class MembershipTests: XCTestCase {
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Replacements
 
-    func test_join_overAnExistingMode_replacement() {
+    func test_join_overAnExistingNode_replacement() {
         var membership = self.initialMembership
         let secondReplacement = Cluster.Member(node: UniqueNode(node: self.nodeB.node, nid: .random()), status: .joining)
         let change = membership.join(secondReplacement.uniqueNode)!
@@ -359,9 +360,9 @@ final class MembershipTests: XCTestCase {
         var secondDown = self.memberB
         secondDown.status = .down
 
-        members.count.shouldEqual(3)
+        members.count.shouldEqual(4)
         members.shouldContain(secondReplacement)
-        members.shouldNotContain(self.memberB) // was replaced
+        members.shouldContain(secondDown) // replaced node should be .down
     }
 
     func test_mark_replacement() throws {
