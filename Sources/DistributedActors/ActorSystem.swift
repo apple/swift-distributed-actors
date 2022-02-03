@@ -28,6 +28,11 @@ import NIO
 ///
 /// An `ActorSystem` and all of the actors contained within remain alive until the `terminate` call is made.
 public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable {
+    typealias ActorID = ActorAddress
+    typealias InvocationDecoder = ClusterInvocationDecoder
+    typealias InvocationEncoder = ClusterInvocationEncoder
+    typealias SerializationRequirement = Codable
+
     public let name: String
 
     // initialized during startup

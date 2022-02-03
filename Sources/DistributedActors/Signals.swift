@@ -73,7 +73,7 @@ public enum Signals {
         public let address: ActorAddress
 
         /// Identity of the terminated distributed actor.
-        public var identity: AnyActorIdentity {
+        public var identity: ActorAddress {
             self.address.asAnyActorIdentity
         }
 
