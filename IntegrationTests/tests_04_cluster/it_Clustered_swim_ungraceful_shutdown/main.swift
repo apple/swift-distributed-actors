@@ -20,6 +20,7 @@ args.removeFirst()
 guard args.count >= 2, let bindPort = Int(args[1]) else {
     fatalError("Node name and bind port must be provided")
 }
+
 let nodeName = args[0]
 
 print("Binding to port \(bindPort)")
