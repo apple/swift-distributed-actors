@@ -17,13 +17,14 @@ import DistributedActors
 var args = CommandLine.arguments
 args.removeFirst()
 
-guard args.count >= 1, let bindPort = Int(args[0]) else {
-    fatalError("Bind port must be provided")
+guard args.count >= 2, let bindPort = Int(args[1]) else {
+    fatalError("Node name and bind port must be provided")
 }
+let nodeName = args[0]
 
 print("Binding to port \(bindPort)")
 
-let system = ActorSystem("System") { settings in
+let system = ActorSystem(nodeName) { settings in
     settings.logging.logLevel = .info
 
     settings.cluster.enabled = true
@@ -43,10 +44,10 @@ let ref = try system.spawn(
 )
 system.cluster.events.subscribe(ref)
 
-if args.count >= 3, let joinPort = Int(args[2]) {
-    let joinHost = args[1]
+if args.count >= 4, let joinPort = Int(args[3]) {
+    let joinHost = args[2]
     print("Joining node \(joinHost):\(joinPort)")
-    system.cluster.join(node: Node(systemName: "System", host: joinHost, port: joinPort))
+    system.cluster.join(host: joinHost, port: joinPort)
 }
 
 Thread.sleep(.seconds(120))
