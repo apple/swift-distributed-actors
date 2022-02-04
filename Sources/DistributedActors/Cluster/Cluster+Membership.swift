@@ -301,7 +301,11 @@ public extension Cluster.Membership {
 
         if let previousMember = self.member(change.node.node) {
             // we are joining "over" an existing incarnation of a node; causing the existing node to become .down immediately
-            _ = self.removeCompletely(previousMember.uniqueNode) // the replacement event will handle the down notifications
+            if previousMember.status < .down {
+                _ = self.mark(previousMember.uniqueNode, as: .down)
+            } else {
+                _ = self.removeCompletely(previousMember.uniqueNode) // the replacement event will handle the down notifications
+            }
             self._members[change.node] = change.member
 
             // emit a replacement membership change, this will cause down cluster events for previous member
