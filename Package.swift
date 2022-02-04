@@ -197,6 +197,13 @@ var targets: [PackageDescription.Target] = [
         ],
         path: "IntegrationTests/tests_04_cluster/it_Clustered_swim_suspension_reachability"
     ),
+    .target(
+        name: "it_Clustered_swim_ungraceful_shutdown",
+        dependencies: [
+            "DistributedActors",
+        ],
+        path: "IntegrationTests/tests_04_cluster/it_Clustered_swim_ungraceful_shutdown"
+    ),
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Performance / Benchmarks
