@@ -301,9 +301,13 @@ var dependencies: [Package.Dependency] = [
     .package(url: "https://github.com/apple/swift-argument-parser", .upToNextMinor(from: "0.3.2")), // not API stable, Apache v2
 ]
 
-#if swift(>=5.6)
+#if swift(>=5.7)
 dependencies.append(
-    .package(name: "SwiftSyntax", url: "https://github.com/apple/swift-syntax.git", .revision("swift-DEVELOPMENT-SNAPSHOT-2021-09-23-a"))
+    .package(name: "SwiftSyntax", url: "https://github.com/apple/swift-syntax.git", .revision("swift-DEVELOPMENT-SNAPSHOT-2022-03-13-a"))
+)
+#elseif swift(>=5.6)
+dependencies.append(
+    .package(name: "SwiftSyntax", url: "https://github.com/apple/swift-syntax.git", .exact("0.50600.0"))
 )
 #elseif swift(>=5.5)
 dependencies.append(
