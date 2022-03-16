@@ -6,8 +6,9 @@ services:
     image: swift-distributed-actors:20.04-5.6
     build:
       args:
-        ubuntu_version: "focal"
-        swift_version: "5.6"
+        base_image: "swiftlang/swift:nightly-5.6-focal"
+        #ubuntu_version: "focal"
+        #swift_version: "5.6"
 
   unit-tests:
     image: swift-distributed-actors:20.04-5.6
