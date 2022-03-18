@@ -307,7 +307,7 @@ dependencies.append(
 )
 #elseif swift(>=5.6)
 dependencies.append(
-    .package(name: "SwiftSyntax", url: "https://github.com/apple/swift-syntax.git", .exact("0.50600.0"))
+    .package(name: "SwiftSyntax", url: "https://github.com/apple/swift-syntax.git", .exact("0.50600.1"))
 )
 #elseif swift(>=5.5)
 dependencies.append(
