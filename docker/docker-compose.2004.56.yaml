@@ -1,0 +1,34 @@
+version: "3"
+
+services:
+
+  runtime-setup:
+    image: swift-distributed-actors:20.04-5.6
+    build:
+      args:
+        ubuntu_version: "focal"
+        swift_version: "5.6"
+
+  unit-tests:
+    image: swift-distributed-actors:20.04-5.6
+
+  unit-tests-until-failure:
+    image: swift-distributed-actors:20.04-5.6
+
+  integration-tests:
+    image: swift-distributed-actors:20.04-5.6
+
+  test:
+    image: swift-distributed-actors:20.04-5.6
+
+  bench:
+    image: swift-distributed-actors:20.04-5.6
+
+  shell:
+    image: swift-distributed-actors:20.04-5.6
+
+  sample-crash:
+    image: swift-distributed-actors:20.04-5.6
+
+  sample-crash-actor:
+    image: swift-distributed-actors:20.04-5.6
