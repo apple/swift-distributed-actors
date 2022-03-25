@@ -10,7 +10,7 @@ import PackageDescription
 var globalSwiftSettings: [SwiftSetting]
 
 var globalConcurrencyFlags: [String] = [
-    "-Xfrontend", "-enable-experimental-distributed",
+    "-Xfrontend", "-disable-availability-checking",
 ]
 
 // TODO: currently disabled warnings as errors because of Sendable check noise and work in progress on different toolchains
@@ -206,17 +206,6 @@ var dependencies: [Package.Dependency] = [
     .package(url: "https://github.com/apple/swift-service-discovery.git", from: "1.0.0"),
     .package(url: "https://github.com/apple/swift-distributed-tracing.git", from: "0.3.0"),
 ]
-
-// swift-syntax is Swift version dependent, and added as such below
-#if swift(>=5.6)
-dependencies.append(
-      // Works with: swift-PR-39654-1170.xctoolchain
-    .package(url: "https://github.com/apple/swift-syntax.git", revision: "d59aea8902b42db7fd2383dffbab7a3ba98341ba")
-//    .package(url: "https://github.com/apple/swift-syntax.git", branch: "main")
-)
-#else
-fatalError("Only Swift 5.6+ is supported, because the dependency on the 'distributed actor' language feature")
-#endif
 
 let products: [PackageDescription.Product] = [
     .library(

@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import _Distributed
+import Distributed
 import Dispatch
 import Logging
 import struct NIO.TimeAmount

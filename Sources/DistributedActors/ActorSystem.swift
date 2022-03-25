@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import _Distributed
+import Distributed
 import Atomics
 import Backtrace
 import CDistributedActorsMailbox
@@ -21,17 +21,20 @@ import DistributedActorsConcurrencyHelpers
 import Logging
 import NIO
 
+public typealias ClusterSystem = DistributedActors.ActorSystem
+
 /// An `ActorSystem` is a confined space which runs and manages Actors.
 ///
 /// Most applications need _no-more-than_ a single `ActorSystem`.
 /// Rather, the system should be configured to host the kinds of dispatchers that the application needs.
 ///
 /// An `ActorSystem` and all of the actors contained within remain alive until the `terminate` call is made.
-public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable {
-    typealias ActorID = ActorAddress
-    typealias InvocationDecoder = ClusterInvocationDecoder
-    typealias InvocationEncoder = ClusterInvocationEncoder
-    typealias SerializationRequirement = Codable
+public final class ActorSystem: DistributedActorSystem, @unchecked Sendable {
+    public typealias ActorID = ActorAddress
+    public typealias InvocationDecoder = ClusterInvocationDecoder
+    public typealias InvocationEncoder = ClusterInvocationEncoder
+    public typealias SerializationRequirement = Codable
+    public typealias ResultHandler = ClusterInvocationResultHandler
 
     public let name: String
 
@@ -49,13 +52,13 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
     }
 
     internal let lifecycleWatchLock = Lock()
-    internal var _lifecycleWatches: [AnyActorIdentity: LifecycleWatchContainer] = [:]
+    internal var _lifecycleWatches: [ActorAddress: LifecycleWatchContainer] = [:]
 
     private let dispatcher: InternalMessageDispatcher
 
     // Access MUST be protected with `namingLock`.
     private var _managedRefs: [ActorAddress: _ReceivesSystemMessages] = [:]
-    private var _managedDistributedActors: [ActorAddress: DistributedActor] = [:]
+    private var _managedDistributedActors: [ActorAddress: any DistributedActor] = [:]
     private var _reservedNames: Set<ActorAddress> = []
 
     // TODO: converge into one tree
@@ -314,7 +317,7 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
         _Props.$forSpawn.withValue(OpLogDistributedReceptionist.props) {
             let receptionist = OpLogDistributedReceptionist(
                 settings: self.settings.cluster.receptionist,
-                transport: self
+                system: self
             )
             Task { try await receptionist.start() }
             _ = self._receptionistStore.storeIfNilThenLoad(receptionist)
@@ -488,6 +491,7 @@ extension ActorSystem: CustomStringConvertible {
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Actor creation
+
 extension ActorSystem: _ActorRefFactory {
     @discardableResult
     public func _spawn<Message>(
@@ -637,12 +641,8 @@ extension ActorSystem: _ActorRefFactory {
 
     // FIXME(distributed): this exists because generated _spawnAny, we need to get rid of that _spawnAny
     public func _spawnDistributedActor<Message>(
-        _ behavior: _Behavior<Message>, identifiedBy id: AnyActorIdentity
+        _ behavior: _Behavior<Message>, identifiedBy id: ActorSystem.ActorID
     ) -> _ActorRef<Message> where Message: ActorMessage {
-        guard let address = id.underlying as? ActorAddress else {
-            fatalError("Cannot spawn distributed actor with \(Self.self) transport and non-\(ActorAddress.self) identity! Was: \(id)")
-        }
-
         var props = _Props.forSpawn
         props._distributedActor = true
 
@@ -653,7 +653,7 @@ extension ActorSystem: _ActorRefFactory {
             provider = self.userProvider
         }
 
-        return try! self._spawn(using: provider, behavior, address: address, props: props) // try!-safe, since the naming must have been correct
+        return try! self._spawn(using: provider, behavior, address: id, props: props) // try!-safe, since the naming must have been correct
     }
 }
 
@@ -734,22 +734,12 @@ extension ActorSystem: _ActorTreeTraversable {
         }
     }
 
-    public func _resolveUntyped(identity: AnyActorIdentity) -> AddressableActorRef {
-        guard let address = identity._unwrapActorAddress else {
-            self.log.warning("Unable to resolve not 'ActorAddress' identity: \(identity.underlying), resolved as deadLetters")
-            return self._deadLetters.asAddressable
-        }
-
+    public func _resolveUntyped(identity address: ActorSystem.ActorID) -> AddressableActorRef {
         return self._resolveUntyped(context: .init(address: address, system: self))
     }
 
-    func _resolveStub(identity: AnyActorIdentity) throws -> StubDistributedActor {
-        guard let address = identity._unwrapActorAddress else {
-            self.log.warning("Unable to resolve not 'ActorAddress' identity: \(identity.underlying), resolved as deadLetters")
-            throw ResolveError.illegalIdentity(identity)
-        }
-
-        return try StubDistributedActor.resolve(identity, using: self)
+    func _resolveStub(identity: ActorAddress) throws -> StubDistributedActor {
+      return try StubDistributedActor.resolve(id: identity, using: self)
     }
 
     public func _resolveUntyped(context: ResolveContext<Never>) -> AddressableActorRef {
@@ -785,18 +775,13 @@ extension ActorSystem {
     // ==== --------------------------------------------------------------------
     // - MARK: Resolving actors by identity
 
-    public func decodeIdentity(from decoder: Decoder) throws -> AnyActorIdentity {
-        let address = try ActorAddress(from: decoder)
-        return AnyActorIdentity(address)
-    }
+//    public func decodeIdentity(from decoder: Decoder) throws -> ActorSystem.ActorID {
+//        let address = try ActorAddress(from: decoder)
+//        return ActorSystem.ActorID(address)
+//    }
 
-    public func resolve<Act>(_ identity: AnyActorIdentity, as actorType: Act.Type) throws -> Act?
+    public func resolve<Act>(id address: ActorID, as actorType: Act.Type) throws -> Act?
         where Act: DistributedActor {
-        guard let address = identity.underlying as? ActorAddress else {
-            // we only support resolving our own address types:
-            return nil
-        }
-
         guard self.cluster.uniqueNode == address.uniqueNode else {
             return nil
         }
@@ -821,7 +806,7 @@ extension ActorSystem {
     // ==== --------------------------------------------------------------------
     // - MARK: Actor Lifecycle
 
-    public func assignIdentity<Act>(_ actorType: Act.Type) -> AnyActorIdentity
+    public func assignID<Act>(_ actorType: Act.Type) -> ActorSystem.ActorID
         where Act: DistributedActor {
         let props = _Props.forSpawn // TODO(distributed): rather we'd want to be passed a param through here
         let address = try! self._reserveName(type: Act.self, props: props)
@@ -833,24 +818,22 @@ extension ActorSystem {
 
         return self.namingLock.withLock {
             self._reservedNames.insert(address)
-            return AnyActorIdentity(address)
+            return address
         }
     }
 
-    public func actorReady<Act>(_ actor: Act) where Act: DistributedActor {
-        let address = actor.id._forceUnwrapActorAddress
+    public func actorReady<Act>(_ actor: Act) where Act: DistributedActor, Act.ID == ActorID {
+        let address = actor.id
 
         self.log.warning("Actor ready", metadata: [
-            "actor/identity": "\(address.detailedDescription)",
+            "actor/identity": "\(address)",
             "actor/type": "\(type(of: actor))",
         ])
 
         // TODO: can we skip the Any... and use the underlying existential somehow?
-        guard let SpawnAct = Act.self as? __AnyDistributedClusterActor.Type else {
+        guard let SpawnAct = Act.self as? any __AnyDistributedClusterActor.Type else {
             fatalError(
-                "\(Act.self) was not __AnyDistributedClusterActor! Actor identity was: \(actor.id). " +
-                    "Was the source generation plugin configured for this target? " +
-                    "Add `plugins: [\"DistributedActorsGeneratorPlugin\"]` to your target.")
+                "\(Act.self) was not __AnyDistributedClusterActor! Actor identity was: \(actor.id).") // FIXME: this must be removed (!!!!!!!)
         }
 
         func doSpawn<SpawnAct: __AnyDistributedClusterActor>(_: SpawnAct.Type) -> AddressableActorRef {
@@ -880,13 +863,11 @@ extension ActorSystem {
     }
 
     /// Called during actor deinit/destroy.
-    public func resignIdentity(_ id: AnyActorIdentity) {
-        self.log.warning("Resign identity", metadata: ["actor/id": "\(id.underlying)"])
-        let address = id._forceUnwrapActorAddress
-
+    public func resignID(_ id: ActorAddress) {
+        self.log.warning("Resign actor id", metadata: ["actor/id": "\(id)"])
         self.namingLock.withLockVoid {
-            self._reservedNames.remove(address)
-            if let ref = self._managedRefs.removeValue(forKey: address) {
+            self._reservedNames.remove(id)
+            if let ref = self._managedRefs.removeValue(forKey: id) {
                 ref._sendSystemMessage(.stop, file: #file, line: #line)
             }
         }
@@ -896,9 +877,103 @@ extension ActorSystem {
             }
         }
     }
+
+  public func makeInvocationEncoder() -> InvocationEncoder {
+    .init()
+  }
+
+  public func remoteCall<Act, Err, Res>(
+      on actor: Act,
+      target: RemoteCallTarget,
+      invocation: inout InvocationEncoder,
+      throwing: Err.Type,
+      returning: Res.Type
+    ) async throws -> Res
+      where Act: DistributedActor,
+            Act.ID == ActorID,
+            Err: Error,
+            Res: SerializationRequirement {
+      fatalErrorBacktrace("NOT IMPLEMENTED YET: \(#function)")
+    }
+
+  public func remoteCallVoid<Act, Err>(
+      on actor: Act,
+      target: RemoteCallTarget,
+      invocation: inout InvocationEncoder,
+      throwing: Err.Type
+    ) async throws
+      where Act: DistributedActor,
+            Act.ID == ActorID,
+            Err: Error {
+      fatalError("NOT IMPLEMENTED YET: \(#function)")
+  }
 }
 
-public enum ActorSystemError: ActorTransportError {
+public struct ClusterInvocationEncoder: DistributedTargetInvocationEncoder {
+  public typealias SerializationRequirement = any Codable
+
+  public mutating func recordGenericSubstitution<T>(_ type: T.Type) throws {
+    fatalError("NOT IMPLEMENTED: \(#function)")
+  }
+  
+  public mutating func recordArgument<Value: Codable>(
+     _ argument: RemoteCallArgument<Value>
+  ) throws {
+    fatalError("NOT IMPLEMENTED: \(#function)")
+  }
+  
+  
+  public mutating func recordReturnType<Success: Codable>(_ returnType: Success.Type) throws {
+    fatalError("NOT IMPLEMENTED: \(#function)")
+  }
+
+  public mutating func recordErrorType<E: Error>(_ type: E.Type) throws {
+    fatalError("NOT IMPLEMENTED: \(#function)")
+  }
+
+  public mutating func doneRecording() throws {
+    fatalError("NOT IMPLEMENTED: \(#function)")
+  }
+
+}
+
+public struct ClusterInvocationDecoder: DistributedTargetInvocationDecoder {
+  public typealias SerializationRequirement = any Codable
+
+  public mutating func decodeGenericSubstitutions() throws -> [Any.Type] {
+        fatalError("NOT IMPLEMENTED: \(#function)")
+    }
+
+  public mutating func decodeNextArgument<Argument: Codable>() throws -> Argument {
+        fatalError("NOT IMPLEMENTED: \(#function)")
+    }
+
+  public mutating func decodeErrorType() throws -> Any.Type? {
+        fatalError("NOT IMPLEMENTED: \(#function)")
+    }
+
+  public mutating func decodeReturnType() throws -> Any.Type? {
+        fatalError("NOT IMPLEMENTED: \(#function)")
+    }
+}
+
+public struct ClusterInvocationResultHandler: DistributedTargetInvocationResultHandler {
+  public typealias SerializationRequirement = any Codable
+  
+  public func onReturn<Success: Codable>(value: Success) async throws {
+    fatalError("NOT IMPLEMENTED: \(#function)")
+  }
+  
+  public func onReturnVoid() async throws {
+    fatalError("NOT IMPLEMENTED: \(#function)")
+  }
+  
+  public func onThrow<Err: Error>(error: Err) async throws {
+    fatalError("NOT IMPLEMENTED: \(#function)")
+  }
+}
+
+public enum ActorSystemError: DistributedActorSystemError {
     case duplicateActorPath(path: ActorPath)
     case shuttingDown(String)
 }
@@ -906,8 +981,8 @@ public enum ActorSystemError: ActorTransportError {
 /// Error thrown when unable to resolve an ``ActorIdentity``.
 ///
 /// Refer to ``ActorSystem/resolve(_:as:)`` or the distributed actors Swift Evolution proposal for details.
-public enum ResolveError: ActorTransportError {
-    case illegalIdentity(AnyActorIdentity)
+public enum ResolveError: DistributedActorSystemError {
+    case illegalIdentity(ActorSystem.ActorID)
 }
 
 /// Represents an actor that has been initialized, but not yet scheduled to run. Calling `wakeUp` will

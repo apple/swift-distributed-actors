@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import _Distributed
+import Distributed
 @testable import DistributedActors
 import DistributedActorsTestKit
 import Foundation
@@ -94,7 +94,7 @@ final class LifecycleWatchTests: ActorSystemXCTestCase, @unchecked Sendable {
             try pj.expectMessage("Juliet init")
             try pr.expectMessage("Romeo init")
             try pr.expectMessage("Romeo deinit")
-            try pj.expectMessage("Received terminated: AnyActorIdentity(/user/Romeo-b)")
+            try pj.expectMessage("Received terminated: ActorSystem.ActorID(/user/Romeo-b)")
         }
     }
 

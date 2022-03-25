@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import _Distributed
+import Distributed
 @testable import DistributedActors
 import DistributedActorsTestKit
 import Foundation
@@ -47,7 +47,7 @@ final class DistributedReceptionistTests: ActorSystemXCTestCase {
 
     func test_receptionist_mustHaveWellKnownAddress() throws {
         let opLogReceptionist = system.receptionist as! OpLogDistributedReceptionist
-        let receptionistAddress = opLogReceptionist.id._forceUnwrapActorAddress
+        let receptionistAddress = opLogReceptionist.id
 
         receptionistAddress.detailedDescription.shouldEqual("/system/receptionist")
         receptionistAddress.incarnation.shouldEqual(.wellKnown)

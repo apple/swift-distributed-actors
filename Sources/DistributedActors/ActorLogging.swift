@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import _Distributed
+import Distributed
 import DistributedActorsConcurrencyHelpers
 import Foundation
 import Logging
@@ -76,19 +76,9 @@ internal final class LoggingContext {
 extension Logger {
     /// Create a logger specific to this actor.
     // TODO(distributed): reconsider if this is the best pattern?
-    public init<Act: DistributedActor>(actor: Act) {
-        var log: Logger
-        if let transport = actor.actorTransport as? ActorSystem,
-            let address = actor.id._unwrapActorAddress {
-            log = Logger.make(transport.log, path: address.path)
-        } else {
-            log = Logger(label: "\(actor.id.underlying)")
-        }
-
-        if let address = actor.id.underlying as? ActorAddress {
-            log[metadataKey: "actor/path"] = "\(address.path)"
-        }
-
+    public init<Act: DistributedActor>(actor: Act) where Act.ActorSystem == ClusterSystem {
+        var log: Logger = Logger(label: "\(actor.id)")
+        log[metadataKey: "actor/path"] = "\(actor.id.path)"
         self = log
     }
 

@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import _Distributed
+import Distributed
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ReplicaID
@@ -25,8 +25,8 @@ extension ReplicaID: _ProtobufRepresentable {
         switch self.storage {
         case .actorAddress(let actorAddress):
             proto.actorAddress = try actorAddress.toProto(context: context)
-        case .actorIdentity(let actorIdentity):
-            proto.actorIdentity = try actorIdentity.toProto(context: context)
+//        case .actorIdentity(let actorIdentity):
+//            proto.actorIdentity = try actorIdentity.toProto(context: context)
         case .uniqueNode(let node):
             proto.uniqueNode = try node.toProto(context: context)
         case .uniqueNodeID(let nid):
@@ -44,9 +44,9 @@ extension ReplicaID: _ProtobufRepresentable {
         case .actorAddress(let protoActorAddress):
             let actorAddress = try ActorAddress(fromProto: protoActorAddress, context: context)
             self = .actorAddress(actorAddress)
-        case .actorIdentity(let protoIdentity):
-            let id = try AnyActorIdentity(fromProto: protoIdentity, context: context)
-            self = .actorIdentity(id)
+//        case .actorIdentity(let protoIdentity):
+//            let id = try ActorSystem.ActorID(fromProto: protoIdentity, context: context)
+//            self = .actorIdentity(id)
         case .uniqueNode(let protoNode):
             let node = try UniqueNode(fromProto: protoNode, context: context)
             self = .uniqueNode(node)
@@ -90,8 +90,6 @@ extension VersionVector: _ProtobufRepresentable {
                 replicaVersion.replicaID.uniqueNodeID = nid.value
             case .actorAddress:
                 throw SerializationError.unableToSerialize(hint: "Can't serialize using actor address as replica id! Was: \(replicaID)")
-            case .actorIdentity:
-                throw SerializationError.unableToSerialize(hint: "Can't serialize using actor identity as replica id! Was: \(replicaID)")
             }
             replicaVersion.version = UInt64(version)
             return replicaVersion

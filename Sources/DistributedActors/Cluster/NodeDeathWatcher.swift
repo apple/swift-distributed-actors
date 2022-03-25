@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import _Distributed
+import Distributed
 import Logging
 import NIO
 
@@ -42,7 +42,7 @@ internal final class NodeDeathWatcherInstance: NodeDeathWatcher {
 
     struct WatcherAndCallback: Hashable {
         /// Address of the local watcher which had issued this watch
-        let watcherIdentity: AnyActorIdentity
+        let watcherIdentity: ActorSystem.ActorID
         let callback: @Sendable(UniqueNode) async -> Void
 
         func hash(into hasher: inout Hasher) {
@@ -88,7 +88,7 @@ internal final class NodeDeathWatcherInstance: NodeDeathWatcher {
 
     func onActorWatched(
         on remoteNode: UniqueNode,
-        by watcher: AnyActorIdentity,
+        by watcher: ActorSystem.ActorID,
         whenTerminated nodeTerminatedFn: @escaping @Sendable(UniqueNode) async -> Void
     ) {
         guard !self.nodeTombstones.contains(remoteNode) else {
@@ -105,7 +105,7 @@ internal final class NodeDeathWatcherInstance: NodeDeathWatcher {
     }
 
     func onRemoveWatcher(
-        watcherIdentity: AnyActorIdentity
+        watcherIdentity: ActorSystem.ActorID
     ) {
         // TODO: this can be optimized a bit more I suppose, with a reverse lookup table
         let removeMe = WatcherAndCallback(watcherIdentity: watcherIdentity, callback: { _ in () })
@@ -158,7 +158,7 @@ internal protocol NodeDeathWatcher {
     // TODO: this will change to subscribing to cluster events once those land
     func onMembershipChanged(_ change: Cluster.MembershipChange)
 
-    func onRemoveWatcher(watcherIdentity: AnyActorIdentity)
+    func onRemoveWatcher(watcherIdentity: ActorSystem.ActorID)
 }
 
 enum NodeDeathWatcherShell {
@@ -173,8 +173,8 @@ enum NodeDeathWatcherShell {
     /// it would be possible however to allow implementing the raw protocol by user actors if we ever see the need for it.
     internal enum Message: NonTransportableActorMessage {
         case remoteActorWatched(watcher: AddressableActorRef, remoteNode: UniqueNode)
-        case remoteDistributedActorWatched(remoteNode: UniqueNode, watcherIdentity: AnyActorIdentity, nodeTerminated: @Sendable(UniqueNode) async -> Void)
-        case removeWatcher(watcherIdentity: AnyActorIdentity)
+        case remoteDistributedActorWatched(remoteNode: UniqueNode, watcherIdentity: ActorSystem.ActorID, nodeTerminated: @Sendable(UniqueNode) async -> Void)
+        case removeWatcher(watcherIdentity: ActorSystem.ActorID)
         case membershipSnapshot(Cluster.Membership)
         case membershipChange(Cluster.MembershipChange)
     }

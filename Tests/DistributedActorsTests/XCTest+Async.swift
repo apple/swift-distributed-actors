@@ -16,7 +16,7 @@
 import DistributedActorsTestKit
 import XCTest
 
-import _Distributed
+import Distributed
 
 private let defaultRunAndBlockTimeout: TimeAmount = .seconds(60)
 

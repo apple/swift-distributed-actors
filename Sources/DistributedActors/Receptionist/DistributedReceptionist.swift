@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import _Distributed
+import Distributed
 import Logging
 
 /// A receptionist is a system actor that allows users to register actors under
@@ -25,9 +25,7 @@ import Logging
 /// be notified once the other part has registered.
 ///
 /// Actors usually register themselves with the receptionist as part of their setup process.
-public protocol DistributedReceptionist
-//        : Actor // FIXME(swift): ActorConformances cause us to crash here, will fix
-{
+public protocol DistributedReceptionist: DistributedActor {
     /// Registers passed in distributed actor in the systems receptionist with given id.
     ///
     /// - Parameters:
@@ -38,22 +36,22 @@ public protocol DistributedReceptionist
         _ guest: Guest,
         with key: DistributedReception.Key<Guest>
         // TODO(distributed): should gain a "retain (or not)" version, the receptionist can keep alive actors, but sometimes we don't want that, it depends
-    ) async where Guest: DistributedActor & __DistributedClusterActor
+    ) async where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem
 
     /// Subscribe to changes in checked-in actors under given `key`.
     func subscribe<Guest>(to key: DistributedReception.Key<Guest>) async -> DistributedReception.GuestListing<Guest>
-        where Guest: DistributedActor & __DistributedClusterActor
+        where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem
 
     /// Perform a *single* lookup for a distributed actor identified by the passed in `key`.
     ///
     /// - Parameters:
     ///   - key: selects which actors we are interested in.
     func lookup<Guest>(_ key: DistributedReception.Key<Guest>) async -> Set<Guest>
-        where Guest: DistributedActor & __DistributedClusterActor
+        where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem
 }
 
 extension DistributedReception {
-    public struct GuestListing<Guest: DistributedActor & __DistributedClusterActor>: AsyncSequence, Sendable {
+    public struct GuestListing<Guest: DistributedActor>: AsyncSequence, Sendable where Guest.ActorSystem == ClusterSystem {
         public typealias Element = Guest
 
         let receptionist: OpLogDistributedReceptionist
@@ -116,8 +114,7 @@ internal struct VersionedRegistration: Hashable {
     let actor: AnyDistributedActor
 
     init(remoteOpSeqNr: UInt64, actor: AnyDistributedActor) {
-        let address = actor.id._forceUnwrapActorAddress
-        self.version = VersionVector(remoteOpSeqNr, at: .uniqueNode(address.uniqueNode))
+        self.version = VersionVector(remoteOpSeqNr, at: .uniqueNode(actor.id.uniqueNode))
         self.actor = actor
     }
 
@@ -150,7 +147,7 @@ internal final class DistributedReceptionistStorage {
     private var _registeredKeysByNode: [UniqueNode: Set<AnyDistributedReceptionKey>] = [:]
 
     /// Allows for reverse lookups, when an actor terminates, we know from which registrations to remove it from.
-    internal var _identityToRegisteredKeys: [AnyActorIdentity: Set<AnyDistributedReceptionKey>] = [:]
+    internal var _identityToRegisteredKeys: [ActorSystem.ActorID: Set<AnyDistributedReceptionKey>] = [:]
 
     // ==== --------------------------------------------------------------------------------------------------------
     // MARK: Registrations
@@ -161,16 +158,13 @@ internal final class DistributedReceptionistStorage {
     func addRegistration<Guest>(sequenced: OpLog<ReceptionistOp>.SequencedOp,
                                 key: AnyDistributedReceptionKey,
                                 guest: Guest) -> Bool
-        where Guest: DistributedActor & __DistributedClusterActor {
+  where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem {
         guard sequenced.op.isRegister else {
             fatalError("\(#function) can only be called with .register operations, was: \(sequenced)")
         }
 
-        guard let address = guest.id._unwrapActorAddress else {
-            return false
-        }
         self.addGuestKeyMapping(identity: guest.id, key: key)
-        self.storeRegistrationNodeRelation(key: key, node: address.uniqueNode)
+        self.storeRegistrationNodeRelation(key: key, node: guest.id.uniqueNode)
 
         let versionedRegistration = VersionedRegistration(
             remoteOpSeqNr: sequenced.sequenceRange.max,
@@ -180,8 +174,8 @@ internal final class DistributedReceptionistStorage {
     }
 
     func removeRegistration<Guest>(key: AnyDistributedReceptionKey, guest: Guest) -> Set<VersionedRegistration>?
-        where Guest: DistributedActor & __DistributedClusterActor {
-        let address = guest.id._forceUnwrapActorAddress
+        where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem {
+        let address = guest.id
 
         _ = self.removeFromKeyMappings(guest.asAnyDistributedActor)
         self.removeSingleRegistrationNodeRelation(key: key, node: address.uniqueNode)
@@ -225,7 +219,7 @@ internal final class DistributedReceptionistStorage {
     }
 
     /// - Returns: keys that this actor was REGISTERED under, and thus listings associated with it should be updated
-    func removeFromKeyMappings(identity: AnyActorIdentity) -> RefMappingRemovalResult {
+    func removeFromKeyMappings(identity: ActorSystem.ActorID) -> RefMappingRemovalResult {
         guard let registeredUnderKeys = self._identityToRegisteredKeys.removeValue(forKey: identity) else {
             // was not registered under any keys before
             return RefMappingRemovalResult(registeredUnderKeys: [])
@@ -275,7 +269,7 @@ internal final class DistributedReceptionistStorage {
             // 1) we remove any registrations that it hosted
             let registrations = self._registrations.removeValue(forKey: key) ?? []
             let remainingRegistrations = registrations.filter { registration in
-                registration.actor.id._forceUnwrapActorAddress.uniqueNode != node
+                registration.actor.id.uniqueNode != node
             }
             if !remainingRegistrations.isEmpty {
                 self._registrations[key] = remainingRegistrations
@@ -316,7 +310,7 @@ internal final class DistributedReceptionistStorage {
     }
 
     /// Remember that this guest did register itself under this key
-    private func addGuestKeyMapping(identity: AnyActorIdentity, key: AnyDistributedReceptionKey) {
+    private func addGuestKeyMapping(identity: ActorSystem.ActorID, key: AnyDistributedReceptionKey) {
         self._identityToRegisteredKeys[identity, default: []].insert(key)
     }
 }

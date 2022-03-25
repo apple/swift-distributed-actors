@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import _Distributed
+import Distributed
 import Logging
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -148,9 +148,11 @@ import Logging
 //       This should still be done on a delay, e.g. if we are receiving many registrations, we want to get the benefit of batching them up before sending after all
 //       The fast tick could be 1s or 0.5s for example as a default.
 distributed actor OpLogDistributedReceptionist: DistributedReceptionist, CustomStringConvertible {
+    typealias ID = ClusterSystem.ActorID // TODO: remove this
+  
     // TODO: remove this
     typealias ReceptionistRef = OpLogDistributedReceptionist
-    typealias Key<Guest: DistributedActor & __DistributedClusterActor> = DistributedReception.Key<Guest>
+  typealias Key<Guest: DistributedActor> = DistributedReception.Key<Guest> where Guest.ActorSystem == ClusterSystem
 
     internal let instrumentation: ReceptionistInstrumentation
 
@@ -158,8 +160,8 @@ distributed actor OpLogDistributedReceptionist: DistributedReceptionist, CustomS
     let storage = DistributedReceptionistStorage()
 
     internal enum ReceptionistOp: OpLogStreamOp, Codable {
-        case register(key: AnyDistributedReceptionKey, identity: AnyActorIdentity)
-        case remove(key: AnyDistributedReceptionKey, identity: AnyActorIdentity)
+        case register(key: AnyDistributedReceptionKey, identity: ActorSystem.ActorID)
+        case remove(key: AnyDistributedReceptionKey, identity: ActorSystem.ActorID)
 
         var isRegister: Bool {
             switch self {
@@ -189,11 +191,6 @@ distributed actor OpLogDistributedReceptionist: DistributedReceptionist, CustomS
 
     lazy var log: Logger = Logger(actor: self)
 
-    // TODO(distributed): once the transport becomes ActorSystem in the init, and the stored property automatically becomes of this type we don't need this anymore
-    var system: ActorSystem {
-        self.actorTransport._forceUnwrapActorSystem
-    }
-
     /// Per known receptionist replayer instances, pointing at the latest confirmed message.
     /// Resuming a replay means getting any ops that were not yet observed by the receptionist.
     ///
@@ -222,7 +219,7 @@ distributed actor OpLogDistributedReceptionist: DistributedReceptionist, CustomS
     /// Since:
     /// - `AckOps` serves both as an ACK and "poll", and
     /// - `AckOps` is used to periodically spread information
-    var nextPeriodicAckPermittedDeadline: [AnyActorIdentity: Deadline]
+    var nextPeriodicAckPermittedDeadline: [ActorSystem.ActorID: Deadline]
 
     /// Sequence numbers of op-logs that we have observed, INCLUDING our own latest op's seqNr.
     /// In other words, each receptionist has their own op-log, and we observe and store the latest seqNr we have seen from them.
@@ -244,11 +241,8 @@ distributed actor OpLogDistributedReceptionist: DistributedReceptionist, CustomS
 
     // FIXME(swift 6): initializer must become async
     init(settings: ClusterReceptionist.Settings,
-         transport: ActorTransport
-//         transport system: ActorSystem // FIXME(distributed): should be specific ActorSystem type, but that causes the synthesized storage rdar://84329494
+         system: ActorSystem
     ) {
-        let system = transport._forceUnwrapActorSystem
-
         self.instrumentation = system.settings.instrumentation.makeReceptionistInstrumentation()
 
         self.ops = OpLog(of: ReceptionistOp.self, batchSize: settings.syncBatchSize)
@@ -274,6 +268,10 @@ distributed actor OpLogDistributedReceptionist: DistributedReceptionist, CustomS
         log.debug("Initialized receptionist")
     }
 
+    deinit {
+        eventsListeningTask.cancel()
+    }
+
     // FIXME(distributed): once the init is async move this back to init, we need the function to be isolated to the receptionist
     //                     so the closure may perform the self.periodicAckTick() schedule
     distributed func start() {
@@ -282,14 +280,14 @@ distributed actor OpLogDistributedReceptionist: DistributedReceptionist, CustomS
         // and if it happens to be outdated by then this will cause a push from that node.
         timers.startPeriodic(
             key: Self.slowACKReplicationTick,
-            interval: system.settings.cluster.receptionist.ackPullReplicationIntervalSlow
+            interval: actorSystem.settings.cluster.receptionist.ackPullReplicationIntervalSlow
         ) {
             await self.periodicAckTick()
         }
     }
 
     nonisolated var description: String {
-        "\(Self.self)(\(id.underlying))"
+        "\(Self.self)(\(id))"
     }
 }
 
@@ -297,63 +295,80 @@ distributed actor OpLogDistributedReceptionist: DistributedReceptionist, CustomS
 // MARK: Receptionist API impl
 
 extension OpLogDistributedReceptionist: LifecycleWatch {
-    func register<Guest>(
-        _ guest: Guest,
+    nonisolated func register<Guest>(
+      _ guest: Guest,
         with key: DistributedReception.Key<Guest>
-    ) async where Guest: DistributedActor & __DistributedClusterActor {
-        log.warning("distributed receptionist: register(\(guest), with: \(key)")
-        let key = key.asAnyKey
-        guard let address = guest.id._unwrapActorAddress else {
-            log.error("Cannot register actor with unknown identity type \(guest.id.underlying) with receptionist")
-            return
+    ) async where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem {
+        await self.whenLocal { __secretlyKnownToBeLocal in
+          await __secretlyKnownToBeLocal._register(guest, with: key)
         }
-
-        let ref = system._resolveUntyped(identity: guest.id)
-
-        guard address._isLocal || (address.uniqueNode == system.cluster.uniqueNode) else {
-            log.warning("""
-            Actor [\(guest.id.underlying)] attempted to register under key [\(key)], with NOT-local receptionist! \
-            Actors MUST register with their local receptionist in today's Receptionist implementation.
-            """)
-            return // TODO: This restriction could be lifted; perhaps we can direct the register to the right node?
-        }
-
-        let sequenced: OpLog<ReceptionistOp>.SequencedOp =
-            self.addOperation(.register(key: key, identity: guest.id))
-
-        if self.storage.addRegistration(sequenced: sequenced, key: key, guest: guest) {
-            // self.instrumentation.actorRegistered(key: key, address: address) // TODO(distributed): make the instrumentation calls compatible with distributed actor based types
-
-            watchTermination(of: guest) { onActorTerminated(identity: $0) }
-
-            log.debug(
-                "Registered [\(address)] for key [\(key)]",
-                metadata: [
-                    "receptionist/key": "\(key)",
-                    "receptionist/guest": "\(address)",
-                    "receptionist/opLog/maxSeqNr": "\(self.ops.maxSeqNr)",
-                    "receptionist/opLog": "\(self.ops.ops)",
-                ]
-            )
-
-            self.ensureDelayedListingFlush(of: key)
-        } else {
-            log.warning("Unable to register \(guest) with receptionist, unknown identity type?", metadata: [
-                "guest/id": "\(guest.id)",
-                "reception/key": "\(key)",
-            ])
-        }
-
-        // Replication of is done in periodic tics, thus we do not perform a push here.
-
-        // TODO: reply "registered"?
     }
+  
+  // 'local' implementation of register
+  private func _register<Guest>(
+    _ guest: Guest,
+    with key: DistributedReception.Key<Guest>
+  ) async where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem {
+    log.warning("distributed receptionist: register(\(guest), with: \(key)")
+      let key = key.asAnyKey
+    
+      let address = guest.id
+      let ref = actorSystem._resolveUntyped(identity: guest.id)
 
-    func subscribe<Guest>(
+      guard address._isLocal || (address.uniqueNode == actorSystem.cluster.uniqueNode) else {
+          log.warning("""
+                      Actor [\(guest.id)] attempted to register under key [\(key)], with NOT-local receptionist! \
+                      Actors MUST register with their local receptionist in today's Receptionist implementation.
+                      """)
+          return // TODO: This restriction could be lifted; perhaps we can direct the register to the right node?
+      }
+
+      let sequenced: OpLog<ReceptionistOp>.SequencedOp =
+        self.addOperation(.register(key: key, identity: guest.id))
+
+      if self.storage.addRegistration(sequenced: sequenced, key: key, guest: guest) {
+          // self.instrumentation.actorRegistered(key: key, address: address) // TODO(distributed): make the instrumentation calls compatible with distributed actor based types
+
+          watchTermination(of: guest) { onActorTerminated(identity: $0) }
+
+          log.debug(
+            "Registered [\(address)] for key [\(key)]",
+            metadata: [
+                "receptionist/key": "\(key)",
+                "receptionist/guest": "\(address)",
+                "receptionist/opLog/maxSeqNr": "\(self.ops.maxSeqNr)",
+                "receptionist/opLog": "\(self.ops.ops)",
+            ]
+          )
+
+          self.ensureDelayedListingFlush(of: key)
+      } else {
+          log.warning("Unable to register \(guest) with receptionist, unknown identity type?", metadata: [
+              "guest/id": "\(guest.id)",
+              "reception/key": "\(key)",
+          ])
+      }
+
+      // Replication of is done in periodic tics, thus we do not perform a push here.
+
+      // TODO: reply "registered"?
+  }
+  
+
+    nonisolated func subscribe<Guest>(
         to key: DistributedReception.Key<Guest>
     ) async -> DistributedReception.GuestListing<Guest>
-        where Guest: DistributedActor & __DistributedClusterActor {
-        DistributedReception.GuestListing<Guest>(receptionist: self, key: key)
+      where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem {
+        
+        let res = await self.whenLocal { __secretlyKnownToBeLocal in
+            DistributedReception.GuestListing<Guest>(receptionist: self, key: key)
+        }
+          
+          guard let r = res else {
+            return .init(receptionist: self, key: key)
+          }
+          
+          return r
     }
 
     func _subscribe(
@@ -376,22 +391,29 @@ extension OpLogDistributedReceptionist: LifecycleWatch {
         self.storage.removeSubscription(key: subscription.key, subscription: subscription)
     }
 
-    func lookup<Guest>(_ key: DistributedReception.Key<Guest>) async -> Set<Guest>
-        where Guest: DistributedActor & __DistributedClusterActor {
-        let registrations = self.storage.registrations(forKey: key.asAnyKey) ?? []
-
-        // self.instrumentation.listingPublished(key: message._key, subscribers: 1, registrations: registrations.count) // TODO(distributed): make the instrumentation calls compatible with distributed actor based types
-        let guests = Set(registrations.compactMap { versioned in
-            versioned.actor.underlying as? Guest
-        })
-
-        assert(guests.count == registrations.count, """
-        Was unable to map some registrations to \(Guest.self). 
-          Registrations: \(registrations)
-          Guests:        \(guests)
-        """)
-        return guests
+    nonisolated func lookup<Guest>(_ key: DistributedReception.Key<Guest>) async -> Set<Guest>
+      where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem {
+        await self.whenLocal { __secretlyKnownToBeLocal in
+          await __secretlyKnownToBeLocal._lookup(key)
+        } ?? []
     }
+  
+  private func _lookup<Guest>(_ key: DistributedReception.Key<Guest>) async -> Set<Guest>
+  where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem {
+    let registrations = self.storage.registrations(forKey: key.asAnyKey) ?? []
+
+    // self.instrumentation.listingPublished(key: message._key, subscribers: 1, registrations: registrations.count) // TODO(distributed): make the instrumentation calls compatible with distributed actor based types
+    let guests = Set(registrations.compactMap { versioned in
+        versioned.actor.underlying as? Guest
+    })
+
+    assert(guests.count == registrations.count, """
+    Was unable to map some registrations to \(Guest.self).
+      Registrations: \(registrations)
+      Guests:        \(guests)
+    """)
+    return guests
+  }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -413,7 +435,7 @@ extension OpLogDistributedReceptionist {
         }
 
         // TODO: also flush when a key has seen e.g. 100 changes?
-        let flushDelay = system.settings.receptionist.listingFlushDelay
+        let flushDelay = actorSystem.settings.receptionist.listingFlushDelay
         // timers.startSingle(key: timerKey, message: _ReceptionistDelayedListingFlushTick(key: key), delay: flushDelay)
         log.debug("schedule delayed flush")
         timers.startSingle(key: timerKey, delay: flushDelay) {
@@ -478,7 +500,7 @@ extension OpLogDistributedReceptionist {
         log.trace(
             "Received \(push.sequencedOps.count) ops",
             metadata: [
-                "receptionist/peer": "\(push.peer.id.underlying)",
+                "receptionist/peer": "\(push.peer.id)",
                 "receptionist/lastKnownSeqNrAtPeer": "\(lastAppliedSeqNrAtPeer)",
                 "receptionist/opsToApply": Logger.Metadata.Value.array(opsToApply.map { Logger.Metadata.Value.string("\($0)") }),
             ]
@@ -506,10 +528,10 @@ extension OpLogDistributedReceptionist {
             where replica != peerReplicaId && replica != myselfReplicaID &&
             self.observedSequenceNrs[replica] < push.observedSeqNrs[replica] {
             switch replica.storage {
-            case .actorIdentity(let identity):
-                self.sendAckOps(receptionistIdentity: identity)
+            case .actorAddress(let id):
+                self.sendAckOps(receptionistID: id)
             default:
-                fatalError("Only .actorIdentity supported as replica ID, was: \(replica.storage)")
+                fatalError("Only .actorAddress supported as replica ID, was: \(replica.storage)")
             }
         }
 
@@ -521,14 +543,14 @@ extension OpLogDistributedReceptionist {
         // 4) ACK that we processed the ops, if there's any more to be replayed
         //    the peer will then send us another chunk of data.
         //    IMPORTANT: We want to confirm until the _latest_ number we know about
-        self.sendAckOps(receptionistIdentity: peer.id, maybeReceptionistRef: peer)
+        self.sendAckOps(receptionistID: peer.id, maybeReceptionistRef: peer)
 
         // 5) Since we just received ops from `peer` AND also sent it an `AckOps`,
         //    there is no need to send it another _periodic_ AckOps potentially right after.
         //    We DO want to send the Ack directly here as potentially the peer still has some more
         //    ops it might want to send, so we want to allow it to get those over to us as quickly as possible,
         //    without waiting for our Ack ticks to trigger (which could be configured pretty slow).
-        let nextPeriodicAckAllowedIn: TimeAmount = system.settings.cluster.receptionist.ackPullReplicationIntervalSlow * 2
+        let nextPeriodicAckAllowedIn: TimeAmount = actorSystem.settings.cluster.receptionist.ackPullReplicationIntervalSlow * 2
         self.nextPeriodicAckPermittedDeadline[peer.id] = Deadline.fromNow(nextPeriodicAckAllowedIn) // TODO: system.timeSource
     }
 
@@ -542,10 +564,8 @@ extension OpLogDistributedReceptionist {
         // apply operation to storage
         switch op {
         case .register(let key, let identity):
-            let address = identity._forceUnwrapActorAddress
-
             // We resolve a stub that we cannot really ever send messages to, but we can "watch" it
-            let resolved = try! system._resolveStub(identity: identity) // TODO(distributed): remove the throwing here?
+            let resolved = try! actorSystem._resolveStub(identity: identity) // TODO(distributed): remove the throwing here?
 
             watchTermination(of: resolved) {
                 onActorTerminated(identity: $0)
@@ -555,9 +575,8 @@ extension OpLogDistributedReceptionist {
             }
 
         case .remove(let key, let identity):
-            let address = identity._forceUnwrapActorAddress
             //            let resolved = system._resolveUntyped(context: .init(address: address, system: system))
-            let resolved = try! system._resolveStub(identity: identity) // TODO(distributed): remove the throwing here?
+            let resolved = try! actorSystem._resolveStub(identity: identity) // TODO(distributed): remove the throwing here?
 
             unwatch(resolved)
             if self.storage.removeRegistration(key: key, guest: resolved) != nil {
@@ -576,19 +595,18 @@ extension OpLogDistributedReceptionist {
     /// This simultaneously acts as a "pull" conceptually, since we send an `AckOps` which confirms the latest we've applied
     /// as well as potentially causing further data to be sent.
     private func sendAckOps(
-        receptionistIdentity: AnyActorIdentity,
+      receptionistID: ActorSystem.ActorID,
         maybeReceptionistRef: ReceptionistRef? = nil
     ) {
-        let receptionistAddress = receptionistIdentity._forceUnwrapActorAddress
         assert(
-            maybeReceptionistRef == nil || maybeReceptionistRef?.id._forceUnwrapActorAddress == receptionistAddress,
+            maybeReceptionistRef == nil || maybeReceptionistRef?.id == receptionistID,
             "Provided receptionistRef does NOT match passed Address, this is a bug in receptionist."
         )
-        guard case .remote = receptionistAddress._location else {
+        guard case .remote = receptionistID._location else {
             return // this would mean we tried to pull from a "local" receptionist, bail out
         }
 
-        guard self.membership.contains(receptionistAddress.uniqueNode) else {
+        guard self.membership.contains(receptionistID.uniqueNode) else {
             // node is either not known to us yet, OR has been downed and removed
             // avoid talking to it until we see it in membership.
             return
@@ -600,9 +618,9 @@ extension OpLogDistributedReceptionist {
             peerReceptionistRef = ref
         } else {
             do {
-                peerReceptionistRef = try ReceptionistRef.resolve(receptionistIdentity, using: system)
+              peerReceptionistRef = try ReceptionistRef.resolve(id: receptionistID, using: actorSystem)
             } catch {
-                return fatalErrorBacktrace("Unable to resolve receptionist: \(receptionistIdentity)")
+                return fatalErrorBacktrace("Unable to resolve receptionist: \(receptionistID)")
             }
         }
         // peerReceptionistRef = system._resolve(context: .init(address: receptionistAddress, system: system))
@@ -610,7 +628,7 @@ extension OpLogDistributedReceptionist {
         // Get the latest seqNr of the op that we have applied to our state
         // If we never applied anything, this automatically is `0`, and by sending an `ack(0)`,
         // we effectively initiate the "first pull"
-        let latestAppliedSeqNrFromPeer = self.appliedSequenceNrs[.actorIdentity(receptionistIdentity)]
+        let latestAppliedSeqNrFromPeer = self.appliedSequenceNrs[.actorIdentity(receptionistID)]
 
 //        let ack = AckOps(
 //            appliedUntil: latestAppliedSeqNrFromPeer,
@@ -621,7 +639,7 @@ extension OpLogDistributedReceptionist {
 //        peerReceptionistRef.tell(ack)
         Task {
             do {
-                assert(self.id._forceUnwrapActorAddress.path.description.contains("/system/receptionist"))
+                assert(self.id.path.description.contains("/system/receptionist"))
                 try await peerReceptionistRef.ackOps(until: latestAppliedSeqNrFromPeer, by: self)
             } catch {
                 log.error("Error: \(error)")
@@ -680,7 +698,7 @@ extension OpLogDistributedReceptionist {
             // the deadline is clearly overdue, so we remove the value completely to avoid them piling up in there even as peers terminate
             _ = self.nextPeriodicAckPermittedDeadline.removeValue(forKey: peer.id)
 
-            self.sendAckOps(receptionistIdentity: peer.id, maybeReceptionistRef: peer)
+            self.sendAckOps(receptionistID: peer.id, maybeReceptionistRef: peer)
         }
     }
 
@@ -689,7 +707,7 @@ extension OpLogDistributedReceptionist {
         guard var replayer = self.peerReceptionistReplayers[peer] else {
             log.trace("Received a confirmation until \(until) from \(peer) but no replayer available for it, ignoring", metadata: [
                 "receptionist/peer/confirmed": "\(until)",
-                "receptionist/peer": "\(peer.id.underlying)",
+                "receptionist/peer": "\(peer.id)",
                 "replayers": "\(peerReceptionistReplayers)",
             ])
             return
@@ -702,15 +720,15 @@ extension OpLogDistributedReceptionist {
     }
 
     private func replicateOpsBatch(to peer: ReceptionistRef) {
-        log.trace("Replicate ops to: \(peer.id.underlying)")
+        log.trace("Replicate ops to: \(peer.id)")
         guard peer.id != self.id else {
-            log.trace("No need to replicate to myself: \(peer.id.underlying)")
+            log.trace("No need to replicate to myself: \(peer.id)")
             return // no reason to stream updates to myself
         }
 
         guard let replayer = self.peerReceptionistReplayers[peer] else {
             log.trace("Attempting to continue replay but no replayer available for it, ignoring", metadata: [
-                "receptionist/peer": "\(peer.id.underlying)",
+                "receptionist/peer": "\(peer.id)",
             ])
             return
         }
@@ -718,7 +736,7 @@ extension OpLogDistributedReceptionist {
         let sequencedOps = replayer.nextOpsChunk()
         guard !sequencedOps.isEmpty else {
             log.trace("No ops to replay", metadata: [
-                "receptionist/peer": "\(peer.id.underlying)",
+                "receptionist/peer": "\(peer.id)",
                 "receptionist/ops/replay/atSeqNr": "\(replayer.atSeqNr)",
             ])
             return // nothing to stream, done
@@ -727,7 +745,7 @@ extension OpLogDistributedReceptionist {
         log.debug(
             "Streaming \(sequencedOps.count) ops: from [\(replayer.atSeqNr)]",
             metadata: [
-                "receptionist/peer": "\(peer.id.underlying)",
+                "receptionist/peer": "\(peer.id)",
                 "receptionist/ops/replay/atSeqNr": "\(replayer.atSeqNr)",
                 "receptionist/ops/maxSeqNr": "\(self.ops.maxSeqNr)",
             ]
@@ -758,16 +776,16 @@ extension OpLogDistributedReceptionist {
         let sequenced = self.ops.add(op)
         switch op {
         case .register:
-            system.metrics._receptionist_registrations.increment()
+            actorSystem.metrics._receptionist_registrations.increment()
         case .remove:
-            system.metrics._receptionist_registrations.decrement()
+          actorSystem.metrics._receptionist_registrations.decrement()
         }
 
         let latestSelfSeqNr = VersionVector(self.ops.maxSeqNr, at: .actorIdentity(self.id))
         self.observedSequenceNrs.merge(other: latestSelfSeqNr)
         self.appliedSequenceNrs.merge(other: latestSelfSeqNr)
 
-        system.metrics._receptionist_oplog_size.record(self.ops.count)
+      actorSystem.metrics._receptionist_oplog_size.record(self.ops.count)
         return sequenced
     }
 }
@@ -777,38 +795,30 @@ extension OpLogDistributedReceptionist {
 
 extension OpLogDistributedReceptionist {
     // func onActorTerminated(terminated: Signals.Terminated) {
-    func onActorTerminated(identity: AnyActorIdentity) {
-        guard let address = identity._unwrapActorAddress else {
-            return
-        }
-
+    func onActorTerminated(identity address: ActorSystem.ActorID) {
         if address == ActorAddress._receptionist(on: address.uniqueNode, for: .distributedActors) {
-            log.debug("Watched receptionist terminated: \(identity)")
-            self.receptionistTerminated(identity: identity)
+            log.debug("Watched receptionist terminated: \(address)")
+            self.receptionistTerminated(identity: address)
         } else {
-            log.debug("Watched actor terminated: \(identity.underlying)")
-            self.actorTerminated(identity: identity)
+            log.debug("Watched actor terminated: \(address)")
+            self.actorTerminated(identity: address)
         }
     }
 
-    private func receptionistTerminated(identity: AnyActorIdentity) {
-        guard let address = identity._unwrapActorAddress else {
-            return
-        }
-
+    private func receptionistTerminated(identity address: ActorSystem.ActorID) {
         self.pruneClusterMember(removedNode: address.uniqueNode)
     }
 
-    private func actorTerminated(identity: AnyActorIdentity) {
-        let equalityHackRef = try! system._resolveStub(identity: identity) // FIXME: cleanup the try!
+    private func actorTerminated(identity address: ActorSystem.ActorID) {
+        let equalityHackRef = try! actorSystem._resolveStub(identity: address) // FIXME: cleanup the try!
         let wasRegisteredWithKeys = self.storage.removeFromKeyMappings(equalityHackRef.asAnyDistributedActor)
 
         for key in wasRegisteredWithKeys.registeredUnderKeys {
-            self.addOperation(.remove(key: key, identity: identity))
+            self.addOperation(.remove(key: key, identity: address))
             self.publishListings(forKey: key)
         }
 
-        log.trace("Actor terminated \(identity), and removed from receptionist.")
+        log.trace("Actor terminated \(address), and removed from receptionist.")
     }
 }
 
@@ -856,7 +866,7 @@ extension OpLogDistributedReceptionist {
             return // not a new member
         }
 
-        guard change.node != system.cluster.uniqueNode else {
+        guard change.node != actorSystem.cluster.uniqueNode else {
             return // no need to contact our own node, this would be "us"
         }
 
@@ -864,7 +874,7 @@ extension OpLogDistributedReceptionist {
 
         // resolve receptionist on the other node, so we can stream our registrations to it
         let remoteReceptionistAddress = ActorAddress._receptionist(on: change.node, for: .distributedActors)
-        let remoteReceptionist = try! Self.resolve(remoteReceptionistAddress.asAnyActorIdentity, using: system) // try!-safe: we know this resolve won't throw, the identity is known to be correct
+        let remoteReceptionist = try! Self.resolve(id: remoteReceptionistAddress, using: actorSystem) // try!-safe: we know this resolve won't throw, the identity is known to be correct
 
         // ==== "push" replication -----------------------------
         // we noticed a new member, and want to offer it our information right away
@@ -879,8 +889,7 @@ extension OpLogDistributedReceptionist {
     func pruneClusterMember(removedNode: UniqueNode) {
         log.trace("Pruning cluster member: \(removedNode)")
         let terminatedReceptionistAddress = ActorAddress._receptionist(on: removedNode, for: .distributedActors)
-        let terminatedReceptionistIdentity = terminatedReceptionistAddress.asAnyActorIdentity
-        let equalityHackPeer = try! Self.resolve(terminatedReceptionistIdentity, using: system) // try!-safe because we know the address is correct and remote
+        let equalityHackPeer = try! Self.resolve(id: terminatedReceptionistAddress, using: actorSystem) // try!-safe because we know the address is correct and remote
 
         guard self.peerReceptionistReplayers.removeValue(forKey: equalityHackPeer) != nil else {
             // we already removed it, so no need to keep scanning for it.
@@ -892,8 +901,8 @@ extension OpLogDistributedReceptionist {
 
         // clear observations; we only get them directly from the origin node, so since it has been downed
         // we will never receive more observations from it.
-        _ = self.observedSequenceNrs.pruneReplica(.actorIdentity(terminatedReceptionistIdentity))
-        _ = self.appliedSequenceNrs.pruneReplica(.actorIdentity(terminatedReceptionistIdentity))
+        _ = self.observedSequenceNrs.pruneReplica(.actorAddress(terminatedReceptionistAddress))
+        _ = self.appliedSequenceNrs.pruneReplica(.actorAddress(terminatedReceptionistAddress))
 
         // clear state any registrations still lingering about the now-known-to-be-down node
         let pruned = self.storage.pruneNode(removedNode)
@@ -927,8 +936,8 @@ extension OpLogDistributedReceptionist {
              observedSeqNrs: VersionVector,
              sequencedOps: [OpLog<ReceptionistOp>.SequencedOp]) {
             precondition(
-                observedSeqNrs.replicaIDs.allSatisfy { $0.storage.isActorIdentity },
-                "All observed IDs must be keyed with actor identity replica IDs (of the receptionists), was: \(observedSeqNrs)"
+                observedSeqNrs.replicaIDs.allSatisfy { $0.storage.isActorAddress },
+                "All observed IDs must be keyed with actor address replica IDs (of the receptionists), was: \(observedSeqNrs)"
             )
             self.peer = peer
             self.observedSeqNrs = observedSeqNrs

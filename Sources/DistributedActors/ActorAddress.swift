@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import _Distributed
+import Distributed
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ActorAddress
@@ -49,7 +49,7 @@ import _Distributed
 /// For example: `sact://human-readable-name@127.0.0.1:7337/user/wallet/id-121242`.
 /// Note that the `ActorIncarnation` is not printed by default in the String representation of a path, yet may be inspected on demand.
 @available(macOS 10.15, *)
-public struct ActorAddress: ActorIdentity, @unchecked Sendable {
+public struct ActorAddress: @unchecked Sendable {
     /// Knowledge about a node being `local` is purely an optimization, and should not be relied on by actual code anywhere.
     /// It is on purpose not exposed to end-user code as well, and must remain so to not break the location transparency promises made by the runtime.
     ///
@@ -66,12 +66,6 @@ public struct ActorAddress: ActorIdentity, @unchecked Sendable {
         case .remote(let node): return node
         }
     }
-
-    public var asAnyActorIdentity: AnyActorIdentity {
-        .init(self)
-    }
-
-    // TODO: public var identity: ActorIdentity = Path + Name
 
     /// Underlying path representation, not attached to a specific Actor instance.
     public var path: ActorPath

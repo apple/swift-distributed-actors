@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import _Distributed
+import Distributed
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: DistributedReception
@@ -30,9 +30,9 @@ extension DistributedReception {
     /// The id defaults to "*" which can be used "all actors of that type" (if and only if they registered using this key,
     /// actors which do not opt-into discovery by registering themselves WILL NOT be discovered using this, or any other, key).
     // FIXME(distributed): __DistributedClusterActor must go away, we don't need to be aware of `Message`
-    public struct Key<Guest: DistributedActor & __DistributedClusterActor>: Codable, Sendable,
+    public struct Key<Guest: DistributedActor>: Codable, Sendable,
         ExpressibleByStringLiteral, ExpressibleByStringInterpolation,
-        CustomStringConvertible {
+                                                CustomStringConvertible where Guest.ActorSystem == ClusterSystem {
         public let id: String
         public var guestType: Any.Type {
             Guest.self
@@ -47,7 +47,7 @@ extension DistributedReception {
         }
 
         internal func resolve(system: ActorSystem, address: ActorAddress) -> AddressableActorRef {
-            let ref: _ActorRef<Guest.Message> = system._resolve(context: ResolveContext(address: address, system: system))
+            let ref: _ActorRef<InvocationMessage> = system._resolve(context: ResolveContext(address: address, system: system))
             return ref.asAddressable
         }
 
@@ -267,6 +267,6 @@ struct AnyDistributedReceptionKey: Sendable, Codable, Hashable, CustomStringConv
 //    public var actor: Guest {
 //        let system = self._guest.actorTransport._forceUnwrapActorSystem
 //
-//        return try! Guest.resolve(self._guest._ref.asAddressable.asAnyActorIdentity, using: system) // FIXME: cleanup these APIs, should never need throws, resolve earlier
+//        return try! Guest.resolve(id: self._guest._ref.asAddressable.asActorSystem.ActorID, using: system) // FIXME: cleanup these APIs, should never need throws, resolve earlier
 //    }
 // }

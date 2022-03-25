@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import _Distributed
+import Distributed
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Reception
@@ -197,10 +197,10 @@ extension Reception.Registered where Guest: _ReceivesMessages {
     }
 }
 
-extension Reception.Registered where Guest: DistributedActor {
+extension Reception.Registered where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem {
     public var actor: Guest {
-        let system = self._guest.actorTransport._forceUnwrapActorSystem
+        let system = self._guest.actorSystem
 
-        return try! Guest.resolve(self._guest._ref.asAddressable.asAnyActorIdentity, using: system) // FIXME: cleanup these APIs, should never need throws, resolve earlier
+      return try! Guest.resolve(id: self._guest._ref.address, using: system) // FIXME: cleanup these APIs, should never need throws, resolve earlier
     }
 }

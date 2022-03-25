@@ -31,9 +31,8 @@ message ActorIdentity {
 message VersionReplicaID {
     oneof value {
         ActorAddress actorAddress   = 1;
-        ActorIdentity actorIdentity = 2;
-        UniqueNode uniqueNode       = 3;
-        uint64 uniqueNodeID         = 4;
+        UniqueNode uniqueNode       = 2;
+        uint64 uniqueNodeID         = 3;
     }
 }
 

@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import _Distributed
+import Distributed
 import Dispatch
 import Logging
 import struct NIO.TimeAmount
@@ -31,7 +31,7 @@ struct DistributedActorTimer {
 struct DistributedActorTimerEvent {
     let key: TimerKey
 //    let generation: Int
-    let owner: ActorIdentity
+    let owner: ActorAddress
 }
 
 /// Creates and manages timers which may only be accessed from the actor that owns it.
@@ -39,9 +39,9 @@ struct DistributedActorTimerEvent {
 /// _BehaviorTimers are bound to this objects lifecycle, i.e. when the actor owning this object is deallocated,
 /// and the `ActorTimers` are deallocated as well, all timers associated with it are cancelled.
 // TODO(distributed): rename once we're able to hide or remove `_BehaviorTimers`
-public final class ActorTimers<Act: DistributedActor> {
+public final class ActorTimers<Act: DistributedActor> where Act.ActorSystem == ClusterSystem {
     @usableFromInline
-    internal let ownerID: ActorIdentity // TODO: can be just identity
+    internal let ownerID: ActorAddress
 
     @usableFromInline
     internal let dispatchQueue = DispatchQueue.global()
@@ -56,9 +56,9 @@ public final class ActorTimers<Act: DistributedActor> {
     /// Does not retain the distributed actor.
     ///
     /// - Parameter myself:
-    public init<Act: DistributedActor>(_ myself: Act) {
+    public init(_ myself: Act) {
         self.log = Logger(label: "\(myself)") // FIXME(distributed): pick up the actor logger (!!!)
-        log[metadataKey: "actor/id"] = "\(myself.id._unwrapActorAddress?.detailedDescription ?? String(describing: myself.id.underlying))"
+        log[metadataKey: "actor/id"] = "\(myself.id.detailedDescription)"
         self.ownerID = myself.id
     }
 

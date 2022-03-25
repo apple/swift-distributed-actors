@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import _Distributed
+import Distributed
 
 /// Signals special types of messages messages which are passed using the system channel and may be handled by actors.
 /// They inform the actors about various lifecycle events which the actor may want to react to.
@@ -74,7 +74,7 @@ public enum Signals {
 
         /// Identity of the terminated distributed actor.
         public var identity: ActorAddress {
-            self.address.asAnyActorIdentity
+            self.address
         }
 
         /// The existence of this actor has been confirmed prior to its termination.
