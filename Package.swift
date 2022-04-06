@@ -19,9 +19,9 @@ var globalConcurrencyFlags: [String] = []
 // #endif
 
 #if swift(>=5.6)
-var swiftSyntaxDep="SwiftSyntaxParser"
+let swiftSyntaxDependencyName = "SwiftSyntaxParser"
 #else
-var swiftSyntaxDep="SwiftSyntax"
+let swiftSyntaxDependencyName = "SwiftSyntax"
 #endif
 
 if ProcessInfo.processInfo.environment["SACT_WARNINGS_AS_ERRORS"] != nil {
@@ -74,7 +74,7 @@ var targets: [PackageDescription.Target] = [
         name: "GenActorsLib",
         dependencies: [
             "DistributedActors",
-            .product(name: swiftSyntaxDep, package: "SwiftSyntax"),
+            .product(name: swiftSyntaxDependencyName, package: "SwiftSyntax"),
             .product(name: "Logging", package: "swift-log"),
             .product(name: "ArgumentParser", package: "swift-argument-parser"),
 
