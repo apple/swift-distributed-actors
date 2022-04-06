@@ -175,29 +175,29 @@ public final class ActorSystem: DistributedActorSystem, @unchecked Sendable {
     /// The name is useful for debugging cross system communication
     ///
     /// - Faults: when configuration closure performs very illegal action, e.g. reusing a serializer identifier
-    public convenience init(_ name: String, configuredWith configureSettings: (inout ActorSystemSettings) -> Void = { _ in () }) {
+    public convenience init(_ name: String, configuredWith configureSettings: (inout ActorSystemSettings) -> Void = { _ in () }) async {
         var settings = ActorSystemSettings()
         settings.cluster.node.systemName = name
         settings.metrics.systemName = name
         configureSettings(&settings)
 
-        self.init(settings: settings)
+        await self.init(settings: settings)
     }
 
     /// Creates a named `ActorSystem`.
     /// The passed in name is going to override the setting's cluster node name.
     ///
     /// - Faults: when configuration closure performs very illegal action, e.g. reusing a serializer identifier
-    public convenience init(_ name: String, settings: ActorSystemSettings) {
+    public convenience init(_ name: String, settings: ActorSystemSettings) async {
         var settings = settings
         settings.cluster.node.systemName = name
-        self.init(settings: settings)
+        await self.init(settings: settings)
     }
 
     /// Creates an `ActorSystem` using the passed in settings.
     ///
     /// - Faults: when configuration closure performs very illegal action, e.g. reusing a serializer identifier
-    public init(settings: ActorSystemSettings) {
+    public init(settings: ActorSystemSettings) async {
         var settings = settings
         self.name = settings.cluster.node.systemName
 
@@ -314,8 +314,8 @@ public final class ActorSystem: DistributedActorSystem, @unchecked Sendable {
         let lazyReceptionist = try! self._prepareSystemActor(Receptionist.naming, receptionistBehavior, props: ._wellKnown)
         self._receptionistRef = lazyReceptionist.ref
 
-        _Props.$forSpawn.withValue(OpLogDistributedReceptionist.props) {
-            let receptionist = OpLogDistributedReceptionist(
+        await _Props.$forSpawn.withValue(OpLogDistributedReceptionist.props) {
+            let receptionist = await OpLogDistributedReceptionist(
                 settings: self.settings.cluster.receptionist,
                 system: self
             )
@@ -349,8 +349,8 @@ public final class ActorSystem: DistributedActorSystem, @unchecked Sendable {
         }
     }
 
-    public convenience init() {
-        self.init("ActorSystem")
+    public convenience init() async {
+        await self.init("ActorSystem")
     }
 
     /// Parks the current thread (usually "main thread") until the system is terminated,

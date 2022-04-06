@@ -242,7 +242,7 @@ distributed actor OpLogDistributedReceptionist: DistributedReceptionist, CustomS
     // FIXME(swift 6): initializer must become async
     init(settings: ClusterReceptionist.Settings,
          system: ActorSystem
-    ) {
+    ) async {
         self.instrumentation = system.settings.instrumentation.makeReceptionistInstrumentation()
 
         self.ops = OpLog(of: ReceptionistOp.self, batchSize: settings.syncBatchSize)
