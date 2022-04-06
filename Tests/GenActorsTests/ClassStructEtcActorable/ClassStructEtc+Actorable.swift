@@ -14,7 +14,7 @@
 
 import DistributedActors
 
-class ClassActorable: Actorable {
+final class ClassActorable: Actorable {
     // @actor
     func hello() -> String {
         "Hello."

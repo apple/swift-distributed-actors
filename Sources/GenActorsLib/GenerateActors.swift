@@ -17,7 +17,11 @@ import DistributedActors
 import Files
 import Foundation
 import Logging
+#if swift(>=5.6)
+import SwiftSyntaxParser
+#else
 import SwiftSyntax
+#endif
 
 final class GenerateActors {
     var log: Logger
