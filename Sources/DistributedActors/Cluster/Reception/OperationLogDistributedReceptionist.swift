@@ -152,7 +152,7 @@ distributed actor OpLogDistributedReceptionist: DistributedReceptionist, CustomS
   
     // TODO: remove this
     typealias ReceptionistRef = OpLogDistributedReceptionist
-  typealias Key<Guest: DistributedActor> = DistributedReception.Key<Guest> where Guest.ActorSystem == ClusterSystem
+    typealias Key<Guest: DistributedActor> = DistributedReception.Key<Guest> where Guest.ActorSystem == ClusterSystem
 
     internal let instrumentation: ReceptionistInstrumentation
 
@@ -240,9 +240,8 @@ distributed actor OpLogDistributedReceptionist: DistributedReceptionist, CustomS
     }
 
     // FIXME(swift 6): initializer must become async
-    init(settings: ClusterReceptionist.Settings,
-         system: ActorSystem
-    ) async {
+    init(settings: ClusterReceptionist.Settings, system: ActorSystem) {
+        self.actorSystem = system
         self.instrumentation = system.settings.instrumentation.makeReceptionistInstrumentation()
 
         self.ops = OpLog(of: ReceptionistOp.self, batchSize: settings.syncBatchSize)
