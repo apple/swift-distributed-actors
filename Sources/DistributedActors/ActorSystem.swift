@@ -29,7 +29,7 @@ public typealias ClusterSystem = DistributedActors.ActorSystem
 /// Rather, the system should be configured to host the kinds of dispatchers that the application needs.
 ///
 /// An `ActorSystem` and all of the actors contained within remain alive until the `terminate` call is made.
-public final class ActorSystem: DistributedActorSystem, @unchecked Sendable {
+public class ActorSystem: DistributedActorSystem, @unchecked Sendable {
     public typealias ActorID = ActorAddress
     public typealias InvocationDecoder = ClusterInvocationDecoder
     public typealias InvocationEncoder = ClusterInvocationEncoder
@@ -830,36 +830,30 @@ extension ActorSystem {
             "actor/type": "\(type(of: actor))",
         ])
 
-        // TODO: can we skip the Any... and use the underlying existential somehow?
-        guard let SpawnAct = Act.self as? any __AnyDistributedClusterActor.Type else {
-            fatalError(
-                "\(Act.self) was not __AnyDistributedClusterActor! Actor identity was: \(actor.id).") // FIXME: this must be removed (!!!!!!!)
-        }
-
-        func doSpawn<SpawnAct: __AnyDistributedClusterActor>(_: SpawnAct.Type) -> AddressableActorRef {
+        func doSpawn<SpawnAct: DistributedActor>(_: SpawnAct.Type) -> AddressableActorRef where SpawnAct.ActorSystem == ClusterSystem {
             self.log.trace("Spawn any for \(SpawnAct.self)")
             // FIXME(distributed): hopefully remove this and perform the spawn in the cluster library?
             return try! SpawnAct._spawnAny(instance: actor as! SpawnAct, on: self)
         }
 
-        self.namingLock.withLockVoid {
-            guard self._reservedNames.remove(address) != nil else {
-                // FIXME(distributed): this is a bug in the initializers impl, they may call actorReady many times (from async inits)
-                log.warning("Attempted to ready an identity that was not reserved: \(address)")
-                return
-            }
-
-            if let watcher = actor as? LifecycleWatch & DistributedActor {
-                func doMakeLifecycleWatch<Watcher: LifecycleWatch & DistributedActor>(watcher: Watcher) {
-                    _ = self._makeLifecycleWatch(watcher: watcher)
-                }
-                _openExistential(watcher, do: doMakeLifecycleWatch)
-            }
-
-            let anyRef: AddressableActorRef = _openExistential(SpawnAct, do: doSpawn)
-            log.debug("Store managed distributed actor \(anyRef.address.detailedDescription)")
-            self._managedRefs[address] = anyRef
+        self.namingLock.lock()
+        defer { self.namingLock.lock() }
+        guard self._reservedNames.remove(address) != nil else {
+            // FIXME(distributed): this is a bug in the initializers impl, they may call actorReady many times (from async inits)
+            log.warning("Attempted to ready an identity that was not reserved: \(address)")
+            return
         }
+
+        if let watcher = actor as? LifecycleWatch & DistributedActor {
+            func doMakeLifecycleWatch<Watcher: LifecycleWatch & DistributedActor>(watcher: Watcher) {
+                _ = self._makeLifecycleWatch(watcher: watcher)
+            }
+            _openExistential(watcher, do: doMakeLifecycleWatch)
+        }
+
+        let anyRef: AddressableActorRef = _openExistential(Act, do: doSpawn)
+        log.debug("Store managed distributed actor \(anyRef.address.detailedDescription)")
+        self._managedRefs[address] = anyRef
     }
 
     /// Called during actor deinit/destroy.
@@ -937,22 +931,23 @@ public struct ClusterInvocationEncoder: DistributedTargetInvocationEncoder {
 
 }
 
-public struct ClusterInvocationDecoder: DistributedTargetInvocationDecoder {
+// FIXME(distributed): make it a struct once rdar://88211172 ([Distributed] SILGen must emit uses of decodeNextArgument so IRGen can get it cross module on `FINAL classes`) is fixed
+public class ClusterInvocationDecoder: DistributedTargetInvocationDecoder {
   public typealias SerializationRequirement = any Codable
 
-  public mutating func decodeGenericSubstitutions() throws -> [Any.Type] {
+  public  func decodeGenericSubstitutions() throws -> [Any.Type] {
         fatalError("NOT IMPLEMENTED: \(#function)")
     }
 
-  public mutating func decodeNextArgument<Argument: Codable>() throws -> Argument {
+  public  func decodeNextArgument<Argument: Codable>() throws -> Argument {
         fatalError("NOT IMPLEMENTED: \(#function)")
     }
 
-  public mutating func decodeErrorType() throws -> Any.Type? {
+  public  func decodeErrorType() throws -> Any.Type? {
         fatalError("NOT IMPLEMENTED: \(#function)")
     }
 
-  public mutating func decodeReturnType() throws -> Any.Type? {
+  public  func decodeReturnType() throws -> Any.Type? {
         fatalError("NOT IMPLEMENTED: \(#function)")
     }
 }

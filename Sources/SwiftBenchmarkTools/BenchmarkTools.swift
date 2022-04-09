@@ -77,11 +77,11 @@ public struct BenchmarkInfo {
     private var unsupportedPlatforms: BenchmarkPlatformSet
 
     /// Shadow variable for setUpFunction.
-    private var _setUpFunction: (() -> Void)?
+    private var _setUpFunction: (() async -> Void)?
 
     /// An optional function that if non-null is run before benchmark samples
     /// are timed.
-    public var setUpFunction: (() -> Void)? {
+    public var setUpFunction: (() async -> Void)? {
         if !self.shouldRun {
             return nil
         }
@@ -103,7 +103,7 @@ public struct BenchmarkInfo {
 
     public init(
         name: String, runFunction: @escaping (Int) -> Void, tags: [BenchmarkCategory],
-        setUpFunction: (() -> Void)? = nil,
+        setUpFunction: (() async -> Void)? = nil,
         tearDownFunction: (() -> Void)? = nil,
         unsupportedPlatforms: BenchmarkPlatformSet = [],
         legacyFactor: Int? = nil

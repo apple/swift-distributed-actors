@@ -149,6 +149,7 @@ import Logging
 //       The fast tick could be 1s or 0.5s for example as a default.
 distributed actor OpLogDistributedReceptionist: DistributedReceptionist, CustomStringConvertible {
     typealias ID = ClusterSystem.ActorID // TODO: remove this
+    typealias ActorSystem = ClusterSystem
   
     // TODO: remove this
     typealias ReceptionistRef = OpLogDistributedReceptionist

@@ -62,104 +62,109 @@ var targets: [PackageDescription.Target] = [
             "DistributedActors"
         ]
     ),
+    
+        .executableTarget(name: "ExecApp",
+                          dependencies: [
+                            "DistributedActors"
+                          ]),
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: TestKit
 
-    /// This target is intended only for use in tests, though we have no way to mark this
-    .target(
-        name: "DistributedActorsTestKit",
-        dependencies: [
-            "DistributedActors",
-            "DistributedActorsConcurrencyHelpers",
-            .product(name: "Atomics", package: "swift-atomics"),
-        ]
-    ),
+//    /// This target is intended only for use in tests, though we have no way to mark this
+//    .target(
+//        name: "DistributedActorsTestKit",
+//        dependencies: [
+//            "DistributedActors",
+//            "DistributedActorsConcurrencyHelpers",
+//            .product(name: "Atomics", package: "swift-atomics"),
+//        ]
+//    ),
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Documentation
 
-    .testTarget(
-        name: "DistributedActorsDocumentationTests",
-        dependencies: [
-            "DistributedActors",
-            "ActorSingletonPlugin",
-            "DistributedActorsTestKit",
-        ],
-        exclude: [
-          "DocumentationProtos/",
-        ]
-    ),
+//    .testTarget(
+//        name: "DistributedActorsDocumentationTests",
+//        dependencies: [
+//            "DistributedActors",
+//            "ActorSingletonPlugin",
+//            "DistributedActorsTestKit",
+//        ],
+//        exclude: [
+//          "DocumentationProtos/",
+//        ]
+//    ),
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Tests
 
-    .testTarget(
-        name: "DistributedActorsTests",
-        dependencies: [
-            "DistributedActors",
-            "DistributedActorsTestKit",
-            .product(name: "Atomics", package: "swift-atomics"),
-        ]
-    ),
-
-    .testTarget(
-        name: "DistributedActorsTestKitTests",
-        dependencies: [
-            "DistributedActors",
-            "DistributedActorsTestKit"
-        ]
-    ),
-
-    .testTarget(
-        name: "CDistributedActorsMailboxTests",
-        dependencies: [
-            "CDistributedActorsMailbox",
-            "DistributedActorsTestKit"
-        ]
-    ),
-
-    .testTarget(
-        name: "ActorSingletonPluginTests",
-        dependencies: [
-            "ActorSingletonPlugin",
-            "DistributedActorsTestKit"
-        ]
-    ),
+//    .testTarget(
+//        name: "DistributedActorsTests",
+//        dependencies: [
+//            "DistributedActors",
+//            "DistributedActorsTestKit",
+//            .product(name: "Atomics", package: "swift-atomics"),
+//        ]
+//    ),
+//
+//    .testTarget(
+//        name: "DistributedActorsTestKitTests",
+//        dependencies: [
+//            "DistributedActors",
+//            "DistributedActorsTestKit"
+//        ]
+//    ),
+//
+//    .testTarget(
+//        name: "CDistributedActorsMailboxTests",
+//        dependencies: [
+//            "CDistributedActorsMailbox",
+//            "DistributedActorsTestKit"
+//        ]
+//    ),
+//
+//    .testTarget(
+//        name: "ActorSingletonPluginTests",
+//        dependencies: [
+//            "ActorSingletonPlugin",
+//            "DistributedActorsTestKit"
+//        ]
+//    ),
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Integration Tests - `it_` prefixed
 
-    .executableTarget(
-        name: "it_Clustered_swim_suspension_reachability",
-        dependencies: [
-            "DistributedActors",
-        ],
-        path: "IntegrationTests/tests_01_cluster/it_Clustered_swim_suspension_reachability"
-    ),
+//    .executableTarget(
+//        name: "it_Clustered_swim_suspension_reachability",
+//        dependencies: [
+//            "DistributedActors",
+//        ],
+//        path: "IntegrationTests/tests_01_cluster/it_Clustered_swim_suspension_reachability"
+//    ),
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Performance / Benchmarks
 
-    .executableTarget(
-        name: "DistributedActorsBenchmarks",
-        dependencies: [
-            "DistributedActors",
-            "SwiftBenchmarkTools",
-            .product(name: "Atomics", package: "swift-atomics"),
-        ],
-        exclude: [
-          "README.md",
-          "BenchmarkProtos/bench.proto",
-        ]
-    ),
-    .target(
-        name: "SwiftBenchmarkTools",
-        dependencies: ["DistributedActors"],
-        exclude: [
-          "README_SWIFT.md"
-        ]
-    ),
+//    .executableTarget(
+//        name: "DistributedActorsBenchmarks",
+//        dependencies: [
+//            "DistributedActors",
+//            "SwiftBenchmarkTools",
+//            .product(name: "Atomics", package: "swift-atomics"),
+//        ],
+//        exclude: [
+//          "README.md",
+//          "BenchmarkProtos/bench.proto",
+//        ]
+//    ),
+//    .target(
+//        name: "SwiftBenchmarkTools",
+//        dependencies: ["DistributedActors"],
+//        exclude: [
+//          "README_SWIFT.md"
+//        ]
+//    ),
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Samples are defined in Samples/Package.swift
@@ -212,11 +217,18 @@ let products: [PackageDescription.Product] = [
         name: "DistributedActors",
         targets: ["DistributedActors"]
     ),
-    .library(
-        name: "DistributedActorsTestKit",
-        targets: ["DistributedActorsTestKit"]
-    ),
+//    .library(
+//        name: "DistributedActorsTestKit",
+//        targets: ["DistributedActorsTestKit"]
+//    ),
 
+        .executable(
+            name: "ExecApp",
+            targets: [
+                "ExecApp"
+            ]
+        ),
+    
     /* --- Functional Plugins --- */
 
     .library(

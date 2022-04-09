@@ -59,8 +59,8 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
     }
 
     /// Set up a new node intended to be clustered.
-    open func setUpNode(_ name: String, _ modifySettings: ((inout ActorSystemSettings) -> Void)? = nil) -> ActorSystem {
-        let node = ActorSystem(name) { settings in
+    open func setUpNode(_ name: String, _ modifySettings: ((inout ActorSystemSettings) -> Void)? = nil) async -> ActorSystem {
+        let node = await ActorSystem(name) { settings in
             settings.cluster.enabled = true
             settings.cluster.node.port = self.nextPort()
 
@@ -93,9 +93,9 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
     }
 
     /// Set up a new pair of nodes intended to be clustered
-    public func setUpPair(_ modifySettings: ((inout ActorSystemSettings) -> Void)? = nil) -> (ActorSystem, ActorSystem) {
-        let first = self.setUpNode("first", modifySettings)
-        let second = self.setUpNode("second", modifySettings)
+    public func setUpPair(_ modifySettings: ((inout ActorSystemSettings) -> Void)? = nil) async -> (ActorSystem, ActorSystem) {
+        let first = await self.setUpNode("first", modifySettings)
+        let second = await self.setUpNode("second", modifySettings)
         return (first, second)
     }
 
