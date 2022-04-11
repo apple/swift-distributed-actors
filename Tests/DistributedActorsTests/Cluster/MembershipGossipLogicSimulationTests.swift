@@ -19,7 +19,7 @@ import NIO
 import XCTest
 
 final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCase {
-    override func configureActorSystem(settings: inout ActorSystemSettings) {
+    override func configureActorSystem(settings: inout ClusterSystemSettings) {
         settings.cluster.enabled = false // not actually clustering, just need a few nodes
     }
 

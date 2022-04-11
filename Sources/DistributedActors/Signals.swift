@@ -134,7 +134,7 @@ public enum Signals {
     /// section of the tree will be torn down upon failure of one of the workers. A higher level supervisor may then decide to
     /// restart one of the higher actors, causing a "sub tree" to be restarted in response to a worker failure. Alternatively,
     /// this pattern is useful when one wants to bubble up failures all the way to the guardian actors (`/user`, or `/system`),
-    /// in which case the system will issue a configured termination action (see `ActorSystemSettings.guardianFailureHandling`).
+    /// in which case the system will issue a configured termination action (see `ClusterSystemSettings.guardianFailureHandling`).
     ///
     /// - Note: Note that `_ChildTerminated` IS-A `Terminated` so unless you need to specifically react to a child terminating,
     ///         you may choose to handle all `Terminated` signals the same way.

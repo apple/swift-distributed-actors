@@ -69,6 +69,7 @@ extension DistributedActor where ActorSystem == ClusterSystem {
 }
 
 distributed actor StubDistributedActor {
+    typealias ID = ClusterSystem.ActorID
     typealias ActorSystem = ClusterSystem
 
     // TODO: this is just to prevent a DI crash because of enums without cases and Codable

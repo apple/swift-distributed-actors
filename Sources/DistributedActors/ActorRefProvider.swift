@@ -55,7 +55,7 @@ internal struct RemoteActorRefProvider: _ActorRefProvider {
 
     // TODO: restructure it somehow, perhaps we dont need the full abstraction like this
     init(
-        settings: ActorSystemSettings,
+        settings: ClusterSystemSettings,
         cluster: ClusterShell,
         localProvider: LocalActorRefProvider
     ) {

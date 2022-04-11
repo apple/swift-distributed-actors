@@ -79,8 +79,8 @@ extension PluginsSettings {
     }
 }
 
-extension ActorSystemSettings {
-    public static func += <P: Plugin>(settings: inout ActorSystemSettings, plugin: P) {
+extension ClusterSystemSettings {
+    public static func += <P: Plugin>(settings: inout ClusterSystemSettings, plugin: P) {
         settings.plugins.add(plugin)
     }
 }

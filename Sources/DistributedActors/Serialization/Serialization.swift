@@ -69,7 +69,7 @@ public class Serialization {
 
     private let context: Serialization.Context
 
-    internal init(settings systemSettings: ActorSystemSettings, system: ActorSystem) {
+    internal init(settings systemSettings: ClusterSystemSettings, system: ActorSystem) {
         var settings = systemSettings.serialization
 
         settings.register(InvocationMessage.self, serializerID: .foundationJSON)
@@ -804,6 +804,7 @@ public enum SerializationError: Error {
 
     /// Thrown and to be handled internally by the Serialization system when a serializer should NOT be ensured.
     case noNeedToEnsureSerializer
+    case notEnoughArgumentsEncoded(expected: Int, have: Int)
 
     public static func missingSerializationContext(_ coder: Swift.Decoder, _ _type: Any.Type, file: String = #file, line: UInt = #line) -> SerializationError {
         SerializationError.missingSerializationContext(

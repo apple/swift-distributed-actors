@@ -24,13 +24,13 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
     var firstClusterProbe: ActorTestProbe<ClusterShell.Message>!
     var secondClusterProbe: ActorTestProbe<ClusterShell.Message>!
 
-    func setUpFirst(_ modifySettings: ((inout ActorSystemSettings) -> Void)? = nil) -> ActorSystem {
+    func setUpFirst(_ modifySettings: ((inout ClusterSystemSettings) -> Void)? = nil) -> ActorSystem {
         let first = super.setUpNode("first", modifySettings)
         self.firstClusterProbe = self.testKit(first).makeTestProbe()
         return first
     }
 
-    func setUpSecond(_ modifySettings: ((inout ActorSystemSettings) -> Void)? = nil) -> ActorSystem {
+    func setUpSecond(_ modifySettings: ((inout ClusterSystemSettings) -> Void)? = nil) -> ActorSystem {
         let second = super.setUpNode("second", modifySettings)
         self.secondClusterProbe = self.testKit(second).makeTestProbe()
         return second

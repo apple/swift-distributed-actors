@@ -15,9 +15,9 @@
 import class Foundation.ProcessInfo
 import Logging
 
-/// Settings used to configure an `ActorSystem`.
-public struct ActorSystemSettings {
-    public static var `default`: ActorSystemSettings {
+/// Settings used to configure an `ClusterSystem`.
+public struct ClusterSystemSettings {
+    public static var `default`: ClusterSystemSettings {
         .init()
     }
 
@@ -126,7 +126,7 @@ public struct LoggingSettings {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Actor Settings
 
-extension ActorSystemSettings {
+extension ClusterSystemSettings {
     public struct ActorSettings {
         public static var `default`: ActorSettings {
             .init()
@@ -140,7 +140,7 @@ extension ActorSystemSettings {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Instrumentation Settings
 
-extension ActorSystemSettings {
+extension ClusterSystemSettings {
     public struct InstrumentationSettings {
         /// Default set of enabled instrumentations, based on current operating system.
         ///

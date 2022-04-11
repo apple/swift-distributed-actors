@@ -201,7 +201,7 @@ public final class DeadLetterOffice {
         }
 
         // in all other cases, we want to log the dead letter:
-        self.log.info(
+        self.log.notice(
             "Dead letter was not delivered \(recipientString)",
             metadata: { () -> Logger.Metadata in
                 // TODO: more metadata (from Envelope) (e.g. sender)

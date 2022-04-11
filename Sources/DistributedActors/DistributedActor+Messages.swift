@@ -15,13 +15,6 @@
 import Distributed
 @preconcurrency import struct Foundation.Data
 
-/// Representation of the distributed invocation in the Behavior APIs.
-/// This needs to be removed eventually as we remove behaviors.
-public struct InvocationMessage: Sendable, Codable {
-  let identifier: String
-  let parameters: [Data]
-}
-
 // FIXME(distributed): we need to get rid of this all of this... probably means having to remove the entire Ref based infrastructure
 
 /// `Void` equivalent but `Codable`.

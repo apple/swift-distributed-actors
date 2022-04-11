@@ -41,10 +41,11 @@ public class ActorSystem: DistributedActorSystem, @unchecked Sendable {
     // initialized during startup
     internal var _deadLetters: _ActorRef<DeadLetter>!
 
-//    /// Impl note: Atomic since we are being called from outside actors here (or MAY be), thus we need to synchronize access
-    // TODO: avoid the lock...
+    /// Impl note: Atomic since we are being called from outside actors here (or MAY be), thus we need to synchronize access
+    /// Must be protected with `namingLock`
     internal var namingContext = ActorNamingContext()
     internal let namingLock = Lock()
+
     internal func withNamingContext<T>(_ block: (inout ActorNamingContext) throws -> T) rethrows -> T {
         try self.namingLock.withLock {
             try block(&self.namingContext)
@@ -70,7 +71,7 @@ public class ActorSystem: DistributedActorSystem, @unchecked Sendable {
 
     /// Allows inspecting settings that were used to configure this actor system.
     /// Settings are immutable and may not be changed once the system is running.
-    public let settings: ActorSystemSettings
+    public let settings: ClusterSystemSettings
 
     // initialized during startup
     private let lazyInitializationLock: ReadWriteLock
@@ -175,8 +176,8 @@ public class ActorSystem: DistributedActorSystem, @unchecked Sendable {
     /// The name is useful for debugging cross system communication
     ///
     /// - Faults: when configuration closure performs very illegal action, e.g. reusing a serializer identifier
-    public convenience init(_ name: String, configuredWith configureSettings: (inout ActorSystemSettings) -> Void = { _ in () }) async {
-        var settings = ActorSystemSettings()
+    public convenience init(_ name: String, configuredWith configureSettings: (inout ClusterSystemSettings) -> Void = { _ in () }) async {
+        var settings = ClusterSystemSettings()
         settings.cluster.node.systemName = name
         settings.metrics.systemName = name
         configureSettings(&settings)
@@ -188,7 +189,7 @@ public class ActorSystem: DistributedActorSystem, @unchecked Sendable {
     /// The passed in name is going to override the setting's cluster node name.
     ///
     /// - Faults: when configuration closure performs very illegal action, e.g. reusing a serializer identifier
-    public convenience init(_ name: String, settings: ActorSystemSettings) async {
+    public convenience init(_ name: String, settings: ClusterSystemSettings) async {
         var settings = settings
         settings.cluster.node.systemName = name
         await self.init(settings: settings)
@@ -197,7 +198,7 @@ public class ActorSystem: DistributedActorSystem, @unchecked Sendable {
     /// Creates an `ActorSystem` using the passed in settings.
     ///
     /// - Faults: when configuration closure performs very illegal action, e.g. reusing a serializer identifier
-    public init(settings: ActorSystemSettings) async {
+    public init(settings: ClusterSystemSettings) async {
         var settings = settings
         self.name = settings.cluster.node.systemName
 
@@ -350,7 +351,7 @@ public class ActorSystem: DistributedActorSystem, @unchecked Sendable {
     }
 
     public convenience init() async {
-        await self.init("ActorSystem")
+        await self.init("ClusterSystem")
     }
 
     /// Parks the current thread (usually "main thread") until the system is terminated,
@@ -639,7 +640,6 @@ extension ActorSystem: _ActorRefFactory {
         }
     }
 
-    // FIXME(distributed): this exists because generated _spawnAny, we need to get rid of that _spawnAny
     public func _spawnDistributedActor<Message>(
         _ behavior: _Behavior<Message>, identifiedBy id: ActorSystem.ActorID
     ) -> _ActorRef<Message> where Message: ActorMessage {
@@ -739,7 +739,8 @@ extension ActorSystem: _ActorTreeTraversable {
     }
 
     func _resolveStub(identity: ActorAddress) throws -> StubDistributedActor {
-      return try StubDistributedActor.resolve(id: identity, using: self)
+      return try StubDistributedActor.resolve(id: identity, using: self) // FIXME(!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!)
+      fatalError("NEIN")
     }
 
     public func _resolveUntyped(context: ResolveContext<Never>) -> AddressableActorRef {
@@ -772,17 +773,11 @@ extension ActorSystem: _ActorTreeTraversable {
 // MARK: Actor Transport
 
 extension ActorSystem {
-    // ==== --------------------------------------------------------------------
-    // - MARK: Resolving actors by identity
-
-//    public func decodeIdentity(from decoder: Decoder) throws -> ActorSystem.ActorID {
-//        let address = try ActorAddress(from: decoder)
-//        return ActorSystem.ActorID(address)
-//    }
-
     public func resolve<Act>(id address: ActorID, as actorType: Act.Type) throws -> Act?
         where Act: DistributedActor {
+        log.info("RESOLVE: \(address)")
         guard self.cluster.uniqueNode == address.uniqueNode else {
+            log.info("Resolved \(address) as remote, on node: \(address.uniqueNode)")
             return nil
         }
 
@@ -799,7 +794,13 @@ extension ActorSystem {
                 "actor/identity": "\(address)",
                 "actor": "\(managed)",
             ])
-            return managed as? Act
+            if let resolved = managed as? Act {
+                log.info("Resolved \(address) as local")
+                return resolved
+            } else {
+                log.info("Resolved \(address) as remote")
+                return nil
+            }
         }
     }
 
@@ -813,7 +814,8 @@ extension ActorSystem {
 
         self.log.warning("Assign identity", metadata: [
             "actor/type": "\(actorType)",
-            "actor/identity": "\(address.detailedDescription)",
+            "actor/id": "\(address)",
+            "actor/id/uniqueNode": "\(address.uniqueNode)",
         ])
 
         return self.namingLock.withLock {
@@ -830,30 +832,25 @@ extension ActorSystem {
             "actor/type": "\(type(of: actor))",
         ])
 
-        func doSpawn<SpawnAct: DistributedActor>(_: SpawnAct.Type) -> AddressableActorRef where SpawnAct.ActorSystem == ClusterSystem {
-            self.log.trace("Spawn any for \(SpawnAct.self)")
-            // FIXME(distributed): hopefully remove this and perform the spawn in the cluster library?
-            return try! SpawnAct._spawnAny(instance: actor as! SpawnAct, on: self)
-        }
-
         self.namingLock.lock()
-        defer { self.namingLock.lock() }
+        defer { self.namingLock.unlock() }
         guard self._reservedNames.remove(address) != nil else {
             // FIXME(distributed): this is a bug in the initializers impl, they may call actorReady many times (from async inits)
             log.warning("Attempted to ready an identity that was not reserved: \(address)")
             return
         }
 
-        if let watcher = actor as? LifecycleWatch & DistributedActor {
+        if let watcher = actor as? any LifecycleWatch {
             func doMakeLifecycleWatch<Watcher: LifecycleWatch & DistributedActor>(watcher: Watcher) {
                 _ = self._makeLifecycleWatch(watcher: watcher)
             }
             _openExistential(watcher, do: doMakeLifecycleWatch)
         }
 
-        let anyRef: AddressableActorRef = _openExistential(Act, do: doSpawn)
-        log.debug("Store managed distributed actor \(anyRef.address.detailedDescription)")
-        self._managedRefs[address] = anyRef
+        let behavior = InvocationBehavior.behavior(instance: actor)
+        let ref = self._spawnDistributedActor(behavior, identifiedBy: actor.id)
+        self._managedRefs[actor.id] = ref
+        self._managedDistributedActors[actor.id] = actor
     }
 
     /// Called during actor deinit/destroy.
@@ -876,7 +873,7 @@ extension ActorSystem {
     .init()
   }
 
-  public func remoteCall<Act, Err, Res>(
+    public func remoteCall<Act, Err, Res>(
       on actor: Act,
       target: RemoteCallTarget,
       invocation: inout InvocationEncoder,
@@ -884,88 +881,125 @@ extension ActorSystem {
       returning: Res.Type
     ) async throws -> Res
       where Act: DistributedActor,
-            Act.ID == ActorID,
-            Err: Error,
-            Res: SerializationRequirement {
-      fatalErrorBacktrace("NOT IMPLEMENTED YET: \(#function)")
+      Act.ID == ActorID,
+      Err: Error,
+      Res: SerializationRequirement {
+        guard let clusterShell = _cluster else {
+            throw RemoteCallError.clusterAlreadyShutDown
+        }
+
+        let recipient = _ActorRef<InvocationMessage>(.remote(.init(shell: clusterShell, address: actor.id._asRemote, system: self)))
+
+//      let recipient: _ActorRef<InvocationMessage> =
+//        _resolve(context: ResolveContext(address: actor.id, system: self))
+
+        let arguments = invocation.arguments
+        print("RECIPIENT: \(recipient.address.fullDescription)")
+        let ask: AskResponse<Res> = recipient.ask(timeout: .seconds(5)) { replyTo in
+            let invocation = InvocationMessage(
+              targetIdentifier: target.identifier,
+              arguments: arguments,
+              replyToAddress: replyTo.address
+            )
+
+            self.log.info("SENDING ASK: \(invocation) to \(recipient.address.fullDescription)")
+            return invocation
+        }
+
+        return try await ask.value
     }
 
-  public func remoteCallVoid<Act, Err>(
+    public func remoteCallVoid<Act, Err>(
       on actor: Act,
       target: RemoteCallTarget,
       invocation: inout InvocationEncoder,
       throwing: Err.Type
     ) async throws
       where Act: DistributedActor,
-            Act.ID == ActorID,
-            Err: Error {
-      fatalError("NOT IMPLEMENTED YET: \(#function)")
-  }
+      Act.ID == ActorID,
+      Err: Error {
+        let recipient = _ActorRef<InvocationMessage>(.remote(.init(shell: self._cluster!, address: actor.id._asRemote, system: self)))
+
+//      let recipient: _ActorRef<InvocationMessage> =
+//        _resolve(context: ResolveContext(address: actor.id, system: self))
+
+        let arguments = invocation.arguments
+        print("RECIPIENT: \(recipient.address.fullDescription)")
+        let ask: AskResponse<_Done> = recipient.ask(timeout: .seconds(5)) { replyTo in
+            let invocation = InvocationMessage(
+              targetIdentifier: target.identifier,
+              arguments: arguments,
+              replyToAddress: replyTo.address
+            )
+
+            self.log.info("SENDING ASK: \(invocation) to \(recipient.address.fullDescription)")
+            return invocation
+        }
+
+        _ = try await ask.value // discard the _Done
+    }
 }
 
-public struct ClusterInvocationEncoder: DistributedTargetInvocationEncoder {
-  public typealias SerializationRequirement = any Codable
+extension ActorSystem {
+    func receiveInvocation(actor: some DistributedActor, message: InvocationMessage) async {
+        guard let shell = self._cluster else {
+            fatalError("FIXME: cluster is inactive already") // FIXME(distributed): fix this and allow returning back an error via the handler from here
+        }
 
-  public mutating func recordGenericSubstitution<T>(_ type: T.Type) throws {
-    fatalError("NOT IMPLEMENTED: \(#function)")
-  }
-  
-  public mutating func recordArgument<Value: Codable>(
-     _ argument: RemoteCallArgument<Value>
-  ) throws {
-    fatalError("NOT IMPLEMENTED: \(#function)")
-  }
-  
-  
-  public mutating func recordReturnType<Success: Codable>(_ returnType: Success.Type) throws {
-    fatalError("NOT IMPLEMENTED: \(#function)")
-  }
+        let target = message.target
+        log.info("TRY TO INVOKE: \(target) on \(actor)")
 
-  public mutating func recordErrorType<E: Error>(_ type: E.Type) throws {
-    fatalError("NOT IMPLEMENTED: \(#function)")
-  }
+        var decoder = ClusterInvocationDecoder(system: self, message: message)
+        let resultHandler = ClusterInvocationResultHandler(
+          system: self,
+          clusterShell: shell,
+          replyTo: message.replyToAddress)
 
-  public mutating func doneRecording() throws {
-    fatalError("NOT IMPLEMENTED: \(#function)")
-  }
-
-}
-
-// FIXME(distributed): make it a struct once rdar://88211172 ([Distributed] SILGen must emit uses of decodeNextArgument so IRGen can get it cross module on `FINAL classes`) is fixed
-public class ClusterInvocationDecoder: DistributedTargetInvocationDecoder {
-  public typealias SerializationRequirement = any Codable
-
-  public  func decodeGenericSubstitutions() throws -> [Any.Type] {
-        fatalError("NOT IMPLEMENTED: \(#function)")
-    }
-
-  public  func decodeNextArgument<Argument: Codable>() throws -> Argument {
-        fatalError("NOT IMPLEMENTED: \(#function)")
-    }
-
-  public  func decodeErrorType() throws -> Any.Type? {
-        fatalError("NOT IMPLEMENTED: \(#function)")
-    }
-
-  public  func decodeReturnType() throws -> Any.Type? {
-        fatalError("NOT IMPLEMENTED: \(#function)")
+        do {
+            try await executeDistributedTarget(
+            on: actor,
+              target: target,
+              invocationDecoder: &decoder,
+              handler: resultHandler)
+        } catch {
+            // FIXME(distributed): is this right?
+            do {
+                try await resultHandler.onThrow(error: error)
+            } catch {
+                log.warning("Unable to invoke result handler for \(message.target) call, error: \(error)")
+            }
+        }
     }
 }
 
 public struct ClusterInvocationResultHandler: DistributedTargetInvocationResultHandler {
-  public typealias SerializationRequirement = any Codable
-  
-  public func onReturn<Success: Codable>(value: Success) async throws {
-    fatalError("NOT IMPLEMENTED: \(#function)")
-  }
-  
-  public func onReturnVoid() async throws {
-    fatalError("NOT IMPLEMENTED: \(#function)")
-  }
-  
-  public func onThrow<Err: Error>(error: Err) async throws {
-    fatalError("NOT IMPLEMENTED: \(#function)")
-  }
+    public typealias SerializationRequirement = any Codable
+
+    let system: ClusterSystem
+    let clusterShell: ClusterShell
+    let replyToAddress: ActorAddress
+
+    init(system: ClusterSystem, clusterShell: ClusterShell, replyTo: ActorAddress) {
+        self.system = system
+        self.clusterShell = clusterShell
+        self.replyToAddress = replyTo
+    }
+
+    public func onReturn<Success: Codable>(value: Success) async throws {
+        let ref = _ActorRef<Success>(.remote(.init(shell: clusterShell, address: replyToAddress, system: system)))
+        ref.tell(value)
+    }
+
+    public func onReturnVoid() async throws {
+        let ref = _ActorRef<_Done>(.remote(.init(shell: clusterShell, address: replyToAddress, system: system)))
+        ref.tell(_Done.done)
+    }
+
+    public func onThrow<Err: Error>(error: Err) async throws {
+        system.log.warning("Result handler, onThrow: \(error)")
+        // FIXME(distributed): carry the error back
+        fatalError("FIXME: implement sending back errors")
+    }
 }
 
 public enum ActorSystemError: DistributedActorSystemError {
@@ -996,4 +1030,8 @@ internal struct LazyStart<Message: ActorMessage> {
     func wakeUp() {
         self.ref._unsafeUnwrapCell.mailbox.schedule()
     }
+}
+
+enum RemoteCallError: Error {
+    case clusterAlreadyShutDown
 }

@@ -53,7 +53,7 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
     func shared_stoppingNode_shouldPropagateToOtherNodesAsDown(
         stopMethod: NodeStopMethod,
         stopNode: StopNodeSelection,
-        _ modifySettings: ((inout ActorSystemSettings) -> Void)? = nil
+        _ modifySettings: ((inout ClusterSystemSettings) -> Void)? = nil
     ) throws {
         let (first, second) = self.setUpPair { settings in
             settings.cluster.swim.probeInterval = .milliseconds(500)
