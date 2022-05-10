@@ -33,7 +33,7 @@ public class ActorSystem: DistributedActorSystem, @unchecked Sendable {
     public typealias ActorID = ActorAddress
     public typealias InvocationDecoder = ClusterInvocationDecoder
     public typealias InvocationEncoder = ClusterInvocationEncoder
-    public typealias SerializationRequirement = Codable
+    public typealias SerializationRequirement = any Codable
     public typealias ResultHandler = ClusterInvocationResultHandler
 
     public let name: String
@@ -98,7 +98,7 @@ public class ActorSystem: DistributedActorSystem, @unchecked Sendable {
     }
 
     private let _receptionistStore: ManagedAtomicLazyReference<OpLogDistributedReceptionist>
-    public var receptionist: DistributedReceptionist {
+    public var receptionist: OpLogDistributedReceptionist {
         guard let value = _receptionistStore.load() else {
             fatalError("Somehow attempted to load system.receptionist before it was initialized!")
         }
@@ -881,9 +881,9 @@ extension ActorSystem {
       returning: Res.Type
     ) async throws -> Res
       where Act: DistributedActor,
-      Act.ID == ActorID,
-      Err: Error,
-      Res: SerializationRequirement {
+            Act.ID == ActorID,
+            Err: Error,
+            Res: Codable {
         guard let clusterShell = _cluster else {
             throw RemoteCallError.clusterAlreadyShutDown
         }

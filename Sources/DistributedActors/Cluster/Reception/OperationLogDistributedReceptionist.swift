@@ -147,9 +147,8 @@ import Logging
 //       when we received a register() or observed an "ahead" receptionist, we should schedule a "fast tick" in order to more quickly spread this information
 //       This should still be done on a delay, e.g. if we are receiving many registrations, we want to get the benefit of batching them up before sending after all
 //       The fast tick could be 1s or 0.5s for example as a default.
-distributed actor OpLogDistributedReceptionist: DistributedReceptionist, CustomStringConvertible {
-    typealias ID = ClusterSystem.ActorID // TODO: remove this
-    typealias ActorSystem = ClusterSystem
+public distributed actor OpLogDistributedReceptionist: DistributedReceptionist, CustomStringConvertible {
+    public typealias ActorSystem = ClusterSystem
   
     // TODO: remove this
     typealias ReceptionistRef = OpLogDistributedReceptionist
@@ -286,7 +285,7 @@ distributed actor OpLogDistributedReceptionist: DistributedReceptionist, CustomS
         }
     }
 
-    nonisolated var description: String {
+    public nonisolated var description: String {
         "\(Self.self)(\(id))"
     }
 }
@@ -295,7 +294,7 @@ distributed actor OpLogDistributedReceptionist: DistributedReceptionist, CustomS
 // MARK: Receptionist API impl
 
 extension OpLogDistributedReceptionist: LifecycleWatch {
-    nonisolated func register<Guest>(
+    public nonisolated func register<Guest>(
       _ guest: Guest,
         with key: DistributedReception.Key<Guest>
     ) async where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem {
@@ -353,9 +352,9 @@ extension OpLogDistributedReceptionist: LifecycleWatch {
 
       // TODO: reply "registered"?
   }
-  
 
-    nonisolated func subscribe<Guest>(
+
+    public nonisolated func subscribe<Guest>(
         to key: DistributedReception.Key<Guest>
     ) async -> DistributedReception.GuestListing<Guest>
       where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem {
@@ -391,7 +390,7 @@ extension OpLogDistributedReceptionist: LifecycleWatch {
         self.storage.removeSubscription(key: subscription.key, subscription: subscription)
     }
 
-    nonisolated func lookup<Guest>(_ key: DistributedReception.Key<Guest>) async -> Set<Guest>
+    public nonisolated func lookup<Guest>(_ key: DistributedReception.Key<Guest>) async -> Set<Guest>
       where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem {
         await self.whenLocal { __secretlyKnownToBeLocal in
           await __secretlyKnownToBeLocal._lookup(key)

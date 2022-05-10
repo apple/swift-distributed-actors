@@ -51,7 +51,7 @@ public struct ClusterInvocationEncoder: DistributedTargetInvocationEncoder {
 }
 
 // FIXME(distributed): make it a struct once rdar://88211172 ([Distributed] SILGen must emit uses of decodeNextArgument so IRGen can get it cross module on `FINAL classes`) is fixed
-public class ClusterInvocationDecoder: DistributedTargetInvocationDecoder {
+public struct ClusterInvocationDecoder: DistributedTargetInvocationDecoder {
     public typealias SerializationRequirement = any Codable
 
     let system: ClusterSystem
@@ -63,11 +63,11 @@ public class ClusterInvocationDecoder: DistributedTargetInvocationDecoder {
         self.message = message
     }
 
-    public  func decodeGenericSubstitutions() throws -> [Any.Type] {
+    public mutating func decodeGenericSubstitutions() throws -> [Any.Type] {
         fatalError("NOT IMPLEMENTED: \(#function)")
     }
 
-    public  func decodeNextArgument<Argument: Codable>() throws -> Argument {
+    public mutating  func decodeNextArgument<Argument: Codable>() throws -> Argument {
         guard message.arguments.count > argumentIdx else {
             throw SerializationError.notEnoughArgumentsEncoded(expected: argumentIdx + 1, have: message.arguments.count)
         }
@@ -83,11 +83,11 @@ public class ClusterInvocationDecoder: DistributedTargetInvocationDecoder {
         return argument
     }
 
-    public  func decodeErrorType() throws -> Any.Type? {
+    public  mutating func decodeErrorType() throws -> Any.Type? {
         return nil // TODO(distributed): might need this
     }
 
-    public  func decodeReturnType() throws -> Any.Type? {
+    public  mutating func decodeReturnType() throws -> Any.Type? {
         return nil // TODO(distributed): might need this
     }
 }
