@@ -71,15 +71,15 @@ var targets: [PackageDescription.Target] = [
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: TestKit
 
-//    /// This target is intended only for use in tests, though we have no way to mark this
-//    .target(
-//        name: "DistributedActorsTestKit",
-//        dependencies: [
-//            "DistributedActors",
-//            "DistributedActorsConcurrencyHelpers",
-//            .product(name: "Atomics", package: "swift-atomics"),
-//        ]
-//    ),
+    /// This target is intended only for use in tests, though we have no way to mark this
+    .target(
+        name: "DistributedActorsTestKit",
+        dependencies: [
+            "DistributedActors",
+            "DistributedActorsConcurrencyHelpers",
+            .product(name: "Atomics", package: "swift-atomics"),
+        ]
+    ),
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Documentation
