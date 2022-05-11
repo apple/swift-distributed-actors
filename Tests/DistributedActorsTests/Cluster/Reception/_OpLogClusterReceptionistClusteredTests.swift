@@ -44,8 +44,8 @@ final class _OpLogClusterReceptionistClusteredTests: ClusteredActorSystemsXCTest
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Sync
 
-    func test_shouldReplicateRegistrations() throws {
-        let (local, remote) = setUpPair()
+    func test_shouldReplicateRegistrations() async throws {
+        let (local, remote) = await setUpPair()
         let testKit: ActorTestKit = self.testKit(local)
         try self.joinNodes(node: local, with: remote)
 
@@ -81,8 +81,8 @@ final class _OpLogClusterReceptionistClusteredTests: ClusteredActorSystemsXCTest
         try probe.expectMessage("received:test")
     }
 
-    func test_shouldSyncPeriodically() throws {
-        let (local, remote) = setUpPair {
+    func test_shouldSyncPeriodically() async throws {
+        let (local, remote) = await setUpPair {
             $0.cluster.receptionist.ackPullReplicationIntervalSlow = .seconds(1)
         }
 
@@ -121,7 +121,7 @@ final class _OpLogClusterReceptionistClusteredTests: ClusteredActorSystemsXCTest
     }
 
     func test_shouldMergeEntriesOnSync() throws {
-        let (local, remote) = setUpPair {
+        let (local, remote) = await setUpPair {
             $0.cluster.receptionist.ackPullReplicationIntervalSlow = .seconds(1)
         }
 
@@ -177,7 +177,7 @@ final class _OpLogClusterReceptionistClusteredTests: ClusteredActorSystemsXCTest
     }
 
     func shared_clusterReceptionist_shouldRemoveRemoteRefsStop(killActors: KillActorsMode) throws {
-        let (first, second) = setUpPair {
+        let (first, second) = await setUpPair {
             $0.cluster.receptionist.ackPullReplicationIntervalSlow = .seconds(1)
         }
 
@@ -223,7 +223,7 @@ final class _OpLogClusterReceptionistClusteredTests: ClusteredActorSystemsXCTest
     }
 
     func test_clusterReceptionist_shouldRemoveRefFromAllListingsItWasRegisteredWith_ifTerminates() throws {
-        let (first, second) = setUpPair {
+        let (first, second) = await setUpPair {
             $0.cluster.receptionist.ackPullReplicationIntervalSlow = .milliseconds(200)
         }
         first.cluster.join(node: second.cluster.uniqueNode.node)
@@ -266,7 +266,7 @@ final class _OpLogClusterReceptionistClusteredTests: ClusteredActorSystemsXCTest
     }
 
     func test_clusterReceptionist_shouldRemoveActorsOfTerminatedNodeFromListings_onNodeCrash() throws {
-        let (first, second) = setUpPair {
+        let (first, second) = await setUpPair {
             $0.cluster.receptionist.ackPullReplicationIntervalSlow = .milliseconds(200)
         }
         first.cluster.join(node: second.cluster.uniqueNode.node)
@@ -338,7 +338,7 @@ final class _OpLogClusterReceptionistClusteredTests: ClusteredActorSystemsXCTest
     // MARK: Multi node / streaming
 
     func test_clusterReceptionist_shouldStreamAllRegisteredActorsInChunks() throws {
-        let (first, second) = setUpPair {
+        let (first, second) = await setUpPair {
             $0.cluster.receptionist.ackPullReplicationIntervalSlow = .milliseconds(200)
         }
         first.cluster.join(node: second.cluster.uniqueNode.node)

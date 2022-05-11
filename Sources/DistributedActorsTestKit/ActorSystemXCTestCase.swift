@@ -42,9 +42,9 @@ open class ActorSystemXCTestCase: ClusteredActorSystemsXCTestCase {
         return handler
     }
 
-    open override func setUp() {
-        super.setUp()
-        _ = self.setUpNode(String(describing: type(of: self))) { _ in
+    open override func setUp() async throws {
+        try await super.setUp()
+        _ = await self.setUpNode(String(describing: type(of: self))) { _ in
             ()
         }
     }

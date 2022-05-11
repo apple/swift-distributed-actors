@@ -29,7 +29,7 @@ final class ShootTheOtherNodeClusteredTests: ClusteredActorSystemsXCTestCase {
     }
 
     func test_shootOtherNodeShouldTerminateIt() throws {
-        let (local, remote) = self.setUpPair()
+        let (local, remote) = await self.setUpPair()
 
         // also assures they are associated
         try self.joinNodes(node: local, with: remote, ensureWithin: .seconds(5), ensureMembers: .up)

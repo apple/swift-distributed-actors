@@ -280,7 +280,7 @@ class RemotingTLSTests: ClusteredActorSystemsXCTestCase {
         let testCertificate = try NIOSSLCertificate(bytes: [UInt8](testCert1.utf8), format: .pem)
         let testCertificateSource: NIOSSLCertificateSource = .certificate(testCertificate)
         let testKey: NIOSSLPrivateKeySource = .privateKey(try NIOSSLPrivateKey(bytes: [UInt8](testKey1.utf8), format: .pem))
-        let local = self.setUpNode("local") { settings in
+        let local = await setUpNode("local") { settings in
             settings.cluster.node.host = "localhost"
             settings.cluster.tls = TLSConfiguration.makeServerConfiguration(
                 certificateChain: [testCertificateSource],
@@ -293,7 +293,7 @@ class RemotingTLSTests: ClusteredActorSystemsXCTestCase {
             settings.cluster.tls?.trustRoots = .certificates([testCertificate])
         }
 
-        let remote = setUpNode("remote") { settings in
+        let remote = await setUpNode("remote") { settings in
             settings.cluster.node.host = "localhost"
             settings.cluster.tls = TLSConfiguration.makeServerConfiguration(
                 certificateChain: [testCertificateSource],
@@ -322,7 +322,7 @@ class RemotingTLSTests: ClusteredActorSystemsXCTestCase {
         let testCertificate = try NIOSSLCertificate(bytes: [UInt8](passordProtectedCert.utf8), format: .pem)
         let testCertificateSource: NIOSSLCertificateSource = .certificate(testCertificate)
         let testKey: NIOSSLPrivateKeySource = .file(tmpKeyFile.path)
-        let local = self.setUpNode("local") { settings in
+        let local = await setUpNode("local") { settings in
             settings.cluster.tls = TLSConfiguration.makeServerConfiguration(
                 certificateChain: [testCertificateSource],
                 privateKey: testKey
@@ -337,7 +337,7 @@ class RemotingTLSTests: ClusteredActorSystemsXCTestCase {
             }
         }
 
-        let remote = setUpNode("remote") { settings in
+        let remote = await setUpNode("remote") { settings in
             settings.cluster.tls = TLSConfiguration.makeServerConfiguration(
                 certificateChain: [testCertificateSource],
                 privateKey: testKey

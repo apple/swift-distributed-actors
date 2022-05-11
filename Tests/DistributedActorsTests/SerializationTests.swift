@@ -395,7 +395,7 @@ class SerializationTests: ActorSystemXCTestCase {
             try system.serialization.serialize(test)
         }
 
-        let system2 = ActorSystem("OtherSystem") { settings in
+        let system2 = await ActorSystem("OtherSystem") { settings in
             settings.serialization.register(PListXMLCodableTest.self, serializerID: .foundationPropertyListBinary) // on purpose "wrong" format
         }
         defer {

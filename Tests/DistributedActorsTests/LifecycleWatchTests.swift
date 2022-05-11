@@ -23,11 +23,13 @@ import XCTest
 // MARK: Romeo
 
 distributed actor Romeo: LifecycleWatch, CustomStringConvertible {
+    typealias ActorSystem = ClusterSystem
+    
     let probe: ActorTestProbe<String>
-
     lazy var log = Logger(actor: self)
 
-    init(probe: ActorTestProbe<String>, transport: ActorTransport) {
+    init(probe: ActorTestProbe<String>, actorSystem: ActorSystem) {
+        self.actorSystem = actorSystem
         self.probe = probe
         probe.tell("Romeo init")
     }
@@ -51,7 +53,8 @@ distributed actor Romeo: LifecycleWatch, CustomStringConvertible {
 distributed actor Juliet: LifecycleWatch, CustomStringConvertible {
     let probe: ActorTestProbe<String>
 
-    init(probe: ActorTestProbe<String>, transport: ActorTransport) {
+    init(probe: ActorTestProbe<String>, actorSystem: ActorSystem) {
+        self.actorSystem = actorSystem
         self.probe = probe
         probe.tell("Juliet init")
     }
@@ -79,9 +82,9 @@ distributed actor Juliet: LifecycleWatch, CustomStringConvertible {
 final class LifecycleWatchTests: ActorSystemXCTestCase, @unchecked Sendable {
     func test_watch_shouldTriggerTerminatedWhenWatchedActorDeinits() throws {
         try runAsyncAndBlock {
-            let pj = testKit.makeTestProbe(expecting: String.self)
-            let pr = testKit.makeTestProbe(expecting: String.self)
-            let juliet = Juliet(probe: pj, transport: system)
+            let pj = self.testKit.makeTestProbe(expecting: String.self)
+            let pr = self.testKit.makeTestProbe(expecting: String.self)
+            let juliet = Juliet(probe: pj, actorSystem: system)
 
             func meet() async throws {
                 var romeo: Romeo? = Romeo(probe: pr, transport: system)
@@ -100,9 +103,9 @@ final class LifecycleWatchTests: ActorSystemXCTestCase, @unchecked Sendable {
 
     func test_watchThenUnwatch_shouldTriggerTerminatedWhenWatchedActorDeinits() throws {
         try runAsyncAndBlock {
-            let pj = testKit.makeTestProbe(expecting: String.self)
-            let pr = testKit.makeTestProbe(expecting: String.self)
-            let juliet = Juliet(probe: pj, transport: system)
+            let pj = self.testKit.makeTestProbe(expecting: String.self)
+            let pr = self.testKit.makeTestProbe(expecting: String.self)
+            let juliet = Juliet(probe: pj, actorSystem: system)
 
             func meet() async throws {
                 var romeo: Romeo? = Romeo(probe: pr, transport: system)

@@ -71,7 +71,7 @@ To actually have a distributed actor participate in some distributed system, we 
 // **** APIS AND SYNTAX ARE WORK IN PROGRESS / PENDING SWIFT EVOLUTION ****
 
 // 4) Distributed actors must have a transport associated with them at initialization
-let someTransport: ActorTransport = ...
+let someActorSystem: ActorSystem = ...
 let worker = Worker(transport: someTransport)
 
 // 5) Distributed function invocations are asynchronous and throwing, when performed cross-actor,

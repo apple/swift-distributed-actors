@@ -99,15 +99,15 @@ var targets: [PackageDescription.Target] = [
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Tests
 
-//    .testTarget(
-//        name: "DistributedActorsTests",
-//        dependencies: [
-//            "DistributedActors",
-//            "DistributedActorsTestKit",
-//            .product(name: "Atomics", package: "swift-atomics"),
-//        ]
-//    ),
-//
+    .testTarget(
+        name: "DistributedActorsTests",
+        dependencies: [
+            "DistributedActors",
+            "DistributedActorsTestKit",
+            .product(name: "Atomics", package: "swift-atomics"),
+        ]
+    ),
+
 //    .testTarget(
 //        name: "DistributedActorsTestKitTests",
 //        dependencies: [

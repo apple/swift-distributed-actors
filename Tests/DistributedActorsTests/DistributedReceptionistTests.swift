@@ -19,9 +19,10 @@ import Foundation
 import XCTest
 
 distributed actor Forwarder {
+    typealias ActorSystem = ClusterSystem
     let probe: ActorTestProbe<String>?
     let name: String
-    init(probe: ActorTestProbe<String>?, name: String, transport: ActorTransport) {
+    init(probe: ActorTestProbe<String>?, name: String, actorSystem: ActorSystem) {
         self.probe = probe
         self.name = name
     }

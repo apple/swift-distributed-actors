@@ -26,7 +26,7 @@ final class ClusterMembershipSnapshotTests: ClusteredActorSystemsXCTestCase {
     }
 
     func test_membershipSnapshot_shouldBeUpdated() throws {
-        let (first, second) = self.setUpPair()
+        let (first, second) = await self.setUpPair()
         try self.joinNodes(node: first, with: second)
 
         let third = self.setUpNode("third")

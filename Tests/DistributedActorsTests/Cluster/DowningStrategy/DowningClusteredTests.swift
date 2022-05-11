@@ -55,7 +55,7 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
         stopNode: StopNodeSelection,
         _ modifySettings: ((inout ClusterSystemSettings) -> Void)? = nil
     ) throws {
-        let (first, second) = self.setUpPair { settings in
+        let (first, second) = await self.setUpPair { settings in
             settings.cluster.swim.probeInterval = .milliseconds(500)
             modifySettings?(&settings)
         }

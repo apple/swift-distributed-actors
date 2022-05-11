@@ -18,8 +18,8 @@ import NIOSSL
 import XCTest
 
 final class ClusterOnDownActionTests: ClusteredActorSystemsXCTestCase {
-    func test_onNodeDowned_performShutdown() throws {
-        let (first, second) = self.setUpPair { settings in
+    func test_onNodeDowned_performShutdown() async throws {
+        let (first, second) = await self.setUpPair { settings in
             settings.cluster.onDownAction = .gracefulShutdown(delay: .milliseconds(300))
         }
 
@@ -36,8 +36,8 @@ final class ClusterOnDownActionTests: ClusteredActorSystemsXCTestCase {
         }
     }
 
-    func test_onNodeDowned_configuredNoop_doNothing() throws {
-        let (first, second) = self.setUpPair { settings in
+    func test_onNodeDowned_configuredNoop_doNothing() async throws {
+        let (first, second) = await setUpPair { settings in
             settings.cluster.onDownAction = .none
         }
 

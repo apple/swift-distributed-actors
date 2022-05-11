@@ -29,7 +29,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
     // MARK: Happy path, accept association
 
     func test_boundServer_shouldAcceptAssociate() throws {
-        let (first, second) = self.setUpPair()
+        let (first, second) = await self.setUpPair()
 
         first.cluster.join(node: second.cluster.uniqueNode.node)
 
@@ -38,7 +38,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
     }
 
     func test_boundServer_shouldAcceptAssociate_raceFromBothNodes() throws {
-        let (first, second) = self.setUpPair()
+        let (first, second) = await self.setUpPair()
         let n3 = self.setUpNode("node-3")
         let n4 = self.setUpNode("node-4")
         let n5 = self.setUpNode("node-5")
@@ -64,7 +64,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
     }
 
     func test_handshake_shouldNotifyOnSuccess() throws {
-        let (first, second) = self.setUpPair()
+        let (first, second) = await self.setUpPair()
 
         first.cluster.ref.tell(.command(.handshakeWith(second.cluster.uniqueNode.node)))
 
@@ -73,7 +73,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
     }
 
     func test_handshake_shouldNotifySuccessWhenAlreadyConnected() throws {
-        let (first, second) = self.setUpPair()
+        let (first, second) = await self.setUpPair()
 
         first.cluster.ref.tell(.command(.handshakeWith(second.cluster.uniqueNode.node)))
 
@@ -90,7 +90,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
     // MARK: Joining into existing cluster
 
     func test_association_sameAddressNodeJoin_shouldOverrideExistingNode() throws {
-        let (first, second) = self.setUpPair()
+        let (first, second) = await self.setUpPair()
 
         let secondName = second.cluster.uniqueNode.node.systemName
         let secondPort = second.cluster.uniqueNode.port
@@ -126,7 +126,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
     }
 
     func test_association_shouldAllowSendingToSecondReference() throws {
-        let (first, second) = self.setUpPair()
+        let (first, second) = await self.setUpPair()
 
         let probeOnSecond = self.testKit(second).makeTestProbe(expecting: String.self)
         let refOnSecondSystem: _ActorRef<String> = try second._spawn(
@@ -170,7 +170,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
     // MARK: Concurrently initiated handshakes to same node should both get completed
 
     func test_association_shouldEstablishSingleAssociationForConcurrentlyInitiatedHandshakes_incoming_outgoing() throws {
-        let (first, second) = self.setUpPair()
+        let (first, second) = await self.setUpPair()
 
         // here we attempt to make a race where the nodes race to join each other
         // again, only one association should be created.

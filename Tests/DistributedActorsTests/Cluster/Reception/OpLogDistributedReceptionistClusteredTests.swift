@@ -18,19 +18,20 @@ import DistributedActorsTestKit
 import XCTest
 
 distributed actor UnregisterOnMessage {
-    var system: ActorSystem { // TODO(distributed): remove this once we have the typealias Transport support
-        actorTransport._forceUnwrapActorSystem
-    }
+    typealias ActorSystem = ClusterSystem
 
     distributed func register(with key: DistributedReception.Key<UnregisterOnMessage>) async {
-        await system.receptionist.register(self, with: key)
+        await actorSystem.receptionist.register(self, with: key)
     }
 }
 
 distributed actor StringForwarder: CustomStringConvertible {
+    typealias ActorSystem = ClusterSystem
+
     let probe: ActorTestProbe<String>
 
-    init(probe: ActorTestProbe<String>, transport: ActorTransport) {
+    init(probe: ActorTestProbe<String>, actorSystem: ActorSystem) {
+        self.actorSystem = actorSystem
         self.probe = probe
     }
 
