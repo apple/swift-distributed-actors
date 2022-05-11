@@ -33,3 +33,6 @@ Package.resolved
 
 # DocC generated files
 .docc-build
+
+# d files
+*.d
