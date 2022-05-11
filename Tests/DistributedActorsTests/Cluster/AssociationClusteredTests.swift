@@ -109,7 +109,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
         let shutdown = oldSecond.shutdown() // kill second node
         try shutdown.wait(atMost: .seconds(3))
 
-        let secondReplacement = self.setUpNode(secondName + "-REPLACEMENT") { settings in
+        let secondReplacement = await setUpNode(secondName + "-REPLACEMENT") { settings in
             settings.cluster.bindPort = secondPort
         }
         let secondReplacementEventsProbe = self.testKit(secondReplacement).makeTestProbe(expecting: Cluster.Event.self)
@@ -205,7 +205,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
         first.cluster.join(node: secondNode)
         sleep(3) // we give it some time to keep failing to connect, so the second node is not yet started
 
-        let second = setUpNode("second") { settings in
+        let second = await setUpNode("second") { settings in
             settings.cluster.bindPort = secondPort
         }
 
@@ -269,7 +269,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
         let first = await setUpNode("first") { settings in
             settings.cluster.onDownAction = .none // don't shutdown this node (keep process alive)
         }
-        let second = self.setUpNode("second")
+        let second = await setUpNode("second")
 
         first.cluster.down(node: first.cluster.uniqueNode.node)
 

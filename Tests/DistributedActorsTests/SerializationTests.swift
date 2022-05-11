@@ -21,8 +21,8 @@ import NIOFoundationCompat
 import XCTest
 
 class SerializationTests: ActorSystemXCTestCase {
-    override func setUp() {
-        _ = self.setUpNode(String(describing: type(of: self))) { settings in
+    override func setUp() async throws {
+        _ = await self.setUpNode(String(describing: type(of: self))) { settings in
             settings.serialization.register(HasReceivesSystemMsgs.self)
             settings.serialization.register(HasStringRef.self)
             settings.serialization.register(HasIntRef.self)
@@ -143,8 +143,8 @@ class SerializationTests: ActorSystemXCTestCase {
         try p.expectMessage("got:hello")
     }
 
-    func test_serialize_actorRef_inMessage_forRemoting() throws {
-        let remoteCapableSystem = ActorSystem("remoteCapableSystem") { settings in
+    func test_serialize_actorRef_inMessage_forRemoting() async throws {
+        let remoteCapableSystem = await ActorSystem("remoteCapableSystem") { settings in
             settings.cluster.enabled = true
             settings.serialization.register(HasStringRef.self)
         }
@@ -277,8 +277,8 @@ class SerializationTests: ActorSystemXCTestCase {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Serialized messages in actor communication, locally
 
-    func test_verifySerializable_shouldPass_forPreconfiguredSerializableMessages_string() throws {
-        let s2 = ActorSystem("SerializeMessages") { settings in
+    func test_verifySerializable_shouldPass_forPreconfiguredSerializableMessages_string() async throws {
+        let s2 = await ActorSystem("SerializeMessages") { settings in
             settings.serialization.serializeLocalMessages = true
         }
 
@@ -388,7 +388,7 @@ class SerializationTests: ActorSystemXCTestCase {
         back.shouldEqual(test)
     }
 
-    func test_plist_throws_whenWrongFormat() throws {
+    func test_plist_throws_whenWrongFormat() async throws {
         let test = PListXMLCodableTest(name: "foo", items: ["bar", "baz"])
 
         let serialized = try shouldNotThrow {

@@ -85,16 +85,16 @@ final class OpLogDistributedReceptionistClusteredTests: ClusteredActorSystemsXCT
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Sync
 
-    func test_shouldReplicateRegistrations() throws {
+    func test_shouldReplicateRegistrations() async throws {
         try runAsyncAndBlock {
-            let (local, remote) = setUpPair()
+            let (local, remote) = await self.setUpPair()
             let testKit: ActorTestKit = self.testKit(local)
             try self.joinNodes(node: local, with: remote)
 
             let probe = testKit.makeTestProbe(expecting: String.self)
 
             // Create forwarder on 'local'
-            let forwarder = StringForwarder(probe: probe, transport: local)
+            let forwarder = StringForwarder(probe: probe, actorSystem: local)
 
             // subscribe on `remote`
             let subscriberProbe = testKit.makeTestProbe("subscriber", expecting: StringForwarder.self)
@@ -124,10 +124,10 @@ final class OpLogDistributedReceptionistClusteredTests: ClusteredActorSystemsXCT
         }
     }
 
-    func test_shouldSyncPeriodically() throws {
+    func test_shouldSyncPeriodically() async throws {
         try runAsyncAndBlock {
             // Don't join the nodes just yet
-            let (local, remote) = setUpPair {
+            let (local, remote) = await self.setUpPair {
                 $0.cluster.receptionist.ackPullReplicationIntervalSlow = .seconds(1)
             }
 
@@ -136,7 +136,7 @@ final class OpLogDistributedReceptionistClusteredTests: ClusteredActorSystemsXCT
 
             // Create on local
             let key = DistributedReception.Key(StringForwarder.self, id: "test")
-            let forwarder = StringForwarder(probe: probe, transport: local)
+            let forwarder = StringForwarder(probe: probe, actorSystem: local)
 
             // Subscribe on remote
             let remoteSubscriberTask = Task {

@@ -59,7 +59,7 @@ public class ActorSystem: DistributedActorSystem, @unchecked Sendable {
 
     // Access MUST be protected with `namingLock`.
     private var _managedRefs: [ActorAddress: _ReceivesSystemMessages] = [:]
-    private var _managedDistributedActors: [ActorAddress: any DistributedActor] = [:]
+    private var _managedDistributedActors: WeakActorDictionary = .init()
     private var _reservedNames: Set<ActorAddress> = []
 
     // TODO: converge into one tree
@@ -782,7 +782,7 @@ extension ActorSystem {
         }
 
         return self.namingLock.withLock {
-            guard let managed = self._managedDistributedActors[address] else {
+            guard let managed = self._managedDistributedActors.get(identifiedBy: address) else {
                 log.info("Unknown reference on our UniqueNode", metadata: [
                     "actor/identity": "\(address.detailedDescription)",
                 ])
@@ -809,7 +809,7 @@ extension ActorSystem {
 
     public func assignID<Act>(_ actorType: Act.Type) -> ActorSystem.ActorID
         where Act: DistributedActor {
-        let props = _Props.forSpawn // TODO(distributed): rather we'd want to be passed a param through here
+        let props = _Props.forSpawn // task-local read for any properties this actor should have
         let address = try! self._reserveName(type: Act.self, props: props)
 
         self.log.warning("Assign identity", metadata: [
@@ -827,15 +827,15 @@ extension ActorSystem {
     public func actorReady<Act>(_ actor: Act) where Act: DistributedActor, Act.ID == ActorID {
         let address = actor.id
 
-        self.log.warning("Actor ready", metadata: [
-            "actor/identity": "\(address)",
+        self.log.trace("Actor ready", metadata: [
+            "actor/id": "\(address)",
             "actor/type": "\(type(of: actor))",
         ])
 
         self.namingLock.lock()
         defer { self.namingLock.unlock() }
         guard self._reservedNames.remove(address) != nil else {
-            // FIXME(distributed): this is a bug in the initializers impl, they may call actorReady many times (from async inits)
+            // FIXME(distributed): this is a bug in the initializers impl, they may call actorReady many times (from async inits) // TODO: probably already solved
             log.warning("Attempted to ready an identity that was not reserved: \(address)")
             return
         }
@@ -850,7 +850,7 @@ extension ActorSystem {
         let behavior = InvocationBehavior.behavior(instance: actor)
         let ref = self._spawnDistributedActor(behavior, identifiedBy: actor.id)
         self._managedRefs[actor.id] = ref
-        self._managedDistributedActors[actor.id] = actor
+        self._managedDistributedActors.insert(actor: actor)
     }
 
     /// Called during actor deinit/destroy.
@@ -867,11 +867,15 @@ extension ActorSystem {
                 watch.notifyWatchersWeDied()
             }
         }
+        self.namingLock.withLockVoid {
+            self._managedRefs.removeValue(forKey: id) // TODO: should not be necessary in the future
+            self._managedDistributedActors.removeActor(identifiedBy: id)
+        }
     }
 
-  public func makeInvocationEncoder() -> InvocationEncoder {
-    .init()
-  }
+    public func makeInvocationEncoder() -> InvocationEncoder {
+        .init()
+    }
 
     public func remoteCall<Act, Err, Res>(
       on actor: Act,
@@ -894,7 +898,6 @@ extension ActorSystem {
 //        _resolve(context: ResolveContext(address: actor.id, system: self))
 
         let arguments = invocation.arguments
-        print("RECIPIENT: \(recipient.address.fullDescription)")
         let ask: AskResponse<Res> = recipient.ask(timeout: .seconds(5)) { replyTo in
             let invocation = InvocationMessage(
               targetIdentifier: target.identifier,
@@ -902,7 +905,6 @@ extension ActorSystem {
               replyToAddress: replyTo.address
             )
 
-            self.log.info("SENDING ASK: \(invocation) to \(recipient.address.fullDescription)")
             return invocation
         }
 
@@ -920,11 +922,7 @@ extension ActorSystem {
       Err: Error {
         let recipient = _ActorRef<InvocationMessage>(.remote(.init(shell: self._cluster!, address: actor.id._asRemote, system: self)))
 
-//      let recipient: _ActorRef<InvocationMessage> =
-//        _resolve(context: ResolveContext(address: actor.id, system: self))
-
         let arguments = invocation.arguments
-        print("RECIPIENT: \(recipient.address.fullDescription)")
         let ask: AskResponse<_Done> = recipient.ask(timeout: .seconds(5)) { replyTo in
             let invocation = InvocationMessage(
               targetIdentifier: target.identifier,
@@ -932,7 +930,6 @@ extension ActorSystem {
               replyToAddress: replyTo.address
             )
 
-            self.log.info("SENDING ASK: \(invocation) to \(recipient.address.fullDescription)")
             return invocation
         }
 

@@ -202,7 +202,7 @@ public distributed actor OpLogDistributedReceptionist: DistributedReceptionist, 
 
     var membership: Cluster.Membership
 
-    var eventsListeningTask: Task<Void, Error>!
+    var eventsListeningTask: Task<Void, Error>?
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: _BehaviorTimers
@@ -268,7 +268,7 @@ public distributed actor OpLogDistributedReceptionist: DistributedReceptionist, 
     }
 
     deinit {
-        eventsListeningTask.cancel()
+        eventsListeningTask?.cancel()
     }
 
     // FIXME(distributed): once the init is async move this back to init, we need the function to be isolated to the receptionist

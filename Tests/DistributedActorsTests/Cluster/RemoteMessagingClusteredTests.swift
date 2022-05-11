@@ -63,7 +63,7 @@ final class RemoteMessagingClusteredTests: ClusteredActorSystemsXCTestCase {
     }
 
     func test_association_shouldStayAliveWhenMessageSerializationThrowsOnSendingSide() async throws {
-        try shouldNotThrow {
+        try await shouldNotThrow {
             let (local, remote) = await setUpPair { settings in
                 settings.serialization.register(SerializationTestMessage.self)
                 settings.serialization.register(EchoTestMessage.self)
@@ -120,7 +120,7 @@ final class RemoteMessagingClusteredTests: ClusteredActorSystemsXCTestCase {
         try probeOnRemote.expectMessage("forwarded:SerializationTestMessage")
     }
 
-    func test_sendingToRefWithAddressWhichIsActuallyLocalAddress_shouldWork() await throws {
+    func test_sendingToRefWithAddressWhichIsActuallyLocalAddress_shouldWork() async throws {
         let local = await setUpNode("local") { settings in
             settings.serialization.register(SerializationTestMessage.self)
             settings.serialization.register(EchoTestMessage.self)

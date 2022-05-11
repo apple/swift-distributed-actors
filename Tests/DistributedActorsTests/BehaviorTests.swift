@@ -344,9 +344,9 @@ final class BehaviorTests: ActorSystemXCTestCase {
         try p.expectTerminated(ref)
     }
 
-    func test_makeAsynchronousCallback_shouldPrintNicelyIfThrewInsideClosure() throws {
+    func test_makeAsynchronousCallback_shouldPrintNicelyIfThrewInsideClosure() async throws {
         let capture = LogCapture(settings: .init())
-        let system = ActorSystem("CallbackCrash") { settings in
+        let system = await ActorSystem("CallbackCrash") { settings in
             settings.logging.baseLogger = capture.logger(label: "mock")
         }
         defer {

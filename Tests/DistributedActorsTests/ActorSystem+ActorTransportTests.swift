@@ -29,9 +29,9 @@ final class ActorSystemTransportTests: ActorSystemXCTestCase, @unchecked Sendabl
             stub = nil
 
             let identity = try self.logCapture.awaitLogContaining(testKit, text: "Assign identity")
-            let idString = "\(identity.metadata!["actor/identity"]!)"
+            let idString = "\(identity.metadata!["actor/id"]!)"
             let ready = try self.logCapture.awaitLogContaining(testKit, text: "Actor ready")
-            "\(ready.metadata!["actor/identity"]!)".shouldEqual(idString)
+            "\(ready.metadata!["actor/id"]!)".shouldEqual(idString)
         }
     }
 }

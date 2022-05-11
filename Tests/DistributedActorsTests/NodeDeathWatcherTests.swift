@@ -18,11 +18,11 @@ import Foundation
 import XCTest
 
 final class NodeDeathWatcherTests: ClusteredActorSystemsXCTestCase {
-    func test_nodeDeath_shouldFailAllRefsOnSpecificAddress() throws {
-        let first = self.setUpNode("first") { settings in
+    func test_nodeDeath_shouldFailAllRefsOnSpecificAddress() async throws {
+        let first = await setUpNode("first") { settings in
             settings.cluster.swim.probeInterval = .milliseconds(100)
         }
-        let second = self.setUpNode("second") { settings in
+        let second = await setUpNode("second") { settings in
             settings.cluster.swim.probeInterval = .milliseconds(100)
         }
 

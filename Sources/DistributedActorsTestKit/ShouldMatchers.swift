@@ -467,6 +467,16 @@ public func shouldThrow<T>(file: StaticString = #file, line: UInt = #line, colum
 /// ```
 ///
 /// Mostly used for debugging what was thrown in a test in a more command line friendly way, e.g. on CI.
+public func shouldNotThrow<T>(file: StaticString = #file, line: UInt = #line, column: UInt = #column, _ block: () async throws -> T) async throws -> T {
+    let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
+    do {
+        return try await block()
+    } catch {
+        XCTFail("\(error)", file: callSiteInfo.file, line: callSiteInfo.line)
+        throw callSiteInfo.error("Should not have thrown, but did:\n" + "\(error)")
+    }
+}
+
 public func shouldNotThrow<T>(file: StaticString = #file, line: UInt = #line, column: UInt = #column, _ block: () throws -> T) throws -> T {
     let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
     do {
@@ -476,6 +486,7 @@ public func shouldNotThrow<T>(file: StaticString = #file, line: UInt = #line, co
         throw callSiteInfo.error("Should not have thrown, but did:\n" + "\(error)")
     }
 }
+
 
 public func shouldNotHappen(_ message: String, file: StaticString = #file, line: UInt = #line, column: UInt = #column) -> Error {
     let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)

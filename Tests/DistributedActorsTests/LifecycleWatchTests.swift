@@ -79,46 +79,44 @@ distributed actor Juliet: LifecycleWatch, CustomStringConvertible {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Tests
 
+
 final class LifecycleWatchTests: ActorSystemXCTestCase, @unchecked Sendable {
-    func test_watch_shouldTriggerTerminatedWhenWatchedActorDeinits() throws {
-        try runAsyncAndBlock {
-            let pj = self.testKit.makeTestProbe(expecting: String.self)
-            let pr = self.testKit.makeTestProbe(expecting: String.self)
-            let juliet = Juliet(probe: pj, actorSystem: system)
+    
+    func test_watch_shouldTriggerTerminatedWhenWatchedActorDeinits() async throws {
+        let pj = self.testKit.makeTestProbe(expecting: String.self)
+        let pr = self.testKit.makeTestProbe(expecting: String.self)
+        let juliet = Juliet(probe: pj, actorSystem: system)
 
-            func meet() async throws {
-                var romeo: Romeo? = Romeo(probe: pr, transport: system)
-
-                try await juliet.meetWatchCallback(romeo!, unwatch: false)
-                romeo = nil
-            }
-            try await meet()
-
-            try pj.expectMessage("Juliet init")
-            try pr.expectMessage("Romeo init")
-            try pr.expectMessage("Romeo deinit")
-            try pj.expectMessage("Received terminated: ActorSystem.ActorID(/user/Romeo-b)")
+        func meet() async throws {
+            var romeo: Romeo? = Romeo(probe: pr, actorSystem: system)
+            
+            try await juliet.meetWatchCallback(romeo!, unwatch: false)
+            romeo = nil
         }
+        try await meet()
+
+        try pj.expectMessage("Juliet init")
+        try pr.expectMessage("Romeo init")
+        try pr.expectMessage("Romeo deinit")
+        try pj.expectMessage("Received terminated: ActorSystem.ActorID(/user/Romeo-b)")
     }
 
-    func test_watchThenUnwatch_shouldTriggerTerminatedWhenWatchedActorDeinits() throws {
-        try runAsyncAndBlock {
-            let pj = self.testKit.makeTestProbe(expecting: String.self)
-            let pr = self.testKit.makeTestProbe(expecting: String.self)
-            let juliet = Juliet(probe: pj, actorSystem: system)
+    func test_watchThenUnwatch_shouldTriggerTerminatedWhenWatchedActorDeinits() async throws {
+        let pj = self.testKit.makeTestProbe(expecting: String.self)
+        let pr = self.testKit.makeTestProbe(expecting: String.self)
+        let juliet = Juliet(probe: pj, actorSystem: system)
 
-            func meet() async throws {
-                var romeo: Romeo? = Romeo(probe: pr, transport: system)
+        func meet() async throws {
+            var romeo: Romeo? = Romeo(probe: pr, actorSystem: system)
 
-                try await juliet.meetWatchCallback(romeo!, unwatch: true)
-                romeo = nil
-            }
-            try await meet()
-
-            try pj.expectMessage("Juliet init")
-            try pr.expectMessage("Romeo init")
-            try pr.expectMessage("Romeo deinit")
-            try pj.expectNoMessage(for: .milliseconds(300))
+            try await juliet.meetWatchCallback(romeo!, unwatch: true)
+            romeo = nil
         }
+        try await meet()
+
+        try pj.expectMessage("Juliet init")
+        try pr.expectMessage("Romeo init")
+        try pr.expectMessage("Romeo deinit")
+        try pj.expectNoMessage(for: .milliseconds(300))
     }
 }

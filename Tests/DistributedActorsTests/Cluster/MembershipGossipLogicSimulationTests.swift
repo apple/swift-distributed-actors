@@ -74,12 +74,12 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Simulation Tests
 
-    func test_avgRounds_untilConvergence() throws {
-        let systemA = self.setUpNode("A") { settings in
+    func test_avgRounds_untilConvergence() async throws {
+        let systemA = await setUpNode("A") { settings in
             settings.cluster.enabled = true
         }
-        let systemB = self.setUpNode("B")
-        let systemC = self.setUpNode("C")
+        let systemB = await setUpNode("B")
+        let systemC = await setUpNode("C")
 
         let initialGossipState =
             """
@@ -122,19 +122,19 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
         )
     }
 
-    func test_avgRounds_manyNodes() throws {
-        let systemA = self.setUpNode("A") { settings in
+    func test_avgRounds_manyNodes() async throws {
+        let systemA = await setUpNode("A") { settings in
             settings.cluster.enabled = true
         }
-        let systemB = self.setUpNode("B")
-        let systemC = self.setUpNode("C")
-        let systemD = self.setUpNode("D")
-        let systemE = self.setUpNode("E")
-        let systemF = self.setUpNode("F")
-        let systemG = self.setUpNode("G")
-        let systemH = self.setUpNode("H")
-        let systemI = self.setUpNode("I")
-        let systemJ = self.setUpNode("J")
+        let systemB = await setUpNode("B")
+        let systemC = await setUpNode("C")
+        let systemD = await setUpNode("D")
+        let systemE = await setUpNode("E")
+        let systemF = await setUpNode("F")
+        let systemG = await setUpNode("G")
+        let systemH = await setUpNode("H")
+        let systemI = await setUpNode("I")
+        let systemJ = await setUpNode("J")
 
         let allSystems = [
             systemA, systemB, systemC, systemD, systemE,
@@ -235,12 +235,12 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
         )
     }
 
-    func test_shouldEventuallySuspendGossiping() throws {
-        let systemA = self.setUpNode("A") { settings in
+    func test_shouldEventuallySuspendGossiping() async throws {
+        let systemA = await setUpNode("A") { settings in
             settings.cluster.enabled = true
         }
-        let systemB = self.setUpNode("B")
-        let systemC = self.setUpNode("C")
+        let systemB = await setUpNode("B")
+        let systemC = await setUpNode("C")
 
         let initialGossipState =
             """

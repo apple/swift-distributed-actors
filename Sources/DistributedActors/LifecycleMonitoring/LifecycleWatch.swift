@@ -104,20 +104,19 @@ extension LifecycleWatch {
 // MARK: System extensions to support watching // TODO: move those into context, and make the ActorIdentity the context
 
 extension ActorSystem {
-    public func _makeLifecycleWatch<Watcher: LifecycleWatch & DistributedActor>(watcher: Watcher) -> LifecycleWatchContainer {
+    public func _makeLifecycleWatch<Watcher: LifecycleWatch>(watcher: Watcher) -> LifecycleWatchContainer {
         return self.lifecycleWatchLock.withLock {
             if let watch = self._lifecycleWatches[watcher.id] {
                 return watch
             }
 
             let watch = LifecycleWatchContainer(watcher)
-            self._lifecycleWatches[watcher.id] = watch
+//            self._lifecycleWatches[watcher.id] = watch
             return watch
         }
     }
 
-    // public func _getWatch<DA: DistributedActor>(_ actor: DA) -> LifecycleWatchContainer? {
-    public func _getLifecycleWatch<Watcher: LifecycleWatch & DistributedActor>(watcher: Watcher) -> LifecycleWatchContainer? {
+    public func _getLifecycleWatch<Watcher: LifecycleWatch>(watcher: Watcher) -> LifecycleWatchContainer? {
         return self.lifecycleWatchLock.withLock {
             return self._lifecycleWatches[watcher.id]
         }
@@ -145,7 +144,7 @@ public final class LifecycleWatchContainer {
 
     init<Act>(_ myself: Act) where Act: DistributedActor, Act.ActorSystem == ClusterSystem {
         traceLog_DeathWatch("Make LifecycleWatchContainer owned by \(myself.id)")
-        self.myself = myself
+        self.myself = myself // FIXME: remove this, we don't need it
         self.watcherID = myself.id
         self.system = myself.actorSystem
         self.nodeDeathWatcher = myself.actorSystem._nodeDeathWatcher

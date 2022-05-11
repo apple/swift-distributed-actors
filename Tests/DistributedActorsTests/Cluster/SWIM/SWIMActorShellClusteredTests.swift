@@ -24,14 +24,14 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
     var firstClusterProbe: ActorTestProbe<ClusterShell.Message>!
     var secondClusterProbe: ActorTestProbe<ClusterShell.Message>!
 
-    func setUpFirst(_ modifySettings: ((inout ClusterSystemSettings) -> Void)? = nil) -> ActorSystem {
-        let first = super.setUpNode("first", modifySettings)
+    func setUpFirst(_ modifySettings: ((inout ClusterSystemSettings) -> Void)? = nil) async -> ActorSystem {
+        let first = await super.setUpNode("first", modifySettings)
         self.firstClusterProbe = self.testKit(first).makeTestProbe()
         return first
     }
 
-    func setUpSecond(_ modifySettings: ((inout ClusterSystemSettings) -> Void)? = nil) -> ActorSystem {
-        let second = super.setUpNode("second", modifySettings)
+    func setUpSecond(_ modifySettings: ((inout ClusterSystemSettings) -> Void)? = nil) async -> ActorSystem {
+        let second = await super.setUpNode("second", modifySettings)
         self.secondClusterProbe = self.testKit(second).makeTestProbe()
         return second
     }
@@ -44,9 +44,9 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: LHA probe modifications
 
-    func test_swim_shouldNotIncreaseProbeInterval_whenLowMultiplier() throws {
-        let first = self.setUpFirst()
-        let second = self.setUpSecond()
+    func test_swim_shouldNotIncreaseProbeInterval_whenLowMultiplier() async throws {
+        let first = await self.setUpFirst()
+        let second = await self.setUpSecond()
 
         first.cluster.join(node: second.cluster.uniqueNode.node)
         try assertAssociated(first, withExactly: second.cluster.uniqueNode)
@@ -71,8 +71,8 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Pinging nodes
 
-    func test_swim_shouldRespondWithAckToPing() throws {
-        let first = self.setUpFirst()
+    func test_swim_shouldRespondWithAckToPing() async throws {
+        let first = await self.setUpFirst()
         let p = self.testKit(first).makeTestProbe(expecting: SWIM.Message.self)
 
         let ref = try first._spawn("SWIM", SWIMActorShell.swimTestBehavior(members: [], clusterRef: self.firstClusterProbe.ref))
@@ -89,9 +89,9 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
         }
     }
 
-    func test_swim_shouldRespondWithNackToPingReq_whenNoResponseFromTarget() throws {
-        let first = self.setUpFirst()
-        let second = self.setUpSecond()
+    func test_swim_shouldRespondWithNackToPingReq_whenNoResponseFromTarget() async throws {
+        let first = await setUpFirst()
+        let second = await setUpSecond()
 
         first.cluster.join(node: second.cluster.uniqueNode.node)
 
@@ -110,10 +110,10 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
         }
     }
 
-    func test_swim_shouldPingRandomMember() throws {
-        let first = self.setUpFirst()
-        let second = self.setUpSecond()
-        let third = self.setUpNode("third")
+    func test_swim_shouldPingRandomMember() async throws {
+        let first = await setUpFirst()
+        let second = await setUpSecond()
+        let third = await setUpNode("third")
 
         first.cluster.join(node: second.cluster.uniqueNode.node)
         third.cluster.join(node: second.cluster.uniqueNode.node)
@@ -145,9 +145,9 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
         try p.expectMessagesInAnyOrder(["pinged:A", "pinged:B"], within: .seconds(2))
     }
 
-    func test_swim_shouldPingSpecificMemberWhenRequested() throws {
-        let first = self.setUpFirst()
-        let second = self.setUpFirst()
+    func test_swim_shouldPingSpecificMemberWhenRequested() async throws {
+        let first = await setUpFirst()
+        let second = await setUpFirst()
 
         let secondProbe = self.testKit(second).makeTestProbe("SWIM-2", expecting: SWIM.Message.self)
         let ackProbe = self.testKit(second).makeTestProbe(expecting: SWIM.PingOriginRef.Message.self)
@@ -170,9 +170,9 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Marking suspect nodes
 
-    func test_swim_shouldMarkSuspects_whenPingFailsAndNoOtherNodesCanBeRequested() throws {
-        let first = self.setUpFirst()
-        let second = self.setUpSecond()
+    func test_swim_shouldMarkSuspects_whenPingFailsAndNoOtherNodesCanBeRequested() async throws {
+        let first = await setUpFirst()
+        let second = await setUpSecond()
 
         first.cluster.join(node: second.cluster.uniqueNode.node)
         try assertAssociated(first, withExactly: second.cluster.uniqueNode)
@@ -186,10 +186,10 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
         try self.awaitStatus(.suspect(incarnation: 0, suspectedBy: [firstSwim.node]), for: probeOnSecond.ref, on: firstSwim, within: .seconds(1))
     }
 
-    func test_swim_shouldMarkSuspects_whenPingFailsAndRequestedNodesFailToPing() throws {
-        let systemSWIM = self.setUpFirst()
-        let systemA = self.setUpNode("A")
-        let systemB = self.setUpNode("B")
+    func test_swim_shouldMarkSuspects_whenPingFailsAndRequestedNodesFailToPing() async throws {
+        let systemSWIM = await setUpFirst()
+        let systemA = await setUpNode("A")
+        let systemB = await setUpNode("B")
 
         let probeA = self.testKit(systemA).makeTestProbe(expecting: ForwardedSWIMMessage.self)
         let refA = try systemA._spawn("SWIM-A", self.forwardingSWIMBehavior(forwardTo: probeA.ref))
@@ -205,10 +205,10 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
         try self.awaitStatus(.suspect(incarnation: 0, suspectedBy: [swim.node]), for: refA, on: swim, within: .seconds(3))
     }
 
-    func test_swim_shouldNotMarkUnreachable_whenSuspectedByNotEnoughNodes_whenMinTimeoutReached() throws {
-        let first = self.setUpFirst()
+    func test_swim_shouldNotMarkUnreachable_whenSuspectedByNotEnoughNodes_whenMinTimeoutReached() async throws {
+        let first = await setUpFirst()
         let firstNode = first.cluster.uniqueNode
-        let second = self.setUpSecond()
+        let second = await setUpSecond()
 
         first.cluster.join(node: second.cluster.uniqueNode.node)
         try assertAssociated(first, withExactly: second.cluster.uniqueNode)
@@ -297,9 +297,9 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Gossiping
 
-    func test_swim_shouldSendGossipInAck() throws {
-        let first = self.setUpFirst()
-        let second = self.setUpSecond()
+    func test_swim_shouldSendGossipInAck() async throws {
+        let first = await setUpFirst()
+        let second = await setUpSecond()
 
         first.cluster.join(node: second.cluster.uniqueNode.node)
         try assertAssociated(first, withExactly: second.cluster.uniqueNode)
@@ -324,9 +324,9 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
         }
     }
 
-    func test_SWIMShell_shouldMonitorJoinedClusterMembers() throws {
-        let local = self.setUpFirst()
-        let remote = self.setUpSecond()
+    func test_SWIMShell_shouldMonitorJoinedClusterMembers() async throws {
+        let local = await setUpFirst()
+        let remote = await setUpSecond()
 
         local.cluster.join(node: remote.cluster.uniqueNode.node)
 
