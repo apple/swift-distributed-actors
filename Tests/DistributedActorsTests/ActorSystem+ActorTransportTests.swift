@@ -16,14 +16,15 @@
 import DistributedActorsTestKit
 import XCTest
 
+// FIXME: rename
 final class ActorSystemTransportTests: ActorSystemXCTestCase, @unchecked Sendable {
-    func test_system_shouldAssignIdentityAndReadyActor() throws {
+    func test_system_shouldAssignIdentityAndReadyActor() async throws {
         try runAsyncAndBlock {
-            let first = self.setUpNode("first") { settings in
+            let first = await setUpNode("first") { settings in
                 settings.cluster.disable()
             }
 
-            var stub: StubDistributedActor? = StubDistributedActor(transport: first)
+            var stub: StubDistributedActor? = StubDistributedActor(actorSystem: first)
             _ = stub
             stub = nil
 

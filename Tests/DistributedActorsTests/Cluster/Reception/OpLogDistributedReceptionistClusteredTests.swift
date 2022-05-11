@@ -42,7 +42,7 @@ distributed actor StringForwarder: CustomStringConvertible {
     }
 
     nonisolated var description: String {
-        "\(Self.self)(\(id.underlying))"
+        "\(Self.self)(\(id))"
     }
 }
 

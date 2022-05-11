@@ -202,8 +202,8 @@ final class ActorAskTests: ActorSystemXCTestCase {
         }
     }
 
-    func test_ask_withTerminatedSystem_shouldNotCauseCrash() throws {
-        let system = ActorSystem("AskCrashSystem")
+    func test_ask_withTerminatedSystem_shouldNotCauseCrash() async throws {
+        let system = await ActorSystem("AskCrashSystem")
 
         let ref = try system._spawn(
             .unique("responder"),

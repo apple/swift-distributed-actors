@@ -19,13 +19,13 @@ import XCTest
 
 final class RemoteMessagingClusteredTests: ClusteredActorSystemsXCTestCase {
     // TODO: This will start failing once we implement _mangledTypeName manifests
-    func test_association_shouldStayAliveWhenMessageSerializationFailsOnReceivingSide() throws {
-        let local = self.setUpNode("local") { settings in
+    func test_association_shouldStayAliveWhenMessageSerializationFailsOnReceivingSide() async throws {
+        let local = await setUpNode("local") { settings in
             settings.serialization.register(SerializationTestMessage.self)
             settings.serialization.register(EchoTestMessage.self)
         }
 
-        let remote = setUpNode("remote") { settings in
+        let remote = await setUpNode("remote") { settings in
             // do not register SerializationTestMessage on purpose, we want it to fail when receiving
             settings.serialization.register(EchoTestMessage.self)
         }
@@ -62,9 +62,9 @@ final class RemoteMessagingClusteredTests: ClusteredActorSystemsXCTestCase {
         try probeOnRemote.expectMessage("forwarded:HELLO")
     }
 
-    func test_association_shouldStayAliveWhenMessageSerializationThrowsOnSendingSide() throws {
+    func test_association_shouldStayAliveWhenMessageSerializationThrowsOnSendingSide() async throws {
         try shouldNotThrow {
-            let (local, remote) = setUpPair { settings in
+            let (local, remote) = await setUpPair { settings in
                 settings.serialization.register(SerializationTestMessage.self)
                 settings.serialization.register(EchoTestMessage.self)
             }
@@ -92,8 +92,8 @@ final class RemoteMessagingClusteredTests: ClusteredActorSystemsXCTestCase {
         }
     }
 
-    func test_association_shouldStayAliveWhenMessageSerializationThrowsOnReceivingSide() throws {
-        let (local, remote) = setUpPair { settings in
+    func test_association_shouldStayAliveWhenMessageSerializationThrowsOnReceivingSide() async throws {
+        let (local, remote) = await setUpPair { settings in
             settings.serialization.register(SerializationTestMessage.self)
             settings.serialization.register(EchoTestMessage.self)
         }
@@ -120,8 +120,8 @@ final class RemoteMessagingClusteredTests: ClusteredActorSystemsXCTestCase {
         try probeOnRemote.expectMessage("forwarded:SerializationTestMessage")
     }
 
-    func test_sendingToRefWithAddressWhichIsActuallyLocalAddress_shouldWork() throws {
-        let local = self.setUpNode("local") { settings in
+    func test_sendingToRefWithAddressWhichIsActuallyLocalAddress_shouldWork() await throws {
+        let local = await setUpNode("local") { settings in
             settings.serialization.register(SerializationTestMessage.self)
             settings.serialization.register(EchoTestMessage.self)
         }
@@ -143,8 +143,8 @@ final class RemoteMessagingClusteredTests: ClusteredActorSystemsXCTestCase {
         try probe.expectMessage("received:hello")
     }
 
-    func test_remoteActors_echo() throws {
-        let (local, remote) = setUpPair { settings in
+    func test_remoteActors_echo() async throws {
+        let (local, remote) = await setUpPair { settings in
             settings.serialization.register(EchoTestMessage.self)
             settings.serialization.register(SerializationTestMessage.self)
             settings.serialization.register(EchoTestMessage.self)
@@ -178,8 +178,8 @@ final class RemoteMessagingClusteredTests: ClusteredActorSystemsXCTestCase {
         try probe.expectMessage("response:echo:test")
     }
 
-    func test_sendingToNonTopLevelRemoteRef_shouldWork() throws {
-        let (local, remote) = setUpPair { settings in
+    func test_sendingToNonTopLevelRemoteRef_shouldWork() async throws {
+        let (local, remote) = await setUpPair { settings in
             settings.serialization.register(EchoTestMessage.self)
             settings.serialization.register(SerializationTestMessage.self)
             settings.serialization.register(EchoTestMessage.self)
@@ -221,8 +221,8 @@ final class RemoteMessagingClusteredTests: ClusteredActorSystemsXCTestCase {
         try probe.expectMessage("response:echo:test")
     }
 
-    func test_sendingToRemoteAdaptedRef_shouldWork() throws {
-        let (local, remote) = setUpPair { settings in
+    func test_sendingToRemoteAdaptedRef_shouldWork() async throws {
+        let (local, remote) = await setUpPair { settings in
             settings.serialization.register(EchoTestMessage.self)
             settings.serialization.register(SerializationTestMessage.self)
             settings.serialization.register(EchoTestMessage.self)
@@ -259,8 +259,8 @@ final class RemoteMessagingClusteredTests: ClusteredActorSystemsXCTestCase {
         try probe.expectMessage("response:echo:test")
     }
 
-    func test_actorRefsThatWereSentAcrossMultipleNodeHops_shouldBeAbleToReceiveMessages() throws {
-        let (local, remote) = setUpPair { settings in
+    func test_actorRefsThatWereSentAcrossMultipleNodeHops_shouldBeAbleToReceiveMessages() async throws {
+        let (local, remote) = await setUpPair { settings in
             settings.serialization.register(SerializationTestMessage.self)
             settings.serialization.register(EchoTestMessage.self)
         }
@@ -268,7 +268,7 @@ final class RemoteMessagingClusteredTests: ClusteredActorSystemsXCTestCase {
 
         try assertAssociated(local, withExactly: remote.cluster.uniqueNode)
 
-        let thirdSystem = self.setUpNode("ClusterAssociationTests") { settings in
+        let thirdSystem = await setUpNode("ClusterAssociationTests") { settings in
             settings.cluster.bindPort = 9119
             settings.serialization.register(SerializationTestMessage.self)
             settings.serialization.register(EchoTestMessage.self)

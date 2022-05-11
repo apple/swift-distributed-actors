@@ -217,22 +217,22 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: .down -> removal
 
-    func test_down_to_removed_ensureRemovalHappensWhenAllHaveSeenDown() throws {
-        let first = self.setUpNode("first") { settings in
+    func test_down_to_removed_ensureRemovalHappensWhenAllHaveSeenDown() async throws {
+        let first = await setUpNode("first") { settings in
             settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
             settings.cluster.downingStrategy = .timeout(.init(downUnreachableMembersAfter: .milliseconds(300)))
         }
-        let p1 = self.testKit(first).makeTestProbe(expecting: Cluster.Event.self)
+        let p1 = await testKit(first).makeTestProbe(expecting: Cluster.Event.self)
         first.cluster.events.subscribe(p1.ref)
 
-        let second = self.setUpNode("second") { settings in
+        let second = await setUpNode("second") { settings in
             settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
             settings.cluster.downingStrategy = .timeout(.init(downUnreachableMembersAfter: .milliseconds(300)))
         }
         let p2 = self.testKit(second).makeTestProbe(expecting: Cluster.Event.self)
         second.cluster.events.subscribe(p2.ref)
 
-        let third = self.setUpNode("third") { settings in
+        let third = await setUpNode("third") { settings in
             settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
             settings.cluster.downingStrategy = .timeout(.init(downUnreachableMembersAfter: .milliseconds(300)))
         }
