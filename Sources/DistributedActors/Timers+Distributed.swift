@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Distributed
 import Dispatch
+import Distributed
 import Logging
 import struct NIO.TimeAmount
 
@@ -112,8 +112,11 @@ public final class ActorTimers<Act: DistributedActor> where Act.ActorSystem == C
     ///   - call: the call that will be made after the `delay` amount of time elapses
     ///   - delay: the delay after which the message will be sent
     @inlinable
-    public func startSingle(key: TimerKey, delay: TimeAmount,
-                            @_inheritActorContext @_implicitSelfCapture call: @Sendable @escaping () async -> Void) {
+    public func startSingle(
+        key: TimerKey,
+        delay: TimeAmount,
+        @_inheritActorContext @_implicitSelfCapture call: @Sendable @escaping () async -> Void
+    ) {
         self.start(key: key, call: call, interval: delay, repeated: false)
     }
 
@@ -126,15 +129,21 @@ public final class ActorTimers<Act: DistributedActor> where Act.ActorSystem == C
     ///   - call: the call that will be executed after the `delay` amount of time elapses
     ///   - interval: the interval with which the message will be sent
     @inlinable
-    public func startPeriodic(key: TimerKey, interval: TimeAmount,
-                              @_inheritActorContext @_implicitSelfCapture call: @Sendable @escaping () async -> Void) {
+    public func startPeriodic(
+        key: TimerKey,
+        interval: TimeAmount,
+        @_inheritActorContext @_implicitSelfCapture call: @Sendable @escaping () async -> Void
+    ) {
         self.start(key: key, call: call, interval: interval, repeated: true)
     }
 
     @usableFromInline
-    internal func start(key: TimerKey,
-                        @_inheritActorContext @_implicitSelfCapture call: @Sendable @escaping () async -> Void,
-                        interval: TimeAmount, repeated: Bool) {
+    internal func start(
+        key: TimerKey,
+        @_inheritActorContext @_implicitSelfCapture call: @Sendable @escaping () async -> Void,
+        interval: TimeAmount,
+        repeated: Bool
+    ) {
         self.cancel(for: key)
 
 //        let generation = self.nextTimerGen() // TODO(distributed): we're not using generations since we don't have restarts

@@ -65,10 +65,10 @@ final class NodeDeathWatcherTests: ClusteredActorSystemsXCTestCase {
         let terminations: [Signals.Terminated] = [termination1, termination2]
         terminations.shouldContain(where: { terminated in
             (!terminated.existenceConfirmed) && terminated.address.name == "remote-1"
-            })
+        })
         terminations.shouldContain(where: { terminated in
             (!terminated.existenceConfirmed) && terminated.address.name == "remote-2"
-            })
+        })
 
         // should not trigger terminated again for any of the remote refs
         first.cluster.down(node: second.cluster.uniqueNode.node)

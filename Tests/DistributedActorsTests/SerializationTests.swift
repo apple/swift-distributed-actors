@@ -51,7 +51,7 @@ class SerializationTests: ActorSystemXCTestCase {
     }
 
     func test_serialize_Int_withData() throws {
-        let value: Int = 6
+        let value = 6
 
         let serialized = try system.serialization.serialize(value)
         // Deserialize from `Data`
@@ -61,7 +61,7 @@ class SerializationTests: ActorSystemXCTestCase {
     }
 
     func test_serialize_Bool_withData() throws {
-        let value: Bool = true
+        let value = true
 
         let serialized = try system.serialization.serialize(value)
         // Deserialize from `Data`

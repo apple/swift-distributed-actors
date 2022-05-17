@@ -65,7 +65,7 @@ final class DeathWatchTests: ActorSystemXCTestCase {
                 return (_Behavior<String>.receiveMessage { message in
                     p.tell(message)
                     return .same
-            }).receiveSpecificSignal(Signals.Terminated.self) { _, terminated in
+                }).receiveSpecificSignal(Signals.Terminated.self) { _, terminated in
                     p.tell("signal:\(terminated.address.path)") // should not be signalled (!)
                     return .same
                 }
@@ -95,7 +95,7 @@ final class DeathWatchTests: ActorSystemXCTestCase {
                 return (_Behavior<String>.receiveMessage { message in
                     p.tell(message)
                     return .same
-            }).receiveSpecificSignal(Signals.Terminated.self) { _, terminated in
+                }).receiveSpecificSignal(Signals.Terminated.self) { _, terminated in
                     p.tell("signal:\(terminated)") // should not be signalled (!)
                     return .same
                 }
@@ -125,7 +125,7 @@ final class DeathWatchTests: ActorSystemXCTestCase {
                 return (_Behavior<String>.receiveMessage { message in
                     p.tell(message) // should NOT be signalled, we're back to Signals
                     return .same
-            }).receiveSpecificSignal(Signals.Terminated.self) { _, terminated in
+                }).receiveSpecificSignal(Signals.Terminated.self) { _, terminated in
                     p.tell("signal:\(terminated.address.path)") // should be signalled (!)
                     return .same
                 }

@@ -18,27 +18,26 @@ import Distributed
 /// Representation of the distributed invocation in the Behavior APIs.
 /// This needs to be removed eventually as we remove behaviors.
 public struct InvocationMessage: Sendable, Codable, CustomStringConvertible {
-  let targetIdentifier: String
-  let arguments: [Data]
-  var replyToAddress: ActorAddress
+    let targetIdentifier: String
+    let arguments: [Data]
+    var replyToAddress: ActorAddress
 
-  var target: RemoteCallTarget {
-    RemoteCallTarget(targetIdentifier)
-  }
+    var target: RemoteCallTarget {
+        RemoteCallTarget(targetIdentifier)
+    }
 
-  public var description: String {
-    "InvocationMessage(target: \(target), arguments: \(arguments.count))"
-  }
-}
-
-struct InvocationBehavior {
-    static func behavior(instance: some DistributedActor) -> _Behavior<InvocationMessage> {
-        return _Behavior.setup { context in
-            return ._receiveMessageAsync({ (message) async throws -> _Behavior<InvocationMessage> in
-                await context.system.receiveInvocation(actor: instance, message: message)
-                return .same
-            })
-        }
+    public var description: String {
+        "InvocationMessage(target: \(target), arguments: \(arguments.count))"
     }
 }
 
+enum InvocationBehavior {
+    static func behavior(instance: some DistributedActor) -> _Behavior<InvocationMessage> {
+        return _Behavior.setup { context in
+            return ._receiveMessageAsync { (message) async throws -> _Behavior<InvocationMessage> in
+                await context.system.receiveInvocation(actor: instance, message: message)
+                return .same
+            }
+        }
+    }
+}

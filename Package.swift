@@ -14,7 +14,7 @@ var globalConcurrencyFlags: [String] = [
 ]
 
 // TODO: currently disabled warnings as errors because of Sendable check noise and work in progress on different toolchains
-//if ProcessInfo.processInfo.environment["SACT_WARNINGS_AS_ERRORS"] != nil {
+// if ProcessInfo.processInfo.environment["SACT_WARNINGS_AS_ERRORS"] != nil {
 //    print("SACT_WARNINGS_AS_ERRORS enabled, passing `-warnings-as-errors`")
 //    var allUnsafeFlags = globalConcurrencyFlags
 //    allUnsafeFlags.append(contentsOf: [
@@ -23,11 +23,11 @@ var globalConcurrencyFlags: [String] = [
 //    globalSwiftSettings = [
 //        SwiftSetting.unsafeFlags(allUnsafeFlags),
 //    ]
-//} else {
-    globalSwiftSettings = [
-        SwiftSetting.unsafeFlags(globalConcurrencyFlags),
-    ]
-//}
+// } else {
+globalSwiftSettings = [
+    SwiftSetting.unsafeFlags(globalConcurrencyFlags),
+]
+// }
 
 var targets: [PackageDescription.Target] = [
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -59,14 +59,16 @@ var targets: [PackageDescription.Target] = [
     .target(
         name: "ActorSingletonPlugin",
         dependencies: [
-            "DistributedActors"
+            "DistributedActors",
         ]
     ),
-    
-        .executableTarget(name: "ExecApp",
-                          dependencies: [
-                            "DistributedActors"
-                          ]),
+
+    .executableTarget(
+        name: "ExecApp",
+        dependencies: [
+            "DistributedActors",
+        ]
+    ),
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: TestKit
@@ -182,7 +184,7 @@ var targets: [PackageDescription.Target] = [
         name: "DistributedActorsConcurrencyHelpers",
         dependencies: [],
         exclude: [
-          "README.md"
+            "README.md",
         ]
     ),
 ]
@@ -222,13 +224,13 @@ let products: [PackageDescription.Product] = [
 //        targets: ["DistributedActorsTestKit"]
 //    ),
 
-        .executable(
-            name: "ExecApp",
-            targets: [
-                "ExecApp"
-            ]
-        ),
-    
+    .executable(
+        name: "ExecApp",
+        targets: [
+            "ExecApp",
+        ]
+    ),
+
     /* --- Functional Plugins --- */
 
     .library(

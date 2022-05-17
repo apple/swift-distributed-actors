@@ -22,10 +22,10 @@ import Glibc
 // FIXME: Why is this here and not in concurrency helpers?
 public final class _Mutex {
     @usableFromInline
-    var mutex: pthread_mutex_t = pthread_mutex_t()
+    var mutex: pthread_mutex_t = .init()
 
     public init() {
-        var attr: pthread_mutexattr_t = pthread_mutexattr_t()
+        var attr = pthread_mutexattr_t()
         pthread_mutexattr_init(&attr)
         pthread_mutexattr_settype(&attr, Int32(PTHREAD_MUTEX_RECURSIVE))
 

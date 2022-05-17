@@ -123,8 +123,8 @@ internal extension _SystemMessage {
     }
 }
 
-extension _SystemMessage {
-    public static func == (lhs: _SystemMessage, rhs: _SystemMessage) -> Bool {
+public extension _SystemMessage {
+    static func == (lhs: _SystemMessage, rhs: _SystemMessage) -> Bool {
         switch (lhs, rhs) {
         case (.start, .start): return true
 
@@ -162,5 +162,5 @@ extension _SystemMessage {
 }
 
 extension _SystemMessage {
-    internal static let metaType: MetaType<_SystemMessage> = MetaType(_SystemMessage.self)
+    static let metaType: MetaType<_SystemMessage> = MetaType(_SystemMessage.self)
 }

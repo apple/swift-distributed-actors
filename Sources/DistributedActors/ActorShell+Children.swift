@@ -308,7 +308,7 @@ extension _Children {
 // MARK: Internal shell operations
 
 extension _ActorShell {
-    internal func _spawn<M>(_ naming: ActorNaming, props: _Props, _ behavior: _Behavior<M>) throws -> _ActorRef<M> {
+    func _spawn<M>(_ naming: ActorNaming, props: _Props, _ behavior: _Behavior<M>) throws -> _ActorRef<M> {
         let name = naming.makeName(&self.namingContext)
 
         try behavior.validateAsInitial()
@@ -325,7 +325,7 @@ extension _ActorShell {
         default: fatalError("not implemented yet, only default dispatcher and calling thread one work")
         }
 
-        let actor: _ActorShell<M> = _ActorShell<M>(
+        let actor = _ActorShell<M>(
             system: self.system,
             parent: self.myself.asAddressable,
             behavior: behavior,
@@ -353,7 +353,7 @@ extension _ActorShell {
         return .init(.cell(cell))
     }
 
-    internal func _stop<T>(child ref: _ActorRef<T>) throws {
+    func _stop<T>(child ref: _ActorRef<T>) throws {
         guard ref.address.path.isChildPathOf(self.address.path) else {
             if ref.address == self.myself.address {
                 throw _ActorContextError.attemptedStoppingMyselfUsingContext(ref: ref.asAddressable)
@@ -367,7 +367,7 @@ extension _ActorShell {
         }
     }
 
-    internal func stopAllChildren() {
+    func stopAllChildren() {
         self.children.stopAll()
     }
 

@@ -27,7 +27,7 @@ import NIO
  * http://www.dalnefre.com/wp/2010/08/dining-philosophers-in-humus
  */
 
-@main struct Main {
+@main enum Main {
     static func main() async {
         print("===-----------------------------------------------------===")
         print("|            Dining Philosophers Sample App               |")

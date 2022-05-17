@@ -18,14 +18,14 @@ import struct Dispatch.DispatchTime
 import enum Dispatch.DispatchTimeInterval
 import SWIM
 
-extension SWIM {
-    public typealias PeerRef = _ActorRef<SWIM.Message>
+public extension SWIM {
+    typealias PeerRef = _ActorRef<SWIM.Message>
 
-    public typealias Ref = _ActorRef<SWIM.Message>
-    public typealias PingOriginRef = _ActorRef<SWIM.Message> // same type, but actually an `ask` actor
-    public typealias PingRequestOriginRef = _ActorRef<SWIM.Message> // same type, but actually an `ask` actor
+    typealias Ref = _ActorRef<SWIM.Message>
+    typealias PingOriginRef = _ActorRef<SWIM.Message> // same type, but actually an `ask` actor
+    typealias PingRequestOriginRef = _ActorRef<SWIM.Message> // same type, but actually an `ask` actor
 
-    typealias Shell = SWIMActorShell
+    internal typealias Shell = SWIMActorShell
 }
 
 public protocol _AnySWIMMessage {}
@@ -41,8 +41,8 @@ extension _ActorRef: SWIMAddressablePeer where Message: _AnySWIMMessage {
     }
 }
 
-extension SWIMPeer {
-    public func ping(
+public extension SWIMPeer {
+    func ping(
         payload: SWIM.GossipPayload,
         timeout: DispatchTimeInterval,
         sequenceNumber: SWIM.SequenceNumber,
@@ -82,7 +82,7 @@ extension SWIMPeer {
         }
     }
 
-    public func pingRequest(
+    func pingRequest(
         target: SWIMPeer,
         payload: SWIM.GossipPayload,
         timeout: DispatchTimeInterval,

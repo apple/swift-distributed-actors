@@ -17,7 +17,7 @@ import Foundation
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Cluster Membership
 
-extension Cluster {
+public extension Cluster {
     /// `Membership` represents the set of members of this cluster.
     ///
     /// Membership changes are driven by nodes joining and leaving the cluster.
@@ -32,7 +32,7 @@ extension Cluster {
     ///
     /// ### Member state transitions
     /// Members can only move "forward" along their status lifecycle, refer to `Cluster.MemberStatus` docs for a diagram of legal transitions.
-    public struct Membership: ExpressibleByArrayLiteral {
+    struct Membership: ExpressibleByArrayLiteral {
         public typealias ArrayLiteralElement = Cluster.Member
 
         public static var empty: Cluster.Membership {
@@ -276,14 +276,14 @@ extension Cluster.Membership: Codable {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Cluster.Membership operations, such as joining, leaving, removing
 
-extension Cluster.Membership {
+public extension Cluster.Membership {
     /// Interpret and apply passed in membership change as the appropriate join/leave/down action.
     ///
     /// Applying a new node status that becomes a "replacement" of an existing member, returns a `Cluster.MembershipChange` that is a "replacement".
     ///
     /// - Returns: the resulting change that was applied to the membership; note that this may be `nil`,
     ///   if the change did not cause any actual change to the membership state (e.g. signaling a join of the same node twice).
-    public mutating func applyMembershipChange(_ change: Cluster.MembershipChange) -> Cluster.MembershipChange? {
+    mutating func applyMembershipChange(_ change: Cluster.MembershipChange) -> Cluster.MembershipChange? {
         if case .removed = change.status {
             return self.removeCompletely(change.node)
         }
@@ -319,7 +319,7 @@ extension Cluster.Membership {
     /// this function will return `nil`. It is guaranteed that if a non-nil value is returned, the old leader is different from the new leader.
     ///
     /// - Throws: `Cluster.MembershipError` when attempt is made to mark a non-member as leader. First add the leader as member, then promote it.
-    public mutating func applyLeadershipChange(to leader: Cluster.Member?) throws -> Cluster.LeadershipChange? {
+    mutating func applyLeadershipChange(to leader: Cluster.Member?) throws -> Cluster.LeadershipChange? {
         guard let wannabeLeader = leader else {
             if let oldLeader = self.leader {
                 // no more leader
@@ -352,25 +352,25 @@ extension Cluster.Membership {
     }
 
     /// Alias for `applyLeadershipChange(to:)`
-    public mutating func applyLeadershipChange(_ change: Cluster.LeadershipChange?) throws -> Cluster.LeadershipChange? {
+    mutating func applyLeadershipChange(_ change: Cluster.LeadershipChange?) throws -> Cluster.LeadershipChange? {
         try self.applyLeadershipChange(to: change?.newLeader)
     }
 
     /// - Returns: the changed member if the change was a transition (unreachable -> reachable, or back),
     ///            or `nil` if the reachability is the same as already known by the membership.
-    public mutating func applyReachabilityChange(_ change: Cluster.ReachabilityChange) -> Cluster.Member? {
+    mutating func applyReachabilityChange(_ change: Cluster.ReachabilityChange) -> Cluster.Member? {
         self.mark(change.member.uniqueNode, reachability: change.member.reachability)
     }
 
     /// Returns the change; e.g. if we replaced a node the change `from` will be populated and perhaps a connection should
     /// be closed to that now-replaced node, since we have replaced it with a new node.
-    public mutating func join(_ node: UniqueNode) -> Cluster.MembershipChange? {
+    mutating func join(_ node: UniqueNode) -> Cluster.MembershipChange? {
         var change = Cluster.MembershipChange(member: Cluster.Member(node: node, status: .joining))
         change.previousStatus = nil
         return self.applyMembershipChange(change)
     }
 
-    public func joining(_ node: UniqueNode) -> Cluster.Membership {
+    func joining(_ node: UniqueNode) -> Cluster.Membership {
         var membership = self
         _ = membership.join(node)
         return membership
@@ -381,7 +381,7 @@ extension Cluster.Membership {
     /// Handles replacement nodes properly, by emitting a "replacement" change, and marking the replaced node as `MemberStatus.down`.
     ///
     /// If the membership not aware of this address the update is treated as a no-op.
-    public mutating func mark(_ node: UniqueNode, as status: Cluster.MemberStatus) -> Cluster.MembershipChange? {
+    mutating func mark(_ node: UniqueNode, as status: Cluster.MemberStatus) -> Cluster.MembershipChange? {
         if let existingExactMember = self.uniqueMember(node) {
             guard existingExactMember.status < status else {
                 // this would be a "move backwards" which we do not do; membership only moves forward
@@ -420,7 +420,7 @@ extension Cluster.Membership {
     /// Returns new membership while marking an existing member with the specified status.
     ///
     /// If the membership not aware of this node the update is treated as a no-op.
-    public func marking(_ node: UniqueNode, as status: Cluster.MemberStatus) -> Cluster.Membership {
+    func marking(_ node: UniqueNode, as status: Cluster.MemberStatus) -> Cluster.Membership {
         var membership = self
         _ = membership.mark(node, as: status)
         return membership
@@ -429,7 +429,7 @@ extension Cluster.Membership {
     /// Mark node with passed in `reachability`
     ///
     /// - Returns: the changed member if the reachability was different than the previously stored one.
-    public mutating func mark(_ node: UniqueNode, reachability: Cluster.MemberReachability) -> Cluster.Member? {
+    mutating func mark(_ node: UniqueNode, reachability: Cluster.MemberReachability) -> Cluster.Member? {
         guard var member = self._members.removeValue(forKey: node) else {
             // no such member
             return nil
@@ -452,7 +452,7 @@ extension Cluster.Membership {
     ///
     /// - Warning: When removing nodes from cluster one MUST also prune the seen tables (!) of the gossip.
     ///            Rather than calling this function directly, invoke `Cluster.Gossip.removeMember()` which performs all needed cleanups.
-    public mutating func removeCompletely(_ node: UniqueNode) -> Cluster.MembershipChange? {
+    mutating func removeCompletely(_ node: UniqueNode) -> Cluster.MembershipChange? {
         if let member = self._members[node] {
             self._members.removeValue(forKey: node)
             return .init(member: member, toStatus: .removed)
@@ -462,14 +462,14 @@ extension Cluster.Membership {
     }
 
     /// Returns new membership while removing an existing member, identified by the passed in node.
-    public func removingCompletely(_ node: UniqueNode) -> Cluster.Membership {
+    func removingCompletely(_ node: UniqueNode) -> Cluster.Membership {
         var membership = self
         _ = membership.removeCompletely(node)
         return membership
     }
 }
 
-extension Cluster.Membership {
+public extension Cluster.Membership {
     /// Special merge function that only moves members "forward" however never removes them, as removal MUST ONLY be
     /// issued specifically by a leader working on the assumption that the `incoming` Membership is KNOWN to be "ahead",
     /// and e.g. if any nodes are NOT present in the incoming membership, they shall be considered `.removed`.
@@ -497,7 +497,7 @@ extension Cluster.Membership {
     /// Warning: Leaders are not "merged", they get elected by each node (!).
     ///
     /// - Returns: any membership changes that occurred (and have affected the current membership).
-    public mutating func mergeFrom(incoming: Cluster.Membership, myself: UniqueNode?) -> [Cluster.MembershipChange] {
+    mutating func mergeFrom(incoming: Cluster.Membership, myself: UniqueNode?) -> [Cluster.MembershipChange] {
         var changes: [Cluster.MembershipChange] = []
 
         // Set of nodes whose members are currently .down, and not present in the incoming gossip.
@@ -506,7 +506,7 @@ extension Cluster.Membership {
         // if any remain in the set, it means they were removed in the incoming membership
         // since we strongly assume the incoming one is "ahead" (i.e. `self happenedBefore ahead`),
         // we remove these members and emit .removed changes.
-        var downNodesToRemove: Set<UniqueNode> = Set(self.members(withStatus: .down).map { $0.uniqueNode })
+        var downNodesToRemove: Set<UniqueNode> = Set(self.members(withStatus: .down).map(\.uniqueNode))
 
         // 1) move forward any existing members or new members according to the `ahead` statuses
         for incomingMember in incoming._members.values {
@@ -568,14 +568,14 @@ extension Cluster.Membership {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Applying Cluster.Event to Membership
 
-extension Cluster.Membership {
+public extension Cluster.Membership {
     /// Applies any kind of `Cluster.Event` to the `Membership`, modifying it appropriately.
     /// This apply does not yield detailed information back about the type of change performed,
     /// and is useful as a catch-all to keep a `Membership` copy up-to-date, but without reacting on any specific transition.
     ///
     /// - SeeAlso: `apply(_:)`, `applyLeadershipChange(to:)`, `applyReachabilityChange(_:)` to receive specific diffs reporting about the effect
     /// a change had on the membership.
-    public mutating func apply(event: Cluster.Event) throws {
+    mutating func apply(event: Cluster.Event) throws {
         switch event {
         case .snapshot(let snapshot):
             self = snapshot
@@ -598,7 +598,7 @@ extension Cluster.Membership {
 extension Cluster.Membership {
     /// Compute a diff between two membership states.
     // TODO: diffing is not super well tested, may lose up numbers
-    internal static func _diff(from: Cluster.Membership, to: Cluster.Membership) -> MembershipDiff {
+    static func _diff(from: Cluster.Membership, to: Cluster.Membership) -> MembershipDiff {
         var entries: [Cluster.MembershipChange] = []
         entries.reserveCapacity(max(from._members.count, to._members.count))
 
@@ -646,8 +646,8 @@ extension MembershipDiff: CustomDebugStringConvertible {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Errors
 
-extension Cluster {
-    public enum MembershipError: Error {
+public extension Cluster {
+    enum MembershipError: Error {
         case nonMemberLeaderSelected(Cluster.Membership, wannabeLeader: Cluster.Member)
     }
 }

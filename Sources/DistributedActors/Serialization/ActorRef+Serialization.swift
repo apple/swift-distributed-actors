@@ -28,13 +28,13 @@ public enum ActorCoding {
     }
 }
 
-extension _ActorRef {
-    public func encode(to encoder: Encoder) throws {
+public extension _ActorRef {
+    func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
         try container.encode(self.address)
     }
 
-    public init(from decoder: Decoder) throws {
+    init(from decoder: Decoder) throws {
         let container: SingleValueDecodingContainer = try decoder.singleValueContainer()
         let address = try container.decode(ActorAddress.self)
 
@@ -51,8 +51,8 @@ extension _ActorRef {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Codable _ReceivesMessages
 
-extension _ReceivesMessages {
-    public func encode(to encoder: Encoder) throws {
+public extension _ReceivesMessages {
+    func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
         switch self {
         case let ref as _ActorRef<Message>:
@@ -62,7 +62,7 @@ extension _ReceivesMessages {
         }
     }
 
-    public init(from decoder: Decoder) throws {
+    init(from decoder: Decoder) throws {
         let container: SingleValueDecodingContainer = try decoder.singleValueContainer()
         let address: ActorAddress = try container.decode(ActorAddress.self)
 
@@ -83,19 +83,19 @@ extension _ReceivesMessages {
 /// this type automatically, since users can not access the type at all.
 /// The `ReceivesSystemMessagesDecoder` however does enable this library itself to embed and use this type in Codable
 /// messages, if the need were to arise.
-extension _ReceivesSystemMessages {
-    public func encode(to encoder: Encoder) throws {
+public extension _ReceivesSystemMessages {
+    func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
         traceLog_Serialization("encode \(self.address) WITH address")
         try container.encode(self.address)
     }
 
-    public init(from decoder: Decoder) throws {
+    init(from decoder: Decoder) throws {
         self = try ReceivesSystemMessagesDecoder.decode(from: decoder) as! Self // as! safe, since we know definitely that Self IS-A ReceivesSystemMessages
     }
 }
 
-internal struct ReceivesSystemMessagesDecoder {
+internal enum ReceivesSystemMessagesDecoder {
     public static func decode(from decoder: Decoder) throws -> _ReceivesSystemMessages {
         guard let context = decoder.actorSerializationContext else {
             throw SerializationError.missingSerializationContext(decoder, _ReceivesSystemMessages.self)

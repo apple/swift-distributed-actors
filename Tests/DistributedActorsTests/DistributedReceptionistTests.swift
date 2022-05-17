@@ -29,7 +29,7 @@ distributed actor Forwarder {
     }
 
     distributed func forward(message: String) {
-        probe?.tell("\(self.id) \(name) forwarded: \(message)")
+        self.probe?.tell("\(self.id) \(self.name) forwarded: \(message)")
     }
 }
 

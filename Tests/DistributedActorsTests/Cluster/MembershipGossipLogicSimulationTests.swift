@@ -38,7 +38,7 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
     }
 
     var nodes: [UniqueNode] {
-        self._nodes.map { $0.cluster.uniqueNode }
+        self._nodes.map(\.cluster.uniqueNode)
     }
 
     var mockPeers: [AddressableActorRef] = []
@@ -58,7 +58,7 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
     }
 
     var gossips: [Cluster.MembershipGossip] {
-        self.logics.map { $0.latestGossip }
+        self.logics.map(\.latestGossip)
     }
 
     private func makeLogic(_ system: ActorSystem, _ probe: ActorTestProbe<Cluster.MembershipGossip>) -> MembershipGossipLogic {
@@ -309,7 +309,7 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
             let ref: _ActorRef<GossipShell<Cluster.MembershipGossip, Cluster.MembershipGossip>.Message> =
                 try system._spawn("peer", .receiveMessage { _ in .same })
             return self.systems.first!._resolveKnownRemote(ref, onRemoteSystem: system)
-        }.map { $0.asAddressable }
+        }.map(\.asAddressable)
 
         var log = self.systems.first!.log
         log[metadataKey: "actor/path"] = "/user/peer" // mock actor path for log capture
@@ -348,7 +348,7 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
                 let participatingGossips = self.logics.shuffled()
                 for logic in participatingGossips {
                     let selectedPeers: [AddressableActorRef] = logic.selectPeers(self.peers(of: logic))
-                    log.notice("[\(logic.nodeName)] selected peers: \(selectedPeers.map { $0.address.uniqueNode.node.systemName })")
+                    log.notice("[\(logic.nodeName)] selected peers: \(selectedPeers.map(\.address.uniqueNode.node.systemName))")
 
                     for targetPeer in selectedPeers {
                         messageCounts[messageCounts.endIndex - 1] += 1
@@ -379,7 +379,7 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
                 }
             }
 
-            updateLogic(logics)
+            updateLogic(self.logics)
 
             var rounds = 0
             log.notice("~~~~~~~~~~~~ new gossip instance ~~~~~~~~~~~~")

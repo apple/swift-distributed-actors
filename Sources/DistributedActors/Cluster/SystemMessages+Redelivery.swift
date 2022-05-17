@@ -63,7 +63,7 @@ internal struct SystemMessageEnvelope: Equatable {
 }
 
 extension SystemMessageEnvelope {
-    internal static let metaType: MetaType<SystemMessageEnvelope> = MetaType(SystemMessageEnvelope.self)
+    static let metaType: MetaType<SystemMessageEnvelope> = MetaType(SystemMessageEnvelope.self)
 }
 
 extension _SystemMessage {

@@ -256,8 +256,8 @@ private extension Collection where Element: Equatable {
 
 // MARK: assertion extensions on specific types
 
-extension Optional {
-    public func shouldBeNil(file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+public extension Optional {
+    func shouldBeNil(file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
         if self != nil {
             let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
             let error = callSite.error("Expected nil, got [\(String(describing: self))]")
@@ -265,7 +265,7 @@ extension Optional {
         }
     }
 
-    public func shouldNotBeNil(file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+    func shouldNotBeNil(file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
         if self == nil {
             let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
             let error = callSite.error("Expected not nil, got [\(String(describing: self))]")
@@ -274,8 +274,8 @@ extension Optional {
     }
 }
 
-extension Set {
-    public func shouldEqual(_ other: @autoclosure () -> Self, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+public extension Set {
+    func shouldEqual(_ other: @autoclosure () -> Self, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
         let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
         let rhs = other()
         if self == rhs {
@@ -305,57 +305,57 @@ extension Set {
     }
 }
 
-extension Equatable {
+public extension Equatable {
     /// Asserts that the value is equal to the `other` value
-    public func shouldEqual(_ other: @autoclosure () -> Self, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+    func shouldEqual(_ other: @autoclosure () -> Self, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
         let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
         return TestMatchers(it: self, callSite: callSiteInfo).toEqual(other())
     }
 
     /// Asserts that the value is of the expected Type `T`
-    public func shouldBe<T>(_ expectedType: T.Type, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+    func shouldBe<T>(_ expectedType: T.Type, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
         let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
         return TestMatchers(it: self, callSite: callSiteInfo).toBe(expectedType)
     }
 
-    public func shouldNotEqual(_ other: @autoclosure () -> Self, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+    func shouldNotEqual(_ other: @autoclosure () -> Self, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
         let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
         return TestMatchers(it: self, callSite: callSiteInfo).toNotEqual(other())
     }
 }
 
-extension Bool {
-    public func shouldBe(_ expected: Bool, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+public extension Bool {
+    func shouldBe(_ expected: Bool, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
         let csInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
         return TestMatchers(it: self, callSite: csInfo).toEqual(expected)
     }
 
-    public func shouldBeFalse(file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+    func shouldBeFalse(file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
         self.shouldBe(false, file: file, line: line, column: column)
     }
 
-    public func shouldBeTrue(file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+    func shouldBeTrue(file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
         self.shouldBe(true, file: file, line: line, column: column)
     }
 }
 
-extension Comparable {
-    public func shouldBeLessThan(_ expected: Self, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+public extension Comparable {
+    func shouldBeLessThan(_ expected: Self, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
         let csInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
         return TestMatchers(it: self, callSite: csInfo).toBeLessThan(expected)
     }
 
-    public func shouldBeLessThanOrEqual(_ expected: Self, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+    func shouldBeLessThanOrEqual(_ expected: Self, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
         let csInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
         return TestMatchers(it: self, callSite: csInfo).toBeLessThanOrEqual(expected)
     }
 
-    public func shouldBeGreaterThan(_ expected: Self, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+    func shouldBeGreaterThan(_ expected: Self, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
         let csInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
         return TestMatchers(it: self, callSite: csInfo).toBeGreaterThan(expected)
     }
 
-    public func shouldBeGreaterThanOrEqual(_ expected: Self, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+    func shouldBeGreaterThanOrEqual(_ expected: Self, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
         let csInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
         return TestMatchers(it: self, callSite: csInfo).toBeGreaterThanOrEqual(expected)
     }
@@ -364,55 +364,55 @@ extension Comparable {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Collection `should*` matchers
 
-extension Collection {
-    public func shouldBeEmpty(file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+public extension Collection {
+    func shouldBeEmpty(file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
         let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
         return TestMatchers(it: self, callSite: callSiteInfo).toBeEmpty() // TODO: lazy impl, should get "expected empty" messages etc
     }
 
-    public func shouldBeNotEmpty(file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+    func shouldBeNotEmpty(file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
         let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
         return TestMatchers(it: self, callSite: callSiteInfo).toBeNotEmpty() // TODO: lazy impl, should get "expected non-empty" messages etc
     }
 }
 
-extension Collection where Element: Equatable {
-    public func shouldStartWith<PossiblePrefix>(prefix: PossiblePrefix, file: StaticString = #file, line: UInt = #line, column: UInt = #column)
+public extension Collection where Element: Equatable {
+    func shouldStartWith<PossiblePrefix>(prefix: PossiblePrefix, file: StaticString = #file, line: UInt = #line, column: UInt = #column)
         where PossiblePrefix: Collection, Element == PossiblePrefix.Element {
         let csInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
         return TestMatchers(it: self, callSite: csInfo).toStartWith(prefix: prefix)
     }
 
-    public func shouldEndWith<PossibleSuffix>(suffix: PossibleSuffix, file: StaticString = #file, line: UInt = #line, column: UInt = #column)
+    func shouldEndWith<PossibleSuffix>(suffix: PossibleSuffix, file: StaticString = #file, line: UInt = #line, column: UInt = #column)
         where PossibleSuffix: Collection, Element == PossibleSuffix.Element {
         let csInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
         return TestMatchers(it: self, callSite: csInfo).toEndWith(suffix: suffix)
     }
 
-    public func shouldContain(_ el: Element, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+    func shouldContain(_ el: Element, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
         let csInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
         return TestMatchers(it: self, callSite: csInfo).toContain(el)
     }
 
-    public func shouldNotContain(_ el: Element, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+    func shouldNotContain(_ el: Element, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
         let csInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
         return TestMatchers(it: self, callSite: csInfo).toNotContain(el)
     }
 
     /// Applies the `where` predicate while trying to locate at least one element in the collection.
-    public func shouldContain(where predicate: (Element) -> Bool, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+    func shouldContain(where predicate: (Element) -> Bool, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
         let csInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
         return TestMatchers(it: self, callSite: csInfo).toContain(where: { predicate($0) })
     }
 }
 
-extension String {
-    public func shouldContain(_ el: String, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+public extension String {
+    func shouldContain(_ el: String, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
         let csInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
         return TestMatchers(it: self, callSite: csInfo).toContain(el)
     }
 
-    public func shouldNotContain(_ el: String, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+    func shouldNotContain(_ el: String, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
         let csInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
         return TestMatchers(it: self, callSite: csInfo).toNotContain(el)
     }
@@ -486,7 +486,6 @@ public func shouldNotThrow<T>(file: StaticString = #file, line: UInt = #line, co
         throw callSiteInfo.error("Should not have thrown, but did:\n" + "\(error)")
     }
 }
-
 
 public func shouldNotHappen(_ message: String, file: StaticString = #file, line: UInt = #line, column: UInt = #column) -> Error {
     let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)

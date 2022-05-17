@@ -149,7 +149,7 @@ public struct ExponentialBackoffStrategy: BackoffStrategy {
     // TODO: clock + limit "max total wait time" etc
 
     /// Default values for the backoff parameters.
-    public struct Defaults {
+    public enum Defaults {
         public static let initialInterval: TimeAmount = .milliseconds(200)
         public static let multiplier: Double = 1.5
         public static let capInterval: TimeAmount = .effectivelyInfinite

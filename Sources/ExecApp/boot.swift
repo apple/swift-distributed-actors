@@ -9,14 +9,14 @@ distributed actor Greeter: CustomStringConvertible {
         print(">>> \(self): \(message)")
         return message
     }
-    
+
     nonisolated var description: String {
         "\(Self.self)(\(self.id))"
     }
 }
 
 @main
-struct Main {
+enum Main {
     static func main() async throws {
 //        LoggingSystem.bootstrap(_SWIMPrettyMetadataLogHandler.init)
 
@@ -31,25 +31,24 @@ struct Main {
 
         system.cluster.join(node: second.cluster.uniqueNode)
 
-
         print("LOCAL:")
         let greeter = Greeter(actorSystem: system)
         try await greeter.hi(name: "Caplin")
-        
+
         print("RESOLVE:")
         let resolved = try Greeter.resolve(id: greeter.id, using: system)
         print("Resolved: \(resolved)")
         try await resolved.hi(name: "Caplin")
-        
+
         // ------------------------------------------
         print("REMOTE:")
         let remote = try Greeter.resolve(id: greeter.id, using: second)
         print("Resolve remote: \(remote)")
-        
+
         let reply = try await remote.hi(name: "Remotely")
         print("Received reply from remote \(remote): \(reply)")
 
-        try await Task.sleep(until: . now + .seconds(5), clock: .continuous)
+        try await Task.sleep(until: .now + .seconds(5), clock: .continuous)
         print("================ DONE ================")
     }
 }

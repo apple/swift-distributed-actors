@@ -50,8 +50,8 @@ public protocol DistributedReceptionist: DistributedActor {
         where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem
 }
 
-extension DistributedReception {
-    public struct GuestListing<Guest: DistributedActor>: AsyncSequence, Sendable where Guest.ActorSystem == ClusterSystem {
+public extension DistributedReception {
+    struct GuestListing<Guest: DistributedActor>: AsyncSequence, Sendable where Guest.ActorSystem == ClusterSystem {
         public typealias Element = Guest
 
         let receptionist: OpLogDistributedReceptionist
@@ -88,7 +88,7 @@ extension DistributedReception {
                         await __secretlyKnownToBeLocal._subscribe(subscription: anySubscribe)
                     }
 
-                    continuation.onTermination = { @Sendable termination -> Void in
+                    continuation.onTermination = { @Sendable termination in
                         Task {
                             await __secretlyKnownToBeLocal._cancelSubscription(subscription: anySubscribe)
                         }
@@ -155,10 +155,12 @@ internal final class DistributedReceptionistStorage {
     /// This function ONLY operates on `.register` operations, and fails otherwise.
     ///
     /// - returns: `true` if the value was a newly inserted value, `false` otherwise
-    func addRegistration<Guest>(sequenced: OpLog<ReceptionistOp>.SequencedOp,
-                                key: AnyDistributedReceptionKey,
-                                guest: Guest) -> Bool
-  where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem {
+    func addRegistration<Guest>(
+        sequenced: OpLog<ReceptionistOp>.SequencedOp,
+        key: AnyDistributedReceptionKey,
+        guest: Guest
+    ) -> Bool
+        where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem {
         guard sequenced.op.isRegister else {
             fatalError("\(#function) can only be called with .register operations, was: \(sequenced)")
         }
@@ -329,9 +331,11 @@ internal final class AnyDistributedReceptionListingSubscription: Hashable, @unch
     // TODO: It would be lovely to be able to express this in the type system as "actor owned" or "actor local" to some actor instance.
     private var seenActorRegistrations: VersionVector
 
-    init(subscriptionID: ObjectIdentifier,
-         key: AnyDistributedReceptionKey,
-         onNext: @escaping @Sendable(AnyDistributedActor) -> Void) {
+    init(
+        subscriptionID: ObjectIdentifier,
+        key: AnyDistributedReceptionKey,
+        onNext: @escaping @Sendable(AnyDistributedActor) -> Void
+    ) {
         self.subscriptionID = subscriptionID
         self.key = key
         self.onNext = onNext

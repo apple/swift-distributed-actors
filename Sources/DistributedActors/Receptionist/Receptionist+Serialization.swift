@@ -36,13 +36,13 @@ extension Reception.Listing: ActorMessage {
     }
 }
 
-extension Reception.Key {
-    enum CodingKeys: CodingKey {
+public extension Reception.Key {
+    internal enum CodingKeys: CodingKey {
         case manifest
         case id
     }
 
-    public init(from decoder: Decoder) throws {
+    init(from decoder: Decoder) throws {
         guard let context = decoder.actorSerializationContext else {
             throw SerializationError.missingSerializationContext(decoder, Reception.Listing<Guest>.self)
         }
@@ -60,7 +60,7 @@ extension Reception.Key {
         self.init(Guest.self, id: id)
     }
 
-    public func encode(to encoder: Encoder) throws {
+    func encode(to encoder: Encoder) throws {
         guard let context: Serialization.Context = encoder.actorSerializationContext else {
             throw SerializationError.missingSerializationContext(encoder, Reception.Listing<Guest>.self)
         }

@@ -22,7 +22,7 @@ private final class Worker {
     var completedTasks: Int = 0
 
     @usableFromInline
-    let _lock: _Mutex = _Mutex()
+    let _lock: _Mutex = .init()
 
     @inlinable
     func lock() {

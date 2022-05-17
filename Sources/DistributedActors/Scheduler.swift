@@ -71,7 +71,7 @@ extension DispatchQueue: Scheduler, @unchecked Sendable {
     }
 
     func scheduleOnceAsync(delay: TimeAmount, _ f: @Sendable @escaping () async -> Void) -> Cancelable {
-        let workItem = DispatchWorkItem { () -> Void in
+        let workItem = DispatchWorkItem { () in
             Task {
                 await f()
             }

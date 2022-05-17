@@ -37,7 +37,7 @@ distributed actor StringForwarder: CustomStringConvertible {
 
     distributed func forward(message: String) {
 //    distributed func forward(message: String) -> String {
-        probe.tell("forwarded:\(message)")
+        self.probe.tell("forwarded:\(message)")
 //        return "echo:\(message)"
     }
 
@@ -46,8 +46,8 @@ distributed actor StringForwarder: CustomStringConvertible {
     }
 }
 
-extension DistributedReception.Key {
-    fileprivate static var stringForwarders: DistributedReception.Key<StringForwarder> {
+private extension DistributedReception.Key {
+    static var stringForwarders: DistributedReception.Key<StringForwarder> {
         "stringForwarders"
     }
 }

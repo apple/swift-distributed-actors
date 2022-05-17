@@ -308,11 +308,11 @@ public struct Receptionist {
 
 extension ActorPath {
     /// The _ActorRef<> receptionist, to be eventually removed.
-    internal static let actorRefReceptionist: ActorPath =
+    static let actorRefReceptionist: ActorPath =
         try! ActorPath([ActorPathSegment("system"), ActorPathSegment("receptionist-ref")])
 
     /// The 'distributed actor' receptionist's well-known path.
-    internal static let distributedActorReceptionist: ActorPath =
+    static let distributedActorReceptionist: ActorPath =
         try! ActorPath([ActorPathSegment("system"), ActorPathSegment("receptionist")])
 }
 
@@ -322,7 +322,7 @@ extension ActorAddress {
         case distributedActors
     }
 
-    internal static func _receptionist(on node: UniqueNode, for type: ReceptionistType) -> ActorAddress {
+    static func _receptionist(on node: UniqueNode, for type: ReceptionistType) -> ActorAddress {
         switch type {
         case .actorRefs:
             return ActorPath.actorRefReceptionist.makeRemoteAddress(on: node, incarnation: .wellKnown)

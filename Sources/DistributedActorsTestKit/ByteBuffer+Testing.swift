@@ -22,9 +22,9 @@ import XCTest
 
 // TODO: probably remove those?
 
-extension Serialization.Buffer {
+public extension Serialization.Buffer {
     // For easier visual inspection of known utf8 data within a Buffer, use with care (!)
-    public func stringDebugDescription() -> String {
+    func stringDebugDescription() -> String {
         switch self {
         case .data(let data):
             return data.stringDebugDescription()
@@ -34,9 +34,9 @@ extension Serialization.Buffer {
     }
 }
 
-extension Data {
+public extension Data {
     // For easier visual inspection of known utf8 data within a Data, use with care (!)
-    public func stringDebugDescription() -> String {
+    func stringDebugDescription() -> String {
         if let string = String(data: self, encoding: .utf8) {
             return string
         } else {
@@ -45,9 +45,9 @@ extension Data {
     }
 }
 
-extension ByteBuffer {
+public extension ByteBuffer {
     // For easier visual inspection of known utf8 data within a ByteBuffer, use with care (!)
-    public func stringDebugDescription() -> String {
+    func stringDebugDescription() -> String {
         self.getString(at: 0, length: self.readableBytes)!
     }
 }

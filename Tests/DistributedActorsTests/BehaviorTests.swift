@@ -47,7 +47,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
 
         for _ in 0 ... 10 {
             counter += 1
-            let payload: String = "message-\(counter)"
+            let payload = "message-\(counter)"
             p.tell(payload)
             try p.expectMessage(payload)
         }
@@ -69,7 +69,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
 
         for _ in 0 ... 10 {
             counter += 1
-            let payload: String = "message-\(counter)"
+            let payload = "message-\(counter)"
             echoPayload.tell(TestMessage(message: payload, replyTo: p.ref))
             try p.expectMessage(payload)
         }

@@ -90,8 +90,8 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
     }
 
     func test_swim_shouldRespondWithNackToPingReq_whenNoResponseFromTarget() async throws {
-        let first = await setUpFirst()
-        let second = await setUpSecond()
+        let first = await self.setUpFirst()
+        let second = await self.setUpSecond()
 
         first.cluster.join(node: second.cluster.uniqueNode.node)
 
@@ -111,8 +111,8 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
     }
 
     func test_swim_shouldPingRandomMember() async throws {
-        let first = await setUpFirst()
-        let second = await setUpSecond()
+        let first = await self.setUpFirst()
+        let second = await self.setUpSecond()
         let third = await setUpNode("third")
 
         first.cluster.join(node: second.cluster.uniqueNode.node)
@@ -146,8 +146,8 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
     }
 
     func test_swim_shouldPingSpecificMemberWhenRequested() async throws {
-        let first = await setUpFirst()
-        let second = await setUpFirst()
+        let first = await self.setUpFirst()
+        let second = await self.setUpFirst()
 
         let secondProbe = self.testKit(second).makeTestProbe("SWIM-2", expecting: SWIM.Message.self)
         let ackProbe = self.testKit(second).makeTestProbe(expecting: SWIM.PingOriginRef.Message.self)
@@ -171,8 +171,8 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
     // MARK: Marking suspect nodes
 
     func test_swim_shouldMarkSuspects_whenPingFailsAndNoOtherNodesCanBeRequested() async throws {
-        let first = await setUpFirst()
-        let second = await setUpSecond()
+        let first = await self.setUpFirst()
+        let second = await self.setUpSecond()
 
         first.cluster.join(node: second.cluster.uniqueNode.node)
         try assertAssociated(first, withExactly: second.cluster.uniqueNode)
@@ -187,7 +187,7 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
     }
 
     func test_swim_shouldMarkSuspects_whenPingFailsAndRequestedNodesFailToPing() async throws {
-        let systemSWIM = await setUpFirst()
+        let systemSWIM = await self.setUpFirst()
         let systemA = await setUpNode("A")
         let systemB = await setUpNode("B")
 
@@ -206,9 +206,9 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
     }
 
     func test_swim_shouldNotMarkUnreachable_whenSuspectedByNotEnoughNodes_whenMinTimeoutReached() async throws {
-        let first = await setUpFirst()
+        let first = await self.setUpFirst()
         let firstNode = first.cluster.uniqueNode
-        let second = await setUpSecond()
+        let second = await self.setUpSecond()
 
         first.cluster.join(node: second.cluster.uniqueNode.node)
         try assertAssociated(first, withExactly: second.cluster.uniqueNode)
@@ -298,8 +298,8 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
     // MARK: Gossiping
 
     func test_swim_shouldSendGossipInAck() async throws {
-        let first = await setUpFirst()
-        let second = await setUpSecond()
+        let first = await self.setUpFirst()
+        let second = await self.setUpSecond()
 
         first.cluster.join(node: second.cluster.uniqueNode.node)
         try assertAssociated(first, withExactly: second.cluster.uniqueNode)
@@ -325,8 +325,8 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
     }
 
     func test_SWIMShell_shouldMonitorJoinedClusterMembers() async throws {
-        let local = await setUpFirst()
-        let remote = await setUpSecond()
+        let local = await self.setUpFirst()
+        let remote = await self.setUpSecond()
 
         local.cluster.join(node: remote.cluster.uniqueNode.node)
 
@@ -383,7 +383,7 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
 
             let otherStatus = membership
                 .first(where: { $0.peer as! SWIM.Ref == peer })
-                .map { $0.status }
+                .map(\.status)
             guard otherStatus == status else {
                 throw testKit.error("Expected status [\(status)] for [\(peer)], but found \(otherStatus.debugDescription); Membership: \(membership)", file: file, line: line)
             }
@@ -403,7 +403,7 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
             let membership = try stateProbe.expectMessage()
             let otherStatus = membership
                 .first(where: { $0.peer as! SWIM.Ref == peer })
-                .map { $0.status }
+                .map(\.status)
             guard otherStatus == status else {
                 throw testKit.error("Expected status [\(status)] for [\(peer)], but found \(otherStatus.debugDescription)")
             }

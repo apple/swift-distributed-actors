@@ -19,13 +19,13 @@ import NIO
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Metrics _Props
 
-extension _Props {
+public extension _Props {
     /// It is too often too much to report metrics for every single actor, and thus metrics are often better reported in groups.
     /// Since actors may be running various behaviors, it is best to explicitly tag spawned actors with which group they should be reporting metrics to.
     ///
     /// E.g. you may want to report average mailbox size among all worker actors, rather than each and single worker,
     /// to achieve this, one would tag all spawned workers using the same metrics `group`.
-    public static func metrics(
+    static func metrics(
         group: String,
         measure activeMetrics: ActiveMetricsOptionSet,
         _ configure: (inout MetricsProps) -> Void = { _ in () }
@@ -38,7 +38,7 @@ extension _Props {
     ///
     /// E.g. you may want to report average mailbox size among all worker actors, rather than each and single worker,
     /// to achieve this, one would tag all spawned workers using the same metrics `group`.
-    public func metrics(
+    func metrics(
         group: String,
         measure activeMetrics: ActiveMetricsOptionSet,
         _ configure: (inout MetricsProps) -> Void = { _ in () }

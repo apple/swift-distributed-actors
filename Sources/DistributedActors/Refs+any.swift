@@ -91,12 +91,12 @@ extension AddressableActorRef: CustomStringConvertible {
     }
 }
 
-extension AddressableActorRef {
-    public func hash(into hasher: inout Hasher) {
+public extension AddressableActorRef {
+    func hash(into hasher: inout Hasher) {
         self.address.hash(into: &hasher)
     }
 
-    public static func == (lhs: AddressableActorRef, rhs: AddressableActorRef) -> Bool {
+    static func == (lhs: AddressableActorRef, rhs: AddressableActorRef) -> Bool {
         lhs.address == rhs.address
     }
 }

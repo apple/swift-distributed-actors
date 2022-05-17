@@ -18,11 +18,11 @@ import XCTest
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ActorTestProbe: Receptionist expectations
 
-extension ActorTestProbe where Message == Reception.Listing<_ActorRef<String>> {
+public extension ActorTestProbe where Message == Reception.Listing<_ActorRef<String>> {
     /// Expect a listing eventually to contain only the `expected` references.
     ///
     /// Lack of listing emitted during the `within` period also yields a test-case failing error.
-    public func eventuallyExpectListing(
+    func eventuallyExpectListing(
         expected: Set<_ActorRef<String>>, within timeout: TimeAmount,
         verbose: Bool = false,
         file: StaticString = #file, line: UInt = #line, column: UInt = #column
@@ -37,7 +37,7 @@ extension ActorTestProbe where Message == Reception.Listing<_ActorRef<String>> {
                 else { return .ignore }
             }.first!
 
-            listing.refs.map { $0.path }.sorted().shouldEqual(expected.map { $0.address.path }.sorted(), file: file, line: line, column: column)
+            listing.refs.map(\.path).sorted().shouldEqual(expected.map(\.address.path).sorted(), file: file, line: line, column: column)
         } catch {
             throw self.error("Expected \(expected), error: \(error)", file: file, line: line)
         }

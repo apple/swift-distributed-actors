@@ -357,7 +357,7 @@ internal class ClusterShell {
     }
 
     private let props: _Props =
-        _Props()
+        .init()
             .supervision(strategy: .escalate) // always escalate failures, if this actor fails we're in big trouble -> terminate the system
             ._asWellKnown
 }
@@ -407,7 +407,7 @@ extension ClusterShell {
             )
 
             return context.awaitResultThrowing(of: chanElf, timeout: clusterSettings.bindTimeout) { (chan: Channel) in
-                context.log.info("Bound to \(chan.localAddress.map { $0.description } ?? "<no-local-address>")")
+                context.log.info("Bound to \(chan.localAddress.map(\.description) ?? "<no-local-address>")")
 
                 let gossiperControl: GossiperControl<Cluster.MembershipGossip, Cluster.MembershipGossip> = try Gossiper._spawn(
                     context,
@@ -419,7 +419,7 @@ extension ClusterShell {
                         peerDiscovery: .onClusterMember(atLeast: .joining, resolve: { member in
                             let resolveContext = ResolveContext<GossipShell<Cluster.MembershipGossip, Cluster.MembershipGossip>.Message>(address: ._clusterGossip(on: member.uniqueNode), system: context.system)
                             return context.system._resolve(context: resolveContext).asAddressable
-                    })
+                        })
                     ),
                     props: ._wellKnown,
                     makeLogic: {
@@ -585,7 +585,7 @@ extension ClusterShell {
                     "tag": "membership",
                     "membership/changes": Logger.MetadataValue.array(mergeDirective.effectiveChanges.map {
                         Logger.MetadataValue.stringConvertible($0)
-                        }),
+                    }),
                     "gossip/incoming": "\(pretty: gossip)",
                     "gossip/before": "\(pretty: beforeGossipMerge)",
                     "gossip/now": "\(pretty: state.latestGossip)",
@@ -663,7 +663,7 @@ extension ClusterShell {
     /// Upon successful handshake, the `replyTo` actor shall be notified with its result, as well as the handshaked-with node shall be marked as `.joining`.
     ///
     /// Handshakes are currently not performed concurrently but one by one.
-    internal func beginHandshake(_ context: _ActorContext<Message>, _ state: ClusterShellState, with remoteNode: Node) -> _Behavior<Message> {
+    func beginHandshake(_ context: _ActorContext<Message>, _ state: ClusterShellState, with remoteNode: Node) -> _Behavior<Message> {
         var state = state
 
         guard remoteNode != state.selfNode.node else {
@@ -706,7 +706,7 @@ extension ClusterShell {
         }
     }
 
-    internal func retryHandshake(_ context: _ActorContext<Message>, _ state: ClusterShellState, initiated: HandshakeStateMachine.InitiatedState) -> _Behavior<Message> {
+    func retryHandshake(_ context: _ActorContext<Message>, _ state: ClusterShellState, initiated: HandshakeStateMachine.InitiatedState) -> _Behavior<Message> {
         state.log.debug("Retry handshake with: \(initiated.remoteNode)")
 //
 //        // FIXME: this needs more work...
@@ -776,7 +776,7 @@ extension ClusterShell {
     /// Initial entry point for accepting a new connection; Potentially allocates new handshake state machine.
     /// - parameter inboundChannel: the inbound connection channel that the other node has opened and is offering its handshake on,
     ///   (as opposed to the channel which we may have opened when we first extended a handshake to that node which would be stored in `state`)
-    internal func onHandshakeOffer(
+    func onHandshakeOffer(
         _ context: _ActorContext<Message>, _ state: ClusterShellState,
         _ offer: Wire.HandshakeOffer, inboundChannel: Channel,
         replyInto handshakePromise: EventLoopPromise<Wire.HandshakeResponse>
@@ -1164,8 +1164,8 @@ extension ClusterShell {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Shutdown
 
-extension ClusterShell {
-    fileprivate func onShutdownCommand(_ context: _ActorContext<Message>, state: ClusterShellState, signalOnceUnbound: BlockingReceptacle<Void>) -> _Behavior<Message> {
+private extension ClusterShell {
+    func onShutdownCommand(_ context: _ActorContext<Message>, state: ClusterShellState, signalOnceUnbound: BlockingReceptacle<Void>) -> _Behavior<Message> {
         // we exit the death-pact with any children we spawned, even if they fail now, we don't mind because we're shutting down
         context.children.forEach { ref in
             context.unwatch(ref)
@@ -1274,19 +1274,19 @@ extension ClusterShell {
 // MARK: ClusterShell's actor address
 
 extension ActorAddress {
-    internal static func _clusterShell(on node: UniqueNode) -> ActorAddress {
+    static func _clusterShell(on node: UniqueNode) -> ActorAddress {
         ActorPath._clusterShell.makeRemoteAddress(on: node, incarnation: .wellKnown)
     }
 
-    internal static func _clusterGossip(on node: UniqueNode) -> ActorAddress {
+    static func _clusterGossip(on node: UniqueNode) -> ActorAddress {
         ActorPath._clusterGossip.makeRemoteAddress(on: node, incarnation: .wellKnown)
     }
 }
 
 extension ActorPath {
-    internal static let _clusterShell: ActorPath = try! ActorPath._system.appendingKnownUnique(ClusterShell.naming)
+    static let _clusterShell: ActorPath = try! ActorPath._system.appendingKnownUnique(ClusterShell.naming)
 
-    internal static let _clusterGossip: ActorPath = try! ActorPath._clusterShell.appending("gossip")
+    static let _clusterGossip: ActorPath = try! ActorPath._clusterShell.appending("gossip")
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------

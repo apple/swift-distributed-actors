@@ -215,11 +215,11 @@ final class _OpLogClusterReceptionistClusteredTests: ClusteredActorSystemsXCTest
     }
 
     func test_clusterReceptionist_shouldRemoveRemoteRefs_whenTheyStop() async throws {
-        try await shared_clusterReceptionist_shouldRemoveRemoteRefsStop(killActors: .sendStop)
+        try await self.shared_clusterReceptionist_shouldRemoveRemoteRefsStop(killActors: .sendStop)
     }
 
     func test_clusterReceptionist_shouldRemoveRemoteRefs_whenNodeDies() async throws {
-        try await shared_clusterReceptionist_shouldRemoveRemoteRefsStop(killActors: .shutdownNode)
+        try await self.shared_clusterReceptionist_shouldRemoveRemoteRefsStop(killActors: .shutdownNode)
     }
 
     func test_clusterReceptionist_shouldRemoveRefFromAllListingsItWasRegisteredWith_ifTerminates() async throws {

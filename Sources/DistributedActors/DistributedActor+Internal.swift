@@ -44,7 +44,7 @@ struct AnyDistributedActor: Sendable, Hashable {
 //        }
 
         // FIXME: terrible hack, instead just store the id then?
-      if let resolved = try? T.resolve(id: underlying.id as! T.ID, using: underlying.actorSystem as! T.ActorSystem) {
+        if let resolved = try? T.resolve(id: underlying.id as! T.ID, using: underlying.actorSystem as! T.ActorSystem) {
             return resolved
         }
 

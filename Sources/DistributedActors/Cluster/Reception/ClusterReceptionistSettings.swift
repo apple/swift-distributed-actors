@@ -14,8 +14,8 @@
 
 import Logging
 
-extension ClusterReceptionist {
-    public struct Settings: Sendable {
+public extension ClusterReceptionist {
+    struct Settings: Sendable {
         public static let `default`: Settings = .init()
 
         /// Configures which receptionist implementation should be used.

@@ -12,11 +12,11 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Distributed
 import Atomics
 import Backtrace
 import CDistributedActorsMailbox
 import Dispatch
+import Distributed
 import DistributedActorsConcurrencyHelpers
 import Logging
 import NIO
@@ -458,10 +458,10 @@ public class ActorSystem: DistributedActorSystem, @unchecked Sendable {
             /// Only once we've shutdown all dispatchers and loops, we clear cycles between the serialization and system,
             /// as they should never be invoked anymore.
             /*
-            self.lazyInitializationLock.withWriterLockVoid {
-                // self._serialization = nil // FIXME: need to release serialization
-            }
-            */
+             self.lazyInitializationLock.withWriterLockVoid {
+                 // self._serialization = nil // FIXME: need to release serialization
+             }
+             */
             _ = self._clusterStore.storeIfNilThenLoad(Box(nil))
 
             self.shutdownReceptacle.offerOnce(nil)
@@ -739,8 +739,8 @@ extension ActorSystem: _ActorTreeTraversable {
     }
 
     func _resolveStub(identity: ActorAddress) throws -> StubDistributedActor {
-      return try StubDistributedActor.resolve(id: identity, using: self) // FIXME(!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!)
-      fatalError("NEIN")
+        return try StubDistributedActor.resolve(id: identity, using: self) // FIXME(!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!)
+        fatalError("NEIN")
     }
 
     public func _resolveUntyped(context: ResolveContext<Never>) -> AddressableActorRef {
@@ -772,12 +772,12 @@ extension ActorSystem: _ActorTreeTraversable {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Actor Transport
 
-extension ActorSystem {
-    public func resolve<Act>(id address: ActorID, as actorType: Act.Type) throws -> Act?
+public extension ActorSystem {
+    func resolve<Act>(id address: ActorID, as actorType: Act.Type) throws -> Act?
         where Act: DistributedActor {
-        log.info("RESOLVE: \(address)")
+        self.log.info("RESOLVE: \(address)")
         guard self.cluster.uniqueNode == address.uniqueNode else {
-            log.info("Resolved \(address) as remote, on node: \(address.uniqueNode)")
+            self.log.info("Resolved \(address) as remote, on node: \(address.uniqueNode)")
             return nil
         }
 
@@ -807,7 +807,7 @@ extension ActorSystem {
     // ==== --------------------------------------------------------------------
     // - MARK: Actor Lifecycle
 
-    public func assignID<Act>(_ actorType: Act.Type) -> ActorSystem.ActorID
+    func assignID<Act>(_ actorType: Act.Type) -> ActorSystem.ActorID
         where Act: DistributedActor {
         let props = _Props.forSpawn // task-local read for any properties this actor should have
         let address = try! self._reserveName(type: Act.self, props: props)
@@ -824,7 +824,7 @@ extension ActorSystem {
         }
     }
 
-    public func actorReady<Act>(_ actor: Act) where Act: DistributedActor, Act.ID == ActorID {
+    func actorReady<Act>(_ actor: Act) where Act: DistributedActor, Act.ID == ActorID {
         let address = actor.id
 
         self.log.trace("Actor ready", metadata: [
@@ -836,7 +836,7 @@ extension ActorSystem {
         defer { self.namingLock.unlock() }
         guard self._reservedNames.remove(address) != nil else {
             // FIXME(distributed): this is a bug in the initializers impl, they may call actorReady many times (from async inits) // TODO: probably already solved
-            log.warning("Attempted to ready an identity that was not reserved: \(address)")
+            self.log.warning("Attempted to ready an identity that was not reserved: \(address)")
             return
         }
 
@@ -854,7 +854,7 @@ extension ActorSystem {
     }
 
     /// Called during actor deinit/destroy.
-    public func resignID(_ id: ActorAddress) {
+    func resignID(_ id: ActorAddress) {
         self.log.warning("Resign actor id", metadata: ["actor/id": "\(id)"])
         self.namingLock.withLockVoid {
             self._reservedNames.remove(id)
@@ -873,21 +873,21 @@ extension ActorSystem {
         }
     }
 
-    public func makeInvocationEncoder() -> InvocationEncoder {
+    func makeInvocationEncoder() -> InvocationEncoder {
         .init()
     }
 
-    public func remoteCall<Act, Err, Res>(
-      on actor: Act,
-      target: RemoteCallTarget,
-      invocation: inout InvocationEncoder,
-      throwing: Err.Type,
-      returning: Res.Type
+    func remoteCall<Act, Err, Res>(
+        on actor: Act,
+        target: RemoteCallTarget,
+        invocation: inout InvocationEncoder,
+        throwing: Err.Type,
+        returning: Res.Type
     ) async throws -> Res
-      where Act: DistributedActor,
-            Act.ID == ActorID,
-            Err: Error,
-            Res: Codable {
+        where Act: DistributedActor,
+        Act.ID == ActorID,
+        Err: Error,
+        Res: Codable {
         guard let clusterShell = _cluster else {
             throw RemoteCallError.clusterAlreadyShutDown
         }
@@ -900,9 +900,9 @@ extension ActorSystem {
         let arguments = invocation.arguments
         let ask: AskResponse<Res> = recipient.ask(timeout: .seconds(5)) { replyTo in
             let invocation = InvocationMessage(
-              targetIdentifier: target.identifier,
-              arguments: arguments,
-              replyToAddress: replyTo.address
+                targetIdentifier: target.identifier,
+                arguments: arguments,
+                replyToAddress: replyTo.address
             )
 
             return invocation
@@ -911,23 +911,23 @@ extension ActorSystem {
         return try await ask.value
     }
 
-    public func remoteCallVoid<Act, Err>(
-      on actor: Act,
-      target: RemoteCallTarget,
-      invocation: inout InvocationEncoder,
-      throwing: Err.Type
+    func remoteCallVoid<Act, Err>(
+        on actor: Act,
+        target: RemoteCallTarget,
+        invocation: inout InvocationEncoder,
+        throwing: Err.Type
     ) async throws
-      where Act: DistributedActor,
-      Act.ID == ActorID,
-      Err: Error {
+        where Act: DistributedActor,
+        Act.ID == ActorID,
+        Err: Error {
         let recipient = _ActorRef<InvocationMessage>(.remote(.init(shell: self._cluster!, address: actor.id._asRemote, system: self)))
 
         let arguments = invocation.arguments
         let ask: AskResponse<_Done> = recipient.ask(timeout: .seconds(5)) { replyTo in
             let invocation = InvocationMessage(
-              targetIdentifier: target.identifier,
-              arguments: arguments,
-              replyToAddress: replyTo.address
+                targetIdentifier: target.identifier,
+                arguments: arguments,
+                replyToAddress: replyTo.address
             )
 
             return invocation
@@ -944,26 +944,28 @@ extension ActorSystem {
         }
 
         let target = message.target
-        log.info("TRY TO INVOKE: \(target) on \(actor)")
+        self.log.info("TRY TO INVOKE: \(target) on \(actor)")
 
         var decoder = ClusterInvocationDecoder(system: self, message: message)
         let resultHandler = ClusterInvocationResultHandler(
-          system: self,
-          clusterShell: shell,
-          replyTo: message.replyToAddress)
+            system: self,
+            clusterShell: shell,
+            replyTo: message.replyToAddress
+        )
 
         do {
             try await executeDistributedTarget(
-            on: actor,
-              target: target,
-              invocationDecoder: &decoder,
-              handler: resultHandler)
+                on: actor,
+                target: target,
+                invocationDecoder: &decoder,
+                handler: resultHandler
+            )
         } catch {
             // FIXME(distributed): is this right?
             do {
                 try await resultHandler.onThrow(error: error)
             } catch {
-                log.warning("Unable to invoke result handler for \(message.target) call, error: \(error)")
+                self.log.warning("Unable to invoke result handler for \(message.target) call, error: \(error)")
             }
         }
     }
@@ -993,7 +995,7 @@ public struct ClusterInvocationResultHandler: DistributedTargetInvocationResultH
     }
 
     public func onThrow<Err: Error>(error: Err) async throws {
-        system.log.warning("Result handler, onThrow: \(error)")
+        self.system.log.warning("Result handler, onThrow: \(error)")
         // FIXME(distributed): carry the error back
         fatalError("FIXME: implement sending back errors")
     }

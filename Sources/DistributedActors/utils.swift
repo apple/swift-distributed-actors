@@ -224,6 +224,6 @@ internal extension BinaryInteger {
 
 internal extension Array where Array.Element == UInt8 {
     var hexString: String {
-        "0x\(self.map { $0.hexString }.joined(separator: ""))"
+        "0x\(self.map(\.hexString).joined(separator: ""))"
     }
 }

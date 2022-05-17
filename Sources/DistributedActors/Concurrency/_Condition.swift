@@ -23,7 +23,7 @@ import NIO
 /// Not intended for general use.
 public final class _Condition {
     @usableFromInline
-    var condition: pthread_cond_t = pthread_cond_t()
+    var condition: pthread_cond_t = .init()
 
     public init() {
         let error = pthread_cond_init(&self.condition, nil)

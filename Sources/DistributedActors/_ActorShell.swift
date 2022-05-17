@@ -79,7 +79,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
     /// Must never be exposed to users, rather expose the `_ActorRef<Message>` by calling `myself`.
     @usableFromInline
     lazy var _myCell: _ActorCell<Message> =
-        _ActorCell<Message>(
+        .init(
             address: self.address,
             actor: self,
             mailbox: _Mailbox(shell: self, capacity: self._props.mailbox.capacity)
@@ -206,7 +206,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
 
     private let _childrenLock = ReadWriteLock()
     // All access must be protected with `_childrenLock`, or via `children` helper
-    internal var _children: _Children = _Children()
+    internal var _children: _Children = .init()
     public override var children: _Children {
         set {
             self._childrenLock.lockWrite()
@@ -785,7 +785,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
 // MARK: Internal system message / signal handling functions
 
 extension _ActorShell {
-    @inlinable internal func interpretSystemWatch(watcher: AddressableActorRef) {
+    @inlinable func interpretSystemWatch(watcher: AddressableActorRef) {
         if self.behavior.isStillAlive {
             self.instrumentation.actorWatchReceived(watchee: self.address, watcher: watcher.address)
             self.deathWatch.becomeWatchedBy(watcher: watcher, myself: self.myself, parent: self._parent)
@@ -795,7 +795,7 @@ extension _ActorShell {
         }
     }
 
-    @inlinable internal func interpretSystemUnwatch(watcher: AddressableActorRef) {
+    @inlinable func interpretSystemUnwatch(watcher: AddressableActorRef) {
         self.instrumentation.actorUnwatchReceived(watchee: self.address, watcher: watcher.address)
         self.deathWatch.removeWatchedBy(watcher: watcher, myself: self.myself)
     }
@@ -804,7 +804,7 @@ extension _ActorShell {
     ///
     /// Mutates actor cell behavior.
     /// May cause actor to terminate upon error or returning .stop etc from `.signalHandling` user code.
-    @inlinable internal func interpretTerminatedSignal(who dead: ActorAddress, terminated: Signals.Terminated) throws {
+    @inlinable func interpretTerminatedSignal(who dead: ActorAddress, terminated: Signals.Terminated) throws {
         #if SACT_TRACE_ACTOR_SHELL
         self.log.info("Received terminated: \(dead)")
         #endif
@@ -850,7 +850,7 @@ extension _ActorShell {
     /// This action is performed concurrently by all actors who have watched remote actors on given node,
     /// and no ordering guarantees are made about which actors will get the Terminated signals first.
     @inlinable
-    internal func interpretNodeTerminated(_ terminatedNode: UniqueNode) {
+    func interpretNodeTerminated(_ terminatedNode: UniqueNode) {
         #if SACT_TRACE_ACTOR_SHELL
         self.log.info("Received address terminated: \(terminatedNode)")
         #endif
@@ -861,7 +861,7 @@ extension _ActorShell {
     /// Interpret a carried signal directly -- those are potentially delivered by plugins or custom transports.
     /// They MAY share semantics with `Signals.Terminated`, in which case they would be interpreted accordingly.
     @inlinable
-    internal func interpretCarrySignal(_ signal: Signal) throws {
+    func interpretCarrySignal(_ signal: Signal) throws {
         #if SACT_TRACE_ACTOR_SHELL
         self.log.info("Received carried signal: \(signal)")
         #endif
@@ -876,13 +876,13 @@ extension _ActorShell {
     }
 
     @inlinable
-    internal func interpretStop() throws {
+    func interpretStop() throws {
         self.children.stopAll()
         try self.becomeNext(behavior: .stop(reason: .stopByParent))
     }
 
     @inlinable
-    internal func interpretChildTerminatedSignal(who terminatedRef: AddressableActorRef, terminated: Signals._ChildTerminated) throws {
+    func interpretChildTerminatedSignal(who terminatedRef: AddressableActorRef, terminated: Signals._ChildTerminated) throws {
         #if SACT_TRACE_ACTOR_SHELL
         self.log.info("Received \(terminated)")
         #endif

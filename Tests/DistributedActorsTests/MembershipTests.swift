@@ -71,7 +71,7 @@ final class MembershipTests: XCTestCase {
             Cluster.Member(node: self.memberA.uniqueNode, status: .down, upNumber: 4),
             Cluster.Member(node: self.memberA.uniqueNode, status: .up, upNumber: 2),
         ]
-        let ns = ms.sorted(by: Cluster.Member.ageOrdering).map { $0._upNumber }
+        let ns = ms.sorted(by: Cluster.Member.ageOrdering).map(\._upNumber)
         ns.shouldEqual([nil, 1, 2, 4])
     }
 

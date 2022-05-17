@@ -23,8 +23,8 @@ import SwiftProtobuf
 
 public protocol Any_ProtobufRepresentable: ActorMessage, SerializationRepresentable {}
 
-extension Any_ProtobufRepresentable {
-    public static var defaultSerializerID: Serialization.SerializerID? {
+public extension Any_ProtobufRepresentable {
+    static var defaultSerializerID: Serialization.SerializerID? {
         ._ProtobufRepresentable
     }
 }
@@ -47,8 +47,8 @@ public protocol _ProtobufRepresentable: _AnyPublic_ProtobufRepresentable {
 // Implementation note:
 // This conformance is a bit weird, and it is not usually going to be invoked through Codable
 // however it could, so we allow for this use case.
-extension _ProtobufRepresentable {
-    public init(from decoder: Decoder) throws {
+public extension _ProtobufRepresentable {
+    init(from decoder: Decoder) throws {
         guard let context = decoder.actorSerializationContext else {
             throw SerializationError.missingSerializationContext(decoder, Self.self)
         }
@@ -61,7 +61,7 @@ extension _ProtobufRepresentable {
         try self.init(fromProto: proto, context: context)
     }
 
-    public func encode(to encoder: Encoder) throws {
+    func encode(to encoder: Encoder) throws {
         guard let context = encoder.actorSerializationContext else {
             throw SerializationError.missingSerializationContext(encoder, self)
         }
@@ -134,13 +134,13 @@ extension Internal_ProtobufRepresentable {
     }
 }
 
-extension _ProtobufRepresentable {
-    public init(context: Serialization.Context, from buffer: Serialization.Buffer, using manifest: Serialization.Manifest) throws {
+public extension _ProtobufRepresentable {
+    init(context: Serialization.Context, from buffer: Serialization.Buffer, using manifest: Serialization.Manifest) throws {
         let proto = try ProtobufRepresentation(serializedData: buffer.readData())
         try self.init(fromProto: proto, context: context)
     }
 
-    public func serialize(context: Serialization.Context) throws -> Serialization.Buffer {
+    func serialize(context: Serialization.Context) throws -> Serialization.Buffer {
         try .data(self.toProto(context: context).serializedData())
     }
 }

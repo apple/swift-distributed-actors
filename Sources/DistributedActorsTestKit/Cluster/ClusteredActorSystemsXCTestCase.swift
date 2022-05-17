@@ -199,8 +199,8 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Printing information
 
-extension ClusteredActorSystemsXCTestCase {
-    public func pinfoMembership(_ system: ActorSystem, file: StaticString = #file, line: UInt = #line) {
+public extension ClusteredActorSystemsXCTestCase {
+    func pinfoMembership(_ system: ActorSystem, file: StaticString = #file, line: UInt = #line) {
         let testKit = self.testKit(system)
         let p = testKit.makeTestProbe(expecting: Cluster.Membership.self)
 
@@ -226,8 +226,8 @@ extension ClusteredActorSystemsXCTestCase {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Captured Logs
 
-extension ClusteredActorSystemsXCTestCase {
-    public func capturedLogs(of node: ActorSystem) -> LogCapture {
+public extension ClusteredActorSystemsXCTestCase {
+    func capturedLogs(of node: ActorSystem) -> LogCapture {
         guard let index = self._nodes.firstIndex(of: node) else {
             fatalError("No such node: [\(node)] in [\(self._nodes)]!")
         }
@@ -235,13 +235,13 @@ extension ClusteredActorSystemsXCTestCase {
         return self._logCaptures[index]
     }
 
-    public func printCapturedLogs(of node: ActorSystem) {
+    func printCapturedLogs(of node: ActorSystem) {
         print("------------------------------------- \(node) ------------------------------------------------")
         self.capturedLogs(of: node).printLogs()
         print("========================================================================================================================")
     }
 
-    public func printAllCapturedLogs() {
+    func printAllCapturedLogs() {
         for node in self._nodes {
             self.printCapturedLogs(of: node)
         }
@@ -251,8 +251,8 @@ extension ClusteredActorSystemsXCTestCase {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Assertions
 
-extension ClusteredActorSystemsXCTestCase {
-    public func assertAssociated(
+public extension ClusteredActorSystemsXCTestCase {
+    func assertAssociated(
         _ system: ActorSystem, withAtLeast node: UniqueNode,
         timeout: TimeAmount? = nil, interval: TimeAmount? = nil,
         verbose: Bool = false, file: StaticString = #file, line: UInt = #line, column: UInt = #column
@@ -263,7 +263,7 @@ extension ClusteredActorSystemsXCTestCase {
         )
     }
 
-    public func assertAssociated(
+    func assertAssociated(
         _ system: ActorSystem, withExactly node: UniqueNode,
         timeout: TimeAmount? = nil, interval: TimeAmount? = nil,
         verbose: Bool = false, file: StaticString = #file, line: UInt = #line, column: UInt = #column
@@ -279,7 +279,7 @@ extension ClusteredActorSystemsXCTestCase {
     /// - Parameters:
     ///   - withExactly: specific set of nodes that must exactly match the associated nodes on `system`; i.e. no extra associated nodes are allowed
     ///   - withAtLeast: sub-set of nodes that must be associated
-    public func assertAssociated(
+    func assertAssociated(
         _ system: ActorSystem,
         withExactly exactlyNodes: [UniqueNode] = [],
         withAtLeast atLeastNodes: [UniqueNode] = [],
@@ -330,7 +330,7 @@ extension ClusteredActorSystemsXCTestCase {
         }
     }
 
-    public func assertNotAssociated(
+    func assertNotAssociated(
         system: ActorSystem, node: UniqueNode,
         timeout: TimeAmount? = nil, interval: TimeAmount? = nil,
         verbose: Bool = false
@@ -357,7 +357,7 @@ extension ClusteredActorSystemsXCTestCase {
     /// Asserts the given member node has the expected `status`.
     ///
     /// An error is thrown but NOT failing the test; use in pair with `testKit.eventually` to achieve the expected behavior.
-    public func assertMemberStatus(
+    func assertMemberStatus(
         on system: ActorSystem, node: UniqueNode,
         is expectedStatus: Cluster.MemberStatus,
         file: StaticString = #file, line: UInt = #line
@@ -380,7 +380,7 @@ extension ClusteredActorSystemsXCTestCase {
         }
     }
 
-    public func assertMemberStatus(
+    func assertMemberStatus(
         on system: ActorSystem, node: UniqueNode,
         atLeast expectedAtLeastStatus: Cluster.MemberStatus,
         file: StaticString = #file, line: UInt = #line
@@ -411,7 +411,7 @@ extension ClusteredActorSystemsXCTestCase {
     }
 
     /// Assert based on the event stream of `Cluster.Event` that the given `node` was downed or removed.
-    public func assertMemberDown(_ eventStreamProbe: ActorTestProbe<Cluster.Event>, node: UniqueNode) throws {
+    func assertMemberDown(_ eventStreamProbe: ActorTestProbe<Cluster.Event>, node: UniqueNode) throws {
         let events = try eventStreamProbe.fishFor(Cluster.Event.self, within: .seconds(5)) {
             switch $0 {
             case .membershipChange(let change)
@@ -430,7 +430,7 @@ extension ClusteredActorSystemsXCTestCase {
     /// Asserts the given node is the leader.
     ///
     /// An error is thrown but NOT failing the test; use in pair with `testKit.eventually` to achieve the expected behavior.
-    public func assertLeaderNode(
+    func assertLeaderNode(
         on system: ActorSystem, is expectedNode: UniqueNode?,
         file: StaticString = #file, line: UInt = #line
     ) throws {
@@ -452,8 +452,8 @@ extension ClusteredActorSystemsXCTestCase {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Resolve utilities, for resolving remote refs "on" a specific system
 
-extension ClusteredActorSystemsXCTestCase {
-    public func resolveRef<M>(_ system: ActorSystem, type: M.Type, address: ActorAddress, on targetSystem: ActorSystem) -> _ActorRef<M> {
+public extension ClusteredActorSystemsXCTestCase {
+    func resolveRef<M>(_ system: ActorSystem, type: M.Type, address: ActorAddress, on targetSystem: ActorSystem) -> _ActorRef<M> {
         // DO NOT TRY THIS AT HOME; we do this since we have no receptionist which could offer us references
         // first we manually construct the "right remote path", DO NOT ABUSE THIS IN REAL CODE (please) :-)
         let remoteNode = targetSystem.settings.cluster.uniqueBindNode

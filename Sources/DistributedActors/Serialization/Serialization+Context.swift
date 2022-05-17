@@ -20,11 +20,11 @@ import struct NIO.ByteBufferAllocator
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Serialization.Context
 
-extension Serialization {
+public extension Serialization {
     /// A context object provided to any Encoder/Decoder, in order to allow special ActorSystem-bound types (such as _ActorRef).
     ///
     /// Context MAY be accessed concurrently be encoders/decoders.
-    public struct Context {
+    struct Context {
         public let log: Logger
         public let system: ActorSystem
 
@@ -87,7 +87,7 @@ extension Serialization {
 // MARK: Serialization.Context for Encoder & Decoder
 
 public extension CodingUserInfoKey {
-    static let actorSerializationContext: CodingUserInfoKey = CodingUserInfoKey(rawValue: "sact_ser_context")!
+    static let actorSerializationContext: CodingUserInfoKey = .init(rawValue: "sact_ser_context")!
 }
 
 public protocol CodableSerializationContext {
@@ -115,10 +115,10 @@ public protocol CodableSerializationContext {
     var actorSerializationContext: Serialization.Context? { get }
 }
 
-extension Decoder {
+public extension Decoder {
     // Cannot conform it to DecoderSerializationContext:
     //     error: extension of protocol 'Decoder' cannot have an inheritance clause
-    public var actorSerializationContext: Serialization.Context? {
+    var actorSerializationContext: Serialization.Context? {
         self.userInfo[.actorSerializationContext] as? Serialization.Context
     }
 }
@@ -129,8 +129,8 @@ extension JSONDecoder: CodableSerializationContext {
     }
 }
 
-extension Encoder {
-    public var actorSerializationContext: Serialization.Context? {
+public extension Encoder {
+    var actorSerializationContext: Serialization.Context? {
         self.userInfo[.actorSerializationContext] as? Serialization.Context
     }
 }

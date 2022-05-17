@@ -62,7 +62,7 @@ final class ParentChildActorTests: ActorSystemXCTestCase {
                         context.watch(kid)
                     }
                     probe.tell(.spawned(child: kid))
-                } catch let _ActorContextError.duplicateActorPath(path) {
+                } catch _ActorContextError.duplicateActorPath(let path) {
                     probe.tell(.spawnFailed(path: path))
                 } // bubble up others
             case .spawnAnonymousChild(let behavior):
@@ -72,7 +72,7 @@ final class ParentChildActorTests: ActorSystemXCTestCase {
                         context.watch(kid)
                     }
                     probe.tell(.spawned(child: kid))
-                } catch let _ActorContextError.duplicateActorPath(path) {
+                } catch _ActorContextError.duplicateActorPath(let path) {
                     probe.tell(.spawnFailed(path: path))
                 } // bubble up others
 
@@ -125,7 +125,7 @@ final class ParentChildActorTests: ActorSystemXCTestCase {
                             context.watch(kid)
                         }
                         probe.tell(.spawned(child: kid))
-                    } catch let _ActorContextError.duplicateActorPath(path) {
+                    } catch _ActorContextError.duplicateActorPath(let path) {
                         probe.tell(.spawnFailed(path: path))
                     } // bubble up others
                 }

@@ -33,12 +33,10 @@ public struct ClusterInvocationEncoder: DistributedTargetInvocationEncoder {
     public mutating func recordArgument<Value: Codable>(_ argument: RemoteCallArgument<Value>) throws {
         let encoder = JSONEncoder()
         let data = try encoder.encode(argument.value)
-        arguments.append(data)
+        self.arguments.append(data)
     }
 
-
-    public mutating func recordReturnType<Success: Codable>(_ returnType: Success.Type) throws {
-    }
+    public mutating func recordReturnType<Success: Codable>(_ returnType: Success.Type) throws {}
 
     public mutating func recordErrorType<E: Error>(_ type: E.Type) throws {
         self.throwing = true
@@ -47,7 +45,6 @@ public struct ClusterInvocationEncoder: DistributedTargetInvocationEncoder {
     public mutating func doneRecording() throws {
         // noop
     }
-
 }
 
 // FIXME(distributed): make it a struct once rdar://88211172 ([Distributed] SILGen must emit uses of decodeNextArgument so IRGen can get it cross module on `FINAL classes`) is fixed
@@ -67,27 +64,27 @@ public struct ClusterInvocationDecoder: DistributedTargetInvocationDecoder {
         fatalError("NOT IMPLEMENTED: \(#function)")
     }
 
-    public mutating  func decodeNextArgument<Argument: Codable>() throws -> Argument {
-        guard message.arguments.count > argumentIdx else {
-            throw SerializationError.notEnoughArgumentsEncoded(expected: argumentIdx + 1, have: message.arguments.count)
+    public mutating func decodeNextArgument<Argument: Codable>() throws -> Argument {
+        guard self.message.arguments.count > self.argumentIdx else {
+            throw SerializationError.notEnoughArgumentsEncoded(expected: self.argumentIdx + 1, have: self.message.arguments.count)
         }
 
-        let argumentData = message.arguments[argumentIdx]
-        argumentIdx += 1
+        let argumentData = self.message.arguments[self.argumentIdx]
+        self.argumentIdx += 1
 
         // TODO: get serializer for it
         var decoder = JSONDecoder()
-        decoder.userInfo[.actorSystemKey] = system
+        decoder.userInfo[.actorSystemKey] = self.system
 
         let argument = try decoder.decode(Argument.self, from: argumentData)
         return argument
     }
 
-    public  mutating func decodeErrorType() throws -> Any.Type? {
+    public mutating func decodeErrorType() throws -> Any.Type? {
         return nil // TODO(distributed): might need this
     }
 
-    public  mutating func decodeReturnType() throws -> Any.Type? {
+    public mutating func decodeReturnType() throws -> Any.Type? {
         return nil // TODO(distributed): might need this
     }
 }

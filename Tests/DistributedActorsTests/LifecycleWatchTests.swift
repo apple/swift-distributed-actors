@@ -24,7 +24,7 @@ import XCTest
 
 distributed actor Romeo: LifecycleWatch, CustomStringConvertible {
     typealias ActorSystem = ClusterSystem
-    
+
     let probe: ActorTestProbe<String>
     lazy var log = Logger(actor: self)
 
@@ -79,9 +79,7 @@ distributed actor Juliet: LifecycleWatch, CustomStringConvertible {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Tests
 
-
 final class LifecycleWatchTests: ActorSystemXCTestCase, @unchecked Sendable {
-    
     func test_watch_shouldTriggerTerminatedWhenWatchedActorDeinits() async throws {
         let pj = self.testKit.makeTestProbe(expecting: String.self)
         let pr = self.testKit.makeTestProbe(expecting: String.self)
@@ -89,7 +87,7 @@ final class LifecycleWatchTests: ActorSystemXCTestCase, @unchecked Sendable {
 
         func meet() async throws {
             var romeo: Romeo? = Romeo(probe: pr, actorSystem: system)
-            
+
             try await juliet.meetWatchCallback(romeo!, unwatch: false)
             romeo = nil
         }

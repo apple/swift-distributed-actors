@@ -81,7 +81,7 @@ public struct EventStream<Event: ActorMessage>: AsyncSequence {
                     _ = self.subscribed.compareExchange(expected: false, desired: true, ordering: .relaxed)
                 })
 
-                continuation.onTermination = { @Sendable(_) -> Void in
+                continuation.onTermination = { @Sendable(_) in
                     ref.tell(.asyncUnsubscribe(id) {
                         _ = self.subscribed.compareExchange(expected: true, desired: false, ordering: .relaxed)
                     })

@@ -98,7 +98,7 @@ final class ActorSubReceiveTests: ActorSystemXCTestCase {
         }
 
         let behavior: _Behavior<GetState> = .setup { context in
-            var state: Int = 0
+            var state = 0
 
             let subRef = context.subReceive("test-sub", IncrementAndGet.self) { message in
                 state += 1

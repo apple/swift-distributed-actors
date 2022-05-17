@@ -23,16 +23,16 @@ public enum _Done: String, ActorMessage {
 }
 
 //// TODO(distributed): remove this, actually system._spawn the underlying reference for the reserved address
-//public protocol __AnyDistributedClusterActor {
+// public protocol __AnyDistributedClusterActor {
 //    static func _spawnAny(instance: Self, on system: ActorSystem) throws -> AddressableActorRef
-//}
+// }
 
 // FIXME: workaround (!)
 extension DistributedActor where ActorSystem == ClusterSystem {
     public typealias Message = InvocationMessage
 
     static func makeBehavior(instance: Self) -> _Behavior<Message> {
-        .receive { context, message in
+        .receive { _, message in
             fatalError("EXECUTE: \(message)")
             return .same
         }
@@ -44,23 +44,23 @@ extension DistributedActor where ActorSystem == ClusterSystem {
 }
 
 ///// Necessary to get `Message` out of the `DistributedActor`
-//public protocol __DistributedClusterActor: __AnyDistributedClusterActor {
+// public protocol __DistributedClusterActor: __AnyDistributedClusterActor {
 //    associatedtype Message: Codable & Sendable
 //
 //    static func makeBehavior(instance: Self) -> _Behavior<Message>
 //
 //    static func _spawn(instance: Self, on system: ActorSystem) -> _ActorRef<Message>
-//}
+// }
 
-extension DistributedActor where ActorSystem == ClusterSystem {
+public extension DistributedActor where ActorSystem == ClusterSystem {
     // FIXME(distributed): this is not enough since we can't get the Message associated type protocol by casting...
-    public static func _spawn(instance: Self, on system: ActorSystem) -> _ActorRef<Message> {
+    static func _spawn(instance: Self, on system: ActorSystem) -> _ActorRef<Message> {
         let behavior: _Behavior<InvocationMessage> = makeBehavior(instance: instance)
         return try! system._spawn(ActorNaming.prefixed(with: "\(Self.self)"), behavior)
     }
 }
 
-//extension ActorSystem.ActorID: _ProtobufRepresentable {
+// extension ActorSystem.ActorID: _ProtobufRepresentable {
 //    public typealias ProtobufRepresentation = _ProtoActorIdentity
 //
 //    public func toProto(context: Serialization.Context) throws -> _ProtoActorIdentity {
@@ -82,4 +82,4 @@ extension DistributedActor where ActorSystem == ClusterSystem {
 //        let address = try context.serialization.deserialize(as: ActorAddress.self, from: .data(proto.payload), using: manifest)
 //        self = address
 //    }
-//}
+// }

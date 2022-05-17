@@ -29,19 +29,19 @@ public struct _Behavior<Message: ActorMessage>: @unchecked Sendable {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Message Handling
 
-extension _Behavior {
+public extension _Behavior {
     /// Defines a behavior that will be executed with an incoming message by its hosting actor.
     /// Additionally exposes `ActorContext` which can be used to e.g. log messages, spawn child actors etc.
     ///
     /// - SeeAlso: `receiveMessage` convenience behavior for when you do not need to access the `ActorContext`.
-    public static func receive(_ handle: @escaping (_ActorContext<Message>, Message) throws -> _Behavior<Message>) -> _Behavior {
+    static func receive(_ handle: @escaping (_ActorContext<Message>, Message) throws -> _Behavior<Message>) -> _Behavior {
         _Behavior(underlying: .receive(handle))
     }
 
     /// Defines a behavior that will be executed with an incoming message by its hosting actor.
     ///
     /// - SeeAlso: `receive` convenience if you also need to access the `ActorContext`.
-    public static func receiveMessage(_ handle: @escaping (Message) throws -> _Behavior<Message>) -> _Behavior {
+    static func receiveMessage(_ handle: @escaping (Message) throws -> _Behavior<Message>) -> _Behavior {
         _Behavior(underlying: .receiveMessage(handle))
     }
 }
@@ -50,9 +50,11 @@ extension _Behavior {
 // MARK: Async Message handling
 
 extension _Behavior {
-    func receiveAsync0(_ recv: @Sendable @escaping (Message) async throws -> _Behavior<Message>,
-                       context: _ActorContext<Message>,
-                       message: Message) -> _Behavior<Message> {
+    func receiveAsync0(
+        _ recv: @Sendable @escaping (Message) async throws -> _Behavior<Message>,
+        context: _ActorContext<Message>,
+        message: Message
+    ) -> _Behavior<Message> {
         let loop = context.system._eventLoopGroup.next()
         let promise = loop.makePromise(of: _Behavior<Message>.self)
 
@@ -73,8 +75,10 @@ extension _Behavior {
     }
 
     @usableFromInline
-    func receiveAsync(_ recv: @Sendable @escaping (_ActorContext<Message>, Message) async throws -> _Behavior<Message>,
-                      _ message: Message) -> _Behavior<Message> {
+    func receiveAsync(
+        _ recv: @Sendable @escaping (_ActorContext<Message>, Message) async throws -> _Behavior<Message>,
+        _ message: Message
+    ) -> _Behavior<Message> {
         .setup { context in
             receiveAsync0({ message in
                 try await recv(context, message)
@@ -83,8 +87,10 @@ extension _Behavior {
     }
 
     @usableFromInline
-    func receiveMessageAsync(_ recv: @Sendable @escaping (Message) async throws -> _Behavior<Message>,
-                             _ message: Message) -> _Behavior<Message> {
+    func receiveMessageAsync(
+        _ recv: @Sendable @escaping (Message) async throws -> _Behavior<Message>,
+        _ message: Message
+    ) -> _Behavior<Message> {
         .setup { context in
             receiveAsync0(recv, context: context, message: message)
         }
@@ -158,19 +164,19 @@ extension _Behavior {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Most often used next-Behaviors
 
-extension _Behavior {
+public extension _Behavior {
     /// Defines that the "same" behavior should remain in use for handling the next message.
     ///
     /// Note: prefer returning `.same` rather than "the same instance" of a behavior, as `.same` is internally optimized
     /// to avoid allocating and swapping behavior states when no changes are needed to be made.
-    public static var same: _Behavior<Message> {
+    static var same: _Behavior<Message> {
         _Behavior(underlying: .same)
     }
 
     /// Causes a message to be assumed unhandled by the runtime.
     /// Unhandled messages are logged by default, and other behaviors may use this information to implement `apply1.orElse(apply2)` style logic.
     // TODO: and their logging rate should be configurable
-    public static var unhandled: _Behavior<Message> {
+    static var unhandled: _Behavior<Message> {
         _Behavior(underlying: .unhandled)
     }
 
@@ -181,7 +187,7 @@ extension _Behavior {
     /// in the sense that we did handle it, however simply chose to ignore it.
     ///
     /// Returning `ignore` implies remaining the same behavior, the same way as would returning `.same`.
-    public static var ignore: _Behavior<Message> {
+    static var ignore: _Behavior<Message> {
         _Behavior(underlying: .ignore)
     }
 }
@@ -189,7 +195,7 @@ extension _Behavior {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Lifecycle Behaviors
 
-extension _Behavior {
+public extension _Behavior {
     /// Runs once the actor has been started, also exposing the `ActorContext`
     ///
     /// #### Example usage
@@ -210,7 +216,7 @@ extension _Behavior {
     ///
     /// This can be used to obtain the context, logger or perform actions right when the actor starts
     /// (e.g. send an initial message, or subscribe to some event stream, configure receive timeouts, etc.).
-    public static func setup(_ onStart: @escaping (_ActorContext<Message>) throws -> _Behavior<Message>) -> _Behavior {
+    static func setup(_ onStart: @escaping (_ActorContext<Message>) throws -> _Behavior<Message>) -> _Behavior {
         _Behavior(underlying: .setup(onStart))
     }
 
@@ -220,7 +226,7 @@ extension _Behavior {
     /// the same signal handler (chain) to process all events.
     ///
     /// - SeeAlso: `stop(_:)` and `stop(postStop:) overloads for adding cleanup code to be executed upon receipt of _PostStop signal.
-    public static var stop: _Behavior<Message> {
+    static var stop: _Behavior<Message> {
         _Behavior.stop(postStop: nil, reason: .stopMyself)
     }
 
@@ -228,7 +234,7 @@ extension _Behavior {
     /// and the actor itself will stop. Return this behavior to stop your actors. This is a convenience overload that
     /// allows users to specify a closure that will only be called on receipt of `_PostStop` and therefore does not
     /// need to get the signal passed in. It also does not need to return a new behavior, as the actor is already stopping.
-    public static func stop(_ postStop: @escaping (_ActorContext<Message>) throws -> Void) -> _Behavior<Message> {
+    static func stop(_ postStop: @escaping (_ActorContext<Message>) throws -> Void) -> _Behavior<Message> {
         _Behavior.stop(
             postStop: _Behavior.receiveSignal { context, signal in
                 if signal is Signals._PostStop {
@@ -245,7 +251,7 @@ extension _Behavior {
     /// set, it will be used to handle the `_PostStop` signal after the actor has stopped. Otherwise the last
     /// assigned behavior will be used. This allows users to use the same signal handler (chain) to process
     /// all events.
-    public static func stop(postStop: _Behavior<Message>) -> _Behavior<Message> {
+    static func stop(postStop: _Behavior<Message>) -> _Behavior<Message> {
         _Behavior(underlying: .stop(postStop: postStop, reason: .stopMyself))
     }
 }
@@ -253,12 +259,12 @@ extension _Behavior {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: _Behavior Combinators
 
-extension _Behavior {
+public extension _Behavior {
     /// Creates a new _Behavior which on an incoming message will first execute the first (current) behavior,
     /// and if it returns `.unhandled` applies the alternative behavior passed in here.
     ///
     /// If the alternative behavior contains a `.setup` or other deferred behavior, it will be canonicalized on its first execution // TODO: make a test for it
-    public func orElse(_ alternativeBehavior: _Behavior<Message>) -> _Behavior<Message> {
+    func orElse(_ alternativeBehavior: _Behavior<Message>) -> _Behavior<Message> {
         _Behavior(underlying: .orElse(first: self, second: alternativeBehavior))
     }
 }
@@ -266,7 +272,7 @@ extension _Behavior {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Signal receiving behaviors
 
-extension _Behavior {
+public extension _Behavior {
     /// Allows reacting to `Signal`s, such as lifecycle events.
     ///
     /// Note that this behavior _adds_ the ability to handle signals in addition to an existing message handling behavior
@@ -288,7 +294,7 @@ extension _Behavior {
     ///
     /// - SeeAlso: `Signals` for a listing of signals that may be handled using this behavior.
     /// - SeeAlso: `receiveSpecificSignal` for convenience version of this behavior, simplifying handling a single type of `Signal`.
-    public func receiveSignal(_ handle: @escaping (_ActorContext<Message>, Signal) throws -> _Behavior<Message>) -> _Behavior<Message> {
+    func receiveSignal(_ handle: @escaping (_ActorContext<Message>, Signal) throws -> _Behavior<Message>) -> _Behavior<Message> {
         _Behavior(
             underlying: .signalHandling(
                 handleMessage: self,
@@ -297,7 +303,7 @@ extension _Behavior {
         )
     }
 
-    public func _receiveSignalAsync(
+    func _receiveSignalAsync(
         _ handle: @escaping @Sendable(_ActorContext<Message>, Signal) async throws -> _Behavior<Message>
     ) -> _Behavior<Message> {
         _Behavior(
@@ -329,7 +335,7 @@ extension _Behavior {
     ///
     /// - SeeAlso: `Signals` for a listing of signals that may be handled using this behavior.
     /// - SeeAlso: `receiveSpecificSignal` for convenience version of this behavior, simplifying handling a single type of `Signal`.
-    public static func receiveSignal(_ handle: @escaping (_ActorContext<Message>, Signal) throws -> _Behavior<Message>) -> _Behavior<Message> {
+    static func receiveSignal(_ handle: @escaping (_ActorContext<Message>, Signal) throws -> _Behavior<Message>) -> _Behavior<Message> {
         _Behavior(
             underlying: .signalHandling(
                 handleMessage: .unhandled,
@@ -353,7 +359,7 @@ extension _Behavior {
     ///
     /// - SeeAlso: `Signals` for a listing of signals that may be handled using this behavior.
     /// - SeeAlso: `receiveSignal` which allows receiving multiple types of signals.
-    public func receiveSpecificSignal<SpecificSignal: Signal>(_: SpecificSignal.Type, _ handle: @escaping (_ActorContext<Message>, SpecificSignal) throws -> _Behavior<Message>) -> _Behavior<Message> {
+    func receiveSpecificSignal<SpecificSignal: Signal>(_: SpecificSignal.Type, _ handle: @escaping (_ActorContext<Message>, SpecificSignal) throws -> _Behavior<Message>) -> _Behavior<Message> {
         // TODO: better type printout so we know we only handle SpecificSignal with this one
         self.receiveSignal { context, signal in
             switch signal {
@@ -380,7 +386,7 @@ extension _Behavior {
     ///
     /// - SeeAlso: `Signals` for a listing of signals that may be handled using this behavior.
     /// - SeeAlso: `receiveSignal` which allows receiving multiple types of signals.
-    public static func receiveSpecificSignal<SpecificSignal: Signal>(_: SpecificSignal.Type, _ handle: @escaping (_ActorContext<Message>, SpecificSignal) throws -> _Behavior<Message>) -> _Behavior<Message> {
+    static func receiveSpecificSignal<SpecificSignal: Signal>(_: SpecificSignal.Type, _ handle: @escaping (_ActorContext<Message>, SpecificSignal) throws -> _Behavior<Message>) -> _Behavior<Message> {
         _Behavior(
             underlying: .signalHandling(
                 handleMessage: .unhandled,
@@ -520,10 +526,10 @@ public enum IllegalBehaviorError<Message: ActorMessage>: Error {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Intercepting Messages
 
-extension _Behavior {
+public extension _Behavior {
     /// Intercepts all incoming messages and signals, allowing to transform them before they are delivered to the wrapped behavior.
     // TODO: more docs
-    public static func intercept(behavior: _Behavior<Message>, with interceptor: _Interceptor<Message>) -> _Behavior<Message> {
+    static func intercept(behavior: _Behavior<Message>, with interceptor: _Interceptor<Message>) -> _Behavior<Message> {
         _Behavior(underlying: .intercept(behavior: behavior, with: interceptor))
     }
 }

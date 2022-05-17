@@ -81,7 +81,7 @@ final class SupervisionTests: ActorSystemXCTestCase {
     // TODO: test a double fault (throwing inside of a supervisor
 
     func compileOnlyDSLReadabilityTest() {
-        _ = { () -> Void in
+        _ = { () in
             let behavior: _Behavior<String> = _undefined()
             _ = try self.system._spawn("example", behavior)
             _ = try self.system._spawn("example", props: _Props(), behavior)

@@ -227,7 +227,7 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
         }
 
         var nodes: [ClusterSystem] = []
-        for i in (1...7) {
+        for i in (1 ... 7) {
             nodes[i] = await setUpNode("node-\(i)")
         }
         let first = nodes.first!
@@ -241,9 +241,7 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
         let joiningStart = first.metrics.uptimeNanoseconds()
 
         nodes.forEach { first.cluster.join(node: $0.cluster.uniqueNode.node) }
-        try self.ensureNodes(.up, within: .seconds(30), nodes: nodes.map {
-            $0.cluster.uniqueNode
-        })
+        try self.ensureNodes(.up, within: .seconds(30), nodes: nodes.map(\.cluster.uniqueNode))
 
         let joiningStop = first.metrics.uptimeNanoseconds()
         pinfo("Joined \(nodes.count) nodes, took: \(TimeAmount.nanoseconds(joiningStop - joiningStart).prettyDescription)")
@@ -252,7 +250,7 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
         var remainingNodes = nodes
         remainingNodes.removeFirst(nodesToDown.count)
 
-        pinfo("Downing \(nodesToDown.count) nodes: \(nodesToDown.map { $0.cluster.uniqueNode })")
+        pinfo("Downing \(nodesToDown.count) nodes: \(nodesToDown.map(\.cluster.uniqueNode))")
         for node in nodesToDown {
             try! node.shutdown().wait()
         }
@@ -261,7 +259,7 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
             on: ActorSystem,
             file: StaticString = #file, line: UInt = #line
         ) -> (Cluster.Event) -> ActorTestProbe<Cluster.Event>.FishingDirective<Cluster.MembershipChange> {
-            pinfo("Expecting \(nodesToDown.map { $0.cluster.uniqueNode.node }) to become [.down] on [\(on.cluster.uniqueNode.node)]")
+            pinfo("Expecting \(nodesToDown.map(\.cluster.uniqueNode.node)) to become [.down] on [\(on.cluster.uniqueNode.node)]")
             var removalsFound = 0
 
             return { event in
