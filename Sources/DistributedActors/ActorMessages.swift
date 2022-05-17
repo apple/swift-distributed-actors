@@ -164,20 +164,20 @@ public struct NonTransportableAnyError: Error, NonTransportableActorMessage {
 /// - Warning: Attempting to send such message over the network will fail at runtime (and log an error or warning).
 public protocol NonTransportableActorMessage: ActorMessage {}
 
-extension NonTransportableActorMessage {
-    public init(from decoder: Swift.Decoder) throws {
+public extension NonTransportableActorMessage {
+    init(from decoder: Swift.Decoder) throws {
         fatalError("Attempted to decode NonTransportableActorMessage message: \(Self.self)! This should never happen.")
     }
 
-    public func encode(to encoder: Swift.Encoder) throws {
+    func encode(to encoder: Swift.Encoder) throws {
         fatalError("Attempted to encode NonTransportableActorMessage message: \(Self.self)! This should never happen.")
     }
 
-    public init(context: Serialization.Context, from buffer: inout ByteBuffer, using manifest: Serialization.Manifest) throws {
+    init(context: Serialization.Context, from buffer: inout ByteBuffer, using manifest: Serialization.Manifest) throws {
         fatalError("Attempted to deserialize NonTransportableActorMessage message: \(Self.self)! This should never happen.")
     }
 
-    public func serialize(context: Serialization.Context, to bytes: inout ByteBuffer) throws {
+    func serialize(context: Serialization.Context, to bytes: inout ByteBuffer) throws {
         fatalError("Attempted to serialize NonTransportableActorMessage message: \(Self.self)! This should never happen.")
     }
 }

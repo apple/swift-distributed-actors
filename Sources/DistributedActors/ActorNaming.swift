@@ -17,7 +17,7 @@ import DistributedActorsConcurrencyHelpers
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Actor Name
 
-extension ActorNaming {
+public extension ActorNaming {
     /// Default actor naming strategy; whereas the name MUST be unique under a given path.
     ///
     /// I.e. if a parent actor spawns `.unique(worker)`
@@ -25,7 +25,7 @@ extension ActorNaming {
     /// This naming is used by the `ExpressibleByStringLiteral` and `ExpressibleByStringInterpolation` conversions.
     ///
     /// - Faults: when passed in name contains illegal characters. See `ActorNaming` for detailed rules about actor naming.
-    public static func unique(_ name: String) -> ActorNaming {
+    static func unique(_ name: String) -> ActorNaming {
         ActorNaming.validateUserProvided(nameOrPrefix: name)
         return .init(unchecked: .unique(name))
     }
@@ -35,13 +35,13 @@ extension ActorNaming {
     /// actor, it may name them with subsequent numbers or letters of a limited alphabet.
     ///
     /// - Faults: when passed in name contains illegal characters. See `ActorNaming` for detailed rules about actor naming.
-    public static func prefixed(with prefix: String) -> ActorNaming {
+    static func prefixed(with prefix: String) -> ActorNaming {
         ActorNaming.validateUserProvided(nameOrPrefix: prefix)
         return .init(unchecked: .prefixed(prefix: prefix, suffixScheme: .letters))
     }
 
     /// Shorthand for defining "anonymous" actor names, which carry
-    public static var anonymous: ActorNaming {
+    static var anonymous: ActorNaming {
         .init(unchecked: .prefixed(prefix: "$anonymous", suffixScheme: .letters))
     }
 
@@ -58,10 +58,10 @@ extension ActorNaming {
 
 extension ActorNaming {
     /// Special naming scheme applied to `ask` actors.
-    internal static var ask: ActorNaming = .init(unchecked: .prefixed(prefix: "$ask", suffixScheme: .letters))
+    static var ask: ActorNaming = .init(unchecked: .prefixed(prefix: "$ask", suffixScheme: .letters))
 
     /// Naming for adapters (`context.messageAdapter`)
-    internal static let adapter: ActorNaming = .init(unchecked: .unique("$messageAdapter"))
+    static let adapter: ActorNaming = .init(unchecked: .unique("$messageAdapter"))
 }
 
 /// Used while spawning actors to identify how its name should be created.
@@ -183,4 +183,4 @@ let zBase32Alphabet: [UnicodeScalar] = [
     "a", "3", "4", "5", "h", "7", "6", "9",
 ]
 
-private let zBase32AlphabetMaxIndex: UInt32 = UInt32(zBase32Alphabet.indices.last!)
+private let zBase32AlphabetMaxIndex: UInt32 = .init(zBase32Alphabet.indices.last!)

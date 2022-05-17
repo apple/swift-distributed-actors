@@ -22,8 +22,8 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: leader decision: .joining -> .up
 
-    func test_singleLeader() throws {
-        let first = self.setUpNode("first") { settings in
+    func test_singleLeader() async throws {
+        let first = await setUpNode("first") { settings in
             settings.cluster.node.port = 7111
             settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 1)
         }
@@ -58,16 +58,16 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
         }
     }
 
-    func test_joining_to_up_decisionByLeader() throws {
-        let first = self.setUpNode("first") { settings in
+    func test_joining_to_up_decisionByLeader() async throws {
+        let first = await setUpNode("first") { settings in
             settings.cluster.node.port = 7111
             settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
         }
-        let second = self.setUpNode("second") { settings in
+        let second = await setUpNode("second") { settings in
             settings.cluster.node.port = 8222
             settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
         }
-        let third = self.setUpNode("third") { settings in
+        let third = await setUpNode("third") { settings in
             settings.cluster.node.port = 9333
             settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
         }
@@ -98,7 +98,7 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
         }
     }
 
-    func test_joining_to_up_earlyYetStillLettingAllNodesKnowAboutLatestMembershipStatus() throws {
+    func test_joining_to_up_earlyYetStillLettingAllNodesKnowAboutLatestMembershipStatus() async throws {
         // This showcases a racy situation, where we allow a leader elected when at least 2 nodes joined
         // yet we actually join 3 nodes -- meaning that the joining up is _slightly_ racy:
         // - maybe nodes 1 and 2 join each other first and 1 starts upping
@@ -113,17 +113,17 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
         // In other words, this test exercises that there must be _some_ (gossip, or similar "push" membership once a new member joins),
         // to a new member.
         //
-        let first = self.setUpNode("first") { settings in
+        let first = await setUpNode("first") { settings in
             settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
         }
-        let second = self.setUpNode("second") { settings in
+        let second = await setUpNode("second") { settings in
             settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
         }
-        let third = self.setUpNode("third") { settings in
+        let third = await setUpNode("third") { settings in
             settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
         }
 
-        let fourth = self.setUpNode("fourth") { settings in
+        let fourth = await setUpNode("fourth") { settings in
             settings.cluster.autoLeaderElection = .none // even without election running, it will be notified by things by the others
         }
 
@@ -140,7 +140,7 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
         try self.ensureNodes(.up, within: .seconds(10), nodes: first.cluster.uniqueNode, second.cluster.uniqueNode, third.cluster.uniqueNode, fourth.cluster.uniqueNode)
     }
 
-    func test_up_ensureAllSubscribersGetMovingUpEvents() throws {
+    func test_up_ensureAllSubscribersGetMovingUpEvents() async throws {
         // it shall perform its duties. This tests however quickly shows that lack of letting the "third" node,
         // via gossip or some other way about the ->up of other nodes once it joins the "others", it'd be stuck waiting for
         // the ->up forever.
@@ -148,10 +148,10 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
         // In other words, this test exercises that there must be _some_ (gossip, or similar "push" membership once a new member joins),
         // to a new member.
         //
-        let first = self.setUpNode("first") { settings in
+        let first = await setUpNode("first") { settings in
             settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
         }
-        let second = self.setUpNode("second") { settings in
+        let second = await setUpNode("second") { settings in
             settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
         }
 
@@ -217,22 +217,22 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: .down -> removal
 
-    func test_down_to_removed_ensureRemovalHappensWhenAllHaveSeenDown() throws {
-        let first = self.setUpNode("first") { settings in
+    func test_down_to_removed_ensureRemovalHappensWhenAllHaveSeenDown() async throws {
+        let first = await setUpNode("first") { settings in
             settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
             settings.cluster.downingStrategy = .timeout(.init(downUnreachableMembersAfter: .milliseconds(300)))
         }
-        let p1 = self.testKit(first).makeTestProbe(expecting: Cluster.Event.self)
+        let p1 = testKit(first).makeTestProbe(expecting: Cluster.Event.self)
         first.cluster.events.subscribe(p1.ref)
 
-        let second = self.setUpNode("second") { settings in
+        let second = await setUpNode("second") { settings in
             settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
             settings.cluster.downingStrategy = .timeout(.init(downUnreachableMembersAfter: .milliseconds(300)))
         }
-        let p2 = self.testKit(second).makeTestProbe(expecting: Cluster.Event.self)
+        let p2 = testKit(second).makeTestProbe(expecting: Cluster.Event.self)
         second.cluster.events.subscribe(p2.ref)
 
-        let third = self.setUpNode("third") { settings in
+        let third = await setUpNode("third") { settings in
             settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
             settings.cluster.downingStrategy = .timeout(.init(downUnreachableMembersAfter: .milliseconds(300)))
         }
@@ -287,8 +287,8 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
         }
     }
 
-    func test_ensureDownAndRemovalSpreadsToAllMembers() throws {
-        let first = self.setUpNode("first") { settings in
+    func test_ensureDownAndRemovalSpreadsToAllMembers() async throws {
+        let first = await setUpNode("first") { settings in
             settings.cluster.swim.probeInterval = .milliseconds(300)
             settings.cluster.swim.pingTimeout = .milliseconds(100)
             settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
@@ -297,7 +297,7 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
         let p1 = self.testKit(first).makeTestProbe(expecting: Cluster.Event.self)
         first.cluster.events.subscribe(p1.ref)
 
-        let second = self.setUpNode("second") { settings in
+        let second = await setUpNode("second") { settings in
             settings.cluster.swim.probeInterval = .milliseconds(300)
             settings.cluster.swim.pingTimeout = .milliseconds(100)
             settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
@@ -306,7 +306,7 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
         let p2 = self.testKit(second).makeTestProbe(expecting: Cluster.Event.self)
         second.cluster.events.subscribe(p2.ref)
 
-        let third = self.setUpNode("third") { settings in
+        let third = await setUpNode("third") { settings in
             settings.cluster.swim.probeInterval = .milliseconds(300)
             settings.cluster.swim.pingTimeout = .milliseconds(100)
             settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)

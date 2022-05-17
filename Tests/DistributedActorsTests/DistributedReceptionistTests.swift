@@ -12,22 +12,24 @@
 //
 //===----------------------------------------------------------------------===//
 
-import _Distributed
+import Distributed
 @testable import DistributedActors
 import DistributedActorsTestKit
 import Foundation
 import XCTest
 
 distributed actor Forwarder {
+    typealias ActorSystem = ClusterSystem
     let probe: ActorTestProbe<String>?
     let name: String
-    init(probe: ActorTestProbe<String>?, name: String, transport: ActorTransport) {
+    init(probe: ActorTestProbe<String>?, name: String, actorSystem: ActorSystem) {
+        self.actorSystem = actorSystem
         self.probe = probe
         self.name = name
     }
 
     distributed func forward(message: String) {
-        probe?.tell("\(self.id.underlying) \(name) forwarded: \(message)")
+        self.probe?.tell("\(self.id) \(self.name) forwarded: \(message)")
     }
 }
 
@@ -46,8 +48,8 @@ final class DistributedReceptionistTests: ActorSystemXCTestCase {
     let receptionistBehavior = _OperationLogClusterReceptionist(settings: .default).behavior
 
     func test_receptionist_mustHaveWellKnownAddress() throws {
-        let opLogReceptionist = system.receptionist as! OpLogDistributedReceptionist
-        let receptionistAddress = opLogReceptionist.id._forceUnwrapActorAddress
+        let opLogReceptionist = system.receptionist
+        let receptionistAddress = opLogReceptionist.id
 
         receptionistAddress.detailedDescription.shouldEqual("/system/receptionist")
         receptionistAddress.incarnation.shouldEqual(.wellKnown)
@@ -58,8 +60,8 @@ final class DistributedReceptionistTests: ActorSystemXCTestCase {
             let receptionist = system.receptionist
             let probe: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
-            let forwarderA = Forwarder(probe: probe, name: "A", transport: system)
-            let forwarderB = Forwarder(probe: probe, name: "B", transport: system)
+            let forwarderA = Forwarder(probe: probe, name: "A", actorSystem: system)
+            let forwarderB = Forwarder(probe: probe, name: "B", actorSystem: system)
 
             await receptionist.register(forwarderA, with: .forwarders)
             await receptionist.register(forwarderB, with: .forwarders)
@@ -71,8 +73,8 @@ final class DistributedReceptionistTests: ActorSystemXCTestCase {
             }
 
             try probe.expectMessagesInAnyOrder([
-                "\(forwarderA.id.underlying) A forwarded: test",
-                "\(forwarderB.id.underlying) B forwarded: test",
+                "\(forwarderA.id) A forwarded: test",
+                "\(forwarderB.id) B forwarded: test",
             ])
         }
     }
@@ -81,7 +83,7 @@ final class DistributedReceptionistTests: ActorSystemXCTestCase {
         try runAsyncAndBlock {
             let receptionist = system.receptionist
 
-            let ref = Forwarder(probe: nil, name: "C", transport: system)
+            let ref = Forwarder(probe: nil, name: "C", actorSystem: system)
             await receptionist.register(ref, with: .forwarders)
 
             let listing = await receptionist.lookup(.unknown)

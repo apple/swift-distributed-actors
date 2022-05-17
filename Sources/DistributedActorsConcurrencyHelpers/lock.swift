@@ -61,7 +61,7 @@ public final class Lock {
     }
 }
 
-extension Lock {
+public extension Lock {
     /// Acquire the lock for the duration of the given block.
     ///
     /// This convenience method should be preferred to `lock` and `unlock` in
@@ -71,7 +71,7 @@ extension Lock {
     /// - Parameter body: The block to execute while holding the lock.
     /// - Returns: The value returned by the block.
     @inlinable
-    public func withLock<T>(_ body: () throws -> T) rethrows -> T {
+    func withLock<T>(_ body: () throws -> T) rethrows -> T {
         self.lock()
         defer {
             self.unlock()
@@ -81,7 +81,7 @@ extension Lock {
 
     // specialise Void return (for performance)
     @inlinable
-    public func withLockVoid(_ body: () throws -> Void) rethrows {
+    func withLockVoid(_ body: () throws -> Void) rethrows {
         try self.withLock(body)
     }
 }

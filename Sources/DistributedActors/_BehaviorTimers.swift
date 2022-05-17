@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-import _Distributed
 import Dispatch
+import Distributed
 import Logging
 import struct NIO.TimeAmount
 
@@ -210,7 +210,7 @@ public final class _BehaviorTimers<Message: ActorMessage> {
 
 extension _BehaviorTimers {
     @usableFromInline
-    internal var metadata: Logger.Metadata {
+    var metadata: Logger.Metadata {
         [
             "tag": "timers",
         ]

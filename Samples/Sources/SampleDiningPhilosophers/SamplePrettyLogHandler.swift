@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import _Distributed
+import Distributed
 @testable import DistributedActors
 import Logging
 
@@ -58,15 +58,17 @@ struct SamplePrettyLogHandler: LogHandler {
     }
 
     // TODO: this implementation of getting a nice printout is a bit messy, but good enough for our sample apps
-    public func log(level: Logger.Level,
-                    message: Logger.Message,
-                    metadata: Logger.Metadata?,
-                    source: String,
-                    file: String,
-                    function: String,
-                    line: UInt) {
-        var metadataString: String = ""
-        var nodeInfo: String = ""
+    public func log(
+        level: Logger.Level,
+        message: Logger.Message,
+        metadata: Logger.Metadata?,
+        source: String,
+        file: String,
+        function: String,
+        line: UInt
+    ) {
+        var metadataString = ""
+        var nodeInfo = ""
 
         var effectiveMetadata = (metadata ?? [:]).merging(self.metadata, uniquingKeysWith: { _, new in new })
         if let node = effectiveMetadata.removeValue(forKey: "cluster/node") {

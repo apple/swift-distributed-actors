@@ -35,8 +35,8 @@ final class ActorMetricsSWIMActorPeerMetricsTests: ClusteredActorSystemsXCTestCa
         MetricsSystem.bootstrapInternal(NOOPMetricsHandler.instance)
     }
 
-    func test_swimPeer_ping_shouldRemoteMetrics() throws {
-        let first = self.setUpNode("first")
+    func test_swimPeer_ping_shouldRemoteMetrics() async throws {
+        let first = await setUpNode("first")
 
         let origin = testKit(first).makeTestProbe(expecting: SWIM.Message.self)
         let target = testKit(first).makeTestProbe(expecting: SWIM.Message.self)
@@ -67,8 +67,8 @@ final class ActorMetricsSWIMActorPeerMetricsTests: ClusteredActorSystemsXCTestCa
         try self.metrics.expectCounter(instance.metrics.shell.messageOutboundCount).totalValue.shouldEqual(1)
     }
 
-    func test_swimPeer_pingRequest_shouldRemoteMetrics() throws {
-        let first = self.setUpNode("first")
+    func test_swimPeer_pingRequest_shouldRemoteMetrics() async throws {
+        let first = await setUpNode("first")
 
         let origin = testKit(first).makeTestProbe(expecting: SWIM.Message.self)
         let target = testKit(first).makeTestProbe(expecting: SWIM.Message.self)

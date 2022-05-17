@@ -204,7 +204,7 @@ final class ActorLeakingTests: ActorSystemXCTestCase {
         }
     }
 
-    func test_droppedMessages_shouldNotLeak() throws {
+    func test_droppedMessages_shouldNotLeak() async throws {
         #if !SACT_TESTS_LEAKS
         return self.skipLeakTests()
         #else
@@ -228,16 +228,16 @@ final class ActorLeakingTests: ActorSystemXCTestCase {
         #endif // SACT_TESTS_LEAKS
     }
 
-    func test_actorSystem_shouldNotLeak() throws {
+    func test_actorSystem_shouldNotLeak() async throws {
         #if !SACT_TESTS_LEAKS
         return self.skipLeakTests()
         #else
         throw XCTSkip("!!! Skipping test \(#function) !!!") // FIXME(distributed): we need to manage the retain cycles with the receptionist better #831
 
-        let initialSystemCount = ActorSystem.actorSystemInitCounter.load(ordering: .relaxed)
+        let initialSystemCount = await ActorSystem.actorSystemInitCounter.load(ordering: .relaxed)
 
         for n in 1 ... 5 {
-            let system = ActorSystem("Test-\(n)")
+            let system = await ActorSystem("Test-\(n)")
             try! system.shutdown().wait()
         }
 
@@ -245,11 +245,11 @@ final class ActorLeakingTests: ActorSystemXCTestCase {
         #endif // SACT_TESTS_LEAKS
     }
 
-    func test_releasing_ActorSystem_mustNotLeaveActorsReferringToANilSystemFromContext() throws {
+    func test_releasing_ActorSystem_mustNotLeaveActorsReferringToANilSystemFromContext() async throws {
         #if !SACT_TESTS_LEAKS
         return self.skipLeakTests()
         #else
-        var system: ActorSystem? = ActorSystem("FreeMe") // only "reference from user land" to the system
+        var system: ActorSystem? = await ActorSystem("FreeMe") // only "reference from user land" to the system
 
         let p = self.testKit.makeTestProbe(expecting: String.self)
 
@@ -275,7 +275,7 @@ final class ActorLeakingTests: ActorSystemXCTestCase {
         #endif // SACT_TESTS_LEAKS
     }
 
-    func test_actor_whichLogsShouldNotCauseLeak_onDisabledLevel() throws {
+    func test_actor_whichLogsShouldNotCauseLeak_onDisabledLevel() async throws {
         throw XCTSkip("!!! Skipping test \(#function) !!!") // FIXME(distributed): disabled test
 
         #if !SACT_TESTS_LEAKS
@@ -283,7 +283,7 @@ final class ActorLeakingTests: ActorSystemXCTestCase {
         #else
         let initialSystemCount = ActorSystem.actorSystemInitCounter.load(ordering: .relaxed)
 
-        var system: ActorSystem? = ActorSystem("Test") { settings in
+        var system: ActorSystem? = await ActorSystem("Test") { settings in
             settings.logging.logLevel = .info
         }
         _ = try system?._spawn("logging", of: String.self, .setup { context in
@@ -297,7 +297,7 @@ final class ActorLeakingTests: ActorSystemXCTestCase {
         #endif // SACT_TESTS_LEAKS
     }
 
-    func test_actor_whichLogsShouldNotCauseLeak_onEnabled() throws {
+    func test_actor_whichLogsShouldNotCauseLeak_onEnabled() async throws {
         #if !SACT_TESTS_LEAKS
         return self.skipLeakTests()
         #else
@@ -305,7 +305,7 @@ final class ActorLeakingTests: ActorSystemXCTestCase {
 
         let initialSystemCount = ActorSystem.actorSystemInitCounter.load(ordering: .relaxed)
 
-        var system: ActorSystem? = ActorSystem("Test") { settings in
+        var system: ActorSystem? = await ActorSystem("Test") { settings in
             settings.logging.logLevel = .info
         }
         _ = try system?._spawn("logging", of: String.self, .setup { context in

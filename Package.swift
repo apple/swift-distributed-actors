@@ -10,7 +10,7 @@ import PackageDescription
 var globalSwiftSettings: [SwiftSetting]
 
 var globalConcurrencyFlags: [String] = [
-    "-Xfrontend", "-enable-experimental-distributed",
+    "-Xfrontend", "-disable-availability-checking",
 ]
 
 // TODO: currently disabled warnings as errors because of Sendable check noise and work in progress on different toolchains
@@ -50,29 +50,7 @@ var targets: [PackageDescription.Target] = [
             .product(name: "Metrics", package: "swift-metrics"),
             .product(name: "ServiceDiscovery", package: "swift-service-discovery"),
             .product(name: "Backtrace", package: "swift-backtrace"),
-        ],
-        plugins: [
-            "DistributedActorsGeneratorPlugin",
         ]
-    ),
-
-    // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: SwiftPM Plugin: Distributed Actors Generator
-
-    .executableTarget(
-        name: "DistributedActorsGenerator",
-        dependencies: [
-            .product(name: "SwiftSyntax", package: "swift-syntax"),
-            .product(name: "SwiftSyntaxParser", package: "swift-syntax"),
-            .product(name: "Logging", package: "swift-log"),
-            .product(name: "ArgumentParser", package: "swift-argument-parser"),
-        ]
-    ),
-
-    .plugin(
-        name: "DistributedActorsGeneratorPlugin",
-        capability: .buildTool(),
-        dependencies: ["DistributedActorsGenerator"]
     ),
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -80,6 +58,13 @@ var targets: [PackageDescription.Target] = [
 
     .target(
         name: "ActorSingletonPlugin",
+        dependencies: [
+            "DistributedActors",
+        ]
+    ),
+
+    .executableTarget(
+        name: "ExecApp",
         dependencies: [
             "DistributedActors",
         ]
@@ -101,20 +86,17 @@ var targets: [PackageDescription.Target] = [
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Documentation
 
-    .testTarget(
-        name: "DistributedActorsDocumentationTests",
-        dependencies: [
-            "DistributedActors",
-            "ActorSingletonPlugin",
-            "DistributedActorsTestKit",
-        ],
-        exclude: [
-            "DocumentationProtos/",
-        ],
-        plugins: [
-            "DistributedActorsGeneratorPlugin",
-        ]
-    ),
+//    .testTarget(
+//        name: "DistributedActorsDocumentationTests",
+//        dependencies: [
+//            "DistributedActors",
+//            "ActorSingletonPlugin",
+//            "DistributedActorsTestKit",
+//        ],
+//        exclude: [
+//          "DocumentationProtos/",
+//        ]
+//    ),
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Tests
@@ -125,80 +107,66 @@ var targets: [PackageDescription.Target] = [
             "DistributedActors",
             "DistributedActorsTestKit",
             .product(name: "Atomics", package: "swift-atomics"),
-        ],
-        plugins: [
-            "DistributedActorsGeneratorPlugin",
         ]
     ),
 
-    .testTarget(
-        name: "DistributedActorsTestKitTests",
-        dependencies: [
-            "DistributedActors",
-            "DistributedActorsTestKit",
-        ]
-    ),
-
-    .testTarget(
-        name: "CDistributedActorsMailboxTests",
-        dependencies: [
-            "CDistributedActorsMailbox",
-            "DistributedActorsTestKit",
-        ]
-    ),
-
-    .testTarget(
-        name: "DistributedActorsGeneratorTests",
-        dependencies: [
-            "DistributedActorsGenerator",
-            "DistributedActorsTestKit",
-        ]
-    ),
-
-    .testTarget(
-        name: "ActorSingletonPluginTests",
-        dependencies: [
-            "ActorSingletonPlugin",
-            "DistributedActorsTestKit",
-        ],
-        plugins: [
-            "DistributedActorsGeneratorPlugin",
-        ]
-    ),
+//    .testTarget(
+//        name: "DistributedActorsTestKitTests",
+//        dependencies: [
+//            "DistributedActors",
+//            "DistributedActorsTestKit"
+//        ]
+//    ),
+//
+//    .testTarget(
+//        name: "CDistributedActorsMailboxTests",
+//        dependencies: [
+//            "CDistributedActorsMailbox",
+//            "DistributedActorsTestKit"
+//        ]
+//    ),
+//
+//    .testTarget(
+//        name: "ActorSingletonPluginTests",
+//        dependencies: [
+//            "ActorSingletonPlugin",
+//            "DistributedActorsTestKit"
+//        ]
+//    ),
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Integration Tests - `it_` prefixed
 
-    .executableTarget(
-        name: "it_Clustered_swim_suspension_reachability",
-        dependencies: [
-            "DistributedActors",
-        ],
-        path: "IntegrationTests/tests_01_cluster/it_Clustered_swim_suspension_reachability"
-    ),
+//    .executableTarget(
+//        name: "it_Clustered_swim_suspension_reachability",
+//        dependencies: [
+//            "DistributedActors",
+//        ],
+//        path: "IntegrationTests/tests_01_cluster/it_Clustered_swim_suspension_reachability"
+//    ),
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Performance / Benchmarks
 
-    .executableTarget(
-        name: "DistributedActorsBenchmarks",
-        dependencies: [
-            "DistributedActors",
-            "SwiftBenchmarkTools",
-            .product(name: "Atomics", package: "swift-atomics"),
-        ],
-        exclude: [
-            "README.md",
-            "BenchmarkProtos/bench.proto",
-        ]
-    ),
-    .target(
-        name: "SwiftBenchmarkTools",
-        dependencies: ["DistributedActors"],
-        exclude: [
-            "README_SWIFT.md",
-        ]
-    ),
+//    .executableTarget(
+//        name: "DistributedActorsBenchmarks",
+//        dependencies: [
+//            "DistributedActors",
+//            "SwiftBenchmarkTools",
+//            .product(name: "Atomics", package: "swift-atomics"),
+//        ],
+//        exclude: [
+//          "README.md",
+//          "BenchmarkProtos/bench.proto",
+//        ]
+//    ),
+//    .target(
+//        name: "SwiftBenchmarkTools",
+//        dependencies: ["DistributedActors"],
+//        exclude: [
+//          "README_SWIFT.md"
+//        ]
+//    ),
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Samples are defined in Samples/Package.swift
@@ -238,37 +206,29 @@ var dependencies: [Package.Dependency] = [
     // ~~~ Swift Collections  ~~~
     .package(url: "https://github.com/apple/swift-collections.git", from: "1.0.1"),
 
-    // ~~~ SSWG APIs ~~~
+    // ~~~ Observability ~~~
     .package(url: "https://github.com/apple/swift-log.git", from: "1.0.0"),
     // swift-metrics 1.x and 2.x are almost API compatible, so most clients should use
     .package(url: "https://github.com/apple/swift-metrics.git", "1.0.0" ..< "3.0.0"),
     .package(url: "https://github.com/apple/swift-service-discovery.git", from: "1.0.0"),
+    .package(url: "https://github.com/apple/swift-distributed-tracing.git", from: "0.3.0"),
 ]
-
-// ~~~ only for DistributedActorsGenerator ~~~
-dependencies += [
-    .package(url: "https://github.com/apple/swift-argument-parser", .upToNextMinor(from: "0.3.2")), // not API stable, Apache v2
-]
-
-// swift-syntax is Swift version dependent, and added as such below
-#if swift(>=5.6)
-dependencies.append(
-    // Works with: swift-PR-39654-1170.xctoolchain
-    .package(url: "https://github.com/apple/swift-syntax.git", revision: "d59aea8902b42db7fd2383dffbab7a3ba98341ba")
-//    .package(url: "https://github.com/apple/swift-syntax.git", branch: "main")
-)
-#else
-fatalError("Only Swift 5.6+ is supported, because the dependency on the 'distributed actor' language feature")
-#endif
 
 let products: [PackageDescription.Product] = [
     .library(
         name: "DistributedActors",
         targets: ["DistributedActors"]
     ),
-    .library(
-        name: "DistributedActorsTestKit",
-        targets: ["DistributedActorsTestKit"]
+//    .library(
+//        name: "DistributedActorsTestKit",
+//        targets: ["DistributedActorsTestKit"]
+//    ),
+
+    .executable(
+        name: "ExecApp",
+        targets: [
+            "ExecApp",
+        ]
     ),
 
     /* --- Functional Plugins --- */
@@ -276,19 +236,6 @@ let products: [PackageDescription.Product] = [
     .library(
         name: "ActorSingletonPlugin",
         targets: ["ActorSingletonPlugin"]
-    ),
-
-    /* --- SwiftPM Plugins --- */
-
-    .plugin(
-        name: "DistributedActorsGeneratorPlugin",
-        targets: ["DistributedActorsGeneratorPlugin"]
-    ),
-
-    // code generation tool, used by the plugin
-    .executable(
-        name: "DistributedActorsGenerator",
-        targets: ["DistributedActorsGenerator"]
     ),
 ]
 

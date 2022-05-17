@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-import _Distributed
 import Dispatch
+import Distributed
 import NIO
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -311,5 +311,5 @@ internal struct DeathWatchImpl<Message: ActorMessage> {
 
 public enum DeathPactError: Error {
     case unhandledDeathPact(ActorAddress, myself: AddressableActorRef, message: String)
-    case unhandledDeathPactError(AnyActorIdentity, myself: AnyActorIdentity, message: String)
+    case unhandledDeathPactError(ActorSystem.ActorID, myself: ActorSystem.ActorID, message: String)
 }

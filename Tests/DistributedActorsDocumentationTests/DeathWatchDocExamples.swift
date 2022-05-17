@@ -22,7 +22,7 @@ struct Player {
     typealias Command = String
 }
 
-struct GameUnit {
+enum GameUnit {
     enum Command: Codable {
         case player(_ActorRef<Player.Command>)
         case otherCommand
@@ -63,7 +63,7 @@ extension GameUnit.Command {
     }
 }
 
-struct GameMatch {
+enum GameMatch {
     enum Command: Codable {
         case playerConnected(_ActorRef<Player.Command>)
         case disconnectedPleaseStop

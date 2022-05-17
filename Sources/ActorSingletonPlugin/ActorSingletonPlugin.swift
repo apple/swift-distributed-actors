@@ -95,8 +95,8 @@ extension ActorSingletonPlugin: Plugin {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Singleton refs and actors
 
-extension ActorSystem {
-    public var singleton: ActorSingletonControl {
+public extension ActorSystem {
+    var singleton: ActorSingletonControl {
         .init(self)
     }
 }

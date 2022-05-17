@@ -23,7 +23,7 @@ extension ClusterShellState {
     /// Optional "dump all messages" logging.
     ///
     /// Enabled with `-DSACT_TRACELOG_CLUSTER`
-    internal func tracelog(
+    func tracelog(
         _ type: TraceLogType, message: Any,
         file: String = #file, function: String = #function, line: UInt = #line
     ) {
@@ -48,7 +48,7 @@ extension ClusterShellState {
         }
     }
 
-    internal enum TraceLogType: CustomStringConvertible {
+    enum TraceLogType: CustomStringConvertible {
         case inbound
         case outbound
 

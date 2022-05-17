@@ -696,7 +696,7 @@ extension _OperationLogClusterReceptionist {
 
         // the passed ops cover the range until the following sequenceNr
         func findMaxSequenceNr() -> UInt64 {
-            self.sequencedOps.lazy.map { $0.sequenceRange.max }.max() ?? 0
+            self.sequencedOps.lazy.map(\.sequenceRange.max).max() ?? 0
         }
 
         public enum CodingKeys: CodingKey {
@@ -775,7 +775,7 @@ extension _OperationLogClusterReceptionist {
         }
     }
 
-    internal class PeriodicAckTick: Receptionist.Message, NonTransportableActorMessage, CustomStringConvertible {
+    class PeriodicAckTick: Receptionist.Message, NonTransportableActorMessage, CustomStringConvertible {
         override init() {
             super.init()
         }
@@ -789,7 +789,7 @@ extension _OperationLogClusterReceptionist {
         }
     }
 
-    internal class PublishLocalListingsTrigger: Receptionist.Message, NonTransportableActorMessage, CustomStringConvertible {
+    class PublishLocalListingsTrigger: Receptionist.Message, NonTransportableActorMessage, CustomStringConvertible {
         override init() {
             super.init()
         }
@@ -824,7 +824,7 @@ extension _OperationLogClusterReceptionist {
         }
     }
 
-    internal enum TraceLogType: CustomStringConvertible {
+    enum TraceLogType: CustomStringConvertible {
         case receive(from: _ActorRef<Message>?)
         case push(to: _ActorRef<Message>)
 

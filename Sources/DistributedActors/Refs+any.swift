@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import _Distributed
+import Distributed
 import struct NIO.ByteBuffer
 import protocol NIO.EventLoop
 
@@ -65,10 +65,6 @@ public struct AddressableActorRef: _DeathWatchable, Hashable {
         self.ref.address
     }
 
-    public var asAnyActorIdentity: AnyActorIdentity {
-        self.address.asAnyActorIdentity
-    }
-
     public var asAddressable: AddressableActorRef {
         self
     }
@@ -95,12 +91,12 @@ extension AddressableActorRef: CustomStringConvertible {
     }
 }
 
-extension AddressableActorRef {
-    public func hash(into hasher: inout Hasher) {
+public extension AddressableActorRef {
+    func hash(into hasher: inout Hasher) {
         self.address.hash(into: &hasher)
     }
 
-    public static func == (lhs: AddressableActorRef, rhs: AddressableActorRef) -> Bool {
+    static func == (lhs: AddressableActorRef, rhs: AddressableActorRef) -> Bool {
         lhs.address == rhs.address
     }
 }

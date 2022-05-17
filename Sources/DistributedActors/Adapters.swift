@@ -165,7 +165,8 @@ extension _ActorRefAdapter {
 
     public func _resolve<Message>(context: ResolveContext<Message>) -> _ActorRef<Message> {
         guard context.selectorSegments.first == nil,
-            self.address.incarnation == context.address.incarnation else {
+            self.address.incarnation == context.address.incarnation
+        else {
             return context.personalDeadLetters
         }
 
@@ -381,7 +382,8 @@ extension SubReceiveAdapter {
 
     public func _resolve<Message>(context: ResolveContext<Message>) -> _ActorRef<Message> {
         guard context.selectorSegments.first == nil,
-            self.address.incarnation == context.address.incarnation else {
+            self.address.incarnation == context.address.incarnation
+        else {
             return context.personalDeadLetters
         }
 

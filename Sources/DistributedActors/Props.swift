@@ -58,10 +58,12 @@ public struct _Props: @unchecked Sendable {
     @usableFromInline
     internal var _distributedActor: Bool = false
 
-    public init(mailbox: _MailboxProps = .default(),
-                dispatcher: _DispatcherProps = .default,
-                supervision: _SupervisionProps = .default,
-                metrics: MetricsProps = .disabled) {
+    public init(
+        mailbox: _MailboxProps = .default(),
+        dispatcher: _DispatcherProps = .default,
+        supervision: _SupervisionProps = .default,
+        metrics: MetricsProps = .disabled
+    ) {
         self.mailbox = mailbox
         self.dispatcher = dispatcher
         self.supervision = supervision
@@ -71,7 +73,7 @@ public struct _Props: @unchecked Sendable {
     /// TODO(distributed): workaround for passing settings to specific actor instance when creating them.
     ///                    We may want to formalize a way to do this with initializer params instead.
     @TaskLocal
-    internal static var forSpawn: _Props = _Props()
+    internal static var forSpawn: _Props = .init()
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -148,16 +150,16 @@ public enum _DispatcherProps {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Mailbox _Props
 
-extension _Props {
+public extension _Props {
     /// Creates a new `_Props` with default values, and overrides the `mailbox` with the provided one.
-    public static func mailbox(_ mailbox: _MailboxProps) -> _Props {
+    static func mailbox(_ mailbox: _MailboxProps) -> _Props {
         var props = _Props()
         props.mailbox = mailbox
         return props
     }
 
     /// Creates copy of this `_Props` changing the `mailbox` props.
-    public func mailbox(_ mailbox: _MailboxProps) -> _Props {
+    func mailbox(_ mailbox: _MailboxProps) -> _Props {
         var props = self
         props.mailbox = mailbox
         return props
@@ -189,14 +191,14 @@ public enum MailboxOverflowStrategy: Sendable {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Internal _Props settings
 
-extension _Props {
+public extension _Props {
     /// Shorthand for `_Props()._asSellKnown`
     /// - SeeAlso: `_Props._asWellKnown`
-    public static let _wellKnown: Self = _Props()._asWellKnown
+    static let _wellKnown: Self = _Props()._asWellKnown
 
     /// Use with great care, and ONLY if a path is known to only ever be occupied by the one and only actor that is going to be spawned using this well known identity.
     /// Allows spawning actors with "well known" identity (meaning the unique actor incarnation identifier will be set to `ActorIncarnation.wellKnown`).
-    public var _asWellKnown: Self {
+    var _asWellKnown: Self {
         var p = self
         p._wellKnown = true
         return p
@@ -204,7 +206,7 @@ extension _Props {
 
     /// All "normal" actors are not-so well-known.
     /// Inverse of a well-known actor, i.e. having it's unique identity generated upon spawning.
-    public var _asNotSoWellKnown: Self {
+    var _asNotSoWellKnown: Self {
         var p = self
         p._wellKnown = false
         return p

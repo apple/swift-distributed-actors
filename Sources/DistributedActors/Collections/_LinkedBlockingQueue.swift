@@ -34,9 +34,9 @@ public final class _LinkedBlockingQueue<A>: @unchecked Sendable {
     @usableFromInline
     internal var consumer: Node<A>
     @usableFromInline
-    internal let lock: _Mutex = _Mutex()
+    internal let lock: _Mutex = .init()
     @usableFromInline
-    internal let notEmpty: _Condition = _Condition()
+    internal let notEmpty: _Condition = .init()
     @usableFromInline
     internal var count: Int = 0
 

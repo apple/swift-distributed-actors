@@ -151,10 +151,10 @@ public enum AskError: Error {
     case systemAlreadyShutDown
 }
 
-extension AskResponse {
+public extension AskResponse {
     /// Blocks and waits until there is a response or fails with an error.
     @available(*, deprecated, message: "Blocking API will be removed in favor of async await")
-    public func wait() throws -> Value {
+    func wait() throws -> Value {
         switch self {
         case .completed(let result):
             return try result.get()
@@ -165,7 +165,7 @@ extension AskResponse {
 
     /// Asynchronous value
     @available(macOS 12, iOS 15, tvOS 15, watchOS 8, *)
-    public var value: Value {
+    var value: Value {
         get async throws {
             switch self {
             case .completed(let result):
@@ -230,10 +230,10 @@ extension AskResponse: _AsyncResult {
     }
 }
 
-extension AskResponse {
+public extension AskResponse {
     // FIXME: make this internal (!)
     /// Transforms successful response of `Value` type to `NewValue` type.
-    public func map<NewValue>(_ callback: @escaping (Value) -> NewValue) -> AskResponse<NewValue> {
+    func map<NewValue>(_ callback: @escaping (Value) -> NewValue) -> AskResponse<NewValue> {
         switch self {
         case .completed(let result):
             switch result {

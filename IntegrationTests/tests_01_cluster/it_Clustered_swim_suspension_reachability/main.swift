@@ -25,7 +25,7 @@ guard args.count >= 1 else {
     fatalError("no port given")
 }
 
-let system = ActorSystem("System") { settings in
+let system = await ActorSystem("System") { settings in
     settings.logging.logLevel = .info
 
     settings.cluster.enabled = true

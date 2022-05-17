@@ -55,7 +55,7 @@ public class _Thread {
         })
 
         #if os(Linux)
-        var t: pthread_t = pthread_t()
+        var t = pthread_t()
         #else
         var t: pthread_t?
         #endif

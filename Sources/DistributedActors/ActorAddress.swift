@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import _Distributed
+import Distributed
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ActorAddress
@@ -49,7 +49,7 @@ import _Distributed
 /// For example: `sact://human-readable-name@127.0.0.1:7337/user/wallet/id-121242`.
 /// Note that the `ActorIncarnation` is not printed by default in the String representation of a path, yet may be inspected on demand.
 @available(macOS 10.15, *)
-public struct ActorAddress: ActorIdentity, @unchecked Sendable {
+public struct ActorAddress: @unchecked Sendable {
     /// Knowledge about a node being `local` is purely an optimization, and should not be relied on by actual code anywhere.
     /// It is on purpose not exposed to end-user code as well, and must remain so to not break the location transparency promises made by the runtime.
     ///
@@ -66,12 +66,6 @@ public struct ActorAddress: ActorIdentity, @unchecked Sendable {
         case .remote(let node): return node
         }
     }
-
-    public var asAnyActorIdentity: AnyActorIdentity {
-        .init(self)
-    }
-
-    // TODO: public var identity: ActorIdentity = Path + Name
 
     /// Underlying path representation, not attached to a specific Actor instance.
     public var path: ActorPath
@@ -155,20 +149,20 @@ extension ActorAddress: CustomStringConvertible {
 extension ActorAddress {
     /// Local root (also known as: "/") actor address.
     /// Only to be used by the "/" root "actor"
-    internal static func _localRoot(on node: UniqueNode) -> ActorAddress {
+    static func _localRoot(on node: UniqueNode) -> ActorAddress {
         ActorPath._root.makeLocalAddress(on: node, incarnation: .wellKnown)
     }
 
     /// Local dead letters address.
-    internal static func _deadLetters(on node: UniqueNode) -> ActorAddress {
+    static func _deadLetters(on node: UniqueNode) -> ActorAddress {
         ActorPath._deadLetters.makeLocalAddress(on: node, incarnation: .wellKnown)
     }
 }
 
-extension ActorAddress {
+public extension ActorAddress {
     /// :nodoc:
     @inlinable
-    public var _isLocal: Bool {
+    var _isLocal: Bool {
         switch self._location {
         case .local: return true
         default: return false
@@ -177,31 +171,21 @@ extension ActorAddress {
 
     /// :nodoc:
     @inlinable
-    public var _isRemote: Bool {
+    var _isRemote: Bool {
         !self._isLocal
     }
 
     /// :nodoc:
     @inlinable
-    public var _asRemote: Self {
+    var _asRemote: Self {
         let remote = Self(remote: self.uniqueNode, path: self.path, incarnation: self.incarnation)
-        print("""
-        AS REMOTE: 
-          was local: \(self.detailedDescription)
-          remote   : \(remote.detailedDescription)
-        """)
         return remote
     }
 
     /// :nodoc:
     @inlinable
-    public var _asLocal: Self {
+    var _asLocal: Self {
         let local = Self(local: self.uniqueNode, path: self.path, incarnation: self.incarnation)
-        print("""
-        AS LOCAL: 
-          was remote: \(self.detailedDescription)
-          local     : \(local.detailedDescription)
-        """)
         return local
     }
 }
@@ -349,15 +333,15 @@ public struct ActorPath: _PathRelationships, Hashable, Sendable {
 
 extension ActorPath: CustomStringConvertible {
     public var description: String {
-        let pathSegments: String = self.segments.map { $0.value }.joined(separator: "/")
+        let pathSegments: String = self.segments.map(\.value).joined(separator: "/")
         return "/\(pathSegments)"
     }
 }
 
-extension ActorPath {
-    public static let _root: ActorPath = .init() // also known as "/"
-    public static let _user: ActorPath = try! ActorPath(root: "user")
-    public static let _system: ActorPath = try! ActorPath(root: "system")
+public extension ActorPath {
+    static let _root: ActorPath = .init() // also known as "/"
+    static let _user: ActorPath = try! ActorPath(root: "user")
+    static let _system: ActorPath = try! ActorPath(root: "system")
 
     internal func makeLocalAddress(on node: UniqueNode, incarnation: ActorIncarnation) -> ActorAddress {
         .init(local: node, path: self, incarnation: incarnation)
@@ -383,14 +367,14 @@ public protocol _PathRelationships {
     func appending(segment: ActorPathSegment) -> Self
 }
 
-extension _PathRelationships {
+public extension _PathRelationships {
     /// Combines the base path with a child segment returning the concatenated path.
-    static func / (base: Self, child: ActorPathSegment) -> Self {
+    internal static func / (base: Self, child: ActorPathSegment) -> Self {
         base.appending(segment: child)
     }
 
     /// Checks whether this path starts with the passed in `path`.
-    public func starts(with path: ActorPath) -> Bool {
+    func starts(with path: ActorPath) -> Bool {
         self.segments.starts(with: path.segments)
     }
 
@@ -402,7 +386,7 @@ extension _PathRelationships {
     ///
     /// - Parameter path: The path that is suspected to be the parent of `self`
     /// - Returns: `true` if this [ActorPath] is a direct descendant of `maybeParentPath`, `false` otherwise
-    public func isChildPathOf(_ maybeParentPath: _PathRelationships) -> Bool {
+    func isChildPathOf(_ maybeParentPath: _PathRelationships) -> Bool {
         Array(self.segments.dropLast()) == maybeParentPath.segments // TODO: more efficient impl, without the copying
     }
 
@@ -414,12 +398,12 @@ extension _PathRelationships {
     ///
     /// - Parameter path: The path that is suspected to be a child of `self`
     /// - Returns: `true` if this [ActorPath] is a direct ancestor of `maybeChildPath`, `false` otherwise
-    public func isParentOf(_ maybeChildPath: _PathRelationships) -> Bool {
+    func isParentOf(_ maybeChildPath: _PathRelationships) -> Bool {
         maybeChildPath.isChildPathOf(self)
     }
 
     /// Create a generic path to identify a child path of the current path.
-    func makeChildPath(name: String) throws -> ActorPath {
+    internal func makeChildPath(name: String) throws -> ActorPath {
         try ActorPath(self.segments).appending(name)
     }
 }
@@ -471,8 +455,8 @@ public struct ActorPathSegment: Hashable, Sendable {
 }
 
 extension ActorPathSegment {
-    internal static let _user: ActorPathSegment = try! ActorPathSegment("user")
-    internal static let _system: ActorPathSegment = try! ActorPathSegment("system")
+    static let _user: ActorPathSegment = try! ActorPathSegment("user")
+    static let _system: ActorPathSegment = try! ActorPathSegment("system")
 }
 
 extension ActorPathSegment: CustomStringConvertible, CustomDebugStringConvertible {
@@ -485,7 +469,7 @@ extension ActorPathSegment: CustomStringConvertible, CustomDebugStringConvertibl
     }
 }
 
-private struct ValidActorPathSymbols {
+private enum ValidActorPathSymbols {
     static let a: UnicodeScalar = "a"
     static let z: UnicodeScalar = "z"
     static let A: UnicodeScalar = "A"
@@ -547,7 +531,7 @@ public struct ActorIncarnation: Equatable, Hashable, ExpressibleByIntegerLiteral
 public extension ActorIncarnation {
     /// To be used ONLY by special actors whose existence is wellKnown and identity never-changing.
     /// Examples: `/system/deadLetters` or `/system/cluster`.
-    static let wellKnown: ActorIncarnation = ActorIncarnation(0)
+    static let wellKnown: ActorIncarnation = .init(0)
 
     static func random() -> ActorIncarnation {
         ActorIncarnation(UInt32.random(in: UInt32(1) ... UInt32.max))

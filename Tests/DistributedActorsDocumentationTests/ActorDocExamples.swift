@@ -309,7 +309,7 @@ class ActorDocExamples: XCTestCase {
 }
 
 // tag::suggested_props_pattern[]
-struct ExampleWorker {
+enum ExampleWorker {
     public static var suggested: (_Behavior<WorkerMessages>, _Props) {
         return (behavior, ExampleWorker.props)
     }
@@ -319,7 +319,7 @@ struct ExampleWorker {
         return .same
     }
 
-    internal static var props: _Props = _Props().dispatcher(.pinnedThread)
+    internal static var props: _Props = .init().dispatcher(.pinnedThread)
 }
 
 enum WorkerMessages: String, Codable {

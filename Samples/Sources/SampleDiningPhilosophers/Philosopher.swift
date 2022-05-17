@@ -12,13 +12,13 @@
 //
 //===----------------------------------------------------------------------===//
 
-import _Distributed
+import Distributed
 import DistributedActors
 import Logging
 
 distributed actor Philosopher: CustomStringConvertible {
     private let name: String
-    private lazy var log: Logger = Logger(actor: self)
+    private lazy var log: Logger = .init(actor: self)
 
     private let leftFork: Fork
     private let rightFork: Fork
@@ -32,7 +32,7 @@ distributed actor Philosopher: CustomStringConvertible {
         self.rightFork = rightFork
         self.log.info("\(self.name) joined the table!")
 
-        assert(log[metadataKey: "cluster/node"] != nil, "was: \(self.id)")
+        assert(self.log[metadataKey: "cluster/node"] != nil, "was: \(self.id)")
 
         Task {
 //            context.watch(self.leftFork)
@@ -81,14 +81,14 @@ distributed actor Philosopher: CustomStringConvertible {
                 self.think()
                 return
             }
-            self.forkTaken(leftFork)
+            self.forkTaken(self.leftFork)
 
             let tookLeft = try await self.leftFork.take()
             guard tookLeft else {
                 self.think()
                 return
             }
-            self.forkTaken(rightFork)
+            self.forkTaken(self.rightFork)
         } catch {
             self.log.info("\(self.self.name) wasn't able to take both forks!")
             self.think()

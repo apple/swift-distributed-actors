@@ -238,13 +238,13 @@ extension ActorSingletonProxy {
 // MARK: Singleton path / address
 
 extension ActorAddress {
-    internal static func _singletonProxy(name: String, remote node: UniqueNode) -> ActorAddress {
+    static func _singletonProxy(name: String, remote node: UniqueNode) -> ActorAddress {
         .init(remote: node, path: ._singletonProxy(name: name), incarnation: .wellKnown)
     }
 }
 
 extension ActorPath {
-    internal static func _singletonProxy(name: String) -> ActorPath {
+    static func _singletonProxy(name: String) -> ActorPath {
         try! ActorPath._system.appending("singletonProxy-\(name)")
     }
 }

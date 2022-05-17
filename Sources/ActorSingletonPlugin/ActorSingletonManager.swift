@@ -105,7 +105,7 @@ extension ActorAddress {
 }
 
 extension ActorPath {
-    internal static func _singletonManager(name: String) -> ActorPath {
+    static func _singletonManager(name: String) -> ActorPath {
         try! ActorPath._system.appending("singletonManager-\(name)")
     }
 }

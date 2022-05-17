@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-import _Distributed
 import CDistributedActorsMailbox
+import Distributed
 import Logging
 import NIO
 import NIOFoundationCompat
@@ -69,8 +69,10 @@ public class Serialization {
 
     private let context: Serialization.Context
 
-    internal init(settings systemSettings: ActorSystemSettings, system: ActorSystem) {
+    internal init(settings systemSettings: ClusterSystemSettings, system: ActorSystem) {
         var settings = systemSettings.serialization
+
+        settings.register(InvocationMessage.self, serializerID: .foundationJSON)
 
         // ==== Declare mangled names of some known popular types // TODO: hardcoded mangled name until we have _mangledTypeName
         settings.register(Bool.self, hint: "b", serializerID: .specializedWithTypeHint)
@@ -130,7 +132,6 @@ public class Serialization {
         // TODO: document how to deal with `protocol` message accepting actors, those should be very rare.
         // TODO: do we HAVE to do this in the Receptionist?
         settings.register(Receptionist.Message.self, serializerID: .doNotSerialize)
-        settings.register(DistributedActors.OpLogDistributedReceptionist.Message.self, serializerID: .foundationJSON)
         settings.register(_OperationLogClusterReceptionist.AckOps.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
 
         // FIXME: This will go away once https://github.com/apple/swift/pull/30318 is merged and we can rely on summoning types
@@ -155,7 +156,7 @@ public class Serialization {
         // TODO: Allow plugins to register types...?
 
         settings.register(ActorAddress.self, serializerID: .foundationJSON) // TODO: this was protobuf
-        settings.register(AnyActorIdentity.self, serializerID: .foundationJSON)
+        settings.register(ActorSystem.ActorID.self, serializerID: .foundationJSON)
         settings.register(ReplicaID.self, serializerID: .foundationJSON)
         settings.register(VersionDot.self, serializerID: ._ProtobufRepresentable)
         settings.register(VersionVector.self, serializerID: ._ProtobufRepresentable)
@@ -334,11 +335,11 @@ extension Serialization {
 // MARK: Serialization Public API
 
 // TODO: shall we make those return something async-capable, or is our assumption that we invoke these in the serialization pools enough at least until proven wrong?
-extension Serialization {
+public extension Serialization {
     /// Container for serialization output.
     ///
     /// Describing what serializer was used to serialize the value, and its serialized bytes
-    public struct Serialized {
+    struct Serialized {
         public let manifest: Serialization.Manifest
         public let buffer: Serialization.Buffer
     }
@@ -346,7 +347,7 @@ extension Serialization {
     /// Abstraction of bytes containers.
     ///
     /// Designed to minimize allocation and copies when switching between different byte container types.
-    public enum Buffer {
+    enum Buffer {
         case data(Data)
         case nioByteBuffer(ByteBuffer)
 
@@ -392,7 +393,7 @@ extension Serialization {
     /// - Returns: `Serialized` describing what serializer was used to serialize the value, and its serialized bytes
     /// - Throws: If no manifest could be created for the value, or a manifest was created however it selected
     ///   a serializer (by ID) that is not registered with the system, or the serializer failing to serialize the message.
-    public func serialize<Message>(
+    func serialize<Message>(
         _ message: Message,
         file: String = #file, line: UInt = #line
     ) throws -> Serialized {
@@ -441,27 +442,27 @@ extension Serialization {
 
                 case ._ProtobufRepresentable:
                     let encoder = TopLevelProtobufBlobEncoder(allocator: self.allocator)
-                    encoder.userInfo[.actorTransportKey] = self.context.system
+                    encoder.userInfo[.actorSystemKey] = self.context.system
                     encoder.userInfo[.actorSerializationContext] = self.context
                     result = try encodableMessage._encode(using: encoder)
 
                 case .foundationJSON:
                     let encoder = JSONEncoder()
-                    encoder.userInfo[.actorTransportKey] = self.context.system
+                    encoder.userInfo[.actorSystemKey] = self.context.system
                     encoder.userInfo[.actorSerializationContext] = self.context
                     result = .data(try encodableMessage._encode(using: encoder))
 
                 case .foundationPropertyListBinary:
                     let encoder = PropertyListEncoder()
                     encoder.outputFormat = .binary
-                    encoder.userInfo[.actorTransportKey] = self.context.system
+                    encoder.userInfo[.actorSystemKey] = self.context.system
                     encoder.userInfo[.actorSerializationContext] = self.context
                     result = .data(try encodableMessage._encode(using: encoder))
 
                 case .foundationPropertyListXML:
                     let encoder = PropertyListEncoder()
                     encoder.outputFormat = .xml
-                    encoder.userInfo[.actorTransportKey] = self.context.system
+                    encoder.userInfo[.actorSystemKey] = self.context.system
                     encoder.userInfo[.actorSerializationContext] = self.context
                     result = .data(try encodableMessage._encode(using: encoder))
 
@@ -485,7 +486,7 @@ extension Serialization {
     /// - Parameters:
     ///   - as: expected type that the deserialized message should be
     ///   - from: `Serialized` containing the manifest used to identify which serializer should be used to deserialize the bytes and the serialized bytes of the message
-    public func deserialize<T>(
+    func deserialize<T>(
         as messageType: T.Type, from serialized: Serialized,
         file: String = #file, line: UInt = #line
     ) throws -> T {
@@ -498,7 +499,7 @@ extension Serialization {
     ///   - as: expected type that the deserialized message should be
     ///   - from: `Buffer` containing the serialized bytes of the message
     ///   - using: `Manifest` used to identify which serializer should be used to deserialize the bytes (json? protobuf? other?)
-    public func deserialize<T>(
+    func deserialize<T>(
         as messageType: T.Type, from buffer: Serialization.Buffer, using manifest: Serialization.Manifest,
         file: String = #file, line: UInt = #line
     ) throws -> T {
@@ -534,7 +535,7 @@ extension Serialization {
     /// - Parameters:
     ///   - from: `Buffer` containing the serialized bytes of the message
     ///   - using: `Manifest` used identify the decoder as well as summon the Type of the message. The resulting message is NOT cast to the summoned type.
-    public func deserializeAny(
+    func deserializeAny(
         from buffer: Serialization.Buffer, using manifest: Serialization.Manifest,
         file: String = #file, line: UInt = #line
     ) throws -> Any {
@@ -565,24 +566,24 @@ extension Serialization {
 
                 case ._ProtobufRepresentable:
                     let decoder = TopLevelProtobufBlobDecoder()
-                    decoder.userInfo[.actorTransportKey] = self.context.system
+                    decoder.userInfo[.actorSystemKey] = self.context.system
                     decoder.userInfo[.actorSerializationContext] = self.context
                     result = try decodableMessageType._decode(from: buffer, using: decoder)
 
                 case .foundationJSON:
                     let decoder = JSONDecoder()
-                    decoder.userInfo[.actorTransportKey] = self.context.system
+                    decoder.userInfo[.actorSystemKey] = self.context.system
                     decoder.userInfo[.actorSerializationContext] = self.context
                     result = try decodableMessageType._decode(from: buffer, using: decoder)
 
                 case .foundationPropertyListBinary:
                     let decoder = PropertyListDecoder()
-                    decoder.userInfo[.actorTransportKey] = self.context.system
+                    decoder.userInfo[.actorSystemKey] = self.context.system
                     decoder.userInfo[.actorSerializationContext] = self.context
                     result = try decodableMessageType._decode(from: buffer, using: decoder, format: .binary)
                 case .foundationPropertyListXML:
                     let decoder = PropertyListDecoder()
-                    decoder.userInfo[.actorTransportKey] = self.context.system
+                    decoder.userInfo[.actorSystemKey] = self.context.system
                     decoder.userInfo[.actorSerializationContext] = self.context
                     result = try decodableMessageType._decode(from: buffer, using: decoder, format: .xml)
 
@@ -611,7 +612,7 @@ extension Serialization {
     /// Validates serialization round-trip is possible for given message.
     ///
     /// Messages marked with `SkipSerializationVerification` are except from this verification.
-    public func verifySerializable<Message: ActorMessage>(message: Message) throws {
+    func verifySerializable<Message: ActorMessage>(message: Message) throws {
         switch message {
         case is NonTransportableActorMessage:
             return // skip
@@ -803,6 +804,7 @@ public enum SerializationError: Error {
 
     /// Thrown and to be handled internally by the Serialization system when a serializer should NOT be ensured.
     case noNeedToEnsureSerializer
+    case notEnoughArgumentsEncoded(expected: Int, have: Int)
 
     public static func missingSerializationContext(_ coder: Swift.Decoder, _ _type: Any.Type, file: String = #file, line: UInt = #line) -> SerializationError {
         SerializationError.missingSerializationContext(
@@ -838,8 +840,8 @@ public protocol SerializationRepresentable {
     static var defaultSerializerID: Serialization.SerializerID? { get }
 }
 
-extension SerializationRepresentable {
-    public static var defaultSerializerID: Serialization.SerializerID? {
+public extension SerializationRepresentable {
+    static var defaultSerializerID: Serialization.SerializerID? {
         nil
     }
 }

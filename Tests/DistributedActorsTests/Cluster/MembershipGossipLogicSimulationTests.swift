@@ -19,7 +19,7 @@ import NIO
 import XCTest
 
 final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCase {
-    override func configureActorSystem(settings: inout ActorSystemSettings) {
+    override func configureActorSystem(settings: inout ClusterSystemSettings) {
         settings.cluster.enabled = false // not actually clustering, just need a few nodes
     }
 
@@ -38,7 +38,7 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
     }
 
     var nodes: [UniqueNode] {
-        self._nodes.map { $0.cluster.uniqueNode }
+        self._nodes.map(\.cluster.uniqueNode)
     }
 
     var mockPeers: [AddressableActorRef] = []
@@ -58,7 +58,7 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
     }
 
     var gossips: [Cluster.MembershipGossip] {
-        self.logics.map { $0.latestGossip }
+        self.logics.map(\.latestGossip)
     }
 
     private func makeLogic(_ system: ActorSystem, _ probe: ActorTestProbe<Cluster.MembershipGossip>) -> MembershipGossipLogic {
@@ -74,12 +74,12 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Simulation Tests
 
-    func test_avgRounds_untilConvergence() throws {
-        let systemA = self.setUpNode("A") { settings in
+    func test_avgRounds_untilConvergence() async throws {
+        let systemA = await setUpNode("A") { settings in
             settings.cluster.enabled = true
         }
-        let systemB = self.setUpNode("B")
-        let systemC = self.setUpNode("C")
+        let systemB = await setUpNode("B")
+        let systemC = await setUpNode("C")
 
         let initialGossipState =
             """
@@ -122,19 +122,19 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
         )
     }
 
-    func test_avgRounds_manyNodes() throws {
-        let systemA = self.setUpNode("A") { settings in
+    func test_avgRounds_manyNodes() async throws {
+        let systemA = await setUpNode("A") { settings in
             settings.cluster.enabled = true
         }
-        let systemB = self.setUpNode("B")
-        let systemC = self.setUpNode("C")
-        let systemD = self.setUpNode("D")
-        let systemE = self.setUpNode("E")
-        let systemF = self.setUpNode("F")
-        let systemG = self.setUpNode("G")
-        let systemH = self.setUpNode("H")
-        let systemI = self.setUpNode("I")
-        let systemJ = self.setUpNode("J")
+        let systemB = await setUpNode("B")
+        let systemC = await setUpNode("C")
+        let systemD = await setUpNode("D")
+        let systemE = await setUpNode("E")
+        let systemF = await setUpNode("F")
+        let systemG = await setUpNode("G")
+        let systemH = await setUpNode("H")
+        let systemI = await setUpNode("I")
+        let systemJ = await setUpNode("J")
 
         let allSystems = [
             systemA, systemB, systemC, systemD, systemE,
@@ -235,12 +235,12 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
         )
     }
 
-    func test_shouldEventuallySuspendGossiping() throws {
-        let systemA = self.setUpNode("A") { settings in
+    func test_shouldEventuallySuspendGossiping() async throws {
+        let systemA = await setUpNode("A") { settings in
             settings.cluster.enabled = true
         }
-        let systemB = self.setUpNode("B")
-        let systemC = self.setUpNode("C")
+        let systemB = await setUpNode("B")
+        let systemC = await setUpNode("C")
 
         let initialGossipState =
             """
@@ -309,7 +309,7 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
             let ref: _ActorRef<GossipShell<Cluster.MembershipGossip, Cluster.MembershipGossip>.Message> =
                 try system._spawn("peer", .receiveMessage { _ in .same })
             return self.systems.first!._resolveKnownRemote(ref, onRemoteSystem: system)
-        }.map { $0.asAddressable }
+        }.map(\.asAddressable)
 
         var log = self.systems.first!.log
         log[metadataKey: "actor/path"] = "/user/peer" // mock actor path for log capture
@@ -348,7 +348,7 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
                 let participatingGossips = self.logics.shuffled()
                 for logic in participatingGossips {
                     let selectedPeers: [AddressableActorRef] = logic.selectPeers(self.peers(of: logic))
-                    log.notice("[\(logic.nodeName)] selected peers: \(selectedPeers.map { $0.address.uniqueNode.node.systemName })")
+                    log.notice("[\(logic.nodeName)] selected peers: \(selectedPeers.map(\.address.uniqueNode.node.systemName))")
 
                     for targetPeer in selectedPeers {
                         messageCounts[messageCounts.endIndex - 1] += 1
@@ -379,7 +379,7 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
                 }
             }
 
-            updateLogic(logics)
+            updateLogic(self.logics)
 
             var rounds = 0
             log.notice("~~~~~~~~~~~~ new gossip instance ~~~~~~~~~~~~")

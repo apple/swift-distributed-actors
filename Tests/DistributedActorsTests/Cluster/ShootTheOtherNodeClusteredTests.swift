@@ -28,8 +28,8 @@ final class ShootTheOtherNodeClusteredTests: ClusteredActorSystemsXCTestCase {
         settings.minimumLogLevel = .info
     }
 
-    func test_shootOtherNodeShouldTerminateIt() throws {
-        let (local, remote) = self.setUpPair()
+    func test_shootOtherNodeShouldTerminateIt() async throws {
+        let (local, remote) = await setUpPair()
 
         // also assures they are associated
         try self.joinNodes(node: local, with: remote, ensureWithin: .seconds(5), ensureMembers: .up)

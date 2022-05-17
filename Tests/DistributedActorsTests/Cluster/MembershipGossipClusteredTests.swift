@@ -37,17 +37,17 @@ final class MembershipGossipClusteredTests: ClusteredActorSystemsXCTestCase {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Marking .down
 
-    func test_down_beGossipedToOtherNodes() throws {
+    func test_down_beGossipedToOtherNodes() async throws {
         let strategy = ClusterSettings.LeadershipSelectionSettings.lowestReachable(minNumberOfMembers: 3)
-        let first = self.setUpNode("first") { settings in
+        let first = await setUpNode("first") { settings in
             settings.cluster.autoLeaderElection = strategy
             settings.cluster.onDownAction = .none
         }
-        let second = self.setUpNode("second") { settings in
+        let second = await setUpNode("second") { settings in
             settings.cluster.autoLeaderElection = strategy
             settings.cluster.onDownAction = .none
         }
-        let third = self.setUpNode("third") { settings in
+        let third = await setUpNode("third") { settings in
             settings.cluster.autoLeaderElection = strategy
             settings.cluster.onDownAction = .none
         }
@@ -79,14 +79,14 @@ final class MembershipGossipClusteredTests: ClusteredActorSystemsXCTestCase {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: SWIM + joining
 
-    func test_join_swimDiscovered_thirdNode() throws {
-        let first = self.setUpNode("first") { settings in
+    func test_join_swimDiscovered_thirdNode() async throws {
+        let first = await setUpNode("first") { settings in
             settings.cluster.node.port = 7111
         }
-        let second = self.setUpNode("second") { settings in
+        let second = await setUpNode("second") { settings in
             settings.cluster.node.port = 8222
         }
-        let third = self.setUpNode("third") { settings in
+        let third = await setUpNode("third") { settings in
             settings.cluster.node.port = 9333
         }
 

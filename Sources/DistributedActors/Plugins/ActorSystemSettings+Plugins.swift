@@ -73,14 +73,14 @@ public struct PluginsSettings {
 //    }
 }
 
-extension PluginsSettings {
-    public static func += <P: Plugin>(plugins: inout PluginsSettings, plugin: P) {
+public extension PluginsSettings {
+    static func += <P: Plugin>(plugins: inout PluginsSettings, plugin: P) {
         plugins.add(plugin)
     }
 }
 
-extension ActorSystemSettings {
-    public static func += <P: Plugin>(settings: inout ActorSystemSettings, plugin: P) {
+public extension ClusterSystemSettings {
+    static func += <P: Plugin>(settings: inout ClusterSystemSettings, plugin: P) {
         settings.plugins.add(plugin)
     }
 }

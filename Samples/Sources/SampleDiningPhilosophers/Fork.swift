@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import _Distributed
+import Distributed
 import DistributedActors
 import Logging
 
@@ -41,7 +41,7 @@ distributed actor Fork: CustomStringConvertible {
 
     distributed func putBack() throws {
         guard self.isTaken else {
-            log.error("Attempted to put back fork that was not taken!")
+            self.log.error("Attempted to put back fork that was not taken!")
             throw ForkError.puttingBackNotTakenFork
         }
         self.isTaken = false

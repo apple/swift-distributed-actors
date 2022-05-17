@@ -12,42 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import _Distributed
-
-extension AnyActorIdentity {
-    var _unwrapActorAddress: ActorAddress? {
-        self.underlying as? ActorAddress
-    }
-
-    var _forceUnwrapActorAddress: ActorAddress {
-        guard let address = self._unwrapActorAddress else {
-            fatalError("""
-            Cannot unwrap \(ActorAddress.self) from \(Self.self). 
-            Cluster currently does not support any other ActorIdentity types.
-            Underlying type was: \(type(of: self.underlying))
-            """)
-        }
-
-        return address
-    }
-}
-
-extension ActorTransport {
-    var _unwrapActorSystem: ActorSystem? {
-        self as? ActorSystem
-    }
-
-    var _forceUnwrapActorSystem: ActorSystem {
-        guard let system = self._unwrapActorSystem else {
-            fatalError("""
-            Cannot unwrap \(ActorSystem.self) from \(Self.self). 
-            Cluster does not support mixing transports. Instance was: \(self) 
-            """)
-        }
-
-        return system
-    }
-}
+import Distributed
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Type erasers
@@ -55,21 +20,21 @@ extension ActorTransport {
 @usableFromInline
 struct AnyDistributedActor: Sendable, Hashable {
     @usableFromInline
-    let underlying: DistributedActor
+    let underlying: any DistributedActor
 
     @usableFromInline
-    init<Act: DistributedActor>(_ actor: Act) {
+    init<Act: DistributedActor>(_ actor: Act) where Act.ActorSystem == ClusterSystem {
         self.underlying = actor
     }
 
     @usableFromInline
-    var id: AnyActorIdentity {
-        self.underlying.id
+    var id: ActorSystem.ActorID {
+        self.underlying.id as! ActorAddress // FIXME: could remove this entire wrapper?
     }
 
     @usableFromInline
-    var actorTransport: ActorTransport {
-        self.underlying.actorTransport
+    var actorSystem: ClusterSystem {
+        self.underlying.actorSystem as! ActorSystem
     }
 
     @usableFromInline
@@ -79,7 +44,7 @@ struct AnyDistributedActor: Sendable, Hashable {
 //        }
 
         // FIXME: terrible hack, instead just store the id then?
-        if let resolved = try? T.resolve(underlying.id, using: underlying.actorTransport) {
+        if let resolved = try? T.resolve(id: underlying.id as! T.ID, using: underlying.actorSystem as! T.ActorSystem) {
             return resolved
         }
 
@@ -97,13 +62,16 @@ struct AnyDistributedActor: Sendable, Hashable {
     }
 }
 
-extension DistributedActor {
+extension DistributedActor where ActorSystem == ClusterSystem {
     nonisolated var asAnyDistributedActor: AnyDistributedActor {
         AnyDistributedActor(self)
     }
 }
 
 distributed actor StubDistributedActor {
+    typealias ID = ClusterSystem.ActorID
+    typealias ActorSystem = ClusterSystem
+
     // TODO: this is just to prevent a DI crash because of enums without cases and Codable
     distributed func _noop() {}
 }

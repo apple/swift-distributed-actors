@@ -14,8 +14,8 @@
 
 import Logging
 
-extension ClusterReceptionist {
-    public struct Settings {
+public extension ClusterReceptionist {
+    struct Settings: Sendable {
         public static let `default`: Settings = .init()
 
         /// Configures which receptionist implementation should be used.
@@ -36,7 +36,7 @@ extension ClusterReceptionist {
             /// Guaranteed small messages
             case opLogSync
 
-            func behavior(settings: ActorSystemSettings) -> _Behavior<Receptionist.Message> {
+            func behavior(settings: ClusterSystemSettings) -> _Behavior<Receptionist.Message> {
                 switch self {
                 case .opLogSync:
                     let instrumentation = settings.instrumentation.makeReceptionistInstrumentation()

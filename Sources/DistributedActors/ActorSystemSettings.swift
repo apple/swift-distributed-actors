@@ -15,9 +15,9 @@
 import class Foundation.ProcessInfo
 import Logging
 
-/// Settings used to configure an `ActorSystem`.
-public struct ActorSystemSettings {
-    public static var `default`: ActorSystemSettings {
+/// Settings used to configure an `ClusterSystem`.
+public struct ClusterSystemSettings {
+    public static var `default`: ClusterSystemSettings {
         .init()
     }
 
@@ -54,8 +54,8 @@ public struct ActorSystemSettings {
     public var threadPoolSize: Int = ProcessInfo.processInfo.activeProcessorCount
 }
 
-extension Array where Element == _InternalActorTransport {
-    public static func += <T: _InternalActorTransport>(transports: inout Self, transport: T) {
+public extension Array where Element == _InternalActorTransport {
+    static func += <T: _InternalActorTransport>(transports: inout Self, transport: T) {
         transports.append(transport)
     }
 }
@@ -126,8 +126,8 @@ public struct LoggingSettings {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Actor Settings
 
-extension ActorSystemSettings {
-    public struct ActorSettings {
+public extension ClusterSystemSettings {
+    struct ActorSettings {
         public static var `default`: ActorSettings {
             .init()
         }
@@ -140,8 +140,8 @@ extension ActorSystemSettings {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Instrumentation Settings
 
-extension ActorSystemSettings {
-    public struct InstrumentationSettings {
+public extension ClusterSystemSettings {
+    struct InstrumentationSettings {
         /// Default set of enabled instrumentations, based on current operating system.
         ///
         /// On Apple platforms, this includes the `OSSignpostInstrumentationProvider` provided instrumentations,

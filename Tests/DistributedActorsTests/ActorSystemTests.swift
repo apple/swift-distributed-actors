@@ -51,8 +51,8 @@ final class ActorSystemTests: ActorSystemXCTestCase {
         }
     }
 
-    func test_shutdown_shouldStopAllActors() throws {
-        let system2 = ActorSystem("ShutdownSystem")
+    func test_shutdown_shouldStopAllActors() async throws {
+        let system2 = await ActorSystem("ShutdownSystem")
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
         let echoBehavior: _Behavior<String> = .receiveMessage { message in
             p.tell(message)
@@ -75,15 +75,15 @@ final class ActorSystemTests: ActorSystemXCTestCase {
         try p.expectNoMessage(for: .milliseconds(200))
     }
 
-    func test_shutdown_shouldCompleteReturnedHandleWhenDone() throws {
-        let system2 = ActorSystem("ShutdownSystem")
+    func test_shutdown_shouldCompleteReturnedHandleWhenDone() async throws {
+        let system2 = await ActorSystem("ShutdownSystem")
         let shutdown = system2.shutdown()
         try shutdown.wait(atMost: .seconds(5))
     }
 
-    func test_shutdown_shouldReUseReceptacleWhenCalledMultipleTimes() throws {
+    func test_shutdown_shouldReUseReceptacleWhenCalledMultipleTimes() async throws {
         throw XCTSkip("Needs to be re-enabled") // FIXME: re-enable this test
-        let system2 = ActorSystem("ShutdownSystem")
+        let system2 = await ActorSystem("ShutdownSystem")
         let shutdown1 = system2.shutdown()
         let shutdown2 = system2.shutdown()
         let shutdown3 = system2.shutdown()
@@ -93,8 +93,8 @@ final class ActorSystemTests: ActorSystemXCTestCase {
         try shutdown3.wait(atMost: .milliseconds(1))
     }
 
-    func test_shutdown_selfSendingActorShouldNotDeadlockSystem() throws {
-        let system2 = ActorSystem("ShutdownSystem")
+    func test_shutdown_selfSendingActorShouldNotDeadlockSystem() async throws {
+        let system2 = await ActorSystem("ShutdownSystem")
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
         let echoBehavior: _Behavior<String> = .receive { context, message in
             context.myself.tell(message)
@@ -120,8 +120,8 @@ final class ActorSystemTests: ActorSystemXCTestCase {
         ref.address.incarnation.shouldEqual(address.incarnation)
     }
 
-    func test_shutdown_callbackShouldBeInvoked() throws {
-        let system = ActorSystem("ShutMeDown")
+    func test_shutdown_callbackShouldBeInvoked() async throws {
+        let system = await ActorSystem("ShutMeDown")
         let receptacle = BlockingReceptacle<Error?>()
 
         system.shutdown(afterShutdownCompleted: { error in
@@ -131,8 +131,8 @@ final class ActorSystemTests: ActorSystemXCTestCase {
         receptacle.wait(atMost: .seconds(3))!.shouldBeNil()
     }
 
-    func test_shutdown_callbackShouldBeInvokedWhenAlreadyShutdown() throws {
-        let system = ActorSystem("ShutMeDown")
+    func test_shutdown_callbackShouldBeInvokedWhenAlreadyShutdown() async throws {
+        let system = await ActorSystem("ShutMeDown")
         let firstReceptacle = BlockingReceptacle<Error?>()
 
         system.shutdown(afterShutdownCompleted: { error in

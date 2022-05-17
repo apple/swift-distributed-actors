@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import _Distributed
+import Distributed
 
 /// Signals special types of messages messages which are passed using the system channel and may be handled by actors.
 /// They inform the actors about various lifecycle events which the actor may want to react to.
@@ -73,8 +73,8 @@ public enum Signals {
         public let address: ActorAddress
 
         /// Identity of the terminated distributed actor.
-        public var identity: AnyActorIdentity {
-            self.address.asAnyActorIdentity
+        public var identity: ActorAddress {
+            self.address
         }
 
         /// The existence of this actor has been confirmed prior to its termination.
@@ -134,7 +134,7 @@ public enum Signals {
     /// section of the tree will be torn down upon failure of one of the workers. A higher level supervisor may then decide to
     /// restart one of the higher actors, causing a "sub tree" to be restarted in response to a worker failure. Alternatively,
     /// this pattern is useful when one wants to bubble up failures all the way to the guardian actors (`/user`, or `/system`),
-    /// in which case the system will issue a configured termination action (see `ActorSystemSettings.guardianFailureHandling`).
+    /// in which case the system will issue a configured termination action (see `ClusterSystemSettings.guardianFailureHandling`).
     ///
     /// - Note: Note that `_ChildTerminated` IS-A `Terminated` so unless you need to specifically react to a child terminating,
     ///         you may choose to handle all `Terminated` signals the same way.

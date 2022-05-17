@@ -23,7 +23,7 @@ extension ActorAddress: _ProtobufRepresentable {
         let node = self.uniqueNode
         address.node = try node.toProto(context: context)
 
-        address.path.segments = self.segments.map { $0.value }
+        address.path.segments = self.segments.map(\.value)
         address.incarnation = self.incarnation.value
 
         return address
@@ -92,7 +92,7 @@ extension ActorPath {
 
 extension _ProtoActorPath {
     init(_ value: ActorPath) {
-        self.segments = value.segments.map { $0.value } // TODO: avoiding the mapping could be nice... store segments as strings?
+        self.segments = value.segments.map(\.value) // TODO: avoiding the mapping could be nice... store segments as strings?
     }
 }
 

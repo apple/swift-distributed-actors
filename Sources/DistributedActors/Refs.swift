@@ -90,14 +90,14 @@ public protocol AddressableActor {
     var asAddressable: AddressableActorRef { get }
 }
 
-extension _ActorRef {
+public extension _ActorRef {
     /// Exposes given the current actor reference as limited capability representation of itself; an `AddressableActorRef`.
     ///
     /// An `AddressableActorRef` can be used to uniquely identify an actor, however it is not possible to directly send
     /// messages to such identified actor via this reference type.
     ///
     /// - SeeAlso: `AddressableActorRef` for a detailed discussion of its typical use-cases.
-    public var asAddressable: AddressableActorRef {
+    var asAddressable: AddressableActorRef {
         AddressableActorRef(self)
     }
 }
@@ -122,8 +122,8 @@ extension _ActorRef: Hashable {
     }
 }
 
-extension _ActorRef.Personality {
-    public static func == (lhs: _ActorRef.Personality, rhs: _ActorRef.Personality) -> Bool {
+public extension _ActorRef.Personality {
+    static func == (lhs: _ActorRef.Personality, rhs: _ActorRef.Personality) -> Bool {
         switch (lhs, rhs) {
         case (.cell(let l), .cell(let r)):
             return l.address == r.address
@@ -189,8 +189,8 @@ public protocol _ReceivesSystemMessages: Codable {
     func _unsafeGetRemotePersonality<M: ActorMessage>(_ type: M.Type) -> _RemoteClusterActorPersonality<M>
 }
 
-extension _ReceivesSystemMessages {
-    public var path: ActorPath {
+public extension _ReceivesSystemMessages {
+    var path: ActorPath {
         self.address.path
     }
 }
@@ -198,8 +198,8 @@ extension _ReceivesSystemMessages {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Actor Ref Internals and Internal Capabilities
 
-extension _ActorRef {
-    public func _sendSystemMessage(_ message: _SystemMessage, file: String = #file, line: UInt = #line) {
+public extension _ActorRef {
+    func _sendSystemMessage(_ message: _SystemMessage, file: String = #file, line: UInt = #line) {
         switch self.personality {
         case .cell(let cell):
             cell.sendSystemMessage(message, file: file, line: line)
@@ -235,7 +235,7 @@ extension _ActorRef {
     }
 
     // FIXME: can this be removed?
-    public func _tellOrDeadLetter(_ message: Any, file: String = #file, line: UInt = #line) {
+    func _tellOrDeadLetter(_ message: Any, file: String = #file, line: UInt = #line) {
         guard let _message = message as? Message else {
             traceLog_Mailbox(self.path, "_tellOrDeadLetter: [\(message)] failed because of invalid message type, to: \(self); Sent at \(file):\(line)")
             self._dropAsDeadLetter(message, file: file, line: line)
@@ -245,11 +245,11 @@ extension _ActorRef {
         self.tell(_message, file: file, line: line)
     }
 
-    public func _dropAsDeadLetter(_ message: Any, file: String = #file, line: UInt = #line) {
+    func _dropAsDeadLetter(_ message: Any, file: String = #file, line: UInt = #line) {
         self._deadLetters.tell(DeadLetter(message, recipient: self.address, sentAtFile: file, sentAtLine: line), file: file, line: line)
     }
 
-    public func _deserializeDeliver(
+    func _deserializeDeliver(
         _ messageBytes: Serialization.Buffer, using manifest: Serialization.Manifest,
         on pool: _SerializationPool,
         file: String = #file, line: UInt = #line
@@ -301,7 +301,7 @@ extension _ActorRef {
         )
     }
 
-    public func _unsafeGetRemotePersonality<M: ActorMessage>(_ type: M.Type = M.self) -> _RemoteClusterActorPersonality<M> {
+    func _unsafeGetRemotePersonality<M: ActorMessage>(_ type: M.Type = M.self) -> _RemoteClusterActorPersonality<M> {
         switch self.personality {
         case .remote(let personality):
             return personality._unsafeAssumeCast(to: type)
@@ -550,14 +550,14 @@ public class _Guardian {
 
     // any access to children has to be protected by `lock`
     private var _children: _Children
-    private let _childrenLock: _Mutex = _Mutex()
+    private let _childrenLock: _Mutex = .init()
     private var children: _Children {
         self._childrenLock.synchronized { () in
             _children
         }
     }
 
-    private let allChildrenRemoved: _Condition = _Condition()
+    private let allChildrenRemoved: _Condition = .init()
     private var stopping: Bool = false
     weak var system: ActorSystem?
 

@@ -177,7 +177,7 @@ extension Leadership {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: LowestAddressReachableMember election strategy
 
-extension Leadership {
+public extension Leadership {
     /// Simple strategy which does not require any additional coordination from members to select a leader.
     ///
     /// All `MemberStatus.joining`, `MemberStatus.up` _reachable_ members are sorted by their addresses,
@@ -221,7 +221,7 @@ extension Leadership {
     ///
     // TODO: In situations which need strong guarantees, this leadership election scheme does NOT provide strong enough
     /// guarantees, and you should consider using another scheme or consensus based modes.
-    public struct LowestReachableMember: LeaderElection {
+    struct LowestReachableMember: LeaderElection {
         let minimumNumberOfMembersToDecide: Int
         let loseLeadershipIfBelowMinNrOfMembers: Bool
 
@@ -313,8 +313,8 @@ extension Leadership {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Leadership settings
 
-extension ClusterSettings {
-    public enum LeadershipSelectionSettings {
+public extension ClusterSettings {
+    enum LeadershipSelectionSettings {
         /// No automatic leader selection, you can write your own logic and issue a `Cluster.LeadershipChange` `Cluster.Event` to the `system.cluster.events` event stream.
         case none
         /// All nodes get ordered by their node addresses and the "lowest" is always selected as a leader.

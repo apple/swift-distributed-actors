@@ -20,20 +20,20 @@ public let ActorTreeTraversalBenchmarks: [BenchmarkInfo] = [
         name: "ActorResolve.bench_resolveShallowRef",
         runFunction: bench_visitSingleRef,
         tags: [],
-        setUpFunction: { setUp(and: setUp_visitSingleRef) },
+        setUpFunction: { await setUp(and: setUp_visitSingleRef) },
         tearDownFunction: tearDown
     ),
     BenchmarkInfo(
         name: "ActorResolve.bench_visit_depth_1000_total_1000",
         runFunction: bench_visit,
         tags: [],
-        setUpFunction: { setUp(and: setUp_visit_depth_1000_total_1000) },
+        setUpFunction: { await setUp(and: setUp_visit_depth_1000_total_1000) },
         tearDownFunction: tearDown
     ),
 ]
 
-private func setUp(and postSetUp: () -> Void) {
-    _system = ActorSystem("ActorResolveBenchmarks")
+private func setUp(and postSetUp: () -> Void) async {
+    _system = await ActorSystem("ActorResolveBenchmarks")
     postSetUp()
 }
 

@@ -12,22 +12,22 @@
 //
 //===----------------------------------------------------------------------===//
 
-extension _ActorContext {
+public extension _ActorContext {
     /// Receptionist wrapper, offering convenience functions for registering _this_ actor with the receptionist.
     ///
     /// - SeeAlso: `DistributedActors.Receptionist`, for the system wide receptionist API
-    public var receptionist: _ActorContext<Message>.Receptionist {
+    var receptionist: _ActorContext<Message>.Receptionist {
         Self.Receptionist(context: self)
     }
 }
 
-extension _ActorContext {
+public extension _ActorContext {
     /// The receptionist enables type-safe and dynamic (subscription based) actor discovery.
     ///
     /// Actors may register themselves when they start with an `Reception.Key<A>`
     ///
     /// - SeeAlso: `DistributedActors.Receptionist` for the `_ActorRef<Message>` version of this API.
-    public struct Receptionist: _MyselfReceptionistOperations {
+    struct Receptionist: _MyselfReceptionistOperations {
         public typealias Myself = _ActorRef<Message>
 
         public let _underlyingContext: _ActorContext<Message>

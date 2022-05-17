@@ -180,7 +180,7 @@ class RemotingTLSTests: ClusteredActorSystemsXCTestCase {
     -----END ENCRYPTED PRIVATE KEY-----
     """
 
-    func test_boundServer_shouldAcceptAssociateWithSSLEnabled() throws {
+    func test_boundServer_shouldAcceptAssociateWithSSLEnabled() async throws {
         let testCertificate1 = try NIOSSLCertificate(bytes: [UInt8](testCert1.utf8), format: .pem)
         let testCertificateSource1: NIOSSLCertificateSource = .certificate(testCertificate1)
         let testKeySource1: NIOSSLPrivateKeySource = .privateKey(try NIOSSLPrivateKey(bytes: [UInt8](testKey1.utf8), format: .pem))
@@ -189,7 +189,7 @@ class RemotingTLSTests: ClusteredActorSystemsXCTestCase {
         let testCertificateSource2: NIOSSLCertificateSource = .certificate(testCertificate2)
         let testKeySource2: NIOSSLPrivateKeySource = .privateKey(try NIOSSLPrivateKey(bytes: [UInt8](testKey2.utf8), format: .pem))
 
-        let local = self.setUpNode("local") { settings in
+        let local = await setUpNode("local") { settings in
             settings.cluster.node.host = "localhost"
             settings.cluster.tls = TLSConfiguration.makeServerConfiguration(
                 certificateChain: [testCertificateSource1],
@@ -202,7 +202,7 @@ class RemotingTLSTests: ClusteredActorSystemsXCTestCase {
             settings.cluster.tls?.trustRoots = .certificates([testCertificate2])
         }
 
-        let remote = setUpNode("remote") { settings in
+        let remote = await setUpNode("remote") { settings in
             settings.cluster.node.host = "localhost"
             settings.cluster.tls = TLSConfiguration.makeServerConfiguration(
                 certificateChain: [testCertificateSource2],
@@ -222,12 +222,12 @@ class RemotingTLSTests: ClusteredActorSystemsXCTestCase {
 
     // FIXME: Test Case '-[DistributedActorsTests.RemotingTLSTests test_boundServer_shouldFailWithSSLEnabledOnHostnameVerificationWithIP]' started.
     //          Exited with signal code 2
-    func ignore_boundServer_shouldFailWithSSLEnabledOnHostnameVerificationWithIP() throws {
+    func ignore_boundServer_shouldFailWithSSLEnabledOnHostnameVerificationWithIP() async throws {
         let testCertificate = try NIOSSLCertificate(bytes: [UInt8](testCert1.utf8), format: .pem)
         let testCertificateSource: NIOSSLCertificateSource = .certificate(testCertificate)
         let testKey: NIOSSLPrivateKeySource = .privateKey(try NIOSSLPrivateKey(bytes: [UInt8](testKey1.utf8), format: .pem))
 
-        let local = self.setUpNode("local") { settings in
+        let local = await self.setUpNode("local") { settings in
             settings.cluster.node.host = "127.0.0.1"
             settings.cluster.tls = TLSConfiguration.makeServerConfiguration(
                 certificateChain: [testCertificateSource],
@@ -240,7 +240,7 @@ class RemotingTLSTests: ClusteredActorSystemsXCTestCase {
             settings.cluster.tls?.trustRoots = .certificates([testCertificate])
         }
 
-        let remote = setUpNode("remote") { settings in
+        let remote = await setUpNode("remote") { settings in
             settings.cluster.node.host = "127.0.0.1"
             settings.cluster.tls = TLSConfiguration.makeServerConfiguration(
                 certificateChain: [testCertificateSource],
@@ -276,11 +276,11 @@ class RemotingTLSTests: ClusteredActorSystemsXCTestCase {
         }
     }
 
-    func test_boundServer_shouldAcceptAssociateWithSSLEnabledOnNoHostnameVerificationWithIP() throws {
+    func test_boundServer_shouldAcceptAssociateWithSSLEnabledOnNoHostnameVerificationWithIP() async throws {
         let testCertificate = try NIOSSLCertificate(bytes: [UInt8](testCert1.utf8), format: .pem)
         let testCertificateSource: NIOSSLCertificateSource = .certificate(testCertificate)
         let testKey: NIOSSLPrivateKeySource = .privateKey(try NIOSSLPrivateKey(bytes: [UInt8](testKey1.utf8), format: .pem))
-        let local = self.setUpNode("local") { settings in
+        let local = await setUpNode("local") { settings in
             settings.cluster.node.host = "localhost"
             settings.cluster.tls = TLSConfiguration.makeServerConfiguration(
                 certificateChain: [testCertificateSource],
@@ -293,7 +293,7 @@ class RemotingTLSTests: ClusteredActorSystemsXCTestCase {
             settings.cluster.tls?.trustRoots = .certificates([testCertificate])
         }
 
-        let remote = setUpNode("remote") { settings in
+        let remote = await setUpNode("remote") { settings in
             settings.cluster.node.host = "localhost"
             settings.cluster.tls = TLSConfiguration.makeServerConfiguration(
                 certificateChain: [testCertificateSource],
@@ -311,7 +311,7 @@ class RemotingTLSTests: ClusteredActorSystemsXCTestCase {
         try assertAssociated(local, withExactly: remote.settings.cluster.uniqueBindNode)
     }
 
-    func test_boundServer_shouldAcceptAssociateWithSSLEnabledAndCorrectPassphrase() throws {
+    func test_boundServer_shouldAcceptAssociateWithSSLEnabledAndCorrectPassphrase() async throws {
         let tmpKeyFile = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("key-\(NSUUID().uuidString).pem")
         defer {
             do {
@@ -322,7 +322,7 @@ class RemotingTLSTests: ClusteredActorSystemsXCTestCase {
         let testCertificate = try NIOSSLCertificate(bytes: [UInt8](passordProtectedCert.utf8), format: .pem)
         let testCertificateSource: NIOSSLCertificateSource = .certificate(testCertificate)
         let testKey: NIOSSLPrivateKeySource = .file(tmpKeyFile.path)
-        let local = self.setUpNode("local") { settings in
+        let local = await setUpNode("local") { settings in
             settings.cluster.tls = TLSConfiguration.makeServerConfiguration(
                 certificateChain: [testCertificateSource],
                 privateKey: testKey
@@ -337,7 +337,7 @@ class RemotingTLSTests: ClusteredActorSystemsXCTestCase {
             }
         }
 
-        let remote = setUpNode("remote") { settings in
+        let remote = await setUpNode("remote") { settings in
             settings.cluster.tls = TLSConfiguration.makeServerConfiguration(
                 certificateChain: [testCertificateSource],
                 privateKey: testKey

@@ -254,8 +254,8 @@ final class SystemMessagesRedeliveryTests: ActorSystemXCTestCase {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Serialization
 
-    func test_redelivery_systemMessage_serialization() throws {
-        let system = ActorSystem("\(type(of: self))")
+    func test_redelivery_systemMessage_serialization() async throws {
+        let system = await ActorSystem("\(type(of: self))")
         defer {
             try! system.shutdown().wait()
         }

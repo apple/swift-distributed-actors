@@ -23,16 +23,16 @@ public protocol CustomPrettyStringConvertible {
     func prettyDescription(depth: Int) -> String
 }
 
-extension CustomPrettyStringConvertible {
-    public var prettyDescription: String {
+public extension CustomPrettyStringConvertible {
+    var prettyDescription: String {
         self.prettyDescription(depth: 0)
     }
 
-    public func prettyDescription(depth: Int) -> String {
+    func prettyDescription(depth: Int) -> String {
         self.prettyDescription(of: self, depth: depth)
     }
 
-    public func prettyDescription(of value: Any, depth: Int) -> String {
+    func prettyDescription(of value: Any, depth: Int) -> String {
         let mirror = Mirror(reflecting: value)
         let padding0 = String(repeating: " ", count: depth * 2)
         let padding1 = String(repeating: " ", count: (depth + 1) * 2)

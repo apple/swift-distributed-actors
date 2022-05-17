@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import _Distributed
+import Distributed
 import DistributedActorsConcurrencyHelpers
 import Foundation
 import Logging
@@ -73,26 +73,16 @@ internal final class LoggingContext {
 /// such as it's path or node on which it resides.
 ///
 /// The preferred way of obtaining a logger for an actor or system is `context.log` or `system.log`, rather than creating new ones.
-extension Logger {
+public extension Logger {
     /// Create a logger specific to this actor.
     // TODO(distributed): reconsider if this is the best pattern?
-    public init<Act: DistributedActor>(actor: Act) {
-        var log: Logger
-        if let transport = actor.actorTransport as? ActorSystem,
-            let address = actor.id._unwrapActorAddress {
-            log = Logger.make(transport.log, path: address.path)
-        } else {
-            log = Logger(label: "\(actor.id.underlying)")
-        }
-
-        if let address = actor.id.underlying as? ActorAddress {
-            log[metadataKey: "actor/path"] = "\(address.path)"
-        }
-
+    init<Act: DistributedActor>(actor: Act) where Act.ActorSystem == ClusterSystem {
+        var log = Logger(label: "\(actor.id)")
+        log[metadataKey: "actor/path"] = "\(actor.id.path)"
         self = log
     }
 
-    public static func make<T>(context: _ActorContext<T>) -> Logger {
+    static func make<T>(context: _ActorContext<T>) -> Logger {
         Logger.make(context.log, path: context.path)
     }
 
@@ -293,12 +283,12 @@ public struct LogMessage {
     let line: UInt
 }
 
-extension Logger.MetadataValue {
-    public static func pretty<T>(_ value: T) -> Logger.Metadata.Value where T: CustomPrettyStringConvertible {
+public extension Logger.MetadataValue {
+    static func pretty<T>(_ value: T) -> Logger.Metadata.Value where T: CustomPrettyStringConvertible {
         Logger.MetadataValue.stringConvertible(CustomPrettyStringConvertibleMetadataValue(value))
     }
 
-    public static func pretty<T>(_ value: T) -> Logger.Metadata.Value {
+    static func pretty<T>(_ value: T) -> Logger.Metadata.Value {
         if let pretty = value as? CustomPrettyStringConvertible {
             return Logger.MetadataValue.stringConvertible(CustomPrettyStringConvertibleMetadataValue(pretty))
         } else {
@@ -319,12 +309,12 @@ struct CustomPrettyStringConvertibleMetadataValue: CustomStringConvertible {
     }
 }
 
-extension Optional where Wrapped == Logger.MetadataValue {
-    public static func lazyStringConvertible(_ makeValue: @escaping () -> CustomStringConvertible) -> Logger.Metadata.Value {
+public extension Optional where Wrapped == Logger.MetadataValue {
+    static func lazyStringConvertible(_ makeValue: @escaping () -> CustomStringConvertible) -> Logger.Metadata.Value {
         .stringConvertible(LazyMetadataBox { makeValue() })
     }
 
-    public static func lazyString(_ makeValue: @escaping () -> String) -> Logger.Metadata.Value {
+    static func lazyString(_ makeValue: @escaping () -> String) -> Logger.Metadata.Value {
         self.lazyStringConvertible(makeValue)
     }
 }
@@ -360,10 +350,10 @@ internal class LazyMetadataBox: CustomStringConvertible {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Logger extensions
 
-extension Logger {
+public extension Logger {
     /// Allows passing in a `Logger.Level?` and not log if it was `nil`.
     @inlinable
-    public func log(
+    func log(
         level: Logger.Level?,
         _ message: @autoclosure () -> Logger.Message,
         metadata: @autoclosure () -> Logger.Metadata? = nil,

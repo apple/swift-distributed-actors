@@ -12,19 +12,19 @@
 //
 //===----------------------------------------------------------------------===//
 
-extension _OperationLogClusterReceptionist.ReceptionistOp {
-    public enum DiscriminatorKeys: String, Codable {
+public extension _OperationLogClusterReceptionist.ReceptionistOp {
+    enum DiscriminatorKeys: String, Codable {
         case register
         case remove
     }
 
-    public enum CodingKeys: CodingKey {
+    enum CodingKeys: CodingKey {
         case _case
         case key
         case address
     }
 
-    public init(from decoder: Decoder) throws {
+    init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         let key = try container.decode(AnyReceptionKey.self, forKey: .key)
         let address = try container.decode(ActorAddress.self, forKey: .address)
@@ -36,7 +36,7 @@ extension _OperationLogClusterReceptionist.ReceptionistOp {
         }
     }
 
-    public func encode(to encoder: Encoder) throws {
+    func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         switch self {
         case .register(let key, let address):

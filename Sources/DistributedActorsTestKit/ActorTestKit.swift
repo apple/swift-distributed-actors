@@ -63,9 +63,9 @@ public struct ActorTestKitSettings {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Test Probes
 
-extension ActorTestKit {
+public extension ActorTestKit {
     /// Spawn an `ActorTestProbe` which offers various assertion methods for actor messaging interactions.
-    public func makeTestProbe<Message: ActorMessage>(
+    func makeTestProbe<Message: ActorMessage>(
         _ naming: ActorNaming? = nil,
         expecting type: Message.Type = Message.self,
         file: StaticString = #file, line: UInt = #line
@@ -99,7 +99,7 @@ extension ActorTestKit {
     /// Spawns an `ActorTestProbe` and immediately subscribes it to the passed in event stream.
     ///
     /// - Hint: Use `fishForMessages` and `fishFor` to filter expectations for specific events.
-    public func spawnEventStreamTestProbe<Event: ActorMessage>(
+    func spawnEventStreamTestProbe<Event: ActorMessage>(
         _ naming: ActorNaming? = nil,
         subscribedTo eventStream: EventStream<Event>,
         file: String = #file, line: UInt = #line, column: UInt = #column
@@ -241,10 +241,10 @@ public extension ActorTestKit {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: "Power" assertions, should not be used lightly as they are quite heavy and potentially racy
 
-extension ActorTestKit {
+public extension ActorTestKit {
     // TODO: how to better hide such more nasty assertions?
     // TODO: Not optimal since we always do traverseAll rather than follow the Path of the context
-    public func _assertActorPathOccupied(_ path: String, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
+    func _assertActorPathOccupied(_ path: String, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
         precondition(!path.contains("#"), "assertion path MUST NOT contain # id section of an unique path.")
 
         let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
@@ -268,7 +268,7 @@ extension ActorTestKit {
     /// If unable to resolve a not-dead reference, this function throws, rather than returning the dead reference.
     ///
     /// This is useful when the resolution might be racing against the startup of the actor we are trying to resolve.
-    public func _eventuallyResolve<Message>(address: ActorAddress, of: Message.Type = Message.self, within: TimeAmount = .seconds(5)) throws -> _ActorRef<Message> {
+    func _eventuallyResolve<Message>(address: ActorAddress, of: Message.Type = Message.self, within: TimeAmount = .seconds(5)) throws -> _ActorRef<Message> {
         let context = ResolveContext<Message>(address: address, system: self.system)
 
         return try self.eventually(within: .seconds(3)) {
@@ -332,7 +332,7 @@ public final class Mock_ActorContext<Message: ActorMessage>: _ActorContext<Messa
         self.system.deadLetters.adapted()
     }
 
-    private lazy var _log: Logger = Logger(label: "\(type(of: self))")
+    private lazy var _log: Logger = .init(label: "\(type(of: self))")
     public override var log: Logger {
         get {
             self._log
@@ -400,7 +400,7 @@ public final class Mock_ActorContext<Message: ActorMessage>: _ActorContext<Messa
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Error
 
-extension ActorTestKit {
+public extension ActorTestKit {
     /// Returns an error that can be used when conditions in tests are not met. This is especially useful in
     /// calls to `testKit.eventually`, where a condition is checked multiple times, until it is successful
     /// or times out.
@@ -410,7 +410,7 @@ extension ActorTestKit {
     ///     testKit.eventually(within: .seconds(3)) {
     ///         guard ... else { throw testKit.error("failed to extract expected information") }
     ///     }
-    public func error(_ message: String? = nil, file: StaticString = #file, line: UInt = #line, column: UInt = #column) -> Error {
+    func error(_ message: String? = nil, file: StaticString = #file, line: UInt = #line, column: UInt = #column) -> Error {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
         let fullMessage: String = message ?? "<no message>"
         return callSite.error(fullMessage, failTest: false)
@@ -421,7 +421,7 @@ extension ActorTestKit {
     /// Examples:
     ///
     ///     guard ... else { throw testKit.fail("failed to extract expected information") }
-    public func fail(_ message: String? = nil, file: StaticString = #file, line: UInt = #line, column: UInt = #column) -> Error {
+    func fail(_ message: String? = nil, file: StaticString = #file, line: UInt = #line, column: UInt = #column) -> Error {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
         let fullMessage: String = message ?? "<no message>"
         return callSite.error(fullMessage, failTest: true)
@@ -478,11 +478,11 @@ internal extension ActorTestKit {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Receptionist
 
-extension ActorTestKit {
+public extension ActorTestKit {
     /// Ensures that a given number of refs are registered with the Receptionist under `key`.
     /// If `expectedRefs` is specified, also compares it to the listing for `key` and requires an exact match.
     @available(*, deprecated, message: "Will be removed and replaced by API based on DistributedActor. Issue #824")
-    public func ensureRegistered<Message>(
+    func ensureRegistered<Message>(
         key: Reception.Key<_ActorRef<Message>>,
         expectedCount: Int = 1,
         expectedRefs: Set<_ActorRef<Message>>? = nil,

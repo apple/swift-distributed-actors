@@ -103,7 +103,7 @@ internal class OpLog<Op: OpLogStreamOp> {
 extension OpLog {
     /// The `Op` operation along with a sequence range i.e. the sequence number it was performed at,
     /// or a range, if the op is a compressed version of a few operations.
-    internal struct SequencedOp {
+    struct SequencedOp {
         typealias SequenceNr = UInt64
 
         let sequenceRange: SequenceRange

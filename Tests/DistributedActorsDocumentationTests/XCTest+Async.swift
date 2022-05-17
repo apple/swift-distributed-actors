@@ -15,7 +15,7 @@
 import DistributedActors
 import XCTest
 
-import _Distributed
+import Distributed
 
 extension XCTestCase {
     // FIXME(distributed): remove once XCTest supports async functions on Linux

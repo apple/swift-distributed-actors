@@ -14,9 +14,9 @@
 
 import SWIM
 
-extension Serialization {
+public extension Serialization {
     /// Used to identify a type (or instance) of a `Serializer`.
-    public struct SerializerID: ExpressibleByIntegerLiteral, Hashable, Comparable, CustomStringConvertible {
+    struct SerializerID: ExpressibleByIntegerLiteral, Hashable, Comparable, CustomStringConvertible {
         public typealias IntegerLiteralType = UInt32
 
         public let value: UInt32
@@ -58,29 +58,29 @@ extension Serialization {
     }
 }
 
-extension Optional where Wrapped == Serialization.SerializerID {
+public extension Optional where Wrapped == Serialization.SerializerID {
     /// Use the default serializer, as configured in `Serialization.Settings.defaultSerializerID`.
-    public static let `default`: Serialization.SerializerID? = nil
+    static let `default`: Serialization.SerializerID? = nil
 }
 
-extension Serialization.SerializerID {
-    public typealias SerializerID = Serialization.SerializerID
+public extension Serialization.SerializerID {
+    typealias SerializerID = Serialization.SerializerID
 
     // ~~~~~~~~~~~~~~~~ general purpose serializer ids ~~~~~~~~~~~~~~~~
-    public static let doNotSerialize: SerializerID = 0
+    static let doNotSerialize: SerializerID = 0
 
-    public static let specializedWithTypeHint: SerializerID = 1
-    public static let _ProtobufRepresentable: SerializerID = 2
+    static let specializedWithTypeHint: SerializerID = 1
+    static let _ProtobufRepresentable: SerializerID = 2
 
-    public static let foundationJSON: SerializerID = 3
-    public static let foundationPropertyListBinary: SerializerID = 4
-    public static let foundationPropertyListXML: SerializerID = 5
+    static let foundationJSON: SerializerID = 3
+    static let foundationPropertyListBinary: SerializerID = 4
+    static let foundationPropertyListXML: SerializerID = 5
     // ... reserved = 6
     // ... -- || --
     // ... reserved = 16
 
     /// Helper function to never accidentally register a not-Any_ProtobufRepresentable as such.
-    public static func check_ProtobufRepresentable<M: Any_ProtobufRepresentable>(_ type: M.Type) -> SerializerID {
+    static func check_ProtobufRepresentable<M: Any_ProtobufRepresentable>(_ type: M.Type) -> SerializerID {
         ._ProtobufRepresentable
     }
 
@@ -93,7 +93,7 @@ extension Serialization {
     ///
     /// Those messages are usually serialized using specialized serializers rather than the generic catch all Codable infrastructure,
     /// in order to allow fine grained evolution and payload size savings.
-    internal enum ReservedID {
+    enum ReservedID {
         internal static let SystemMessage: SerializerID = .doNotSerialize
         internal static let SystemMessageACK: SerializerID = .check_ProtobufRepresentable(_SystemMessage.ACK.self)
         internal static let SystemMessageNACK: SerializerID = .check_ProtobufRepresentable(_SystemMessage.NACK.self)

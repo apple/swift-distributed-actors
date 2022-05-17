@@ -181,7 +181,7 @@ internal final class GossipShell<Gossip: Codable, Acknowledgement: Codable> {
             self.ensureNextGossipRound(context)
         }
 
-        let allPeers: [AddressableActorRef] = Array(self.peers).map { $0.asAddressable } // TODO: some protocol Addressable so we can avoid this mapping?
+        let allPeers: [AddressableActorRef] = Array(self.peers).map(\.asAddressable) // TODO: some protocol Addressable so we can avoid this mapping?
 
         guard !allPeers.isEmpty else {
             // no members to gossip with, skip this round
@@ -310,7 +310,7 @@ extension GossipShell {
                         context.log.debug("Automatically discovered peer", metadata: [
                             "gossip/peer": "\(peer)",
                             "gossip/peerCount": "\(self.peers.count)",
-                            "gossip/peers": "\(self.peers.map { $0.address })",
+                            "gossip/peers": "\(self.peers.map(\.address))",
                         ])
                     }
                 } else {
@@ -358,7 +358,7 @@ extension GossipShell {
         if self.peers.insert(context.watch(peer)).inserted {
             context.log.trace("Got introduced to peer [\(peer)]", metadata: [
                 "gossip/peerCount": "\(self.peers.count)",
-                "gossip/peers": "\(self.peers.map { $0.address })",
+                "gossip/peers": "\(self.peers.map(\.address))",
             ])
 
 //            // TODO: implement this rather as "high priority peer to gossip to"

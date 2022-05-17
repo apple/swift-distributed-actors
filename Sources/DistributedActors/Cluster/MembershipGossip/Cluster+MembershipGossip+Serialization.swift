@@ -78,9 +78,6 @@ extension Cluster.MembershipGossip: _ProtobufRepresentable {
                 case .some(.actorAddress(let address)):
                     context.log.warning("Unexpected .actorAddress key in replicaVersion of Cluster.MembershipGossip, which is expected to only use unique node ids as replica versions; was: \(address)")
                     continue
-                case .some(.actorIdentity(let id)):
-                    context.log.warning("Unexpected .actorIdentity key in replicaVersion of Cluster.MembershipGossip, which is expected to only use unique node ids as replica versions; was: \(id)")
-                    continue
                 case .none:
                     continue
                 }

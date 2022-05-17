@@ -239,7 +239,7 @@ struct TestConfig {
 
         // We always prepare the configuration string and call the print to have
         // the same memory usage baseline between verbose and normal mode.
-        let testList = self.tests.map { $0.1.name }.joined(separator: ", ")
+        let testList = self.tests.map(\.1.name).joined(separator: ", ")
         let configuration = """
         --- CONFIG ---
         NumSamples: \(numSamples ?? 0)
@@ -277,7 +277,7 @@ struct TestConfig {
         let indices = Dictionary(
             uniqueKeysWithValues:
             zip(
-                allTests.map { $0.name },
+                allTests.map(\.name),
                 (1...).lazy.map { String($0) }
             )
         )
@@ -381,11 +381,11 @@ public final class Timer {
     #endif
 }
 
-extension UInt64 {
-    public var nanoseconds: Int { Int(self) }
-    public var microseconds: Int { Int(self / 1000) }
-    public var milliseconds: Int { Int(self / 1000 / 1000) }
-    public var seconds: Int { Int(self / 1000 / 1000 / 1000) }
+public extension UInt64 {
+    var nanoseconds: Int { Int(self) }
+    var microseconds: Int { Int(self / 1000) }
+    var milliseconds: Int { Int(self / 1000 / 1000) }
+    var seconds: Int { Int(self / 1000 / 1000 / 1000) }
 }
 
 enum TimeUnit: String {

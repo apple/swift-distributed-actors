@@ -17,19 +17,19 @@ import DistributedActorsTestKit
 import XCTest
 
 final class ClusterMembershipSnapshotTests: ClusteredActorSystemsXCTestCase {
-    func test_membershipSnapshot_initialShouldContainSelfNode() {
-        let system = self.setUpNode("first")
+    func test_membershipSnapshot_initialShouldContainSelfNode() async {
+        let system = await setUpNode("first")
 
         system.cluster.membershipSnapshot.members(atLeast: .joining).shouldContain(
             Cluster.Member(node: system.cluster.uniqueNode, status: .joining)
         )
     }
 
-    func test_membershipSnapshot_shouldBeUpdated() throws {
-        let (first, second) = self.setUpPair()
+    func test_membershipSnapshot_shouldBeUpdated() async throws {
+        let (first, second) = await self.setUpPair()
         try self.joinNodes(node: first, with: second)
 
-        let third = self.setUpNode("third")
+        let third = await setUpNode("third")
         try self.joinNodes(node: first, with: third)
 
         let testKit: ActorTestKit = self.testKit(first)
@@ -41,17 +41,17 @@ final class ClusterMembershipSnapshotTests: ClusteredActorSystemsXCTestCase {
                 throw testKit.error(line: #line - 1)
             }
 
-            let nodes: [UniqueNode] = snapshot.members(atMost: .up).map { $0.uniqueNode }
+            let nodes: [UniqueNode] = snapshot.members(atMost: .up).map(\.uniqueNode)
             nodes.shouldContain(first.cluster.uniqueNode)
             nodes.shouldContain(second.cluster.uniqueNode)
             nodes.shouldContain(third.cluster.uniqueNode)
         }
     }
 
-    func test_membershipSnapshot_beInSyncWithEvents() throws {
-        let first = self.setUpNode("first")
-        let second = self.setUpNode("second")
-        let third = self.setUpNode("third")
+    func test_membershipSnapshot_beInSyncWithEvents() async throws {
+        let first = await setUpNode("first")
+        let second = await setUpNode("second")
+        let third = await setUpNode("third")
 
         let events = self.testKit(first).spawnEventStreamTestProbe(subscribedTo: first.cluster.events)
 

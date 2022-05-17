@@ -556,13 +556,13 @@ extension SWIMActorShell {
 }
 
 extension ActorAddress {
-    internal static func _swim(on node: UniqueNode) -> ActorAddress {
+    static func _swim(on node: UniqueNode) -> ActorAddress {
         .init(remote: node, path: ActorPath._swim, incarnation: .wellKnown)
     }
 }
 
 extension ActorPath {
-    internal static let _swim: ActorPath = try! ActorPath._clusterShell.appending(SWIMActorShell.name)
+    static let _swim: ActorPath = try! ActorPath._clusterShell.appending(SWIMActorShell.name)
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------

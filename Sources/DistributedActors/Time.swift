@@ -368,12 +368,12 @@ extension Deadline: CustomStringConvertible {
     }
 }
 
-extension Deadline {
-    public static func - (lhs: Deadline, rhs: Deadline) -> TimeAmount {
+public extension Deadline {
+    static func - (lhs: Deadline, rhs: Deadline) -> TimeAmount {
         .nanoseconds(TimeAmount.Value(lhs.uptimeNanoseconds) - TimeAmount.Value(rhs.uptimeNanoseconds))
     }
 
-    public static func + (lhs: Deadline, rhs: TimeAmount) -> Deadline {
+    static func + (lhs: Deadline, rhs: TimeAmount) -> Deadline {
         if rhs.nanoseconds < 0 {
             return Deadline(lhs.uptimeNanoseconds - Deadline.Value(rhs.nanoseconds.magnitude))
         } else {
@@ -381,7 +381,7 @@ extension Deadline {
         }
     }
 
-    public static func - (lhs: Deadline, rhs: TimeAmount) -> Deadline {
+    static func - (lhs: Deadline, rhs: TimeAmount) -> Deadline {
         if rhs.nanoseconds < 0 {
             return Deadline(lhs.uptimeNanoseconds + Deadline.Value(rhs.nanoseconds.magnitude))
         } else {

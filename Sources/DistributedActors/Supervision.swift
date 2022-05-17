@@ -247,7 +247,7 @@ internal struct ErrorTypeBoundSupervisionStrategy {
 /// Namespace for supervision associated types.
 ///
 /// - SeeAlso: `_SupervisionStrategy` for thorough documentation of supervision strategies and semantics.
-public struct _Supervision {
+public enum _Supervision {
     /// Internal conversion from supervision props to appropriate (potentially composite) `Supervisor<Message>`.
     internal static func supervisorFor<Message>(_ system: ActorSystem, initialBehavior: _Behavior<Message>, props: _SupervisionProps) -> Supervisor<Message> {
         func supervisorFor0(failureType: Error.Type, strategy: _SupervisionStrategy) -> Supervisor<Message> {
@@ -465,10 +465,12 @@ internal class Supervisor<Message: ActorMessage> {
 
     @inlinable
     @inline(__always)
-    final func interpretSupervised0(target: _Behavior<Message>,
-                                    context: _ActorContext<Message>,
-                                    processingAction: ProcessingAction<Message>,
-                                    nFoldFailureDepth: Int) throws -> _Behavior<Message> {
+    final func interpretSupervised0(
+        target: _Behavior<Message>,
+        context: _ActorContext<Message>,
+        processingAction: ProcessingAction<Message>,
+        nFoldFailureDepth: Int
+    ) throws -> _Behavior<Message> {
         do {
             switch processingAction {
             case .start:
@@ -708,7 +710,7 @@ internal struct RestartDecisionLogic {
 
     // counts how many times we failed during the "current" `within` period
     private var restartsWithinCurrentPeriod: Int = 0
-    private var restartsPeriodDeadline: Deadline = Deadline.distantPast
+    private var restartsPeriodDeadline: Deadline = .distantPast
 
     init(maxRestarts: Int, within: TimeAmount?, backoffStrategy: BackoffStrategy?) {
         precondition(maxRestarts > 0, "RestartStrategy.maxRestarts MUST be > 0")

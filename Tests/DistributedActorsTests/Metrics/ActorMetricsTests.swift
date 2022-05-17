@@ -35,11 +35,11 @@ final class ActorMetricsTests: ClusteredActorSystemsXCTestCase {
         MetricsSystem.bootstrapInternal(NOOPMetricsHandler.instance)
     }
 
-    func test_serialization_reportsMetrics() throws {
+    func test_serialization_reportsMetrics() async throws {
         throw XCTSkip("!!! Skipping test \(#function) !!!") // FIXME(distributed): this crashes the cluster with a message on setup
 
-        let first = self.setUpNode("first")
-        let second = self.setUpNode("second")
+        let first = await setUpNode("first")
+        let second = await setUpNode("second")
 
         let ref: _ActorRef<String> = try first._spawn(
             "measuredActor",
@@ -57,8 +57,8 @@ final class ActorMetricsTests: ClusteredActorSystemsXCTestCase {
         gauge.lastValue?.shouldEqual(6)
     }
 
-    func test_mailboxCount_reportsMetrics() throws {
-        let first = self.setUpNode("first")
+    func test_mailboxCount_reportsMetrics() async throws {
+        let first = await setUpNode("first")
 
         let one: _ActorRef<String> = try first._spawn(
             "measuredActor",

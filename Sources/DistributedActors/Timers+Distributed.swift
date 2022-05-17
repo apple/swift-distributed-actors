@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-import _Distributed
 import Dispatch
+import Distributed
 import Logging
 import struct NIO.TimeAmount
 
@@ -31,7 +31,7 @@ struct DistributedActorTimer {
 struct DistributedActorTimerEvent {
     let key: TimerKey
 //    let generation: Int
-    let owner: ActorIdentity
+    let owner: ActorAddress
 }
 
 /// Creates and manages timers which may only be accessed from the actor that owns it.
@@ -39,9 +39,9 @@ struct DistributedActorTimerEvent {
 /// _BehaviorTimers are bound to this objects lifecycle, i.e. when the actor owning this object is deallocated,
 /// and the `ActorTimers` are deallocated as well, all timers associated with it are cancelled.
 // TODO(distributed): rename once we're able to hide or remove `_BehaviorTimers`
-public final class ActorTimers<Act: DistributedActor> {
+public final class ActorTimers<Act: DistributedActor> where Act.ActorSystem == ClusterSystem {
     @usableFromInline
-    internal let ownerID: ActorIdentity // TODO: can be just identity
+    internal let ownerID: ActorAddress
 
     @usableFromInline
     internal let dispatchQueue = DispatchQueue.global()
@@ -56,9 +56,9 @@ public final class ActorTimers<Act: DistributedActor> {
     /// Does not retain the distributed actor.
     ///
     /// - Parameter myself:
-    public init<Act: DistributedActor>(_ myself: Act) {
+    public init(_ myself: Act) {
         self.log = Logger(label: "\(myself)") // FIXME(distributed): pick up the actor logger (!!!)
-        log[metadataKey: "actor/id"] = "\(myself.id._unwrapActorAddress?.detailedDescription ?? String(describing: myself.id.underlying))"
+        log[metadataKey: "actor/id"] = "\(myself.id.detailedDescription)"
         self.ownerID = myself.id
     }
 
@@ -112,8 +112,11 @@ public final class ActorTimers<Act: DistributedActor> {
     ///   - call: the call that will be made after the `delay` amount of time elapses
     ///   - delay: the delay after which the message will be sent
     @inlinable
-    public func startSingle(key: TimerKey, delay: TimeAmount,
-                            @_inheritActorContext @_implicitSelfCapture call: @Sendable @escaping () async -> Void) {
+    public func startSingle(
+        key: TimerKey,
+        delay: TimeAmount,
+        @_inheritActorContext @_implicitSelfCapture call: @Sendable @escaping () async -> Void
+    ) {
         self.start(key: key, call: call, interval: delay, repeated: false)
     }
 
@@ -126,15 +129,21 @@ public final class ActorTimers<Act: DistributedActor> {
     ///   - call: the call that will be executed after the `delay` amount of time elapses
     ///   - interval: the interval with which the message will be sent
     @inlinable
-    public func startPeriodic(key: TimerKey, interval: TimeAmount,
-                              @_inheritActorContext @_implicitSelfCapture call: @Sendable @escaping () async -> Void) {
+    public func startPeriodic(
+        key: TimerKey,
+        interval: TimeAmount,
+        @_inheritActorContext @_implicitSelfCapture call: @Sendable @escaping () async -> Void
+    ) {
         self.start(key: key, call: call, interval: interval, repeated: true)
     }
 
     @usableFromInline
-    internal func start(key: TimerKey,
-                        @_inheritActorContext @_implicitSelfCapture call: @Sendable @escaping () async -> Void,
-                        interval: TimeAmount, repeated: Bool) {
+    internal func start(
+        key: TimerKey,
+        @_inheritActorContext @_implicitSelfCapture call: @Sendable @escaping () async -> Void,
+        interval: TimeAmount,
+        repeated: Bool
+    ) {
         self.cancel(for: key)
 
 //        let generation = self.nextTimerGen() // TODO(distributed): we're not using generations since we don't have restarts

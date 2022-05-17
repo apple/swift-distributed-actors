@@ -22,22 +22,22 @@ public let SerializationProtobufBenchmarks: [BenchmarkInfo] = [
         name: "SerializationProtobuf.bench_protobuf_roundTrip_message_small",
         runFunction: bench_protobuf_roundTrip_message_small,
         tags: [.serialization],
-        setUpFunction: { setUp() },
+        setUpFunction: { await setUp() },
         tearDownFunction: tearDown
     ),
     BenchmarkInfo(
         name: "SerializationProtobuf.bench_protobuf_roundTrip_message_medium",
         runFunction: bench_protobuf_roundTrip_message_medium,
         tags: [.serialization],
-        setUpFunction: { setUp() },
+        setUpFunction: { await setUp() },
         tearDownFunction: tearDown
     ),
 ]
 
 private func setUp(and postSetUp: () -> Void = { () in
     ()
-}) {
-    _system = ActorSystem("SerializationProtobufBenchmarks") { settings in
+}) async {
+    _system = await ActorSystem("SerializationProtobufBenchmarks") { settings in
         settings.logging.logLevel = .error
     }
 

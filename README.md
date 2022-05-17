@@ -71,7 +71,7 @@ To actually have a distributed actor participate in some distributed system, we 
 // **** APIS AND SYNTAX ARE WORK IN PROGRESS / PENDING SWIFT EVOLUTION ****
 
 // 4) Distributed actors must have a transport associated with them at initialization
-let someTransport: ActorTransport = ...
+let someActorSystem: ActorSystem = ...
 let worker = Worker(transport: someTransport)
 
 // 5) Distributed function invocations are asynchronous and throwing, when performed cross-actor,
@@ -120,9 +120,9 @@ $TOOLCHAIN/usr/bin/swift build --build-tests
 #### Running tests & configuring `DYLD_LIBRARY_PATH`
 
 It is a known limitation of the toolchains that one has to export the `DYLD_LIBRARY_PATH` environment variable 
-with the path to where the `TOOLCHAIN` stores the _Distributed library.
+with the path to where the `TOOLCHAIN` stores the Distributed library.
 
-It is possible to `swift build` the project without passing additional environment variables, however in order to run anything, we must provide the location of the `_Distributed` library *in the custom toolchain* to the dynamic linker as we start the binary.
+It is possible to `swift build` the project without passing additional environment variables, however in order to run anything, we must provide the location of the `Distributed` library *in the custom toolchain* to the dynamic linker as we start the binary.
 
 To do this on macOS, you have to use the `DYLD_LIBRARY_PATH`. For security reasons, unless you have System Integrity Protection turned off, this environment variable is automatically stripped out when a process creates a child process. This is why we need to invoke the _specific_ `xctest` binary, rather than leave it to SwiftPM to handle.
 
@@ -246,7 +246,7 @@ You can view our proposal to replace the source generator with a language propos
 
 ### Running samples
 
-To run samples, it currently is necessary to provide the `DYLD_LIBRARY_PATH` environment variable so Swift is able to locate the new `_Distributed` module.
+To run samples, it currently is necessary to provide the `DYLD_LIBRARY_PATH` environment variable so Swift is able to locate the new `Distributed` module.
 This is a temporary solution, and eventually will not be necessary.
 
 For example, the following will run the `SampleDiningPhilosophers` example app in _distributed_ mode:
