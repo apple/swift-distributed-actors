@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -234,7 +234,7 @@ class _ActorRefAdapterTests: ActorSystemXCTestCase {
 
     func test_adaptedRef_shouldDeadLetter_whenOwnerTerminated() async throws {
         let logCapture = LogCapture()
-        let system = await ActorSystem("\(type(of: self))-2") { settings in
+        let system = await ClusterSystem("\(type(of: self))-2") { settings in
             settings.logging.baseLogger = logCapture.logger(label: settings.cluster.node.systemName)
         }
         defer { try! system.shutdown().wait() }

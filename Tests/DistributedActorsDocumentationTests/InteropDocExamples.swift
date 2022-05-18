@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -26,7 +26,7 @@ class InteropDocExamples: XCTestCase {
         }
         // end::message_greetings[]
 
-        let system = ActorSystem("System")
+        let system = ClusterSystem("System")
         defer { try! system.shutdown().wait() }
         let behavior: _Behavior<Messages> = .receiveMessage { _ in
             // ...
@@ -57,7 +57,7 @@ class InteropDocExamples: XCTestCase {
         }
         // end::asyncOp_sendResult_insideActor_enum_Messages[]
 
-        let system = ActorSystem("System")
+        let system = ClusterSystem("System")
         defer { try! system.shutdown().wait() }
 
         func someComputation() -> String {
@@ -115,7 +115,7 @@ class InteropDocExamples: XCTestCase {
         }
         // end::asyncOp_onResultAsync_enum_Messages[]
 
-        let system = ActorSystem("System")
+        let system = ClusterSystem("System")
         defer { try! system.shutdown().wait() }
         let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
         let eventLoop = eventLoopGroup.next()
@@ -166,7 +166,7 @@ class InteropDocExamples: XCTestCase {
         }
         // end::asyncOp_awaitResult_enum_Messages[]
 
-        let system = ActorSystem("System")
+        let system = ClusterSystem("System")
         defer { try! system.shutdown().wait() }
         let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
         let eventLoop = eventLoopGroup.next()
@@ -205,7 +205,7 @@ class InteropDocExamples: XCTestCase {
             case addPrefix(string: String, recipient: _ActorRef<String>)
         }
 
-        let system = ActorSystem("System")
+        let system = ClusterSystem("System")
         defer { try! system.shutdown().wait() }
         let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
         let eventLoop = eventLoopGroup.next()

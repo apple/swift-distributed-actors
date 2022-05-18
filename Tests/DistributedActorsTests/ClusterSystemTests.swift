@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -17,7 +17,7 @@ import DistributedActorsTestKit
 import Foundation
 import XCTest
 
-final class ActorSystemTests: ActorSystemXCTestCase {
+final class ClusterSystemTests: ActorSystemXCTestCase {
     let MaxSpecialTreatedValueTypeSizeInBytes = 24
 
     func test_system_spawn_shouldThrowOnDuplicateName() throws {
@@ -27,8 +27,8 @@ final class ActorSystemTests: ActorSystemXCTestCase {
             let _: _ActorRef<String> = try system._spawn("test", .ignore)
         }
 
-        guard case ActorSystemError.duplicateActorPath(let path) = error else {
-            XCTFail("Expected ActorSystemError.duplicateActorPath, but was: \(error)")
+        guard case ClusterSystemError.duplicateActorPath(let path) = error else {
+            XCTFail("Expected ClusterSystemError.duplicateActorPath, but was: \(error)")
             return
         }
 
@@ -52,7 +52,7 @@ final class ActorSystemTests: ActorSystemXCTestCase {
     }
 
     func test_shutdown_shouldStopAllActors() async throws {
-        let system2 = await ActorSystem("ShutdownSystem")
+        let system2 = await ClusterSystem("ShutdownSystem")
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
         let echoBehavior: _Behavior<String> = .receiveMessage { message in
             p.tell(message)
@@ -76,14 +76,14 @@ final class ActorSystemTests: ActorSystemXCTestCase {
     }
 
     func test_shutdown_shouldCompleteReturnedHandleWhenDone() async throws {
-        let system2 = await ActorSystem("ShutdownSystem")
+        let system2 = await ClusterSystem("ShutdownSystem")
         let shutdown = system2.shutdown()
         try shutdown.wait(atMost: .seconds(5))
     }
 
     func test_shutdown_shouldReUseReceptacleWhenCalledMultipleTimes() async throws {
         throw XCTSkip("Needs to be re-enabled") // FIXME: re-enable this test
-        let system2 = await ActorSystem("ShutdownSystem")
+        let system2 = await ClusterSystem("ShutdownSystem")
         let shutdown1 = system2.shutdown()
         let shutdown2 = system2.shutdown()
         let shutdown3 = system2.shutdown()
@@ -94,7 +94,7 @@ final class ActorSystemTests: ActorSystemXCTestCase {
     }
 
     func test_shutdown_selfSendingActorShouldNotDeadlockSystem() async throws {
-        let system2 = await ActorSystem("ShutdownSystem")
+        let system2 = await ClusterSystem("ShutdownSystem")
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
         let echoBehavior: _Behavior<String> = .receive { context, message in
             context.myself.tell(message)
@@ -121,7 +121,7 @@ final class ActorSystemTests: ActorSystemXCTestCase {
     }
 
     func test_shutdown_callbackShouldBeInvoked() async throws {
-        let system = await ActorSystem("ShutMeDown")
+        let system = await ClusterSystem("ShutMeDown")
         let receptacle = BlockingReceptacle<Error?>()
 
         system.shutdown(afterShutdownCompleted: { error in
@@ -132,7 +132,7 @@ final class ActorSystemTests: ActorSystemXCTestCase {
     }
 
     func test_shutdown_callbackShouldBeInvokedWhenAlreadyShutdown() async throws {
-        let system = await ActorSystem("ShutMeDown")
+        let system = await ClusterSystem("ShutMeDown")
         let firstReceptacle = BlockingReceptacle<Error?>()
 
         system.shutdown(afterShutdownCompleted: { error in

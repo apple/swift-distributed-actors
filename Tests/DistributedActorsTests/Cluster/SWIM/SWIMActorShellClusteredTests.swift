@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -24,13 +24,13 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
     var firstClusterProbe: ActorTestProbe<ClusterShell.Message>!
     var secondClusterProbe: ActorTestProbe<ClusterShell.Message>!
 
-    func setUpFirst(_ modifySettings: ((inout ClusterSystemSettings) -> Void)? = nil) async -> ActorSystem {
+    func setUpFirst(_ modifySettings: ((inout ClusterSystemSettings) -> Void)? = nil) async -> ClusterSystem {
         let first = await super.setUpNode("first", modifySettings)
         self.firstClusterProbe = self.testKit(first).makeTestProbe()
         return first
     }
 
-    func setUpSecond(_ modifySettings: ((inout ClusterSystemSettings) -> Void)? = nil) async -> ActorSystem {
+    func setUpSecond(_ modifySettings: ((inout ClusterSystemSettings) -> Void)? = nil) async -> ClusterSystem {
         let second = await super.setUpNode("second", modifySettings)
         self.secondClusterProbe = self.testKit(second).makeTestProbe()
         return second

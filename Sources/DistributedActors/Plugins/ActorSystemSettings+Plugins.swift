@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-/// Settings for `ActorSystem` plugins.
+/// Settings for `ClusterSystem` plugins.
 public struct PluginsSettings {
     public static var `default`: PluginsSettings {
         .init()
@@ -41,7 +41,7 @@ public struct PluginsSettings {
     }
 
     /// Starts all plugins in the same order as they were added.
-    internal func startAll(_ system: ActorSystem) {
+    internal func startAll(_ system: ClusterSystem) {
         for plugin in self.plugins {
             if case .failure(let error) = plugin.start(system) {
                 fatalError("Failed to start plugin \(plugin.key)! Error: \(error)")
@@ -51,7 +51,7 @@ public struct PluginsSettings {
 
     /// Stops all plugins in the *reversed* order as they were added.
     // @available(*, deprecated, message: "use 'actor cluster' transport version instead") // TODO: deprecate
-    internal func stopAll(_ system: ActorSystem) {
+    internal func stopAll(_ system: ClusterSystem) {
         // Shut down in reversed order so plugins with the fewest dependencies are stopped first!
         for plugin in self.plugins.reversed() {
             if case .failure(let error) = plugin.stop(system) {

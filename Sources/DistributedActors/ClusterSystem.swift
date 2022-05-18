@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -21,15 +21,13 @@ import DistributedActorsConcurrencyHelpers
 import Logging
 import NIO
 
-public typealias ClusterSystem = DistributedActors.ActorSystem
-
-/// An `ActorSystem` is a confined space which runs and manages Actors.
+/// A `ClusterSystem` is a confined space which runs and manages Actors.
 ///
-/// Most applications need _no-more-than_ a single `ActorSystem`.
+/// Most applications need _no-more-than_ a single `ClusterSystem`.
 /// Rather, the system should be configured to host the kinds of dispatchers that the application needs.
 ///
-/// An `ActorSystem` and all of the actors contained within remain alive until the `terminate` call is made.
-public class ActorSystem: DistributedActorSystem, @unchecked Sendable {
+/// A `ClusterSystem` and all of the actors contained within remain alive until the `terminate` call is made.
+public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
     public typealias ActorID = ActorAddress
     public typealias InvocationDecoder = ClusterInvocationDecoder
     public typealias InvocationEncoder = ClusterInvocationEncoder
@@ -172,8 +170,8 @@ public class ActorSystem: DistributedActorSystem, @unchecked Sendable {
     let userMailboxInitCounter: ManagedAtomic<Int> = .init(0)
     #endif
 
-    /// Creates a named ActorSystem
-    /// The name is useful for debugging cross system communication
+    /// Creates a named `ClusterSystem`.
+    /// The name is useful for debugging cross system communication.
     ///
     /// - Faults: when configuration closure performs very illegal action, e.g. reusing a serializer identifier
     public convenience init(_ name: String, configuredWith configureSettings: (inout ClusterSystemSettings) -> Void = { _ in () }) async {
@@ -185,7 +183,7 @@ public class ActorSystem: DistributedActorSystem, @unchecked Sendable {
         await self.init(settings: settings)
     }
 
-    /// Creates a named `ActorSystem`.
+    /// Creates a named `ClusterSystem`.
     /// The passed in name is going to override the setting's cluster node name.
     ///
     /// - Faults: when configuration closure performs very illegal action, e.g. reusing a serializer identifier
@@ -195,7 +193,7 @@ public class ActorSystem: DistributedActorSystem, @unchecked Sendable {
         await self.init(settings: settings)
     }
 
-    /// Creates an `ActorSystem` using the passed in settings.
+    /// Creates a `ClusterSystem` using the passed in settings.
     ///
     /// - Faults: when configuration closure performs very illegal action, e.g. reusing a serializer identifier
     public init(settings: ClusterSystemSettings) async {
@@ -325,7 +323,7 @@ public class ActorSystem: DistributedActorSystem, @unchecked Sendable {
         }
 
         #if SACT_TESTS_LEAKS
-        _ = ActorSystem.actorSystemInitCounter.loadThenWrappingIncrement(ordering: .relaxed)
+        _ = ClusterSystem.actorSystemInitCounter.loadThenWrappingIncrement(ordering: .relaxed)
         #endif
 
         _ = self.metrics // force init of metrics
@@ -383,7 +381,7 @@ public class ActorSystem: DistributedActorSystem, @unchecked Sendable {
 //        self.shutdownFlag.destroy()
 
         #if SACT_TESTS_LEAKS
-        ActorSystem.actorSystemInitCounter.loadThenWrappingDecrement(ordering: .relaxed)
+        ClusterSystem.actorSystemInitCounter.loadThenWrappingDecrement(ordering: .relaxed)
 
 //        self.userCellInitCounter.destroy()
 //        self.userMailboxInitCounter.destroy()
@@ -472,15 +470,15 @@ public class ActorSystem: DistributedActorSystem, @unchecked Sendable {
     }
 }
 
-extension ActorSystem: Equatable {
-    public static func == (lhs: ActorSystem, rhs: ActorSystem) -> Bool {
+extension ClusterSystem: Equatable {
+    public static func == (lhs: ClusterSystem, rhs: ClusterSystem) -> Bool {
         ObjectIdentifier(lhs) == ObjectIdentifier(rhs)
     }
 }
 
-extension ActorSystem: CustomStringConvertible {
+extension ClusterSystem: CustomStringConvertible {
     public var description: String {
-        var res = "ActorSystem("
+        var res = "ClusterSystem("
         res.append(self.name)
         if self.settings.cluster.enabled {
             res.append(", \(self.cluster.uniqueNode)")
@@ -493,7 +491,7 @@ extension ActorSystem: CustomStringConvertible {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Actor creation
 
-extension ActorSystem: _ActorRefFactory {
+extension ClusterSystem: _ActorRefFactory {
     @discardableResult
     public func _spawn<Message>(
         _ naming: ActorNaming, of type: Message.Type = Message.self, props: _Props = _Props(),
@@ -522,13 +520,13 @@ extension ActorSystem: _ActorRefFactory {
     /// Initializes a system actor and enqueues the `.start` message in the mailbox, but does not schedule
     /// the actor. The actor must be manually scheduled later by calling `wakeUp` on the returned `LazyStart`.
     ///
-    /// Delaying the start of an actor is necessary when creating actors from within `ActorSystem.init`
+    /// Delaying the start of an actor is necessary when creating actors from within `ClusterSystem.init`
     /// to prevent them from running before the system has been fully initialized, which could lead to accessing
     /// uninitialized fields and cause system crashes.
     ///
     /// Otherwise this function behaves the same as `_spawnSystemActor`.
     ///
-    /// **CAUTION** This methods MUST NOT be used from outside of `ActorSystem.init`.
+    /// **CAUTION** This methods MUST NOT be used from outside of `ClusterSystem.init`.
     internal func _prepareSystemActor<Message>(
         _ naming: ActorNaming, _ behavior: _Behavior<Message>, props: _Props = _Props()
     ) throws -> LazyStart<Message>
@@ -641,7 +639,7 @@ extension ActorSystem: _ActorRefFactory {
     }
 
     public func _spawnDistributedActor<Message>(
-        _ behavior: _Behavior<Message>, identifiedBy id: ActorSystem.ActorID
+        _ behavior: _Behavior<Message>, identifiedBy id: ClusterSystem.ActorID
     ) -> _ActorRef<Message> where Message: ActorMessage {
         var props = _Props.forSpawn
         props._distributedActor = true
@@ -659,7 +657,7 @@ extension ActorSystem: _ActorRefFactory {
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Internal actor tree traversal utilities
-extension ActorSystem: _ActorTreeTraversable {
+extension ClusterSystem: _ActorTreeTraversable {
     /// Prints Actor hierarchy as a "tree".
     ///
     /// Note that the printout is NOT a "snapshot" of a systems state, and therefore may print actors which by the time
@@ -734,7 +732,7 @@ extension ActorSystem: _ActorTreeTraversable {
         }
     }
 
-    public func _resolveUntyped(identity address: ActorSystem.ActorID) -> AddressableActorRef {
+    public func _resolveUntyped(identity address: ClusterSystem.ActorID) -> AddressableActorRef {
         return self._resolveUntyped(context: .init(address: address, system: self))
     }
 
@@ -772,7 +770,7 @@ extension ActorSystem: _ActorTreeTraversable {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Actor Transport
 
-public extension ActorSystem {
+public extension ClusterSystem {
     func resolve<Act>(id address: ActorID, as actorType: Act.Type) throws -> Act?
         where Act: DistributedActor {
         self.log.info("RESOLVE: \(address)")
@@ -807,7 +805,7 @@ public extension ActorSystem {
     // ==== --------------------------------------------------------------------
     // - MARK: Actor Lifecycle
 
-    func assignID<Act>(_ actorType: Act.Type) -> ActorSystem.ActorID
+    func assignID<Act>(_ actorType: Act.Type) -> ClusterSystem.ActorID
         where Act: DistributedActor {
         let props = _Props.forSpawn // task-local read for any properties this actor should have
         let address = try! self._reserveName(type: Act.self, props: props)
@@ -937,7 +935,7 @@ public extension ActorSystem {
     }
 }
 
-extension ActorSystem {
+extension ClusterSystem {
     func receiveInvocation(actor: some DistributedActor, message: InvocationMessage) async {
         guard let shell = self._cluster else {
             fatalError("FIXME: cluster is inactive already") // FIXME(distributed): fix this and allow returning back an error via the handler from here
@@ -1001,16 +999,16 @@ public struct ClusterInvocationResultHandler: DistributedTargetInvocationResultH
     }
 }
 
-public enum ActorSystemError: DistributedActorSystemError {
+public enum ClusterSystemError: DistributedActorSystemError {
     case duplicateActorPath(path: ActorPath)
     case shuttingDown(String)
 }
 
 /// Error thrown when unable to resolve an ``ActorIdentity``.
 ///
-/// Refer to ``ActorSystem/resolve(_:as:)`` or the distributed actors Swift Evolution proposal for details.
+/// Refer to ``ClusterSystem/resolve(_:as:)`` or the distributed actors Swift Evolution proposal for details.
 public enum ResolveError: DistributedActorSystemError {
-    case illegalIdentity(ActorSystem.ActorID)
+    case illegalIdentity(ClusterSystem.ActorID)
 }
 
 /// Represents an actor that has been initialized, but not yet scheduled to run. Calling `wakeUp` will

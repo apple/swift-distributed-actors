@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2019-2020 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -244,7 +244,7 @@ extension VersionDot: Codable {
 public struct ReplicaID: Hashable {
     internal enum Storage: Hashable {
         case actorAddress(ActorAddress)
-        // case actorIdentity(ActorSystem.ActorID)
+        // case actorIdentity(ClusterSystem.ActorID)
         case uniqueNode(UniqueNode)
         case uniqueNodeID(UniqueNode.ID)
 
@@ -291,7 +291,7 @@ public struct ReplicaID: Hashable {
         .init(.actorAddress(address))
     }
 
-    internal static func actorIdentity(_ id: ActorSystem.ActorID) -> ReplicaID {
+    internal static func actorIdentity(_ id: ClusterSystem.ActorID) -> ReplicaID {
         // .init(.actorIdentity(id))
         .init(.actorAddress(id))
     }

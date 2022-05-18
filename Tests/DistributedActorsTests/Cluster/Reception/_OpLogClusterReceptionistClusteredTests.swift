@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2020 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2020-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -380,7 +380,7 @@ final class _OpLogClusterReceptionistClusteredTests: ClusteredActorSystemsXCTest
         let ref = try first._spawn("hi", self.stopOnMessage)
         first._receptionist.register(ref, with: key)
 
-        func expectListingContainsRef(on system: ActorSystem) throws {
+        func expectListingContainsRef(on system: ClusterSystem) throws {
             let p = self.testKit(system).makeTestProbe("p", expecting: Reception.Listing<_ActorRef<String>>.self)
             system._receptionist.subscribe(p.ref, to: key)
 

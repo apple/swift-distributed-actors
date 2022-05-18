@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2020 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -411,7 +411,7 @@ protocol ReceptionKeyProtocol {
 
     // `resolve` has to be here, because the key is the only thing that knows which
     // type is requested. See implementation in `Reception.Key`
-    func resolve(system: ActorSystem, address: ActorAddress) -> AddressableActorRef
+    func resolve(system: ClusterSystem, address: ActorAddress) -> AddressableActorRef
 }
 
 // :nodoc:
@@ -429,7 +429,7 @@ public struct AnyReceptionKey: ReceptionKeyProtocol, Sendable, Codable, Hashable
         self.guestType = Guest.self
     }
 
-    func resolve(system: ActorSystem, address: ActorAddress) -> AddressableActorRef {
+    func resolve(system: ClusterSystem, address: ActorAddress) -> AddressableActorRef {
         // Since we don't have the type information here, we can't properly resolve
         // and the only safe thing to do is to return `deadLetters`.
         system.personalDeadLetters(type: Never.self, recipient: address).asAddressable

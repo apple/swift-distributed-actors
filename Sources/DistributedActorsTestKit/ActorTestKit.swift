@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -26,7 +26,7 @@ import XCTest
 /// The `ActorTestKit` offers a number of helpers such as test probes and helper functions to
 /// make testing actor based "from the outside" code manageable and pleasant.
 public final class ActorTestKit {
-    public let system: ActorSystem
+    public let system: ClusterSystem
 
     private let makeProbesLock = Lock()
     /// Access should be protected by `makeProbesLock`, in order to guarantee unique names.
@@ -34,7 +34,7 @@ public final class ActorTestKit {
 
     public let settings: ActorTestKitSettings
 
-    public init(_ system: ActorSystem, configuredWith configureSettings: (inout ActorTestKitSettings) -> Void = { _ in () }) {
+    public init(_ system: ClusterSystem, configuredWith configureSettings: (inout ActorTestKitSettings) -> Void = { _ in () }) {
         self.system = system
 
         var settings = ActorTestKitSettings()
@@ -310,13 +310,13 @@ struct MockActorContextError: Error, CustomStringConvertible {
 }
 
 public final class Mock_ActorContext<Message: ActorMessage>: _ActorContext<Message> {
-    private let _system: ActorSystem
+    private let _system: ClusterSystem
 
-    public init(_ system: ActorSystem) {
+    public init(_ system: ClusterSystem) {
         self._system = system
     }
 
-    public override var system: ActorSystem {
+    public override var system: ClusterSystem {
         self._system
     }
 

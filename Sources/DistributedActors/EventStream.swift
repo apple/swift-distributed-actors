@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2021 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -25,12 +25,12 @@ public struct EventStream<Event: ActorMessage>: AsyncSequence {
 
     internal let ref: _ActorRef<EventStreamShell.Message<Event>>
 
-    public init(_ system: ActorSystem, name: String, of type: Event.Type = Event.self) throws {
+    public init(_ system: ClusterSystem, name: String, of type: Event.Type = Event.self) throws {
         try self.init(system, name: name, of: type, systemStream: false)
     }
 
     internal init(
-        _ system: ActorSystem,
+        _ system: ClusterSystem,
         name: String,
         of type: Event.Type = Event.self,
         systemStream: Bool,

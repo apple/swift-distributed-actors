@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -136,14 +136,14 @@ enum CustomlyEncodedMessage: Codable, NonTransportableActorMessage {
 // end::serialization_custom_messages[]
 
 class SerializationDocExamples {
-    lazy var system: ActorSystem = _undefined(hint: "Examples, not intended to be run")
+    lazy var system: ClusterSystem = _undefined(hint: "Examples, not intended to be run")
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Serialized Codable messages
 
     func prepare_system_codable() throws {
         // tag::prepare_system_codable[]
-        let system = ActorSystem("CodableExample") { settings in
+        let system = ClusterSystem("CodableExample") { settings in
             settings.serialization.register(ParkingSpotStatus.self)
         }
         // end::prepare_system_codable[]
@@ -168,7 +168,7 @@ class SerializationDocExamples {
 
     func prepare_system_protobuf() throws {
         // tag::prepare_system_protobuf[]
-        let system = ActorSystem("ProtobufExample") { settings in
+        let system = ClusterSystem("ProtobufExample") { settings in
             settings.serialization.register(ParkingGarageStatus.self)
         }
         // end::prepare_system_protobuf[]
@@ -193,7 +193,7 @@ class SerializationDocExamples {
 
     func prepare_system_custom() throws {
         // tag::prepare_system_custom[]
-        let system = ActorSystem("CustomSerializerExample") { settings in
+        let system = ClusterSystem("CustomSerializerExample") { settings in
             settings.serialization.registerSpecializedSerializer(CustomlyEncodedMessage.self, serializerID: 1001) { allocator in
                 CustomlyEncodedSerializer(allocator)
             }
@@ -204,7 +204,7 @@ class SerializationDocExamples {
 
     func serialization_specific_coder() throws {
         // tag::serialization_specific_coder[]
-        let system = ActorSystem("CustomizeCoderExample") { settings in
+        let system = ClusterSystem("CustomizeCoderExample") { settings in
             settings.serialization.register(MyMessage.self, serializerID: .foundationJSON)
         }
         // end::serialization_specific_coder[]
@@ -215,7 +215,7 @@ class SerializationDocExamples {
     struct OtherGenericMessage<M: Codable>: Codable {}
     func serialization_register_types() throws {
         // tag::serialization_register_types[]
-        let system = ActorSystem("RegisteringTypes") { settings in
+        let system = ClusterSystem("RegisteringTypes") { settings in
             // settings.serialization.insecureSerializeNotRegisteredMessages = false (default in RELEASE mode)
             settings.serialization.register(MyMessage.self)
             settings.serialization.register(OtherGenericMessage<Int>.self)
@@ -317,7 +317,7 @@ class SerializationDocExamples {
 
     func configure_serialize_all() {
         // tag::configure_serialize_all[]
-        let system = ActorSystem("SerializeAll") { settings in
+        let system = ClusterSystem("SerializeAll") { settings in
             settings.serialization.serializeLocalMessages = true
         }
         // end::configure_serialize_all[]

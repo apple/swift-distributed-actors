@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -52,9 +52,9 @@ public struct DeadLetter: NonTransportableActorMessage {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: ActorSystem.deadLetters
+// MARK: ClusterSystem.deadLetters
 
-public extension ActorSystem {
+public extension ClusterSystem {
     /// Dead letters reference dedicated to a specific address.
     func personalDeadLetters<Message: ActorMessage>(type: Message.Type = Message.self, recipient: ActorAddress) -> _ActorRef<Message> {
         // TODO: rather could we send messages to self._deadLetters with enough info so it handles properly?
@@ -136,10 +136,10 @@ public extension ActorSystem {
 public final class DeadLetterOffice {
     let _address: ActorAddress
     let log: Logger
-    weak var system: ActorSystem?
+    weak var system: ClusterSystem?
     let isShuttingDown: () -> Bool
 
-    init(_ log: Logger, address: ActorAddress, system: ActorSystem?) {
+    init(_ log: Logger, address: ActorAddress, system: ClusterSystem?) {
         self.log = log
         self._address = address
         self.system = system

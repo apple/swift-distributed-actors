@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -20,7 +20,7 @@ import XCTest
 /// Systems started using `setUpNode` are automatically terminated upon test completion, and logs are automatically
 /// captured and only printed when a test failure occurs.
 open class ClusteredActorSystemsXCTestCase: XCTestCase {
-    public private(set) var _nodes: [ActorSystem] = []
+    public private(set) var _nodes: [ClusterSystem] = []
     public private(set) var _testKits: [ActorTestKit] = []
     public private(set) var _logCaptures: [LogCapture] = []
 
@@ -59,8 +59,8 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
     }
 
     /// Set up a new node intended to be clustered.
-    open func setUpNode(_ name: String, _ modifySettings: ((inout ClusterSystemSettings) -> Void)? = nil) async -> ActorSystem {
-        let node = await ActorSystem(name) { settings in
+    open func setUpNode(_ name: String, _ modifySettings: ((inout ClusterSystemSettings) -> Void)? = nil) async -> ClusterSystem {
+        let node = await ClusterSystem(name) { settings in
             settings.cluster.enabled = true
             settings.cluster.node.port = self.nextPort()
 
@@ -93,7 +93,7 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
     }
 
     /// Set up a new pair of nodes intended to be clustered
-    public func setUpPair(_ modifySettings: ((inout ClusterSystemSettings) -> Void)? = nil) async -> (ActorSystem, ActorSystem) {
+    public func setUpPair(_ modifySettings: ((inout ClusterSystemSettings) -> Void)? = nil) async -> (ClusterSystem, ClusterSystem) {
         let first = await self.setUpNode("first", modifySettings)
         let second = await self.setUpNode("second", modifySettings)
         return (first, second)
@@ -112,7 +112,7 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
         self._logCaptures = []
     }
 
-    public func testKit(_ system: ActorSystem) -> ActorTestKit {
+    public func testKit(_ system: ClusterSystem) -> ActorTestKit {
         guard let idx = self._nodes.firstIndex(where: { s in s.cluster.uniqueNode == system.cluster.uniqueNode }) else {
             fatalError("Must only call with system that was spawned using `setUpNode()`, was: \(system)")
         }
@@ -123,7 +123,7 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
     }
 
     public func joinNodes(
-        node: ActorSystem, with other: ActorSystem,
+        node: ClusterSystem, with other: ClusterSystem,
         ensureWithin: TimeAmount? = nil, ensureMembers maybeExpectedStatus: Cluster.MemberStatus? = nil,
         file: StaticString = #file, line: UInt = #line
     ) throws {
@@ -142,21 +142,21 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
     }
 
     public func ensureNodes(
-        _ status: Cluster.MemberStatus, on system: ActorSystem? = nil, within: TimeAmount = .seconds(20), nodes: UniqueNode...,
+        _ status: Cluster.MemberStatus, on system: ClusterSystem? = nil, within: TimeAmount = .seconds(20), nodes: UniqueNode...,
         file: StaticString = #file, line: UInt = #line
     ) throws {
         try self.ensureNodes(status, on: system, within: within, nodes: nodes, file: file, line: line)
     }
 
     public func ensureNodes(
-        atLeast status: Cluster.MemberStatus, on system: ActorSystem? = nil, within: TimeAmount = .seconds(20), nodes: UniqueNode...,
+        atLeast status: Cluster.MemberStatus, on system: ClusterSystem? = nil, within: TimeAmount = .seconds(20), nodes: UniqueNode...,
         file: StaticString = #file, line: UInt = #line
     ) throws {
         try self.ensureNodes(atLeast: status, on: system, within: within, nodes: nodes, file: file, line: line)
     }
 
     public func ensureNodes(
-        _ status: Cluster.MemberStatus, on system: ActorSystem? = nil, within: TimeAmount = .seconds(20), nodes: [UniqueNode],
+        _ status: Cluster.MemberStatus, on system: ClusterSystem? = nil, within: TimeAmount = .seconds(20), nodes: [UniqueNode],
         file: StaticString = #file, line: UInt = #line
     ) throws {
         guard let onSystem = system ?? self._nodes.first(where: { !$0.isShuttingDown }) else {
@@ -176,7 +176,7 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
     }
 
     public func ensureNodes(
-        atLeast status: Cluster.MemberStatus, on system: ActorSystem? = nil, within: TimeAmount = .seconds(20), nodes: [UniqueNode],
+        atLeast status: Cluster.MemberStatus, on system: ClusterSystem? = nil, within: TimeAmount = .seconds(20), nodes: [UniqueNode],
         file: StaticString = #file, line: UInt = #line
     ) throws {
         guard let onSystem = system ?? self._nodes.first(where: { !$0.isShuttingDown }) else {
@@ -200,7 +200,7 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
 // MARK: Printing information
 
 public extension ClusteredActorSystemsXCTestCase {
-    func pinfoMembership(_ system: ActorSystem, file: StaticString = #file, line: UInt = #line) {
+    func pinfoMembership(_ system: ClusterSystem, file: StaticString = #file, line: UInt = #line) {
         let testKit = self.testKit(system)
         let p = testKit.makeTestProbe(expecting: Cluster.Membership.self)
 
@@ -227,7 +227,7 @@ public extension ClusteredActorSystemsXCTestCase {
 // MARK: Captured Logs
 
 public extension ClusteredActorSystemsXCTestCase {
-    func capturedLogs(of node: ActorSystem) -> LogCapture {
+    func capturedLogs(of node: ClusterSystem) -> LogCapture {
         guard let index = self._nodes.firstIndex(of: node) else {
             fatalError("No such node: [\(node)] in [\(self._nodes)]!")
         }
@@ -235,7 +235,7 @@ public extension ClusteredActorSystemsXCTestCase {
         return self._logCaptures[index]
     }
 
-    func printCapturedLogs(of node: ActorSystem) {
+    func printCapturedLogs(of node: ClusterSystem) {
         print("------------------------------------- \(node) ------------------------------------------------")
         self.capturedLogs(of: node).printLogs()
         print("========================================================================================================================")
@@ -253,7 +253,7 @@ public extension ClusteredActorSystemsXCTestCase {
 
 public extension ClusteredActorSystemsXCTestCase {
     func assertAssociated(
-        _ system: ActorSystem, withAtLeast node: UniqueNode,
+        _ system: ClusterSystem, withAtLeast node: UniqueNode,
         timeout: TimeAmount? = nil, interval: TimeAmount? = nil,
         verbose: Bool = false, file: StaticString = #file, line: UInt = #line, column: UInt = #column
     ) throws {
@@ -264,7 +264,7 @@ public extension ClusteredActorSystemsXCTestCase {
     }
 
     func assertAssociated(
-        _ system: ActorSystem, withExactly node: UniqueNode,
+        _ system: ClusterSystem, withExactly node: UniqueNode,
         timeout: TimeAmount? = nil, interval: TimeAmount? = nil,
         verbose: Bool = false, file: StaticString = #file, line: UInt = #line, column: UInt = #column
     ) throws {
@@ -280,7 +280,7 @@ public extension ClusteredActorSystemsXCTestCase {
     ///   - withExactly: specific set of nodes that must exactly match the associated nodes on `system`; i.e. no extra associated nodes are allowed
     ///   - withAtLeast: sub-set of nodes that must be associated
     func assertAssociated(
-        _ system: ActorSystem,
+        _ system: ClusterSystem,
         withExactly exactlyNodes: [UniqueNode] = [],
         withAtLeast atLeastNodes: [UniqueNode] = [],
         timeout: TimeAmount? = nil, interval: TimeAmount? = nil,
@@ -331,7 +331,7 @@ public extension ClusteredActorSystemsXCTestCase {
     }
 
     func assertNotAssociated(
-        system: ActorSystem, node: UniqueNode,
+        system: ClusterSystem, node: UniqueNode,
         timeout: TimeAmount? = nil, interval: TimeAmount? = nil,
         verbose: Bool = false
     ) throws {
@@ -358,7 +358,7 @@ public extension ClusteredActorSystemsXCTestCase {
     ///
     /// An error is thrown but NOT failing the test; use in pair with `testKit.eventually` to achieve the expected behavior.
     func assertMemberStatus(
-        on system: ActorSystem, node: UniqueNode,
+        on system: ClusterSystem, node: UniqueNode,
         is expectedStatus: Cluster.MemberStatus,
         file: StaticString = #file, line: UInt = #line
     ) throws {
@@ -381,7 +381,7 @@ public extension ClusteredActorSystemsXCTestCase {
     }
 
     func assertMemberStatus(
-        on system: ActorSystem, node: UniqueNode,
+        on system: ClusterSystem, node: UniqueNode,
         atLeast expectedAtLeastStatus: Cluster.MemberStatus,
         file: StaticString = #file, line: UInt = #line
     ) throws -> Cluster.MemberStatus? {
@@ -431,7 +431,7 @@ public extension ClusteredActorSystemsXCTestCase {
     ///
     /// An error is thrown but NOT failing the test; use in pair with `testKit.eventually` to achieve the expected behavior.
     func assertLeaderNode(
-        on system: ActorSystem, is expectedNode: UniqueNode?,
+        on system: ClusterSystem, is expectedNode: UniqueNode?,
         file: StaticString = #file, line: UInt = #line
     ) throws {
         let testKit = self.testKit(system)
@@ -453,7 +453,7 @@ public extension ClusteredActorSystemsXCTestCase {
 // MARK: Resolve utilities, for resolving remote refs "on" a specific system
 
 public extension ClusteredActorSystemsXCTestCase {
-    func resolveRef<M>(_ system: ActorSystem, type: M.Type, address: ActorAddress, on targetSystem: ActorSystem) -> _ActorRef<M> {
+    func resolveRef<M>(_ system: ClusterSystem, type: M.Type, address: ActorAddress, on targetSystem: ClusterSystem) -> _ActorRef<M> {
         // DO NOT TRY THIS AT HOME; we do this since we have no receptionist which could offer us references
         // first we manually construct the "right remote path", DO NOT ABUSE THIS IN REAL CODE (please) :-)
         let remoteNode = targetSystem.settings.cluster.uniqueBindNode

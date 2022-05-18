@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -106,7 +106,7 @@ public struct LoggingSettings {
     internal var customizedLogger: Bool = false
     internal var _logger: Logger = LoggingSettings.makeDefaultLogger()
     static func makeDefaultLogger() -> Logger {
-        Logger(label: "ActorSystem-initializing") // replaced by specific system name during startup
+        Logger(label: "ClusterSystem-initializing") // replaced by specific system name during startup
     }
 
     // TODO: hope to remove this once a StdOutLogHandler lands that has formatting support;

@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -130,7 +130,7 @@ final class Association: CustomStringConvertible, @unchecked Sendable {
     /// before the tombstone is returned.
     ///
     /// After invoking this the association will never again be useful for sending messages.
-    func terminate(_ system: ActorSystem) -> Association.Tombstone {
+    func terminate(_ system: ClusterSystem) -> Association.Tombstone {
         self.lock.withLockVoid {
             switch self.state {
             case .associating(let sendQueue):

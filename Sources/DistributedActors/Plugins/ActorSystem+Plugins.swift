@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -18,14 +18,14 @@
 public protocol AnyPlugin {
     /// Starts the plugin.
     // TODO: move to async function
-    func start(_ system: ActorSystem) -> Result<Void, Error>
+    func start(_ system: ClusterSystem) -> Result<Void, Error>
 
     /// Stops the plugin.
     // TODO: move to async function
-    func stop(_ system: ActorSystem) -> Result<Void, Error>
+    func stop(_ system: ClusterSystem) -> Result<Void, Error>
 }
 
-/// A plugin provides specific features and capabilities (e.g., singleton) to an `ActorSystem`.
+/// A plugin provides specific features and capabilities (e.g., singleton) to a `ClusterSystem`.
 public protocol Plugin: AnyPlugin {
     typealias Key = PluginKey<Self>
 
@@ -50,11 +50,11 @@ internal struct BoxedPlugin: AnyPlugin {
         return unwrapped
     }
 
-    func start(_ system: ActorSystem) -> Result<Void, Error> {
+    func start(_ system: ClusterSystem) -> Result<Void, Error> {
         self.underlying.start(system)
     }
 
-    func stop(_ system: ActorSystem) -> Result<Void, Error> {
+    func stop(_ system: ClusterSystem) -> Result<Void, Error> {
         self.underlying.stop(system)
     }
 }

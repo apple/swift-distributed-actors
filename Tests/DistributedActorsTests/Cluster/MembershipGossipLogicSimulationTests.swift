@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -29,11 +29,11 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
         ]
     }
 
-    var systems: [ActorSystem] {
+    var systems: [ClusterSystem] {
         self._nodes
     }
 
-    func system(_ id: String) -> ActorSystem {
+    func system(_ id: String) -> ClusterSystem {
         self.systems.first(where: { $0.name == id })!
     }
 
@@ -61,7 +61,7 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
         self.logics.map(\.latestGossip)
     }
 
-    private func makeLogic(_ system: ActorSystem, _ probe: ActorTestProbe<Cluster.MembershipGossip>) -> MembershipGossipLogic {
+    private func makeLogic(_ system: ClusterSystem, _ probe: ActorTestProbe<Cluster.MembershipGossip>) -> MembershipGossipLogic {
         MembershipGossipLogic(
             GossipLogicContext<Cluster.MembershipGossip, Cluster.MembershipGossip>(
                 ownerContext: self.testKit(system).makeFakeContext(),

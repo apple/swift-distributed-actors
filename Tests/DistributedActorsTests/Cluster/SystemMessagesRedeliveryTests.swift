@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -255,7 +255,7 @@ final class SystemMessagesRedeliveryTests: ActorSystemXCTestCase {
     // MARK: Serialization
 
     func test_redelivery_systemMessage_serialization() async throws {
-        let system = await ActorSystem("\(type(of: self))")
+        let system = await ClusterSystem("\(type(of: self))")
         defer {
             try! system.shutdown().wait()
         }

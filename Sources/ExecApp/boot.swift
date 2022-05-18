@@ -2,7 +2,7 @@ import DistributedActors
 import Distributed
 
 distributed actor Greeter: CustomStringConvertible {
-    typealias ID = ActorSystem.ActorID
+    typealias ID = ClusterSystem.ActorID
     typealias ActorSystem = ClusterSystem
     distributed func hi(name: String) -> String {
         let message = "HELLO \(name)!"

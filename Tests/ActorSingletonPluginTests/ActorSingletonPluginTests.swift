@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -20,7 +20,7 @@ import XCTest
 final class ActorSingletonPluginTests: ActorSystemXCTestCase {
     func test_noCluster_ref() throws {
         // Singleton should work just fine without clustering
-        let system = ActorSystem("test") { settings in
+        let system = ClusterSystem("test") { settings in
             settings.cluster.enabled = false
             settings += ActorSingletonPlugin()
         }

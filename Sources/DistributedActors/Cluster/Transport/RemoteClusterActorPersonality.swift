@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -27,7 +27,7 @@ public final class _RemoteClusterActorPersonality<Message: ActorMessage> {
     let address: ActorAddress
 
     let clusterShell: ClusterShell
-    let system: ActorSystem // TODO: maybe don't need to store it and access via clusterShell?
+    let system: ClusterSystem // TODO: maybe don't need to store it and access via clusterShell?
 
     var deadLetters: _ActorRef<Message> {
         self.system.personalDeadLetters(recipient: self.address)
@@ -72,7 +72,7 @@ public final class _RemoteClusterActorPersonality<Message: ActorMessage> {
     @usableFromInline
     internal var instrumentation: ActorInstrumentation!
 
-    init(shell: ClusterShell, address: ActorAddress, system: ActorSystem) {
+    init(shell: ClusterShell, address: ActorAddress, system: ClusterSystem) {
         precondition(address._isRemote, "RemoteActorRef MUST be remote. ActorAddress was: \(String(reflecting: address))")
 
         self._cachedAssociation = ManagedAtomicLazyReference()

@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -60,9 +60,9 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
     internal let _dispatcher: MessageDispatcher
 
     @usableFromInline
-    internal var _system: ActorSystem?
+    internal var _system: ClusterSystem?
 
-    public override var system: ActorSystem {
+    public override var system: ClusterSystem {
         if let system = self._system {
             return system
         } else {
@@ -145,7 +145,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
     // MARK: _ActorShell implementation
 
     internal init(
-        system: ActorSystem, parent: AddressableActorRef,
+        system: ClusterSystem, parent: AddressableActorRef,
         behavior: _Behavior<Message>, address: ActorAddress,
         props: _Props, dispatcher: MessageDispatcher
     ) {

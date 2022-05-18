@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -21,12 +21,12 @@ import struct NIO.ByteBufferAllocator
 // MARK: Serialization.Context
 
 public extension Serialization {
-    /// A context object provided to any Encoder/Decoder, in order to allow special ActorSystem-bound types (such as _ActorRef).
+    /// A context object provided to any Encoder/Decoder, in order to allow special `ClusterSystem`-bound types (such as _ActorRef).
     ///
     /// Context MAY be accessed concurrently be encoders/decoders.
     struct Context {
         public let log: Logger
-        public let system: ActorSystem
+        public let system: ClusterSystem
 
         public var serialization: Serialization {
             self.system.serialization
@@ -40,7 +40,7 @@ public extension Serialization {
             self.system.cluster.uniqueNode
         }
 
-        internal init(log: Logger, system: ActorSystem, allocator: NIO.ByteBufferAllocator) {
+        internal init(log: Logger, system: ClusterSystem, allocator: NIO.ByteBufferAllocator) {
             self.log = log
             self.system = system
             self.allocator = allocator

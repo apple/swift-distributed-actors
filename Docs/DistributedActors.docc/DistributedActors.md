@@ -17,7 +17,7 @@ This project is an early preview implementation of the `ActorTransport` protocol
 
 ### Essentials
 
-- ``ActorSystem``
+- ``ClusterSystem``
 
 ### Cluster
 - ``Cluster``

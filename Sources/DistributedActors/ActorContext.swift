@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -22,8 +22,8 @@ import Logging
 public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable*/ {
     public typealias Myself = _ActorRef<Message>
 
-    /// Returns `ActorSystem` which this context belongs to.
-    public var system: ActorSystem {
+    /// Returns `ClusterSystem` which this context belongs to.
+    public var system: ClusterSystem {
         _undefined()
     }
 
@@ -41,7 +41,7 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
     ///
     /// The `name` is the last segment of the Actor's `path`.
     ///
-    /// Special characters like `$` are reserved for internal use of the `ActorSystem`.
+    /// Special characters like `$` are reserved for internal use of the `ClusterSystem`.
     // Implementation note:
     // We can safely make it a `lazy var` without synchronization as `_ActorContext` is required to only be accessed in "its own"
     // Actor, which means that we always have guaranteed synchronization in place and no concurrent access should take place.

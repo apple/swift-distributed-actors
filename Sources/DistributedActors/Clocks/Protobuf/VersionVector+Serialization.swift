@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2019-2020 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -45,7 +45,7 @@ extension ReplicaID: _ProtobufRepresentable {
             let actorAddress = try ActorAddress(fromProto: protoActorAddress, context: context)
             self = .actorAddress(actorAddress)
 //        case .actorIdentity(let protoIdentity):
-//            let id = try ActorSystem.ActorID(fromProto: protoIdentity, context: context)
+//            let id = try ClusterSystem.ActorID(fromProto: protoIdentity, context: context)
 //            self = .actorIdentity(id)
         case .uniqueNode(let protoNode):
             let node = try UniqueNode(fromProto: protoNode, context: context)

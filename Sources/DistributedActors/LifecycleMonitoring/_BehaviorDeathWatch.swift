@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -311,5 +311,5 @@ internal struct DeathWatchImpl<Message: ActorMessage> {
 
 public enum DeathPactError: Error {
     case unhandledDeathPact(ActorAddress, myself: AddressableActorRef, message: String)
-    case unhandledDeathPactError(ActorSystem.ActorID, myself: ActorSystem.ActorID, message: String)
+    case unhandledDeathPactError(ClusterSystem.ActorID, myself: ClusterSystem.ActorID, message: String)
 }

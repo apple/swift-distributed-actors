@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -14,7 +14,7 @@
 
 /// INTERNAL API: May change without any prior notice. User code should ALWAYS interact with `Signal` and NEVER with `_SystemMessage`.
 ///
-/// Messages sent only internally by the `ActorSystem` and actor internals.
+/// Messages sent only internally by the `ClusterSystem` and actor internals.
 /// These messages MUST NOT ever be sent directly by user-land.
 ///
 /// ## Local processing

@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -311,7 +311,7 @@ public extension _ActorRef {
     }
 
     @usableFromInline
-    internal var _system: ActorSystem? {
+    internal var _system: ClusterSystem? {
         switch self.personality {
         case .cell(let cell):
             return cell.system
@@ -345,7 +345,7 @@ public final class _ActorCell<Message: ActorMessage> {
     let mailbox: _Mailbox<Message>
 
     weak var actor: _ActorShell<Message>?
-    weak var _system: ActorSystem?
+    weak var _system: ClusterSystem?
 
     init(address: ActorAddress, actor: _ActorShell<Message>, mailbox: _Mailbox<Message>) {
         self._system = actor.system
@@ -353,7 +353,7 @@ public final class _ActorCell<Message: ActorMessage> {
         self.mailbox = mailbox
     }
 
-    var system: ActorSystem? {
+    var system: ClusterSystem? {
         self._system
     }
 
@@ -435,7 +435,7 @@ open class _CellDelegate<Message: ActorMessage> {
         // nothing
     }
 
-    open var system: ActorSystem {
+    open var system: ClusterSystem {
         fatalError("Not implemented: \(#function)")
     }
 
@@ -559,15 +559,15 @@ public class _Guardian {
 
     private let allChildrenRemoved: _Condition = .init()
     private var stopping: Bool = false
-    weak var system: ActorSystem?
+    weak var system: ClusterSystem?
 
-    init(parent: _ReceivesSystemMessages, name: String, localNode: UniqueNode, system: ActorSystem) {
+    init(parent: _ReceivesSystemMessages, name: String, localNode: UniqueNode, system: ClusterSystem) {
         assert(parent.address == ActorAddress._localRoot(on: localNode), "A Guardian MUST live directly under the `/` path.")
 
         do {
             self._address = try ActorPath(root: name).makeLocalAddress(on: localNode, incarnation: .wellKnown)
         } catch {
-            fatalError("Illegal Guardian path, as those are only to be created by ActorSystem startup, considering this fatal.")
+            fatalError("Illegal Guardian path, as those are only to be created by ClusterSystem startup, considering this fatal.")
         }
         self._children = _Children()
         self.system = system
@@ -606,7 +606,7 @@ public class _Guardian {
 
                 /// Shut down actor system
                 let message = """
-                Escalated failure from [\(ref.address)] reached top-level guardian [\(self.address.path)], SHUTTING DOWN ActorSystem! \
+                Escalated failure from [\(ref.address)] reached top-level guardian [\(self.address.path)], SHUTTING DOWN ClusterSystem! \
                 (This can be configured in `system.settings.failure.onGuardianFailure`). \
                 Failure was: \(failure)
                 """
@@ -617,7 +617,7 @@ public class _Guardian {
 
                 _ = Task {
                     try! system.shutdown().wait() // so we don't block anyone who sent us this signal (as we execute synchronously in the guardian)
-                    print("Guardian shutdown of [\(system.name)] ActorSystem complete.")
+                    print("Guardian shutdown of [\(system.name)] ClusterSystem complete.")
                 }
 
             case .failed:
@@ -644,7 +644,7 @@ public class _Guardian {
             }
 
             if self._children.contains(name: path.name) {
-                throw ActorSystemError.duplicateActorPath(path: path)
+                throw ClusterSystemError.duplicateActorPath(path: path)
             }
 
             let cell = try spawn()

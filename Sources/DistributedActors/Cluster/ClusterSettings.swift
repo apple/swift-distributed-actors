@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -23,7 +23,7 @@ import SWIM
 
 public struct ClusterSettings {
     public enum Default {
-        public static let systemName: String = "ActorSystem"
+        public static let systemName: String = "ClusterSystem"
         public static let bindHost: String = "127.0.0.1"
         public static let bindPort: Int = 7337
     }
@@ -36,7 +36,7 @@ public struct ClusterSettings {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Connection establishment, protocol settings
 
-    /// If `true` the ActorSystem start the cluster subsystem upon startup.
+    /// If `true` the `ClusterSystem` starts the cluster subsystem upon startup.
     /// The address bound to will be `bindAddress`.
     public var enabled: Bool = false
     public mutating func enable(host: String, port: Int) {

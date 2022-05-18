@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -228,28 +228,28 @@ final class ActorLeakingTests: ActorSystemXCTestCase {
         #endif // SACT_TESTS_LEAKS
     }
 
-    func test_actorSystem_shouldNotLeak() async throws {
+    func test_ClusterSystem_shouldNotLeak() async throws {
         #if !SACT_TESTS_LEAKS
         return self.skipLeakTests()
         #else
         throw XCTSkip("!!! Skipping test \(#function) !!!") // FIXME(distributed): we need to manage the retain cycles with the receptionist better #831
 
-        let initialSystemCount = await ActorSystem.actorSystemInitCounter.load(ordering: .relaxed)
+        let initialSystemCount = await ClusterSystem.actorSystemInitCounter.load(ordering: .relaxed)
 
         for n in 1 ... 5 {
-            let system = await ActorSystem("Test-\(n)")
+            let system = await ClusterSystem("Test-\(n)")
             try! system.shutdown().wait()
         }
 
-        ActorSystem.actorSystemInitCounter.load(ordering: .relaxed).shouldEqual(initialSystemCount)
+        ClusterSystem.actorSystemInitCounter.load(ordering: .relaxed).shouldEqual(initialSystemCount)
         #endif // SACT_TESTS_LEAKS
     }
 
-    func test_releasing_ActorSystem_mustNotLeaveActorsReferringToANilSystemFromContext() async throws {
+    func test_releasing_ClusterSystem_mustNotLeaveActorsReferringToANilSystemFromContext() async throws {
         #if !SACT_TESTS_LEAKS
         return self.skipLeakTests()
         #else
-        var system: ActorSystem? = await ActorSystem("FreeMe") // only "reference from user land" to the system
+        var system: ClusterSystem? = await ClusterSystem("FreeMe") // only "reference from user land" to the system
 
         let p = self.testKit.makeTestProbe(expecting: String.self)
 
@@ -262,13 +262,13 @@ final class ActorLeakingTests: ActorSystemXCTestCase {
         })
 
         ref.tell("x")
-        try p.expectMessage("system:ActorSystem(FreeMe)")
+        try p.expectMessage("system:ClusterSystem(FreeMe)")
 
         // clear the strong reference from "user land"
         system = nil
 
         ref.tell("x")
-        try p.expectMessage("system:ActorSystem(FreeMe)")
+        try p.expectMessage("system:ClusterSystem(FreeMe)")
 
         ref.tell("shutdown") // since we lost the `system` reference here we'll ask the actor to stop the system
 
@@ -281,9 +281,9 @@ final class ActorLeakingTests: ActorSystemXCTestCase {
         #if !SACT_TESTS_LEAKS
         return self.skipLeakTests()
         #else
-        let initialSystemCount = ActorSystem.actorSystemInitCounter.load(ordering: .relaxed)
+        let initialSystemCount = ClusterSystem.actorSystemInitCounter.load(ordering: .relaxed)
 
-        var system: ActorSystem? = await ActorSystem("Test") { settings in
+        var system: ClusterSystem? = await ClusterSystem("Test") { settings in
             settings.logging.logLevel = .info
         }
         _ = try system?._spawn("logging", of: String.self, .setup { context in
@@ -293,7 +293,7 @@ final class ActorLeakingTests: ActorSystemXCTestCase {
         try! system?.shutdown().wait()
         system = nil
 
-        ActorSystem.actorSystemInitCounter.load(ordering: .relaxed).shouldEqual(initialSystemCount)
+        ClusterSystem.actorSystemInitCounter.load(ordering: .relaxed).shouldEqual(initialSystemCount)
         #endif // SACT_TESTS_LEAKS
     }
 
@@ -303,9 +303,9 @@ final class ActorLeakingTests: ActorSystemXCTestCase {
         #else
         throw XCTSkip("!!! Skipping test \(#function) !!!") // FIXME(distributed): we need to manage the retain cycles with the receptionist better
 
-        let initialSystemCount = ActorSystem.actorSystemInitCounter.load(ordering: .relaxed)
+        let initialSystemCount = ClusterSystem.actorSystemInitCounter.load(ordering: .relaxed)
 
-        var system: ActorSystem? = await ActorSystem("Test") { settings in
+        var system: ClusterSystem? = await ClusterSystem("Test") { settings in
             settings.logging.logLevel = .info
         }
         _ = try system?._spawn("logging", of: String.self, .setup { context in
@@ -315,7 +315,7 @@ final class ActorLeakingTests: ActorSystemXCTestCase {
         try! system?.shutdown().wait()
         system = nil
 
-        ActorSystem.actorSystemInitCounter.load(ordering: .relaxed).shouldEqual(initialSystemCount)
+        ClusterSystem.actorSystemInitCounter.load(ordering: .relaxed).shouldEqual(initialSystemCount)
         #endif // SACT_TESTS_LEAKS
     }
 

@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -19,7 +19,7 @@ import DistributedActors
 // end::imports[]
 
 class SupervisionDocExamples {
-    lazy var system: ActorSystem = _undefined(hint: "Examples, not intended to be run")
+    lazy var system: ClusterSystem = _undefined(hint: "Examples, not intended to be run")
 
     func supervise_props() throws {
         let greeterBehavior: _Behavior<String> = _undefined()

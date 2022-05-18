@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -22,8 +22,8 @@ import DistributedActorsConcurrencyHelpers
 /// singleton running in the cluster.
 ///
 /// An actor singleton may run on any node in the cluster. Use `ActorSingletonSettings.allocationStrategy` to control
-/// its allocation. On candidate nodes where the singleton might run, use `ActorSystem.singleton.ref(type:name:props:behavior)`
-/// to define actor behavior. Otherwise, call `ActorSystem.singleton.ref(type:name:)` to obtain a ref. The returned
+/// its allocation. On candidate nodes where the singleton might run, use `ClusterSystem.singleton.ref(type:name:props:behavior)`
+/// to define actor behavior. Otherwise, call `ClusterSystem.singleton.ref(type:name:)` to obtain a ref. The returned
 /// `_ActorRef` is in reality a proxy which handle situations where the singleton is shifted to different nodes.
 ///
 /// - Warning: Refer to the configured `AllocationStrategy` for trade-offs between safety and recovery latency for
@@ -37,7 +37,7 @@ public final class ActorSingletonPlugin {
     public init() {}
 
     // FIXME: document that may crash, it may right?
-    func ref<Message: ActorMessage>(of type: Message.Type, settings: ActorSingletonSettings, system: ActorSystem, props: _Props? = nil, _ behavior: _Behavior<Message>? = nil) throws -> _ActorRef<Message> {
+    func ref<Message: ActorMessage>(of type: Message.Type, settings: ActorSingletonSettings, system: ClusterSystem, props: _Props? = nil, _ behavior: _Behavior<Message>? = nil) throws -> _ActorRef<Message> {
         try self.singletonsLock.withLock {
             if let existing = self.singletons[settings.name] {
                 guard let proxy = existing.unsafeUnwrapAs(Message.self).proxy else {
@@ -61,7 +61,7 @@ public final class ActorSingletonPlugin {
 
 extension ActorSingletonPlugin {
     @available(*, deprecated, message: "Will be removed and replaced by API based on DistributedActor. Issue #824")
-    func ref<Message>(of type: Message.Type, name: String, system: ActorSystem, props: _Props? = nil, _ behavior: _Behavior<Message>? = nil) throws -> _ActorRef<Message> {
+    func ref<Message>(of type: Message.Type, name: String, system: ClusterSystem, props: _Props? = nil, _ behavior: _Behavior<Message>? = nil) throws -> _ActorRef<Message> {
         let settings = ActorSingletonSettings(name: name)
         return try self.ref(of: type, settings: settings, system: system, props: props, behavior)
     }
@@ -77,12 +77,12 @@ extension ActorSingletonPlugin: Plugin {
         Self.pluginKey
     }
 
-    public func start(_ system: ActorSystem) -> Result<Void, Error> {
+    public func start(_ system: ClusterSystem) -> Result<Void, Error> {
         .success(())
     }
 
     // TODO: Future; TODO2: no need for this at all now since we have async await
-    public func stop(_ system: ActorSystem) -> Result<Void, Error> {
+    public func stop(_ system: ClusterSystem) -> Result<Void, Error> {
         self.singletonsLock.withLock {
             for (_, singleton) in self.singletons {
                 singleton.stop(system)
@@ -95,7 +95,7 @@ extension ActorSingletonPlugin: Plugin {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Singleton refs and actors
 
-public extension ActorSystem {
+public extension ClusterSystem {
     var singleton: ActorSingletonControl {
         .init(self)
     }
@@ -103,9 +103,9 @@ public extension ActorSystem {
 
 /// Provides actor singleton controls such as obtaining a singleton ref and defining the singleton.
 public struct ActorSingletonControl {
-    private let system: ActorSystem
+    private let system: ClusterSystem
 
-    internal init(_ system: ActorSystem) {
+    internal init(_ system: ClusterSystem) {
         self.system = system
     }
 

@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -64,8 +64,8 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
         try self.joinNodes(node: first, with: second, ensureMembers: .up)
         try self.joinNodes(node: thirdNeverDownSystem, with: second, ensureMembers: .up)
 
-        let expectedDownSystem: ActorSystem
-        let otherNotDownPairSystem: ActorSystem
+        let expectedDownSystem: ClusterSystem
+        let otherNotDownPairSystem: ClusterSystem
         switch stopNode {
         case .firstLeader:
             expectedDownSystem = first
@@ -97,7 +97,7 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
         }
 
         func expectedDownMemberEventsFishing(
-            on: ActorSystem,
+            on: ClusterSystem,
             file: StaticString = #file, line: UInt = #line
         ) -> (Cluster.Event) -> ActorTestProbe<Cluster.Event>.FishingDirective<Cluster.MembershipChange> {
             pinfo("Expecting [\(expectedDownSystem)] to become [.down] on [\(on.cluster.uniqueNode.node)], method to stop the node [\(stopMethod)]")
@@ -256,7 +256,7 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
         }
 
         func expectedDownMemberEventsFishing(
-            on: ActorSystem,
+            on: ClusterSystem,
             file: StaticString = #file, line: UInt = #line
         ) -> (Cluster.Event) -> ActorTestProbe<Cluster.Event>.FishingDirective<Cluster.MembershipChange> {
             pinfo("Expecting \(nodesToDown.map(\.cluster.uniqueNode.node)) to become [.down] on [\(on.cluster.uniqueNode.node)]")
