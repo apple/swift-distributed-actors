@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -121,7 +121,7 @@ internal final class OutboundSystemMessageRedelivery {
     // guaranteed to contain SystemMessageEnvelope but we also need the recipients which are in MessageEnvelope
     var messagesPendingAcknowledgement: NIO.CircularBuffer<TransportEnvelope> = .init(initialCapacity: 8)
 
-    let metrics: ActorSystemMetrics?
+    let metrics: ClusterSystemMetrics?
 
     // highest ACK we got back from the receiving end
     var highestAcknowledgedSeqNr: SequenceNr = 0 // 0 == no ACKs at all so far.
@@ -135,7 +135,7 @@ internal final class OutboundSystemMessageRedelivery {
 
     var redeliveryIntervalBackoff: ConstantBackoffStrategy
 
-    init(settings: OutboundSystemMessageRedeliverySettings, metrics: ActorSystemMetrics? = nil) {
+    init(settings: OutboundSystemMessageRedeliverySettings, metrics: ClusterSystemMetrics? = nil) {
         self.settings = settings
         self.metrics = metrics
         self.redeliveryIntervalBackoff = settings.makeRedeliveryBackoff

@@ -1293,7 +1293,7 @@ extension ActorPath {
 // MARK: Cluster Metrics recording
 
 extension ClusterShell {
-    func recordMetrics(_ metrics: ActorSystemMetrics, membership: Cluster.Membership) {
+    func recordMetrics(_ metrics: ClusterSystemMetrics, membership: Cluster.Membership) {
         metrics.recordMembership(membership)
         self._associationsLock.withLockVoid {
             metrics._cluster_association_tombstones.record(self._associationTombstones.count)

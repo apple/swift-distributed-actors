@@ -107,7 +107,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Metrics
 
-    internal let metrics: ActorSystemMetrics
+    internal let metrics: ClusterSystemMetrics
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Cluster
@@ -234,7 +234,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         }
         self.settings = settings
         self.log = settings.logging.baseLogger
-        self.metrics = ActorSystemMetrics(settings.metrics)
+        self.metrics = ClusterSystemMetrics(settings.metrics)
 
         self._receptionistStore = ManagedAtomicLazyReference()
         self._serialization = ManagedAtomicLazyReference()

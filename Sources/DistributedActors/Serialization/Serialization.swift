@@ -45,7 +45,7 @@ public class Serialization {
     public let allocator: ByteBufferAllocator
 
     @usableFromInline
-    internal let metrics: ActorSystemMetrics // TODO: rather, do this via instrumentation
+    internal let metrics: ClusterSystemMetrics // TODO: rather, do this via instrumentation
 
     /// WARNING: This WILL be mutated during runtime!
     ///
