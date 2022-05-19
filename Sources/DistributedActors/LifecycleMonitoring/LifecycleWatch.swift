@@ -26,7 +26,7 @@ public extension LifecycleWatch {
     @discardableResult
     func watchTermination<Watchee>(
         of watchee: Watchee,
-        @_inheritActorContext @_implicitSelfCapture whenTerminated: @escaping @Sendable(ActorSystem.ActorID) -> Void,
+        @_inheritActorContext @_implicitSelfCapture whenTerminated: @escaping @Sendable(ID) -> Void,
         file: String = #file, line: UInt = #line
     ) -> Watchee where Watchee: DistributedActor, Watchee.ActorSystem == ClusterSystem {
         // TODO(distributed): reimplement this as self.id as? _ActorContext which will have the watch things.
@@ -90,7 +90,7 @@ public extension LifecycleWatch {
 
 public extension LifecycleWatch {
     /// Function invoked by the actor transport when a distributed termination is detected.
-    func _receiveActorTerminated(identity: ActorSystem.ActorID) async throws {
+    func _receiveActorTerminated(identity: ID) async throws {
         guard let watch: LifecycleWatchContainer = self.actorSystem._getLifecycleWatch(watcher: self) else {
             return
         }
