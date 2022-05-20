@@ -42,7 +42,7 @@ public struct ClusterSystemSettings {
 
     public var transports: [_InternalActorTransport] = []
     public var serialization: Serialization.Settings = .default
-    
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Connection establishment, protocol settings
 
@@ -234,11 +234,11 @@ public struct ClusterSystemSettings {
 
     // FIXME: should have more proper config section
     public var threadPoolSize: Int = ProcessInfo.processInfo.activeProcessorCount
-    
+
     public init(name: String, host: String = Default.bindHost, port: Int = Default.bindPort, tls: TLSConfiguration? = nil) {
         self.init(node: Node(systemName: name, host: host, port: port), tls: tls)
     }
-    
+
     public init(node: Node, tls: TLSConfiguration? = nil) {
         self.node = node
         self.nid = UniqueNodeID.random()

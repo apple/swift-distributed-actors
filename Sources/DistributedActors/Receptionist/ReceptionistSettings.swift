@@ -27,7 +27,7 @@ public struct ReceptionistSettings {
     #else
     public var traceLogLevel: Logger.Level?
     #endif
-    
+
     /// In order to avoid high churn when thousands of actors are registered (or removed) at once,
     /// listing notifications are sent after a pre-defined delay.
     ///
@@ -66,7 +66,7 @@ public struct ReceptionistSettings {
     /// Too large values should be avoided here, as they increase the total message size of a single PushOps message,
     /// which could result in "too large" messages causing head-of-line blocking of other messages (including health checks).
     public var syncBatchSize: Int = 50
-    
+
     /// Selects `OperationLogClusterReceptionist` receptionist implementation, optimized for
     /// small cluster and quick spreading of information.
     ///
