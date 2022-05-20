@@ -26,7 +26,7 @@ public struct ClusterSystemSettings {
         public static let bindHost: String = "127.0.0.1"
         public static let bindPort: Int = 7337
     }
-    
+
     public static var `default`: ClusterSystemSettings {
         let defaultNode = Node(systemName: Default.name, host: Default.bindHost, port: Default.bindPort)
         return ClusterSystemSettings(node: defaultNode)
@@ -46,7 +46,7 @@ public struct ClusterSystemSettings {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Connection establishment, protocol settings
 
-    /// If `true` the ActorSystem start the cluster subsystem upon startup.
+    /// If `true` the `ClusterSystem` starts the cluster subsystem upon startup.
     /// The address bound to will be `bindAddress`.
     // TODO: remove (see https://github.com/apple/swift-distributed-actors/issues/880)
     public var enabled: Bool = false
@@ -59,10 +59,10 @@ public struct ClusterSystemSettings {
     public mutating func disable() {
         self.enabled = false
     }
-    
+
     /// If configured, the system will receive contact point updates.
     public var discovery: ServiceDiscoverySettings?
-    
+
     /// Hostname used to accept incoming connections from other nodes.
     public var bindHost: String {
         set {
@@ -82,7 +82,7 @@ public struct ClusterSystemSettings {
             self.node.port
         }
     }
-    
+
     /// Node representing this node in the cluster.
     /// Note that most of the time `uniqueBindNode` is more appropriate, as it includes this node's unique id.
     public var node: Node {
@@ -92,7 +92,7 @@ public struct ClusterSystemSettings {
             self.swim.metrics.systemName = self.node.systemName
         }
     }
-    
+
     /// `NodeID` to be used when exposing `UniqueNode` for node configured by using these settings.
     public var nid: UniqueNodeID {
         didSet {
@@ -105,7 +105,7 @@ public struct ClusterSystemSettings {
     public var uniqueBindNode: UniqueNode {
         UniqueNode(node: self.node, nid: self.nid)
     }
-    
+
     /// Time after which a the binding of the server port should fail.
     public var bindTimeout: TimeAmount = .seconds(3)
 
@@ -114,7 +114,7 @@ public struct ClusterSystemSettings {
 
     /// Time after which a connection attempt will fail if no connection could be established.
     public var connectTimeout: TimeAmount = .milliseconds(500)
-    
+
     /// Backoff to be applied when attempting a new connection and handshake with a remote system.
     public var handshakeReconnectBackoff: BackoffStrategy = Backoff.exponential(
         initialInterval: .milliseconds(300),
@@ -128,7 +128,7 @@ public struct ClusterSystemSettings {
     /// in order to avoid accidental re-connections to given node. Once a node has been downed, removed, and disassociated, it MUST NOT be
     /// communicated with again. Tombstones are used to ensure this, even if the downed ("zombie") node, attempts to reconnect.
     public var associationTombstoneTTL: TimeAmount = .hours(24) * 1
-    
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Cluster protocol versioning
 
@@ -139,7 +139,7 @@ public struct ClusterSystemSettings {
 
     /// FOR TESTING ONLY: Exposed for testing handshake negotiation while joining nodes of different versions.
     internal var _protocolVersion: DistributedActors.Version = DistributedActorsProtocolVersion
-    
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Cluster.Membership Gossip
 
@@ -152,12 +152,12 @@ public struct ClusterSystemSettings {
     public var membershipGossipAcknowledgementTimeout: TimeAmount = .seconds(1)
 
     public var membershipGossipIntervalRandomFactor: Double = 0.2
-    
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Leader Election
 
     public var autoLeaderElection: LeadershipSelectionSettings = .lowestReachable(minNumberOfMembers: 2)
-    
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Distributed Actor Calls
 
@@ -166,7 +166,7 @@ public struct ClusterSystemSettings {
     ///
     /// Set to `.effectivelyInfinite` to avoid setting a timeout, although this is not recommended.
     public var callTimeout: TimeAmount = .seconds(5)
-    
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: TLS & Security settings
 
@@ -174,7 +174,7 @@ public struct ClusterSystemSettings {
     public var tls: TLSConfiguration?
 
     public var tlsPassphraseCallback: NIOSSLPassphraseCallback<[UInt8]>?
-    
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: NIO
 
@@ -190,7 +190,7 @@ public struct ClusterSystemSettings {
 
     /// Allocator to be used for allocating byte buffers for coding/decoding messages.
     public var allocator: ByteBufferAllocator = NIO.ByteBufferAllocator()
-    
+
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Cluster membership and failure detection
 
@@ -205,7 +205,7 @@ public struct ClusterSystemSettings {
 
     /// Configures the SWIM cluster membership implementation (which serves as our failure detector).
     public var swim: SWIM.Settings
-    
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Logging
 
@@ -372,7 +372,7 @@ public extension ClusterSystemSettings {
             NoopReceptionistInstrumentation()
         }
 
-        public mutating func configure(with provider: ActorSystemInstrumentationProvider) {
+        public mutating func configure(with provider: ClusterSystemInstrumentationProvider) {
             if let instrumentFactory = provider.actorInstrumentation {
                 self.makeActorInstrumentation = instrumentFactory
             }
@@ -388,7 +388,7 @@ public extension ClusterSystemSettings {
     }
 }
 
-public protocol ActorSystemInstrumentationProvider {
+public protocol ClusterSystemInstrumentationProvider {
     var actorInstrumentation: ((AnyObject, ActorAddress) -> ActorInstrumentation)? { get }
     var actorTransportInstrumentation: (() -> _InternalActorTransportInstrumentation)? { get }
     var receptionistInstrumentation: (() -> ReceptionistInstrumentation)? { get }

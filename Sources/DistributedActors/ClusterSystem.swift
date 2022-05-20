@@ -186,6 +186,8 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
     ///
     /// - Faults: when configuration closure performs very illegal action, e.g. reusing a serializer identifier
     public convenience init(_ name: String, settings: ClusterSystemSettings) async {
+        var settings = settings
+        settings.node.systemName = name
         await self.init(settings: settings)
     }
 
