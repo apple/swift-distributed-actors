@@ -18,7 +18,7 @@ struct WeakActorDictionary {
     var underlying: [ClusterSystem.ActorID: WeakDistributedActorContainer] = [:]
 
     final class WeakDistributedActorContainer {
-        weak var actor: any DistributedActor?
+        weak var actor: (any DistributedActor)?
 
         init<Act: DistributedActor>(_ actor: Act) where Act.ID == ClusterSystem.ActorID {
             self.actor = actor
