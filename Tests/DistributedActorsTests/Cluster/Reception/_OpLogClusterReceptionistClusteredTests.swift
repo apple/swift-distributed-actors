@@ -37,7 +37,6 @@ final class _OpLogClusterReceptionistClusteredTests: ClusteredActorSystemsXCTest
     }
 
     override func configureActorSystem(settings: inout ClusterSystemSettings) {
-        settings.cluster.receptionist.implementation = .opLogSync
         settings.cluster.receptionist.ackPullReplicationIntervalSlow = .milliseconds(300)
     }
 

@@ -309,7 +309,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         }
 
         // OLD receptionist // TODO(distributed): remove when possible
-        let receptionistBehavior = self.settings.cluster.receptionist.implementation.behavior(settings: self.settings)
+        let receptionistBehavior = self.settings.cluster.receptionist.behavior(settings: self.settings)
         let lazyReceptionist = try! self._prepareSystemActor(Receptionist.naming, receptionistBehavior, props: ._wellKnown)
         self._receptionistRef = lazyReceptionist.ref
 
