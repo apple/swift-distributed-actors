@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2020 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2020-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -80,7 +80,7 @@ public final class _OperationLogClusterReceptionist {
     /// gives a good idea how far "behind" we are with regards to changed performed at that peer.
     var appliedSequenceNrs: VersionVector
 
-    internal init(settings: ClusterReceptionist.Settings, instrumentation: ReceptionistInstrumentation = NoopReceptionistInstrumentation()) {
+    internal init(settings: ReceptionistSettings, instrumentation: ReceptionistInstrumentation = NoopReceptionistInstrumentation()) {
         self.instrumentation = instrumentation
 
         self.ops = .init(batchSize: settings.syncBatchSize)

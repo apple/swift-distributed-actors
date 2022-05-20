@@ -240,7 +240,7 @@ public distributed actor OpLogDistributedReceptionist: DistributedReceptionist, 
     }
 
     // FIXME(swift 6): initializer must become async
-    init(settings: ClusterReceptionist.Settings, system: ActorSystem) {
+    init(settings: ReceptionistSettings, system: ActorSystem) {
         self.actorSystem = system
         self.instrumentation = system.settings.instrumentation.makeReceptionistInstrumentation()
 

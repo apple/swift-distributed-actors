@@ -171,7 +171,7 @@ public struct ClusterSettings {
         MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount) // TODO: share pool with others
     }
 
-    public var receptionist: ClusterReceptionist.Settings = .default
+    public var receptionist: ReceptionistSettings = .default
 
     /// Allocator to be used for allocating byte buffers for coding/decoding messages.
     public var allocator: ByteBufferAllocator = NIO.ByteBufferAllocator()
