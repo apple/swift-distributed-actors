@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -17,10 +17,10 @@ import DistributedActorsConcurrencyHelpers
 import NIO
 import XCTest
 
-/// Base class to handle the repetitive setUp/tearDown code involved in most ActorSystem requiring tests.
+/// Base class to handle the repetitive setUp/tearDown code involved in most `ClusterSystem` requiring tests.
 // TODO: Document and API guarantees
 open class ActorSystemXCTestCase: ClusteredActorSystemsXCTestCase {
-    public var system: ActorSystem {
+    public var system: ClusterSystem {
         guard let node = self._nodes.first else {
             fatalError("No system spawned!")
         }
@@ -53,7 +53,7 @@ open class ActorSystemXCTestCase: ClusteredActorSystemsXCTestCase {
         super.tearDown()
     }
 
-    open override func setUpNode(_ name: String, _ modifySettings: ((inout ClusterSystemSettings) -> Void)?) async -> ActorSystem {
+    open override func setUpNode(_ name: String, _ modifySettings: ((inout ClusterSystemSettings) -> Void)?) async -> ClusterSystem {
         await super.setUpNode(name) { settings in
             settings.cluster.enabled = false
             modifySettings?(&settings)

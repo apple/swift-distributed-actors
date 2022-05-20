@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2020 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2020-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -160,8 +160,8 @@ public distributed actor OpLogDistributedReceptionist: DistributedReceptionist, 
     let storage = DistributedReceptionistStorage()
 
     internal enum ReceptionistOp: OpLogStreamOp, Codable {
-        case register(key: AnyDistributedReceptionKey, identity: ActorSystem.ActorID)
-        case remove(key: AnyDistributedReceptionKey, identity: ActorSystem.ActorID)
+        case register(key: AnyDistributedReceptionKey, identity: ID)
+        case remove(key: AnyDistributedReceptionKey, identity: ID)
 
         var isRegister: Bool {
             switch self {
@@ -219,7 +219,7 @@ public distributed actor OpLogDistributedReceptionist: DistributedReceptionist, 
     /// Since:
     /// - `AckOps` serves both as an ACK and "poll", and
     /// - `AckOps` is used to periodically spread information
-    var nextPeriodicAckPermittedDeadline: [ActorSystem.ActorID: Deadline]
+    var nextPeriodicAckPermittedDeadline: [ID: Deadline]
 
     /// Sequence numbers of op-logs that we have observed, INCLUDING our own latest op's seqNr.
     /// In other words, each receptionist has their own op-log, and we observe and store the latest seqNr we have seen from them.
@@ -594,7 +594,7 @@ extension OpLogDistributedReceptionist {
     /// This simultaneously acts as a "pull" conceptually, since we send an `AckOps` which confirms the latest we've applied
     /// as well as potentially causing further data to be sent.
     private func sendAckOps(
-        receptionistID: ActorSystem.ActorID,
+        receptionistID: ID,
         maybeReceptionistRef: ReceptionistRef? = nil
     ) {
         assert(
@@ -796,7 +796,7 @@ extension OpLogDistributedReceptionist {
 
 extension OpLogDistributedReceptionist {
     // func onActorTerminated(terminated: Signals.Terminated) {
-    func onActorTerminated(identity address: ActorSystem.ActorID) {
+    func onActorTerminated(identity address: ID) {
         if address == ActorAddress._receptionist(on: address.uniqueNode, for: .distributedActors) {
             self.log.debug("Watched receptionist terminated: \(address)")
             self.receptionistTerminated(identity: address)
@@ -806,11 +806,11 @@ extension OpLogDistributedReceptionist {
         }
     }
 
-    private func receptionistTerminated(identity address: ActorSystem.ActorID) {
+    private func receptionistTerminated(identity address: ID) {
         self.pruneClusterMember(removedNode: address.uniqueNode)
     }
 
-    private func actorTerminated(identity address: ActorSystem.ActorID) {
+    private func actorTerminated(identity address: ID) {
         let equalityHackRef = try! actorSystem._resolveStub(identity: address) // FIXME: cleanup the try!
         let wasRegisteredWithKeys = self.storage.removeFromKeyMappings(equalityHackRef.asAnyDistributedActor)
 

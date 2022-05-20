@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2020 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -45,7 +45,7 @@ public class Serialization {
     public let allocator: ByteBufferAllocator
 
     @usableFromInline
-    internal let metrics: ActorSystemMetrics // TODO: rather, do this via instrumentation
+    internal let metrics: ClusterSystemMetrics // TODO: rather, do this via instrumentation
 
     /// WARNING: This WILL be mutated during runtime!
     ///
@@ -69,7 +69,7 @@ public class Serialization {
 
     private let context: Serialization.Context
 
-    internal init(settings systemSettings: ClusterSystemSettings, system: ActorSystem) {
+    internal init(settings systemSettings: ClusterSystemSettings, system: ClusterSystem) {
         var settings = systemSettings.serialization
 
         settings.register(InvocationMessage.self, serializerID: .foundationJSON)
@@ -156,7 +156,7 @@ public class Serialization {
         // TODO: Allow plugins to register types...?
 
         settings.register(ActorAddress.self, serializerID: .foundationJSON) // TODO: this was protobuf
-        settings.register(ActorSystem.ActorID.self, serializerID: .foundationJSON)
+        settings.register(ClusterSystem.ActorID.self, serializerID: .foundationJSON)
         settings.register(ReplicaID.self, serializerID: .foundationJSON)
         settings.register(VersionDot.self, serializerID: ._ProtobufRepresentable)
         settings.register(VersionVector.self, serializerID: ._ProtobufRepresentable)

@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -28,7 +28,7 @@ public protocol _AbstractAdapter: _ActorTreeTraversable {
     /// Synchronously stops the adapter ref and send terminated messages to all watchers.
     func stop()
 
-    var system: ActorSystem? { get }
+    var system: ClusterSystem? { get }
 }
 
 /// Not intended to be used by end users.
@@ -64,7 +64,7 @@ internal final class _ActorRefAdapter<To: ActorMessage>: _AbstractAdapter {
         _ActorRef<Never>(.adapter(self)).asAddressable
     }
 
-    var system: ActorSystem? {
+    var system: ClusterSystem? {
         self.target._system
     }
 
@@ -203,7 +203,7 @@ internal final class _DeadLetterAdapterPersonality: _AbstractAdapter {
         self.deadLetters.address
     }
 
-    var system: ActorSystem? {
+    var system: ClusterSystem? {
         self.deadLetters._system
     }
 
@@ -266,7 +266,7 @@ internal final class SubReceiveAdapter<Message: ActorMessage, OwnerMessage: Acto
         _ActorRef(.adapter(self))
     }
 
-    var system: ActorSystem? {
+    var system: ClusterSystem? {
         self.target._system
     }
 

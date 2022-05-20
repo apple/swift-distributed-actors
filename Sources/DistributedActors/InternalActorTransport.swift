@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -28,7 +28,7 @@ open class _InternalActorTransport {
         fatalError("Not implemented: \(#function) in \(self) transport!")
     }
 
-    open func onActorSystemStart(system: ActorSystem) {
+    open func onActorSystemStart(system: ClusterSystem) {
         // do nothing by default
     }
 
@@ -50,7 +50,7 @@ open class _InternalActorTransport {
         fatalError("Not implemented: \(#function) in \(self) transport! Attempted to resolve: \(context)")
     }
 
-    open func makeCellDelegate<Message>(system: ActorSystem, address: ActorAddress) throws -> _CellDelegate<Message> {
+    open func makeCellDelegate<Message>(system: ClusterSystem, address: ActorAddress) throws -> _CellDelegate<Message> {
         fatalError("Not implemented: \(#function) in \(self) transport!")
     }
 }

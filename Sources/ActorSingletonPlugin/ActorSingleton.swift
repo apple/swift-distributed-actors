@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -45,7 +45,7 @@ internal final class ActorSingleton<Message: ActorMessage> {
     }
 
     /// Spawns `ActorSingletonProxy` and associated actors (e.g., `ActorSingletonManager`).
-    func startAll(_ system: ActorSystem) throws {
+    func startAll(_ system: ClusterSystem) throws {
         let allocationStrategy = self.settings.allocationStrategy.make(system.settings.cluster, self.settings)
         try self.proxyLock.withLock {
             self._proxy = try system._spawnSystemActor(
@@ -64,7 +64,7 @@ internal protocol AnyActorSingleton {
     /// Stops the `ActorSingletonProxy` running in the `system`.
     /// If `ActorSingletonManager` is also running, which means the actual singleton is hosted
     /// on this node, it will attempt to hand-over the singleton gracefully before stopping.
-    func stop(_ system: ActorSystem)
+    func stop(_ system: ClusterSystem)
 }
 
 internal struct BoxedActorSingleton: AnyActorSingleton {
@@ -81,13 +81,13 @@ internal struct BoxedActorSingleton: AnyActorSingleton {
         return unwrapped
     }
 
-    func stop(_ system: ActorSystem) {
+    func stop(_ system: ClusterSystem) {
         self.underlying.stop(system)
     }
 }
 
 extension ActorSingleton: AnyActorSingleton {
-    func stop(_ system: ActorSystem) {
+    func stop(_ system: ClusterSystem) {
         // Hand over the singleton gracefully
         let resolveContext = ResolveContext<ActorSingletonManager<Message>.Directive>(address: ._singletonManager(name: self.settings.name, on: system.cluster.uniqueNode), system: system)
         let managerRef = system._resolve(context: resolveContext)

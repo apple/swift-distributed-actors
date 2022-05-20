@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -361,7 +361,7 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
     typealias InboundOut = Wire.Envelope // we pass along user messages; all system messages are handled in-place here (ack, nack), or delivered directly to the recipient from this handler
 
     private let log: Logger
-    private let system: ActorSystem
+    private let system: ClusterSystem
     private let clusterShell: ClusterShell.Ref
 
     private let serializationPool: _SerializationPool
@@ -374,7 +374,7 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
 
     init(
         log: Logger,
-        system: ActorSystem,
+        system: ClusterSystem,
         cluster: ClusterShell.Ref,
         serializationPool: _SerializationPool,
         outbound: OutboundSystemMessageRedelivery,
@@ -611,10 +611,10 @@ private final class UserMessageHandler: ChannelInboundHandler {
 
     let log: Logger
 
-    let system: ActorSystem
+    let system: ClusterSystem
     let serializationPool: _SerializationPool
 
-    init(log: Logger, system: ActorSystem, serializationPool: _SerializationPool) {
+    init(log: Logger, system: ClusterSystem, serializationPool: _SerializationPool) {
         self.log = log
         self.system = system
         self.serializationPool = serializationPool
@@ -686,7 +686,7 @@ private final class DumpRawBytesDebugHandler: ChannelInboundHandler {
 // MARK: "Server side" / accepting connections
 
 extension ClusterShell {
-    internal func bootstrapServerSide(system: ActorSystem, shell: ClusterShell.Ref, bindAddress: UniqueNode, settings: ClusterSettings, serializationPool: _SerializationPool) -> EventLoopFuture<Channel> {
+    internal func bootstrapServerSide(system: ClusterSystem, shell: ClusterShell.Ref, bindAddress: UniqueNode, settings: ClusterSettings, serializationPool: _SerializationPool) -> EventLoopFuture<Channel> {
         let group: EventLoopGroup = settings.eventLoopGroup ?? settings.makeDefaultEventLoopGroup() // TODO: share the loop with client side?
 
         let bootstrap = ServerBootstrap(group: group)
@@ -749,7 +749,7 @@ extension ClusterShell {
         return bootstrap.bind(host: bindAddress.node.host, port: Int(bindAddress.node.port)) // TODO: separate setup from using it
     }
 
-    internal func bootstrapClientSide(system: ActorSystem, shell: ClusterShell.Ref, targetNode: Node, handshakeOffer: Wire.HandshakeOffer, settings: ClusterSettings, serializationPool: _SerializationPool) -> EventLoopFuture<Channel> {
+    internal func bootstrapClientSide(system: ClusterSystem, shell: ClusterShell.Ref, targetNode: Node, handshakeOffer: Wire.HandshakeOffer, settings: ClusterSettings, serializationPool: _SerializationPool) -> EventLoopFuture<Channel> {
         let group: EventLoopGroup = settings.eventLoopGroup ?? settings.makeDefaultEventLoopGroup()
 
         // TODO: Implement "setup" inside settings, so that parts of bootstrap can be done there, e.g. by end users without digging into remoting internals

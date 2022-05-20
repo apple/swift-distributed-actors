@@ -2,7 +2,7 @@
 //
 // This source file is part of the swift-distributed-actors open source project
 //
-// Copyright (c) 2018 Apple Inc. and the swift-distributed-actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the swift-distributed-actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -147,7 +147,7 @@ internal final class DistributedReceptionistStorage {
     private var _registeredKeysByNode: [UniqueNode: Set<AnyDistributedReceptionKey>] = [:]
 
     /// Allows for reverse lookups, when an actor terminates, we know from which registrations to remove it from.
-    internal var _identityToRegisteredKeys: [ActorSystem.ActorID: Set<AnyDistributedReceptionKey>] = [:]
+    internal var _identityToRegisteredKeys: [ClusterSystem.ActorID: Set<AnyDistributedReceptionKey>] = [:]
 
     // ==== --------------------------------------------------------------------------------------------------------
     // MARK: Registrations
@@ -221,7 +221,7 @@ internal final class DistributedReceptionistStorage {
     }
 
     /// - Returns: keys that this actor was REGISTERED under, and thus listings associated with it should be updated
-    func removeFromKeyMappings(identity: ActorSystem.ActorID) -> RefMappingRemovalResult {
+    func removeFromKeyMappings(identity: ClusterSystem.ActorID) -> RefMappingRemovalResult {
         guard let registeredUnderKeys = self._identityToRegisteredKeys.removeValue(forKey: identity) else {
             // was not registered under any keys before
             return RefMappingRemovalResult(registeredUnderKeys: [])
@@ -312,7 +312,7 @@ internal final class DistributedReceptionistStorage {
     }
 
     /// Remember that this guest did register itself under this key
-    private func addGuestKeyMapping(identity: ActorSystem.ActorID, key: AnyDistributedReceptionKey) {
+    private func addGuestKeyMapping(identity: ClusterSystem.ActorID, key: AnyDistributedReceptionKey) {
         self._identityToRegisteredKeys[identity, default: []].insert(key)
     }
 }

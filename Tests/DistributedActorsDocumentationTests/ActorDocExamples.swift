@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2020 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -52,7 +52,7 @@ class ActorDocExamples: XCTestCase {
 
     func example_spawn_tell() throws {
         // tag::spawn[]
-        let system = ActorSystem("ExampleSystem") // <1>
+        let system = ClusterSystem("ExampleSystem") // <1>
 
         let greeterBehavior: _Behavior<String> = .receiveMessage { name in // <2>
             print("Hello \(name)!")
@@ -142,7 +142,7 @@ class ActorDocExamples: XCTestCase {
 
     func example_props_inline() throws {
         let behavior: _Behavior<String> = .ignore
-        let system = ActorSystem("ExampleSystem")
+        let system = ClusterSystem("ExampleSystem")
 
         // tag::props_inline[]
         let worker = try system._spawn(
@@ -173,7 +173,7 @@ class ActorDocExamples: XCTestCase {
 
     func example_receptionist_lookup() {
         let key = Reception.Key(_ActorRef<String>.self, id: "my-actor")
-        let system = ActorSystem("LookupExample")
+        let system = ClusterSystem("LookupExample")
         // tag::receptionist_lookup[]
         let response = system._receptionist.lookup(key, timeout: .seconds(1)) // <1>
 
@@ -225,7 +225,7 @@ class ActorDocExamples: XCTestCase {
     }
 
     func example_ask_outside() throws {
-        let system = ActorSystem("ExampleSystem")
+        let system = ClusterSystem("ExampleSystem")
 
         // tag::ask_outside[]
         struct Hello: Codable {
@@ -249,7 +249,7 @@ class ActorDocExamples: XCTestCase {
     }
 
     func example_ask_inside() throws {
-        let system = ActorSystem("ExampleSystem")
+        let system = ClusterSystem("ExampleSystem")
 
         // tag::ask_inside[]
         struct Hello: Codable {
@@ -286,7 +286,7 @@ class ActorDocExamples: XCTestCase {
     }
 
     func example_eventStream() throws {
-        let system = ActorSystem("System")
+        let system = ClusterSystem("System")
 
         let ref: _ActorRef<Event>! = nil
 
@@ -326,7 +326,7 @@ enum WorkerMessages: String, Codable {
     case something
 }
 
-func run(system: ActorSystem) throws {
+func run(system: ClusterSystem) throws {
     let (b, props) = ExampleWorker.suggested // TODO: replace with class/Shell pattern?
     try system._spawn("heavy-worker", props: props, b)
 }

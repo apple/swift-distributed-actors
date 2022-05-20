@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -28,13 +28,13 @@ struct AnyDistributedActor: Sendable, Hashable {
     }
 
     @usableFromInline
-    var id: ActorSystem.ActorID {
+    var id: ClusterSystem.ActorID {
         self.underlying.id as! ActorAddress // FIXME: could remove this entire wrapper?
     }
 
     @usableFromInline
     var actorSystem: ClusterSystem {
-        self.underlying.actorSystem as! ActorSystem
+        self.underlying.actorSystem as! ClusterSystem
     }
 
     @usableFromInline

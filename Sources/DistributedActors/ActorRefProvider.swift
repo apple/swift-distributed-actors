@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -31,7 +31,7 @@ internal protocol _ActorRefProvider: _ActorTreeTraversable {
     /// if you really want this then implement your own top actor to spawn children. It is possible however to use
     /// `.supervision(strategy: .escalate))` as failures bubbling up through the system may indeed be a reason to terminate.
     func _spawn<Message>(
-        system: ActorSystem,
+        system: ClusterSystem,
         behavior: _Behavior<Message>, address: ActorAddress,
         dispatcher: MessageDispatcher, props: _Props,
         startImmediately: Bool
@@ -76,7 +76,7 @@ extension RemoteActorRefProvider {
     }
 
     func _spawn<Message>(
-        system: ActorSystem,
+        system: ClusterSystem,
         behavior: _Behavior<Message>, address: ActorAddress,
         dispatcher: MessageDispatcher, props: _Props,
         startImmediately: Bool
@@ -140,7 +140,7 @@ internal struct LocalActorRefProvider: _ActorRefProvider {
     }
 
     func _spawn<Message>(
-        system: ActorSystem,
+        system: ClusterSystem,
         behavior: _Behavior<Message>, address: ActorAddress,
         dispatcher: MessageDispatcher, props: _Props,
         startImmediately: Bool
@@ -331,12 +331,12 @@ public struct ResolveContext<Message: ActorMessage> {
     /// Address that we are trying to resolve.
     public var address: ActorAddress
 
-    public let system: ActorSystem
+    public let system: ClusterSystem
 
     /// Allows carrying metadata from Coder
     public let userInfo: [CodingUserInfoKey: Any]
 
-    public init(address: ActorAddress, system: ActorSystem, userInfo: [CodingUserInfoKey: Any] = [:]) {
+    public init(address: ActorAddress, system: ClusterSystem, userInfo: [CodingUserInfoKey: Any] = [:]) {
         self.address = address
         self.selectorSegments = address.path.segments[...]
         self.system = system

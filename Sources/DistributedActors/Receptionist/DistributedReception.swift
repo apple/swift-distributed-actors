@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2020 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2020-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -46,7 +46,7 @@ public extension DistributedReception {
             self.id = value
         }
 
-        internal func resolve(system: ActorSystem, address: ActorAddress) -> AddressableActorRef {
+        internal func resolve(system: ClusterSystem, address: ActorAddress) -> AddressableActorRef {
             let ref: _ActorRef<InvocationMessage> = system._resolve(context: ResolveContext(address: address, system: system))
             return ref.asAddressable
         }
@@ -75,7 +75,7 @@ struct AnyDistributedReceptionKey: Sendable, Codable, Hashable, CustomStringConv
         self.guestType = Guest.self
     }
 
-    func resolve(system: ActorSystem, address: ActorAddress) -> AddressableActorRef {
+    func resolve(system: ClusterSystem, address: ActorAddress) -> AddressableActorRef {
         // Since we don't have the type information here, we can't properly resolve
         // and the only safe thing to do is to return `deadLetters`.
         system.personalDeadLetters(type: Never.self, recipient: address).asAddressable

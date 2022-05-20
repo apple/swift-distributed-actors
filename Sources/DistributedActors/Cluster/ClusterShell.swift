@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -118,7 +118,7 @@ internal class ClusterShell {
     /// - ensures node is at least .down in the Membership
     ///
     /// Can be invoked as result of a direct .down being issued, or because of a node replacement happening.
-    internal func terminateAssociation(_ system: ActorSystem, state: inout ClusterShellState, _ remoteNode: UniqueNode) {
+    internal func terminateAssociation(_ system: ClusterSystem, state: inout ClusterShellState, _ remoteNode: UniqueNode) {
         traceLog_Remote(system.cluster.uniqueNode, "Terminate association with [\(remoteNode)]")
 
         let removedAssociationOption: Association? = self._associationsLock.withLock {
@@ -168,7 +168,7 @@ internal class ClusterShell {
     /// This is a best-effort message; as we may be downing it because we cannot communicate with it after all, in such situation (and many others)
     /// the other node would never receive this direct kill/down eager "gossip." We hope it will either receive the down via some means, or determine
     /// by itself that it should down itself.
-    internal static func shootTheOtherNodeAndCloseConnection(system: ActorSystem, targetNodeAssociation: Association) {
+    internal static func shootTheOtherNodeAndCloseConnection(system: ClusterSystem, targetNodeAssociation: Association) {
         let log = system.log
         let remoteNode = targetNodeAssociation.remoteNode
         traceLog_Remote(system.cluster.uniqueNode, "Finish terminate association [\(remoteNode)]: Shooting the other node a direct .gossip to down itself")
@@ -259,7 +259,7 @@ internal class ClusterShell {
     }
 
     /// Actually starts the shell which kicks off binding to a port, and all further cluster work
-    internal func lazyStart(system: ActorSystem, clusterEvents: EventStream<Cluster.Event>) throws -> LazyStart<Message> {
+    internal func lazyStart(system: ClusterSystem, clusterEvents: EventStream<Cluster.Event>) throws -> LazyStart<Message> {
         let instrumentation = system.settings.instrumentation.makeInternalActorTransportInstrumentation()
         self._serializationPool = try _SerializationPool(settings: .default, serialization: system.serialization, instrumentation: instrumentation)
         self.clusterEvents = clusterEvents
@@ -277,7 +277,7 @@ internal class ClusterShell {
     }
 
     /// Actually starts the shell which kicks off binding to a port, and all further cluster work
-    internal func start(system: ActorSystem, clusterEvents: EventStream<Cluster.Event>) throws -> _ActorRef<Message> {
+    internal func start(system: ClusterSystem, clusterEvents: EventStream<Cluster.Event>) throws -> _ActorRef<Message> {
         let instrumentation = system.settings.instrumentation.makeInternalActorTransportInstrumentation()
         self._serializationPool = try _SerializationPool(settings: .default, serialization: system.serialization, instrumentation: instrumentation)
         self.clusterEvents = clusterEvents
@@ -1293,7 +1293,7 @@ extension ActorPath {
 // MARK: Cluster Metrics recording
 
 extension ClusterShell {
-    func recordMetrics(_ metrics: ActorSystemMetrics, membership: Cluster.Membership) {
+    func recordMetrics(_ metrics: ClusterSystemMetrics, membership: Cluster.Membership) {
         metrics.recordMembership(membership)
         self._associationsLock.withLockVoid {
             metrics._cluster_association_tombstones.record(self._associationTombstones.count)

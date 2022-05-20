@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -21,13 +21,13 @@ import Logging
 /// Public but not intended for user-extension.
 ///
 /// An `_ActorRefFactory` is able to create ("spawn") new actors and return `_ActorRef` instances for them.
-/// Only the `ActorSystem`, `_ActorContext` and potentially testing facilities can ever expose this ability.
+/// Only the `ClusterSystem`, `_ActorContext` and potentially testing facilities can ever expose this ability.
 public protocol _ActorRefFactory {
     /// Spawn an actor with the given `name`, optional `props` and `behavior`.
     ///
     /// ### Naming
     /// `ActorNaming` is used to determine the actors real name upon spawning;
-    /// A name can be sequentially (or otherwise) assigned based on the owning naming context (i.e. `_ActorContext` or `ActorSystem`).
+    /// A name can be sequentially (or otherwise) assigned based on the owning naming context (i.e. `_ActorContext` or `ClusterSystem`).
     ///
     /// ### Actor Reference
     /// Discarding the returned reference means that there MAY be no longer a way to communicate with the spawned actor.

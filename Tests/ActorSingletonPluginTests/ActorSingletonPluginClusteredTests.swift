@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -251,7 +251,7 @@ final class ActorSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCase 
     }
 
     /// Since during re-balancing it may happen that a message gets lost, we send messages a few times and only if none "got through" it would be a serious error.
-    private func assertSingletonRequestReply(_ system: ActorSystem, singletonRef: _ActorRef<GreeterSingleton.Message>, message: String, expect: String) throws {
+    private func assertSingletonRequestReply(_ system: ClusterSystem, singletonRef: _ActorRef<GreeterSingleton.Message>, message: String, expect: String) throws {
         let testKit: ActorTestKit = self.testKit(system)
         let replyProbe = testKit.makeTestProbe(expecting: String.self)
 

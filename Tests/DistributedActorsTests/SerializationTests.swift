@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2020 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -144,7 +144,7 @@ class SerializationTests: ActorSystemXCTestCase {
     }
 
     func test_serialize_actorRef_inMessage_forRemoting() async throws {
-        let remoteCapableSystem = await ActorSystem("remoteCapableSystem") { settings in
+        let remoteCapableSystem = await ClusterSystem("remoteCapableSystem") { settings in
             settings.cluster.enabled = true
             settings.serialization.register(HasStringRef.self)
         }
@@ -278,7 +278,7 @@ class SerializationTests: ActorSystemXCTestCase {
     // MARK: Serialized messages in actor communication, locally
 
     func test_verifySerializable_shouldPass_forPreconfiguredSerializableMessages_string() async throws {
-        let s2 = await ActorSystem("SerializeMessages") { settings in
+        let s2 = await ClusterSystem("SerializeMessages") { settings in
             settings.serialization.serializeLocalMessages = true
         }
 
@@ -395,7 +395,7 @@ class SerializationTests: ActorSystemXCTestCase {
             try system.serialization.serialize(test)
         }
 
-        let system2 = await ActorSystem("OtherSystem") { settings in
+        let system2 = await ClusterSystem("OtherSystem") { settings in
             settings.serialization.register(PListXMLCodableTest.self, serializerID: .foundationPropertyListBinary) // on purpose "wrong" format
         }
         defer {

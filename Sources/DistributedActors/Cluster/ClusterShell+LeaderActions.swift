@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -65,7 +65,7 @@ extension ClusterShellState {
 
 extension ClusterShell {
     func interpretLeaderActions(
-        _ system: ActorSystem,
+        _ system: ClusterSystem,
         _ previousState: ClusterShellState,
         _ leaderActions: [ClusterShellState.LeaderAction]
     ) -> ClusterShellState {
@@ -131,7 +131,7 @@ extension ClusterShell {
     }
 
     /// Removal also terminates (and tombstones) the association to the given node.
-    func interpretRemoveMemberLeaderAction(_ system: ActorSystem, _ state: inout ClusterShellState, memberToRemove: Cluster.Member) -> [Cluster.Event] {
+    func interpretRemoveMemberLeaderAction(_ system: ClusterSystem, _ state: inout ClusterShellState, memberToRemove: Cluster.Member) -> [Cluster.Event] {
         let previousGossip = state.latestGossip
         // !!! IMPORTANT !!!
         // We MUST perform the prune on the _latestGossip_, not the wrapper,

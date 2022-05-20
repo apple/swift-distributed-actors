@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -249,7 +249,7 @@ internal struct ErrorTypeBoundSupervisionStrategy {
 /// - SeeAlso: `_SupervisionStrategy` for thorough documentation of supervision strategies and semantics.
 public enum _Supervision {
     /// Internal conversion from supervision props to appropriate (potentially composite) `Supervisor<Message>`.
-    internal static func supervisorFor<Message>(_ system: ActorSystem, initialBehavior: _Behavior<Message>, props: _SupervisionProps) -> Supervisor<Message> {
+    internal static func supervisorFor<Message>(_ system: ClusterSystem, initialBehavior: _Behavior<Message>, props: _SupervisionProps) -> Supervisor<Message> {
         func supervisorFor0(failureType: Error.Type, strategy: _SupervisionStrategy) -> Supervisor<Message> {
             switch strategy {
             case .restart(let atMost, let within, let backoffStrategy):

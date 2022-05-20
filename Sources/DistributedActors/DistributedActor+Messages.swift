@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -24,7 +24,7 @@ public enum _Done: String, ActorMessage {
 
 //// TODO(distributed): remove this, actually system._spawn the underlying reference for the reserved address
 // public protocol __AnyDistributedClusterActor {
-//    static func _spawnAny(instance: Self, on system: ActorSystem) throws -> AddressableActorRef
+//    static func _spawnAny(instance: Self, on system: ClusterSystem) throws -> AddressableActorRef
 // }
 
 // FIXME: workaround (!)
@@ -49,7 +49,7 @@ extension DistributedActor where ActorSystem == ClusterSystem {
 //
 //    static func makeBehavior(instance: Self) -> _Behavior<Message>
 //
-//    static func _spawn(instance: Self, on system: ActorSystem) -> _ActorRef<Message>
+//    static func _spawn(instance: Self, on system: ClusterSystem) -> _ActorRef<Message>
 // }
 
 public extension DistributedActor where ActorSystem == ClusterSystem {
@@ -60,7 +60,7 @@ public extension DistributedActor where ActorSystem == ClusterSystem {
     }
 }
 
-// extension ActorSystem.ActorID: _ProtobufRepresentable {
+// extension ClusterSystem.ActorID: _ProtobufRepresentable {
 //    public typealias ProtobufRepresentation = _ProtoActorIdentity
 //
 //    public func toProto(context: Serialization.Context) throws -> _ProtoActorIdentity {

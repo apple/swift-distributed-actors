@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -17,11 +17,11 @@ import DistributedActors
 import XCTest
 
 class ActorTestProbeTests: XCTestCase {
-    var system: ActorSystem!
+    var system: ClusterSystem!
     var testKit: ActorTestKit!
 
     override func setUp() {
-        self.system = ActorSystem(String(describing: type(of: self)))
+        self.system = ClusterSystem(String(describing: type(of: self)))
         self.testKit = ActorTestKit(self.system)
     }
 

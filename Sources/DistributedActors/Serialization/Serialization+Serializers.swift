@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2020 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2020-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -38,7 +38,7 @@ open class Serializer<Message> {
     }
 
     /// Invoked _once_ by `Serialization` during system startup, providing additional context bound to
-    /// the given `ActorSystem` that enables certain system specific serialization operations, such as
+    /// the given `ClusterSystem` that enables certain system specific serialization operations, such as
     /// looking up actors.
     open func setSerializationContext(_: Serialization.Context) {
         // nothing by default, implementations may choose to not care

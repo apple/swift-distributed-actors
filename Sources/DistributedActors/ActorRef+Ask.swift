@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2020 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -217,7 +217,7 @@ extension AskResponse: _AsyncResult {
         }
     }
 
-    /// Be very careful with using this as the resume will not run on the ActorSystem provided actor context!
+    /// Be very careful with using this as the resume will not run on the `ClusterSystem` provided actor context!
     /// // TODO(distributed): this will be solved when we move to swift concurrency as the actor runtime
     public var _unsafeAsyncValue: Value {
         get async throws {

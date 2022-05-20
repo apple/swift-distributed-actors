@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -95,7 +95,7 @@ internal final class _Mailbox<Message: ActorMessage> {
     }
 
     /// **CAUTION**: For testing purposes only. Not safe to use for actually running actors.
-    init(system: ActorSystem, capacity: UInt32, maxRunLength: UInt32 = 100) {
+    init(system: ClusterSystem, capacity: UInt32, maxRunLength: UInt32 = 100) {
         self.shell = nil
         self.userMessages = MPSCLinkedQueue()
         self.systemMessages = MPSCLinkedQueue()
