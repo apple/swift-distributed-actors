@@ -12,32 +12,43 @@
 //
 //===----------------------------------------------------------------------===//
 
+import class Foundation.ProcessInfo
 import Logging
 import NIO
 import NIOSSL
 import ServiceDiscovery
 import SWIM
 
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Actor System Cluster Settings
-
-public struct ClusterSettings {
+/// Settings used to configure a `ClusterSystem`.
+public struct ClusterSystemSettings {
     public enum Default {
-        public static let systemName: String = "ClusterSystem"
+        public static let name: String = "ClusterSystem"
         public static let bindHost: String = "127.0.0.1"
         public static let bindPort: Int = 7337
     }
-
-    public static var `default`: ClusterSettings {
-        let defaultNode = Node(systemName: Default.systemName, host: Default.bindHost, port: Default.bindPort)
-        return ClusterSettings(node: defaultNode)
+    
+    public static var `default`: ClusterSystemSettings {
+        let defaultNode = Node(systemName: Default.name, host: Default.bindHost, port: Default.bindPort)
+        return ClusterSystemSettings(node: defaultNode)
     }
 
+    public typealias ProtocolName = String
+
+    public var actor: ActorSettings = .default
+
+    public var plugins: PluginsSettings = .default
+
+    public var receptionist: ReceptionistSettings = .default
+
+    public var transports: [_InternalActorTransport] = []
+    public var serialization: Serialization.Settings = .default
+    
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Connection establishment, protocol settings
 
-    /// If `true` the `ClusterSystem` starts the cluster subsystem upon startup.
+    /// If `true` the ActorSystem start the cluster subsystem upon startup.
     /// The address bound to will be `bindAddress`.
+    // TODO: remove (see https://github.com/apple/swift-distributed-actors/issues/880)
     public var enabled: Bool = false
     public mutating func enable(host: String, port: Int) {
         self.enabled = true
@@ -48,11 +59,11 @@ public struct ClusterSettings {
     public mutating func disable() {
         self.enabled = false
     }
-
-    /// If configured, the system will periodically
+    
+    /// If configured, the system will receive contact point updates.
     public var discovery: ServiceDiscoverySettings?
-
-    /// Hostname used to accept incoming connections from other nodes
+    
+    /// Hostname used to accept incoming connections from other nodes.
     public var bindHost: String {
         set {
             self.node.host = newValue
@@ -62,7 +73,7 @@ public struct ClusterSettings {
         }
     }
 
-    /// Port used to accept incoming connections from other nodes
+    /// Port used to accept incoming connections from other nodes.
     public var bindPort: Int {
         set {
             self.node.port = newValue
@@ -71,33 +82,39 @@ public struct ClusterSettings {
             self.node.port
         }
     }
-
+    
     /// Node representing this node in the cluster.
     /// Note that most of the time `uniqueBindNode` is more appropriate, as it includes this node's unique id.
     public var node: Node {
         didSet {
+            self.serialization.localNode = self.uniqueBindNode
+            self.metrics.systemName = self.node.systemName
             self.swim.metrics.systemName = self.node.systemName
         }
     }
-
+    
     /// `NodeID` to be used when exposing `UniqueNode` for node configured by using these settings.
-    public var nid: UniqueNodeID
+    public var nid: UniqueNodeID {
+        didSet {
+            self.serialization.localNode = self.uniqueBindNode
+        }
+    }
 
-    // Reflects the bindAddress however carries an uniquely assigned UID.
-    // The UID remains the same throughout updates of the `bindAddress` field.
+    /// Reflects the `bindAddress` however carries a uniquely assigned UID.
+    /// The UID remains the same throughout updates of the `bindAddress` field.
     public var uniqueBindNode: UniqueNode {
         UniqueNode(node: self.node, nid: self.nid)
     }
-
-    /// Time after which a the binding of the server port should fail
+    
+    /// Time after which a the binding of the server port should fail.
     public var bindTimeout: TimeAmount = .seconds(3)
 
-    /// Timeout for unbinding the server port of this node (used when shutting down)
+    /// Timeout for unbinding the server port of this node (used when shutting down).
     public var unbindTimeout: TimeAmount = .seconds(3)
 
-    /// Time after which a connection attempt will fail if no connection could be established
+    /// Time after which a connection attempt will fail if no connection could be established.
     public var connectTimeout: TimeAmount = .milliseconds(500)
-
+    
     /// Backoff to be applied when attempting a new connection and handshake with a remote system.
     public var handshakeReconnectBackoff: BackoffStrategy = Backoff.exponential(
         initialInterval: .milliseconds(300),
@@ -111,7 +128,7 @@ public struct ClusterSettings {
     /// in order to avoid accidental re-connections to given node. Once a node has been downed, removed, and disassociated, it MUST NOT be
     /// communicated with again. Tombstones are used to ensure this, even if the downed ("zombie") node, attempts to reconnect.
     public var associationTombstoneTTL: TimeAmount = .hours(24) * 1
-
+    
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Cluster protocol versioning
 
@@ -120,9 +137,9 @@ public struct ClusterSettings {
         self._protocolVersion
     }
 
-    /// FOR TESTING ONLY: Exposed for testing handshake negotiation while joining nodes of different versions
+    /// FOR TESTING ONLY: Exposed for testing handshake negotiation while joining nodes of different versions.
     internal var _protocolVersion: DistributedActors.Version = DistributedActorsProtocolVersion
-
+    
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Cluster.Membership Gossip
 
@@ -131,16 +148,16 @@ public struct ClusterSettings {
     // since we talk to many peers one by one; even as we proceed to the next round after `membershipGossipInterval`
     // it is fine if we get a reply from the previously gossiped to peer after same or similar timeout. No rush about it.
     //
-    // A missing ACK is not terminal, may happen, and we'll then gossip with that peer again (e.g. if it ha had some form of network trouble for a moment).
+    // A missing ACK is not terminal, may happen, and we'll then gossip with that peer again (e.g. if it had some form of network trouble for a moment).
     public var membershipGossipAcknowledgementTimeout: TimeAmount = .seconds(1)
 
     public var membershipGossipIntervalRandomFactor: Double = 0.2
-
+    
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Leader Election
 
     public var autoLeaderElection: LeadershipSelectionSettings = .lowestReachable(minNumberOfMembers: 2)
-
+    
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Distributed Actor Calls
 
@@ -149,7 +166,7 @@ public struct ClusterSettings {
     ///
     /// Set to `.effectivelyInfinite` to avoid setting a timeout, although this is not recommended.
     public var callTimeout: TimeAmount = .seconds(5)
-
+    
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: TLS & Security settings
 
@@ -157,7 +174,7 @@ public struct ClusterSettings {
     public var tls: TLSConfiguration?
 
     public var tlsPassphraseCallback: NIOSSLPassphraseCallback<[UInt8]>?
-
+    
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: NIO
 
@@ -171,11 +188,9 @@ public struct ClusterSettings {
         MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount) // TODO: share pool with others
     }
 
-    public var receptionist: ReceptionistSettings = .default
-
     /// Allocator to be used for allocating byte buffers for coding/decoding messages.
     public var allocator: ByteBufferAllocator = NIO.ByteBufferAllocator()
-
+    
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Cluster membership and failure detection
 
@@ -190,7 +205,7 @@ public struct ClusterSettings {
 
     /// Configures the SWIM cluster membership implementation (which serves as our failure detector).
     public var swim: SWIM.Settings
-
+    
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Logging
 
@@ -205,6 +220,25 @@ public struct ClusterSettings {
     public var traceLogLevel: Logger.Level?
     #endif
 
+    public var logging: LoggingSettings = .default {
+        didSet {
+            self.swim.logger = self.logging.baseLogger
+        }
+    }
+
+    public var metrics: MetricsSettings = .default(rootName: nil)
+    public var instrumentation: InstrumentationSettings = .default
+
+    /// Installs a global backtrace (on fault) pretty-print facility upon actor system start.
+    public var installSwiftBacktrace: Bool = true
+
+    // FIXME: should have more proper config section
+    public var threadPoolSize: Int = ProcessInfo.processInfo.activeProcessorCount
+    
+    public init(name: String, host: String = Default.bindHost, port: Int = Default.bindPort, tls: TLSConfiguration? = nil) {
+        self.init(node: Node(systemName: name, host: host, port: port), tls: tls)
+    }
+    
     public init(node: Node, tls: TLSConfiguration? = nil) {
         self.node = node
         self.nid = UniqueNodeID.random()
@@ -212,15 +246,156 @@ public struct ClusterSettings {
         self.swim = SWIM.Settings()
         self.swim.unreachability = .enabled
         if node.systemName != "" {
+            self.metrics.systemName = node.systemName
             self.swim.metrics.systemName = node.systemName
         }
         self.swim.metrics.labelPrefix = "cluster.swim"
         self.discovery = nil
+        self.serialization.localNode = self.uniqueBindNode
+    }
+}
+
+public extension Array where Element == _InternalActorTransport {
+    static func += <T: _InternalActorTransport>(transports: inout Self, transport: T) {
+        transports.append(transport)
     }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Cluster Service Discovery
+// MARK: Logging Settings
+
+/// Note that some of these settings would be obsolete if we had a nice configurable LogHandler which could selectively
+/// log some labelled loggers and some not. Until we land such log handler we have to manually in-project opt-in/-out
+/// of logging some subsystems.
+public struct LoggingSettings {
+    public static var `default`: LoggingSettings {
+        .init()
+    }
+
+    /// Customize the default log level of the `system.log` (and `context.log`) loggers.
+    ///
+    /// This this modifies the current "base" logger which is `LoggingSettings.logger`,
+    /// it is also possible to change the logger itself, e.g. if you care about reusing a specific logger
+    /// or need to pass metadata through all loggers in the actor system.
+    public var logLevel: Logger.Level {
+        get {
+            self._logger.logLevel
+        }
+        set {
+            self._logger.logLevel = newValue
+        }
+    }
+
+    /// "Base" logger that will be used as template for all loggers created by the system.
+    ///
+    /// Do not use this logger directly, but rather use `system.log` or  `Logger(actor:)`,
+    /// as they have more useful metadata configured on them which is obtained during cluster
+    /// initialization.
+    ///
+    /// This may be used to configure specific systems to log to specific files,
+    /// or to carry system-wide metadata throughout all loggers the actor system will use.
+    public var baseLogger: Logger {
+        get {
+            self._logger
+        }
+        set {
+            self.customizedLogger = true
+            self._logger = newValue
+        }
+    }
+
+    internal var customizedLogger: Bool = false
+    internal var _logger: Logger = LoggingSettings.makeDefaultLogger()
+    static func makeDefaultLogger() -> Logger {
+        Logger(label: "ClusterSystem-initializing") // replaced by specific system name during startup
+    }
+
+    // TODO: hope to remove this once a StdOutLogHandler lands that has formatting support;
+    // logs are hard to follow with not consistent order of metadata etc (like system address etc).
+    public var useBuiltInFormatter: Bool = true
+
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Verbose logging of sub-systems (again, would not be needed with configurable appenders)
+
+    /// Log all detailed timer start/cancel events
+    public var verboseTimers = false
+
+    /// Log all actor `spawn` events
+    public var verboseSpawning = false
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Actor Settings
+
+public extension ClusterSystemSettings {
+    struct ActorSettings {
+        public static var `default`: ActorSettings {
+            .init()
+        }
+
+        // arbitrarily selected, we protect start() using it; we may lift this restriction if needed
+        public var maxBehaviorNestingDepth: Int = 128
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Instrumentation Settings
+
+public extension ClusterSystemSettings {
+    struct InstrumentationSettings {
+        /// Default set of enabled instrumentations, based on current operating system.
+        ///
+        /// On Apple platforms, this includes the `OSSignpostInstrumentationProvider` provided instrumentations,
+        /// as they carry only minimal overhead in release builds when the signposts are not active.
+        ///
+        /// You may easily installing any kind of instrumentations, regardless of platform, by using `.none` instead of `.default`.
+        public static var `default`: InstrumentationSettings {
+            .init()
+        }
+
+        public static var none: InstrumentationSettings {
+            InstrumentationSettings()
+        }
+
+        /// - SeeAlso: `ActorInstrumentation`
+        public var makeActorInstrumentation: (AnyObject, ActorAddress) -> ActorInstrumentation = { id, address in
+            NoopActorInstrumentation(id: id, address: address)
+        }
+
+        /// - SeeAlso: `_InternalActorTransportInstrumentation`
+        public var makeInternalActorTransportInstrumentation: () -> _InternalActorTransportInstrumentation = { () in
+            Noop_InternalActorTransportInstrumentation()
+        }
+
+        /// - SeeAlso: `ReceptionistInstrumentation`
+        public var makeReceptionistInstrumentation: () -> ReceptionistInstrumentation = { () in
+            NoopReceptionistInstrumentation()
+        }
+
+        public mutating func configure(with provider: ActorSystemInstrumentationProvider) {
+            if let instrumentFactory = provider.actorInstrumentation {
+                self.makeActorInstrumentation = instrumentFactory
+            }
+
+            if let instrumentFactory = provider.actorTransportInstrumentation {
+                self.makeInternalActorTransportInstrumentation = instrumentFactory
+            }
+
+            if let instrumentFactory = provider.receptionistInstrumentation {
+                self.makeReceptionistInstrumentation = instrumentFactory
+            }
+        }
+    }
+}
+
+public protocol ActorSystemInstrumentationProvider {
+    var actorInstrumentation: ((AnyObject, ActorAddress) -> ActorInstrumentation)? { get }
+    var actorTransportInstrumentation: (() -> _InternalActorTransportInstrumentation)? { get }
+    var receptionistInstrumentation: (() -> ReceptionistInstrumentation)? { get }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Cluster Service Discovery Settings
 
 /// Configure initial contact point discovery to use a `ServiceDiscovery` implementation.
 public struct ServiceDiscoverySettings {
@@ -246,8 +421,8 @@ public struct ServiceDiscoverySettings {
         }
     }
 
-    /// Similar to `ServiceDiscovery.subscribe` however it allows the handling of the listings to be generic and handled by the actor system.
-    /// This function is only intended for internal use byt the `DiscoveryShell`.
+    /// Similar to `ServiceDiscovery.subscribe` however it allows the handling of the listings to be generic and handled by the cluster system.
+    /// This function is only intended for internal use by the `DiscoveryShell`.
     func subscribe(onNext nextResultHandler: @escaping (Result<[Node], Error>) -> Void, onComplete completionHandler: @escaping (CompletionReason) -> Void) -> CancellationToken {
         self._subscribe(nextResultHandler, completionHandler)
     }

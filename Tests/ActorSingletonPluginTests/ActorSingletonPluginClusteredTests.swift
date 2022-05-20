@@ -33,22 +33,22 @@ final class ActorSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCase 
         let first = self.setUpNode("first") { settings in
             settings += ActorSingletonPlugin()
 
-            settings.cluster.node.port = 7111
-            settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
+            settings.node.port = 7111
+            settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
             settings.serialization.register(GreeterSingleton.Message.self)
         }
         let second = self.setUpNode("second") { settings in
             settings += ActorSingletonPlugin()
 
-            settings.cluster.node.port = 8222
-            settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
+            settings.node.port = 8222
+            settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
             settings.serialization.register(GreeterSingleton.Message.self)
         }
         let third = self.setUpNode("third") { settings in
             settings += ActorSingletonPlugin()
 
-            settings.cluster.node.port = 9333
-            settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
+            settings.node.port = 9333
+            settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
             settings.serialization.register(GreeterSingleton.Message.self)
         }
 
@@ -75,22 +75,22 @@ final class ActorSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCase 
         let first = self.setUpNode("first") { settings in
             settings += ActorSingletonPlugin()
 
-            settings.cluster.node.port = 7111
-            settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
+            settings.node.port = 7111
+            settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
             settings.serialization.register(GreeterSingleton.Message.self)
         }
         let second = self.setUpNode("second") { settings in
             settings += ActorSingletonPlugin()
 
-            settings.cluster.node.port = 8222
-            settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
+            settings.node.port = 8222
+            settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
             settings.serialization.register(GreeterSingleton.Message.self)
         }
         let third = self.setUpNode("third") { settings in
             settings += ActorSingletonPlugin()
 
-            settings.cluster.node.port = 9333
-            settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
+            settings.node.port = 9333
+            settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
             settings.serialization.register(GreeterSingleton.Message.self)
         }
 
@@ -129,29 +129,29 @@ final class ActorSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCase 
         let first = self.setUpNode("first") { settings in
             settings += ActorSingletonPlugin()
 
-            settings.cluster.node.port = 7111
-            settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
+            settings.node.port = 7111
+            settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
             settings.serialization.register(GreeterSingleton.Message.self)
         }
         let second = self.setUpNode("second") { settings in
             settings += ActorSingletonPlugin()
 
-            settings.cluster.node.port = 8222
-            settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
+            settings.node.port = 8222
+            settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
             settings.serialization.register(GreeterSingleton.Message.self)
         }
         let third = self.setUpNode("third") { settings in
             settings += ActorSingletonPlugin()
 
-            settings.cluster.node.port = 9333
-            settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
+            settings.node.port = 9333
+            settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
             settings.serialization.register(GreeterSingleton.Message.self)
         }
         let fourth = self.setUpNode("fourth") { settings in
             settings += ActorSingletonPlugin()
 
-            settings.cluster.node.port = 7444
-            settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
+            settings.node.port = 7444
+            settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
             settings.serialization.register(GreeterSingleton.Message.self)
         }
 

@@ -59,9 +59,9 @@ internal struct RemoteActorRefProvider: _ActorRefProvider {
         cluster: ClusterShell,
         localProvider: LocalActorRefProvider
     ) {
-        precondition(settings.cluster.enabled, "Remote actor provider should only be used when clustering is enabled")
+        precondition(settings.enabled, "Remote actor provider should only be used when clustering is enabled")
 
-        self.localNode = settings.cluster.uniqueBindNode
+        self.localNode = settings.uniqueBindNode
         self.cluster = cluster
         self.localProvider = localProvider
     }

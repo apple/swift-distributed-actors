@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -72,7 +72,7 @@ extension ClusterShell {
         _ context: _ActorContext<ClusterShell.Message>, _ type: TraceLogType, message: Any,
         file: String = #file, function: String = #function, line: UInt = #line
     ) {
-        if let level = context.system.settings.cluster.traceLogLevel {
+        if let level = context.system.settings.traceLogLevel {
             context.log.log(
                 level: level,
                 "[tracelog:cluster] \(type.description): \(message)",

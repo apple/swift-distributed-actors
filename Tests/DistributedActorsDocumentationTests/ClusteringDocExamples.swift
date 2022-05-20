@@ -22,14 +22,14 @@ class ClusteringDocExamples: XCTestCase {
         // tag::config_tls[]
         let system = ClusterSystem("TestSystem") { settings in
             // ...
-            settings.cluster.tls = TLSConfiguration.makeServerConfiguration( // <1>
+            settings.tls = TLSConfiguration.makeServerConfiguration( // <1>
                 certificateChain: try! NIOSSLCertificate.fromPEMFile("/path/to/certificate.pem").map { NIOSSLCertificateSource.certificate($0) }, // <2>
                 privateKey: .file("/path/to/private-key.pem") // , // <3>
 //                certificateVerification: .fullVerification, // <4>
 //                trustRoots: .file("/path/to/certificateChain.pem")
             ) // <5>
-            settings.cluster.tls?.certificateVerification = .fullVerification
-            settings.cluster.tls?.trustRoots = .file("/path/to/certificateChain.pem")
+            settings.tls?.certificateVerification = .fullVerification
+            settings.tls?.trustRoots = .file("/path/to/certificateChain.pem")
         }
         // end::config_tls[]
 
@@ -40,7 +40,7 @@ class ClusteringDocExamples: XCTestCase {
         // tag::config_tls_passphrase[]
         let system = ClusterSystem("TestSystem") { settings in
             // ...
-            settings.cluster.tlsPassphraseCallback = { setter in
+            settings.tlsPassphraseCallback = { setter in
                 setter([UInt8]("password".utf8))
             }
         }

@@ -175,9 +175,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
     ///
     /// - Faults: when configuration closure performs very illegal action, e.g. reusing a serializer identifier
     public convenience init(_ name: String, configuredWith configureSettings: (inout ClusterSystemSettings) -> Void = { _ in () }) async {
-        var settings = ClusterSystemSettings()
-        settings.cluster.node.systemName = name
-        settings.metrics.systemName = name
+        var settings = ClusterSystemSettings(name: name)
         configureSettings(&settings)
 
         await self.init(settings: settings)
@@ -188,8 +186,6 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
     ///
     /// - Faults: when configuration closure performs very illegal action, e.g. reusing a serializer identifier
     public convenience init(_ name: String, settings: ClusterSystemSettings) async {
-        var settings = settings
-        settings.cluster.node.systemName = name
         await self.init(settings: settings)
     }
 
@@ -198,7 +194,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
     /// - Faults: when configuration closure performs very illegal action, e.g. reusing a serializer identifier
     public init(settings: ClusterSystemSettings) async {
         var settings = settings
-        self.name = settings.cluster.node.systemName
+        self.name = settings.node.systemName
 
         // rely on swift-backtrace for pretty backtraces on crashes
         if settings.installSwiftBacktrace {
@@ -207,7 +203,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
 
         // TODO: we should not rely on NIO for futures
         let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: settings.threadPoolSize)
-        settings.cluster.eventLoopGroup = eventLoopGroup
+        settings.eventLoopGroup = eventLoopGroup
 
         // TODO: should we share this, or have a separate ELG for IO?
         self._eventLoopGroup = eventLoopGroup
@@ -216,7 +212,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         self.dispatcher = try! _FixedThreadPool(settings.threadPoolSize)
 
         // initialize top level guardians
-        self._root = TheOneWhoHasNoParent(local: settings.cluster.uniqueBindNode)
+        self._root = TheOneWhoHasNoParent(local: settings.uniqueBindNode)
         let theOne = self._root
 
         let initializationLock = ReadWriteLock()
@@ -227,8 +223,8 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
             settings.logging._logger.logLevel = settings.logging.logLevel
         }
 
-        if settings.cluster.enabled {
-            settings.logging._logger[metadataKey: "cluster/node"] = "\(settings.cluster.uniqueBindNode)"
+        if settings.enabled {
+            settings.logging._logger[metadataKey: "cluster/node"] = "\(settings.uniqueBindNode)"
         } else {
             settings.logging._logger[metadataKey: "cluster/node"] = "\(self.name)"
         }
@@ -249,17 +245,17 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         _ = self._serialization.storeIfNilThenLoad(serialization)
 
         // dead letters init
-        self._deadLetters = _ActorRef(.deadLetters(.init(self.log, address: ActorAddress._deadLetters(on: settings.cluster.uniqueBindNode), system: self)))
+        self._deadLetters = _ActorRef(.deadLetters(.init(self.log, address: ActorAddress._deadLetters(on: settings.uniqueBindNode), system: self)))
 
         // actor providers
-        let localUserProvider = LocalActorRefProvider(root: _Guardian(parent: theOne, name: "user", localNode: settings.cluster.uniqueBindNode, system: self))
-        let localSystemProvider = LocalActorRefProvider(root: _Guardian(parent: theOne, name: "system", localNode: settings.cluster.uniqueBindNode, system: self))
+        let localUserProvider = LocalActorRefProvider(root: _Guardian(parent: theOne, name: "user", localNode: settings.uniqueBindNode, system: self))
+        let localSystemProvider = LocalActorRefProvider(root: _Guardian(parent: theOne, name: "system", localNode: settings.uniqueBindNode, system: self))
         // TODO: want to reconcile those into one, and allow /dead as well
         var effectiveUserProvider: _ActorRefProvider = localUserProvider
         var effectiveSystemProvider: _ActorRefProvider = localSystemProvider
 
-        if settings.cluster.enabled {
-            let cluster = ClusterShell(selfNode: settings.cluster.uniqueBindNode)
+        if settings.enabled {
+            let cluster = ClusterShell(selfNode: settings.uniqueBindNode)
             _ = self._clusterStore.storeIfNilThenLoad(Box(cluster))
             effectiveUserProvider = RemoteActorRefProvider(settings: settings, cluster: cluster, localProvider: localUserProvider)
             effectiveSystemProvider = RemoteActorRefProvider(settings: settings, cluster: cluster, localProvider: localSystemProvider)
@@ -270,7 +266,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
             self.userProvider = effectiveUserProvider
         }
 
-        if !settings.cluster.enabled {
+        if !settings.enabled {
             let clusterEvents = try! EventStream<Cluster.Event>(
                 self,
                 name: "clusterEvents",
@@ -279,7 +275,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
             )
 
             _ = self._clusterStore.storeIfNilThenLoad(Box(nil))
-            _ = self._clusterControlStore.storeIfNilThenLoad(Box(ClusterControl(self.settings.cluster, clusterRef: self.deadLetters.adapted(), eventStream: clusterEvents)))
+            _ = self._clusterControlStore.storeIfNilThenLoad(Box(ClusterControl(self.settings, clusterRef: self.deadLetters.adapted(), eventStream: clusterEvents)))
         }
 
         // node watcher MUST be prepared before receptionist (or any other actor) because it (and all actors) need it if we're running clustered
@@ -295,7 +291,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
                 customBehavior: ClusterEventStream.Shell.behavior
             )
             let clusterRef = try! cluster.start(system: self, clusterEvents: clusterEvents) // only spawns when cluster is initialized
-            _ = self._clusterControlStore.storeIfNilThenLoad(Box(ClusterControl(settings.cluster, clusterRef: clusterRef, eventStream: clusterEvents)))
+            _ = self._clusterControlStore.storeIfNilThenLoad(Box(ClusterControl(settings, clusterRef: clusterRef, eventStream: clusterEvents)))
 
             // Node watcher MUST be started AFTER cluster and clusterEvents
             lazyNodeDeathWatcher = try! self._prepareSystemActor(
@@ -309,13 +305,13 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         }
 
         // OLD receptionist // TODO(distributed): remove when possible
-        let receptionistBehavior = self.settings.cluster.receptionist.behavior(settings: self.settings)
+        let receptionistBehavior = self.settings.receptionist.behavior(settings: self.settings)
         let lazyReceptionist = try! self._prepareSystemActor(Receptionist.naming, receptionistBehavior, props: ._wellKnown)
         self._receptionistRef = lazyReceptionist.ref
 
         await _Props.$forSpawn.withValue(OpLogDistributedReceptionist.props) {
             let receptionist = await OpLogDistributedReceptionist(
-                settings: self.settings.cluster.receptionist,
+                settings: self.settings.receptionist,
                 system: self
             )
             Task { try await receptionist.start() }
@@ -341,10 +337,10 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         self.settings.plugins.startAll(self)
 
         self.log.info("Actor System [\(self.name)] initialized.")
-        if settings.cluster.enabled {
-            self.log.info("Actor System Settings in effect: Cluster.autoLeaderElection: \(self.settings.cluster.autoLeaderElection)")
-            self.log.info("Actor System Settings in effect: Cluster.downingStrategy: \(self.settings.cluster.downingStrategy)")
-            self.log.info("Actor System Settings in effect: Cluster.onDownAction: \(self.settings.cluster.onDownAction)")
+        if settings.enabled {
+            self.log.info("Actor System Settings in effect: Cluster.autoLeaderElection: \(self.settings.autoLeaderElection)")
+            self.log.info("Actor System Settings in effect: Cluster.downingStrategy: \(self.settings.downingStrategy)")
+            self.log.info("Actor System Settings in effect: Cluster.onDownAction: \(self.settings.onDownAction)")
         }
     }
 
@@ -480,7 +476,7 @@ extension ClusterSystem: CustomStringConvertible {
     public var description: String {
         var res = "ClusterSystem("
         res.append(self.name)
-        if self.settings.cluster.enabled {
+        if self.settings.enabled {
             res.append(", \(self.cluster.uniqueNode)")
         }
         res.append(")")

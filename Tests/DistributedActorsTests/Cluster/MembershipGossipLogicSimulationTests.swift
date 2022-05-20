@@ -20,7 +20,7 @@ import XCTest
 
 final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCase {
     override func configureActorSystem(settings: inout ClusterSystemSettings) {
-        settings.cluster.enabled = false // not actually clustering, just need a few nodes
+        settings.enabled = false // not actually clustering, just need a few nodes
     }
 
     override func configureLogCapture(settings: inout LogCapture.Settings) {
@@ -76,7 +76,7 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
 
     func test_avgRounds_untilConvergence() async throws {
         let systemA = await setUpNode("A") { settings in
-            settings.cluster.enabled = true
+            settings.enabled = true
         }
         let systemB = await setUpNode("B")
         let systemC = await setUpNode("C")
@@ -124,7 +124,7 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
 
     func test_avgRounds_manyNodes() async throws {
         let systemA = await setUpNode("A") { settings in
-            settings.cluster.enabled = true
+            settings.enabled = true
         }
         let systemB = await setUpNode("B")
         let systemC = await setUpNode("C")
@@ -237,7 +237,7 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
 
     func test_shouldEventuallySuspendGossiping() async throws {
         let systemA = await setUpNode("A") { settings in
-            settings.cluster.enabled = true
+            settings.enabled = true
         }
         let systemB = await setUpNode("B")
         let systemC = await setUpNode("C")

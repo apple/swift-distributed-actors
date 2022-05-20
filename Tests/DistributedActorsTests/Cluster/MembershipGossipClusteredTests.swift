@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -38,18 +38,18 @@ final class MembershipGossipClusteredTests: ClusteredActorSystemsXCTestCase {
     // MARK: Marking .down
 
     func test_down_beGossipedToOtherNodes() async throws {
-        let strategy = ClusterSettings.LeadershipSelectionSettings.lowestReachable(minNumberOfMembers: 3)
+        let strategy = ClusterSystemSettings.LeadershipSelectionSettings.lowestReachable(minNumberOfMembers: 3)
         let first = await setUpNode("first") { settings in
-            settings.cluster.autoLeaderElection = strategy
-            settings.cluster.onDownAction = .none
+            settings.autoLeaderElection = strategy
+            settings.onDownAction = .none
         }
         let second = await setUpNode("second") { settings in
-            settings.cluster.autoLeaderElection = strategy
-            settings.cluster.onDownAction = .none
+            settings.autoLeaderElection = strategy
+            settings.onDownAction = .none
         }
         let third = await setUpNode("third") { settings in
-            settings.cluster.autoLeaderElection = strategy
-            settings.cluster.onDownAction = .none
+            settings.autoLeaderElection = strategy
+            settings.onDownAction = .none
         }
 
         first.cluster.join(node: second.cluster.uniqueNode.node)
@@ -81,13 +81,13 @@ final class MembershipGossipClusteredTests: ClusteredActorSystemsXCTestCase {
 
     func test_join_swimDiscovered_thirdNode() async throws {
         let first = await setUpNode("first") { settings in
-            settings.cluster.node.port = 7111
+            settings.node.port = 7111
         }
         let second = await setUpNode("second") { settings in
-            settings.cluster.node.port = 8222
+            settings.node.port = 8222
         }
         let third = await setUpNode("third") { settings in
-            settings.cluster.node.port = 9333
+            settings.node.port = 9333
         }
 
         // 1. first join second

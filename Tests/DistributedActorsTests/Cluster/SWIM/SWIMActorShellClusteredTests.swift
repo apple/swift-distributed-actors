@@ -423,7 +423,7 @@ extension SWIMActorShell {
 
     private static func makeSWIM(for address: ActorAddress, members: [SWIM.Ref: SWIM.Status], context: _ActorContext<SWIM.Message>, configuredWith configure: (inout SWIM.Settings) -> Void = { _ in
     }) -> SWIM.Instance {
-        var settings = context.system.settings.cluster.swim
+        var settings = context.system.settings.swim
         configure(&settings)
         let instance = SWIM.Instance(settings: settings, myself: context.myself)
         for (member, status) in members {

@@ -21,7 +21,7 @@ final class ActorSingletonPluginTests: ActorSystemXCTestCase {
     func test_noCluster_ref() throws {
         // Singleton should work just fine without clustering
         let system = ClusterSystem("test") { settings in
-            settings.cluster.enabled = false
+            settings.enabled = false
             settings += ActorSingletonPlugin()
         }
 

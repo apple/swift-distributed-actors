@@ -686,7 +686,7 @@ private final class DumpRawBytesDebugHandler: ChannelInboundHandler {
 // MARK: "Server side" / accepting connections
 
 extension ClusterShell {
-    internal func bootstrapServerSide(system: ClusterSystem, shell: ClusterShell.Ref, bindAddress: UniqueNode, settings: ClusterSettings, serializationPool: _SerializationPool) -> EventLoopFuture<Channel> {
+    internal func bootstrapServerSide(system: ClusterSystem, shell: ClusterShell.Ref, bindAddress: UniqueNode, settings: ClusterSystemSettings, serializationPool: _SerializationPool) -> EventLoopFuture<Channel> {
         let group: EventLoopGroup = settings.eventLoopGroup ?? settings.makeDefaultEventLoopGroup() // TODO: share the loop with client side?
 
         let bootstrap = ServerBootstrap(group: group)
@@ -749,7 +749,7 @@ extension ClusterShell {
         return bootstrap.bind(host: bindAddress.node.host, port: Int(bindAddress.node.port)) // TODO: separate setup from using it
     }
 
-    internal func bootstrapClientSide(system: ClusterSystem, shell: ClusterShell.Ref, targetNode: Node, handshakeOffer: Wire.HandshakeOffer, settings: ClusterSettings, serializationPool: _SerializationPool) -> EventLoopFuture<Channel> {
+    internal func bootstrapClientSide(system: ClusterSystem, shell: ClusterShell.Ref, targetNode: Node, handshakeOffer: Wire.HandshakeOffer, settings: ClusterSystemSettings, serializationPool: _SerializationPool) -> EventLoopFuture<Channel> {
         let group: EventLoopGroup = settings.eventLoopGroup ?? settings.makeDefaultEventLoopGroup()
 
         // TODO: Implement "setup" inside settings, so that parts of bootstrap can be done there, e.g. by end users without digging into remoting internals

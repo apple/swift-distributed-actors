@@ -56,7 +56,7 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
         _ modifySettings: ((inout ClusterSystemSettings) -> Void)? = nil
     ) async throws {
         let (first, second) = await self.setUpPair { settings in
-            settings.cluster.swim.probeInterval = .milliseconds(500)
+            settings.swim.probeInterval = .milliseconds(500)
             modifySettings?(&settings)
         }
         let thirdNeverDownSystem = await self.setUpNode("third", modifySettings)
@@ -138,19 +138,19 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
 
     func test_stopLeader_by_leaveSelfNode_shouldPropagateToOtherNodes() async throws {
         try await self.shared_stoppingNode_shouldPropagateToOtherNodesAsDown(stopMethod: .leaveSelfNode, stopNode: .firstLeader) { settings in
-            settings.cluster.onDownAction = .gracefulShutdown(delay: .seconds(0))
-            settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
+            settings.onDownAction = .gracefulShutdown(delay: .seconds(0))
+            settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
 
-            settings.cluster.downingStrategy = self.downingStrategy
+            settings.downingStrategy = self.downingStrategy
         }
     }
 
     func test_stopMember_by_leaveSelfNode_shouldPropagateToOtherNodes() async throws {
         try await self.shared_stoppingNode_shouldPropagateToOtherNodesAsDown(stopMethod: .leaveSelfNode, stopNode: .secondNonLeader) { settings in
-            settings.cluster.onDownAction = .gracefulShutdown(delay: .seconds(0))
-            settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
+            settings.onDownAction = .gracefulShutdown(delay: .seconds(0))
+            settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
 
-            settings.cluster.downingStrategy = self.downingStrategy
+            settings.downingStrategy = self.downingStrategy
         }
     }
 
@@ -159,19 +159,19 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
 
     func test_stopLeader_by_downSelf_shouldPropagateToOtherNodes() async throws {
         try await self.shared_stoppingNode_shouldPropagateToOtherNodesAsDown(stopMethod: .downSelf, stopNode: .firstLeader) { settings in
-            settings.cluster.onDownAction = .gracefulShutdown(delay: .seconds(0))
-            settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
+            settings.onDownAction = .gracefulShutdown(delay: .seconds(0))
+            settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
 
-            settings.cluster.downingStrategy = self.downingStrategy
+            settings.downingStrategy = self.downingStrategy
         }
     }
 
     func test_stopMember_by_downSelf_shouldPropagateToOtherNodes() async throws {
         try await self.shared_stoppingNode_shouldPropagateToOtherNodesAsDown(stopMethod: .downSelf, stopNode: .secondNonLeader) { settings in
-            settings.cluster.onDownAction = .gracefulShutdown(delay: .seconds(0))
-            settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
+            settings.onDownAction = .gracefulShutdown(delay: .seconds(0))
+            settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
 
-            settings.cluster.downingStrategy = self.downingStrategy
+            settings.downingStrategy = self.downingStrategy
         }
     }
 
@@ -180,19 +180,19 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
 
     func test_stopLeader_by_downByMember_shouldPropagateToOtherNodes() async throws {
         try await self.shared_stoppingNode_shouldPropagateToOtherNodesAsDown(stopMethod: .downFromOtherMember, stopNode: .firstLeader) { settings in
-            settings.cluster.onDownAction = .gracefulShutdown(delay: .seconds(0))
-            settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
+            settings.onDownAction = .gracefulShutdown(delay: .seconds(0))
+            settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
 
-            settings.cluster.downingStrategy = self.downingStrategy
+            settings.downingStrategy = self.downingStrategy
         }
     }
 
     func test_stopMember_by_downByMember_shouldPropagateToOtherNodes() async throws {
         try await self.shared_stoppingNode_shouldPropagateToOtherNodesAsDown(stopMethod: .downFromOtherMember, stopNode: .secondNonLeader) { settings in
-            settings.cluster.onDownAction = .gracefulShutdown(delay: .seconds(0))
-            settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
+            settings.onDownAction = .gracefulShutdown(delay: .seconds(0))
+            settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
 
-            settings.cluster.downingStrategy = self.downingStrategy
+            settings.downingStrategy = self.downingStrategy
         }
     }
 
@@ -201,19 +201,19 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
 
     func test_stopLeader_by_shutdownSelf_shouldPropagateToOtherNodes() async throws {
         try await self.shared_stoppingNode_shouldPropagateToOtherNodesAsDown(stopMethod: .shutdownSelf, stopNode: .firstLeader) { settings in
-            settings.cluster.onDownAction = .gracefulShutdown(delay: .seconds(0))
-            settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
+            settings.onDownAction = .gracefulShutdown(delay: .seconds(0))
+            settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
 
-            settings.cluster.downingStrategy = self.downingStrategy
+            settings.downingStrategy = self.downingStrategy
         }
     }
 
     func test_stopMember_by_shutdownSelf_shouldPropagateToOtherNodes() async throws {
         try await self.shared_stoppingNode_shouldPropagateToOtherNodesAsDown(stopMethod: .shutdownSelf, stopNode: .secondNonLeader) { settings in
-            settings.cluster.onDownAction = .gracefulShutdown(delay: .seconds(0))
-            settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
+            settings.onDownAction = .gracefulShutdown(delay: .seconds(0))
+            settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
 
-            settings.cluster.downingStrategy = self.downingStrategy
+            settings.downingStrategy = self.downingStrategy
         }
     }
 

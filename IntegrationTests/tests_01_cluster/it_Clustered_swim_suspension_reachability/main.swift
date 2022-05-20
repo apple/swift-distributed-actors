@@ -28,16 +28,16 @@ guard args.count >= 1 else {
 let system = await ClusterSystem("System") { settings in
     settings.logging.logLevel = .info
 
-    settings.cluster.enabled = true
-    settings.cluster.bindPort = Int(args[0])!
+    settings.enabled = true
+    settings.bindPort = Int(args[0])!
 
-    settings.cluster.swim.probeInterval = .milliseconds(300)
-    settings.cluster.swim.pingTimeout = .milliseconds(100)
-    settings.cluster.swim.lifeguard.suspicionTimeoutMin = .seconds(1)
-    settings.cluster.swim.lifeguard.suspicionTimeoutMax = .seconds(1)
+    settings.swim.probeInterval = .milliseconds(300)
+    settings.swim.pingTimeout = .milliseconds(100)
+    settings.swim.lifeguard.suspicionTimeoutMin = .seconds(1)
+    settings.swim.lifeguard.suspicionTimeoutMax = .seconds(1)
 
-    settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
-    settings.cluster.downingStrategy = .none
+    settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
+    settings.downingStrategy = .none
 }
 
 let ref = try system._spawn(

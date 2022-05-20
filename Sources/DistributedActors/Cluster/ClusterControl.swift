@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -22,7 +22,7 @@ import NIO
 /// Allows controlling the cluster, e.g. by issuing join/down commands, or subscribing to cluster events.
 public struct ClusterControl {
     /// Settings the cluster node is configured with.
-    public let settings: ClusterSettings
+    public let settings: ClusterSystemSettings
 
     /// Sequence of cluster events.
     ///
@@ -64,7 +64,7 @@ public struct ClusterControl {
 
     internal let ref: ClusterShell.Ref
 
-    init(_ settings: ClusterSettings, clusterRef: ClusterShell.Ref, eventStream: EventStream<Cluster.Event>) {
+    init(_ settings: ClusterSystemSettings, clusterRef: ClusterShell.Ref, eventStream: EventStream<Cluster.Event>) {
         self.settings = settings
         self.ref = clusterRef
         self.events = eventStream

@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -31,7 +31,7 @@ internal protocol ReadOnlyClusterState {
     var selfNode: UniqueNode { get }
     var selfMember: Cluster.Member { get }
 
-    var settings: ClusterSettings { get }
+    var settings: ClusterSystemSettings { get }
 }
 
 /// State of the `ClusterShell` state machine.
@@ -40,7 +40,7 @@ internal struct ClusterShellState: ReadOnlyClusterState {
 
     // TODO: maybe move log and settings outside of state into the shell?
     var log: Logger
-    let settings: ClusterSettings
+    let settings: ClusterSystemSettings
 
     let events: EventStream<Cluster.Event>
 
@@ -108,7 +108,7 @@ internal struct ClusterShellState: ReadOnlyClusterState {
     }
 
     init(
-        settings: ClusterSettings,
+        settings: ClusterSystemSettings,
         channel: Channel,
         events: EventStream<Cluster.Event>,
         gossiperControl: GossiperControl<Cluster.MembershipGossip, Cluster.MembershipGossip>,

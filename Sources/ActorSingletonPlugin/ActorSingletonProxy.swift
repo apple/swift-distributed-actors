@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -67,7 +67,7 @@ internal class ActorSingletonProxy<Message: ActorMessage> {
 
     var behavior: _Behavior<Message> {
         .setup { context in
-            if context.system.settings.cluster.enabled {
+            if context.system.settings.enabled {
                 // Subscribe to `Cluster.Event` in order to update `targetNode`
                 context.system.cluster.events.subscribe(
                     context.subReceive(_SubReceiveId(id: "clusterEvent-\(context.name)"), Cluster.Event.self) { event in

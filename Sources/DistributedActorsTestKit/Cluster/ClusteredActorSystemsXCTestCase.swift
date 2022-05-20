@@ -61,8 +61,8 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
     /// Set up a new node intended to be clustered.
     open func setUpNode(_ name: String, _ modifySettings: ((inout ClusterSystemSettings) -> Void)? = nil) async -> ClusterSystem {
         let node = await ClusterSystem(name) { settings in
-            settings.cluster.enabled = true
-            settings.cluster.node.port = self.nextPort()
+            settings.enabled = true
+            settings.node.port = self.nextPort()
 
             if self.captureLogs {
                 var captureSettings = LogCapture.Settings()
@@ -70,17 +70,17 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
                 let capture = LogCapture(settings: captureSettings)
 
                 settings.logging.baseLogger = capture.logger(label: name)
-                settings.cluster.swim.logger = settings.logging.baseLogger
+                settings.swim.logger = settings.logging.baseLogger
 
                 self._logCaptures.append(capture)
             }
 
-            settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
+            settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
 
             // Make suspicion propagation faster
-            settings.cluster.swim.lifeguard.maxLocalHealthMultiplier = 2
-            settings.cluster.swim.lifeguard.suspicionTimeoutMin = .milliseconds(500)
-            settings.cluster.swim.lifeguard.suspicionTimeoutMax = .seconds(1)
+            settings.swim.lifeguard.maxLocalHealthMultiplier = 2
+            settings.swim.lifeguard.suspicionTimeoutMin = .milliseconds(500)
+            settings.swim.lifeguard.suspicionTimeoutMax = .seconds(1)
 
             self.configureActorSystem(settings: &settings)
             modifySettings?(&settings)
@@ -129,8 +129,8 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
     ) throws {
         node.cluster.join(node: other.cluster.uniqueNode.node)
 
-        try assertAssociated(node, withAtLeast: other.settings.cluster.uniqueBindNode)
-        try assertAssociated(other, withAtLeast: node.settings.cluster.uniqueBindNode)
+        try assertAssociated(node, withAtLeast: other.settings.uniqueBindNode)
+        try assertAssociated(other, withAtLeast: node.settings.uniqueBindNode)
 
         if let expectedStatus = maybeExpectedStatus {
             if let specificTimeout = ensureWithin {
@@ -299,7 +299,7 @@ public extension ClusteredActorSystemsXCTestCase {
             let associatedNodes = try probe.expectMessage(file: file, line: line)
 
             if verbose {
-                pprint("                   Self: \(String(reflecting: system.settings.cluster.uniqueBindNode))")
+                pprint("                   Self: \(String(reflecting: system.settings.uniqueBindNode))")
                 pprint("       Associated nodes: \(associatedNodes.map { String(reflecting: $0) })")
                 pprint("   Expected exact nodes: \(String(reflecting: exactlyNodes))")
                 pprint("Expected at least nodes: \(String(reflecting: atLeastNodes))")
@@ -343,7 +343,7 @@ public extension ClusteredActorSystemsXCTestCase {
             system.cluster.ref.tell(.query(.associatedNodes(probe.ref)))
             let associatedNodes = try probe.expectMessage() // TODO: use interval here
             if verbose {
-                pprint("                  Self: \(String(reflecting: system.settings.cluster.uniqueBindNode))")
+                pprint("                  Self: \(String(reflecting: system.settings.uniqueBindNode))")
                 pprint("      Associated nodes: \(associatedNodes.map { String(reflecting: $0) })")
                 pprint("     Not expected node: \(String(reflecting: node))")
             }
@@ -456,7 +456,7 @@ public extension ClusteredActorSystemsXCTestCase {
     func resolveRef<M>(_ system: ClusterSystem, type: M.Type, address: ActorAddress, on targetSystem: ClusterSystem) -> _ActorRef<M> {
         // DO NOT TRY THIS AT HOME; we do this since we have no receptionist which could offer us references
         // first we manually construct the "right remote path", DO NOT ABUSE THIS IN REAL CODE (please) :-)
-        let remoteNode = targetSystem.settings.cluster.uniqueBindNode
+        let remoteNode = targetSystem.settings.uniqueBindNode
 
         let uniqueRemoteNode = ActorAddress(remote: remoteNode, path: address.path, incarnation: address.incarnation)
         let resolveContext = ResolveContext<M>(address: uniqueRemoteNode, system: system)

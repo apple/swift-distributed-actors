@@ -21,11 +21,11 @@ enum Main {
 //        LoggingSystem.bootstrap(_SWIMPrettyMetadataLogHandler.init)
 
         let system = await ClusterSystem("FirstSystem") { settings in
-            settings.cluster.enable(host: "127.0.0.1", port: 7337)
+            settings.enable(host: "127.0.0.1", port: 7337)
             settings.logging.useBuiltInFormatter = true
         }
         let second = await ClusterSystem("SecondSystem") { settings in
-            settings.cluster.enable(host: "127.0.0.1", port: 8228)
+            settings.enable(host: "127.0.0.1", port: 8228)
             settings.logging.useBuiltInFormatter = true
         }
 

@@ -46,7 +46,7 @@ internal final class ActorSingleton<Message: ActorMessage> {
 
     /// Spawns `ActorSingletonProxy` and associated actors (e.g., `ActorSingletonManager`).
     func startAll(_ system: ClusterSystem) throws {
-        let allocationStrategy = self.settings.allocationStrategy.make(system.settings.cluster, self.settings)
+        let allocationStrategy = self.settings.allocationStrategy.make(system.settings, self.settings)
         try self.proxyLock.withLock {
             self._proxy = try system._spawnSystemActor(
                 "singletonProxy-\(self.settings.name)",
@@ -127,7 +127,7 @@ public enum AllocationStrategySettings {
     /// Singletons will run on the cluster leader. *All* nodes are potential candidates.
     case byLeadership
 
-    func make(_: ClusterSettings, _: ActorSingletonSettings) -> ActorSingletonAllocationStrategy {
+    func make(_: ClusterSystemSettings, _: ActorSingletonSettings) -> ActorSingletonAllocationStrategy {
         switch self {
         case .byLeadership:
             return ActorSingletonAllocationByLeadership()

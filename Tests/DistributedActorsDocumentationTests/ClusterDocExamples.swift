@@ -26,7 +26,7 @@ class ClusterDocExamples: XCTestCase {
     func example_receive_behavior() throws {
         // tag::joining[]
         let system = ClusterSystem("ClusterJoining") { settings in
-            settings.cluster.enabled = true // <1>
+            settings.enabled = true // <1>
             // system will bind by default on `localhost:7337`
         }
 
@@ -54,7 +54,7 @@ class ClusterDocExamples: XCTestCase {
 
         // tag::discovery-joining-config[]
         let system = ClusterSystem("DiscoveryJoining") { settings in
-            settings.cluster.discovery = ServiceDiscoverySettings(
+            settings.discovery = ServiceDiscoverySettings(
                 SomeSpecificServiceDiscovery( /* configuration */ ),
                 service: "my-service" // `Service` type aligned with what SomeSpecificServiceDiscovery expects
             )
@@ -84,7 +84,7 @@ class ClusterDocExamples: XCTestCase {
         }
         // tag::discovery-joining-config-2[]
         let system = ClusterSystem("DiscoveryJoining") { settings in
-            settings.cluster.discovery = ServiceDiscoverySettings(
+            settings.discovery = ServiceDiscoverySettings(
                 SomeGenericServiceDiscovery( /* configuration */ ), // <1>
                 service: "my-service",
                 mapInstanceToNode: { (instance: SomeGenericServiceDiscovery.Instance) -> Node in // <2>

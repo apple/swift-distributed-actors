@@ -182,7 +182,7 @@ enum NodeDeathWatcherShell {
     // FIXME: death watcher is incomplete, should handle snapshot!!
     static func behavior(clusterEvents: EventStream<Cluster.Event>) -> _Behavior<Message> {
         .setup { context in
-            let instance = NodeDeathWatcherInstance(selfNode: context.system.settings.cluster.uniqueBindNode)
+            let instance = NodeDeathWatcherInstance(selfNode: context.system.settings.uniqueBindNode)
 
             context.system.cluster.events.subscribe(context.subReceive(Cluster.Event.self) { event in
                 switch event {
