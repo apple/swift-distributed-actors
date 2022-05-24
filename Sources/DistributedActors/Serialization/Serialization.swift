@@ -132,21 +132,6 @@ public class Serialization {
         // TODO: document how to deal with `protocol` message accepting actors, those should be very rare.
         // TODO: do we HAVE to do this in the Receptionist?
         settings.register(Receptionist.Message.self, serializerID: .doNotSerialize)
-        settings.register(_OperationLogClusterReceptionist.AckOps.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
-
-        // FIXME: This will go away once https://github.com/apple/swift/pull/30318 is merged and we can rely on summoning types
-        settings.register(_OperationLogClusterReceptionist.PushOps.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
-        settings.register(DistributedActors.OpLogDistributedReceptionist.PushOps.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
-        settings.registerInbound(
-            _OperationLogClusterReceptionist.PushOps.self,
-            hint: "DistributedActors.\(_OperationLogClusterReceptionist.PushOps.self)", serializerID: .default
-        )
-        // FIXME: This will go away once https://github.com/apple/swift/pull/30318 is merged and we can rely on summoning types
-        settings.registerInbound(_OperationLogClusterReceptionist.AckOps.self, hint: "_ReceptionistMessage", serializerID: .default)
-        settings.registerInbound(
-            _OperationLogClusterReceptionist.AckOps.self,
-            hint: "DistributedActors.\(_OperationLogClusterReceptionist.AckOps.self)", serializerID: .default
-        )
 
         // swim failure detector
         settings.register(SWIM.Message.self)
@@ -160,13 +145,6 @@ public class Serialization {
         settings.register(ReplicaID.self, serializerID: .foundationJSON)
         settings.register(VersionDot.self, serializerID: ._ProtobufRepresentable)
         settings.register(VersionVector.self, serializerID: ._ProtobufRepresentable)
-
-        // errors
-        settings.register(ErrorEnvelope.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
-        settings.register(BestEffortStringError.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
-
-        // clocks
-        settings.register(WallTimeClock.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
 
         self.settings = settings
         self.metrics = system.metrics
