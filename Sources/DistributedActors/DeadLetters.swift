@@ -59,7 +59,7 @@ public extension ClusterSystem {
     func personalDeadLetters<Message: ActorMessage>(type: Message.Type = Message.self, recipient: ActorAddress) -> _ActorRef<Message> {
         // TODO: rather could we send messages to self._deadLetters with enough info so it handles properly?
 
-        guard recipient.uniqueNode == self.settings.cluster.uniqueBindNode else {
+        guard recipient.uniqueNode == self.settings.uniqueBindNode else {
             /// While it should not realistically happen that a dead letter is obtained for a remote reference,
             /// we do allow for construction of such ref. It can be used to signify a ref is known to resolve to
             /// a known to be down cluster node.
@@ -72,10 +72,10 @@ public extension ClusterSystem {
         let localRecipient: ActorAddress
         if recipient.path.segments.first == ActorPath._dead.segments.first {
             // drop the node from the address; and we know the pointed at ref is already dead; do not prefix it again
-            localRecipient = ActorAddress(local: self.settings.cluster.uniqueBindNode, path: recipient.path, incarnation: recipient.incarnation)
+            localRecipient = ActorAddress(local: self.settings.uniqueBindNode, path: recipient.path, incarnation: recipient.incarnation)
         } else {
             // drop the node from the address; and prepend it as known-to-be-dead
-            localRecipient = ActorAddress(local: self.settings.cluster.uniqueBindNode, path: ActorPath._dead.appending(segments: recipient.segments), incarnation: recipient.incarnation)
+            localRecipient = ActorAddress(local: self.settings.uniqueBindNode, path: ActorPath._dead.appending(segments: recipient.segments), incarnation: recipient.incarnation)
         }
         return _ActorRef(.deadLetters(.init(self.log, address: localRecipient, system: self))).adapt(from: Message.self)
     }

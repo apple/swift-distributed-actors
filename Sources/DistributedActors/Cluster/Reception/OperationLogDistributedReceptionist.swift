@@ -240,7 +240,7 @@ public distributed actor OpLogDistributedReceptionist: DistributedReceptionist, 
     }
 
     // FIXME(swift 6): initializer must become async
-    init(settings: ClusterReceptionist.Settings, system: ActorSystem) {
+    init(settings: ReceptionistSettings, system: ActorSystem) {
         self.actorSystem = system
         self.instrumentation = system.settings.instrumentation.makeReceptionistInstrumentation()
 
@@ -279,7 +279,7 @@ public distributed actor OpLogDistributedReceptionist: DistributedReceptionist, 
         // and if it happens to be outdated by then this will cause a push from that node.
         self.timers.startPeriodic(
             key: Self.slowACKReplicationTick,
-            interval: actorSystem.settings.cluster.receptionist.ackPullReplicationIntervalSlow
+            interval: actorSystem.settings.receptionist.ackPullReplicationIntervalSlow
         ) {
             await self.periodicAckTick()
         }
@@ -547,7 +547,7 @@ extension OpLogDistributedReceptionist {
         //    We DO want to send the Ack directly here as potentially the peer still has some more
         //    ops it might want to send, so we want to allow it to get those over to us as quickly as possible,
         //    without waiting for our Ack ticks to trigger (which could be configured pretty slow).
-        let nextPeriodicAckAllowedIn: TimeAmount = actorSystem.settings.cluster.receptionist.ackPullReplicationIntervalSlow * 2
+        let nextPeriodicAckAllowedIn: TimeAmount = actorSystem.settings.receptionist.ackPullReplicationIntervalSlow * 2
         self.nextPeriodicAckPermittedDeadline[peer.id] = Deadline.fromNow(nextPeriodicAckAllowedIn) // TODO: system.timeSource
     }
 
@@ -1054,7 +1054,7 @@ extension OpLogDistributedReceptionist {
 //            _ type: TraceLogType, message: Any,
 //            file: String = #file, function: String = #function, line: UInt = #line
 //    ) {
-//        if let level = system.settings.cluster.receptionist.traceLogLevel {
+//        if let level = system.settings.receptionist.traceLogLevel {
 //            log.log(
 //                    level: level,
 //                    "[tracelog:receptionist] \(type.description): \(message)",

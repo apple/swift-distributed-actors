@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -190,34 +190,34 @@ class RemotingTLSTests: ClusteredActorSystemsXCTestCase {
         let testKeySource2: NIOSSLPrivateKeySource = .privateKey(try NIOSSLPrivateKey(bytes: [UInt8](testKey2.utf8), format: .pem))
 
         let local = await setUpNode("local") { settings in
-            settings.cluster.node.host = "localhost"
-            settings.cluster.tls = TLSConfiguration.makeServerConfiguration(
+            settings.node.host = "localhost"
+            settings.tls = TLSConfiguration.makeServerConfiguration(
                 certificateChain: [testCertificateSource1],
                 privateKey: testKeySource1
 //                    ,
 //                certificateVerification: .fullVerification,
 //                trustRoots: .certificates([testCertificate2])
             )
-            settings.cluster.tls?.certificateVerification = .fullVerification
-            settings.cluster.tls?.trustRoots = .certificates([testCertificate2])
+            settings.tls?.certificateVerification = .fullVerification
+            settings.tls?.trustRoots = .certificates([testCertificate2])
         }
 
         let remote = await setUpNode("remote") { settings in
-            settings.cluster.node.host = "localhost"
-            settings.cluster.tls = TLSConfiguration.makeServerConfiguration(
+            settings.node.host = "localhost"
+            settings.tls = TLSConfiguration.makeServerConfiguration(
                 certificateChain: [testCertificateSource2],
                 privateKey: testKeySource2
 //                    ,
 //                certificateVerification: .fullVerification,
 //                trustRoots: .certificates([testCertificate1])
             )
-            settings.cluster.tls?.certificateVerification = .fullVerification
-            settings.cluster.tls?.trustRoots = .certificates([testCertificate1])
+            settings.tls?.certificateVerification = .fullVerification
+            settings.tls?.trustRoots = .certificates([testCertificate1])
         }
 
         local.cluster.join(node: remote.cluster.uniqueNode.node)
 
-        try assertAssociated(local, withExactly: remote.settings.cluster.uniqueBindNode)
+        try assertAssociated(local, withExactly: remote.settings.uniqueBindNode)
     }
 
     // FIXME: Test Case '-[DistributedActorsTests.RemotingTLSTests test_boundServer_shouldFailWithSSLEnabledOnHostnameVerificationWithIP]' started.
@@ -228,29 +228,29 @@ class RemotingTLSTests: ClusteredActorSystemsXCTestCase {
         let testKey: NIOSSLPrivateKeySource = .privateKey(try NIOSSLPrivateKey(bytes: [UInt8](testKey1.utf8), format: .pem))
 
         let local = await self.setUpNode("local") { settings in
-            settings.cluster.node.host = "127.0.0.1"
-            settings.cluster.tls = TLSConfiguration.makeServerConfiguration(
+            settings.node.host = "127.0.0.1"
+            settings.tls = TLSConfiguration.makeServerConfiguration(
                 certificateChain: [testCertificateSource],
                 privateKey: testKey
 //                    ,
 //                certificateVerification: .fullVerification,
 //                trustRoots: .certificates([testCertificate])
             )
-            settings.cluster.tls?.certificateVerification = .fullVerification
-            settings.cluster.tls?.trustRoots = .certificates([testCertificate])
+            settings.tls?.certificateVerification = .fullVerification
+            settings.tls?.trustRoots = .certificates([testCertificate])
         }
 
         let remote = await setUpNode("remote") { settings in
-            settings.cluster.node.host = "127.0.0.1"
-            settings.cluster.tls = TLSConfiguration.makeServerConfiguration(
+            settings.node.host = "127.0.0.1"
+            settings.tls = TLSConfiguration.makeServerConfiguration(
                 certificateChain: [testCertificateSource],
                 privateKey: testKey
 //                    ,
 //                certificateVerification: .fullVerification,
 //                trustRoots: .certificates([testCertificate])
             )
-            settings.cluster.tls?.certificateVerification = .fullVerification
-            settings.cluster.tls?.trustRoots = .certificates([testCertificate])
+            settings.tls?.certificateVerification = .fullVerification
+            settings.tls?.trustRoots = .certificates([testCertificate])
         }
 
         let testKit = ActorTestKit(local)
@@ -281,34 +281,34 @@ class RemotingTLSTests: ClusteredActorSystemsXCTestCase {
         let testCertificateSource: NIOSSLCertificateSource = .certificate(testCertificate)
         let testKey: NIOSSLPrivateKeySource = .privateKey(try NIOSSLPrivateKey(bytes: [UInt8](testKey1.utf8), format: .pem))
         let local = await setUpNode("local") { settings in
-            settings.cluster.node.host = "localhost"
-            settings.cluster.tls = TLSConfiguration.makeServerConfiguration(
+            settings.node.host = "localhost"
+            settings.tls = TLSConfiguration.makeServerConfiguration(
                 certificateChain: [testCertificateSource],
                 privateKey: testKey
 //                    ,
 //                certificateVerification: .fullVerification,
 //                trustRoots: .certificates([testCertificate])
             )
-            settings.cluster.tls?.certificateVerification = .noHostnameVerification
-            settings.cluster.tls?.trustRoots = .certificates([testCertificate])
+            settings.tls?.certificateVerification = .noHostnameVerification
+            settings.tls?.trustRoots = .certificates([testCertificate])
         }
 
         let remote = await setUpNode("remote") { settings in
-            settings.cluster.node.host = "localhost"
-            settings.cluster.tls = TLSConfiguration.makeServerConfiguration(
+            settings.node.host = "localhost"
+            settings.tls = TLSConfiguration.makeServerConfiguration(
                 certificateChain: [testCertificateSource],
                 privateKey: testKey
 //                    ,
 //                certificateVerification: .fullVerification,
 //                trustRoots: .certificates([testCertificate])
             )
-            settings.cluster.tls?.certificateVerification = .noHostnameVerification
-            settings.cluster.tls?.trustRoots = .certificates([testCertificate])
+            settings.tls?.certificateVerification = .noHostnameVerification
+            settings.tls?.trustRoots = .certificates([testCertificate])
         }
 
         local.cluster.join(node: remote.cluster.uniqueNode.node)
 
-        try assertAssociated(local, withExactly: remote.settings.cluster.uniqueBindNode)
+        try assertAssociated(local, withExactly: remote.settings.uniqueBindNode)
     }
 
     func test_boundServer_shouldAcceptAssociateWithSSLEnabledAndCorrectPassphrase() async throws {
@@ -323,37 +323,37 @@ class RemotingTLSTests: ClusteredActorSystemsXCTestCase {
         let testCertificateSource: NIOSSLCertificateSource = .certificate(testCertificate)
         let testKey: NIOSSLPrivateKeySource = .file(tmpKeyFile.path)
         let local = await setUpNode("local") { settings in
-            settings.cluster.tls = TLSConfiguration.makeServerConfiguration(
+            settings.tls = TLSConfiguration.makeServerConfiguration(
                 certificateChain: [testCertificateSource],
                 privateKey: testKey
 //                    ,
 //                certificateVerification: .fullVerification,
 //                trustRoots: .certificates([testCertificate])
             )
-            settings.cluster.tls?.certificateVerification = .noHostnameVerification
-            settings.cluster.tls?.trustRoots = .certificates([testCertificate])
-            settings.cluster.tlsPassphraseCallback = { setter in
+            settings.tls?.certificateVerification = .noHostnameVerification
+            settings.tls?.trustRoots = .certificates([testCertificate])
+            settings.tlsPassphraseCallback = { setter in
                 setter([UInt8]("test".utf8))
             }
         }
 
         let remote = await setUpNode("remote") { settings in
-            settings.cluster.tls = TLSConfiguration.makeServerConfiguration(
+            settings.tls = TLSConfiguration.makeServerConfiguration(
                 certificateChain: [testCertificateSource],
                 privateKey: testKey
 //                    ,
 //                certificateVerification: .fullVerification,
 //                trustRoots: .certificates([testCertificate])
             )
-            settings.cluster.tls?.certificateVerification = .noHostnameVerification
-            settings.cluster.tls?.trustRoots = .certificates([testCertificate])
-            settings.cluster.tlsPassphraseCallback = { setter in
+            settings.tls?.certificateVerification = .noHostnameVerification
+            settings.tls?.trustRoots = .certificates([testCertificate])
+            settings.tlsPassphraseCallback = { setter in
                 setter([UInt8]("test".utf8))
             }
         }
 
         local.cluster.join(node: remote.cluster.uniqueNode.node)
 
-        try assertAssociated(local, withExactly: remote.settings.cluster.uniqueBindNode)
+        try assertAssociated(local, withExactly: remote.settings.uniqueBindNode)
     }
 }

@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2020 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2020-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -14,7 +14,7 @@
 
 #if os(macOS) || os(tvOS) || os(iOS) || os(watchOS)
 /// Provider of Instrumentation instances which use `os_signpost`.
-public struct OSSignpostInstrumentationProvider: ActorSystemInstrumentationProvider {
+public struct OSSignpostInstrumentationProvider: ClusterSystemInstrumentationProvider {
     public init() {}
 
     public var actorInstrumentation: ((AnyObject, ActorAddress) -> ActorInstrumentation)? {

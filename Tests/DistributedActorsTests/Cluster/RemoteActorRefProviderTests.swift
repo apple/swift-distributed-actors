@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -20,7 +20,7 @@ import XCTest
 final class RemoteActorRefProviderTests: ActorSystemXCTestCase {
     override func setUp() async throws {
         _ = await self.setUpNode(String(reflecting: Self.self)) { settings in
-            settings.cluster.enabled = true
+            settings.enabled = true
         }
     }
 
@@ -65,7 +65,7 @@ final class RemoteActorRefProviderTests: ActorSystemXCTestCase {
     func test_remoteActorRefProvider_shouldResolveDeadRef_forTypeMismatchOfActorAndResolveContext() throws {
         let ref: _ActorRef<String> = try system._spawn("ignoresStrings", .stop)
         var address: ActorAddress = ref.address
-        address._location = .remote(self.system.settings.cluster.uniqueBindNode)
+        address._location = .remote(self.system.settings.uniqueBindNode)
 
         let resolveContext = ResolveContext<Int>(address: address, system: system)
         let resolvedRef = self.system._resolve(context: resolveContext)
@@ -76,7 +76,7 @@ final class RemoteActorRefProviderTests: ActorSystemXCTestCase {
     func test_remoteActorRefProvider_shouldResolveSameAsLocalNodeDeadLettersRef_forTypeMismatchOfActorAndResolveContext() throws {
         let ref: _ActorRef<DeadLetter> = self.system.deadLetters
         var address: ActorAddress = ref.address
-        address._location = .remote(self.system.settings.cluster.uniqueBindNode)
+        address._location = .remote(self.system.settings.uniqueBindNode)
 
         let resolveContext = ResolveContext<DeadLetter>(address: address, system: system)
         let resolvedRef = self.system._resolve(context: resolveContext)
@@ -110,7 +110,7 @@ final class RemoteActorRefProviderTests: ActorSystemXCTestCase {
         let ref: _ActorRef<String> = self.system.deadLetters.adapt(from: String.self)
 
         var address: ActorAddress = ref.address
-        address._location = .remote(self.system.settings.cluster.uniqueBindNode)
+        address._location = .remote(self.system.settings.uniqueBindNode)
 
         let resolveContext = ResolveContext<String>(address: address, system: system)
         let resolvedRef = self.system._resolve(context: resolveContext)

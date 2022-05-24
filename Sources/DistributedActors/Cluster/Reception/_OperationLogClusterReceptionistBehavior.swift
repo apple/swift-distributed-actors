@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2020 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2020-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -80,7 +80,7 @@ public final class _OperationLogClusterReceptionist {
     /// gives a good idea how far "behind" we are with regards to changed performed at that peer.
     var appliedSequenceNrs: VersionVector
 
-    internal init(settings: ClusterReceptionist.Settings, instrumentation: ReceptionistInstrumentation = NoopReceptionistInstrumentation()) {
+    internal init(settings: ReceptionistSettings, instrumentation: ReceptionistInstrumentation = NoopReceptionistInstrumentation()) {
         self.instrumentation = instrumentation
 
         self.ops = .init(batchSize: settings.syncBatchSize)
@@ -112,7 +112,7 @@ public final class _OperationLogClusterReceptionist {
             // and if it happens to be outdated by then this will cause a push from that node.
             context.timers.startPeriodic(
                 key: Self.slowACKReplicationTick, message: Self.PeriodicAckTick(),
-                interval: context.system.settings.cluster.receptionist.ackPullReplicationIntervalSlow
+                interval: context.system.settings.receptionist.ackPullReplicationIntervalSlow
             )
 
             // === behavior -----------
@@ -347,7 +347,7 @@ extension _OperationLogClusterReceptionist {
         //    We DO want to send the Ack directly here as potentially the peer still has some more
         //    ops it might want to send, so we want to allow it to get those over to us as quickly as possible,
         //    without waiting for our Ack ticks to trigger (which could be configured pretty slow).
-        let nextPeriodicAckAllowedIn: TimeAmount = context.system.settings.cluster.receptionist.ackPullReplicationIntervalSlow * 2
+        let nextPeriodicAckAllowedIn: TimeAmount = context.system.settings.receptionist.ackPullReplicationIntervalSlow * 2
         self.nextPeriodicAckPermittedDeadline[peer] = Deadline.fromNow(nextPeriodicAckAllowedIn) // TODO: context.system.timeSource
     }
 
@@ -815,7 +815,7 @@ extension _OperationLogClusterReceptionist {
         _ context: _ActorContext<Message>, _ type: TraceLogType, message: Any,
         file: String = #file, function: String = #function, line: UInt = #line
     ) {
-        if let level = context.system.settings.cluster.receptionist.traceLogLevel {
+        if let level = context.system.settings.receptionist.traceLogLevel {
             context.log.log(
                 level: level,
                 "[tracelog:receptionist] \(type.description): \(message)",

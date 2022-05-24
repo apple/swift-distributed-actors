@@ -45,21 +45,21 @@ class _ActorRefAdapterTests: ActorSystemXCTestCase {
 
     func test_adaptedRef_overNetwork_shouldConvertMessages() async throws {
         let firstSystem = await setUpNode("One-RemoteActorRefAdapterTests") { settings in
-            settings.cluster.enabled = true
-            settings.cluster.node.host = "127.0.0.1"
-            settings.cluster.node.port = 1881
+            settings.enabled = true
+            settings.node.host = "127.0.0.1"
+            settings.node.port = 1881
         }
         let firstTestKit = self.testKit(firstSystem)
         let probe = firstTestKit.makeTestProbe(expecting: String.self)
         let refProbe = firstTestKit.makeTestProbe(expecting: _ActorRef<Int>.self)
 
         let systemTwo = await setUpNode("Two-RemoteActorRefAdapterTests") { settings in
-            settings.cluster.enabled = true
-            settings.cluster.node.host = "127.0.0.1"
-            settings.cluster.node.port = 1991
+            settings.enabled = true
+            settings.node.host = "127.0.0.1"
+            settings.node.port = 1991
         }
 
-        firstSystem.cluster.join(node: systemTwo.settings.cluster.node)
+        firstSystem.cluster.join(node: systemTwo.settings.node)
 
         sleep(2)
 
@@ -235,7 +235,7 @@ class _ActorRefAdapterTests: ActorSystemXCTestCase {
     func test_adaptedRef_shouldDeadLetter_whenOwnerTerminated() async throws {
         let logCapture = LogCapture()
         let system = await ClusterSystem("\(type(of: self))-2") { settings in
-            settings.logging.baseLogger = logCapture.logger(label: settings.cluster.node.systemName)
+            settings.logging.baseLogger = logCapture.logger(label: settings.node.systemName)
         }
         defer { try! system.shutdown().wait() }
 

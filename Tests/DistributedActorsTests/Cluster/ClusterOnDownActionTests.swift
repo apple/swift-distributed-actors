@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -20,7 +20,7 @@ import XCTest
 final class ClusterOnDownActionTests: ClusteredActorSystemsXCTestCase {
     func test_onNodeDowned_performShutdown() async throws {
         let (first, second) = await self.setUpPair { settings in
-            settings.cluster.onDownAction = .gracefulShutdown(delay: .milliseconds(300))
+            settings.onDownAction = .gracefulShutdown(delay: .milliseconds(300))
         }
 
         try self.joinNodes(node: first, with: second)
@@ -38,7 +38,7 @@ final class ClusterOnDownActionTests: ClusteredActorSystemsXCTestCase {
 
     func test_onNodeDowned_configuredNoop_doNothing() async throws {
         let (first, second) = await setUpPair { settings in
-            settings.cluster.onDownAction = .none
+            settings.onDownAction = .none
         }
 
         try self.joinNodes(node: first, with: second)

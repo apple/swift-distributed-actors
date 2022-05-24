@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -61,7 +61,7 @@ internal struct HandshakeStateMachine {
     // MARK: Handshake Initiated
 
     internal struct InitiatedState: Swift.CustomStringConvertible {
-        let settings: ClusterSettings
+        let settings: ClusterSystemSettings
 
         var protocolVersion: Version {
             self.settings.protocolVersion
@@ -79,7 +79,7 @@ internal struct HandshakeStateMachine {
         var channel: Channel?
 
         init(
-            settings: ClusterSettings, localNode: UniqueNode, connectTo remoteNode: Node
+            settings: ClusterSystemSettings, localNode: UniqueNode, connectTo remoteNode: Node
         ) {
             precondition(localNode.node != remoteNode, "MUST NOT attempt connecting to own bind address. Address: \(remoteNode)")
             self.settings = settings

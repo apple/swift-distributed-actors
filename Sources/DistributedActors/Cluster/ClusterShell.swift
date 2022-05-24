@@ -125,7 +125,7 @@ internal class ClusterShell {
             // tombstone the association in the shell immediately.
             // No more message sends to the system will be possible.
             traceLog_Remote(system.cluster.uniqueNode, "Finish terminate association [\(remoteNode)]: Stored tombstone")
-            self._associationTombstones[remoteNode] = Association.Tombstone(remoteNode, settings: system.settings.cluster)
+            self._associationTombstones[remoteNode] = Association.Tombstone(remoteNode, settings: system.settings)
             return self._associations.removeValue(forKey: remoteNode)
         }
 
@@ -366,12 +366,12 @@ internal class ClusterShell {
 // MARK: Cluster Bootstrap / Binding
 
 extension ClusterShell {
-    /// Binds on setup to the configured address (as configured in `system.settings.cluster`).
+    /// Binds on setup to the configured address (as configured in `system.settings`).
     ///
     /// Once bound proceeds to `ready` state, where it remains to accept or initiate new handshakes.
     private func bind() -> _Behavior<Message> {
         return .setup { context in
-            let clusterSettings = context.system.settings.cluster
+            let clusterSettings = context.system.settings
             let uniqueBindAddress = clusterSettings.uniqueBindNode
 
             // 1) failure detector:
@@ -384,7 +384,7 @@ extension ClusterShell {
             }
 
             // 3) leader election, so it may move members: .joining -> .up (and other `LeaderAction`s)
-            if let leaderElection = context.system.settings.cluster.autoLeaderElection.make(context.system.cluster.settings) {
+            if let leaderElection = clusterSettings.autoLeaderElection.make(context.system.cluster.settings) {
                 let leadershipShell = Leadership.Shell(leaderElection)
                 let leadership = try context._spawn(Leadership.Shell.naming, leadershipShell.behavior)
                 context.watch(leadership) // if leadership fails for some reason, we are in trouble and need to know about it
@@ -1172,7 +1172,7 @@ private extension ClusterShell {
         }
 
         let addrDesc = "\(state.settings.uniqueBindNode.node.host):\(state.settings.uniqueBindNode.node.port)"
-        return context.awaitResult(of: state.channel.close(), timeout: context.system.settings.cluster.unbindTimeout) {
+        return context.awaitResult(of: state.channel.close(), timeout: context.system.settings.unbindTimeout) {
             // FIXME: also close all associations (!!!)
             switch $0 {
             case .success:
@@ -1250,7 +1250,7 @@ extension ClusterShell {
             )
 
             do {
-                let onDownAction = context.system.settings.cluster.onDownAction.make()
+                let onDownAction = context.system.settings.onDownAction.make()
                 try onDownAction(context.system) // TODO: return a future and run with a timeout
             } catch {
                 context.system.log.error("Failed to executed onDownAction! Shutting down system forcefully! Error: \(error)")

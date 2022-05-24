@@ -25,7 +25,7 @@ extension ClusterSystem {
     func _resolve<Message>(ref: _ActorRef<Message>, onSystem remoteSystem: ClusterSystem) -> _ActorRef<Message> {
         assertBacktrace(ref.address._isLocal, "Expecting passed in `ref` to not have an address defined (yet), as this is what we are going to do in this function.")
 
-        let remoteAddress = ActorAddress(remote: remoteSystem.settings.cluster.uniqueBindNode, path: ref.path, incarnation: ref.address.incarnation)
+        let remoteAddress = ActorAddress(remote: remoteSystem.settings.uniqueBindNode, path: ref.path, incarnation: ref.address.incarnation)
 
         let resolveContext = ResolveContext<Message>(address: remoteAddress, system: self)
         return self._resolve(context: resolveContext)

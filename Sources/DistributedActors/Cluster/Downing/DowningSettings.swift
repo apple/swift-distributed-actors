@@ -21,12 +21,12 @@ public enum DowningStrategySettings {
     case none
     case timeout(TimeoutBasedDowningStrategySettings)
 
-    func make(_ clusterSettings: ClusterSettings) -> DowningStrategy? {
+    func make(_ clusterSystemSettings: ClusterSystemSettings) -> DowningStrategy? {
         switch self {
         case .none:
             return nil
         case .timeout(let settings):
-            return TimeoutBasedDowningStrategy(settings, selfNode: clusterSettings.uniqueBindNode)
+            return TimeoutBasedDowningStrategy(settings, selfNode: clusterSystemSettings.uniqueBindNode)
         }
     }
 }

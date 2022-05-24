@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -24,8 +24,8 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
 
     func test_singleLeader() async throws {
         let first = await setUpNode("first") { settings in
-            settings.cluster.node.port = 7111
-            settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 1)
+            settings.node.port = 7111
+            settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 1)
         }
 
         let p = self.testKit(first).makeTestProbe(expecting: Cluster.Event.self)
@@ -60,16 +60,16 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
 
     func test_joining_to_up_decisionByLeader() async throws {
         let first = await setUpNode("first") { settings in
-            settings.cluster.node.port = 7111
-            settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
+            settings.node.port = 7111
+            settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
         }
         let second = await setUpNode("second") { settings in
-            settings.cluster.node.port = 8222
-            settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
+            settings.node.port = 8222
+            settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
         }
         let third = await setUpNode("third") { settings in
-            settings.cluster.node.port = 9333
-            settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
+            settings.node.port = 9333
+            settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
         }
 
         first.cluster.join(node: second.cluster.uniqueNode.node)
@@ -114,17 +114,17 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
         // to a new member.
         //
         let first = await setUpNode("first") { settings in
-            settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
+            settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
         }
         let second = await setUpNode("second") { settings in
-            settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
+            settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
         }
         let third = await setUpNode("third") { settings in
-            settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
+            settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
         }
 
         let fourth = await setUpNode("fourth") { settings in
-            settings.cluster.autoLeaderElection = .none // even without election running, it will be notified by things by the others
+            settings.autoLeaderElection = .none // even without election running, it will be notified by things by the others
         }
 
         first.cluster.join(node: second.cluster.uniqueNode.node)
@@ -149,10 +149,10 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
         // to a new member.
         //
         let first = await setUpNode("first") { settings in
-            settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
+            settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
         }
         let second = await setUpNode("second") { settings in
-            settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
+            settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
         }
 
         let p1 = self.testKit(first).makeTestProbe(expecting: Cluster.Event.self)
@@ -219,22 +219,22 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
 
     func test_down_to_removed_ensureRemovalHappensWhenAllHaveSeenDown() async throws {
         let first = await setUpNode("first") { settings in
-            settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
-            settings.cluster.downingStrategy = .timeout(.init(downUnreachableMembersAfter: .milliseconds(300)))
+            settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
+            settings.downingStrategy = .timeout(.init(downUnreachableMembersAfter: .milliseconds(300)))
         }
         let p1 = testKit(first).makeTestProbe(expecting: Cluster.Event.self)
         first.cluster.events.subscribe(p1.ref)
 
         let second = await setUpNode("second") { settings in
-            settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
-            settings.cluster.downingStrategy = .timeout(.init(downUnreachableMembersAfter: .milliseconds(300)))
+            settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
+            settings.downingStrategy = .timeout(.init(downUnreachableMembersAfter: .milliseconds(300)))
         }
         let p2 = testKit(second).makeTestProbe(expecting: Cluster.Event.self)
         second.cluster.events.subscribe(p2.ref)
 
         let third = await setUpNode("third") { settings in
-            settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
-            settings.cluster.downingStrategy = .timeout(.init(downUnreachableMembersAfter: .milliseconds(300)))
+            settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
+            settings.downingStrategy = .timeout(.init(downUnreachableMembersAfter: .milliseconds(300)))
         }
         let p3 = self.testKit(third).makeTestProbe(expecting: Cluster.Event.self)
         third.cluster.events.subscribe(p3.ref)
@@ -289,28 +289,28 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
 
     func test_ensureDownAndRemovalSpreadsToAllMembers() async throws {
         let first = await setUpNode("first") { settings in
-            settings.cluster.swim.probeInterval = .milliseconds(300)
-            settings.cluster.swim.pingTimeout = .milliseconds(100)
-            settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
-            settings.cluster.downingStrategy = .timeout(.init(downUnreachableMembersAfter: .milliseconds(200)))
+            settings.swim.probeInterval = .milliseconds(300)
+            settings.swim.pingTimeout = .milliseconds(100)
+            settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
+            settings.downingStrategy = .timeout(.init(downUnreachableMembersAfter: .milliseconds(200)))
         }
         let p1 = self.testKit(first).makeTestProbe(expecting: Cluster.Event.self)
         first.cluster.events.subscribe(p1.ref)
 
         let second = await setUpNode("second") { settings in
-            settings.cluster.swim.probeInterval = .milliseconds(300)
-            settings.cluster.swim.pingTimeout = .milliseconds(100)
-            settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
-            settings.cluster.downingStrategy = .timeout(.init(downUnreachableMembersAfter: .milliseconds(200)))
+            settings.swim.probeInterval = .milliseconds(300)
+            settings.swim.pingTimeout = .milliseconds(100)
+            settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
+            settings.downingStrategy = .timeout(.init(downUnreachableMembersAfter: .milliseconds(200)))
         }
         let p2 = self.testKit(second).makeTestProbe(expecting: Cluster.Event.self)
         second.cluster.events.subscribe(p2.ref)
 
         let third = await setUpNode("third") { settings in
-            settings.cluster.swim.probeInterval = .milliseconds(300)
-            settings.cluster.swim.pingTimeout = .milliseconds(100)
-            settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
-            settings.cluster.downingStrategy = .timeout(.init(downUnreachableMembersAfter: .milliseconds(200)))
+            settings.swim.probeInterval = .milliseconds(300)
+            settings.swim.pingTimeout = .milliseconds(100)
+            settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
+            settings.downingStrategy = .timeout(.init(downUnreachableMembersAfter: .milliseconds(200)))
         }
         let p3 = self.testKit(third).makeTestProbe(expecting: Cluster.Event.self)
         third.cluster.events.subscribe(p3.ref)

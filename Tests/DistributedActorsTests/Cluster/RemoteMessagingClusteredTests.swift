@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -49,7 +49,7 @@ final class RemoteMessagingClusteredTests: ClusteredActorSystemsXCTestCase {
 
         local.cluster.join(node: remote.cluster.uniqueNode.node)
 
-        try assertAssociated(local, withExactly: remote.settings.cluster.uniqueBindNode)
+        try assertAssociated(local, withExactly: remote.settings.uniqueBindNode)
 
         let nonCodableResolvedRef = self.resolveRef(local, type: SerializationTestMessage.self, address: nonCodableRefOnRemoteSystem.address, on: remote)
         nonCodableResolvedRef.tell(SerializationTestMessage(serializationBehavior: .succeed))
@@ -80,7 +80,7 @@ final class RemoteMessagingClusteredTests: ClusteredActorSystemsXCTestCase {
 
             local.cluster.join(node: remote.cluster.uniqueNode.node)
 
-            try assertAssociated(local, withExactly: remote.settings.cluster.uniqueBindNode)
+            try assertAssociated(local, withExactly: remote.settings.uniqueBindNode)
 
             let nonCodableResolvedRef = self.resolveRef(local, type: SerializationTestMessage.self, address: refOnRemoteSystem.address, on: remote)
             nonCodableResolvedRef.tell(SerializationTestMessage(serializationBehavior: .failEncoding))
@@ -109,7 +109,7 @@ final class RemoteMessagingClusteredTests: ClusteredActorSystemsXCTestCase {
 
         local.cluster.join(node: remote.cluster.uniqueNode.node)
 
-        try assertAssociated(local, withExactly: remote.settings.cluster.uniqueBindNode)
+        try assertAssociated(local, withExactly: remote.settings.uniqueBindNode)
 
         let nonCodableResolvedRef = self.resolveRef(local, type: SerializationTestMessage.self, address: nonCodableRefOnRemoteSystem.address, on: remote)
         nonCodableResolvedRef.tell(SerializationTestMessage(serializationBehavior: .failDecoding))
@@ -170,7 +170,7 @@ final class RemoteMessagingClusteredTests: ClusteredActorSystemsXCTestCase {
 
         local.cluster.join(node: remote.cluster.uniqueNode.node)
 
-        try assertAssociated(local, withExactly: remote.settings.cluster.uniqueBindNode)
+        try assertAssociated(local, withExactly: remote.settings.uniqueBindNode)
 
         let remoteRef = self.resolveRef(local, type: EchoTestMessage.self, address: refOnRemoteSystem.address, on: remote)
         remoteRef.tell(EchoTestMessage(string: "test", respondTo: localRef))
@@ -197,7 +197,7 @@ final class RemoteMessagingClusteredTests: ClusteredActorSystemsXCTestCase {
 
         local.cluster.join(node: remote.cluster.uniqueNode.node)
 
-        try assertAssociated(local, withExactly: remote.settings.cluster.uniqueBindNode)
+        try assertAssociated(local, withExactly: remote.settings.uniqueBindNode)
 
         let remoteRef = self.resolveRef(local, type: EchoTestMessage.self, address: refOnRemoteSystem.address, on: remote)
 
@@ -240,7 +240,7 @@ final class RemoteMessagingClusteredTests: ClusteredActorSystemsXCTestCase {
 
         local.cluster.join(node: remote.cluster.uniqueNode.node)
 
-        try assertAssociated(local, withExactly: remote.settings.cluster.uniqueBindNode)
+        try assertAssociated(local, withExactly: remote.settings.uniqueBindNode)
 
         let remoteRef = self.resolveRef(local, type: EchoTestMessage.self, address: refOnRemoteSystem.address, on: remote)
 
@@ -269,7 +269,7 @@ final class RemoteMessagingClusteredTests: ClusteredActorSystemsXCTestCase {
         try assertAssociated(local, withExactly: remote.cluster.uniqueNode)
 
         let thirdSystem = await setUpNode("ClusterAssociationTests") { settings in
-            settings.cluster.bindPort = 9119
+            settings.bindPort = 9119
             settings.serialization.register(SerializationTestMessage.self)
             settings.serialization.register(EchoTestMessage.self)
         }

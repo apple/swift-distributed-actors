@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -20,10 +20,10 @@ import XCTest
 final class NodeDeathWatcherTests: ClusteredActorSystemsXCTestCase {
     func test_nodeDeath_shouldFailAllRefsOnSpecificAddress() async throws {
         let first = await setUpNode("first") { settings in
-            settings.cluster.swim.probeInterval = .milliseconds(100)
+            settings.swim.probeInterval = .milliseconds(100)
         }
         let second = await setUpNode("second") { settings in
-            settings.cluster.swim.probeInterval = .milliseconds(100)
+            settings.swim.probeInterval = .milliseconds(100)
         }
 
         try self.joinNodes(node: first, with: second)

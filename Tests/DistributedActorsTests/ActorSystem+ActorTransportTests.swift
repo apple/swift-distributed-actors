@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2021 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2021-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -21,7 +21,7 @@ final class ActorSystemTransportTests: ActorSystemXCTestCase, @unchecked Sendabl
     func test_system_shouldAssignIdentityAndReadyActor() async throws {
         try runAsyncAndBlock {
             let first = await setUpNode("first") { settings in
-                settings.cluster.disable()
+                settings.disable()
             }
 
             var stub: StubDistributedActor? = StubDistributedActor(actorSystem: first)

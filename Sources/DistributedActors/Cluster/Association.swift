@@ -149,7 +149,7 @@ final class Association: CustomStringConvertible, @unchecked Sendable {
             }
         }
 
-        return Association.Tombstone(self.remoteNode, settings: system.settings.cluster)
+        return Association.Tombstone(self.remoteNode, settings: system.settings)
     }
 
     /// Runs and clears completion tasks.
@@ -237,7 +237,7 @@ extension Association {
     /// for some time. In the case it'd try to associate and communicate with us again, we must be able to reject it
     /// as we've terminated the association already, yet it may not have done so for its association to us.
     ///
-    /// Tombstones are slightly lighter than a real association, and are kept for a maximum of `settings.cluster.associationTombstoneTTL` TODO: make this setting (!!!)
+    /// Tombstones are slightly lighter than a real association, and are kept for a maximum of `settings.associationTombstoneTTL` TODO: make this setting (!!!)
     /// before being cleaned up.
     struct Tombstone: Hashable {
         let remoteNode: UniqueNode
@@ -246,7 +246,7 @@ extension Association {
         /// End of life of the tombstone is calculated as `now + settings.associationTombstoneTTL`.
         let removalDeadline: Deadline // TODO: cluster should have timer to try to remove those periodically
 
-        init(_ node: UniqueNode, settings: ClusterSettings) {
+        init(_ node: UniqueNode, settings: ClusterSystemSettings) {
             // TODO: if we made system carry system.time we could always count from that point in time with a TimeAmount; require Clock and settings then
             self.removalDeadline = Deadline.fromNow(settings.associationTombstoneTTL)
             self.remoteNode = node

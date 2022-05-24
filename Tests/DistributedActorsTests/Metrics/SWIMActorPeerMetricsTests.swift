@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2020 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -43,7 +43,7 @@ final class ActorMetricsSWIMActorPeerMetricsTests: ClusteredActorSystemsXCTestCa
 
         let fakeClusterRef = testKit(first).makeTestProbe(expecting: ClusterShell.Message.self).ref
 
-        let instance = SWIM.Instance(settings: first.settings.cluster.swim, myself: origin.ref)
+        let instance = SWIM.Instance(settings: first.settings.swim, myself: origin.ref)
         _ = try first._spawn("swim", of: SWIM.Message.self, .setup { context in
             let shell = SWIMActorShell(instance, clusterRef: fakeClusterRef)
             shell.sendPing(to: target.ref, payload: .none, pingRequestOrigin: nil, pingRequestSequenceNumber: nil, timeout: .seconds(2), sequenceNumber: 1, context: context)
@@ -83,7 +83,7 @@ final class ActorMetricsSWIMActorPeerMetricsTests: ClusteredActorSystemsXCTestCa
             ]
         )
 
-        let instance = SWIM.Instance(settings: first.settings.cluster.swim, myself: origin.ref)
+        let instance = SWIM.Instance(settings: first.settings.swim, myself: origin.ref)
         _ = try first._spawn("swim", of: SWIM.Message.self, .setup { context in
             let shell = SWIMActorShell(instance, clusterRef: fakeClusterRef)
             shell.sendPingRequests(directive, context: context) // we need a real context here since we reach into system metrics through it

@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2020 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2020-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -23,8 +23,8 @@ enum HandshakeSide: String {
 }
 
 extension ClusterShellState {
-    static func makeTestMock(side: HandshakeSide, configureSettings: (inout ClusterSettings) -> Void = { _ in () }) -> ClusterShellState {
-        var settings = ClusterSettings(
+    static func makeTestMock(side: HandshakeSide, configureSettings: (inout ClusterSystemSettings) -> Void = { _ in () }) -> ClusterShellState {
+        var settings = ClusterSystemSettings(
             node: Node(
                 systemName: "MockSystem",
                 host: "127.0.0.1",
