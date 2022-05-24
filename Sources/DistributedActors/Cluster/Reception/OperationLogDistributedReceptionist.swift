@@ -774,6 +774,7 @@ extension OpLogDistributedReceptionist {
             } catch {
                 log.error("Failed to pushOps: \(pushOps)", metadata: [
                     "receptionist/peer": "\(peer.id)",
+                    "error": "\(error)"
                 ])
             }
         }

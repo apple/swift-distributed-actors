@@ -17,22 +17,26 @@ import Logging
 import NIO
 import NIOFoundationCompat
 import SwiftProtobuf
-import SWIM
-
 import Foundation // for Codable
 
 public struct ClusterInvocationEncoder: DistributedTargetInvocationEncoder {
     public typealias SerializationRequirement = any Codable
     var arguments: [Data] = []
     var throwing: Bool = false
+    
+    let system: ClusterSystem
+    
+    init(system: ClusterSystem) {
+        self.system = system
+    }
 
     public mutating func recordGenericSubstitution<T>(_ type: T.Type) throws {
         fatalError("NOT IMPLEMENTED: \(#function)")
     }
 
     public mutating func recordArgument<Value: Codable>(_ argument: RemoteCallArgument<Value>) throws {
-        let encoder = JSONEncoder()
-        let data = try encoder.encode(argument.value)
+        let serialized = try self.system.serialization.serialize(argument.value)
+        let data = serialized.buffer.readData()
         self.arguments.append(data)
     }
 
@@ -47,7 +51,6 @@ public struct ClusterInvocationEncoder: DistributedTargetInvocationEncoder {
     }
 }
 
-// FIXME(distributed): make it a struct once rdar://88211172 ([Distributed] SILGen must emit uses of decodeNextArgument so IRGen can get it cross module on `FINAL classes`) is fixed
 public struct ClusterInvocationDecoder: DistributedTargetInvocationDecoder {
     public typealias SerializationRequirement = any Codable
 
@@ -71,12 +74,15 @@ public struct ClusterInvocationDecoder: DistributedTargetInvocationDecoder {
 
         let argumentData = self.message.arguments[self.argumentIdx]
         self.argumentIdx += 1
+        
+        // FIXME: make incoming manifest
+        let manifest = try self.system.serialization.outboundManifest(Argument.self)
 
-        // TODO: get serializer for it
-        var decoder = JSONDecoder()
-        decoder.userInfo[.actorSystemKey] = self.system
-
-        let argument = try decoder.decode(Argument.self, from: argumentData)
+        let serialized = Serialization.Serialized(
+            manifest: manifest,
+            buffer: Serialization.Buffer.data(argumentData)
+        )
+        let argument = try system.serialization.deserialize(as: Argument.self, from: serialized)
         return argument
     }
 

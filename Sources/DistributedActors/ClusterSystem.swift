@@ -338,11 +338,11 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         /// Starts plugins after the system is fully initialized
         self.settings.plugins.startAll(self)
 
-        self.log.info("Actor System [\(self.name)] initialized.")
+        self.log.info("ClusterSystem [\(self.name)] initialized.")
         if settings.enabled {
-            self.log.info("Actor System Settings in effect: Cluster.autoLeaderElection: \(self.settings.autoLeaderElection)")
-            self.log.info("Actor System Settings in effect: Cluster.downingStrategy: \(self.settings.downingStrategy)")
-            self.log.info("Actor System Settings in effect: Cluster.onDownAction: \(self.settings.onDownAction)")
+            self.log.info("Setting in effect: Cluster.autoLeaderElection: \(self.settings.autoLeaderElection)")
+            self.log.info("Setting in effect: Cluster.downingStrategy: \(self.settings.downingStrategy)")
+            self.log.info("Setting in effect: Cluster.onDownAction: \(self.settings.onDownAction)")
         }
     }
 
@@ -868,7 +868,7 @@ public extension ClusterSystem {
     }
 
     func makeInvocationEncoder() -> InvocationEncoder {
-        .init()
+        InvocationEncoder(system: self)
     }
 
     func remoteCall<Act, Err, Res>(
@@ -887,9 +887,6 @@ public extension ClusterSystem {
         }
 
         let recipient = _ActorRef<InvocationMessage>(.remote(.init(shell: clusterShell, address: actor.id._asRemote, system: self)))
-
-//      let recipient: _ActorRef<InvocationMessage> =
-//        _resolve(context: ResolveContext(address: actor.id, system: self))
 
         let arguments = invocation.arguments
         let ask: AskResponse<Res> = recipient.ask(timeout: .seconds(5)) { replyTo in
@@ -934,11 +931,11 @@ public extension ClusterSystem {
 extension ClusterSystem {
     func receiveInvocation(actor: some DistributedActor, message: InvocationMessage) async {
         guard let shell = self._cluster else {
-            fatalError("FIXME: cluster is inactive already") // FIXME(distributed): fix this and allow returning back an error via the handler from here
+            self.log.error("Cluster has shut down already, yet received message. Message will be dropped: \(message)")
+            return
         }
 
         let target = message.target
-        self.log.info("TRY TO INVOKE: \(target) on \(actor)")
 
         var decoder = ClusterInvocationDecoder(system: self, message: message)
         let resultHandler = ClusterInvocationResultHandler(
