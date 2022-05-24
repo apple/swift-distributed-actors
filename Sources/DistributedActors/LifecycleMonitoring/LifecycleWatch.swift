@@ -165,7 +165,7 @@ public extension LifecycleWatchContainer {
         @_inheritActorContext @_implicitSelfCapture whenTerminated: @escaping @Sendable(ClusterSystem.ActorID) -> Void,
         file: String = #file, line: UInt = #line
     ) where Watchee: DistributedActor, Watchee.ActorSystem == ClusterSystem {
-        traceLog_DeathWatch("issue watch: \(watchee) (from \(watcherID))")
+        traceLog_DeathWatch("issue watch: \(watchee) (from \(self.watcherID))")
 
         let watcherAddress: ActorAddress = self.watcherID
         let watcheeAddress: ActorAddress = watchee.id
@@ -213,7 +213,7 @@ public extension LifecycleWatchContainer {
         watchee: Watchee,
         file: String = #file, line: UInt = #line
     ) -> Watchee where Watchee: DistributedActor, Watchee.ActorSystem == ClusterSystem {
-        traceLog_DeathWatch("issue unwatch: watchee: \(watchee) (from \(watcherID)")
+        traceLog_DeathWatch("issue unwatch: watchee: \(watchee) (from \(self.watcherID)")
         let watcheeAddress = watchee.id
         let watcherAddress = self.watcherID
 
@@ -248,17 +248,17 @@ public extension LifecycleWatchContainer {
         watcher: AddressableActorRef
     ) {
         guard watcher.address != self.watcherID else {
-            traceLog_DeathWatch("Attempted to watch 'myself' [\(watcherID)], which is a no-op, since such watch's terminated can never be observed. " +
+            traceLog_DeathWatch("Attempted to watch 'myself' [\(self.watcherID)], which is a no-op, since such watch's terminated can never be observed. " +
                 "Likely a programming error where the wrong actor ref was passed to watch(), please check your code.")
             return
         }
 
-        traceLog_DeathWatch("Become watched by: \(watcher.address)     inside: \(watcherID)")
+        traceLog_DeathWatch("Become watched by: \(watcher.address)     inside: \(self.watcherID)")
         self.watchedBy[watcher.address] = watcher
     }
 
     internal func removeWatchedBy(watcher: AddressableActorRef) {
-        traceLog_DeathWatch("Remove watched by: \(watcher.address)     inside: \(watcherID)")
+        traceLog_DeathWatch("Remove watched by: \(watcher.address)     inside: \(self.watcherID)")
         self.watchedBy.removeValue(forKey: watcher.address)
     }
 
@@ -317,7 +317,7 @@ public extension LifecycleWatchContainer {
     // MARK: Myself termination
 
     internal func notifyWatchersWeDied() {
-        traceLog_DeathWatch("[\(watcherID)] notifyWatchers that we are terminating. Watchers: \(self.watchedBy)...")
+        traceLog_DeathWatch("[\(self.watcherID)] notifyWatchers that we are terminating. Watchers: \(self.watchedBy)...")
 
         for (watcherID, watcherRef) in self.watchedBy {
             traceLog_DeathWatch("[\(watcherID)] Notify  \(watcherID) (\(watcherRef)) that we died")

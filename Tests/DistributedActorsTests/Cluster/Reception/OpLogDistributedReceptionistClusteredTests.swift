@@ -35,10 +35,10 @@ distributed actor StringForwarder: CustomStringConvertible {
         self.probe = probe
     }
 
-    distributed func forward(message: String) {
-//    distributed func forward(message: String) -> String {
+//    distributed func forward(message: String) {
+    distributed func forward(message: String) -> String {
         self.probe.tell("forwarded:\(message)")
-//        return "echo:\(message)"
+        return "echo:\(message)"
     }
 
     nonisolated var description: String {
@@ -85,42 +85,40 @@ final class OpLogDistributedReceptionistClusteredTests: ClusteredActorSystemsXCT
     // MARK: Sync
 
     func test_shouldReplicateRegistrations() async throws {
-        try runAsyncAndBlock {
-            let (local, remote) = await self.setUpPair()
-            let testKit: ActorTestKit = self.testKit(local)
-            try self.joinNodes(node: local, with: remote)
+        let (local, remote) = await self.setUpPair()
+        let testKit: ActorTestKit = self.testKit(local)
+        try self.joinNodes(node: local, with: remote)
 
-            let probe = testKit.makeTestProbe(expecting: String.self)
+        let probe = testKit.makeTestProbe(expecting: String.self)
 
-            // Create forwarder on 'local'
-            let forwarder = StringForwarder(probe: probe, actorSystem: local)
+        // Create forwarder on 'local'
+        let forwarder = StringForwarder(probe: probe, actorSystem: local)
 
-            // subscribe on `remote`
-            let subscriberProbe = testKit.makeTestProbe("subscriber", expecting: StringForwarder.self)
-            let subscriptionTask = Task {
-                for try await forwarder in await remote.receptionist.subscribe(to: .stringForwarders) {
-                    subscriberProbe.tell(forwarder)
-                }
+        // subscribe on `remote`
+        let subscriberProbe = testKit.makeTestProbe("subscriber", expecting: StringForwarder.self)
+        let subscriptionTask = Task {
+            for try await forwarder in await remote.receptionist.subscribe(to: .stringForwarders) {
+                subscriberProbe.tell(forwarder)
             }
-            defer {
-                subscriptionTask.cancel()
-            }
-
-            // register on `local`
-            await local.receptionist.register(forwarder, with: .stringForwarders)
-
-            try await Task {
-                let found = try subscriberProbe.expectMessage()
-
-                // we expect only one actor
-                try subscriberProbe.expectNoMessage(for: .milliseconds(200))
-
-                // check if we can interact with it
-                let echo = try await found.forward(message: "test")
-//                echo.shouldEqual("echo:test")
-                try probe.expectMessage("forwarded:test")
-            }.value
         }
+        defer {
+            subscriptionTask.cancel()
+        }
+
+        // register on `local`
+        await local.receptionist.register(forwarder, with: .stringForwarders)
+
+        try await Task {
+            let found = try subscriberProbe.expectMessage()
+
+            // we expect only one actor
+            try subscriberProbe.expectNoMessage(for: .milliseconds(200))
+
+            // check if we can interact with it
+            let echo = try await found.forward(message: "test")
+            echo.shouldEqual("echo:test")
+            try probe.expectMessage("forwarded:test")
+        }.value
     }
 
     func test_shouldSyncPeriodically() async throws {
@@ -161,7 +159,7 @@ final class OpLogDistributedReceptionistClusteredTests: ClusteredActorSystemsXCT
 
                 // check if we can interact with it
                 let echo = try await found.forward(message: "test")
-//                echo.shouldEqual("echo:test")
+                echo.shouldEqual("echo:test")
                 try probe.expectMessage("forwarded:test")
             }.value
         }

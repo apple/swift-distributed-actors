@@ -50,7 +50,7 @@ final class DistributedReceptionistTests: ActorSystemXCTestCase {
     func test_receptionist_mustHaveWellKnownAddress() throws {
         let opLogReceptionist = system.receptionist
         let receptionistAddress = opLogReceptionist.id
-        
+
         receptionistAddress.detailedDescription.shouldEqual("/system/receptionist")
         receptionistAddress.incarnation.shouldEqual(.wellKnown)
     }

@@ -116,8 +116,6 @@ public protocol CodableSerializationContext {
 }
 
 public extension Decoder {
-    // Cannot conform it to DecoderSerializationContext:
-    //     error: extension of protocol 'Decoder' cannot have an inheritance clause
     var actorSerializationContext: Serialization.Context? {
         self.userInfo[.actorSerializationContext] as? Serialization.Context
     }
