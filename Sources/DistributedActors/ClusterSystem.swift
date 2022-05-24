@@ -888,9 +888,6 @@ public extension ClusterSystem {
 
         let recipient = _ActorRef<InvocationMessage>(.remote(.init(shell: clusterShell, address: actor.id._asRemote, system: self)))
 
-//      let recipient: _ActorRef<InvocationMessage> =
-//        _resolve(context: ResolveContext(address: actor.id, system: self))
-
         let arguments = invocation.arguments
         let ask: AskResponse<Res> = recipient.ask(timeout: .seconds(5)) { replyTo in
             let invocation = InvocationMessage(
@@ -914,7 +911,11 @@ public extension ClusterSystem {
         where Act: DistributedActor,
         Act.ID == ActorID,
         Err: Error {
-        let recipient = _ActorRef<InvocationMessage>(.remote(.init(shell: self._cluster!, address: actor.id._asRemote, system: self)))
+        guard let shell = self._cluster else {
+            throw AskError.systemAlreadyShutDown
+        }
+
+        let recipient = _ActorRef<InvocationMessage>(.remote(.init(shell: shell, address: actor.id._asRemote, system: self)))
 
         let arguments = invocation.arguments
         let ask: AskResponse<_Done> = recipient.ask(timeout: .seconds(5)) { replyTo in
@@ -938,7 +939,6 @@ extension ClusterSystem {
         }
 
         let target = message.target
-        self.log.info("TRY TO INVOKE: \(target) on \(actor)")
 
         var decoder = ClusterInvocationDecoder(system: self, message: message)
         let resultHandler = ClusterInvocationResultHandler(

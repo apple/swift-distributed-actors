@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Distributed
 import class NIO.EventLoopFuture
 import struct NIO.EventLoopPromise
 import struct NIO.Scheduled
@@ -146,7 +147,7 @@ public enum AskResponse<Value> {
     case nioFuture(EventLoopFuture<Value>)
 }
 
-public enum AskError: Error {
+public enum AskError: DistributedActorSystemError, Error {
     case timedOut(TimeoutError)
     case systemAlreadyShutDown
 }

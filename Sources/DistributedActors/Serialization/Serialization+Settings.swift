@@ -150,8 +150,7 @@ public extension Serialization.Settings {
         _ type: Message.Type, hint hintOverride: String? = nil,
         serializerID overrideSerializerID: SerializerID? = nil
     ) -> Manifest {
-        // FIXME: THIS IS A WORKAROUND UNTIL WE CAN GET MANGLED NAMES https://github.com/apple/swift/pull/30318
-        let hint = hintOverride ?? _mangledTypeName(type)
+        let hint = hintOverride ?? _mangledTypeName(type) ?? _typeName(type)
         let serializerID = overrideSerializerID ?? self.defaultSerializerID
 
         let manifest = Manifest(serializerID: serializerID, hint: hint)
@@ -176,8 +175,7 @@ extension Serialization.Settings {
             serializerID == .specializedWithTypeHint || serializerID > 16,
             "Specialized serializerID MUST exactly `1` or be `> 16`, since IDs until 16 are reserved for general purpose serializers"
         )
-        // FIXME: THIS IS A WORKAROUND UNTIL WE CAN GET MANGLED NAMES https://github.com/apple/swift/pull/30318
-        let hint = hintOverride ?? _mangledTypeName(type)
+        let hint = hintOverride ?? _mangledTypeName(type) ?? _typeName(type)
         let manifest = Serialization.Manifest(serializerID: serializerID, hint: hint)
 
         self.specializedSerializerMakers[manifest] = { allocator in
