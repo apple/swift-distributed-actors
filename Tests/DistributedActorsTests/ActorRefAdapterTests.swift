@@ -232,49 +232,6 @@ class _ActorRefAdapterTests: ActorSystemXCTestCase {
         try probe.expectMessage("received:adapter-1:test")
     }
 
-    func test_adaptedRef_shouldDeadLetter_whenOwnerTerminated() async throws {
-        let logCapture = LogCapture()
-        let system = await ClusterSystem("\(type(of: self))-2") { settings in
-            settings.logging.baseLogger = logCapture.logger(label: settings.node.systemName)
-        }
-        defer { try! system.shutdown().wait() }
-
-        let probe = self.testKit.makeTestProbe(expecting: String.self)
-        let receiveRefProbe = self.testKit.makeTestProbe(expecting: _ActorRef<String>.self)
-
-        let behavior: _Behavior<LifecycleTestMessage> = .setup { context in
-            .receiveMessage {
-                switch $0 {
-                case .createAdapter(let replyTo):
-                    replyTo.tell(context.messageAdapter { .message("adapter:\($0)") })
-                    return .stop
-                default:
-                    return .stop
-                }
-            }
-        }
-
-        let ref = try system._spawn(.anonymous, behavior)
-        probe.watch(ref)
-
-        ref.tell(.createAdapter(replyTo: receiveRefProbe.ref))
-        let adaptedRef = try receiveRefProbe.expectMessage()
-
-        // the owner has terminated
-        try probe.expectTerminated(ref)
-
-        // thus sending to the adapter results in a dead letter
-        adaptedRef.tell("whoops")
-        let expectedLine = #line - 1
-        let expectedFile = #file
-
-        let deadLetterLogMessage = try logCapture.shouldContain(
-            message: "*was not delivered to [*",
-            at: .info
-        )
-        deadLetterLogMessage.metadata!["deadLetter/location"]!.shouldEqual("\(expectedFile):\(expectedLine)")
-    }
-
     func test_adaptedRef_useSpecificEnoughAdapterMostRecentlySet() throws {
         class TopExample: NonTransportableActorMessage {}
         class BottomExample: TopExample {}
