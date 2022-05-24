@@ -317,7 +317,7 @@ public extension Serialization {
     /// Container for serialization output.
     ///
     /// Describing what serializer was used to serialize the value, and its serialized bytes
-    public struct Serialized {
+    struct Serialized {
         public let manifest: Serialization.Manifest
         public let buffer: Serialization.Buffer
     }
