@@ -257,18 +257,18 @@ final class ActorLeakingTests: ActorSystemXCTestCase {
             if message == "shutdown" {
                 context.system.shutdown()
             }
-            p.tell("system:\(context.system.name)")
+            p.tell("system:\(context.system)")
             return .same
         })
 
         ref.tell("x")
-        try p.expectMessage("system:FreeMe")
+        try p.expectMessage("system:ClusterSystem(FreeMe, sact://FreeMe@127.0.0.1:7337)")
 
         // clear the strong reference from "user land"
         system = nil
 
         ref.tell("x")
-        try p.expectMessage("system:FreeMe")
+        try p.expectMessage("system:ClusterSystem(FreeMe, sact://FreeMe@127.0.0.1:7337)")
 
         ref.tell("shutdown") // since we lost the `system` reference here we'll ask the actor to stop the system
 

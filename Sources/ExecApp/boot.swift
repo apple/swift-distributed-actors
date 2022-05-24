@@ -40,7 +40,8 @@ enum Main {
         print("RESOLVE:")
         let resolved = try Greeter.resolve(id: greeter.id, using: system)
         print("Resolved: \(resolved)")
-        try await resolved.hi(name: "Caplin")
+        let greeting = try await resolved.hi(name: "Caplin")
+        print("Got remote greeting: \(greeting)")
 
         // ------------------------------------------
         print("REMOTE:")

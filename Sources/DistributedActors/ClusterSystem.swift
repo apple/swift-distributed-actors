@@ -50,6 +50,8 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         }
     }
 
+    private let initLock = Lock()
+
     internal let lifecycleWatchLock = Lock()
     internal var _lifecycleWatches: [ActorAddress: LifecycleWatchContainer] = [:]
 
@@ -77,11 +79,11 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
     internal var _serialization: ManagedAtomicLazyReference<Serialization>
     public var serialization: Serialization {
         self.lazyInitializationLock.withReaderLock {
-            if let s = self._serialization.load() {
-                return s
-            } else {
+            guard let s = self._serialization.load() else {
                 return fatalErrorBacktrace("Serialization is not initialized! This is likely a bug, as it is initialized synchronously during system startup.")
             }
+
+            return s
         }
     }
 
@@ -90,15 +92,35 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
 
     // TODO(distributed): once all actors which use the receptionist are moved to 'distributed actor'
     //                    we can remove the actor-ref receptionist.
-    private var _receptionistRef: _ActorRef<Receptionist.Message>!
+    private var _receptionistRef: ManagedAtomicLazyReference<Box<_ActorRef<Receptionist.Message>>>
     internal var _receptionist: SystemReceptionist {
-        SystemReceptionist(ref: self._receptionistRef)
+        guard let ref = _receptionistRef.load()?.value else {
+            print("XXX lock for `_receptionist`")
+            initLock.lock()
+            defer {
+                print("XXX UNLOCK for `_receptionist`")
+                initLock.unlock()
+            }
+
+
+            return _receptionist
+        }
+
+        return SystemReceptionist(ref: ref)
     }
 
     private let _receptionistStore: ManagedAtomicLazyReference<OpLogDistributedReceptionist>
     public var receptionist: OpLogDistributedReceptionist {
         guard let value = _receptionistStore.load() else {
-            fatalError("Somehow attempted to load system.receptionist before it was initialized!")
+            print("XXX lock for `receptionist`")
+            initLock.lock()
+            defer {
+                print("XXX UNLOCK for `receptionist`")
+                initLock.unlock()
+            }
+
+
+            return self.receptionist
         }
 
         return value
@@ -111,6 +133,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Cluster
+    
     internal final class Box<T> {
         var value: T
         init(_ value: T) {
@@ -122,7 +145,13 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
     private let _clusterStore: ManagedAtomicLazyReference<Box<ClusterShell?>>
     internal var _cluster: ClusterShell? {
         guard let box = _clusterStore.load() else {
-            fatalError("Somehow attempted to load system._cluster before it was initialized!")
+            print("XXX lock for `_cluster`")
+            initLock.lock()
+            defer {
+                print("XXX UNLOCK for `_cluster`")
+                initLock.unlock()
+            }
+            return self._cluster
         }
         return box.value
     }
@@ -130,7 +159,14 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
     private let _clusterControlStore: ManagedAtomicLazyReference<Box<ClusterControl>>
     public var cluster: ClusterControl {
         guard let box = _clusterControlStore.load() else {
-            fatalError("Somehow attempted to load system.cluster before it was initialized!")
+            print("XXX lock for `cluster`")
+            initLock.lock()
+            defer {
+                print("XXX UNLOCK for `cluster`")
+                initLock.unlock()
+            }
+
+            return self.cluster // recurse, as we hold the lock now, it MUST be initialized already
         }
         return box.value
     }
@@ -138,7 +174,14 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
     internal let _nodeDeathWatcherStore: ManagedAtomicLazyReference<Box<NodeDeathWatcherShell.Ref?>>
     internal var _nodeDeathWatcher: NodeDeathWatcherShell.Ref? {
         guard let box = _nodeDeathWatcherStore.load() else {
-            fatalError("Somehow attempted to load system.nodeDeathWatcher before it was initialized!")
+            print("XXX lock for `_nodeDeathWatcher`")
+            initLock.lock()
+            defer {
+                print("XXX UNLOCK for `_nodeDeathWatcher`")
+                initLock.unlock()
+            }
+
+            return self._nodeDeathWatcher
         }
         return box.value
     }
@@ -231,6 +274,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         self.log = settings.logging.baseLogger
         self.metrics = ClusterSystemMetrics(settings.metrics)
 
+        self._receptionistRef = ManagedAtomicLazyReference()
         self._receptionistStore = ManagedAtomicLazyReference()
         self._serialization = ManagedAtomicLazyReference()
         self._clusterStore = ManagedAtomicLazyReference()
@@ -239,6 +283,13 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
 
         // vvv~~~~~~~~~~~~~~~~~~~ all properties initialized, self can be shared ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~vvv //
 
+        print("XXX LOCK INITIALIZING...")
+        initLock.lock()
+        defer {
+            print("XXX UNLOCK INITIALIZING >>>")
+            initLock.unlock()
+        }
+        
         // serialization
         let serialization = Serialization(settings: settings, system: self)
         _ = self._serialization.storeIfNilThenLoad(serialization)
@@ -246,7 +297,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         // dead letters init
         self._deadLetters = _ActorRef(.deadLetters(.init(self.log, address: ActorAddress._deadLetters(on: settings.uniqueBindNode), system: self)))
 
-        let cluster = ClusterShell(selfNode: settings.uniqueBindNode)
+        let cluster = ClusterShell(settings: settings)
         _ = self._clusterStore.storeIfNilThenLoad(Box(cluster))
 
         // actor providers
@@ -270,6 +321,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
             customBehavior: ClusterEventStream.Shell.behavior
         )
         let clusterRef = try! cluster.start(system: self, clusterEvents: clusterEvents) // only spawns when cluster is initialized
+        print("XXX stored _clusterControlStore")
         _ = self._clusterControlStore.storeIfNilThenLoad(Box(ClusterControl(settings, clusterRef: clusterRef, eventStream: clusterEvents)))
 
         // node watcher MUST be prepared before receptionist (or any other actor) because it (and all actors) need it if we're running clustered
@@ -279,21 +331,27 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
             NodeDeathWatcherShell.behavior(clusterEvents: clusterEvents),
             props: ._wellKnown
         )
-        self._nodeDeathWatcherStore.storeIfNilThenLoad(Box(lazyNodeDeathWatcher.ref))
+        print("XXX stored _nodeDeathWatcherStore")
+        _ = self._nodeDeathWatcherStore.storeIfNilThenLoad(Box(lazyNodeDeathWatcher.ref))
 
         // OLD receptionist // TODO(distributed): remove when possible
         let receptionistBehavior = self.settings.receptionist.behavior(settings: self.settings)
         let lazyReceptionist = try! self._prepareSystemActor(Receptionist.naming, receptionistBehavior, props: ._wellKnown)
-        self._receptionistRef = lazyReceptionist.ref
+        print("XXX stored _receptionistRef")
+        // self._receptionistRef = lazyReceptionist.ref
+        _ = self._receptionistRef.storeIfNilThenLoad(Box(lazyReceptionist.ref))
 
+//        Task.detached {
         await _Props.$forSpawn.withValue(OpLogDistributedReceptionist.props) {
             let receptionist = await OpLogDistributedReceptionist(
                 settings: self.settings.receptionist,
                 system: self
             )
             Task { try await receptionist.start() }
+            print("XXX stored _receptionistStore")
             _ = self._receptionistStore.storeIfNilThenLoad(receptionist)
         }
+//        }
 
         #if SACT_TESTS_LEAKS
         _ = ClusterSystem.actorSystemInitCounter.loadThenWrappingIncrement(ordering: .relaxed)
@@ -418,7 +476,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
 
             do {
                 try self._eventLoopGroup.syncShutdownGracefully()
-                self._receptionistRef = self.deadLetters.adapted()
+                // self._receptionistRef = self.deadLetters.adapted()
             } catch {
                 self.shutdownReceptacle.offerOnce(error)
                 afterShutdownCompleted(error)

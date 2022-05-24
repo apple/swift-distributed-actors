@@ -35,7 +35,11 @@ internal class ClusterShell {
 
     static let gossipID: StringGossipIdentifier = "membership"
 
-    private let selfNode: UniqueNode
+    private var selfNode: UniqueNode {
+        self.settings.uniqueBindNode
+    }
+    
+    private let settings: ClusterSystemSettings
 
     // ~~~~~~ HERE BE DRAGONS, shared concurrently modified concurrent state ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     // We do this to avoid "looping" any initial access of an actor ref through the cluster shell's mailbox
@@ -244,8 +248,8 @@ internal class ClusterShell {
         return it
     }
 
-    init(selfNode: UniqueNode) {
-        self.selfNode = selfNode
+    init(settings: ClusterSystemSettings) {
+        self.settings = settings
         self._associationsLock = Lock()
         self._associations = [:]
         self._associationTombstones = [:]
@@ -374,27 +378,27 @@ extension ClusterShell {
     /// Once bound proceeds to `ready` state, where it remains to accept or initiate new handshakes.
     private func bind() -> _Behavior<Message> {
         return .setup { context in
-            let clusterSettings = context.system.settings
-            let uniqueBindAddress = clusterSettings.uniqueBindNode
+            // let clusterSettings = context.system.settings
+            let uniqueBindAddress = self.selfNode
 
             // 1) failure detector:
-            let swimBehavior = SWIMActorShell.behavior(settings: clusterSettings.swim, clusterRef: context.myself)
+            let swimBehavior = SWIMActorShell.behavior(settings: self.settings.swim, clusterRef: context.myself)
             self._swimRef = try context._spawn(SWIMActorShell.naming, props: SWIMActorShell.props, swimBehavior)
 
             // 2) discovering of new members:
-            if let discoverySettings = clusterSettings.discovery {
+            if let discoverySettings = self.settings.discovery {
                 _ = try context._spawn(DiscoveryShell.naming, DiscoveryShell(settings: discoverySettings, cluster: context.myself).behavior)
             }
 
             // 3) leader election, so it may move members: .joining -> .up (and other `LeaderAction`s)
-            if let leaderElection = clusterSettings.autoLeaderElection.make(context.system.cluster.settings) {
+            if let leaderElection = self.settings.autoLeaderElection.make(context.system.cluster.settings) {
                 let leadershipShell = Leadership.Shell(leaderElection)
                 let leadership = try context._spawn(Leadership.Shell.naming, leadershipShell.behavior)
                 context.watch(leadership) // if leadership fails for some reason, we are in trouble and need to know about it
             }
 
             // 4) downing strategy (automatic downing)
-            if let downing = clusterSettings.downingStrategy.make(context.system.cluster.settings) {
+            if let downing = self.settings.downingStrategy.make(context.system.cluster.settings) {
                 let shell = DowningStrategyShell(downing)
                 try context._spawn(shell.naming, shell.behavior)
             }
@@ -405,20 +409,20 @@ extension ClusterShell {
                 system: context.system,
                 shell: context.myself,
                 bindAddress: uniqueBindAddress,
-                settings: clusterSettings,
+                settings: self.settings,
                 serializationPool: self.serializationPool
             )
 
-            return context.awaitResultThrowing(of: chanElf, timeout: clusterSettings.bindTimeout) { (chan: Channel) in
+            return context.awaitResultThrowing(of: chanElf, timeout: self.settings.bindTimeout) { (chan: Channel) in
                 context.log.info("Bound to \(chan.localAddress.map(\.description) ?? "<no-local-address>")")
 
                 let gossiperControl: GossiperControl<Cluster.MembershipGossip, Cluster.MembershipGossip> = try Gossiper._spawn(
                     context,
                     name: "\(ActorPath._clusterGossip.name)",
                     settings: .init(
-                        interval: clusterSettings.membershipGossipInterval,
-                        intervalRandomFactor: clusterSettings.membershipGossipIntervalRandomFactor,
-                        style: .acknowledged(timeout: clusterSettings.membershipGossipInterval),
+                        interval: self.settings.membershipGossipInterval,
+                        intervalRandomFactor: self.settings.membershipGossipIntervalRandomFactor,
+                        style: .acknowledged(timeout: self.settings.membershipGossipInterval),
                         peerDiscovery: .onClusterMember(atLeast: .joining, resolve: { member in
                             let resolveContext = ResolveContext<GossipShell<Cluster.MembershipGossip, Cluster.MembershipGossip>.Message>(address: ._clusterGossip(on: member.uniqueNode), system: context.system)
                             return context.system._resolve(context: resolveContext).asAddressable
@@ -436,7 +440,7 @@ extension ClusterShell {
                 )
 
                 var state = ClusterShellState(
-                    settings: clusterSettings,
+                    settings: self.settings,
                     channel: chan,
                     events: self.clusterEvents,
                     gossiperControl: gossiperControl,

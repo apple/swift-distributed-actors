@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import Distributed
-@preconcurrency import struct Foundation.Data
+import struct Foundation.Data
 
 // FIXME(distributed): we need to get rid of this all of this... probably means having to remove the entire Ref based infrastructure
 
