@@ -311,18 +311,6 @@ class SerializationDocExamples {
     }
 
     // end::custom_actorRef_serializer[]
-
-    // ==== ----------------------------------------------------------------------------------------------------------------
-    // MARK: Other configurations
-
-    func configure_serialize_all() {
-        // tag::configure_serialize_all[]
-        let system = ClusterSystem("SerializeAll") { settings in
-            settings.serialization.serializeLocalMessages = true
-        }
-        // end::configure_serialize_all[]
-        _ = system
-    }
 }
 
 // tag::serialize_manifest_any[]

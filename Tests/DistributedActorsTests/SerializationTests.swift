@@ -275,33 +275,6 @@ class SerializationTests: ActorSystemXCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: Serialized messages in actor communication, locally
-
-    func test_verifySerializable_shouldPass_forPreconfiguredSerializableMessages_string() async throws {
-        let s2 = await ClusterSystem("SerializeMessages") { settings in
-            settings.serialization.serializeLocalMessages = true
-        }
-
-        do {
-            let p = self.testKit.makeTestProbe("p1", expecting: String.self)
-            let echo: _ActorRef<String> = try s2._spawn(
-                "echo",
-                .receiveMessage { msg in
-                    p.ref.tell("echo:\(msg)")
-                    return .same
-                }
-            )
-
-            echo.tell("hi!") // is a built-in serializable message
-            try p.expectMessage("echo:hi!")
-        } catch {
-            try! s2.shutdown().wait()
-            throw error
-        }
-        try! s2.shutdown().wait()
-    }
-
-    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Error envelope serialization
 
     func test_serialize_errorEnvelope_stringDescription() throws {

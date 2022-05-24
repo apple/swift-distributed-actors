@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2020 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -44,16 +44,6 @@ public extension Serialization {
         ///   and the serialization infrastructure would attempt deserializing it, potentially opening up for security risks.
         // TODO: We are using an internal function here to allow us to automatically enable the more strict mode in release builds.
         public var insecureSerializeNotRegisteredMessages: Bool = _isDebugAssertConfiguration()
-
-        /// Serializes all messages, also when passed only locally between actors.
-        ///
-        /// This option to ensure no reference types are "leaked" through message passing,
-        /// as messages now will always be passed through serialization accidental sharing of
-        /// mutable state (which would have been unsafe) can be avoided by the serialization round trip.
-        ///
-        /// - Warning: Do not use this setting in production settings if you care for performance however,
-        ///   as it implies needless serialization roundtrips on every single message send on the entire system (!).
-        public var serializeLocalMessages: Bool = false
 
         /// Configures which `Codable` serializer (`Encoder` / `Decoder` pair) should be used whenever a
         /// a message is sent however the type does not have a specific serializer requirement configured (via `register` calls).
@@ -160,8 +150,7 @@ public extension Serialization.Settings {
         _ type: Message.Type, hint hintOverride: String? = nil,
         serializerID overrideSerializerID: SerializerID? = nil
     ) -> Manifest {
-        // FIXME: THIS IS A WORKAROUND UNTIL WE CAN GET MANGLED NAMES https://github.com/apple/swift/pull/30318
-        let hint = hintOverride ?? _typeName(type) // FIXME: _mangledTypeName https://github.com/apple/swift/pull/30318
+        let hint = hintOverride ?? _mangledTypeName(type) ?? _typeName(type)
         let serializerID = overrideSerializerID ?? self.defaultSerializerID
 
         let manifest = Manifest(serializerID: serializerID, hint: hint)
@@ -175,9 +164,9 @@ public extension Serialization.Settings {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Serialization: Specialized
 
-public extension Serialization.Settings {
+extension Serialization.Settings {
     /// Register a specialized serializer for a specific `Serialization.Manifest`.
-    mutating func registerSpecializedSerializer<Message>(
+    internal mutating func registerSpecializedSerializer<Message>(
         _ type: Message.Type, hint hintOverride: String? = nil,
         serializerID: SerializerID,
         makeSerializer: @escaping (NIO.ByteBufferAllocator) -> Serializer<Message>
@@ -186,8 +175,7 @@ public extension Serialization.Settings {
             serializerID == .specializedWithTypeHint || serializerID > 16,
             "Specialized serializerID MUST exactly `1` or be `> 16`, since IDs until 16 are reserved for general purpose serializers"
         )
-        // FIXME: THIS IS A WORKAROUND UNTIL WE CAN GET MANGLED NAMES https://github.com/apple/swift/pull/30318
-        let hint = hintOverride ?? _typeName(type) // FIXME: _mangledTypeName https://github.com/apple/swift/pull/30318
+        let hint = hintOverride ?? _mangledTypeName(type) ?? _typeName(type)
         let manifest = Serialization.Manifest(serializerID: serializerID, hint: hint)
 
         self.specializedSerializerMakers[manifest] = { allocator in
@@ -195,7 +183,7 @@ public extension Serialization.Settings {
         }
     }
 
-    mutating func getSpecializedOrRegisterManifest<Message: ActorMessage>(
+    public mutating func getSpecializedOrRegisterManifest<Message: ActorMessage>(
         _ type: Message.Type,
         serializerID: Serialization.SerializerID
     ) -> Serialization.Manifest {
