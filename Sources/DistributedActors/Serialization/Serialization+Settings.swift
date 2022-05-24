@@ -175,9 +175,9 @@ public extension Serialization.Settings {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Serialization: Specialized
 
-public extension Serialization.Settings {
+extension Serialization.Settings {
     /// Register a specialized serializer for a specific `Serialization.Manifest`.
-    mutating func registerSpecializedSerializer<Message>(
+    internal mutating func registerSpecializedSerializer<Message>(
         _ type: Message.Type, hint hintOverride: String? = nil,
         serializerID: SerializerID,
         makeSerializer: @escaping (NIO.ByteBufferAllocator) -> Serializer<Message>
@@ -195,7 +195,7 @@ public extension Serialization.Settings {
         }
     }
 
-    mutating func getSpecializedOrRegisterManifest<Message: ActorMessage>(
+    public mutating func getSpecializedOrRegisterManifest<Message: ActorMessage>(
         _ type: Message.Type,
         serializerID: Serialization.SerializerID
     ) -> Serialization.Manifest {

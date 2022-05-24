@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -58,7 +58,7 @@ open class _Base_ProtobufSerializer<Message, ProtobufMessage: SwiftProtobuf.Mess
 }
 
 /// Protobuf serializer for user-defined protobuf messages.
-public final class _ProtobufSerializer<T: _ProtobufRepresentable>: _Base_ProtobufSerializer<T, T.ProtobufRepresentation> {
+internal final class _ProtobufSerializer<T: _ProtobufRepresentable>: _Base_ProtobufSerializer<T, T.ProtobufRepresentation> {
     public override func toProto(_ message: T, context: Serialization.Context) throws -> T.ProtobufRepresentation {
         try message.toProto(context: self.serializationContext)
     }
