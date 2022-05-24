@@ -52,3 +52,15 @@ struct WeakActorDictionary {
         return knownActor
     }
 }
+
+final class Weak<Act: DistributedActor> {
+    weak var actor: Act?
+
+    init(_ actor: Act) {
+        self.actor = actor
+    }
+
+    init(idForRemoval id: ClusterSystem.ActorID) {
+        self.actor = nil
+    }
+}

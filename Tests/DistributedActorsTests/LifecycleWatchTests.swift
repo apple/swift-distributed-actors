@@ -96,7 +96,7 @@ final class LifecycleWatchTests: ActorSystemXCTestCase, @unchecked Sendable {
         try pj.expectMessage("Juliet init")
         try pr.expectMessage("Romeo init")
         try pr.expectMessage("Romeo deinit")
-        try pj.expectMessage("Received terminated: ClusterSystem.ActorID(/user/Romeo-b)")
+        try pj.expectMessage("Received terminated: /user/Romeo-b")
     }
 
     func test_watchThenUnwatch_shouldTriggerTerminatedWhenWatchedActorDeinits() async throws {

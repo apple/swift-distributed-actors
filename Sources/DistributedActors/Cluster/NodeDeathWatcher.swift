@@ -42,15 +42,15 @@ internal final class NodeDeathWatcherInstance: NodeDeathWatcher {
 
     struct WatcherAndCallback: Hashable {
         /// Address of the local watcher which had issued this watch
-        let watcherIdentity: ClusterSystem.ActorID
+        let watcherID: ClusterSystem.ActorID
         let callback: @Sendable(UniqueNode) async -> Void
 
         func hash(into hasher: inout Hasher) {
-            hasher.combine(self.watcherIdentity)
+            hasher.combine(self.watcherID)
         }
 
         static func == (lhs: WatcherAndCallback, rhs: WatcherAndCallback) -> Bool {
-            lhs.watcherIdentity == rhs.watcherIdentity
+            lhs.watcherID == rhs.watcherID
         }
     }
 
@@ -100,15 +100,15 @@ internal final class NodeDeathWatcherInstance: NodeDeathWatcher {
             return
         }
 
-        let record = WatcherAndCallback(watcherIdentity: watcher, callback: nodeTerminatedFn)
+        let record = WatcherAndCallback(watcherID: watcher, callback: nodeTerminatedFn)
         self.remoteWatchCallbacks[remoteNode, default: []].insert(record)
     }
 
     func onRemoveWatcher(
-        watcherIdentity: ClusterSystem.ActorID
+        watcherID: ClusterSystem.ActorID
     ) {
         // TODO: this can be optimized a bit more I suppose, with a reverse lookup table
-        let removeMe = WatcherAndCallback(watcherIdentity: watcherIdentity, callback: { _ in () })
+        let removeMe = WatcherAndCallback(watcherID: watcherID, callback: { _ in () })
         for (node, var watcherAndCallbacks) in self.remoteWatchCallbacks {
             if watcherAndCallbacks.remove(removeMe) != nil {
                 self.remoteWatchCallbacks[node] = watcherAndCallbacks
@@ -158,7 +158,7 @@ internal protocol NodeDeathWatcher {
     // TODO: this will change to subscribing to cluster events once those land
     func onMembershipChanged(_ change: Cluster.MembershipChange)
 
-    func onRemoveWatcher(watcherIdentity: ClusterSystem.ActorID)
+    func onRemoveWatcher(watcherID: ClusterSystem.ActorID)
 }
 
 enum NodeDeathWatcherShell {
@@ -173,8 +173,8 @@ enum NodeDeathWatcherShell {
     /// it would be possible however to allow implementing the raw protocol by user actors if we ever see the need for it.
     internal enum Message: NonTransportableActorMessage {
         case remoteActorWatched(watcher: AddressableActorRef, remoteNode: UniqueNode)
-        case remoteDistributedActorWatched(remoteNode: UniqueNode, watcherIdentity: ClusterSystem.ActorID, nodeTerminated: @Sendable(UniqueNode) async -> Void)
-        case removeWatcher(watcherIdentity: ClusterSystem.ActorID)
+        case remoteDistributedActorWatched(remoteNode: UniqueNode, watcherID: ClusterSystem.ActorID, nodeTerminated: @Sendable(UniqueNode) async -> Void)
+        case removeWatcher(watcherID: ClusterSystem.ActorID)
         case membershipSnapshot(Cluster.Membership)
         case membershipChange(Cluster.MembershipChange)
     }
@@ -204,11 +204,11 @@ enum NodeDeathWatcherShell {
             case .remoteActorWatched(let watcher, let remoteNode):
                 instance.onActorWatched(by: watcher, remoteNode: remoteNode) // TODO: return and interpret directives
 
-            case .remoteDistributedActorWatched(let remoteNode, let watcherIdentity, let nodeTerminatedFn):
-                instance.onActorWatched(on: remoteNode, by: watcherIdentity, whenTerminated: nodeTerminatedFn)
+            case .remoteDistributedActorWatched(let remoteNode, let watcherID, let nodeTerminatedFn):
+                instance.onActorWatched(on: remoteNode, by: watcherID, whenTerminated: nodeTerminatedFn)
 
-            case .removeWatcher(let watcherIdentity):
-                instance.onRemoveWatcher(watcherIdentity: watcherIdentity)
+            case .removeWatcher(let watcherID):
+                instance.onRemoveWatcher(watcherID: watcherID)
 
             case .membershipSnapshot(let membership):
                 let diff = Cluster.Membership._diff(from: .empty, to: membership)

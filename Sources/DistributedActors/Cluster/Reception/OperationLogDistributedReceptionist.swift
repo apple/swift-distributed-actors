@@ -641,7 +641,13 @@ extension OpLogDistributedReceptionist {
                 assert(self.id.path.description.contains("/system/receptionist"))
                 try await peerReceptionistRef.ackOps(until: latestAppliedSeqNrFromPeer, by: self)
             } catch {
-                log.error("Error: \(error)")
+                switch error {
+                case AskError.systemAlreadyShutDown:
+                    // ignore silently; this often happens during tests when we terminate systems while interacting with them
+                    ()
+                default:
+                    log.error("Error: \(error)")
+                }
             }
         }
     }
