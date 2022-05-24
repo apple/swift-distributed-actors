@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2020 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -161,7 +161,7 @@ public extension Serialization.Settings {
         serializerID overrideSerializerID: SerializerID? = nil
     ) -> Manifest {
         // FIXME: THIS IS A WORKAROUND UNTIL WE CAN GET MANGLED NAMES https://github.com/apple/swift/pull/30318
-        let hint = hintOverride ?? _typeName(type) // FIXME: _mangledTypeName https://github.com/apple/swift/pull/30318
+        let hint = hintOverride ?? _mangledTypeName(type)
         let serializerID = overrideSerializerID ?? self.defaultSerializerID
 
         let manifest = Manifest(serializerID: serializerID, hint: hint)
@@ -187,7 +187,7 @@ public extension Serialization.Settings {
             "Specialized serializerID MUST exactly `1` or be `> 16`, since IDs until 16 are reserved for general purpose serializers"
         )
         // FIXME: THIS IS A WORKAROUND UNTIL WE CAN GET MANGLED NAMES https://github.com/apple/swift/pull/30318
-        let hint = hintOverride ?? _typeName(type) // FIXME: _mangledTypeName https://github.com/apple/swift/pull/30318
+        let hint = hintOverride ?? _mangledTypeName(type)
         let manifest = Serialization.Manifest(serializerID: serializerID, hint: hint)
 
         self.specializedSerializerMakers[manifest] = { allocator in
