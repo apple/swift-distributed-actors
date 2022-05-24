@@ -69,7 +69,6 @@ internal final class FaultyNetworkSimulatingHandler: ChannelDuplexHandler {
     }
 
     func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
-        pprint("WRITE data = \(data)")
         let message = self.unwrapOutboundIn(data)
 
         switch self.gremlin.decide() {

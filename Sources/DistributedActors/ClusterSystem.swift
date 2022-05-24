@@ -821,18 +821,16 @@ public extension ClusterSystem {
     }
 
     func actorReady<Act>(_ actor: Act) where Act: DistributedActor, Act.ID == ActorID {
-        let address = actor.id
-
         self.log.trace("Actor ready", metadata: [
-            "actor/id": "\(address)",
+            "actor/id": "\(actor.id)",
             "actor/type": "\(type(of: actor))",
         ])
 
         self.namingLock.lock()
         defer { self.namingLock.unlock() }
-        guard self._reservedNames.remove(address) != nil else {
+        guard self._reservedNames.remove(actor.id) != nil else {
             // FIXME(distributed): this is a bug in the initializers impl, they may call actorReady many times (from async inits) // TODO: probably already solved
-            self.log.warning("Attempted to ready an identity that was not reserved: \(address)")
+            self.log.warning("Attempted to ready an identity that was not reserved: \(actor.id)")
             return
         }
 
@@ -843,7 +841,7 @@ public extension ClusterSystem {
             _openExistential(watcher, do: doMakeLifecycleWatch)
         }
 
-        let behavior = InvocationBehavior.behavior(instance: actor)
+        let behavior = InvocationBehavior.behavior(instance: Weak(actor))
         let ref = self._spawnDistributedActor(behavior, identifiedBy: actor.id)
         self._managedRefs[actor.id] = ref
         self._managedDistributedActors.insert(actor: actor)
