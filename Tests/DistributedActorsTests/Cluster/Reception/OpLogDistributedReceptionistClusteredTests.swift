@@ -35,10 +35,10 @@ distributed actor StringForwarder: CustomStringConvertible {
         self.probe = probe
     }
 
-    distributed func forward(message: String) {
-//    distributed func forward(message: String) -> String {
+//    distributed func forward(message: String) {
+    distributed func forward(message: String) -> String {
         self.probe.tell("forwarded:\(message)")
-//        return "echo:\(message)"
+        return "echo:\(message)"
     }
 
     nonisolated var description: String {
@@ -116,7 +116,7 @@ final class OpLogDistributedReceptionistClusteredTests: ClusteredActorSystemsXCT
 
             // check if we can interact with it
             let echo = try await found.forward(message: "test")
-            // echo.shouldEqual("echo:test")
+            echo.shouldEqual("echo:test")
             try probe.expectMessage("forwarded:test")
         }.value
     }
@@ -159,7 +159,7 @@ final class OpLogDistributedReceptionistClusteredTests: ClusteredActorSystemsXCT
 
                 // check if we can interact with it
                 let echo = try await found.forward(message: "test")
-//                echo.shouldEqual("echo:test")
+                echo.shouldEqual("echo:test")
                 try probe.expectMessage("forwarded:test")
             }.value
         }
