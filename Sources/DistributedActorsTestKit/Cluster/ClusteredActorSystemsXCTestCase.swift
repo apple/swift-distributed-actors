@@ -61,7 +61,6 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
     /// Set up a new node intended to be clustered.
     open func setUpNode(_ name: String, _ modifySettings: ((inout ClusterSystemSettings) -> Void)? = nil) async -> ClusterSystem {
         let node = await ClusterSystem(name) { settings in
-            settings.enabled = true
             settings.node.port = self.nextPort()
 
             if self.captureLogs {
