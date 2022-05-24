@@ -13,19 +13,19 @@
 //===----------------------------------------------------------------------===//
 
 import Distributed
+import Foundation // for Codable
 import Logging
 import NIO
 import NIOFoundationCompat
 import SwiftProtobuf
-import Foundation // for Codable
 
 public struct ClusterInvocationEncoder: DistributedTargetInvocationEncoder {
     public typealias SerializationRequirement = any Codable
     var arguments: [Data] = []
     var throwing: Bool = false
-    
+
     let system: ClusterSystem
-    
+
     init(system: ClusterSystem) {
         self.system = system
     }
@@ -74,7 +74,7 @@ public struct ClusterInvocationDecoder: DistributedTargetInvocationDecoder {
 
         let argumentData = self.message.arguments[self.argumentIdx]
         self.argumentIdx += 1
-        
+
         // FIXME: make incoming manifest
         let manifest = try self.system.serialization.outboundManifest(Argument.self)
 

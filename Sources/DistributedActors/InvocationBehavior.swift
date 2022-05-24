@@ -40,10 +40,10 @@ enum InvocationBehavior {
                     context.system.personalDeadLetters(type: InvocationMessage.self, recipient: context.address).tell(message)
                     return .stop
                 }
-                
+
                 await context.system.receiveInvocation(actor: instance, message: message)
                 return .same
-            }.receiveSignal { context, signal in
+            }.receiveSignal { _, signal in
 
                 // We received a signal, but our target actor instance was already released;
                 // This should not really happen, but let's handle it by stopping the behavior.
