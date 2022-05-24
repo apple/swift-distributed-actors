@@ -51,9 +51,6 @@ final class DistributedReceptionistTests: ActorSystemXCTestCase {
         let opLogReceptionist = system.receptionist
         let receptionistAddress = opLogReceptionist.id
         
-        print("SYS: \(system.receptionist)")
-        print("REF: \(system._receptionist)")
-
         receptionistAddress.detailedDescription.shouldEqual("/system/receptionist")
         receptionistAddress.incarnation.shouldEqual(.wellKnown)
     }

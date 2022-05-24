@@ -44,7 +44,6 @@ enum InvocationBehavior {
                 await context.system.receiveInvocation(actor: instance, message: message)
                 return .same
             }.receiveSignal { context, signal in
-                pprint("RECEIVE SIGNAL: \(signal) ON \(context.myself)")
 
                 // We received a signal, but our target actor instance was already released;
                 // This should not really happen, but let's handle it by stopping the behavior.
@@ -52,13 +51,8 @@ enum InvocationBehavior {
                     return .stop
                 }
 
-                context.log.warning("signal as? Signals.Terminated == \(signal as? Signals.Terminated)")
-                context.log.warning("instance as? (any LifecycleWatch) == \(instance as? (any LifecycleWatch))")
-
                 if let terminated = signal as? Signals.Terminated {
-                    context.log.info("TERMINATED ...")
                     if let watcher = instance as? (any LifecycleWatch) {
-                        context.log.info("INSTANCE IS WATCHING...")
                         let watch = watcher.actorSystem._getLifecycleWatch(watcher: watcher)
                         watch?.receiveTerminated(terminated)
                         return .same

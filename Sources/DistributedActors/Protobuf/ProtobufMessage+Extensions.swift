@@ -20,7 +20,6 @@ import SwiftProtobuf
 // MARK: Serialization with ByteBuf
 
 extension SwiftProtobuf.Message {
-    // FIXME: Avoid the copying, needs SwiftProtobuf changes
     /// Returns a `ByteBuffer` value containing the Protocol Buffer binary format serialization of the message.
     ///
     /// - Warning: Currently it is forced to perform an additional copy internally (so we double allocate the needed amount of space).
@@ -32,6 +31,7 @@ extension SwiftProtobuf.Message {
     ///     `BinaryEncodingError.missingRequiredFields`.
     /// - Returns: A `ByteBuffer` value containing the binary serialization of the message.
     /// - Throws: `BinaryEncodingError` if encoding fails.
+    // FIXME: Avoid the copying, needs SwiftProtobuf changes
     func serializedByteBuffer(allocator allocate: ByteBufferAllocator, partial: Bool = false) throws -> ByteBuffer {
         // let data = try self.jsonString().data(using: .utf8)! // TODO allow a "debug mode with json payloads?"
 
