@@ -137,13 +137,13 @@ var targets: [PackageDescription.Target] = [
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Integration Tests - `it_` prefixed
 
-//    .executableTarget(
-//        name: "it_Clustered_swim_suspension_reachability",
-//        dependencies: [
-//            "DistributedActors",
-//        ],
-//        path: "IntegrationTests/tests_01_cluster/it_Clustered_swim_suspension_reachability"
-//    ),
+    .executableTarget(
+        name: "it_Clustered_swim_suspension_reachability",
+        dependencies: [
+            "DistributedActors",
+        ],
+        path: "IntegrationTests/tests_01_cluster/it_Clustered_swim_suspension_reachability"
+    ),
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Performance / Benchmarks
@@ -219,11 +219,8 @@ let products: [PackageDescription.Product] = [
         name: "DistributedActors",
         targets: ["DistributedActors"]
     ),
-//    .library(
-//        name: "DistributedActorsTestKit",
-//        targets: ["DistributedActorsTestKit"]
-//    ),
 
+    // TODO(distributed): remove the exec app, it was just a toy example
     .executable(
         name: "ExecApp",
         targets: [

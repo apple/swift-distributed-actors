@@ -763,7 +763,6 @@ extension OpLogDistributedReceptionist {
             observedSeqNrs: self.observedSequenceNrs,
             sequencedOps: Array(sequencedOps)
         )
-        // tracelog(.push(to: peer), message: pushOps)
 
         Task {
             do {
