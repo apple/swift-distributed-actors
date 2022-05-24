@@ -20,10 +20,8 @@ import XCTest
 final class ActorSystemTransportTests: ActorSystemXCTestCase, @unchecked Sendable {
     func test_system_shouldAssignIdentityAndReadyActor() async throws {
         try runAsyncAndBlock {
-            let first = await setUpNode("first") { settings in
-                settings.disable()
-            }
-
+            let first = await setUpNode("first")
+            
             var stub: StubDistributedActor? = StubDistributedActor(actorSystem: first)
             _ = stub
             stub = nil
