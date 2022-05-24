@@ -26,9 +26,6 @@ var targets: [PackageDescription.Target] = [
         exclude: [
             "dining-philosopher-fsm.graffle",
             "dining-philosopher-fsm.svg",
-        ],
-        plugins: [
-            .plugin(name: "DistributedActorsGeneratorPlugin", package: "swift-distributed-actors"),
         ]
     ),
 

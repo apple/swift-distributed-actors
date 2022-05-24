@@ -230,7 +230,7 @@ internal class ClusterShell {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Cluster Shell, reference used for issuing commands to the cluster
 
-    private let refLock = Lock() // TODO(distributed): avoid the lock if possible
+    private let refLock = Lock()
 
     private var _ref: ClusterShell.Ref?
     var ref: ClusterShell.Ref {
@@ -256,10 +256,12 @@ internal class ClusterShell {
         //
         // FIXME: see if we can restructure this to avoid these nil/then-set dance
         self._ref = nil
+        pprint("Started \(Self.self)")
     }
 
     /// Actually starts the shell which kicks off binding to a port, and all further cluster work
     internal func lazyStart(system: ClusterSystem, clusterEvents: EventStream<Cluster.Event>) throws -> LazyStart<Message> {
+        pprint("Lazy start \(Self.self)")
         let instrumentation = system.settings.instrumentation.makeInternalActorTransportInstrumentation()
         self._serializationPool = try _SerializationPool(settings: .default, serialization: system.serialization, instrumentation: instrumentation)
         self.clusterEvents = clusterEvents
@@ -273,6 +275,7 @@ internal class ClusterShell {
 
         self._ref = delayed.ref
 
+        pprint("Return delayed \(Self.self)")
         return delayed
     }
 

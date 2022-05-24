@@ -19,16 +19,16 @@ final class DistributedDiningPhilosophers {
     private var philosophers: [Philosopher] = []
 
     func run(for time: TimeAmount) async throws {
-        let systemA = ActorSystem("Node-A") { settings in
+        let systemA = ClusterSystem("Node-A") { settings in
             settings.cluster.enabled = true
             settings.cluster.bindPort = 1111
         }
-        let systemB = ActorSystem("Node-B") { settings in
+        let systemB = ClusterSystem("Node-B") { settings in
             settings.cluster.enabled = true
             settings.cluster.bindPort = 2222
             settings.logging.logLevel = .error
         }
-        let systemC = ActorSystem("Node-C") { settings in
+        let systemC = ClusterSystem("Node-C") { settings in
             settings.cluster.enabled = true
             settings.cluster.bindPort = 3333
             settings.logging.logLevel = .error
