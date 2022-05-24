@@ -45,16 +45,6 @@ public extension Serialization {
         // TODO: We are using an internal function here to allow us to automatically enable the more strict mode in release builds.
         public var insecureSerializeNotRegisteredMessages: Bool = _isDebugAssertConfiguration()
 
-        /// Serializes all messages, also when passed only locally between actors.
-        ///
-        /// This option to ensure no reference types are "leaked" through message passing,
-        /// as messages now will always be passed through serialization accidental sharing of
-        /// mutable state (which would have been unsafe) can be avoided by the serialization round trip.
-        ///
-        /// - Warning: Do not use this setting in production settings if you care for performance however,
-        ///   as it implies needless serialization roundtrips on every single message send on the entire system (!).
-        public var serializeLocalMessages: Bool = false
-
         /// Configures which `Codable` serializer (`Encoder` / `Decoder` pair) should be used whenever a
         /// a message is sent however the type does not have a specific serializer requirement configured (via `register` calls).
         ///

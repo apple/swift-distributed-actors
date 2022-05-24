@@ -63,7 +63,6 @@ internal final class _Mailbox<Message: ActorMessage> {
     let maxRunLength: UInt32
     let deadLetters: _ActorRef<DeadLetter>
     let address: ActorAddress
-    let serializeAllMessages: Bool
 
     let measureMessages = true
 
@@ -80,9 +79,6 @@ internal final class _Mailbox<Message: ActorMessage> {
         self.maxRunLength = maxRunLength
         self.deadLetters = shell.system.deadLetters
         self.address = shell._address
-
-        // TODO: not entirely happy about the added weight, but I suppose avoiding going all the way "into" the settings on each send is even worse?
-        self.serializeAllMessages = shell.system.settings.serialization.serializeLocalMessages
     }
 
     deinit {
@@ -103,27 +99,10 @@ internal final class _Mailbox<Message: ActorMessage> {
         self.maxRunLength = maxRunLength
         self.deadLetters = system.deadLetters
         self.address = system.deadLetters.address
-
-        // TODO: not entirely happy about the added weight, but I suppose avoiding going all the way "into" the settings on each send is even worse?
-        self.serializeAllMessages = system.settings.serialization.serializeLocalMessages
     }
 
     @inlinable
     func sendMessage(envelope: Payload, file: String, line: UInt) {
-        if self.serializeAllMessages {
-            var messageDescription = "[\(envelope.payload)]"
-            do {
-                if case .message(let message) = envelope.payload {
-                    messageDescription = "[\(message)]:\(type(of: message))"
-                    try self.shell?.system.serialization.verifySerializable(message: message as! Message)
-                }
-            } catch {
-                fatalError("Serialization check failed for message \(messageDescription) sent at \(file):\(line). " +
-                    "Make sure this type has either a serializer registered OR is marked as `NonTransportableActorMessage`. " +
-                    "This check was performed since `settings.serialization.serializeLocalMessages` was enabled.")
-            }
-        }
-
         func sendAndDropAsDeadLetter() {
             self.deadLetters.tell(DeadLetter(envelope.payload, recipient: self.address, sentAtFile: file, sentAtLine: line))
         }
