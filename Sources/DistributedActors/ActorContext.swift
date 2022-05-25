@@ -232,7 +232,7 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
     ///   - continuation: continuation to run after `_AsyncResult` completes. It is safe to access
     ///                   and modify actor state from here.
     /// - Returns: a behavior that causes the actor to suspend until the `_AsyncResult` completes
-    public func awaitResult<AR: _AsyncResult>(of _AsyncResult: AR, timeout: TimeAmount, _ continuation: @escaping (Result<AR.Value, Error>) throws -> _Behavior<Message>) -> _Behavior<Message> {
+    internal func awaitResult<AR: _AsyncResult>(of _AsyncResult: AR, timeout: TimeAmount, _ continuation: @escaping (Result<AR.Value, Error>) throws -> _Behavior<Message>) -> _Behavior<Message> {
         _AsyncResult.withTimeout(after: timeout)._onComplete { [weak selfRef = self.myself._unsafeUnwrapCell] result in
             selfRef?.sendSystemMessage(.resume(result.map { $0 }))
         }
@@ -253,7 +253,7 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
     ///   - continuation: continuation to run after `_AsyncResult` completes. It is safe to access
     ///                   and modify actor state from here.
     /// - Returns: a behavior that causes the actor to suspend until the `_AsyncResult` completes
-    public func awaitResultThrowing<AR: _AsyncResult>(
+    internal func awaitResultThrowing<AR: _AsyncResult>(
         of _AsyncResult: AR,
         timeout: TimeAmount,
         _ continuation: @escaping (AR.Value) throws -> _Behavior<Message>
@@ -278,7 +278,7 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
     ///   - timeout: time after which the _AsyncResult will be failed if it does not complete
     ///   - continuation: continuation to run after `_AsyncResult` completes.
     ///     It is safe to access and modify actor state from here.
-    public func onResultAsync<AR: _AsyncResult>(of _AsyncResult: AR, timeout: TimeAmount, file: String = #file, line: UInt = #line, _ continuation: @escaping (Result<AR.Value, Error>) throws -> _Behavior<Message>) {
+    internal func onResultAsync<AR: _AsyncResult>(of _AsyncResult: AR, timeout: TimeAmount, file: String = #file, line: UInt = #line, _ continuation: @escaping (Result<AR.Value, Error>) throws -> _Behavior<Message>) {
         let asyncCallback = self.makeAsynchronousCallback(for: Result<AR.Value, Error>.self, file: file, line: line) {
             let nextBehavior = try continuation($0)
             let shell = self._downcastUnsafe
@@ -305,7 +305,7 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
     ///   - timeout: time after which the _AsyncResult will be failed if it does not complete
     ///   - continuation: continuation to run after `_AsyncResult` completes. It is safe to access
     ///                   and modify actor state from here.
-    public func onResultAsyncThrowing<AR: _AsyncResult>(of _AsyncResult: AR, timeout: TimeAmount, _ continuation: @escaping (AR.Value) throws -> _Behavior<Message>) {
+    internal func onResultAsyncThrowing<AR: _AsyncResult>(of _AsyncResult: AR, timeout: TimeAmount, _ continuation: @escaping (AR.Value) throws -> _Behavior<Message>) {
         self.onResultAsync(of: _AsyncResult, timeout: timeout) { res in
             switch res {
             case .success(let value): return try continuation(value)

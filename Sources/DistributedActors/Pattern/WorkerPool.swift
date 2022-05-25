@@ -222,7 +222,7 @@ public struct WorkerPoolRef<Message: ActorMessage>: _ReceivesMessages {
         self._ref.tell(.forward(message), file: file, line: line)
     }
 
-    public func ask<Answer: ActorMessage>(
+    func ask<Answer: ActorMessage>(
         for type: Answer.Type = Answer.self,
         timeout: TimeAmount,
         file: String = #file, function: String = #function, line: UInt = #line,

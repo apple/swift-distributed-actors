@@ -57,16 +57,6 @@ public protocol _BaseReceptionistOperations {
     ///   - key: selects which actors we are interested in.
     func lookup<Guest>(
         _ key: Reception.Key<Guest>,
-        timeout: TimeAmount
-    ) -> AskResponse<Reception.Listing<Guest>>
-        where Guest: _ReceptionistGuest
-
-    /// Perform a *single* lookup for an actor identified by the passed in `key`.
-    ///
-    /// - Parameters:
-    ///   - key: selects which actors we are interested in.
-    func lookup<Guest>(
-        _ key: Reception.Key<Guest>,
         replyTo: _ActorRef<Reception.Listing<Guest>>,
         timeout: TimeAmount
     ) where Guest: _ReceptionistGuest
@@ -103,14 +93,6 @@ public extension _ReceptionistOperations {
         to key: Reception.Key<Guest>
     ) where Guest: _ReceptionistGuest {
         self._system._receptionist.subscribe(subscriber, to: key)
-    }
-
-    @inlinable
-    func lookup<Guest>(
-        _ key: Reception.Key<Guest>,
-        timeout: TimeAmount = .effectivelyInfinite
-    ) -> AskResponse<Reception.Listing<Guest>> where Guest: _ReceptionistGuest {
-        self._system._receptionist.lookup(key, timeout: timeout)
     }
 
     @inlinable

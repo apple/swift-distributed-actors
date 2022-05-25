@@ -49,15 +49,6 @@ public struct SystemReceptionist: _BaseReceptionistOperations {
 
     public func lookup<Guest>(
         _ key: Reception.Key<Guest>,
-        timeout: TimeAmount = .effectivelyInfinite
-    ) -> AskResponse<Reception.Listing<Guest>> where Guest: _ReceptionistGuest {
-        self.ref.ask(for: Reception.Listing<Guest>.self, timeout: timeout) {
-            Receptionist.Lookup<Guest>(key: key, replyTo: $0)
-        }
-    }
-
-    public func lookup<Guest>(
-        _ key: Reception.Key<Guest>,
         replyTo: _ActorRef<Reception.Listing<Guest>>,
         timeout: TimeAmount = .effectivelyInfinite
     ) where Guest: _ReceptionistGuest {
