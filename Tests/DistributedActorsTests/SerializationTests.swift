@@ -150,7 +150,7 @@ class SerializationTests: ActorSystemXCTestCase {
         defer {
             try! remoteCapableSystem.shutdown().wait()
         }
-        
+
         let testKit = ActorTestKit(remoteCapableSystem)
         let p = testKit.makeTestProbe(expecting: String.self)
 
