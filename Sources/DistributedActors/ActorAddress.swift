@@ -79,10 +79,22 @@ public struct ActorAddress: @unchecked Sendable {
     public var tags: ActorTags
 
     /// Underlying path representation, not attached to a specific Actor instance.
-    public var path: ActorPath
+    // FIXME(distributed): make optional
+    public var path: ActorPath {
+        get {
+            guard let path = tags[ActorTags.path] else {
+                fatalError("FIXME: ActorTags.path was not set on \(self)! NOTE THAT PATHS ARE TO BECOME OPTIONAL!!!") // FIXME(distributed): must be removed
+            }
+            return path
+        }
+        set {
+            tags[ActorTags.path] = newValue
+        }
+    }
 
     /// Returns the name of the actor represented by this path.
     /// This is equal to the last path segments string representation.
+    // FIXME(distributed): make optional
     public var name: String {
         self.path.name
     }
@@ -95,7 +107,6 @@ public struct ActorAddress: @unchecked Sendable {
         self._location = .local(node)
         self.tags = ActorTags()
         self.incarnation = incarnation
-        self.path = path
         self.tags[ActorTags.path] = path
     }
 
@@ -104,7 +115,6 @@ public struct ActorAddress: @unchecked Sendable {
         self._location = .remote(node)
         self.incarnation = incarnation
         self.tags = ActorTags()
-        self.path = path
         self.tags[ActorTags.path] = path
     }
 

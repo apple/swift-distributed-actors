@@ -794,11 +794,23 @@ extension ClusterSystem: _ActorTreeTraversable {
 
 public extension ClusterSystem {
     /// Allows creating a distributed actor with additional configuration applied during its initialization.
-    internal func actorWith<Act: DistributedActor>(props: _Props? = nil, _ makeActor: () throws -> Act) rethrows -> Act {
+    internal func actorWith<Act: DistributedActor>(props: _Props? = nil,
+                                                   _ makeActor: () throws -> Act) rethrows -> Act {
         guard let props = props else {
             return try makeActor()
         }
 
+        return try _Props.$forSpawn.withValue(props) {
+            try makeActor()
+        }
+    }
+
+    /// Allows creating a distributed actor with additional configuration applied during its initialization.
+    internal func actorWith<Act: DistributedActor>(_ tags: (any ActorTag)...,
+                                                   makeActor: () throws -> Act) rethrows -> Act {
+        var props = _Props.forSpawn
+        props.tags = .init(tags: tags)
+        
         return try _Props.$forSpawn.withValue(props) {
             try makeActor()
         }

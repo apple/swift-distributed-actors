@@ -17,8 +17,20 @@ import Distributed
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ActorTags
 
+/// Container of tags a concrete actor identity was tagged with.
 public struct ActorTags {
-    private var _storage: [AnyActorTagKey: Sendable & Codable] = [:]
+    // We still might re-think how we represent the storage.
+    private var _storage: [String: Sendable & Codable] = [:] // FIXME: fix the key as AnyActorTagKey
+
+    init() {
+        // empty tags
+    }
+
+    init(tags: [any ActorTag]) {
+        for tag in tags {
+            self._storage[tag.id] = tag.value
+        }
+    }
 
     public var count: Int {
         self._storage.count
@@ -30,22 +42,32 @@ public struct ActorTags {
 
     subscript<Key: ActorTagKey>(_ key: Key.Type) -> Key.Value? {
         get {
-            guard let value = self._storage[AnyActorTagKey(key)] else { return nil }
+            guard let value = self._storage[key.id] else { return nil }
             // safe to force-cast as this subscript is the only way to set a value.
             return (value as! Key.Value)
         }
         set {
-            self._storage[AnyActorTagKey(key)] = newValue
+            self._storage[key.id] = newValue
         }
-    }
-
-    internal struct ActorPathKey: ActorTagKey {
-        static let id: String = "path"
-        typealias Value = ActorPath
     }
 }
 
-protocol ActorTagKey: Sendable {
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: ActorTagKey
+
+public protocol ActorTag: Sendable where Value == Key.Value {
+    associatedtype Key: ActorTagKey
+    associatedtype Value: Sendable & Codable
+    
+    var keyType: Key.Type { get }
+    var value: Value { get }
+}
+public extension ActorTag {
+    var keyType: Key.Type { Key.self }
+    var id: String { Key.id }
+}
+
+public protocol ActorTagKey: Sendable {
     static var id: String { get }
     associatedtype Value: Sendable & Codable
 }
@@ -54,13 +76,13 @@ struct AnyActorTagKey: Hashable {
     public let keyType: Any.Type
     public let id: String
 
-    init<Key: ActorTagKey>(_ keyType: Key.Type) {
-        self.keyType = keyType
-        self.id = keyType.id
+    init<Key: ActorTagKey>(_: Key.Type) {
+        self.keyType = Key.self
+        self.id = Key.id
     }
     
     static func == (lhs: AnyActorTagKey, rhs: AnyActorTagKey) -> Bool {
-        lhs.id == rhs.id
+        ObjectIdentifier(lhs.keyType) == ObjectIdentifier(rhs.keyType)
     }
     func hash(into hasher: inout Hasher) {
         self.id.hash(into: &hasher)
@@ -71,9 +93,14 @@ struct AnyActorTagKey: Hashable {
 // MARK: Known keys
 
 extension ActorTags {
-    static let path = ActorPathTag.self
-    public struct ActorPathTag: ActorTagKey {
+
+    static let path = ActorPathTagKey.self
+    public struct ActorPathTagKey: ActorTagKey {
         public static let id: String = "path"
         public typealias Value = ActorPath
+    }
+    public struct ActorPathTag: ActorTag {
+        public typealias Key = ActorPathTagKey
+        public let value: Key.Value
     }
 }

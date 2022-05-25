@@ -37,6 +37,9 @@ public struct _Props: @unchecked Sendable {
     // Instead we will rely exclusively on watching other actors explicitly.
     internal var supervision: _SupervisionProps
 
+    /// Tags to be passed to the actor's identity.
+    internal var tags: ActorTags
+
     public var metrics: MetricsProps
 
     /// INTERNAL API: Allows spawning a "well known" actor. Use with great care,
@@ -58,17 +61,18 @@ public struct _Props: @unchecked Sendable {
     internal var _distributedActor: Bool = false
 
     public init(
+        tags: ActorTags = ActorTags(),
         dispatcher: _DispatcherProps = .default,
         supervision: _SupervisionProps = .default,
         metrics: MetricsProps = .disabled
     ) {
+        self.tags = tags
         self.dispatcher = dispatcher
         self.supervision = supervision
         self.metrics = metrics
     }
 
-    /// TODO(distributed): workaround for passing settings to specific actor instance when creating them.
-    ///                    We may want to formalize a way to do this with initializer params instead.
+    /// Allows for passing properties to creating a distributed actor.
     @TaskLocal
     internal static var forSpawn: _Props = .init()
 }
