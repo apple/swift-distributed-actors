@@ -889,7 +889,7 @@ public extension ClusterSystem {
         let recipient = _ActorRef<InvocationMessage>(.remote(.init(shell: clusterShell, address: actor.id._asRemote, system: self)))
 
         let arguments = invocation.arguments
-        let ask: AskResponse<Res> = recipient.ask(timeout: RemoteCall.timeout ?? self.settings.callTimeout) { replyTo in
+        let ask: AskResponse<Res> = recipient.ask(timeout: RemoteCall.timeout ?? self.settings.defaultRemoteCallTimeout) { replyTo in
             let invocation = InvocationMessage(
                 targetIdentifier: target.identifier,
                 arguments: arguments,
@@ -918,7 +918,7 @@ public extension ClusterSystem {
         let recipient = _ActorRef<InvocationMessage>(.remote(.init(shell: shell, address: actor.id._asRemote, system: self)))
 
         let arguments = invocation.arguments
-        let ask: AskResponse<_Done> = recipient.ask(timeout: RemoteCall.timeout ?? self.settings.callTimeout) { replyTo in
+        let ask: AskResponse<_Done> = recipient.ask(timeout: RemoteCall.timeout ?? self.settings.defaultRemoteCallTimeout) { replyTo in
             let invocation = InvocationMessage(
                 targetIdentifier: target.identifier,
                 arguments: arguments,
@@ -929,11 +929,6 @@ public extension ClusterSystem {
         }
 
         _ = try await ask.value // discard the _Done
-    }
-
-    enum RemoteCall {
-        @TaskLocal
-        public static var timeout: TimeAmount?
     }
 }
 
@@ -1033,4 +1028,22 @@ internal struct LazyStart<Message: ActorMessage> {
 
 enum RemoteCallError: Error {
     case clusterAlreadyShutDown
+}
+
+/// Allows for configuring of remote calls by setting task-local values around a remote call being made.
+///
+/// ### Example: Override remote call timeouts
+/// ```
+/// try await RemoteCall.with(timeout: .seconds(1)) {
+///     try await greeter.greet("Caroline")
+/// }
+/// ```
+public enum RemoteCall {
+    @TaskLocal
+    public static var timeout: TimeAmount?
+    
+    @discardableResult
+    public static func with<Response>(timeout: TimeAmount, remoteCall: () async throws -> Response) async rethrows -> Response {
+        try await Self.$timeout.withValue(timeout, operation: remoteCall)
+    }
 }

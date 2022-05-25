@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Distributed
 @testable import DistributedActors
 import DistributedActorsTestKit
 import Foundation
@@ -148,5 +149,41 @@ final class ClusterSystemTests: ActorSystemXCTestCase {
         })
 
         secondReceptacle.wait(atMost: .seconds(3))!.shouldBeNil()
+    }
+
+    func test_remoteCall_shouldConfigureTimeout() async throws {
+        let local = await setUpNode("local") { settings in
+            settings.enabled = true
+        }
+        let remote = await setUpNode("remote") { settings in
+            settings.enabled = true
+        }
+        local.cluster.join(node: remote.cluster.uniqueNode)
+
+        let greeter = DelayedGreeter(actorSystem: local)
+        let remoteGreeter = try DelayedGreeter.resolve(id: greeter.id, using: remote)
+
+        let error = try await shouldThrow {
+            try await RemoteCall.with(timeout: .seconds(1)) {
+                _ = try await remoteGreeter.hello()
+            }
+        }
+
+        guard case AskError.timedOut(let timeoutError) = error else {
+            throw testKit.fail("Expected AskError.timedOut, got \(error)")
+        }
+        guard timeoutError.timeout == .seconds(1) else {
+            throw testKit.fail("Expected timeout to be 1 second but was \(timeoutError.timeout)")
+        }
+    }
+}
+
+fileprivate distributed actor DelayedGreeter {
+    typealias ID = ClusterSystem.ActorID
+    typealias ActorSystem = ClusterSystem
+
+    distributed func hello() async throws -> String {
+        try await Task.sleep(nanoseconds: 5_000_000_000)
+        return "hello"
     }
 }
