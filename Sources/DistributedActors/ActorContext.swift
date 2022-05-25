@@ -32,22 +32,22 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
         _undefined()
     }
 
-    /// Local path under which this actor resides within the actor tree.
-    public var path: ActorPath {
-        _undefined()
-    }
-
-    /// Name of this actor.
-    ///
-    /// The `name` is the last segment of the Actor's `path`.
-    ///
-    /// Special characters like `$` are reserved for internal use of the `ClusterSystem`.
-    // Implementation note:
-    // We can safely make it a `lazy var` without synchronization as `_ActorContext` is required to only be accessed in "its own"
-    // Actor, which means that we always have guaranteed synchronization in place and no concurrent access should take place.
-    public var name: String {
-        _undefined()
-    }
+//    /// Local path under which this actor resides within the actor tree.
+//    public var path: ActorPath {
+//        _undefined()
+//    }
+//
+//    /// Name of this actor.
+//    ///
+//    /// The `name` is the last segment of the Actor's `path`.
+//    ///
+//    /// Special characters like `$` are reserved for internal use of the `ClusterSystem`.
+//    // Implementation note:
+//    // We can safely make it a `lazy var` without synchronization as `_ActorContext` is required to only be accessed in "its own"
+//    // Actor, which means that we always have guaranteed synchronization in place and no concurrent access should take place.
+//    public var name: String {
+//        _undefined()
+//    }
 
     /// The actor reference to _this_ actor.
     ///
@@ -148,19 +148,19 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
         _undefined()
     }
 
-    /// Container of spawned child actors.
-    ///
-    /// Allows obtaining references to previously spawned actors by their name.
-    /// For less dynamic scenarios it is recommended to keep actors refs in your own collection types or as values in your behavior,
-    /// since looking up actors by name has an inherent seek cost associated with it.
-    public var children: _Children {
-        get {
-            _undefined()
-        }
-        set {
-            fatalError()
-        }
-    }
+//    /// Container of spawned child actors.
+//    ///
+//    /// Allows obtaining references to previously spawned actors by their name.
+//    /// For less dynamic scenarios it is recommended to keep actors refs in your own collection types or as values in your behavior,
+//    /// since looking up actors by name has an inherent seek cost associated with it.
+//    public var children: _Children {
+//        get {
+//            _undefined()
+//        }
+//        set {
+//            fatalError()
+//        }
+//    }
 
     /// Stop a child actor identified by the passed in actor ref.
     ///

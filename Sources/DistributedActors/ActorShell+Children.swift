@@ -25,6 +25,7 @@ internal enum Child {
 /// Convenience methods for locating children are provided, although it is recommended to keep the `_ActorRef`
 /// of spawned actors in the context of where they are used, rather than looking them up continuously.
 // TODO(swift): remove the concept of child actors and the actor tree
+@available(*, deprecated, message: "Children are not a thing with DA")
 public class _Children {
     // Implementation note: access is optimized for fetching by name, as that's what we do during child lookup
     // as well as actor tree traversal.
@@ -41,6 +42,7 @@ public class _Children {
         self.rwLock = ReadWriteLock()
     }
 
+    @available(*, deprecated, message: "Children are not a thing with DA")
     public func hasChild(identifiedBy path: ActorPath) -> Bool {
         self.rwLock.withReaderLock {
             switch self.container[path.name] {
@@ -54,10 +56,12 @@ public class _Children {
         }
     }
 
+    @available(*, deprecated, message: "Children are not a thing with DA")
     public func hasChild(identifiedBy address: ActorAddress) -> Bool {
-        self.hasChild(identifiedBy: address.path)
+        self.hasChild(identifiedBy: address.path!)
     }
 
+    @available(*, deprecated, message: "Children are not a thing with DA")
     public func find<T>(named name: String, withType type: T.Type) -> _ActorRef<T>? {
         self.rwLock.withReaderLock {
             switch self.container[name] {
@@ -73,13 +77,13 @@ public class _Children {
 
     internal func insert<T, R: _ActorShell<T>>(_ childCell: R) {
         self.rwLock.withWriterLockVoid {
-            self.container[childCell.address.name] = .cell(childCell)
+            self.container[childCell.address.name!] = .cell(childCell)
         }
     }
 
     internal func insert<R: _AbstractAdapter>(_ adapterRef: R) {
         self.rwLock.withWriterLockVoid {
-            self.container[adapterRef.address.name] = .adapter(adapterRef)
+            self.container[adapterRef.address.name!] = .adapter(adapterRef)
         }
     }
 
@@ -97,9 +101,10 @@ public class _Children {
     /// identified by the passed in path.
     ///
     /// - SeeAlso: `contains(name:)`
+    @available(*, deprecated, message: "Children are not a thing with DA")
     internal func contains(identifiedBy address: ActorAddress) -> Bool {
         self.rwLock.withReaderLock {
-            switch self.container[address.name] {
+            switch self.container[address.name!] {
             case .some(.cell(let child)):
                 return child.receivesSystemMessages.address == address
             case .some(.adapter(let child)):
@@ -114,13 +119,14 @@ public class _Children {
     /// Returns: `true` upon successful removal of the ref identified by passed in path, `false` otherwise
     @usableFromInline
     @discardableResult
+    @available(*, deprecated, message: "Children are not a thing with DA")
     internal func removeChild(identifiedBy address: ActorAddress) -> Bool {
         self.rwLock.withWriterLock {
-            switch self.container[address.name] {
+            switch self.container[address.name!] {
             case .some(.cell(let child)) where child.receivesSystemMessages.address.incarnation == address.incarnation:
-                return self.container.removeValue(forKey: address.name) != nil
+                return self.container.removeValue(forKey: address.name!) != nil
             case .some(.adapter(let child)) where child.address.incarnation == address.incarnation:
-                return self.container.removeValue(forKey: address.name) != nil
+                return self.container.removeValue(forKey: address.name!) != nil
             default:
                 return self.stopping.removeValue(forKey: address) != nil
             }
@@ -144,13 +150,13 @@ public class _Children {
     @usableFromInline
     @discardableResult
     internal func _markAsStoppingChild(identifiedBy address: ActorAddress) -> Bool {
-        switch self.container.removeValue(forKey: address.name) {
+        switch self.container.removeValue(forKey: address.name!) {
         case .some(.cell(let child)) where child.asAddressable.address.incarnation == address.incarnation:
             self.stopping[address] = child
             return true
         case .some(.adapter(let child)) where child.address.incarnation == address.incarnation:
             // adapters don't have to be stopped as they are not real actors, so removing is sufficient
-            self.container.removeValue(forKey: address.name)
+            self.container.removeValue(forKey: address.name!)
             return true
         default:
             return false
@@ -185,7 +191,9 @@ public class _Children {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Traversal
 
+@available(*, deprecated, message: "Children are not a thing with DA")
 extension _Children: _ActorTreeTraversable {
+    @available(*, deprecated, message: "Children are not a thing with DA")
     public func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
         var c = context.deeper
 
@@ -222,7 +230,7 @@ extension _Children: _ActorTreeTraversable {
         return c.result
     }
 
-    public func _resolve<Message>(context: ResolveContext<Message>) -> _ActorRef<Message> {
+    public func _resolve<Message>(context: TraversalResolveContext<Message>) -> _ActorRef<Message> {
         guard let selector = context.selectorSegments.first else {
             // no selector, we should not be in this place!
             fatalError("Resolve should have stopped before stepping into children._resolve, this is a bug!")
@@ -242,7 +250,7 @@ extension _Children: _ActorTreeTraversable {
         }
     }
 
-    public func _resolveUntyped(context: ResolveContext<Never>) -> AddressableActorRef {
+    public func _resolveUntyped(context: TraversalResolveContext<Never>) -> AddressableActorRef {
         guard let selector = context.selectorSegments.first else {
             // no selector, we should not be in this place!
             fatalError("Resolve should have stopped before stepping into children._resolve, this is a bug!")
@@ -309,10 +317,12 @@ extension _Children {
 
 extension _ActorShell {
     func _spawn<M>(_ naming: ActorNaming, props: _Props, _ behavior: _Behavior<M>) throws -> _ActorRef<M> {
+        fatalError("PREVENTED SPAWNING CHILD: \(naming) from parent \(self)")
+        
         let name = naming.makeName(&self.namingContext)
 
         try behavior.validateAsInitial()
-        try self.validateUniqueName(name) // FIXME: reserve name
+        // try self.validateUniqueName(name) // FIXME: reserve name
 
         let incarnation: ActorIncarnation = props._wellKnown ? .wellKnown : .random()
         let address: ActorAddress = try self.address.makeChildAddress(name: name, incarnation: incarnation)
@@ -336,7 +346,7 @@ extension _ActorShell {
         let mailbox = _Mailbox(shell: actor)
 
         if self.system.settings.logging.verboseSpawning {
-            log.trace("Spawning [\(behavior)], on path: [\(address.path)]")
+            log.trace("Spawning [\(behavior)], on address: [\(address)]")
         }
 
         let cell = _ActorCell(
@@ -345,7 +355,7 @@ extension _ActorShell {
             mailbox: mailbox
         )
 
-        self.children.insert(actor)
+//        self.children.insert(actor)
 
         actor.set(ref: cell)
         cell.sendSystemMessage(.start)
@@ -354,7 +364,12 @@ extension _ActorShell {
     }
 
     func _stop<T>(child ref: _ActorRef<T>) throws {
-        guard ref.address.path.isChildPathOf(self.address.path) else {
+        guard let path = ref.address.path else {
+            // if no path, it can't be a child, return
+            return
+        }
+
+        guard path.isChildPathOf(self.address.path!) else {
             if ref.address == self.myself.address {
                 throw _ActorContextError.attemptedStoppingMyselfUsingContext(ref: ref.asAddressable)
             } else {
@@ -362,21 +377,21 @@ extension _ActorShell {
             }
         }
 
-        if self.children.markAsStoppingChild(identifiedBy: ref.address) {
-            ref._sendSystemMessage(.stop)
-        }
+//        if self.children.markAsStoppingChild(identifiedBy: ref.address) {
+//            ref._sendSystemMessage(.stop)
+//        }
     }
 
-    func stopAllChildren() {
-        self.children.stopAll()
-    }
+//    func stopAllChildren() {
+//        self.children.stopAll()
+//    }
 
-    private func validateUniqueName(_ name: String) throws {
-        if children.contains(name: name) {
-            let childPath: ActorPath = try self.address.path.makeChildPath(name: name)
-            throw _ActorContextError.duplicateActorPath(path: childPath)
-        }
-    }
+//    private func validateUniqueName(_ name: String) throws {
+//        if children.contains(name: name) {
+//            let childPath: ActorPath = try self.address.path!.makeChildPath(name: name)
+//            throw _ActorContextError.duplicateActorPath(path: childPath)
+//        }
+//    }
 }
 
 /// Errors which can occur while executing actions on the [ActorContext].

@@ -458,7 +458,7 @@ public extension ClusteredActorSystemsXCTestCase {
         let remoteNode = targetSystem.settings.uniqueBindNode
 
         let uniqueRemoteNode = ActorAddress(remote: remoteNode, path: address.path, incarnation: address.incarnation)
-        let resolveContext = ResolveContext<M>(address: uniqueRemoteNode, system: system)
+        let resolveContext = TraversalResolveContext<M>(address: uniqueRemoteNode, system: system)
         return system._resolve(context: resolveContext)
     }
 }

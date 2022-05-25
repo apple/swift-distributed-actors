@@ -31,7 +31,7 @@ final class WorkerPoolTests: ActorSystemXCTestCase {
                 context.receptionist.registerMyself(with: workerKey) // could ask and await on the registration
 
                 return .receive { context, work in
-                    p.tell("work:\(work) at \(context.name)")
+                    p.tell("work:\(work) at \(context.address.name!)")
                     return .same
                 }
             }
@@ -79,7 +79,7 @@ final class WorkerPoolTests: ActorSystemXCTestCase {
                     if work == "stop" {
                         return .stop
                     }
-                    p.tell("work:\(work) at \(context.path.name)")
+                    p.tell("work:\(work) at \(context.address.name!)")
                     return .same
                 }
             }
@@ -145,7 +145,7 @@ final class WorkerPoolTests: ActorSystemXCTestCase {
 
         func worker(p: ActorTestProbe<String>) -> _Behavior<WorkerPoolQuestion> {
             .receive { context, work in
-                p.tell("work:\(work.id) at \(context.path.name)")
+                p.tell("work:\(work.id) at \(context.address.name)")
                 return .same
             }
         }
@@ -190,7 +190,7 @@ final class WorkerPoolTests: ActorSystemXCTestCase {
                 if work == "stop" {
                     return .stop
                 }
-                p.tell("work:\(work) at \(context.path.name)")
+                p.tell("work:\(work) at \(context.address.name!)")
                 return .same
             }
         }

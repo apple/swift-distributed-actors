@@ -236,10 +236,6 @@ public struct WorkerPoolRef<Message: ActorMessage>: _ReceivesMessages {
     public var address: ActorAddress {
         self._ref.address
     }
-
-    public var path: ActorPath {
-        self.address.path
-    }
 }
 
 @usableFromInline

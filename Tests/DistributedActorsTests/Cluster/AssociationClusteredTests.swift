@@ -335,7 +335,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
         // we somehow obtained a ref to secondOne (on second node) without associating second yet
         // e.g. another node sent us that ref; This must cause buffering of sends to second and an association to be created.
 
-        let resolveContext = ResolveContext<String>(address: secondFullAddress, system: first)
+        let resolveContext = TraversalResolveContext<String>(address: secondFullAddress, system: first)
         let ref = first._resolve(context: resolveContext)
 
         try assertNotAssociated(system: first, node: second.cluster.uniqueNode)

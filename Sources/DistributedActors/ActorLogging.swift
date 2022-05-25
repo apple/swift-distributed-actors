@@ -83,12 +83,15 @@ public extension Logger {
     }
 
     static func make<T>(context: _ActorContext<T>) -> Logger {
-        Logger.make(context.log, path: context.path)
+        Logger.make(context.log, address: context.address)
     }
 
-    internal static func make(_ base: Logger, path: ActorPath) -> Logger {
+    internal static func make(_ base: Logger, address: ActorAddress) -> Logger {
         var log = base // yes
-        log[metadataKey: "actor/path"] = Logger.MetadataValue.stringConvertible(path)
+        log[metadataKey: "actor/address"] = Logger.MetadataValue.stringConvertible(address)
+        if let path = address.path {
+            log[metadataKey: "actor/path"] = Logger.MetadataValue.stringConvertible(path)
+        }
         return log
     }
 }
@@ -119,7 +122,7 @@ struct ActorOriginLogHandler: LogHandler {
         self.init(
             LoggingContext(
                 logger: context.log,
-                identifier: context.path.description,
+                identifier: context.address.description,
                 useBuiltInFormatter: context.system.settings.logging.useBuiltInFormatter,
                 dispatcher: { () in dispatcherName } // beware of closing over the context here (!)
             )

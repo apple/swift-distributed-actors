@@ -638,7 +638,7 @@ extension OpLogDistributedReceptionist {
 //        peerReceptionistRef.tell(ack)
         Task {
             do {
-                assert(self.id.path.description.contains("/system/receptionist"))
+//                assert(self.id.path.description.contains("/system/receptionist"))
                 try await peerReceptionistRef.ackOps(until: latestAppliedSeqNrFromPeer, by: self)
             } catch {
                 switch error {

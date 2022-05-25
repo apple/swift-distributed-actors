@@ -130,7 +130,7 @@ internal class ActorSingletonProxy<Message: ActorMessage> {
             props: ._wellKnown
         )
         // Need the manager to tell us the ref because we can't resolve it due to random incarnation
-        let refSubReceive = context.subReceive(_SubReceiveId(id: "ref-\(context.name)"), _ActorRef<Message>?.self) {
+        let refSubReceive = context.subReceive(_SubReceiveId(id: "ref-\(context.address.name)"), _ActorRef<Message>?.self) {
             self.updateRef(context, $0)
         }
         self.managerRef?.tell(.takeOver(from: from, replyTo: refSubReceive))
@@ -156,7 +156,7 @@ internal class ActorSingletonProxy<Message: ActorMessage> {
             // to have proxies ask the `targetNode` proxy to "send me the ref once you have taken over"
             // and before then the proxies can either set `ref` to `nil` (to stash messages) or to `targetNode`
             // proxy as we do today. The challenge lies in serialization, as ActorSingletonProxy and ActorSingletonManager are generic.
-            let resolveContext = ResolveContext<Message>(address: ._singletonProxy(name: self.settings.name, remote: node), system: context.system)
+            let resolveContext = TraversalResolveContext<Message>(address: ._singletonProxy(name: self.settings.name, remote: node), system: context.system)
             let ref = context.system._resolve(context: resolveContext)
             self.updateRef(context, ref)
         case .none:

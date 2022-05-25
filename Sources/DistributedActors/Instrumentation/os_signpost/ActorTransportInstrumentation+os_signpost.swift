@@ -78,7 +78,7 @@ extension OSSignpost_InternalActorTransportInstrumentation {
         message-type:%{public}s
         """
 
-    public func remoteActorMessageSerializeStart(id: AnyObject, recipient: ActorPath, message: Any) {
+    public func remoteActorMessageSerializeStart(id: AnyObject, recipient: ActorAddress, message: Any) {
         guard OSSignpost_InternalActorTransportInstrumentation.logTransportSerialization.signpostsEnabled else {
             return
         }
@@ -108,7 +108,7 @@ extension OSSignpost_InternalActorTransportInstrumentation {
         )
     }
 
-    public func remoteActorMessageDeserializeStart(id: AnyObject, recipient: ActorPath, bytes: Int) {
+    public func remoteActorMessageDeserializeStart(id: AnyObject, recipient: ActorAddress, bytes: Int) {
         guard OSSignpost_InternalActorTransportInstrumentation.logTransportSerialization.signpostsEnabled else {
             return
         }

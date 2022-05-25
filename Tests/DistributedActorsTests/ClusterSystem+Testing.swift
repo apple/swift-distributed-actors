@@ -27,7 +27,7 @@ extension ClusterSystem {
 
         let remoteAddress = ActorAddress(remote: remoteSystem.settings.uniqueBindNode, path: ref.path, incarnation: ref.address.incarnation)
 
-        let resolveContext = ResolveContext<Message>(address: remoteAddress, system: self)
+        let resolveContext = TraversalResolveContext<Message>(address: remoteAddress, system: self)
         return self._resolve(context: resolveContext)
     }
 

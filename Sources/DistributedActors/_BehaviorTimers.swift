@@ -185,8 +185,8 @@ public final class _BehaviorTimers<Message: ActorMessage> {
     internal lazy var timerCallback: AsynchronousCallback<TimerEvent> =
         self.context.makeAsynchronousCallback { [weak context = self.context] timerEvent in
             if let context = context {
-                if timerEvent.owner.path != context.path {
-                    context.log.warning("Received timer signal with key [\(timerEvent.key)] for different actor with path [\(context.path)]. Will ignore and continue.", metadata: self.metadata)
+                if timerEvent.owner != context.address {
+                    context.log.warning("Received timer signal with key [\(timerEvent.key)] for different actor with path [\(context.address)]. Will ignore and continue.", metadata: self.metadata)
                     return
                 }
 

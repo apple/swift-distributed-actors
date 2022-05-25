@@ -39,7 +39,7 @@ final class RemoteActorRefProviderTests: ActorSystemXCTestCase {
 
         let node = UniqueNode(node: .init(systemName: "system", host: "3.3.3.3", port: 2322), nid: .random())
         let remoteNode = ActorAddress(remote: node, path: try ActorPath._user.appending("henry").appending("hacker"), incarnation: ActorIncarnation(1337))
-        let resolveContext = ResolveContext<String>(address: remoteNode, system: system)
+        let resolveContext = TraversalResolveContext<String>(address: remoteNode, system: system)
 
         // when
         let madeUpRef = provider._resolveAsRemoteRef(resolveContext, remoteAddress: remoteNode)
@@ -64,7 +64,7 @@ final class RemoteActorRefProviderTests: ActorSystemXCTestCase {
         var address: ActorAddress = ref.address
         address._location = .remote(self.system.settings.uniqueBindNode)
 
-        let resolveContext = ResolveContext<Int>(address: address, system: system)
+        let resolveContext = TraversalResolveContext<Int>(address: address, system: system)
         let resolvedRef = self.system._resolve(context: resolveContext)
 
         "\(resolvedRef)".shouldEqual("_ActorRef<Int>(/dead/user/ignoresStrings)")
@@ -75,7 +75,7 @@ final class RemoteActorRefProviderTests: ActorSystemXCTestCase {
         var address: ActorAddress = ref.address
         address._location = .remote(self.system.settings.uniqueBindNode)
 
-        let resolveContext = ResolveContext<DeadLetter>(address: address, system: system)
+        let resolveContext = TraversalResolveContext<DeadLetter>(address: address, system: system)
         let resolvedRef = self.system._resolve(context: resolveContext)
 
         "\(resolvedRef)".shouldEqual("_ActorRef<DeadLetter>(/dead/letters)")
@@ -87,7 +87,7 @@ final class RemoteActorRefProviderTests: ActorSystemXCTestCase {
         let unknownNode = UniqueNode(node: .init(systemName: "something", host: "1.1.1.1", port: 1111), nid: UniqueNodeID(1211))
         address._location = .remote(unknownNode)
 
-        let resolveContext = ResolveContext<DeadLetter>(address: address, system: system)
+        let resolveContext = TraversalResolveContext<DeadLetter>(address: address, system: system)
         let resolvedRef = self.system._resolve(context: resolveContext)
 
         "\(resolvedRef)".shouldEqual("_ActorRef<DeadLetter>(sact://something@1.1.1.1:1111/dead/letters)")
@@ -97,7 +97,7 @@ final class RemoteActorRefProviderTests: ActorSystemXCTestCase {
         let unknownNode = UniqueNode(node: .init(systemName: "something", host: "1.1.1.1", port: 1111), nid: UniqueNodeID(1211))
         let address: ActorAddress = try .init(remote: unknownNode, path: ActorPath._dead.appending("already"), incarnation: .wellKnown)
 
-        let resolveContext = ResolveContext<DeadLetter>(address: address, system: system)
+        let resolveContext = TraversalResolveContext<DeadLetter>(address: address, system: system)
         let resolvedRef = self.system._resolve(context: resolveContext)
 
         "\(resolvedRef)".shouldEqual("_ActorRef<DeadLetter>(sact://something@1.1.1.1:1111/dead/already)")
@@ -109,7 +109,7 @@ final class RemoteActorRefProviderTests: ActorSystemXCTestCase {
         var address: ActorAddress = ref.address
         address._location = .remote(self.system.settings.uniqueBindNode)
 
-        let resolveContext = ResolveContext<String>(address: address, system: system)
+        let resolveContext = TraversalResolveContext<String>(address: address, system: system)
         let resolvedRef = self.system._resolve(context: resolveContext)
 
         // then

@@ -249,7 +249,8 @@ public extension ActorTestKit {
 
         let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
         let res: _TraversalResult<AddressableActorRef> = self.system._traverseAll { _, ref in
-            if ref.address.path.description == path {
+            if let p = ref.address.path ,
+                p.description == path {
                 return .accumulateSingle(ref)
             } else {
                 return .continue
@@ -269,7 +270,7 @@ public extension ActorTestKit {
     ///
     /// This is useful when the resolution might be racing against the startup of the actor we are trying to resolve.
     func _eventuallyResolve<Message>(address: ActorAddress, of: Message.Type = Message.self, within: TimeAmount = .seconds(5)) throws -> _ActorRef<Message> {
-        let context = ResolveContext<Message>(address: address, system: self.system)
+        let context = TraversalResolveContext<Message>(address: address, system: self.system)
 
         return try self.eventually(within: .seconds(3)) {
             let resolved = self.system._resolve(context: context)
@@ -320,13 +321,13 @@ public final class Mock_ActorContext<Message: ActorMessage>: _ActorContext<Messa
         self._system
     }
 
-    public override var path: ActorPath {
-        super.path
-    }
-
-    public override var name: String {
-        "Mock_ActorContext<\(Message.self)>"
-    }
+//    public override var path: ActorPath {
+//        super.path
+//    }
+//
+//    public override var name: String {
+//        "Mock_ActorContext<\(Message.self)>"
+//    }
 
     public override var myself: _ActorRef<Message> {
         self.system.deadLetters.adapted()
@@ -383,14 +384,14 @@ public final class Mock_ActorContext<Message: ActorMessage>: _ActorContext<Messa
         fatalError("Failed: \(MockActorContextError())")
     }
 
-    public override var children: _Children {
-        get {
-            fatalError("Failed: \(MockActorContextError())")
-        }
-        set {
-            fatalError("Failed: \(MockActorContextError())")
-        }
-    }
+//    public override var children: _Children {
+//        get {
+//            fatalError("Failed: \(MockActorContextError())")
+//        }
+//        set {
+//            fatalError("Failed: \(MockActorContextError())")
+//        }
+//    }
 
     public override func stop<M>(child ref: _ActorRef<M>) throws {
         fatalError("Failed: \(MockActorContextError())")

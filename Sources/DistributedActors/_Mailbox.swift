@@ -394,7 +394,7 @@ internal final class _Mailbox<Message: ActorMessage> {
                 // Never run user messages before draining system messages, system messages must be processed with priority,
                 // since they include setting up watch/unwatch as well as the tombstone which should be the last thing we process.
                 while let message = self.systemMessages.dequeue() {
-                    traceLog_Mailbox(shell.path, "CLOSED, yet pending system messages still made it in... draining...")
+                    traceLog_Mailbox(shell.address.path, "CLOSED, yet pending system messages still made it in... draining...")
                     // drain all messages to dead letters
                     // this is very important since dead letters will handle any posthumous watches for us
                     self.deadLetters.tell(DeadLetter(message, recipient: self.address))
@@ -409,7 +409,7 @@ internal final class _Mailbox<Message: ActorMessage> {
             self.resetStatusSuspended()
         } else if !status.isSuspended && runResult == .shouldSuspend {
             self.setStatusSuspended()
-            traceLog_Mailbox(shell.path, "MARKED SUSPENDED")
+            traceLog_Mailbox(shell.address.path, "MARKED SUSPENDED")
         }
 
         // run user messages -------------------------------------------------------------------------------------------
@@ -443,18 +443,18 @@ internal final class _Mailbox<Message: ActorMessage> {
 
                 if runResult == .shouldStop, !status.isTerminating {
                     self.setTerminating()
-                    traceLog_Mailbox(shell.path, "MARKED TERMINATING")
+                    traceLog_Mailbox(shell.address.path, "MARKED TERMINATING")
                     break
                 } else if runResult == .shouldSuspend {
                     self.setStatusSuspended()
-                    traceLog_Mailbox(shell.path, "MARKED SUSPENDED")
+                    traceLog_Mailbox(shell.address.path, "MARKED SUSPENDED")
                     break
                 } else if processedActivations >= runLength {
                     break
                 }
             }
         } else if runResult == .shouldSuspend {
-            traceLog_Mailbox(shell.path, "MAILBOX SUSPENDED, SKIPPING USER MESSAGE PROCESSING")
+            traceLog_Mailbox(shell.address.path, "MAILBOX SUSPENDED, SKIPPING USER MESSAGE PROCESSING")
         } else { /* we are terminating and need to drain messages */
             while let message = self.userMessages.dequeue() {
                 self.deadLetters.tell(DeadLetter(message, recipient: self.address))
@@ -467,13 +467,13 @@ internal final class _Mailbox<Message: ActorMessage> {
         let oldStatus = self.decrementActivations(by: processedActivations)
         let oldActivations = oldStatus.activations
 
-        traceLog_Mailbox(shell.path, "Run complete...")
+        traceLog_Mailbox(shell.address.path, "Run complete...")
 
         // issue directives to mailbox ---------------------------------------------------------------------------------
         if runResult == .shouldStop {
             // MUST be the first check, as we may want to stop immediately (e.g. reacting to system .start a with .stop),
             // as other conditions may hold, yet we really are ready to terminate immediately.
-            traceLog_Mailbox(shell.path, "Terminating...")
+            traceLog_Mailbox(shell.address.path, "Terminating...")
             let processedActivationsCount = Status(processedActivations).messageCount
             if status.messageCount >= processedActivationsCount {
                 shell.metrics[gauge: .mailboxCount]?.record(status.messageCount - processedActivationsCount)
@@ -489,11 +489,11 @@ internal final class _Mailbox<Message: ActorMessage> {
             }
             return .close
         } else if runResult == .closed {
-            traceLog_Mailbox(shell.path, "Terminating, completely closed now...")
+            traceLog_Mailbox(shell.address.path, "Terminating, completely closed now...")
             shell.metrics[gauge: .mailboxCount]?.record(0)
             return .closed
         } else if (oldActivations > processedActivations && !oldStatus.isSuspended) || oldStatus.hasSystemMessages {
-            traceLog_Mailbox(shell.path, "Rescheduling... \(oldActivations) :: \(processedActivations)")
+            traceLog_Mailbox(shell.address.path, "Rescheduling... \(oldActivations) :: \(processedActivations)")
             // if we received new system messages during user message processing, or we could not process
             // all user messages in this run, because we had more messages queued up than the maximum run
             // length, return `Reschedule` to signal the queue should be re-scheduled
@@ -502,7 +502,7 @@ internal final class _Mailbox<Message: ActorMessage> {
             // and we'll update it as well when the run begins.
             return .reschedule
         } else {
-            traceLog_Mailbox(shell.path, "Run complete, shouldReschedule:false")
+            traceLog_Mailbox(shell.address.path, "Run complete, shouldReschedule:false")
             shell.metrics[gauge: .mailboxCount]?.record(0)
             return .done
         }

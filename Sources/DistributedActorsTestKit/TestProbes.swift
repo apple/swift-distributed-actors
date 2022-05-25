@@ -87,7 +87,7 @@ public final class ActorTestProbe<Message: ActorMessage>: @unchecked Sendable {
             let _: Never = fatalErrorBacktrace("Failed to make actor ref for \(ActorTestProbe<Message>.self): [\(error)]:\(String(reflecting: type(of: error)))", file: file, line: line)
         }
 
-        self.name = self.internalRef.address.name
+        self.name = self.internalRef.address.name!
 
         let wrapRealMessages: (Message) -> ProbeCommands = { msg in
             ProbeCommands.realMessage(message: msg)

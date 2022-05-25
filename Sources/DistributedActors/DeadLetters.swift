@@ -69,14 +69,15 @@ public extension ClusterSystem {
             return _ActorRef(.deadLetters(.init(self.log, address: recipient, system: self))).adapt(from: Message.self)
         }
 
-        let localRecipient: ActorAddress
-        if recipient.path.segments.first == ActorPath._dead.segments.first {
-            // drop the node from the address; and we know the pointed at ref is already dead; do not prefix it again
-            localRecipient = ActorAddress(local: self.settings.uniqueBindNode, path: recipient.path, incarnation: recipient.incarnation)
-        } else {
-            // drop the node from the address; and prepend it as known-to-be-dead
-            localRecipient = ActorAddress(local: self.settings.uniqueBindNode, path: ActorPath._dead.appending(segments: recipient.segments), incarnation: recipient.incarnation)
-        }
+        let localRecipient: ActorAddress =
+            ActorAddress(local: self.settings.uniqueBindNode, path: recipient.path, incarnation: recipient.incarnation)
+//        if recipient.path.segments.first == ActorPath._dead.segments.first {
+//            // drop the node from the address; and we know the pointed at ref is already dead; do not prefix it again
+//            localRecipient = ActorAddress(local: self.settings.uniqueBindNode, path: recipient.path, incarnation: recipient.incarnation)
+//        } else {
+//            // drop the node from the address; and prepend it as known-to-be-dead
+//            localRecipient = ActorAddress(local: self.settings.uniqueBindNode, path: ActorPath._dead.appending(segments: recipient.segments), incarnation: recipient.incarnation)
+//        }
         return _ActorRef(.deadLetters(.init(self.log, address: localRecipient, system: self))).adapt(from: Message.self)
     }
 
@@ -155,7 +156,7 @@ public final class DeadLetterOffice {
 
     @usableFromInline
     var path: ActorPath {
-        self._address.path
+        self._address.path! // FIXME(distributed): paths should be gone
     }
 
     @usableFromInline
@@ -186,11 +187,13 @@ public final class DeadLetterOffice {
             // should not really happen, as the only way to get a remote ref is to resolve it, and a remote resolve always yields a remote ref
             // thus, it is impossible to resolve a remote address into a dead ref; however keeping this path in case we manually make such mistake
             // somewhere in internals, and can spot it then easily
-            if recipient.path.starts(with: ._system), self.isShuttingDown() {
+            if recipient.path!.starts(with: ._system), self.isShuttingDown() {
                 return // do not log dead letters to /system actors while shutting down
             }
 
-            metadata["actor/path"] = Logger.MetadataValue.stringConvertible(deadAddress.path)
+            if let path = deadAddress.path {
+                metadata["actor/path"] = Logger.MetadataValue.stringConvertible(path)
+            }
             recipientString = "to [\(String(reflecting: recipient.detailedDescription))]"
         } else {
             recipientString = ""

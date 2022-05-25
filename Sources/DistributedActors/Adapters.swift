@@ -163,7 +163,7 @@ extension _ActorRefAdapter {
         return c.result
     }
 
-    public func _resolve<Message>(context: ResolveContext<Message>) -> _ActorRef<Message> {
+    public func _resolve<Message>(context: TraversalResolveContext<Message>) -> _ActorRef<Message> {
         guard context.selectorSegments.first == nil,
             self.address.incarnation == context.address.incarnation
         else {
@@ -173,7 +173,7 @@ extension _ActorRefAdapter {
         return .init(.adapter(self))
     }
 
-    public func _resolveUntyped(context: ResolveContext<Never>) -> AddressableActorRef {
+    public func _resolveUntyped(context: TraversalResolveContext<Never>) -> AddressableActorRef {
         guard context.selectorSegments.first == nil, self.address.incarnation == context.address.incarnation else {
             return context.personalDeadLetters.asAddressable
         }
@@ -223,11 +223,11 @@ internal final class _DeadLetterAdapterPersonality: _AbstractAdapter {
         .completed
     }
 
-    public func _resolve<Message2>(context: ResolveContext<Message2>) -> _ActorRef<Message2> {
+    public func _resolve<Message2>(context: TraversalResolveContext<Message2>) -> _ActorRef<Message2> {
         self.deadLetters.adapted()
     }
 
-    public func _resolveUntyped(context: ResolveContext<Never>) -> AddressableActorRef {
+    public func _resolveUntyped(context: TraversalResolveContext<Never>) -> AddressableActorRef {
         self.deadLetters.asAddressable
     }
 }
@@ -380,7 +380,7 @@ extension SubReceiveAdapter {
         return c.result
     }
 
-    public func _resolve<Message>(context: ResolveContext<Message>) -> _ActorRef<Message> {
+    public func _resolve<Message>(context: TraversalResolveContext<Message>) -> _ActorRef<Message> {
         guard context.selectorSegments.first == nil,
             self.address.incarnation == context.address.incarnation
         else {
@@ -395,7 +395,7 @@ extension SubReceiveAdapter {
         }
     }
 
-    public func _resolveUntyped(context: ResolveContext<Never>) -> AddressableActorRef {
+    public func _resolveUntyped(context: TraversalResolveContext<Never>) -> AddressableActorRef {
         guard context.selectorSegments.first == nil, self.address.incarnation == context.address.incarnation else {
             return context.personalDeadLetters.asAddressable
         }

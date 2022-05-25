@@ -156,7 +156,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
         self.behavior = behavior
         self._address = address
         self._props = props
-        self._log = Logger.make(system.log, path: address.path)
+        self._log = Logger.make(system.log, address: address)
 
         self.supervisor = _Supervision.supervisorFor(system, initialBehavior: behavior, props: props.supervision)
         self._deathWatch = DeathWatchImpl(nodeDeathWatcher: system._nodeDeathWatcherStore.load()?.value ?? system.deadLetters.adapted())
@@ -201,24 +201,24 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
         self._myCell = ref // TODO: atomic?
     }
 
-    // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: Children
-
-    private let _childrenLock = ReadWriteLock()
-    // All access must be protected with `_childrenLock`, or via `children` helper
-    internal var _children: _Children = .init()
-    public override var children: _Children {
-        set {
-            self._childrenLock.lockWrite()
-            defer { self._childrenLock.unlock() }
-            self._children = newValue
-        }
-        get {
-            self._childrenLock.lockRead()
-            defer { self._childrenLock.unlock() }
-            return self._children
-        }
-    }
+//    // ==== ------------------------------------------------------------------------------------------------------------
+//    // MARK: Children
+//
+//    private let _childrenLock = ReadWriteLock()
+//    // All access must be protected with `_childrenLock`, or via `children` helper
+//    internal var _children: _Children = .init()
+//    public override var children: _Children {
+//        set {
+//            self._childrenLock.lockWrite()
+//            defer { self._childrenLock.unlock() }
+//            self._children = newValue
+//        }
+//        get {
+//            self._childrenLock.lockRead()
+//            defer { self._childrenLock.unlock() }
+//            return self._children
+//        }
+//    }
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Conforming to ActorContext
@@ -238,16 +238,16 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
     public override var address: ActorAddress {
         self._address
     }
-
-    // Implementation note: Watch out when accessing from outside of an actor run, myself could have been unset (!)
-    public override var path: ActorPath {
-        self._address.path
-    }
-
-    // Implementation note: Watch out when accessing from outside of an actor run, myself could have been unset (!)
-    public override var name: String {
-        self._address.name
-    }
+//
+//    // Implementation note: Watch out when accessing from outside of an actor run, myself could have been unset (!)
+//    public override var path: ActorPath {
+//        self._address.path!
+//    }
+//
+//    // Implementation note: Watch out when accessing from outside of an actor run, myself could have been unset (!)
+//    public override var name: String {
+//        self._address.name
+//    }
 
     // access only from within actor
     private var _log: Logger
@@ -408,9 +408,9 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
             try self.becomeNext(behavior: next)
         }
 
-        if !self.behavior.isStillAlive {
-            self.children.stopAll()
-        }
+//        if !self.behavior.isStillAlive {
+//            self.children.stopAll()
+//        }
 
         return self.runState
     }
@@ -419,7 +419,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
     internal var continueRunning: Bool {
         switch self.behavior.underlying {
         case .suspended: return false
-        case .stop, .failed: return self.children.nonEmpty
+        case .stop, .failed: return false // self.children.nonEmpty
         default: return true
         }
     }
@@ -477,7 +477,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
     /// - Warning: This call MAY throw if user code would throw in reaction to interpreting `_PreRestart`;
     ///            If this happens the actor MUST be terminated immediately as we suspect things went very bad™ somehow.
     @inlinable public func _restartPrepare() throws {
-        self.children.stopAll(includeAdapters: false)
+//        self.children.stopAll(includeAdapters: false)
         self.timers.cancelAll() // TODO: cancel all except the restart timer
 
         /// Yes, we ignore the behavior returned by pre-restart on purpose, the supervisor decided what we should `become`,
@@ -686,10 +686,12 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
     var subReceives: [_AnySubReceiveId: ((SubMessageCarry) throws -> _Behavior<Message>, _AbstractAdapter)] = [:]
 
     @usableFromInline
+    @available(*, deprecated, message: "sub-receive is no longer needed")
     override func subReceive(identifiedBy identifier: _AnySubReceiveId) -> ((SubMessageCarry) throws -> _Behavior<Message>)? {
         self.subReceives[identifier]?.0
     }
 
+    @available(*, deprecated, message: "sub-receive is no longer needed")
     public override func subReceive<SubMessage>(_ id: _SubReceiveId<SubMessage>, _ subType: SubMessage.Type, _ closure: @escaping (SubMessage) throws -> Void) -> _ActorRef<SubMessage>
         where SubMessage: ActorMessage {
         do {
@@ -717,7 +719,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
             let adaptedAddress = try self.address.makeChildAddress(name: name, incarnation: .random()) // TODO: actor name to BE the identity
             let ref = SubReceiveAdapter(SubMessage.self, owner: self.myself, address: adaptedAddress, identifier: identifier)
 
-            self._children.insert(ref) // TODO: separate adapters collection?
+            // self._children.insert(ref) // TODO: separate adapters collection?
             self.subReceives[identifier] = (wrappedClosure, ref)
             return .init(.adapter(ref))
         } catch {
@@ -742,8 +744,10 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
         let closure: (Any) -> Message?
     }
 
+    @available(*, deprecated, message: "messageAdapter is no longer needed")
     public override func messageAdapter<From>(from fromType: From.Type, adapt: @escaping (From) -> Message?) -> _ActorRef<From>
         where From: ActorMessage {
+//            fatalError("ADAPTER NOT SUPORTED")
         do {
             let metaType = MetaType(fromType)
             let anyAdapter: (Any) -> Message? = { message in
@@ -767,7 +771,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
                 let adapter = _ActorRefAdapter(fromType: fromType, to: self.myself, address: adaptedAddress)
 
                 self.messageAdapter = adapter
-                self._children.insert(adapter) // TODO: separate adapters collection?
+                // self._children.insert(adapter) // TODO: separate adapters collection?
 
                 return .init(.adapter(adapter))
             }
@@ -819,7 +823,7 @@ extension _ActorShell {
             case .wasNotWatched:
                 // it is not an actor we currently watch, thus we should not take actions nor deliver the signal to the user
                 self.log.trace("""
-                Actor not known to [\(self.path)], but [\(terminated)] received for it. This may mean we received node terminated earlier, \
+                Actor not known to [\(self.address)], but [\(terminated)] received for it. This may mean we received node terminated earlier, \
                 and already have removed the actor from our death watch.
                 """)
                 return
@@ -877,82 +881,27 @@ extension _ActorShell {
 
     @inlinable
     func interpretStop() throws {
-        self.children.stopAll()
+        // self.children.stopAll()
         try self.becomeNext(behavior: .stop(reason: .stopByParent))
     }
 
     @inlinable
     func interpretChildTerminatedSignal(who terminatedRef: AddressableActorRef, terminated: Signals._ChildTerminated) throws {
-        #if SACT_TRACE_ACTOR_SHELL
-        self.log.info("Received \(terminated)")
-        #endif
-
-        // we always first need to remove the now terminated child from our children
-        _ = self.children.removeChild(identifiedBy: terminatedRef.address)
-        // Implementation notes:
-        // Normally this does not happen, however it MAY occur when the parent actor (self)
-        // immediately performed a `stop()` on the child, and thus removes it from its
-        // children container immediately; The following termination notification would therefore
-        // reach the parent in which the child was already removed.
-
-        // next we may apply normal deathWatch logic if the child was being watched
-        if self.deathWatch.isWatching(terminatedRef.address) {
-            return try self.interpretTerminatedSignal(who: terminatedRef.address, terminated: terminated)
-        } else {
-            // otherwise we deliver the message, however we do not terminate ourselves if it remains unhandled
-
-            let next: _Behavior<Message>
-            if case .signalHandling = self.behavior.underlying {
-                // TODO: we always want to call "through" the supervisor, make it more obvious that that should be the case internal API wise?
-                next = try self.supervisor.interpretSupervised(target: self.behavior, context: self, signal: terminated)
-            } else {
-                switch terminated.escalation {
-                case .some(let failure):
-                    // the child actor decided to `.escalate` the error and thus we are notified about it
-                    // escalation differs from plain termination that by default it DOES cause us to crash as well,
-                    // causing a chain reaction of crashing until someone handles or the guardian receives it and shuts down the system.
-                    self.log.warning("Failure escalated by [\(terminatedRef.path)] reached non-watching, non-signal handling parent, escalation will continue! Failure was: \(failure)")
-
-                    next = try self.supervisor.interpretSupervised(
-                        target: .signalHandling(
-                            handleMessage: self.behavior,
-                            handleSignal: { _, _ in
-                                switch failure {
-                                case .error(let error):
-                                    throw error
-                                case .fault(let errorRepr):
-                                    throw errorRepr
-                                }
-                            }
-                        ),
-                        context: self,
-                        signal: terminated
-                    )
-
-                case .none:
-                    // the child actor has stopped without providing us with a reason // FIXME; does this need to carry manual stop as a reason?
-                    //
-                    // no signal handling installed is semantically equivalent to unhandled
-                    next = _Behavior<Message>.unhandled
-                }
-            }
-
-            try self.becomeNext(behavior: next)
-        }
+        fatalError("interpretChildTerminatedSignal but we don't support children anymore")
     }
 }
 
 extension _ActorShell: CustomStringConvertible {
     public var description: String {
         let prettyTypeName = String(reflecting: Message.self).split(separator: ".").dropFirst().joined(separator: ".")
-        return "ActorContext<\(prettyTypeName)>(\(self.path))"
+        return "ActorContext<\(prettyTypeName)>(\(self.address))"
     }
 }
 
 /// The purpose of this cell is to allow storing cells of different types in a collection, i.e. Children
 internal protocol AbstractShellProtocol: _ActorTreeTraversable {
     var _myselfReceivesSystemMessages: _ReceivesSystemMessages { get }
-    var children: _Children { get set } // lock-protected
+//    var children: _Children { get set } // lock-protected // FIXME(distributed): remove this
     var asAddressable: AddressableActorRef { get }
     var metrics: ActiveActorMetrics { get }
 }
@@ -963,24 +912,28 @@ extension AbstractShellProtocol {
         self._myselfReceivesSystemMessages
     }
 
-    public func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
-        var c = context.deeper
-        switch visit(context, self.asAddressable) {
-        case .continue:
-            let res = self.children._traverse(context: c, visit)
-            return res
-        case .accumulateSingle(let t):
-            c.accumulated.append(t)
-            return self.children._traverse(context: c, visit)
-        case .accumulateMany(let ts):
-            c.accumulated.append(contentsOf: ts)
-            return self.children._traverse(context: c, visit)
-        case .abort(let err):
-            return .failed(err)
-        }
+    public func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) ->
+    _TraversalResult<T> {
+        fatalError("TRAVERSAL IS NOT SUPPORTED")
+//        var c = context.deeper
+//        switch visit(context, self.asAddressable) {
+//        case .continue:
+////            return self.children._traverse(context: c, visit)
+//            return .failed(err)
+//        case .accumulateSingle(let t):
+//            c.accumulated.append(t)
+////            return self.children._traverse(context: c, visit)
+//            return .failed(err)
+//        case .accumulateMany(let ts):
+//            c.accumulated.append(contentsOf: ts)
+////            return self.children._traverse(context: c, visit)
+//            return .failed(err)
+//        case .abort(let err):
+//            return .failed(err)
+//        }
     }
 
-    public func _resolve<Message>(context: ResolveContext<Message>) -> _ActorRef<Message>
+    public func _resolve<Message>(context: TraversalResolveContext<Message>) -> _ActorRef<Message>
         where Message: ActorMessage {
         let myself: _ReceivesSystemMessages = self._myselfReceivesSystemMessages
 
@@ -1006,10 +959,11 @@ extension AbstractShellProtocol {
             }
         }
 
-        return self.children._resolve(context: context)
+            fatalError("CHILDREN NOT SUPPORTED: \(self.asAddressable), resolving: \(context.address)")
+        // return self.children._resolve(context: context)
     }
 
-    public func _resolveUntyped(context: ResolveContext<Never>) -> AddressableActorRef {
+    public func _resolveUntyped(context: TraversalResolveContext<Never>) -> AddressableActorRef {
         guard context.selectorSegments.first != nil else {
             // no remaining selectors == we are the "selected" ref, apply uid check
             if self._myselfReceivesSystemMessages.address.incarnation == context.address.incarnation {
@@ -1020,7 +974,8 @@ extension AbstractShellProtocol {
             }
         }
 
-        return self.children._resolveUntyped(context: context)
+        fatalError("CHILDREN NOT SUPPORTED: \(self.asAddressable), resolving: \(context.address)")
+//        return self.children._resolveUntyped(context: context)
     }
 }
 

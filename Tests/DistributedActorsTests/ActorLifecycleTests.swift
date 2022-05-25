@@ -87,29 +87,29 @@ class ActorLifecycleTests: ActorSystemXCTestCase {
         ) // ka-pi-ba-ra
     }
 
-    func test_spawn_shouldThrowFromMultipleActorsWithTheSamePathBeingSpawned() throws {
-        let p = self.testKit.makeTestProbe(expecting: String.self)
-        let spawner: _Behavior<String> = .receive { context, name in
-            let fromName = context.path
-            let _: _ActorRef<Int> = try context.system._spawn(
-                "\(name)",
-                .setup { context in
-                    p.tell("me:\(context.path) spawned from \(fromName)")
-                    return .receiveMessage { _ in .stop } // keep ignoring
-                }
-            )
-            return .stop
-        }
-        try system._spawn("a", spawner).tell("charlie")
-        try self.system._spawn("b", spawner).tell("charlie")
-        try self.system._spawn("c", spawner).tell("charlie")
-        try self.system._spawn("d", spawner).tell("charlie")
-        try self.system._spawn("e", spawner).tell("charlie")
-        try self.system._spawn("f", spawner).tell("charlie")
-
-        let spawnedBy = try p.expectMessage()
-        pinfo("Spawned by: \(spawnedBy)")
-
-        try p.expectNoMessage(for: .milliseconds(200))
-    }
+//    func test_spawn_shouldThrowFromMultipleActorsWithTheSamePathBeingSpawned() throws {
+//        let p = self.testKit.makeTestProbe(expecting: String.self)
+//        let spawner: _Behavior<String> = .receive { context, name in
+//            let fromName = context.path
+//            let _: _ActorRef<Int> = try context.system._spawn(
+//                "\(name)",
+//                .setup { context in
+//                    p.tell("me:\(context.path) spawned from \(fromName)")
+//                    return .receiveMessage { _ in .stop } // keep ignoring
+//                }
+//            )
+//            return .stop
+//        }
+//        try system._spawn("a", spawner).tell("charlie")
+//        try self.system._spawn("b", spawner).tell("charlie")
+//        try self.system._spawn("c", spawner).tell("charlie")
+//        try self.system._spawn("d", spawner).tell("charlie")
+//        try self.system._spawn("e", spawner).tell("charlie")
+//        try self.system._spawn("f", spawner).tell("charlie")
+//
+//        let spawnedBy = try p.expectMessage()
+//        pinfo("Spawned by: \(spawnedBy)")
+//
+//        try p.expectNoMessage(for: .milliseconds(200))
+//    }
 }

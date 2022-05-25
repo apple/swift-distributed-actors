@@ -30,7 +30,7 @@ final class DeathWatchTests: ActorSystemXCTestCase {
         .receive { context, message in
             switch message {
             case .stop:
-                probe?.tell("I (\(context.path.name)) will now stop")
+                probe?.tell("I (\(context.address.name)) will now stop")
                 return .stop
             }
         }

@@ -169,16 +169,16 @@ internal struct DeathWatchImpl<Message: ActorMessage> {
             // not yet watching, so let's add it:
             self.watching[addressableWatchee] = OnTerminationMessage(customize: terminationMessage)
 
-            if !watcher.children.contains(identifiedBy: watchee.asAddressable.address) {
-                // We ONLY send the watch message if it is NOT our own child;
-                //
-                // Because a child ALWAYS sends a .childTerminated to its parent on termination, so there is no need to watch it again,
-                // other than _us_ remembering that we issued such watch. A child can also never be remote, so the node deathwatcher does not matter either.
-                //
-                // A childTerminated is transformed into `Signals._ChildTerminated` which subclasses `Signals.Terminated`,
-                // so this way we achieve exactly one termination notification already.
-                addressableWatchee._sendSystemMessage(.watch(watchee: addressableWatchee, watcher: watcher.asAddressable), file: file, line: line)
-            }
+//            if !watcher.children.contains(identifiedBy: watchee.asAddressable.address) {
+//                // We ONLY send the watch message if it is NOT our own child;
+//                //
+//                // Because a child ALWAYS sends a .childTerminated to its parent on termination, so there is no need to watch it again,
+//                // other than _us_ remembering that we issued such watch. A child can also never be remote, so the node deathwatcher does not matter either.
+//                //
+//                // A childTerminated is transformed into `Signals._ChildTerminated` which subclasses `Signals.Terminated`,
+//                // so this way we achieve exactly one termination notification already.
+//                addressableWatchee._sendSystemMessage(.watch(watchee: addressableWatchee, watcher: watcher.asAddressable), file: file, line: line)
+//            }
 
             self.subscribeNodeTerminatedEvents(myself: watcher.myself, watchedAddress: addressableWatchee.address, file: file, line: line)
         }
@@ -277,7 +277,7 @@ internal struct DeathWatchImpl<Message: ActorMessage> {
         for watched: AddressableActorRef in self.watching.keys where watched.address.uniqueNode == terminatedNode {
             // we KNOW an actor existed if it is local and not resolved as /dead; otherwise it may have existed
             // for a remote ref we don't know for sure if it existed
-            let existenceConfirmed = watched.refType.isLocal && !watched.address.path.starts(with: ._dead)
+            let existenceConfirmed = watched.refType.isLocal // && !watched.address.path.starts(with: ._dead)
             myself._sendSystemMessage(.terminated(ref: watched, existenceConfirmed: existenceConfirmed, addressTerminated: true), file: #file, line: #line)
         }
     }

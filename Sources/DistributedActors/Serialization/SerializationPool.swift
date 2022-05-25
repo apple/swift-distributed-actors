@@ -32,7 +32,7 @@ public final class _SerializationPool {
     @usableFromInline
     internal let serialization: Serialization
     @usableFromInline
-    internal let workerMapping: [ActorPath: Int]
+    internal let workerMapping: [String: Int]
     @usableFromInline
     internal let serializationWorkerPool: AffinityThreadPool
     @usableFromInline
@@ -44,12 +44,12 @@ public final class _SerializationPool {
     internal init(settings: SerializationPoolSettings, serialization: Serialization, instrumentation: _InternalActorTransportInstrumentation? = nil) throws {
         self.serialization = serialization
         self.instrumentation = instrumentation ?? Noop_InternalActorTransportInstrumentation()
-        var workerMapping: [ActorPath: Int] = [:]
-        for (index, group) in settings.serializationGroups.enumerated() {
-            for path in group {
+        var workerMapping: [String: Int] = [:]
+        for (index, groupTags) in settings.serializationGroups.enumerated() {
+            for groupTag in groupTags {
                 // mapping from each actor path to the corresponding group index,
                 // which maps 1:1 to the serialization worker number
-                workerMapping[path] = index
+                workerMapping[groupTag.value] = index
             }
         }
         self.workerMapping = workerMapping
@@ -68,21 +68,21 @@ public final class _SerializationPool {
     @inlinable
     internal func serialize(
         message: Any,
-        recipientPath: ActorPath,
+        recipient: ActorAddress,
         promise: EventLoopPromise<Serialization.Serialized>
     ) {
         // TODO: also record thr delay between submitting and starting serialization work here?
-        self.enqueue(recipientPath: recipientPath, promise: promise, workerPool: self.serializationWorkerPool) {
+        self.enqueue(recipient: recipient, promise: promise, workerPool: self.serializationWorkerPool) {
             do {
-                self.instrumentation.remoteActorMessageSerializeStart(id: promise.futureResult, recipient: recipientPath, message: message)
+                self.instrumentation.remoteActorMessageSerializeStart(id: promise.futureResult, recipient: recipient, message: message)
                 let serialized = try self.serialization.serialize(message)
 
-                traceLog_Serialization("serialize(\(message), to: \(recipientPath))")
+                traceLog_Serialization("serialize(\(message), to: \(recipient))")
 
                 // TODO: collapse those two and only use the instrumentation points, also for metrics
                 self.instrumentation.remoteActorMessageSerializeEnd(id: promise.futureResult, bytes: serialized.buffer.count)
-                self.serialization.metrics.recordSerializationMessageOutbound(recipientPath, serialized.buffer.count)
-                traceLog_Serialization("OK serialize(\(message), to: \(recipientPath))")
+                self.serialization.metrics.recordSerializationMessageOutbound(recipient, serialized.buffer.count)
+                traceLog_Serialization("OK serialize(\(message), to: \(recipient))")
 
                 return serialized
             } catch {
@@ -97,15 +97,15 @@ public final class _SerializationPool {
     internal func deserializeAny(
         from buffer: Serialization.Buffer,
         using manifest: Serialization.Manifest,
-        recipientPath: ActorPath,
+        recipient: ActorAddress,
         // The only reason we use a wrapper instead of raw function is that (...) -> () do not have identity,
         // and we use identity of the callback to interact with the instrumentation for start/stop correlation.
         callback: DeserializationCallback
     ) {
-        self.enqueue(recipientPath: recipientPath, onComplete: { callback.call($0) }, workerPool: self.deserializationWorkerPool) {
+        self.enqueue(recipient: recipient, onComplete: { callback.call($0) }, workerPool: self.deserializationWorkerPool) {
             do {
-                self.serialization.metrics.recordSerializationMessageInbound(recipientPath, buffer.count)
-                self.instrumentation.remoteActorMessageDeserializeStart(id: callback, recipient: recipientPath, bytes: buffer.count)
+                self.serialization.metrics.recordSerializationMessageInbound(recipient, buffer.count)
+                self.instrumentation.remoteActorMessageDeserializeStart(id: callback, recipient: recipient, bytes: buffer.count)
 
                 // do the work, this may be "heavy"
                 let deserialized = try self.serialization.deserializeAny(from: buffer, using: manifest)
@@ -121,18 +121,18 @@ public final class _SerializationPool {
     @inline(__always)
     @usableFromInline
     internal func enqueue<Message>(
-        recipientPath: ActorPath,
+        recipient: ActorAddress,
         promise: EventLoopPromise<Message>,
         workerPool: AffinityThreadPool,
         task: @escaping () throws -> Message
     ) {
-        self.enqueue(recipientPath: recipientPath, onComplete: promise.completeWith, workerPool: workerPool, task: { try task() })
+        self.enqueue(recipient: recipient, onComplete: promise.completeWith, workerPool: workerPool, task: { try task() })
     }
 
     @inline(__always)
     @usableFromInline
     internal func enqueue<Message>(
-        recipientPath: ActorPath,
+        recipient: ActorAddress,
         onComplete: @escaping (Result<Message, Error>) -> Void,
         workerPool: AffinityThreadPool,
         task: @escaping () throws -> Message
@@ -141,7 +141,8 @@ public final class _SerializationPool {
         do {
             // check if messages for this particular actor should be handled
             // on a separate thread and submit to the worker pool
-            if let workerNumber = self.workerMapping[recipientPath] {
+            if let path = recipient.tags[ActorTags.serializationGroup],
+               let workerNumber = self.workerMapping[path] {
                 try workerPool.execute(on: workerNumber) {
                     do {
                         onComplete(.success(try task()))
@@ -185,7 +186,7 @@ final class DeserializationCallback {
 // MARK: Serialization.Settings
 
 public struct SerializationPoolSettings {
-    public let serializationGroups: [[ActorPath]]
+    public let serializationGroups: [[MessageSerializationGroupTag]]
 
     internal static var `default`: SerializationPoolSettings {
         SerializationPoolSettings(serializationGroups: [])

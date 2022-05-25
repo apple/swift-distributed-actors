@@ -314,7 +314,7 @@ final class OutboundSerializationHandler: ChannelOutboundHandler {
 
         self.serializationPool.serialize(
             message: transportEnvelope.underlyingMessage,
-            recipientPath: transportEnvelope.recipient.path,
+            recipient: transportEnvelope.recipient,
             promise: serializationPromise
         )
 
@@ -454,7 +454,7 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
     private func deserializeThenHandle<T>(type: T.Type, wireEnvelope: Wire.Envelope, callback: @escaping (T) -> Void) {
         self.serializationPool.deserializeAny(
             from: wireEnvelope.payload, using: wireEnvelope.manifest,
-            recipientPath: wireEnvelope.recipient.path, // TODO: use addresses
+            recipient: wireEnvelope.recipient,
             callback: .init { result in
                 self.tracelog(.inbound, message: wireEnvelope)
                 switch result {

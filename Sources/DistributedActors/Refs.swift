@@ -163,7 +163,6 @@ public protocol _ReceivesMessages: Sendable, Codable {
 /// INTERNAL API: Only for use by the actor system itself
 public protocol _ReceivesSystemMessages: Codable {
     var address: ActorAddress { get }
-    var path: ActorPath { get }
 
     /// INTERNAL API causing an immediate send of a system message to target actor.
     /// System messages are given stronger delivery guarantees in a distributed setting than "user" messages.
@@ -190,8 +189,8 @@ public protocol _ReceivesSystemMessages: Codable {
 }
 
 public extension _ReceivesSystemMessages {
-    var path: ActorPath {
-        self.address.path
+    var path: ActorPath { // FIXME(distributed): remove this, paths are not a thing
+        self.address.path!
     }
 }
 
@@ -264,7 +263,7 @@ public extension _ActorRef {
         pool.deserializeAny(
             from: messageBytes,
             using: manifest,
-            recipientPath: self.path,
+            recipient: self.address,
             callback: .init {
                 let metrics = self._unwrapActorMetrics
                 if metrics.active.contains(.deserialization) {
@@ -537,14 +536,7 @@ extension TheOneWhoHasNoParent: CustomStringConvertible, CustomDebugStringConver
 /// (unlike actors spawned from within other actors, by using `context._spawn`).
 public class _Guardian {
     @usableFromInline
-    let _address: ActorAddress
-    var address: ActorAddress {
-        self._address
-    }
-
-    var path: ActorPath {
-        self.address.path
-    }
+    let address: ActorAddress
 
     let name: String
 
@@ -565,7 +557,7 @@ public class _Guardian {
         assert(parent.address == ActorAddress._localRoot(on: localNode), "A Guardian MUST live directly under the `/` path.")
 
         do {
-            self._address = try ActorPath(root: name).makeLocalAddress(on: localNode, incarnation: .wellKnown)
+            self.address = try ActorPath(root: name).makeLocalAddress(on: localNode, incarnation: .wellKnown)
         } catch {
             fatalError("Illegal Guardian path, as those are only to be created by ClusterSystem startup, considering this fatal.")
         }
@@ -587,14 +579,14 @@ public class _Guardian {
     func sendSystemMessage(_ message: _SystemMessage, file: String = #file, line: UInt = #line) {
         switch message {
         case .childTerminated(let ref, let circumstances):
-            self._childrenLock.synchronized {
-                _ = self._children.removeChild(identifiedBy: ref.address)
-                // if we are stopping and all children have been stopped,
-                // we need to notify waiting threads about it
-                if self.stopping, self._children.isEmpty {
-                    self.allChildrenRemoved.signalAll()
-                }
-            }
+//            self._childrenLock.synchronized {
+//                _ = self._children.removeChild(identifiedBy: ref.address)
+//                // if we are stopping and all children have been stopped,
+//                // we need to notify waiting threads about it
+//                if self.stopping, self._children.isEmpty {
+//                    self.allChildrenRemoved.signalAll()
+//                }
+//            }
 
             // TODO(distributed): actor trees are going away, and as such guardian actors as well
             switch circumstances {
@@ -606,12 +598,12 @@ public class _Guardian {
 
                 /// Shut down actor system
                 let message = """
-                Escalated failure from [\(ref.address)] reached top-level guardian [\(self.address.path)], SHUTTING DOWN ClusterSystem! \
+                Escalated failure from [\(ref.address)] reached top-level guardian [\(self.address)], SHUTTING DOWN ClusterSystem! \
                 (This can be configured in `system.settings.failure.onGuardianFailure`). \
                 Failure was: \(failure)
                 """
                 system.log.error("\(message)", metadata: [
-                    "actor/path": "\(self.address.path)",
+                    "actor/path": "\(self.address)",
                     "error": "\(failure)",
                 ])
 
@@ -687,7 +679,7 @@ public class _Guardian {
             self._children.stopAll()
             // extra check because adapted refs get removed immediately
             if !self._children.isEmpty {
-                self.allChildrenRemoved.wait(_childrenLock)
+                // self.allChildrenRemoved.wait(_childrenLock) // FIXME: DEAL WITH THIS; THE SIGNAL NEVER TRIGGERS; REMOVE ALL CHILDREN
             }
         }
     }
@@ -716,7 +708,7 @@ extension _Guardian: _ActorTreeTraversable {
         }
     }
 
-    public func _resolve<Message>(context: ResolveContext<Message>) -> _ActorRef<Message> {
+    public func _resolve<Message>(context: TraversalResolveContext<Message>) -> _ActorRef<Message> {
         guard let selector = context.selectorSegments.first else {
             fatalError("Expected selector in guardian._resolve()!")
         }
@@ -728,7 +720,7 @@ extension _Guardian: _ActorTreeTraversable {
         }
     }
 
-    public func _resolveUntyped(context: ResolveContext<Never>) -> AddressableActorRef {
+    public func _resolveUntyped(context: TraversalResolveContext<Never>) -> AddressableActorRef {
         guard let selector = context.selectorSegments.first else {
             fatalError("Expected selector in guardian._resolve()!")
         }

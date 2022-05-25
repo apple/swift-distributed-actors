@@ -59,7 +59,7 @@ public extension Reception {
         }
 
         internal func resolve(system: ClusterSystem, address: ActorAddress) -> AddressableActorRef {
-            let ref: _ActorRef<Guest.Message> = system._resolve(context: ResolveContext(address: address, system: system))
+            let ref: _ActorRef<Guest.Message> = system._resolve(context: TraversalResolveContext(address: address, system: system))
             return ref.asAddressable
         }
 

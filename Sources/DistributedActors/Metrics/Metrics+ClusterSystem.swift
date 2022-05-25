@@ -46,7 +46,10 @@ final class ClusterSystemMetrics {
     func recordActorStart<Anything>(_ shell: _ActorShell<Anything>) {
         // TODO: use specific dimensions if shell has it configured or groups etc
         // TODO: generalize this such that we can do props -> dimensions -> done, and not special case the system ones
-        guard let root = shell.path.segments.first else {
+        guard let path = shell.address.path else {
+            return
+        }
+        guard let root = path.segments.first else {
             return // do nothing
         }
         switch root {
@@ -62,7 +65,10 @@ final class ClusterSystemMetrics {
     func recordActorStop<Anything>(_ shell: _ActorShell<Anything>) {
         // TODO: use specific dimensions if shell has it configured or groups etc
         // TODO: generalize this such that we can do props -> dimensions -> done, and not special case the system ones
-        guard let root = shell.path.segments.first else {
+        guard let path = shell.address.path else {
+            return
+        }
+        guard let root = path.segments.first else {
             return // do nothing
         }
         switch root {
@@ -163,44 +169,27 @@ final class ClusterSystemMetrics {
     let _serialization_user_inbound_msg_size: Recorder
 
     @usableFromInline
-    func recordSerializationMessageOutbound(_ path: ActorPath, _ bytes: Int) {
-        if path.starts(with: ._user) {
-            self._serialization_user_outbound_msg_size.record(bytes)
-        } else if path.starts(with: ._system) {
-            self._serialization_system_outbound_msg_size.record(bytes)
+    func recordSerializationMessageOutbound(_ address: ActorAddress, _ bytes: Int) {
+        if let path = address.path { // FIXME(distributed):
+            if path.starts(with: ._user) {
+                self._serialization_user_outbound_msg_size.record(bytes)
+            } else if path.starts(with: ._system) {
+                self._serialization_system_outbound_msg_size.record(bytes)
+            }
         }
     }
 
     @usableFromInline
-    func recordSerializationMessageInbound(_ path: ActorPath, _ bytes: Int) {
-        if path.starts(with: ._user) {
-            self._serialization_user_inbound_msg_size.record(bytes)
-        } else if path.starts(with: ._system) {
-            self._serialization_system_inbound_msg_size.record(bytes)
+    func recordSerializationMessageInbound(_ address: ActorAddress, _ bytes: Int) {
+        if let path = address.path { // FIXME(distributed):
+            if path.starts(with: ._user) {
+                self._serialization_user_inbound_msg_size.record(bytes)
+            } else if path.starts(with: ._system) {
+                self._serialization_system_inbound_msg_size.record(bytes)
+            }
         }
     }
-
-    // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: Actors Group-metrics (i.e. all actors of given "type" or "role")
-
-    /// how much time does an actor (group) spend processing messages (executing a .receive)
-    // let actor_time_processing: ActorGroupGauge
-
-    /// how much time do messages spend in the actor (group) mailbox
-    // let actor_time_mailbox: ActorGroupGauge
-
-    // TODO: note to self measurements of rate can be done in two ways:
-    // 1) implement a RateGauge in the system, like codahale Meter does, and we measure it then in the app and emit the "X per U" measurement as gauge
-    // 2) prometheus style, which only records counters (!), and since the measurements are at diff points in time, the rate is post processed based on when the measurements are made
-    // since we do not know what users want from us, we may have to implement it as some rate.hit() and then the impl would be configured in a mode -- 1 or 2, by users.
-    // let actor_[group]_message_rate: Rate
-
-    // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: Messages
-
-    /// Rate of messages being delivered as "dead letters" (e.g. delivered at recipients which already died, or similar)
-    // let messages_deadLetters: Counter
-
+    
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: General
 

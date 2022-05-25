@@ -79,13 +79,9 @@ public struct ActorAddress: @unchecked Sendable {
     public var tags: ActorTags
 
     /// Underlying path representation, not attached to a specific Actor instance.
-    // FIXME(distributed): make optional
-    public var path: ActorPath {
+    public var path: ActorPath? {
         get {
-            guard let path = tags[ActorTags.path] else {
-                fatalError("FIXME: ActorTags.path was not set on \(self)! NOTE THAT PATHS ARE TO BECOME OPTIONAL!!!") // FIXME(distributed): must be removed
-            }
-            return path
+            return tags[ActorTags.path]
         }
         set {
             tags[ActorTags.path] = newValue
@@ -94,28 +90,31 @@ public struct ActorAddress: @unchecked Sendable {
 
     /// Returns the name of the actor represented by this path.
     /// This is equal to the last path segments string representation.
-    // FIXME(distributed): make optional
-    public var name: String {
-        self.path.name
+    public var name: String? {
+        self.path?.name ?? tags[ActorTags.name]
     }
 
     /// Uniquely identifies the specific "incarnation" of this actor.
     public let incarnation: ActorIncarnation
 
     /// :nodoc:
-    public init(local node: UniqueNode, path: ActorPath, incarnation: ActorIncarnation) {
+    public init(local node: UniqueNode, path: ActorPath?, incarnation: ActorIncarnation) {
         self._location = .local(node)
         self.tags = ActorTags()
         self.incarnation = incarnation
-        self.tags[ActorTags.path] = path
+        if let path = path {
+            self.tags[ActorTags.path] = path
+        }
     }
 
     /// :nodoc:
-    public init(remote node: UniqueNode, path: ActorPath, incarnation: ActorIncarnation) {
+    public init(remote node: UniqueNode, path: ActorPath?, incarnation: ActorIncarnation) {
         self._location = .remote(node)
         self.incarnation = incarnation
         self.tags = ActorTags()
-        self.tags[ActorTags.path] = path
+        if let path = path {
+            self.tags[ActorTags.path] = path
+        }
     }
 
 //    /// :nodoc:
@@ -165,19 +164,29 @@ extension ActorAddress: CustomStringConvertible {
         if self._isRemote {
             res += "\(reflecting: self.uniqueNode)"
         }
-        res += "\(self.path)"
-
-        if self.incarnation == ActorIncarnation.wellKnown {
-            return res
-        } else {
-            return "\(res)#\(self.incarnation.value)"
+        
+        if let path = self.path {
+            res += "\(path)"
         }
+
+        if self.incarnation != ActorIncarnation.wellKnown {
+            res += "#\(self.incarnation.value)"
+        }
+
+        if tags.count > 0 {
+            res += "\(self.tags)"
+        }
+
+        return res
     }
 
     public var fullDescription: String {
         var res = ""
         res += "\(reflecting: self.uniqueNode)"
-        res += "\(self.path)"
+
+        if let path = self.path {
+            res += "\(path)"
+        }
 
         if self.incarnation == ActorIncarnation.wellKnown {
             return res
@@ -232,11 +241,13 @@ public extension ActorAddress {
 }
 
 extension ActorAddress: _PathRelationships {
-    public var segments: [ActorPathSegment] {
-        self.path.segments
+    @available(*, deprecated, message: "Path may not be there, so perhaps remove this entirely")
+  public var segments: [ActorPathSegment] {
+        self.path?.segments ?? []
     }
 
-    func makeChildAddress(name: String, incarnation: ActorIncarnation) throws -> ActorAddress {
+    @available(*, deprecated, message: "Child paths are not a thing")
+ func makeChildAddress(name: String, incarnation: ActorIncarnation) throws -> ActorAddress {
         switch self._location {
         case .local(let node):
             return try .init(local: node, path: self.makeChildPath(name: name), incarnation: incarnation)
@@ -246,12 +257,13 @@ extension ActorAddress: _PathRelationships {
     }
 
     /// Creates a new path with `segment` appended
+    @available(*, deprecated, message: "Path may not be there, so perhaps remove this entirely")
     public func appending(segment: ActorPathSegment) -> ActorAddress {
         switch self._location {
         case .remote(let node):
-            return .init(remote: node, path: self.path.appending(segment: segment), incarnation: self.incarnation)
+            return .init(remote: node, path: (self.path ?? ActorPath._user).appending(segment: segment), incarnation: self.incarnation)
         case .local(let node):
-            return .init(local: node, path: self.path.appending(segment: segment), incarnation: self.incarnation)
+            return .init(local: node, path: (self.path ?? ActorPath._user).appending(segment: segment), incarnation: self.incarnation)
         }
     }
 }
@@ -260,8 +272,8 @@ extension ActorAddress: _PathRelationships {
 extension ActorAddress: Comparable {
     public static func < (lhs: ActorAddress, rhs: ActorAddress) -> Bool {
         lhs.uniqueNode < rhs.uniqueNode ||
-            (lhs.uniqueNode == rhs.uniqueNode && lhs.path < rhs.path) ||
-            (lhs.uniqueNode == rhs.uniqueNode && lhs.path == rhs.path && lhs.incarnation < rhs.incarnation)
+            (lhs.uniqueNode == rhs.uniqueNode) ||
+            (lhs.uniqueNode == rhs.uniqueNode && lhs.incarnation < rhs.incarnation)
     }
 }
 
@@ -572,7 +584,7 @@ public struct ActorIncarnation: Equatable, Hashable, ExpressibleByIntegerLiteral
 public extension ActorIncarnation {
     /// To be used ONLY by special actors whose existence is wellKnown and identity never-changing.
     /// Examples: `/system/deadLetters` or `/system/cluster`.
-    static let wellKnown: ActorIncarnation = .init(0)
+    static let wellKnown: ActorIncarnation = .init(0) // FIXME(distributed): well known must be a name+ID
 
     static func random() -> ActorIncarnation {
         ActorIncarnation(UInt32.random(in: UInt32(1) ... UInt32.max))

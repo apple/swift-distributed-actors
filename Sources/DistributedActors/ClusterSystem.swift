@@ -339,17 +339,14 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         // self._receptionistRef = lazyReceptionist.ref
         _ = self._receptionistRef.storeIfNilThenLoad(Box(lazyReceptionist.ref))
 
-//        Task.detached {
         await _Props.$forSpawn.withValue(OpLogDistributedReceptionist.props) {
             let receptionist = await OpLogDistributedReceptionist(
                 settings: self.settings.receptionist,
                 system: self
             )
             Task { try await receptionist.start() }
-            print("XXX stored _receptionistStore")
             _ = self._receptionistStore.storeIfNilThenLoad(receptionist)
         }
-//        }
 
         #if SACT_TESTS_LEAKS
         _ = ClusterSystem.actorSystemInitCounter.loadThenWrappingIncrement(ordering: .relaxed)
@@ -723,7 +720,7 @@ extension ClusterSystem: _ActorTreeTraversable {
     }
 
     /// INTERNAL API: Not intended to be used by end users.
-    public func _resolve<Message: ActorMessage>(context: ResolveContext<Message>) -> _ActorRef<Message> {
+    public func _resolve<Message: ActorMessage>(context: TraversalResolveContext<Message>) -> _ActorRef<Message> {
 //        if let serialization = context.system._serialization {
         do {
             try context.system.serialization._ensureSerializer(Message.self)
@@ -763,7 +760,7 @@ extension ClusterSystem: _ActorTreeTraversable {
         fatalError("NEIN")
     }
 
-    public func _resolveUntyped(context: ResolveContext<Never>) -> AddressableActorRef {
+    public func _resolveUntyped(context: TraversalResolveContext<Never>) -> AddressableActorRef {
         guard let selector = context.selectorSegments.first else {
             return context.personalDeadLetters.asAddressable
         }
@@ -802,6 +799,18 @@ public extension ClusterSystem {
 
         return try _Props.$forSpawn.withValue(props) {
             try makeActor()
+        }
+    }
+
+    /// Allows creating a distributed actor with additional configuration applied during its initialization.
+    internal func actorWith<Act: DistributedActor>(props: _Props? = nil,
+                                                   _ makeActor: () async throws -> Act) async rethrows -> Act {
+        guard let props = props else {
+            return try await makeActor()
+        }
+
+        return try await  _Props.$forSpawn.withValue(props) {
+            try await makeActor()
         }
     }
 

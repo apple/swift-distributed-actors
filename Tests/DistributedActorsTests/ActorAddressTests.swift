@@ -23,18 +23,18 @@ final class ActorAddressTests: XCTestCase {
         let address = try ActorAddress(local: node, path: ActorPath._user.appending("hello"), incarnation: ActorIncarnation(8888))
         "\(address)".shouldEqual("/user/hello")
         "\(address.name)".shouldEqual("hello")
-        "\(address.path)".shouldEqual("/user/hello")
-        "\(address.path.name)".shouldEqual("hello")
-        "\(address.path)".shouldEqual("/user/hello")
-        "\(address.path.name)".shouldEqual("hello")
+        "\(address.path!)".shouldEqual("/user/hello")
+        "\(address.path!.name)".shouldEqual("hello")
+        "\(address.path!)".shouldEqual("/user/hello")
+        "\(address.path!.name)".shouldEqual("hello")
 
         address.detailedDescription.shouldEqual("/user/hello#8888")
         String(reflecting: address).shouldEqual("/user/hello")
         String(reflecting: address.name).shouldEqual("\"hello\"")
         String(reflecting: address.path).shouldEqual("/user/hello")
-        String(reflecting: address.path.name).shouldEqual("\"hello\"")
-        String(reflecting: address.path).shouldEqual("/user/hello")
-        String(reflecting: address.path.name).shouldEqual("\"hello\"")
+        String(reflecting: address.path!.name).shouldEqual("\"hello\"")
+        String(reflecting: address.path!).shouldEqual("/user/hello")
+        String(reflecting: address.path!.name).shouldEqual("\"hello\"")
     }
 
     func test_remote_actorAddress_shouldPrintNicely() throws {
@@ -47,10 +47,10 @@ final class ActorAddressTests: XCTestCase {
         String(reflecting: remote).shouldEqual("sact://system@127.0.0.1:1234/user/hello")
         "\(remote)".shouldEqual("sact://system@127.0.0.1:1234/user/hello")
         "\(remote.name)".shouldEqual("hello")
-        "\(remote.path)".shouldEqual("/user/hello")
-        "\(remote.path.name)".shouldEqual("hello")
-        "\(remote.path)".shouldEqual("/user/hello")
-        "\(remote.path.name)".shouldEqual("hello")
+        "\(remote.path!)".shouldEqual("/user/hello")
+        "\(remote.path!.name)".shouldEqual("hello")
+        "\(remote.path!)".shouldEqual("/user/hello")
+        "\(remote.path!.name)".shouldEqual("hello")
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -140,5 +140,16 @@ final class ActorAddressTests: XCTestCase {
 
         // sorting should not be impacted by the random incarnation numbers
         addresses.sorted().shouldEqual([a, b, c])
+    }
+
+    func test_tags_printing() throws {
+        let node = UniqueNode(systemName: "one", host: "127.0.0.1", port: 1234, nid: UniqueNodeID(11111))
+        var a: ActorAddress = try ActorPath._user.appending("a").makeRemoteAddress(on: node, incarnation: 1)
+
+        a.tags = ActorTags(tags: [
+            ActorPathTag(value: try ._user.appending("replaced"))
+        ])
+
+        "\(a)".shouldEqual("sact://one@127.0.0.1:1234/user/replaced")
     }
 }

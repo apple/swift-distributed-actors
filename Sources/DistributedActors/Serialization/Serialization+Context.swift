@@ -60,13 +60,13 @@ public extension Serialization {
             _ messageType: Message.Type = Message.self, identifiedBy address: ActorAddress,
             userInfo: [CodingUserInfoKey: Any] = [:]
         ) -> _ActorRef<Message> where Message: ActorMessage {
-            let context = ResolveContext<Message>(address: address, system: self.system, userInfo: userInfo)
+            let context = TraversalResolveContext<Message>(address: address, system: self.system, userInfo: userInfo)
             return self.system._resolve(context: context)
         }
 
         /// Similar to `resolveActorRef` but for an untyped `AddressableActorRef`.
         public func resolveAddressableActorRef(identifiedBy address: ActorAddress, userInfo: [CodingUserInfoKey: Any] = [:]) -> AddressableActorRef {
-            let context = ResolveContext<Never>(address: address, system: self.system, userInfo: userInfo)
+            let context = TraversalResolveContext<Never>(address: address, system: self.system, userInfo: userInfo)
             return self.system._resolveUntyped(context: context)
         }
 

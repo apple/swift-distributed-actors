@@ -18,7 +18,7 @@ import Distributed
 // MARK: ActorTags
 
 /// Container of tags a concrete actor identity was tagged with.
-public struct ActorTags {
+public struct ActorTags: Sendable, CustomStringConvertible {
     // We still might re-think how we represent the storage.
     private var _storage: [String: Sendable & Codable] = [:] // FIXME: fix the key as AnyActorTagKey
 
@@ -50,6 +50,16 @@ public struct ActorTags {
             self._storage[key.id] = newValue
         }
     }
+    
+    public var description: String {
+        var res = "["
+        // TODO: how to use joined() with dict here...
+        for (k, v) in self._storage {
+            res += "\(k):\"\(v)\""
+        }
+        res += "]"
+        return res
+    }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -57,7 +67,7 @@ public struct ActorTags {
 
 public protocol ActorTag: Sendable where Value == Key.Value {
     associatedtype Key: ActorTagKey
-    associatedtype Value: Sendable & Codable
+    associatedtype Value
     
     var keyType: Key.Type { get }
     var value: Value { get }
@@ -90,17 +100,58 @@ struct AnyActorTagKey: Hashable {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Known keys
+// MARK: Tag: Path
 
 extension ActorTags {
+    static let path = ActorPathTag.Key.self
+}
 
-    static let path = ActorPathTagKey.self
-    public struct ActorPathTagKey: ActorTagKey {
+@available(*, deprecated, message: "Paths are not used in the pure DA design")
+public struct ActorPathTag: ActorTag {
+    public struct Key: ActorTagKey {
         public static let id: String = "path"
         public typealias Value = ActorPath
     }
-    public struct ActorPathTag: ActorTag {
-        public typealias Key = ActorPathTagKey
-        public let value: Key.Value
+    
+    public let value: Key.Value
+}
+
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Tag: Name
+
+extension ActorTags {
+    public static let name = ActorNameTag.Key.self
+}
+
+public struct ActorNameTag: ActorTag {
+    public struct Key: ActorTagKey {
+        public static let id: String = "name"
+        public typealias Value = String
+    }
+    public let value: Key.Value
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Tag: Message Serialization Group
+
+extension ActorTags {
+    public static let serializationGroup = MessageSerializationGroupTag.Key.self
+}
+
+public struct MessageSerializationGroupTag: ActorTag, ExpressibleByStringLiteral {
+    public struct Key: ActorTagKey {
+        public static let id: String = "message-ser-group"
+        public typealias Value = String
+    }
+    public let value: Key.Value
+    
+    
+    public init(_ value: StringLiteralType) {
+        self.value = value
+    }
+    
+    public init(stringLiteral value: StringLiteralType) {
+        self.value = value
     }
 }

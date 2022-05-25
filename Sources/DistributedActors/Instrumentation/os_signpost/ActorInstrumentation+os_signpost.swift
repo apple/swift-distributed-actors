@@ -70,11 +70,11 @@ public extension OSSignpostActorInstrumentation {
             return
         }
 
-        guard !self.address.name.hasPrefix("$ask") else {
-            // don't track ask actor's int spawned etc, since they should eventually go away
-            // ask timings are to be found in the Asks instrument
-            return
-        }
+//        guard !self.address.name.hasPrefix("$ask") else {
+//            // don't track ask actor's int spawned etc, since they should eventually go away
+//            // ask timings are to be found in the Asks instrument
+//            return
+//        }
 
         os_signpost(
             .event,
@@ -82,7 +82,7 @@ public extension OSSignpostActorInstrumentation {
             name: "Actor Lifecycle",
             signpostID: self.signpostID,
             Self.actorSpawnedStartFormat,
-            "\(self.address.uniqueNode)", "\(self.address.path)"
+            "\(self.address.uniqueNode)", "\(self.address)"
         )
 
         os_signpost(
@@ -91,7 +91,7 @@ public extension OSSignpostActorInstrumentation {
             name: "Actor Lifecycle",
             signpostID: self.signpostID,
             Self.actorSpawnedStartFormat,
-            "\(self.address.uniqueNode)", "\(self.address.path)"
+            "\(self.address.uniqueNode)", "\(self.address)"
         )
     }
 
@@ -100,11 +100,11 @@ public extension OSSignpostActorInstrumentation {
             return
         }
 
-        guard !self.address.name.hasPrefix("$ask") else {
-            // don't track ask actor's int spawned etc, since they should eventually go away
-            // ask timings are to be found in the Asks instrument
-            return
-        }
+//        guard !self.address.name?.hasPrefix("$ask") else {
+//            // don't track ask actor's int spawned etc, since they should eventually go away
+//            // ask timings are to be found in the Asks instrument
+//            return
+//        }
 
         os_signpost(
             .end,
@@ -121,11 +121,11 @@ public extension OSSignpostActorInstrumentation {
             return
         }
 
-        guard !self.address.name.hasPrefix("$ask") else {
-            // don't track ask actor's int spawned etc, since they should eventually go away
-            // ask timings are to be found in the Asks instrument
-            return
-        }
+//        guard !self.address.name.hasPrefix("$ask") else {
+//            // don't track ask actor's int spawned etc, since they should eventually go away
+//            // ask timings are to be found in the Asks instrument
+//            return
+//        }
 
         os_signpost(
             .end,
@@ -179,8 +179,8 @@ public extension OSSignpostActorInstrumentation {
             name: "Actor Message (Tell)",
             signpostID: self.signpostID,
             Self.actorToldEventPattern,
-            "\(self.address.uniqueNode)", "\(self.address.path)",
-            "\(from?.uniqueNode.description ?? "")", "\(from?.path.description ?? "")",
+            "\(self.address.uniqueNode)", "\(self.address)",
+            "\(from?.uniqueNode.description ?? "")", "\(from?.description ?? "")",
             "\(message)", String(reflecting: type(of: message))
         )
     }
@@ -222,8 +222,8 @@ public extension OSSignpostActorInstrumentation {
             name: "Actor Message (Ask)",
             signpostID: self.signpostID,
             Self.actorAskedEventPattern,
-            "\(self.address.uniqueNode)", "\(self.address.path)",
-            "\(from?.uniqueNode.description ?? "")", "\(from?.path.description ?? "")",
+            "\(self.address.uniqueNode)", "\(self.address)",
+            "\(from?.uniqueNode.description ?? "")", "\(from?.description ?? "")",
             "\(message)", String(reflecting: type(of: message))
         )
     }
@@ -293,9 +293,9 @@ public extension OSSignpostActorInstrumentation {
             signpostID: self.signpostID,
             Self.actorReceivedEventPattern,
             "\(self.address.uniqueNode.description)",
-            "\(self.address.path)",
+            "\(self.address)",
             "\(from?.uniqueNode.description ?? "")",
-            "\(from?.path.description ?? "")",
+            "\(from?.description ?? "")",
             "\(message)",
             String(reflecting: type(of: message))
         )

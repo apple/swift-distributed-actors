@@ -424,7 +424,7 @@ extension ClusterShell {
                         intervalRandomFactor: self.settings.membershipGossipIntervalRandomFactor,
                         style: .acknowledged(timeout: self.settings.membershipGossipInterval),
                         peerDiscovery: .onClusterMember(atLeast: .joining, resolve: { member in
-                            let resolveContext = ResolveContext<GossipShell<Cluster.MembershipGossip, Cluster.MembershipGossip>.Message>(address: ._clusterGossip(on: member.uniqueNode), system: context.system)
+                            let resolveContext = TraversalResolveContext<GossipShell<Cluster.MembershipGossip, Cluster.MembershipGossip>.Message>(address: ._clusterGossip(on: member.uniqueNode), system: context.system)
                             return context.system._resolve(context: resolveContext).asAddressable
                         })
                     ),
@@ -1174,9 +1174,9 @@ extension ClusterShell {
 private extension ClusterShell {
     func onShutdownCommand(_ context: _ActorContext<Message>, state: ClusterShellState, signalOnceUnbound: BlockingReceptacle<Void>) -> _Behavior<Message> {
         // we exit the death-pact with any children we spawned, even if they fail now, we don't mind because we're shutting down
-        context.children.forEach { ref in
-            context.unwatch(ref)
-        }
+//        context.children.forEach { ref in
+//            context.unwatch(ref)
+//        }
 
         let addrDesc = "\(state.settings.uniqueBindNode.node.host):\(state.settings.uniqueBindNode.node.port)"
         return context.awaitResult(of: state.channel.close(), timeout: context.system.settings.unbindTimeout) {
