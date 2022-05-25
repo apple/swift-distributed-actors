@@ -889,7 +889,7 @@ public extension ClusterSystem {
         let recipient = _ActorRef<InvocationMessage>(.remote(.init(shell: clusterShell, address: actor.id._asRemote, system: self)))
 
         let arguments = invocation.arguments
-        let ask: AskResponse<Res> = recipient.ask(timeout: .seconds(5)) { replyTo in
+        let ask: AskResponse<Res> = recipient.ask(timeout: RemoteCall.timeout ?? self.settings.callTimeout) { replyTo in
             let invocation = InvocationMessage(
                 targetIdentifier: target.identifier,
                 arguments: arguments,
@@ -918,7 +918,7 @@ public extension ClusterSystem {
         let recipient = _ActorRef<InvocationMessage>(.remote(.init(shell: shell, address: actor.id._asRemote, system: self)))
 
         let arguments = invocation.arguments
-        let ask: AskResponse<_Done> = recipient.ask(timeout: .seconds(5)) { replyTo in
+        let ask: AskResponse<_Done> = recipient.ask(timeout: RemoteCall.timeout ?? self.settings.callTimeout) { replyTo in
             let invocation = InvocationMessage(
                 targetIdentifier: target.identifier,
                 arguments: arguments,
@@ -929,6 +929,11 @@ public extension ClusterSystem {
         }
 
         _ = try await ask.value // discard the _Done
+    }
+    
+    enum RemoteCall {
+        @TaskLocal
+        public static var timeout: TimeAmount?
     }
 }
 
