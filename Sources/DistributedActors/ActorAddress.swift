@@ -17,8 +17,10 @@ import Distributed
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ActorAddress
 
-/// Uniquely identifies an Actor within a (potentially clustered) Actor System.
-/// Most of the time, using an `_ActorRef` is the right thing for identifying actors however, as it also allows sending messages.
+/// Uniquely identifies a DistributedActor within the cluster.
+///
+/// It is assigned by the `ClusterSystem` at initialization time of a distributed actor,
+/// and remains associated with that concrete actor until it terminates.
 ///
 /// ## Identity
 /// The address is the source of truth with regards to referring to a _specific_ actor in the system.
@@ -60,12 +62,21 @@ public struct ActorAddress: @unchecked Sendable {
     @usableFromInline
     internal var _location: ActorLocation
 
+    /// The unique node on which the actor identified by this identity is located.
     public var uniqueNode: UniqueNode {
         switch self._location {
         case .local(let node): return node
         case .remote(let node): return node
         }
     }
+
+    /// Collection of tags associated with this actor identity.
+    ///
+    /// Tags MAY be transferred to other peers as the identity is replicated, however they are not necessary to uniquely identify the actor.
+    /// Tags can carry additional information such as the type of the actor identified by this identity, or any other user defined "roles" or similar tags.
+    ///
+    /// - SeeAlso: `ActorTags` for a detailed discussion of some frequently used tags.
+    public var tags: ActorTags
 
     /// Underlying path representation, not attached to a specific Actor instance.
     public var path: ActorPath
@@ -82,16 +93,36 @@ public struct ActorAddress: @unchecked Sendable {
     /// :nodoc:
     public init(local node: UniqueNode, path: ActorPath, incarnation: ActorIncarnation) {
         self._location = .local(node)
+        self.tags = ActorTags()
         self.incarnation = incarnation
         self.path = path
+        self.tags[ActorTags.path] = path
     }
 
     /// :nodoc:
     public init(remote node: UniqueNode, path: ActorPath, incarnation: ActorIncarnation) {
         self._location = .remote(node)
         self.incarnation = incarnation
+        self.tags = ActorTags()
         self.path = path
+        self.tags[ActorTags.path] = path
     }
+
+//    /// :nodoc:
+//    public init(local node: UniqueNode, path: ActorPath, incarnation: ActorIncarnation) {
+//        self._location = .local(node)
+//        self.tags = ActorTags()
+//        self.incarnation = incarnation
+//        self.tags[.path] = path
+//    }
+//
+//    /// :nodoc:
+//    public init(remote node: UniqueNode, path: ActorPath, incarnation: ActorIncarnation) {
+//        self._location = .remote(node)
+//        self.incarnation = incarnation
+//        self.tags = ActorTags()
+//        self.tags[.path] = path
+//    }
 }
 
 extension ActorAddress: Hashable {

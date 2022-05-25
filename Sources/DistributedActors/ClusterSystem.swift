@@ -678,6 +678,7 @@ extension ClusterSystem: _ActorRefFactory {
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Internal actor tree traversal utilities
+
 extension ClusterSystem: _ActorTreeTraversable {
     /// Prints Actor hierarchy as a "tree".
     ///
@@ -789,7 +790,20 @@ extension ClusterSystem: _ActorTreeTraversable {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Actor Transport
+// MARK: Actor Lifecycle
+
+public extension ClusterSystem {
+    /// Allows creating a distributed actor with additional configuration applied during its initialization.
+    internal func actorWith<Act: DistributedActor>(props: _Props? = nil, _ makeActor: () throws -> Act) rethrows -> Act {
+        guard let props = props else {
+            return try makeActor()
+        }
+
+        return try _Props.$forSpawn.withValue(props) {
+            try makeActor()
+        }
+    }
+}
 
 public extension ClusterSystem {
     func resolve<Act>(id address: ActorID, as actorType: Act.Type) throws -> Act?
@@ -822,9 +836,6 @@ public extension ClusterSystem {
             }
         }
     }
-
-    // ==== --------------------------------------------------------------------
-    // - MARK: Actor Lifecycle
 
     func assignID<Act>(_ actorType: Act.Type) -> ClusterSystem.ActorID
         where Act: DistributedActor {
@@ -889,7 +900,12 @@ public extension ClusterSystem {
             self._managedDistributedActors.removeActor(identifiedBy: id)
         }
     }
+}
 
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Remote Calls
+
+public extension ClusterSystem {
     func makeInvocationEncoder() -> InvocationEncoder {
         InvocationEncoder(system: self)
     }
