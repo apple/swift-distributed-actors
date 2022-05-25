@@ -178,7 +178,7 @@ final class ClusterSystemTests: ActorSystemXCTestCase {
     }
 }
 
-fileprivate distributed actor DelayedGreeter {
+private distributed actor DelayedGreeter {
     typealias ID = ClusterSystem.ActorID
     typealias ActorSystem = ClusterSystem
 

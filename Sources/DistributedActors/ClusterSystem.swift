@@ -1041,7 +1041,7 @@ enum RemoteCallError: Error {
 public enum RemoteCall {
     @TaskLocal
     public static var timeout: TimeAmount?
-    
+
     @discardableResult
     public static func with<Response>(timeout: TimeAmount, remoteCall: () async throws -> Response) async rethrows -> Response {
         try await Self.$timeout.withValue(timeout, operation: remoteCall)
