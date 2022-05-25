@@ -78,39 +78,6 @@ final class SupervisionTests: ActorSystemXCTestCase {
         }
     }
 
-    // TODO: test a double fault (throwing inside of a supervisor
-
-    func compileOnlyDSLReadabilityTest() {
-        _ = { () in
-            let behavior: _Behavior<String> = _undefined()
-            _ = try self.system._spawn("example", behavior)
-            _ = try self.system._spawn("example", props: _Props(), behavior)
-            _ = try self.system._spawn("example", props: .dispatcher(.pinnedThread), behavior)
-            _ = try self.system._spawn("example", props: _Props().dispatcher(.pinnedThread).supervision(strategy: .stop), behavior)
-            _ = try self.system._spawn("example", props: .supervision(strategy: .restart(atMost: 5, within: .seconds(1))), behavior)
-            _ = try self.system._spawn("example", props: .supervision(strategy: .restart(atMost: 5, within: .effectivelyInfinite)), behavior)
-
-            // chaining
-            _ = try self.system._spawn(
-                "example",
-                props: _Props()
-                    .supervision(strategy: .restart(atMost: 5, within: .effectivelyInfinite))
-                    .dispatcher(.pinnedThread)
-                    .mailbox(.default(capacity: 122, onOverflow: .crash)),
-                behavior
-            )
-
-            _ = try self.system._spawn(
-                "example",
-                props: _Props()
-                    .supervision(strategy: .restart(atMost: 5, within: .seconds(1)), forErrorType: EasilyCatchableError.self)
-                    .supervision(strategy: .restart(atMost: 5, within: .effectivelyInfinite))
-                    .supervision(strategy: .restart(atMost: 5, within: .effectivelyInfinite)),
-                behavior
-            )
-        }
-    }
-
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Shared test implementation, which is to run with either error/fault causing messages
 

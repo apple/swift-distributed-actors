@@ -30,7 +30,6 @@ import NIO
 /// Hamlet Act III, scene 1, saying "To be, or not to be, that is the question: [...]." In the same sense,
 /// props for Swift Distributed Actors are accompanying objects/settings, which help the actor perform its duties.
 public struct _Props: @unchecked Sendable {
-    public var mailbox: _MailboxProps
     public var dispatcher: _DispatcherProps
 
     // _Supervision properties will be removed.
@@ -59,12 +58,10 @@ public struct _Props: @unchecked Sendable {
     internal var _distributedActor: Bool = false
 
     public init(
-        mailbox: _MailboxProps = .default(),
         dispatcher: _DispatcherProps = .default,
         supervision: _SupervisionProps = .default,
         metrics: MetricsProps = .disabled
     ) {
-        self.mailbox = mailbox
         self.dispatcher = dispatcher
         self.supervision = supervision
         self.metrics = metrics
@@ -145,47 +142,6 @@ public enum _DispatcherProps {
         case .callingThread: return "callingThread"
         }
     }
-}
-
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Mailbox _Props
-
-public extension _Props {
-    /// Creates a new `_Props` with default values, and overrides the `mailbox` with the provided one.
-    static func mailbox(_ mailbox: _MailboxProps) -> _Props {
-        var props = _Props()
-        props.mailbox = mailbox
-        return props
-    }
-
-    /// Creates copy of this `_Props` changing the `mailbox` props.
-    func mailbox(_ mailbox: _MailboxProps) -> _Props {
-        var props = self
-        props.mailbox = mailbox
-        return props
-    }
-}
-
-public enum _MailboxProps: Sendable {
-    /// Default mailbox.
-    case `default`(capacity: UInt32, onOverflow: MailboxOverflowStrategy)
-
-    public static func `default`(capacity: UInt32 = UInt32.max) -> _MailboxProps {
-        .default(capacity: capacity, onOverflow: .crash)
-    }
-
-    var capacity: UInt32 {
-        switch self {
-        case .default(let cap, _): return cap
-        }
-    }
-}
-
-// TODO: those only apply when bounded mailboxes
-public enum MailboxOverflowStrategy: Sendable {
-    case crash
-    case dropIncoming
-    case dropMailbox
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------

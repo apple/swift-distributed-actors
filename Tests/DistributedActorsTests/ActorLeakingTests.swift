@@ -204,30 +204,6 @@ final class ActorLeakingTests: ActorSystemXCTestCase {
         }
     }
 
-    func test_droppedMessages_shouldNotLeak() async throws {
-        #if !SACT_TESTS_LEAKS
-        return self.skipLeakTests()
-        #else
-        let lock = _Mutex()
-        lock.lock()
-        let behavior: _Behavior<LeakTestMessage> = .receiveMessage { _ in
-            lock.lock()
-            return .stop
-        }
-        let ref = try system._spawn(.anonymous, props: _Props().mailbox(_MailboxProps.default(capacity: 1)), behavior)
-
-        // this will cause the actor to block and fill the mailbox, so the next message should be dropped and deallocated
-        ref.tell(LeakTestMessage(nil))
-
-        let deallocated: UnsafeAtomic<Bool> = .create(false)
-        defer { deallocated.destroy() }
-        ref.tell(LeakTestMessage(deallocated))
-
-        deallocated.load(ordering: .relaxed).shouldBeTrue()
-        lock.unlock()
-        #endif // SACT_TESTS_LEAKS
-    }
-
     func test_ClusterSystem_shouldNotLeak() async throws {
         #if !SACT_TESTS_LEAKS
         return self.skipLeakTests()
