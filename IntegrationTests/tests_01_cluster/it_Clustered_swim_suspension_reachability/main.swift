@@ -28,7 +28,6 @@ guard args.count >= 1 else {
 let system = await ClusterSystem("System") { settings in
     settings.logging.logLevel = .info
 
-    settings.enabled = true
     settings.bindPort = Int(args[0])!
 
     settings.swim.probeInterval = .milliseconds(300)

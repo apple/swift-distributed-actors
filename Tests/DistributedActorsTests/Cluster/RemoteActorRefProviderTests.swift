@@ -18,12 +18,6 @@ import Foundation
 import XCTest
 
 final class RemoteActorRefProviderTests: ActorSystemXCTestCase {
-    override func setUp() async throws {
-        _ = await self.setUpNode(String(reflecting: Self.self)) { settings in
-            settings.enabled = true
-        }
-    }
-
     let localNode = UniqueNode(systemName: "RemoteAssociationTests", host: "127.0.0.1", port: 7111, nid: UniqueNodeID(777_777))
     let remoteNode = UniqueNode(systemName: "RemoteAssociationTests", host: "127.0.0.1", port: 9559, nid: UniqueNodeID(888_888))
     lazy var remoteAddress = ActorAddress(remote: remoteNode, path: try! ActorPath._user.appending("henry").appending("hacker"), incarnation: .random())

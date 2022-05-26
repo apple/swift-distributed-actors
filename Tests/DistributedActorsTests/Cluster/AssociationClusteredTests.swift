@@ -310,7 +310,6 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
         try assertAssociated(first, withExactly: second.cluster.uniqueNode)
 
         let thirdSystem = await setUpNode("third") { settings in
-            settings.enabled = true
             settings.nid = second.settings.nid
             settings.node.port = 9119
         }

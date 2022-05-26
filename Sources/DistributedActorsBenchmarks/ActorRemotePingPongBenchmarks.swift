@@ -67,12 +67,10 @@ var _pongNode: ClusterSystem?
 private func setUp(and postSetUp: () -> Void = { () in () }) {
     _system = ClusterSystem("PingNode") { settings in
         settings.logging.logLevel = .error
-        settings.enabled = true
         settings.node.port = 7111
     }
     _pongNode = ClusterSystem("PongNode") { settings in
         settings.logging.logLevel = .error
-        settings.enabled = true
         settings.node.port = 7222
     }
 

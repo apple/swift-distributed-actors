@@ -145,9 +145,12 @@ class SerializationTests: ActorSystemXCTestCase {
 
     func test_serialize_actorRef_inMessage_forRemoting() async throws {
         let remoteCapableSystem = await ClusterSystem("remoteCapableSystem") { settings in
-            settings.enabled = true
             settings.serialization.register(HasStringRef.self)
         }
+        defer {
+            try! remoteCapableSystem.shutdown().wait()
+        }
+
         let testKit = ActorTestKit(remoteCapableSystem)
         let p = testKit.makeTestProbe(expecting: String.self)
 
