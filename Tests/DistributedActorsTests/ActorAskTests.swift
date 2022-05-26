@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import DistributedActors
+@testable import DistributedActors
 import struct DistributedActors.TimeAmount
 import DistributedActorsTestKit
 import Foundation

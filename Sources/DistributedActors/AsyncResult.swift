@@ -22,7 +22,7 @@ import NIO
 ///
 /// - SeeAlso: `_ActorContext.awaitResult`
 /// - SeeAlso: `_ActorContext.onResultAsync`
-public protocol _AsyncResult {
+internal protocol _AsyncResult {
     associatedtype Value
 
     /// **WARNING:** NOT end-user API.
@@ -48,11 +48,11 @@ public protocol _AsyncResult {
 }
 
 extension EventLoopFuture: _AsyncResult {
-    public func _onComplete(_ callback: @escaping (Result<Value, Error>) -> Void) {
+    func _onComplete(_ callback: @escaping (Result<Value, Error>) -> Void) {
         self.whenComplete(callback)
     }
 
-    public func withTimeout(after timeout: TimeAmount) -> EventLoopFuture<Value> {
+    func withTimeout(after timeout: TimeAmount) -> EventLoopFuture<Value> {
         if timeout == .effectivelyInfinite {
             return self
         }
@@ -71,11 +71,11 @@ extension EventLoopFuture: _AsyncResult {
 }
 
 /// Error that signals that an operation timed out.
-public struct TimeoutError: Error {
+internal struct TimeoutError: Error {
     let message: String
     let timeout: TimeAmount
 
-    public init(message: String, timeout: TimeAmount) {
+    init(message: String, timeout: TimeAmount) {
         self.message = message
         self.timeout = timeout
     }

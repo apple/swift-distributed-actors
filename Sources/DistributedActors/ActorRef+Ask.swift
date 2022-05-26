@@ -23,7 +23,7 @@ import struct NIO.Scheduled
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ask capability is marked by ReceivesQuestions
 
-public protocol ReceivesQuestions: Codable {
+protocol ReceivesQuestions: Codable {
     associatedtype Question
 
     /// Useful counterpart of _ActorRef.tell but dedicated to request-response interactions.
@@ -62,9 +62,9 @@ public protocol ReceivesQuestions: Codable {
 // MARK: _ActorRef + ask
 
 extension _ActorRef: ReceivesQuestions {
-    public typealias Question = Message
+    typealias Question = Message
 
-    public func ask<Answer>(
+    func ask<Answer>(
         for answerType: Answer.Type = Answer.self,
         timeout: TimeAmount,
         file: String = #file, function: String = #function, line: UInt = #line,
@@ -135,7 +135,7 @@ extension _ActorRef: ReceivesQuestions {
 /// - warning: When exposing the underlying implementation and attaching callbacks to it, modifying or capturing
 ///            enclosing actor state is NOT SAFE, as the underlying future MAY not be scheduled on the same context
 ///            as the actor.
-public enum AskResponse<Value> {
+enum AskResponse<Value> {
     case completed(Result<Value, Error>)
 
     /// **WARNING** Use with caution.
@@ -147,12 +147,12 @@ public enum AskResponse<Value> {
     case nioFuture(EventLoopFuture<Value>)
 }
 
-public enum AskError: DistributedActorSystemError, Error {
+enum AskError: DistributedActorSystemError, Error {
     case timedOut(TimeoutError)
     case systemAlreadyShutDown
 }
 
-public extension AskResponse {
+extension AskResponse {
     /// Blocks and waits until there is a response or fails with an error.
     @available(*, deprecated, message: "Blocking API will be removed in favor of async await")
     func wait() throws -> Value {
@@ -179,7 +179,7 @@ public extension AskResponse {
 }
 
 extension AskResponse: _AsyncResult {
-    public func _onComplete(_ callback: @escaping (Result<Value, Error>) -> Void) {
+    func _onComplete(_ callback: @escaping (Result<Value, Error>) -> Void) {
         switch self {
         case .completed(let result):
             callback(result)
@@ -190,7 +190,7 @@ extension AskResponse: _AsyncResult {
         }
     }
 
-    public func withTimeout(after timeout: TimeAmount) -> AskResponse<Value> {
+    func withTimeout(after timeout: TimeAmount) -> AskResponse<Value> {
         if timeout.isEffectivelyInfinite {
             return self
         }
@@ -220,7 +220,7 @@ extension AskResponse: _AsyncResult {
 
     /// Be very careful with using this as the resume will not run on the `ClusterSystem` provided actor context!
     /// // TODO(distributed): this will be solved when we move to swift concurrency as the actor runtime
-    public var _unsafeAsyncValue: Value {
+    var _unsafeAsyncValue: Value {
         get async throws {
             try await withCheckedThrowingContinuation { cc in
                 _onComplete {
@@ -231,7 +231,7 @@ extension AskResponse: _AsyncResult {
     }
 }
 
-public extension AskResponse {
+extension AskResponse {
     // FIXME: make this internal (!)
     /// Transforms successful response of `Value` type to `NewValue` type.
     func map<NewValue>(_ callback: @escaping (Value) -> NewValue) -> AskResponse<NewValue> {
