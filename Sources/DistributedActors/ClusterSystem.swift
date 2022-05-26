@@ -79,11 +79,11 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
     internal var _serialization: ManagedAtomicLazyReference<Serialization>
     public var serialization: Serialization {
         self.lazyInitializationLock.withReaderLock {
-            if let s = self._serialization.load() {
-                return s
-            } else {
+            guard let s = self._serialization.load() else {
                 return fatalErrorBacktrace("Serialization is not initialized! This is likely a bug, as it is initialized synchronously during system startup.")
             }
+            
+            return s
         }
     }
 
@@ -92,18 +92,25 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
 
     // TODO(distributed): once all actors which use the receptionist are moved to 'distributed actor'
     //                    we can remove the actor-ref receptionist.
-    private var _receptionistRef: _ActorRef<Receptionist.Message>!
+    private var _receptionistRef: ManagedAtomicLazyReference<Box<_ActorRef<Receptionist.Message>>>
     public var _receptionist: SystemReceptionist {
-        SystemReceptionist(ref: self._receptionistRef)
+        guard let ref = _receptionistRef.load()?.value else {
+            initLock.lock()
+            defer { initLock.unlock() }
+            
+            return _receptionist
+        }
+        
+        return SystemReceptionist(ref: ref)
     }
 
     private let _receptionistStore: ManagedAtomicLazyReference<OpLogDistributedReceptionist>
     public var receptionist: OpLogDistributedReceptionist {
-        initLock.lock()
-        defer { initLock.unlock() }
-            
         guard let value = _receptionistStore.load() else {
-            fatalError("Somehow attempted to load system.receptionist before it was initialized!")
+            initLock.lock()
+            defer { initLock.unlock() }
+            
+            return self.receptionist
         }
 
         return value
@@ -126,33 +133,33 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
     // initialized during startup
     private let _clusterStore: ManagedAtomicLazyReference<Box<ClusterShell?>>
     internal var _cluster: ClusterShell? {
-        initLock.lock()
-        defer { initLock.unlock() }
-        
         guard let box = _clusterStore.load() else {
-            fatalError("Somehow attempted to load system._cluster before it was initialized!")
+            initLock.lock()
+            defer { initLock.unlock() }
+            
+            return self._cluster
         }
         return box.value
     }
 
     private let _clusterControlStore: ManagedAtomicLazyReference<Box<ClusterControl>>
     public var cluster: ClusterControl {
-        initLock.lock()
-        defer { initLock.unlock() }
-        
         guard let box = _clusterControlStore.load() else {
-            fatalError("Somehow attempted to load system.cluster before it was initialized!")
+            initLock.lock()
+            defer { initLock.unlock() }
+            
+            return self.cluster // recurse, as we hold the lock now, it MUST be initialized already
         }
         return box.value
     }
 
     internal let _nodeDeathWatcherStore: ManagedAtomicLazyReference<Box<NodeDeathWatcherShell.Ref?>>
     internal var _nodeDeathWatcher: NodeDeathWatcherShell.Ref? {
-        initLock.lock()
-        defer { initLock.unlock() }
-        
         guard let box = _nodeDeathWatcherStore.load() else {
-            fatalError("Somehow attempted to load system.nodeDeathWatcher before it was initialized!")
+            initLock.lock()
+            defer { initLock.unlock() }
+            
+            return self._nodeDeathWatcher
         }
         return box.value
     }
@@ -250,6 +257,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         self._clusterStore = ManagedAtomicLazyReference()
         self._clusterControlStore = ManagedAtomicLazyReference()
         self._nodeDeathWatcherStore = ManagedAtomicLazyReference()
+        self._receptionistRef = ManagedAtomicLazyReference()
 
         // vvv~~~~~~~~~~~~~~~~~~~ all properties initialized, self can be shared ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~vvv //
         initLock.lock()
@@ -263,6 +271,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         self._deadLetters = _ActorRef(.deadLetters(.init(self.log, address: ActorAddress._deadLetters(on: settings.uniqueBindNode), system: self)))
 
         let cluster = ClusterShell(selfNode: settings.uniqueBindNode)
+        print("XXX stored _clusterStore (cluster)")
         _ = self._clusterStore.storeIfNilThenLoad(Box(cluster))
 
         // actor providers
@@ -297,12 +306,14 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
             props: ._wellKnown
         )
         print("XXX stored _nodeDeathWatcherStore")
-        self._nodeDeathWatcherStore.storeIfNilThenLoad(Box(lazyNodeDeathWatcher.ref))
+        _ = self._nodeDeathWatcherStore.storeIfNilThenLoad(Box(lazyNodeDeathWatcher.ref))
 
         // OLD receptionist // TODO(distributed): remove when possible
         let receptionistBehavior = self.settings.receptionist.behavior(settings: self.settings)
         let lazyReceptionist = try! self._prepareSystemActor(Receptionist.naming, receptionistBehavior, props: ._wellKnown)
-        self._receptionistRef = lazyReceptionist.ref
+        print("XXX stored _receptionistRef")
+        // self._receptionistRef = lazyReceptionist.ref
+        _ = self._receptionistRef.storeIfNilThenLoad(Box(lazyReceptionist.ref))
 
         Task.detached {
             await _Props.$forSpawn.withValue(OpLogDistributedReceptionist.props) {
@@ -439,7 +450,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
 
             do {
                 try self._eventLoopGroup.syncShutdownGracefully()
-                self._receptionistRef = self.deadLetters.adapted()
+                // self._receptionistRef = self.deadLetters.adapted()
             } catch {
                 self.shutdownReceptacle.offerOnce(error)
                 afterShutdownCompleted(error)
