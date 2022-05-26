@@ -165,7 +165,7 @@ public struct ClusterSystemSettings {
     /// A "distributed call" is any function call of a distributed function on a 'remote' distributed actor.
     ///
     /// Set to `.effectivelyInfinite` to avoid setting a timeout, although this is not recommended.
-    public var callTimeout: TimeAmount = .seconds(5)
+    public var defaultRemoteCallTimeout: TimeAmount = .seconds(5)
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: TLS & Security settings
