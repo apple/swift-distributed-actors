@@ -240,7 +240,7 @@ public distributed actor OpLogDistributedReceptionist: DistributedReceptionist, 
     }
 
     // FIXME(swift 6): initializer must become async
-    init(settings: ReceptionistSettings, system: ActorSystem) {
+    init(settings: ReceptionistSettings, system: ActorSystem) async {
         self.actorSystem = system
         self.instrumentation = system.settings.instrumentation.makeReceptionistInstrumentation()
 
@@ -254,7 +254,7 @@ public distributed actor OpLogDistributedReceptionist: DistributedReceptionist, 
         self.appliedSequenceNrs = .empty
 
         // === listen to cluster events ------------------
-        self.eventsListeningTask = Task {
+        self.eventsListeningTask = Task.detached {
             try await self.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
                 for try await event in system.cluster.events {
                     __secretlyKnownToBeLocal.onClusterEvent(event: event)

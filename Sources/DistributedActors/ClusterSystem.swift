@@ -50,6 +50,8 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         }
     }
 
+    private let initLock = Lock()
+    
     internal let lifecycleWatchLock = Lock()
     internal var _lifecycleWatches: [ActorAddress: LifecycleWatchContainer] = [:]
 
@@ -97,6 +99,9 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
 
     private let _receptionistStore: ManagedAtomicLazyReference<OpLogDistributedReceptionist>
     public var receptionist: OpLogDistributedReceptionist {
+        initLock.lock()
+        defer { initLock.unlock() }
+            
         guard let value = _receptionistStore.load() else {
             fatalError("Somehow attempted to load system.receptionist before it was initialized!")
         }
@@ -121,6 +126,9 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
     // initialized during startup
     private let _clusterStore: ManagedAtomicLazyReference<Box<ClusterShell?>>
     internal var _cluster: ClusterShell? {
+        initLock.lock()
+        defer { initLock.unlock() }
+        
         guard let box = _clusterStore.load() else {
             fatalError("Somehow attempted to load system._cluster before it was initialized!")
         }
@@ -129,6 +137,9 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
 
     private let _clusterControlStore: ManagedAtomicLazyReference<Box<ClusterControl>>
     public var cluster: ClusterControl {
+        initLock.lock()
+        defer { initLock.unlock() }
+        
         guard let box = _clusterControlStore.load() else {
             fatalError("Somehow attempted to load system.cluster before it was initialized!")
         }
@@ -137,6 +148,9 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
 
     internal let _nodeDeathWatcherStore: ManagedAtomicLazyReference<Box<NodeDeathWatcherShell.Ref?>>
     internal var _nodeDeathWatcher: NodeDeathWatcherShell.Ref? {
+        initLock.lock()
+        defer { initLock.unlock() }
+        
         guard let box = _nodeDeathWatcherStore.load() else {
             fatalError("Somehow attempted to load system.nodeDeathWatcher before it was initialized!")
         }
@@ -238,6 +252,8 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         self._nodeDeathWatcherStore = ManagedAtomicLazyReference()
 
         // vvv~~~~~~~~~~~~~~~~~~~ all properties initialized, self can be shared ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~vvv //
+        initLock.lock()
+        defer { initLock.unlock() }
 
         // serialization
         let serialization = Serialization(settings: settings, system: self)
@@ -270,6 +286,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
             customBehavior: ClusterEventStream.Shell.behavior
         )
         let clusterRef = try! cluster.start(system: self, clusterEvents: clusterEvents) // only spawns when cluster is initialized
+        print("XXX stored _clusterControlStore")
         _ = self._clusterControlStore.storeIfNilThenLoad(Box(ClusterControl(settings, clusterRef: clusterRef, eventStream: clusterEvents)))
 
         // node watcher MUST be prepared before receptionist (or any other actor) because it (and all actors) need it if we're running clustered
@@ -279,6 +296,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
             NodeDeathWatcherShell.behavior(clusterEvents: clusterEvents),
             props: ._wellKnown
         )
+        print("XXX stored _nodeDeathWatcherStore")
         self._nodeDeathWatcherStore.storeIfNilThenLoad(Box(lazyNodeDeathWatcher.ref))
 
         // OLD receptionist // TODO(distributed): remove when possible
@@ -286,13 +304,16 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         let lazyReceptionist = try! self._prepareSystemActor(Receptionist.naming, receptionistBehavior, props: ._wellKnown)
         self._receptionistRef = lazyReceptionist.ref
 
-        await _Props.$forSpawn.withValue(OpLogDistributedReceptionist.props) {
-            let receptionist = await OpLogDistributedReceptionist(
-                settings: self.settings.receptionist,
-                system: self
-            )
-            Task { try await receptionist.start() }
-            _ = self._receptionistStore.storeIfNilThenLoad(receptionist)
+        Task.detached {
+            await _Props.$forSpawn.withValue(OpLogDistributedReceptionist.props) {
+                let receptionist = await OpLogDistributedReceptionist(
+                    settings: self.settings.receptionist,
+                    system: self
+                )
+                Task { try await receptionist.start() }
+                print("XXX stored _receptionistStore")
+                _ = self._receptionistStore.storeIfNilThenLoad(receptionist)
+            }
         }
 
         #if SACT_TESTS_LEAKS
