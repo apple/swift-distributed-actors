@@ -152,12 +152,8 @@ final class ClusterSystemTests: ActorSystemXCTestCase {
     }
 
     func test_remoteCall_shouldConfigureTimeout() async throws {
-        let local = await setUpNode("local") { settings in
-            settings.enabled = true
-        }
-        let remote = await setUpNode("remote") { settings in
-            settings.enabled = true
-        }
+        let local = await setUpNode("local")
+        let remote = await setUpNode("remote")
         local.cluster.join(node: remote.cluster.uniqueNode)
 
         let greeter = DelayedGreeter(actorSystem: local)
