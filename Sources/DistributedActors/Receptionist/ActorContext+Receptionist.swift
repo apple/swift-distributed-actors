@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-public extension _ActorContext {
+internal extension _ActorContext {
     /// Receptionist wrapper, offering convenience functions for registering _this_ actor with the receptionist.
     ///
     /// - SeeAlso: `DistributedActors.Receptionist`, for the system wide receptionist API
@@ -21,7 +21,7 @@ public extension _ActorContext {
     }
 }
 
-public extension _ActorContext {
+internal extension _ActorContext {
     /// The receptionist enables type-safe and dynamic (subscription based) actor discovery.
     ///
     /// Actors may register themselves when they start with an `Reception.Key<A>`

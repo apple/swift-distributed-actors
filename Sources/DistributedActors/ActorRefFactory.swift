@@ -32,7 +32,7 @@ public protocol _ActorRefFactory {
     /// ### Actor Reference
     /// Discarding the returned reference means that there MAY be no longer a way to communicate with the spawned actor.
     /// Keep this in mind and only discard references if the actor is performing asks like periodically scheduling some work,
-    /// or can be discovered using other means (e.g. it registers itself with the `SystemReceptionist` on setup).
+    /// or can be discovered using other means.
     ///
     /// ### Lifecycle
     /// Actors remain alive until they are explicitly stopped (or crash).

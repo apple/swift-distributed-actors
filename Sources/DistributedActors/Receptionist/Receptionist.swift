@@ -24,8 +24,6 @@ import Logging
 /// another part once it's ready, or subscribe to be notified once the other
 /// part has registered. Actors usually register themselves with the receptionist
 /// as part of their setup process.
-///
-/// - SeeAlso: `SystemReceptionist`
 public struct Receptionist {
     public typealias Message = _ReceptionistMessage
 
