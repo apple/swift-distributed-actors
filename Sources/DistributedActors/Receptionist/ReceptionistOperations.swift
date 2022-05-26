@@ -19,7 +19,7 @@ import Logging
 // MARK: General _ReceptionistOperations
 
 /// Specifically to be implemented ONLY by `system.receptionist` i.e. the `SystemReceptionist`.
-public protocol _BaseReceptionistOperations {
+internal protocol _BaseReceptionistOperations {
     /// Registers passed in `actor` in the systems receptionist with given id.
     ///
     /// - Parameters:
@@ -62,11 +62,11 @@ public protocol _BaseReceptionistOperations {
     ) where Guest: _ReceptionistGuest
 }
 
-public protocol _ReceptionistOperations: _BaseReceptionistOperations {
+internal protocol _ReceptionistOperations: _BaseReceptionistOperations {
     var _system: ClusterSystem { get }
 }
 
-public extension _ReceptionistOperations {
+internal extension _ReceptionistOperations {
     @inlinable
     @discardableResult
     func register<Guest>(
@@ -108,7 +108,7 @@ public extension _ReceptionistOperations {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: MyselfSpecificReceptionistOperations
 
-public protocol _MyselfReceptionistOperations: _ReceptionistOperations {
+internal protocol _MyselfReceptionistOperations: _ReceptionistOperations {
     associatedtype Message: Codable
     associatedtype Myself: _ReceptionistGuest
 
@@ -151,7 +151,7 @@ public protocol _MyselfReceptionistOperations: _ReceptionistOperations {
     ) where Guest: _ReceptionistGuest, Myself.Message == Reception.Listing<Guest>
 }
 
-public extension _MyselfReceptionistOperations {
+internal extension _MyselfReceptionistOperations {
     @inlinable
     @discardableResult
     func registerMyself(

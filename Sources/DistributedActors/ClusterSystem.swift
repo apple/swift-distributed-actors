@@ -91,7 +91,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
     // TODO(distributed): once all actors which use the receptionist are moved to 'distributed actor'
     //                    we can remove the actor-ref receptionist.
     private var _receptionistRef: _ActorRef<Receptionist.Message>!
-    public var _receptionist: SystemReceptionist {
+    internal var _receptionist: SystemReceptionist {
         SystemReceptionist(ref: self._receptionistRef)
     }
 
