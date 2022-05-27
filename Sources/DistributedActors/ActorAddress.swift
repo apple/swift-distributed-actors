@@ -88,7 +88,7 @@ public struct ActorAddress: @unchecked Sendable {
             return path
         }
         set {
-            tags[ActorTags.path] = newValue
+            self.tags[ActorTags.path] = newValue
         }
     }
 

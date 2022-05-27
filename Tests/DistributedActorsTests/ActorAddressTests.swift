@@ -17,7 +17,6 @@ import DistributedActorsTestKit
 import XCTest
 
 final class ActorAddressTests: XCTestCase {
-
     func test_local_actorAddress_shouldPrintNicely() throws {
         let node: UniqueNode = .init(protocol: "sact", systemName: "\(Self.self)", host: "127.0.0.1", port: 7337, nid: .random())
         let address = try ActorAddress(local: node, path: ActorPath._user.appending("hello"), incarnation: ActorIncarnation(8888))

@@ -58,10 +58,11 @@ public struct ActorTags {
 public protocol ActorTag: Sendable where Value == Key.Value {
     associatedtype Key: ActorTagKey
     associatedtype Value: Sendable & Codable
-    
+
     var keyType: Key.Type { get }
     var value: Value { get }
 }
+
 public extension ActorTag {
     var keyType: Key.Type { Key.self }
     var id: String { Key.id }
@@ -80,10 +81,11 @@ struct AnyActorTagKey: Hashable {
         self.keyType = Key.self
         self.id = Key.id
     }
-    
+
     static func == (lhs: AnyActorTagKey, rhs: AnyActorTagKey) -> Bool {
         ObjectIdentifier(lhs.keyType) == ObjectIdentifier(rhs.keyType)
     }
+
     func hash(into hasher: inout Hasher) {
         self.id.hash(into: &hasher)
     }
@@ -93,12 +95,12 @@ struct AnyActorTagKey: Hashable {
 // MARK: Known keys
 
 extension ActorTags {
-
     static let path = ActorPathTagKey.self
     public struct ActorPathTagKey: ActorTagKey {
         public static let id: String = "path"
         public typealias Value = ActorPath
     }
+
     public struct ActorPathTag: ActorTag {
         public typealias Key = ActorPathTagKey
         public let value: Key.Value

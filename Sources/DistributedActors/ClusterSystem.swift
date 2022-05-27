@@ -810,7 +810,7 @@ public extension ClusterSystem {
                                                    makeActor: () throws -> Act) rethrows -> Act {
         var props = _Props.forSpawn
         props.tags = .init(tags: tags)
-        
+
         return try _Props.$forSpawn.withValue(props) {
             try makeActor()
         }
