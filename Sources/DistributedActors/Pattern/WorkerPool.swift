@@ -71,6 +71,7 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
     
     /// Boolean flag to help determine if pool becomes empty because at least one worker has terminated.
     private var hasTerminatedWorkers = false
+    private var newWorkerContinuations: [CheckedContinuation<Void, Never>] = []
 
     init(settings: WorkerPoolSettings<Worker>, system: ActorSystem) async {
         self.settings = settings
@@ -82,6 +83,11 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
                 for await worker in await self.actorSystem.receptionist.subscribe(to: key) {
                     system.log.log(level: self.settings.logLevel, "Got listing member for \(self.selector): \(worker)")
                     self.workers.append(Weak(worker))
+                    // Notify if someone is waiting for new worker
+                    for (i, continuation) in self.newWorkerContinuations.enumerated().reversed() {
+                        continuation.resume()
+                        self.newWorkerContinuations.remove(at: i)
+                    }
                     watchTermination(of: worker) { self.onWorkerTerminated(id: $0) }
                 }
             }
@@ -101,11 +107,13 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
     private func selectWorker() async throws -> Worker {
         // Wait if we haven't received the initial workers listing yet.
         // Otherwise, the pool has become empty because all workers have been terminated,
-        // in which case we either wait for new workers or throw error.
-        while self.workers.isEmpty {
+        // in which case we either wait for new worker or throw error.
+        if self.workers.isEmpty {
             switch (self.hasTerminatedWorkers, self.settings.whenAllWorkersTerminated) {
             case (false, _), (true, .awaitNewWorkers):
-                try await Task.sleep(nanoseconds: 100)
+                try await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+                    self.newWorkerContinuations.append(continuation)
+                }
             case (true, .crash(let error)):
                 throw error
             }
