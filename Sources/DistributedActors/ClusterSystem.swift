@@ -102,7 +102,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
                 initLock.unlock()
             }
 
-            return _receptionist
+            return self._receptionist
         }
 
         return SystemReceptionist(ref: ref)
