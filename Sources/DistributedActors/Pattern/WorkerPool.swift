@@ -18,7 +18,7 @@ import Logging
 public protocol DistributedWorker: DistributedActor {
     associatedtype WorkItem: Codable
     associatedtype WorkResult: Codable
-    
+
     distributed func submit(work: WorkItem) async throws -> WorkResult
 }
 
@@ -61,22 +61,22 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
     // to hold on to `Worker` references and prevent them from getting terminated.
     private let whenAllWorkersTerminated: AllWorkersTerminatedDirective
     private let logLevel: Logger.Level
-    
+
     /// `Task` for subscribing to receptionist listing in case of `Selector.dynamic` mode.
     private var newWorkersSubscribeTask: Task<Void, Error>?
-    
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: WorkerPool state
 
     /// The worker pool. Worker will be selected round-robin.
     private var workers: [Worker.ID: Weak<Worker>] = [:]
     private var roundRobinPos = 0
-    
+
     /// Boolean flag to help determine if pool becomes empty because at least one worker has terminated.
     private var hasTerminatedWorkers = false
     /// Control for waiting and getting notified for new worker.
     private var newWorkerContinuations: [CheckedContinuation<Void, Never>] = []
-    
+
     deinit {
         self.newWorkersSubscribeTask?.cancel()
     }
@@ -107,13 +107,13 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
             }
         }
     }
-    
+
     public distributed func submit(work: WorkItem) async throws -> WorkResult {
         let worker = try await self.selectWorker()
         self.actorSystem.log.log(level: self.logLevel, "Submitting [\(work)] to [\(worker)]")
         return try await worker.submit(work: work)
     }
-    
+
     private func selectWorker() async throws -> Worker {
         // Wait if we haven't received the initial workers listing yet.
         // Otherwise, the pool has become empty because all workers have been terminated,
@@ -139,11 +139,11 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
             return try await self.selectWorker()
         }
     }
-    
+
     private func nextWorkerID() -> Worker.ID {
         var ids = Array(self.workers.keys)
         ids.sort { l, r in l.description < r.description }
-        
+
         let selected = ids[self.roundRobinPos]
         self.roundRobinPos = (self.roundRobinPos + 1) % ids.count
         return selected
@@ -169,128 +169,13 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
         let settings = try WorkerPoolSettings<Worker>(selector: selector).validate()
         return await WorkerPool(settings: settings, system: system)
     }
-    
+
     public nonisolated var description: String {
         "\(Self.self)(\(self.id))"
     }
 }
 
-///// Contains the various state behaviors the `WorkerPool` can be in.
-///// Immutable state shared across all of them is kept in the worker pool instance to avoid unnecessary passing around,
-///// and state bound to a specific state of the state machine is kept in each appropriate behavior.
 internal extension WorkerPool {
-//    typealias PoolBehavior = _Behavior<WorkerPoolMessage<Message>>
-//
-//    /// Register with receptionist under `selector.key` and become `awaitingWorkers`.
-//    func initial() -> PoolBehavior {
-//        .setup { context in
-//            switch self.selector {
-//            case .dynamic(let key):
-//                let adapter = context.messageAdapter(from: Reception.Listing<_ActorRef<Message>>.self) { listing in
-//                    context.log.log(level: self.settings.logLevel, "Got listing for \(self.selector): \(listing)")
-//                    return .listing(listing)
-//                }
-//                context.system._receptionist.subscribe(adapter, to: key)
-//                return self.awaitingWorkers()
-//
-//            case .static(let workers):
-//                return self.forwarding(to: workers)
-//            }
-//        }
-//    }
-//
-//    func awaitingWorkers() -> PoolBehavior {
-//        .setup { context in
-//            let stash = StashBuffer(owner: context, capacity: self.settings.noWorkersAvailableStashCapacity)
-//
-//            return .receive { context, message in
-//                switch message {
-//                case .listing(let listing):
-//                    guard listing.refs.count > 0 else {
-//                        // a zero size listing is useless to us, we need at least one worker so we can flush the messages to it
-//                        // TODO: configurable "when to flush"
-//                        return .same
-//                    }
-//
-//                    // naive "somewhat effort" on keeping the balancing stable when new members will be joining
-//                    var workers = Array(listing.refs)
-//                    workers.sort { l, r in l.address.description < r.address.description }
-//
-//                    context.log.log(level: self.settings.logLevel, "Flushing buffered messages (count: \(stash.count)) on initial worker listing (count: \(workers.count))")
-//                    return try stash.unstashAll(context: context, behavior: self.forwarding(to: workers))
-//
-//                case .forward(let message):
-//                    context.log.log(level: self.settings.logLevel, "Buffering message (total: \(stash.count)) while waiting for initial workers to join the worker pool...")
-//                    try stash.stash(message: .forward(message))
-//                    return .same
-//                }
-//            }
-//        }
-//    }
-//
-//    // TODO: abstract how we keep them, for round robin / random etc
-//    func forwarding(to workers: [_ActorRef<Message>]) -> PoolBehavior {
-//        .setup { context in
-//            // TODO: would be some actual logic, that we can plug and play
-//            var _roundRobinPos = 0
-//
-//            func selectWorker() -> _ActorRef<Message> {
-//                let worker = workers[_roundRobinPos]
-//                _roundRobinPos = (_roundRobinPos + 1) % workers.count
-//                return worker
-//            }
-//
-//            let _forwarding: _Behavior<WorkerPoolMessage<Message>> = .receive { context, poolMessage in
-//                switch poolMessage {
-//                case .forward(let message):
-//                    let selected = selectWorker()
-//                    context.log.log(level: self.settings.logLevel, "Forwarding [\(message)] to [\(selected)]")
-//                    selected.tell(message)
-//                    return .same
-//
-//                case .listing(let listing):
-//                    guard !listing.refs.isEmpty else {
-//                        context.log.log(level: self.settings.logLevel, "Worker pool downsized to zero members, becoming `awaitingWorkers`.")
-//                        return self.awaitingWorkers()
-//                    }
-//
-//                    var newWorkers = Array(listing.refs) // TODO: smarter logic here, remove dead ones etc; keep stable round robin while new listing arrives
-//                    newWorkers.sort { l, r in l.address.description < r.address.description }
-//
-//                    context.log.log(level: self.settings.logLevel, "Active workers: \(newWorkers.count)")
-//                    // TODO: if no more workers may want to issue warnings or timeouts
-//                    return self.forwarding(to: newWorkers)
-//                }
-//            }
-//
-//            // While we would remove terminated workers thanks to a new Listing arriving in any case,
-//            // the listing can arrive much later than a direct Terminated message - allowing for a longer
-//            // time window in which we are under risk of forwarding work to an already dead actor.
-//            //
-//            // In order to make this time window smaller, we explicitly watch and remove any workers we are forwarding to.
-//            workers.forEach { context.watch($0) }
-//
-//            let eagerlyRemoteTerminatedWorkers: _Behavior<WorkerPoolMessage<Message>> =
-//                .receiveSpecificSignal(_Signals.Terminated.self) { _, terminated in
-//                    var remainingWorkers = workers
-//                    remainingWorkers.removeAll { ref in ref.address == terminated.address } // TODO: removeFirst is enough, but has no closure version
-//
-//                    if remainingWorkers.count > 0 {
-//                        return self.forwarding(to: remainingWorkers)
-//                    } else {
-//                        switch self.settings.whenAllWorkersTerminated {
-//                        case .awaitNewWorkers:
-//                            return self.awaitingWorkers()
-//                        case .crash(let error):
-//                            throw error
-//                        }
-//                    }
-//                }
-//
-//            return _forwarding.orElse(eagerlyRemoteTerminatedWorkers)
-//        }
-//    }
-
     /// Directive that decides how the pool should react when all of its workers have terminated.
     enum AllWorkersTerminatedDirective {
         /// Move the pool back to its initial state and wait for new workers to join.
@@ -300,48 +185,6 @@ internal extension WorkerPool {
         case crash(WorkerPoolError)
     }
 }
-
-//// ==== ----------------------------------------------------------------------------------------------------------------
-//// MARK: Worker Pool Ref
-//
-//public struct WorkerPoolRef<Message: ActorMessage>: _ReceivesMessages {
-//    @usableFromInline
-//    internal let _ref: _ActorRef<WorkerPoolMessage<Message>>
-//
-//    internal init(ref: _ActorRef<WorkerPoolMessage<Message>>) {
-//        self._ref = ref
-//    }
-//
-//    @inlinable
-//    public func tell(_ message: Message, file: String = #file, line: UInt = #line) {
-//        self._ref.tell(.forward(message), file: file, line: line)
-//    }
-//
-//    func ask<Answer: ActorMessage>(
-//        for type: Answer.Type = Answer.self,
-//        timeout: TimeAmount,
-//        file: String = #file, function: String = #function, line: UInt = #line,
-//        _ makeQuestion: @escaping (_ActorRef<Answer>) -> Message
-//    ) -> AskResponse<Answer> {
-//        self._ref.ask(for: type, timeout: timeout, file: file, function: function, line: line) { replyTo in
-//            .forward(makeQuestion(replyTo))
-//        }
-//    }
-//
-//    public var address: ActorAddress {
-//        self._ref.address
-//    }
-//
-//    public var path: ActorPath {
-//        self.address.path
-//    }
-//}
-//
-//@usableFromInline
-//internal enum WorkerPoolMessage<Message: ActorMessage>: NonTransportableActorMessage {
-//    case forward(Message)
-//    case listing(Reception.Listing<_ActorRef<Message>>)
-//}
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: WorkerPool Errors
