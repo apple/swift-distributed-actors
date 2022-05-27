@@ -12,7 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-import DistributedActors
 import XCTest
 
 final class SampleTest: XCTestCase {

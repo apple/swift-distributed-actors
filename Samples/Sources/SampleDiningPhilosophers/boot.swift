@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Distributed
 import DistributedActors
 import Logging
 import NIO
@@ -26,6 +27,8 @@ import NIO
  * The implementation is based on the following take on the problem:
  * http://www.dalnefre.com/wp/2010/08/dining-philosophers-in-humus
  */
+
+typealias DefaultDistributedActorSystem = ClusterSystem
 
 @main enum Main {
     static func main() async {
@@ -43,7 +46,7 @@ import NIO
         case "dist":
             try! await DistributedDiningPhilosophers().run(for: time)
         default:
-            try! DiningPhilosophers().run(for: time)
+            try! await DiningPhilosophers().run(for: time)
         }
     }
 }

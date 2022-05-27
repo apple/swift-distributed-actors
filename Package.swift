@@ -10,7 +10,7 @@ import PackageDescription
 var globalSwiftSettings: [SwiftSetting]
 
 var globalConcurrencyFlags: [String] = [
-    "-Xfrontend", "-disable-availability-checking",
+    "-Xfrontend", "-disable-availability-checking", // TODO(distributed): remove this flag
 ]
 
 // TODO: currently disabled warnings as errors because of Sendable check noise and work in progress on different toolchains

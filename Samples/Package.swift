@@ -6,7 +6,7 @@ import PackageDescription
 var globalSwiftSettings: [SwiftSetting]
 
 var globalConcurrencyFlags: [String] = [
-    "-Xfrontend", "-enable-experimental-distributed",
+    "-Xfrontend", "-disable-availability-checking", // TODO(distributed): remove this flag
 ]
 
 globalSwiftSettings = [
@@ -35,7 +35,6 @@ var targets: [PackageDescription.Target] = [
     .testTarget(
         name: "NoopTests",
         dependencies: [
-            .product(name: "DistributedActorsTestKit", package: "swift-distributed-actors"),
         ],
         path: "Tests/NoopTests"
     ),

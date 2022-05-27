@@ -19,18 +19,15 @@ final class DistributedDiningPhilosophers {
     private var philosophers: [Philosopher] = []
 
     func run(for time: TimeAmount) async throws {
-        let systemA = ClusterSystem("Node-A") { settings in
-            settings.cluster.enabled = true
-            settings.cluster.bindPort = 1111
+        let systemA = await ClusterSystem("Node-A") { settings in
+            settings.bindPort = 1111
         }
-        let systemB = ClusterSystem("Node-B") { settings in
-            settings.cluster.enabled = true
-            settings.cluster.bindPort = 2222
+        let systemB = await ClusterSystem("Node-B") { settings in
+            settings.bindPort = 2222
             settings.logging.logLevel = .error
         }
-        let systemC = ClusterSystem("Node-C") { settings in
-            settings.cluster.enabled = true
-            settings.cluster.bindPort = 3333
+        let systemC = await ClusterSystem("Node-C") { settings in
+            settings.bindPort = 3333
             settings.logging.logLevel = .error
         }
         let systems = [systemA, systemB, systemC]
@@ -38,9 +35,9 @@ final class DistributedDiningPhilosophers {
         print("~~~~~~~ started \(systems.count) actor systems ~~~~~~~")
 
         // TODO: Joining to be simplified by having "seed nodes" (that a node should join)
-        systemA.cluster.join(node: systemB.settings.cluster.node)
-        systemA.cluster.join(node: systemC.settings.cluster.node)
-        systemC.cluster.join(node: systemB.settings.cluster.node)
+        systemA.cluster.join(node: systemB.settings.node)
+        systemA.cluster.join(node: systemC.settings.node)
+        systemC.cluster.join(node: systemB.settings.node)
 
         print("waiting for cluster to form...")
         while !(
@@ -55,25 +52,25 @@ final class DistributedDiningPhilosophers {
 
         // prepare 5 forks, the resources, that the philosophers will compete for:
         // Node A
-        let fork1 = Fork(name: "fork-1", transport: systemA)
+        let fork1 = Fork(name: "fork-1", actorSystem: systemA)
         // Node B
-        let fork2 = Fork(name: "fork-2", transport: systemB)
-        let fork3 = Fork(name: "fork-3", transport: systemB)
+        let fork2 = Fork(name: "fork-2", actorSystem: systemB)
+        let fork3 = Fork(name: "fork-3", actorSystem: systemB)
         // Node C
-        let fork4 = Fork(name: "fork-4", transport: systemC)
-        let fork5 = Fork(name: "fork-5", transport: systemC)
+        let fork4 = Fork(name: "fork-4", actorSystem: systemC)
+        let fork5 = Fork(name: "fork-5", actorSystem: systemC)
         self.forks = [fork1, fork2, fork3, fork4, fork5]
 
         // 5 philosophers, sitting in a circle, with the forks between them:
         self.philosophers = [
             // Node A
-            Philosopher(name: "Konrad", leftFork: fork5, rightFork: fork1, transport: systemA),
+            Philosopher(name: "Konrad", leftFork: fork5, rightFork: fork1, actorSystem: systemA),
             // Node B
-            Philosopher(name: "Dario", leftFork: fork1, rightFork: fork2, transport: systemB),
-            Philosopher(name: "Johannes", leftFork: fork2, rightFork: fork3, transport: systemB),
+            Philosopher(name: "Dario", leftFork: fork1, rightFork: fork2, actorSystem: systemB),
+            Philosopher(name: "Johannes", leftFork: fork2, rightFork: fork3, actorSystem: systemB),
             // Node C
-            Philosopher(name: "Cory", leftFork: fork3, rightFork: fork4, transport: systemC),
-            Philosopher(name: "Erik", leftFork: fork4, rightFork: fork5, transport: systemC),
+            Philosopher(name: "Cory", leftFork: fork3, rightFork: fork4, actorSystem: systemC),
+            Philosopher(name: "Erik", leftFork: fork4, rightFork: fork5, actorSystem: systemC),
         ]
 
         try systemA.park(atMost: time)

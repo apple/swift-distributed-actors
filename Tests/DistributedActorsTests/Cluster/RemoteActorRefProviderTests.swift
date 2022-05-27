@@ -31,7 +31,10 @@ final class RemoteActorRefProviderTests: ActorSystemXCTestCase {
         let guardian = _Guardian(parent: theOne, name: "user", localNode: system.cluster.uniqueNode, system: system)
         let localProvider = LocalActorRefProvider(root: guardian)
 
-        let clusterShell = ClusterShell(selfNode: self.localNode)
+        var settings = ClusterSystemSettings(name: "\(Self.self)")
+        settings.node = self.localNode.node
+        settings.nid = self.localNode.nid
+        let clusterShell = ClusterShell(settings: settings)
         let provider = RemoteActorRefProvider(settings: system.settings, cluster: clusterShell, localProvider: localProvider)
 
         let node = UniqueNode(node: .init(systemName: "system", host: "3.3.3.3", port: 2322), nid: .random())
