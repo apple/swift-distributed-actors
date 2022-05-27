@@ -69,7 +69,7 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
     // MARK: WorkerPool state
 
     /// The worker pool. Worker will be selected round-robin.
-    private var workers: [Weak<Worker>] = []
+    private var workers: [Worker.ID: Weak<Worker>] = [:]
     private var roundRobinPos = 0
     
     /// Boolean flag to help determine if pool becomes empty because at least one worker has terminated.
@@ -91,7 +91,7 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
             self.newWorkersSubscribeTask = Task {
                 for await worker in await self.actorSystem.receptionist.subscribe(to: key) {
                     self.actorSystem.log.log(level: self.logLevel, "Got listing member for \(key): \(worker)")
-                    self.workers.append(Weak(worker))
+                    self.workers[worker.id] = Weak(worker)
                     // Notify those waiting for new worker
                     for (i, continuation) in self.newWorkerContinuations.enumerated().reversed() {
                         continuation.resume()
@@ -101,8 +101,8 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
                 }
             }
         case .static(let workers):
-            self.workers.append(contentsOf: workers.map(Weak.init))
             workers.forEach { worker in
+                self.workers[worker.id] = Weak(worker)
                 watchTermination(of: worker) { self.onWorkerTerminated(id: $0) }
             }
         }
@@ -130,22 +130,29 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
             }
         }
 
-        if let worker = self.workers[self.roundRobinPos].actor {
-            self.roundRobinPos = (self.roundRobinPos + 1) % self.workers.count
+        let selectedWorkerID = self.nextWorkerID()
+        if let worker = self.workers[selectedWorkerID]?.actor {
             return worker
         } else {
-            // Clean up and try again
-            self.hasTerminatedWorkers = true
-            self.workers.removeAll { $0.actor == nil }
-            self.roundRobinPos = 0
+            // Worker terminated; clean up and try again
+            self.onWorkerTerminated(id: selectedWorkerID)
             return try await self.selectWorker()
         }
     }
     
-    private func onWorkerTerminated(id: ID)  {
-        for worker in self.workers where worker.actor?.id == id {
-            worker.actor = nil
-        }
+    private func nextWorkerID() -> Worker.ID {
+        var ids = Array(self.workers.keys)
+        ids.sort { l, r in l.description < r.description }
+        
+        let selected = ids[self.roundRobinPos]
+        self.roundRobinPos = (self.roundRobinPos + 1) % ids.count
+        return selected
+    }
+
+    private func onWorkerTerminated(id: Worker.ID) {
+        self.workers.removeValue(forKey: id)
+        self.hasTerminatedWorkers = true
+        self.roundRobinPos = 0
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
