@@ -57,33 +57,42 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
         case `static`([Worker])
     }
 
-    // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: State shared across all states of the WorkerPool
-
-    var settings: WorkerPoolSettings<Worker>
-    var selector: Selector {
-        self.settings.selector
-    }
+    // Don't store `WorkerPoolSettings` or `Selector` because it would cause `WorkerPool`
+    // to hold on to `Worker` references and prevent them from getting terminated.
+    private let whenAllWorkersTerminated: AllWorkersTerminatedDirective
+    private let logLevel: Logger.Level
     
+    /// `Task` for subscribing to receptionist listing in case of `Selector.dynamic` mode.
+    private var newWorkersSubscribeTask: Task<Void, Error>?
+    
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: WorkerPool state
+
     /// The worker pool. Worker will be selected round-robin.
     private var workers: [Weak<Worker>] = []
     private var roundRobinPos = 0
     
     /// Boolean flag to help determine if pool becomes empty because at least one worker has terminated.
     private var hasTerminatedWorkers = false
+    /// Control for waiting and getting notified for new worker.
     private var newWorkerContinuations: [CheckedContinuation<Void, Never>] = []
+    
+    deinit {
+        self.newWorkersSubscribeTask?.cancel()
+    }
 
     init(settings: WorkerPoolSettings<Worker>, system: ActorSystem) async {
-        self.settings = settings
         self.actorSystem = system
+        self.whenAllWorkersTerminated = settings.whenAllWorkersTerminated
+        self.logLevel = settings.logLevel
 
-        switch self.selector {
+        switch settings.selector {
         case .dynamic(let key):
-            Task {
+            self.newWorkersSubscribeTask = Task {
                 for await worker in await self.actorSystem.receptionist.subscribe(to: key) {
-                    system.log.log(level: self.settings.logLevel, "Got listing member for \(self.selector): \(worker)")
+                    self.actorSystem.log.log(level: self.logLevel, "Got listing member for \(key): \(worker)")
                     self.workers.append(Weak(worker))
-                    // Notify if someone is waiting for new worker
+                    // Notify those waiting for new worker
                     for (i, continuation) in self.newWorkerContinuations.enumerated().reversed() {
                         continuation.resume()
                         self.newWorkerContinuations.remove(at: i)
@@ -101,6 +110,7 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
     
     public distributed func submit(work: WorkItem) async throws -> WorkResult {
         let worker = try await self.selectWorker()
+        self.actorSystem.log.log(level: self.logLevel, "Submitting [\(work)] to [\(worker)]")
         return try await worker.submit(work: work)
     }
     
@@ -109,8 +119,9 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
         // Otherwise, the pool has become empty because all workers have been terminated,
         // in which case we either wait for new worker or throw error.
         if self.workers.isEmpty {
-            switch (self.hasTerminatedWorkers, self.settings.whenAllWorkersTerminated) {
+            switch (self.hasTerminatedWorkers, self.whenAllWorkersTerminated) {
             case (false, _), (true, .awaitNewWorkers):
+                self.actorSystem.log.log(level: self.logLevel, "Worker pool is empty, waiting for new worker.")
                 try await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
                     self.newWorkerContinuations.append(continuation)
                 }
