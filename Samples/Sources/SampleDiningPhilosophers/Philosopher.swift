@@ -27,12 +27,11 @@ distributed actor Philosopher: CustomStringConvertible {
     private lazy var timers = DistributedActors.ActorTimers<Philosopher>(self)
 
     init(name: String, leftFork: Fork, rightFork: Fork, actorSystem: ActorSystem) {
+        self.actorSystem = actorSystem
         self.name = name
         self.leftFork = leftFork
         self.rightFork = rightFork
         self.log.info("\(self.name) joined the table!")
-
-        assert(self.log[metadataKey: "cluster/node"] != nil, "was: \(self.id)")
 
         Task {
 //            context.watch(self.leftFork)
@@ -149,12 +148,6 @@ distributed actor Philosopher: CustomStringConvertible {
         self.timers.startSingle(key: .becomeHungry, delay: .seconds(3)) {
             await self.stopEating()
         }
-    }
-}
-
-extension Philosopher {
-    public nonisolated var description: String {
-        "\(Self.self)(\(self.id.underlying))"
     }
 }
 

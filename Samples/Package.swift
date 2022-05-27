@@ -6,7 +6,7 @@ import PackageDescription
 var globalSwiftSettings: [SwiftSetting]
 
 var globalConcurrencyFlags: [String] = [
-    "-Xfrontend", "-enable-experimental-distributed",
+    "-Xfrontend", "-disable-availability-checking", // TODO(distributed): remove this flag
 ]
 
 globalSwiftSettings = [

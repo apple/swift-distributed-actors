@@ -18,8 +18,8 @@ final class DiningPhilosophers {
     private var forks: [Fork] = []
     private var philosophers: [Philosopher] = []
 
-    func run(for time: TimeAmount) throws {
-        let system = ActorSystem("Philosophers")
+    func run(for time: TimeAmount) async throws {
+        let system = await ClusterSystem("Philosophers")
 
         // prepare 5 forks, the resources, that the philosophers will compete for:
         let fork1 = Fork(name: "fork-1", actorSystem: system)

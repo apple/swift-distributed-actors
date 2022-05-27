@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-import DistributedActors
 import Distributed
+import DistributedActors
 import Logging
 import NIO
 
@@ -46,7 +46,7 @@ typealias DefaultDistributedActorSystem = ClusterSystem
         case "dist":
             try! await DistributedDiningPhilosophers().run(for: time)
         default:
-            try! DiningPhilosophers().run(for: time)
+            try! await DiningPhilosophers().run(for: time)
         }
     }
 }

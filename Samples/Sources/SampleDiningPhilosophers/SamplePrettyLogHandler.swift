@@ -142,3 +142,9 @@ struct SamplePrettyLogHandler: LogHandler {
         }
     }
 }
+
+extension DistributedActor where Self: CustomStringConvertible {
+    public nonisolated var description: String {
+        "\(Self.self)(\(self.id))"
+    }
+}

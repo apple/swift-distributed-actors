@@ -19,18 +19,15 @@ final class DistributedDiningPhilosophers {
     private var philosophers: [Philosopher] = []
 
     func run(for time: TimeAmount) async throws {
-        let systemA = ClusterSystem("Node-A") { settings in
-            settings.cluster.enabled = true
-            settings.cluster.bindPort = 1111
+        let systemA = await ClusterSystem("Node-A") { settings in
+            settings.bindPort = 1111
         }
-        let systemB = ClusterSystem("Node-B") { settings in
-            settings.cluster.enabled = true
-            settings.cluster.bindPort = 2222
+        let systemB = await ClusterSystem("Node-B") { settings in
+            settings.bindPort = 2222
             settings.logging.logLevel = .error
         }
-        let systemC = ClusterSystem("Node-C") { settings in
-            settings.cluster.enabled = true
-            settings.cluster.bindPort = 3333
+        let systemC = await ClusterSystem("Node-C") { settings in
+            settings.bindPort = 3333
             settings.logging.logLevel = .error
         }
         let systems = [systemA, systemB, systemC]
@@ -38,9 +35,9 @@ final class DistributedDiningPhilosophers {
         print("~~~~~~~ started \(systems.count) actor systems ~~~~~~~")
 
         // TODO: Joining to be simplified by having "seed nodes" (that a node should join)
-        systemA.cluster.join(node: systemB.settings.cluster.node)
-        systemA.cluster.join(node: systemC.settings.cluster.node)
-        systemC.cluster.join(node: systemB.settings.cluster.node)
+        systemA.cluster.join(node: systemB.settings.node)
+        systemA.cluster.join(node: systemC.settings.node)
+        systemC.cluster.join(node: systemB.settings.node)
 
         print("waiting for cluster to form...")
         while !(

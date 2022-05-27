@@ -27,6 +27,7 @@ distributed actor Fork: CustomStringConvertible {
     private var isTaken: Bool = false
 
     init(name: String, actorSystem: ActorSystem) {
+        self.actorSystem = actorSystem
         self.name = name
     }
 
@@ -45,10 +46,6 @@ distributed actor Fork: CustomStringConvertible {
             throw ForkError.puttingBackNotTakenFork
         }
         self.isTaken = false
-    }
-
-    public nonisolated var description: String {
-        "\(Self.self)(\(self.id.underlying))"
     }
 }
 
