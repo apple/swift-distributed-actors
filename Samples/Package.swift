@@ -35,7 +35,6 @@ var targets: [PackageDescription.Target] = [
     .testTarget(
         name: "NoopTests",
         dependencies: [
-            .product(name: "DistributedActorsTestKit", package: "swift-distributed-actors"),
         ],
         path: "Tests/NoopTests"
     ),
