@@ -96,12 +96,11 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
     internal var _receptionist: SystemReceptionist {
         guard let ref = _receptionistRef.load()?.value else {
             print("XXX lock for `_receptionist`")
-            initLock.lock()
+            self.initLock.lock()
             defer {
                 print("XXX UNLOCK for `_receptionist`")
                 initLock.unlock()
             }
-
 
             return _receptionist
         }
@@ -113,12 +112,11 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
     public var receptionist: OpLogDistributedReceptionist {
         guard let value = _receptionistStore.load() else {
             print("XXX lock for `receptionist`")
-            initLock.lock()
+            self.initLock.lock()
             defer {
                 print("XXX UNLOCK for `receptionist`")
                 initLock.unlock()
             }
-
 
             return self.receptionist
         }
@@ -133,7 +131,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Cluster
-    
+
     internal final class Box<T> {
         var value: T
         init(_ value: T) {
@@ -146,7 +144,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
     internal var _cluster: ClusterShell? {
         guard let box = _clusterStore.load() else {
             print("XXX lock for `_cluster`")
-            initLock.lock()
+            self.initLock.lock()
             defer {
                 print("XXX UNLOCK for `_cluster`")
                 initLock.unlock()
@@ -160,7 +158,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
     public var cluster: ClusterControl {
         guard let box = _clusterControlStore.load() else {
             print("XXX lock for `cluster`")
-            initLock.lock()
+            self.initLock.lock()
             defer {
                 print("XXX UNLOCK for `cluster`")
                 initLock.unlock()
@@ -175,7 +173,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
     internal var _nodeDeathWatcher: NodeDeathWatcherShell.Ref? {
         guard let box = _nodeDeathWatcherStore.load() else {
             print("XXX lock for `_nodeDeathWatcher`")
-            initLock.lock()
+            self.initLock.lock()
             defer {
                 print("XXX UNLOCK for `_nodeDeathWatcher`")
                 initLock.unlock()
@@ -284,12 +282,12 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         // vvv~~~~~~~~~~~~~~~~~~~ all properties initialized, self can be shared ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~vvv //
 
         print("XXX LOCK INITIALIZING...")
-        initLock.lock()
+        self.initLock.lock()
         defer {
             print("XXX UNLOCK INITIALIZING >>>")
             initLock.unlock()
         }
-        
+
         // serialization
         let serialization = Serialization(settings: settings, system: self)
         _ = self._serialization.storeIfNilThenLoad(serialization)

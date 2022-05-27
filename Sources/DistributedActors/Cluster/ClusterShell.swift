@@ -38,7 +38,7 @@ internal class ClusterShell {
     private var selfNode: UniqueNode {
         self.settings.uniqueBindNode
     }
-    
+
     private let settings: ClusterSystemSettings
 
     // ~~~~~~ HERE BE DRAGONS, shared concurrently modified concurrent state ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
