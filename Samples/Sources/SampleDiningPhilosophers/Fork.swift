@@ -26,7 +26,7 @@ distributed actor Fork: CustomStringConvertible {
     private let name: String
     private var isTaken: Bool = false
 
-    init(name: String, transport: ActorTransport) {
+    init(name: String, actorSystem: ActorSystem) {
         self.name = name
     }
 

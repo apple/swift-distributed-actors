@@ -55,25 +55,25 @@ final class DistributedDiningPhilosophers {
 
         // prepare 5 forks, the resources, that the philosophers will compete for:
         // Node A
-        let fork1 = Fork(name: "fork-1", transport: systemA)
+        let fork1 = Fork(name: "fork-1", actorSystem: systemA)
         // Node B
-        let fork2 = Fork(name: "fork-2", transport: systemB)
-        let fork3 = Fork(name: "fork-3", transport: systemB)
+        let fork2 = Fork(name: "fork-2", actorSystem: systemB)
+        let fork3 = Fork(name: "fork-3", actorSystem: systemB)
         // Node C
-        let fork4 = Fork(name: "fork-4", transport: systemC)
-        let fork5 = Fork(name: "fork-5", transport: systemC)
+        let fork4 = Fork(name: "fork-4", actorSystem: systemC)
+        let fork5 = Fork(name: "fork-5", actorSystem: systemC)
         self.forks = [fork1, fork2, fork3, fork4, fork5]
 
         // 5 philosophers, sitting in a circle, with the forks between them:
         self.philosophers = [
             // Node A
-            Philosopher(name: "Konrad", leftFork: fork5, rightFork: fork1, transport: systemA),
+            Philosopher(name: "Konrad", leftFork: fork5, rightFork: fork1, actorSystem: systemA),
             // Node B
-            Philosopher(name: "Dario", leftFork: fork1, rightFork: fork2, transport: systemB),
-            Philosopher(name: "Johannes", leftFork: fork2, rightFork: fork3, transport: systemB),
+            Philosopher(name: "Dario", leftFork: fork1, rightFork: fork2, actorSystem: systemB),
+            Philosopher(name: "Johannes", leftFork: fork2, rightFork: fork3, actorSystem: systemB),
             // Node C
-            Philosopher(name: "Cory", leftFork: fork3, rightFork: fork4, transport: systemC),
-            Philosopher(name: "Erik", leftFork: fork4, rightFork: fork5, transport: systemC),
+            Philosopher(name: "Cory", leftFork: fork3, rightFork: fork4, actorSystem: systemC),
+            Philosopher(name: "Erik", leftFork: fork4, rightFork: fork5, actorSystem: systemC),
         ]
 
         try systemA.park(atMost: time)

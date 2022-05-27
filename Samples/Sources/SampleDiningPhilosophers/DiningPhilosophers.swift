@@ -22,20 +22,20 @@ final class DiningPhilosophers {
         let system = ActorSystem("Philosophers")
 
         // prepare 5 forks, the resources, that the philosophers will compete for:
-        let fork1 = Fork(name: "fork-1", transport: system)
-        let fork2 = Fork(name: "fork-2", transport: system)
-        let fork3 = Fork(name: "fork-3", transport: system)
-        let fork4 = Fork(name: "fork-4", transport: system)
-        let fork5 = Fork(name: "fork-5", transport: system)
+        let fork1 = Fork(name: "fork-1", actorSystem: system)
+        let fork2 = Fork(name: "fork-2", actorSystem: system)
+        let fork3 = Fork(name: "fork-3", actorSystem: system)
+        let fork4 = Fork(name: "fork-4", actorSystem: system)
+        let fork5 = Fork(name: "fork-5", actorSystem: system)
         self.forks = [fork1, fork2, fork3, fork4, fork5]
 
         // 5 philosophers, sitting in a circle, with the forks between them:
         self.philosophers = [
-            Philosopher(name: "Konrad", leftFork: fork5, rightFork: fork1, transport: system),
-            Philosopher(name: "Dario", leftFork: fork1, rightFork: fork2, transport: system),
-            Philosopher(name: "Johannes", leftFork: fork2, rightFork: fork3, transport: system),
-            Philosopher(name: "Cory", leftFork: fork3, rightFork: fork4, transport: system),
-            Philosopher(name: "Erik", leftFork: fork4, rightFork: fork5, transport: system),
+            Philosopher(name: "Konrad", leftFork: fork5, rightFork: fork1, actorSystem: system),
+            Philosopher(name: "Dario", leftFork: fork1, rightFork: fork2, actorSystem: system),
+            Philosopher(name: "Johannes", leftFork: fork2, rightFork: fork3, actorSystem: system),
+            Philosopher(name: "Cory", leftFork: fork3, rightFork: fork4, actorSystem: system),
+            Philosopher(name: "Erik", leftFork: fork4, rightFork: fork5, actorSystem: system),
         ]
 
         _Thread.sleep(time)

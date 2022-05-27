@@ -26,7 +26,7 @@ distributed actor Philosopher: CustomStringConvertible {
 
     private lazy var timers = DistributedActors.ActorTimers<Philosopher>(self)
 
-    init(name: String, leftFork: Fork, rightFork: Fork, transport: ActorTransport) {
+    init(name: String, leftFork: Fork, rightFork: Fork, actorSystem: ActorSystem) {
         self.name = name
         self.leftFork = leftFork
         self.rightFork = rightFork

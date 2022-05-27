@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
+import Distributed
 import Logging
 import NIO
 
@@ -26,6 +27,8 @@ import NIO
  * The implementation is based on the following take on the problem:
  * http://www.dalnefre.com/wp/2010/08/dining-philosophers-in-humus
  */
+
+typealias DefaultDistributedActorSystem = ClusterSystem
 
 @main enum Main {
     static func main() async {
