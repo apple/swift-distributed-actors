@@ -205,7 +205,7 @@ public distributed actor OpLogDistributedReceptionist: DistributedReceptionist, 
     var eventsListeningTask: Task<Void, Error>?
 
     // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: _BehaviorTimers
+    // MARK: Timers
 
     static let slowACKReplicationTick: TimerKey = "slow-ack-replication-tick"
     static let fastACKReplicationTick: TimerKey = "fast-ack-replication-tick"
@@ -262,18 +262,6 @@ public distributed actor OpLogDistributedReceptionist: DistributedReceptionist, 
             }
         }
 
-        // TODO(distributed): move the start timers here, once the init is async
-
-        self.log.debug("Initialized receptionist")
-    }
-
-    deinit {
-        eventsListeningTask?.cancel()
-    }
-
-    // FIXME(distributed): once the init is async move this back to init, we need the function to be isolated to the receptionist
-    //                     so the closure may perform the self.periodicAckTick() schedule
-    distributed func start() {
         // === timers ------------------
         // periodically gossip to other receptionists with the last seqNr we've seen,
         // and if it happens to be outdated by then this will cause a push from that node.
@@ -283,10 +271,12 @@ public distributed actor OpLogDistributedReceptionist: DistributedReceptionist, 
         ) {
             await self.periodicAckTick()
         }
+
+        self.log.debug("Initialized receptionist")
     }
 
-    public nonisolated var description: String {
-        "\(Self.self)(\(id))"
+    deinit {
+        eventsListeningTask?.cancel()
     }
 }
 

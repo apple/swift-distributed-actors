@@ -30,13 +30,15 @@ import NIO
 /// Hamlet Act III, scene 1, saying "To be, or not to be, that is the question: [...]." In the same sense,
 /// props for Swift Distributed Actors are accompanying objects/settings, which help the actor perform its duties.
 public struct _Props: @unchecked Sendable {
-    public var mailbox: _MailboxProps
     public var dispatcher: _DispatcherProps
 
     // _Supervision properties will be removed.
     // This type of "parent/child" supervision and the entire actor tree will be removed.
     // Instead we will rely exclusively on watching other actors explicitly.
     internal var supervision: _SupervisionProps
+
+    /// Tags to be passed to the actor's identity.
+    internal var tags: ActorTags
 
     public var metrics: MetricsProps
 
@@ -59,19 +61,18 @@ public struct _Props: @unchecked Sendable {
     internal var _distributedActor: Bool = false
 
     public init(
-        mailbox: _MailboxProps = .default(),
+        tags: ActorTags = ActorTags(),
         dispatcher: _DispatcherProps = .default,
         supervision: _SupervisionProps = .default,
         metrics: MetricsProps = .disabled
     ) {
-        self.mailbox = mailbox
+        self.tags = tags
         self.dispatcher = dispatcher
         self.supervision = supervision
         self.metrics = metrics
     }
 
-    /// TODO(distributed): workaround for passing settings to specific actor instance when creating them.
-    ///                    We may want to formalize a way to do this with initializer params instead.
+    /// Allows for passing properties to creating a distributed actor.
     @TaskLocal
     internal static var forSpawn: _Props = .init()
 }
@@ -145,47 +146,6 @@ public enum _DispatcherProps {
         case .callingThread: return "callingThread"
         }
     }
-}
-
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Mailbox _Props
-
-public extension _Props {
-    /// Creates a new `_Props` with default values, and overrides the `mailbox` with the provided one.
-    static func mailbox(_ mailbox: _MailboxProps) -> _Props {
-        var props = _Props()
-        props.mailbox = mailbox
-        return props
-    }
-
-    /// Creates copy of this `_Props` changing the `mailbox` props.
-    func mailbox(_ mailbox: _MailboxProps) -> _Props {
-        var props = self
-        props.mailbox = mailbox
-        return props
-    }
-}
-
-public enum _MailboxProps: Sendable {
-    /// Default mailbox.
-    case `default`(capacity: UInt32, onOverflow: MailboxOverflowStrategy)
-
-    public static func `default`(capacity: UInt32 = UInt32.max) -> _MailboxProps {
-        .default(capacity: capacity, onOverflow: .crash)
-    }
-
-    var capacity: UInt32 {
-        switch self {
-        case .default(let cap, _): return cap
-        }
-    }
-}
-
-// TODO: those only apply when bounded mailboxes
-public enum MailboxOverflowStrategy: Sendable {
-    case crash
-    case dropIncoming
-    case dropMailbox
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------

@@ -333,7 +333,7 @@ extension _ActorShell {
             props: props,
             dispatcher: dispatcher
         )
-        let mailbox = _Mailbox(shell: actor, capacity: props.mailbox.capacity)
+        let mailbox = _Mailbox(shell: actor)
 
         if self.system.settings.logging.verboseSpawning {
             log.trace("Spawning [\(behavior)], on path: [\(address.path)]")

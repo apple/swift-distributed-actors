@@ -66,7 +66,7 @@ internal final class _Mailbox<Message: ActorMessage> {
 
     let measureMessages = true
 
-    init(shell: _ActorShell<Message>, capacity: UInt32, maxRunLength: UInt32 = 100) {
+    init(shell: _ActorShell<Message>, maxRunLength: UInt32 = 100) {
         #if SACT_TESTS_LEAKS
         if shell.address.segments.first?.value == "user" {
             _ = shell._system?.userMailboxInitCounter.loadThenWrappingIncrement(ordering: .relaxed)
@@ -75,7 +75,7 @@ internal final class _Mailbox<Message: ActorMessage> {
         self.shell = shell
         self.userMessages = MPSCLinkedQueue()
         self.systemMessages = MPSCLinkedQueue()
-        self.capacity = capacity
+        self.capacity = .max
         self.maxRunLength = maxRunLength
         self.deadLetters = shell.system.deadLetters
         self.address = shell._address

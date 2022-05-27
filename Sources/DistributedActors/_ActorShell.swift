@@ -82,7 +82,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
         .init(
             address: self.address,
             actor: self,
-            mailbox: _Mailbox(shell: self, capacity: self._props.mailbox.capacity)
+            mailbox: _Mailbox(shell: self)
         )
 
     @usableFromInline

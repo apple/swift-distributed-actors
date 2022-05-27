@@ -75,10 +75,10 @@ internal final class LoggingContext {
 /// The preferred way of obtaining a logger for an actor or system is `context.log` or `system.log`, rather than creating new ones.
 public extension Logger {
     /// Create a logger specific to this actor.
-    // TODO(distributed): reconsider if this is the best pattern?
     init<Act: DistributedActor>(actor: Act) where Act.ActorSystem == ClusterSystem {
         var log = Logger(label: "\(actor.id)")
         log[metadataKey: "actor/path"] = "\(actor.id.path)"
+        log[metadataKey: "actor/id"] = "\(actor.id)"
         self = log
     }
 

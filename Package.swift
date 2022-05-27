@@ -211,7 +211,6 @@ var dependencies: [Package.Dependency] = [
     // swift-metrics 1.x and 2.x are almost API compatible, so most clients should use
     .package(url: "https://github.com/apple/swift-metrics.git", "1.0.0" ..< "3.0.0"),
     .package(url: "https://github.com/apple/swift-service-discovery.git", from: "1.0.0"),
-    .package(url: "https://github.com/apple/swift-distributed-tracing.git", from: "0.3.0"),
 ]
 
 let products: [PackageDescription.Product] = [
