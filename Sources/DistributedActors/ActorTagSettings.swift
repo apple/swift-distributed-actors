@@ -40,5 +40,5 @@ public struct ActorTagSettings {
     public var tagOnInit: [TagOnInit] = []
 
     // TODO: expose this eventually
-    internal var propagateTags: [ActorTagKey.Type] = []
+    internal var propagateTags: [(any ActorTagKey).Type] = []
 }

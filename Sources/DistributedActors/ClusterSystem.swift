@@ -50,6 +50,8 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         }
     }
 
+    // This lock is used to keep actors from accessing things like `system.cluster` before the cluster actor finished initializing.
+    // TODO: collapse it with the other initialization lock; the other one is not needed now I think?
     private let initLock = Lock()
 
     internal let lifecycleWatchLock = Lock()
@@ -95,14 +97,10 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
     private var _receptionistRef: ManagedAtomicLazyReference<Box<_ActorRef<Receptionist.Message>>>
     internal var _receptionist: SystemReceptionist {
         guard let ref = _receptionistRef.load()?.value else {
-            print("XXX lock for `_receptionist`")
             self.initLock.lock()
-            defer {
-                print("XXX UNLOCK for `_receptionist`")
-                initLock.unlock()
-            }
+            defer { initLock.unlock() }
 
-            return _receptionist
+            return self._receptionist
         }
 
         return SystemReceptionist(ref: ref)
@@ -111,12 +109,8 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
     private let _receptionistStore: ManagedAtomicLazyReference<OpLogDistributedReceptionist>
     public var receptionist: OpLogDistributedReceptionist {
         guard let value = _receptionistStore.load() else {
-            print("XXX lock for `receptionist`")
             self.initLock.lock()
-            defer {
-                print("XXX UNLOCK for `receptionist`")
-                initLock.unlock()
-            }
+            defer { initLock.unlock() }
 
             return self.receptionist
         }
@@ -143,12 +137,9 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
     private let _clusterStore: ManagedAtomicLazyReference<Box<ClusterShell?>>
     internal var _cluster: ClusterShell? {
         guard let box = _clusterStore.load() else {
-            print("XXX lock for `_cluster`")
             self.initLock.lock()
-            defer {
-                print("XXX UNLOCK for `_cluster`")
-                initLock.unlock()
-            }
+            defer { initLock.unlock() }
+
             return self._cluster
         }
         return box.value
@@ -157,12 +148,8 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
     private let _clusterControlStore: ManagedAtomicLazyReference<Box<ClusterControl>>
     public var cluster: ClusterControl {
         guard let box = _clusterControlStore.load() else {
-            print("XXX lock for `cluster`")
             self.initLock.lock()
-            defer {
-                print("XXX UNLOCK for `cluster`")
-                initLock.unlock()
-            }
+            defer { initLock.unlock() }
 
             return self.cluster // recurse, as we hold the lock now, it MUST be initialized already
         }
@@ -172,12 +159,8 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
     internal let _nodeDeathWatcherStore: ManagedAtomicLazyReference<Box<NodeDeathWatcherShell.Ref?>>
     internal var _nodeDeathWatcher: NodeDeathWatcherShell.Ref? {
         guard let box = _nodeDeathWatcherStore.load() else {
-            print("XXX lock for `_nodeDeathWatcher`")
             self.initLock.lock()
-            defer {
-                print("XXX UNLOCK for `_nodeDeathWatcher`")
-                initLock.unlock()
-            }
+            defer { initLock.unlock() }
 
             return self._nodeDeathWatcher
         }
@@ -281,12 +264,8 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
 
         // vvv~~~~~~~~~~~~~~~~~~~ all properties initialized, self can be shared ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~vvv //
 
-        print("XXX LOCK INITIALIZING...")
         self.initLock.lock()
-        defer {
-            print("XXX UNLOCK INITIALIZING >>>")
-            initLock.unlock()
-        }
+        defer { initLock.unlock() }
 
         // serialization
         let serialization = Serialization(settings: settings, system: self)
@@ -319,7 +298,6 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
             customBehavior: ClusterEventStream.Shell.behavior
         )
         let clusterRef = try! cluster.start(system: self, clusterEvents: clusterEvents) // only spawns when cluster is initialized
-        print("XXX stored _clusterControlStore")
         _ = self._clusterControlStore.storeIfNilThenLoad(Box(ClusterControl(settings, clusterRef: clusterRef, eventStream: clusterEvents)))
 
         // node watcher MUST be prepared before receptionist (or any other actor) because it (and all actors) need it if we're running clustered
@@ -329,27 +307,20 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
             NodeDeathWatcherShell.behavior(clusterEvents: clusterEvents),
             props: ._wellKnown
         )
-        print("XXX stored _nodeDeathWatcherStore")
         _ = self._nodeDeathWatcherStore.storeIfNilThenLoad(Box(lazyNodeDeathWatcher.ref))
 
         // OLD receptionist // TODO(distributed): remove when possible
         let receptionistBehavior = self.settings.receptionist.behavior(settings: self.settings)
         let lazyReceptionist = try! self._prepareSystemActor(Receptionist.naming, receptionistBehavior, props: ._wellKnown)
-        print("XXX stored _receptionistRef")
-        // self._receptionistRef = lazyReceptionist.ref
         _ = self._receptionistRef.storeIfNilThenLoad(Box(lazyReceptionist.ref))
 
-//        Task.detached {
         await _Props.$forSpawn.withValue(OpLogDistributedReceptionist.props) {
             let receptionist = await OpLogDistributedReceptionist(
                 settings: self.settings.receptionist,
                 system: self
             )
-            Task { try await receptionist.start() }
-            print("XXX stored _receptionistStore")
             _ = self._receptionistStore.storeIfNilThenLoad(receptionist)
         }
-//        }
 
         #if SACT_TESTS_LEAKS
         _ = ClusterSystem.actorSystemInitCounter.loadThenWrappingIncrement(ordering: .relaxed)
@@ -369,10 +340,10 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         /// Starts plugins after the system is fully initialized
         self.settings.plugins.startAll(self)
 
-        self.log.info("ClusterSystem [\(self.name)] initialized.")
-        self.log.info("Setting in effect: Cluster.autoLeaderElection: \(self.settings.autoLeaderElection)")
-        self.log.info("Setting in effect: Cluster.downingStrategy: \(self.settings.downingStrategy)")
-        self.log.info("Setting in effect: Cluster.onDownAction: \(self.settings.onDownAction)")
+        self.log.info("ClusterSystem [\(self.name)] initialized, listening on: \(self.settings.uniqueBindNode)")
+        self.log.info("Setting in effect: .autoLeaderElection: \(self.settings.autoLeaderElection)")
+        self.log.info("Setting in effect: .downingStrategy: \(self.settings.downingStrategy)")
+        self.log.info("Setting in effect: .onDownAction: \(self.settings.onDownAction)")
     }
 
     public convenience init() async {

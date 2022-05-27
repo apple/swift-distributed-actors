@@ -57,7 +57,7 @@ public struct ActorTags {
 
 public protocol ActorTag: Sendable where Value == Key.Value {
     associatedtype Key: ActorTagKey
-    associatedtype Value: Sendable & Codable
+    associatedtype Value
 
     var keyType: Key.Type { get }
     var value: Value { get }
