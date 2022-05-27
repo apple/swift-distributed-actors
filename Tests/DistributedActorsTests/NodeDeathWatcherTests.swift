@@ -35,7 +35,7 @@ final class NodeDeathWatcherTests: ClusteredActorSystemsXCTestCase {
         let refOnFirstToRemote2 = first._resolve(ref: refOnRemote2, onSystem: second)
 
         let testKit = ActorTestKit(first)
-        let p = testKit.makeTestProbe(expecting: Signals.Terminated.self)
+        let p = testKit.makeTestProbe(expecting: _Signals.Terminated.self)
 
         // --- prepare actor on [first], which watches remote actors ---
 
@@ -49,7 +49,7 @@ final class NodeDeathWatcherTests: ClusteredActorSystemsXCTestCase {
                     .same
                 }
 
-                return recv.receiveSpecificSignal(Signals.Terminated.self) { _, terminated in
+                return recv.receiveSpecificSignal(_Signals.Terminated.self) { _, terminated in
                     p.ref.tell(terminated)
                     return .same
                 }
@@ -60,9 +60,9 @@ final class NodeDeathWatcherTests: ClusteredActorSystemsXCTestCase {
         first.cluster.down(node: second.cluster.uniqueNode.node)
 
         // should cause termination of all remote actors, observed by the local actors on [first]
-        let termination1: Signals.Terminated = try p.expectMessage()
-        let termination2: Signals.Terminated = try p.expectMessage()
-        let terminations: [Signals.Terminated] = [termination1, termination2]
+        let termination1: _Signals.Terminated = try p.expectMessage()
+        let termination2: _Signals.Terminated = try p.expectMessage()
+        let terminations: [_Signals.Terminated] = [termination1, termination2]
         terminations.shouldContain(where: { terminated in
             (!terminated.existenceConfirmed) && terminated.address.name == "remote-1"
         })

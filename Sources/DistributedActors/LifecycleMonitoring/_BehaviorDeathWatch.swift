@@ -236,7 +236,7 @@ internal struct DeathWatchImpl<Message: ActorMessage> {
     /// Performs cleanup of references to the dead actor.
     ///
     /// Returns: `true` if the termination was concerning a currently watched actor, false otherwise.
-    public mutating func receiveTerminated(_ terminated: Signals.Terminated) -> TerminatedMessageDirective {
+    public mutating func receiveTerminated(_ terminated: _Signals.Terminated) -> TerminatedMessageDirective {
         // refs are compared ONLY by address, thus we can make such mock reference, and it will be properly remove the right "real" refs from the collections below
         let mockRefForEquality = _ActorRef<Never>(.deadLetters(.init(.init(label: "x"), address: terminated.address, system: nil))).asAddressable
 

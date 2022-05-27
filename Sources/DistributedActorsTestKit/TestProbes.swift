@@ -63,7 +63,7 @@ public final class ActorTestProbe<Message: ActorMessage>: @unchecked Sendable {
     /// Blocking linked queue, available to run assertions on
     private let signalQueue = _LinkedBlockingQueue<_SystemMessage>()
     /// Blocking linked queue, specialized for keeping only termination signals (so that we can assert terminations, independently of other signals)
-    private let terminationsQueue = _LinkedBlockingQueue<Signals.Terminated>()
+    private let terminationsQueue = _LinkedBlockingQueue<_Signals.Terminated>()
 
     /// Last message received (by using an `expect...` call), by this probe.
     public var lastMessage: Message?
@@ -98,7 +98,7 @@ public final class ActorTestProbe<Message: ActorMessage>: @unchecked Sendable {
     private static func behavior(
         messageQueue: _LinkedBlockingQueue<Message>,
         signalQueue: _LinkedBlockingQueue<_SystemMessage>, // TODO: maybe we don't need this one
-        terminationsQueue: _LinkedBlockingQueue<Signals.Terminated>
+        terminationsQueue: _LinkedBlockingQueue<_Signals.Terminated>
     ) -> _Behavior<ProbeCommands> {
         _Behavior<ProbeCommands>.receive { context, message in
             guard let cell = context.myself._unsafeUnwrapCell.actor else {
@@ -131,7 +131,7 @@ public final class ActorTestProbe<Message: ActorMessage>: @unchecked Sendable {
         }.receiveSignal { _, signal in
             traceLog_Probe("Probe received: [\(signal)]:\(type(of: signal))")
             switch signal {
-            case let terminated as Signals.Terminated:
+            case let terminated as _Signals.Terminated:
                 terminationsQueue.enqueue(terminated)
                 return .same
             default:
@@ -695,7 +695,7 @@ public extension ActorTestProbe {
     /// - SeeAlso: `DeathWatch`
     @discardableResult
     // TODO: expectTermination(of: ...) maybe nicer wording?
-    func expectTerminated<T>(_ ref: _ActorRef<T>, within timeout: TimeAmount? = nil, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws -> Signals.Terminated {
+    func expectTerminated<T>(_ ref: _ActorRef<T>, within timeout: TimeAmount? = nil, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws -> _Signals.Terminated {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
         let timeout = timeout ?? self.expectationTimeout
 

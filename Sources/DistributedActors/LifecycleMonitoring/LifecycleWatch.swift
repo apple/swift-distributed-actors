@@ -263,7 +263,7 @@ public extension LifecycleWatchContainer {
     }
 
     /// Performs cleanup of references to the dead actor.
-    func receiveTerminated(_ terminated: Signals.Terminated) {
+    func receiveTerminated(_ terminated: _Signals.Terminated) {
         self.receiveTerminated(terminated.address)
     }
 

@@ -95,7 +95,7 @@ final class ParentChildActorTests: ActorSystemXCTestCase {
             return .same
         }.receiveSignal { _, signal in
             switch signal {
-            case let terminated as Signals.Terminated:
+            case let terminated as _Signals.Terminated:
                 if notifyWhenChildStops {
                     probe.tell(.childStopped(name: terminated.address.name))
                 }
@@ -410,10 +410,10 @@ final class ParentChildActorTests: ActorSystemXCTestCase {
             }
         }.receiveSignal { _, signal in
             switch signal {
-            case let terminated as Signals._ChildTerminated:
+            case let terminated as _Signals._ChildTerminated:
                 // only this should match
                 p.tell(.childStopped(name: "child-term:\(terminated.address.name)"))
-            case let terminated as Signals.Terminated:
+            case let terminated as _Signals.Terminated:
                 // no second "generic" terminated should be sent (though one could match for just Terminated)
                 p.tell(.childStopped(name: "term:\(terminated.address.name)"))
             default:
@@ -463,7 +463,7 @@ final class ParentChildActorTests: ActorSystemXCTestCase {
         let parent = try system._spawn(
             .anonymous,
             parentBehavior.receiveSignal { _, signal in
-                if case let terminated as Signals.Terminated = signal {
+                if case let terminated as _Signals.Terminated = signal {
                     p.tell(.childStopped(name: terminated.address.name))
                 }
 
@@ -513,7 +513,7 @@ final class ParentChildActorTests: ActorSystemXCTestCase {
                         let ref: _ActorRef<Int> = try context._spawn(
                             "child",
                             behavior.receiveSignal { _, signal in
-                                if signal is Signals._PostStop {
+                                if signal is _Signals._PostStop {
                                     p.tell(count)
                                 }
 

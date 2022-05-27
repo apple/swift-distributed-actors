@@ -322,7 +322,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
             self.interpretSystemUnwatch(watcher: watcher)
 
         case .terminated(let ref, let existenceConfirmed, let nodeTerminated):
-            let terminated = Signals.Terminated(address: ref.address, existenceConfirmed: existenceConfirmed, nodeTerminated: nodeTerminated)
+            let terminated = _Signals.Terminated(address: ref.address, existenceConfirmed: existenceConfirmed, nodeTerminated: nodeTerminated)
             try self.interpretTerminatedSignal(who: ref.address, terminated: terminated)
 
         case .childTerminated(let ref, let circumstances):
@@ -330,14 +330,14 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
             // escalation takes precedence over death watch in terms of how we report errors
             case .escalating(let failure):
                 // we only populate `escalation` if the child is escalating
-                let terminated = Signals._ChildTerminated(address: ref.address, escalation: failure)
+                let terminated = _Signals._ChildTerminated(address: ref.address, escalation: failure)
                 try self.interpretChildTerminatedSignal(who: ref, terminated: terminated)
 
             case .stopped:
-                let terminated = Signals._ChildTerminated(address: ref.address, escalation: nil)
+                let terminated = _Signals._ChildTerminated(address: ref.address, escalation: nil)
                 try self.interpretChildTerminatedSignal(who: ref, terminated: terminated)
             case .failed:
-                let terminated = Signals._ChildTerminated(address: ref.address, escalation: nil)
+                let terminated = _Signals._ChildTerminated(address: ref.address, escalation: nil)
                 try self.interpretChildTerminatedSignal(who: ref, terminated: terminated)
             }
 
@@ -482,7 +482,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
 
         /// Yes, we ignore the behavior returned by pre-restart on purpose, the supervisor decided what we should `become`,
         /// and we can not change this decision; at least not in the current scheme (which is simple and good enough for most cases).
-        _ = try self.behavior.interpretSignal(context: self, signal: Signals._PreRestart())
+        _ = try self.behavior.interpretSignal(context: self, signal: _Signals._PreRestart())
 
         // NOT interpreting Start yet, as it may have to be done after a delay
     }
@@ -576,7 +576,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
         self.notifyWatchersOfTermination()
 
         do {
-            _ = try self.behavior.interpretSignal(context: self, signal: Signals._PostStop())
+            _ = try self.behavior.interpretSignal(context: self, signal: _Signals._PostStop())
         } catch {
             // TODO: should probably .escalate instead;
             self.log.error("Exception in postStop. Supervision will NOT be applied. Error \(error)")
@@ -804,7 +804,7 @@ extension _ActorShell {
     ///
     /// Mutates actor cell behavior.
     /// May cause actor to terminate upon error or returning .stop etc from `.signalHandling` user code.
-    @inlinable func interpretTerminatedSignal(who dead: ActorAddress, terminated: Signals.Terminated) throws {
+    @inlinable func interpretTerminatedSignal(who dead: ActorAddress, terminated: _Signals.Terminated) throws {
         #if SACT_TRACE_ACTOR_SHELL
         self.log.info("Received terminated: \(dead)")
         #endif
@@ -861,12 +861,12 @@ extension _ActorShell {
     /// Interpret a carried signal directly -- those are potentially delivered by plugins or custom transports.
     /// They MAY share semantics with `Signals.Terminated`, in which case they would be interpreted accordingly.
     @inlinable
-    func interpretCarrySignal(_ signal: Signal) throws {
+    func interpretCarrySignal(_ signal: _Signal) throws {
         #if SACT_TRACE_ACTOR_SHELL
         self.log.info("Received carried signal: \(signal)")
         #endif
 
-        if let terminated = signal as? Signals.Terminated {
+        if let terminated = signal as? _Signals.Terminated {
             // it is a Terminated sub-class, and thus shares semantics with it.
             try self.interpretTerminatedSignal(who: terminated.address, terminated: terminated)
         } else {
@@ -882,7 +882,7 @@ extension _ActorShell {
     }
 
     @inlinable
-    func interpretChildTerminatedSignal(who terminatedRef: AddressableActorRef, terminated: Signals._ChildTerminated) throws {
+    func interpretChildTerminatedSignal(who terminatedRef: AddressableActorRef, terminated: _Signals._ChildTerminated) throws {
         #if SACT_TRACE_ACTOR_SHELL
         self.log.info("Received \(terminated)")
         #endif

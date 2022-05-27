@@ -110,13 +110,13 @@ final class BehaviorTests: ActorSystemXCTestCase {
     }
 
     func test_receiveSpecificSignal_shouldReceiveAsExpected() throws {
-        let p: ActorTestProbe<Signals.Terminated> = self.testKit.makeTestProbe("probe-specificSignal-1")
+        let p: ActorTestProbe<_Signals.Terminated> = self.testKit.makeTestProbe("probe-specificSignal-1")
         let _: _ActorRef<String> = try system._spawn(
             .anonymous,
             .setup { context in
                 let _: _ActorRef<Never> = try context._spawnWatch(.anonymous, .stop)
 
-                return .receiveSpecificSignal(Signals.Terminated.self) { _, terminated in
+                return .receiveSpecificSignal(_Signals.Terminated.self) { _, terminated in
                     p.tell(terminated)
                     return .stop
                 }
@@ -133,7 +133,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
             .anonymous,
             _Behavior<String>.receiveMessage { _ in
                 .stop
-            }.receiveSpecificSignal(Signals._PostStop.self) { _, postStop in
+            }.receiveSpecificSignal(_Signals._PostStop.self) { _, postStop in
                 p.tell("got:\(postStop)")
                 return .stop
             }
@@ -239,7 +239,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
 
             return .receiveSignal { _, signal in
                 switch signal {
-                case let terminated as Signals.Terminated:
+                case let terminated as _Signals.Terminated:
                     p.tell("first:terminated-name:\(terminated.address.name)")
                 default:
                     ()
@@ -249,7 +249,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
         }
         let second: _Behavior<Never> = .receiveSignal { _, signal in
             switch signal {
-            case let terminated as Signals.Terminated:
+            case let terminated as _Signals.Terminated:
                 p.tell("second:terminated-name:\(terminated.address.name)")
             default:
                 ()
@@ -864,7 +864,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
                 return .same
             }
         }.receiveSignal { _, signal in
-            guard let s = signal as? Signals.Terminated else {
+            guard let s = signal as? _Signals.Terminated else {
                 return .same
             }
             p.tell("signal:\(s.address.name)")
