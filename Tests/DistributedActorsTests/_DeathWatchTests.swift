@@ -65,7 +65,7 @@ final class DeathWatchTests: ActorSystemXCTestCase {
                 return (_Behavior<String>.receiveMessage { message in
                     p.tell(message)
                     return .same
-                }).receiveSpecificSignal(Signals.Terminated.self) { _, terminated in
+                }).receiveSpecificSignal(_Signals.Terminated.self) { _, terminated in
                     p.tell("signal:\(terminated.address.path)") // should not be signalled (!)
                     return .same
                 }
@@ -95,7 +95,7 @@ final class DeathWatchTests: ActorSystemXCTestCase {
                 return (_Behavior<String>.receiveMessage { message in
                     p.tell(message)
                     return .same
-                }).receiveSpecificSignal(Signals.Terminated.self) { _, terminated in
+                }).receiveSpecificSignal(_Signals.Terminated.self) { _, terminated in
                     p.tell("signal:\(terminated)") // should not be signalled (!)
                     return .same
                 }
@@ -125,7 +125,7 @@ final class DeathWatchTests: ActorSystemXCTestCase {
                 return (_Behavior<String>.receiveMessage { message in
                     p.tell(message) // should NOT be signalled, we're back to Signals
                     return .same
-                }).receiveSpecificSignal(Signals.Terminated.self) { _, terminated in
+                }).receiveSpecificSignal(_Signals.Terminated.self) { _, terminated in
                     p.tell("signal:\(terminated.address.path)") // should be signalled (!)
                     return .same
                 }
@@ -191,7 +191,7 @@ final class DeathWatchTests: ActorSystemXCTestCase {
                         fatalError("no other message is expected")
                     }
                 }
-                .receiveSpecificSignal(Signals.Terminated.self) { _, _ in
+                .receiveSpecificSignal(_Signals.Terminated.self) { _, _ in
                     p3_partnerOfNotActuallyWatching.tell("whoops: actually DID receive terminated!")
                     return .same
                 }
@@ -280,7 +280,7 @@ final class DeathWatchTests: ActorSystemXCTestCase {
                 }
                 return .same
             }.receiveSignal { _, signal in
-                if case let terminated as Signals.Terminated = signal {
+                if case let terminated as _Signals.Terminated = signal {
                     probe.tell("Unexpected terminated received!!! \(terminated)")
                 }
                 return .same
@@ -400,7 +400,7 @@ final class DeathWatchTests: ActorSystemXCTestCase {
     // MARK: Watching child actors
 
     func test_ensureOnlySingleTerminatedSignal_emittedByWatchedChildDies() throws {
-        let p: ActorTestProbe<Signals.Terminated> = self.testKit.makeTestProbe()
+        let p: ActorTestProbe<_Signals.Terminated> = self.testKit.makeTestProbe()
         let pp: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
         let spawnSomeStoppers = _Behavior<String>.setup { context in
@@ -414,7 +414,7 @@ final class DeathWatchTests: ActorSystemXCTestCase {
 
             return .same
         }.receiveSignal { _, signal in switch signal {
-        case let terminated as Signals.Terminated:
+        case let terminated as _Signals.Terminated:
             p.tell(terminated)
         default:
             () // ok
@@ -429,7 +429,7 @@ final class DeathWatchTests: ActorSystemXCTestCase {
         terminated.address.path.shouldEqual(try! ActorPath._user.appending("parent").appending("stopper"))
         terminated.existenceConfirmed.shouldBeTrue()
         terminated.nodeTerminated.shouldBeFalse()
-        terminated.shouldBe(Signals._ChildTerminated.self)
+        terminated.shouldBe(_Signals._ChildTerminated.self)
         try p.expectNoMessage(for: .milliseconds(200))
     }
 

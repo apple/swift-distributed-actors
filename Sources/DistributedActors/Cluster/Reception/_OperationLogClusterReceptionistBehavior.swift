@@ -155,7 +155,7 @@ public final class _OperationLogClusterReceptionist {
                     context.log.warning("Received unexpected message: \(String(reflecting: $0)), \(type(of: $0))")
                 }
                 return .same
-            }.receiveSpecificSignal(Signals.Terminated.self) { _, terminated in
+            }.receiveSpecificSignal(_Signals.Terminated.self) { _, terminated in
                 self.onTerminated(context: context, terminated: terminated)
                 return .same
             }
@@ -546,7 +546,7 @@ extension _OperationLogClusterReceptionist {
 // MARK: Termination handling
 
 extension _OperationLogClusterReceptionist {
-    private func onTerminated(context: _ActorContext<_ReceptionistMessage>, terminated: Signals.Terminated) {
+    private func onTerminated(context: _ActorContext<_ReceptionistMessage>, terminated: _Signals.Terminated) {
         if terminated.address == ActorAddress._receptionist(on: terminated.address.uniqueNode, for: .actorRefs) {
             context.log.debug("Watched receptionist terminated: \(terminated)")
             self.onReceptionistTerminated(context, terminated: terminated)
@@ -556,11 +556,11 @@ extension _OperationLogClusterReceptionist {
         }
     }
 
-    private func onReceptionistTerminated(_ context: _ActorContext<Message>, terminated: Signals.Terminated) {
+    private func onReceptionistTerminated(_ context: _ActorContext<Message>, terminated: _Signals.Terminated) {
         self.pruneClusterMember(context, removedNode: terminated.address.uniqueNode)
     }
 
-    private func onActorTerminated(_ context: _ActorContext<Message>, terminated: Signals.Terminated) {
+    private func onActorTerminated(_ context: _ActorContext<Message>, terminated: _Signals.Terminated) {
         self.onActorTerminated(context, address: terminated.address)
     }
 

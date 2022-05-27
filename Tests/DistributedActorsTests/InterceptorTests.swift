@@ -35,17 +35,17 @@ final class ShoutingInterceptor: _Interceptor<String> {
 }
 
 final class TerminatedInterceptor<Message: ActorMessage>: _Interceptor<Message> {
-    let probe: ActorTestProbe<Signals.Terminated>
+    let probe: ActorTestProbe<_Signals.Terminated>
 
-    init(probe: ActorTestProbe<Signals.Terminated>) {
+    init(probe: ActorTestProbe<_Signals.Terminated>) {
         self.probe = probe
     }
 
-    override func interceptSignal(target: _Behavior<Message>, context: _ActorContext<Message>, signal: Signal) throws -> _Behavior<Message> {
+    override func interceptSignal(target: _Behavior<Message>, context: _ActorContext<Message>, signal: _Signal) throws -> _Behavior<Message> {
         switch signal {
-        case let terminated as Signals.Terminated:
+        case let terminated as _Signals.Terminated:
             self.probe.tell(terminated) // we forward all termination signals to someone
-        case is Signals._PostStop:
+        case is _Signals._PostStop:
             () // ok
         default:
             fatalError("Other signal: \(signal)")
@@ -118,7 +118,7 @@ final class InterceptorTests: ActorSystemXCTestCase {
     }
 
     func test_interceptor_shouldInterceptSignals() throws {
-        let p: ActorTestProbe<Signals.Terminated> = self.testKit.makeTestProbe()
+        let p: ActorTestProbe<_Signals.Terminated> = self.testKit.makeTestProbe()
 
         let spyOnTerminationSignals: _Interceptor<String> = TerminatedInterceptor(probe: p)
 
@@ -162,7 +162,7 @@ final class InterceptorTests: ActorSystemXCTestCase {
             self.probe = probe
         }
 
-        override func interceptSignal(target: _Behavior<Message>, context: _ActorContext<Message>, signal: Signal) throws -> _Behavior<Message> {
+        override func interceptSignal(target: _Behavior<Message>, context: _ActorContext<Message>, signal: _Signal) throws -> _Behavior<Message> {
             self.probe.tell("intercepted:\(signal)")
             return try target.interpretSignal(context: context, signal: signal)
         }

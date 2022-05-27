@@ -384,7 +384,7 @@ internal enum ProcessingType {
 internal enum ProcessingAction<Message: ActorMessage> {
     case start
     case message(Message)
-    case signal(Signal)
+    case signal(_Signal)
     case closure(ActorClosureCarry)
     case continuation(() throws -> _Behavior<Message>) // TODO: make it a Carry type for better debugging
     case subMessage(SubMessageCarry)
@@ -419,7 +419,7 @@ internal class Supervisor<Message: ActorMessage> {
     }
 
     @inlinable
-    internal final func interpretSupervised(target: _Behavior<Message>, context: _ActorContext<Message>, signal: Signal) throws -> _Behavior<Message> {
+    internal final func interpretSupervised(target: _Behavior<Message>, context: _ActorContext<Message>, signal: _Signal) throws -> _Behavior<Message> {
         traceLog_Supervision("INTERCEPT SIGNAL APPLY: \(target) @@@@ \(signal)")
         return try self.interpretSupervised0(target: target, context: context, processingAction: .signal(signal))
     }

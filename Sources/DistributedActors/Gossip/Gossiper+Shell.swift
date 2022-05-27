@@ -74,7 +74,7 @@ internal final class GossipShell<Gossip: Codable, Acknowledgement: Codable> {
                     self.runGossipRound(context)
                 }
                 return .same
-            }.receiveSpecificSignal(Signals.Terminated.self) { context, terminated in
+            }.receiveSpecificSignal(_Signals.Terminated.self) { context, terminated in
                 context.log.trace("Peer terminated: \(terminated.address), will not gossip to it anymore")
                 self.peers = self.peers.filter {
                     $0.address != terminated.address

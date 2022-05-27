@@ -248,7 +248,7 @@ class SerializationTests: ActorSystemXCTestCase {
                 context.watch(watchMe)
                 return .receiveSignal { _, signal in
                     switch signal {
-                    case let terminated as Signals.Terminated:
+                    case let terminated as _Signals.Terminated:
                         p.tell("terminated:\(terminated.address.name)")
                     default:
                         ()

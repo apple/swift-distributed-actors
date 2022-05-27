@@ -60,7 +60,7 @@ public enum _SystemMessage: Equatable {
 
     /// Extension point for transports or other plugins which may need to send custom signals to actors.
     /// The carried signal will be delivered as-is to the recipient actor.
-    case carrySignal(Signal)
+    case carrySignal(_Signal)
 
     /// Child actor has terminated. This system message by itself does not necessarily cause a DeathPact and termination of the parent.
     /// If the message carries an `escalated` failure, the failure should apply to the parent as well, potentially tearing it down as well.

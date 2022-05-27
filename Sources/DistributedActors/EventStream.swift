@@ -160,7 +160,7 @@ internal enum EventStreamShell {
                 return .same
             }
 
-            return behavior.receiveSpecificSignal(Signals.Terminated.self) { context, signal in
+            return behavior.receiveSpecificSignal(_Signals.Terminated.self) { context, signal in
                 if subscribers.removeValue(forKey: signal.address) != nil {
                     context.log.trace("Removed subscriber [\(signal.address)], because it terminated")
                 } else {

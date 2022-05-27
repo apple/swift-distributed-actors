@@ -176,7 +176,7 @@ internal extension WorkerPool {
             workers.forEach { context.watch($0) }
 
             let eagerlyRemoteTerminatedWorkers: _Behavior<WorkerPoolMessage<Message>> =
-                .receiveSpecificSignal(Signals.Terminated.self) { _, terminated in
+                .receiveSpecificSignal(_Signals.Terminated.self) { _, terminated in
                     var remainingWorkers = workers
                     remainingWorkers.removeAll { ref in ref.address == terminated.address } // TODO: removeFirst is enough, but has no closure version
 
