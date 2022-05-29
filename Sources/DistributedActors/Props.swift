@@ -20,7 +20,7 @@ import NIO
 
 /// `_Props` configure an Actors' properties such as mailbox, dispatcher as well as supervision semantics.
 ///
-/// `_Props` can easily changed in-line using the fluent APIs provided.
+/// `_Props` can be easily changed in-line using the fluent APIs provided.
 /// Functions starting with `add...` are additive, i.e. they add another setting of the same kind to the props (possibly
 /// overriding a previously existing one), while functions starting with `with...` are replacement functions, always
 /// replacing the entire inner props with the new one
