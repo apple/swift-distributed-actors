@@ -25,7 +25,7 @@ import NIO
 /// overriding a previously existing one), while functions starting with `with...` are replacement functions, always
 /// replacing the entire inner props with the new one
 ///
-/// Naming mnemonic: "_Props" are what an theater actor may use during a performance.
+/// Naming mnemonic: "_Props" are what a theater actor may use during a performance.
 /// For example, a skull would be a classic example of a "prop" used while performing the William Shakespeare's
 /// Hamlet Act III, scene 1, saying "To be, or not to be, that is the question: [...]." In the same sense,
 /// props for Swift Distributed Actors are accompanying objects/settings, which help the actor perform its duties.
