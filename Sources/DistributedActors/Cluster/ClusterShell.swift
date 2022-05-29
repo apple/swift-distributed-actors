@@ -210,6 +210,14 @@ internal class ClusterShell {
     }
 
     /// For testing only.
+    /// Safe to concurrently access by privileged internals.
+    internal var _testingOnly_associationTombstones: [Association.Tombstone] {
+        self._associationsLock.withLock {
+            [Association.Tombstone](self._associationTombstones.values)
+        }
+    }
+
+    /// For testing only.
     internal func _associatedNodes() -> Set<UniqueNode> {
         self._associationsLock.withLock {
             Set(self._associations.keys)
@@ -462,6 +470,7 @@ extension ClusterShell {
         }
     }
 
+    /// Called periodically to remove association tombstones after the configured TTL.
     private func cleanUpAssociationTombstones() -> _Behavior<Message> {
         self._associationsLock.withLockVoid {
             for (id, tombstone) in self._associationTombstones {

@@ -172,6 +172,36 @@ final class ClusterSystemTests: ActorSystemXCTestCase {
             throw testKit.fail("Expected timeout to be 1 second but was \(timeoutError.timeout)")
         }
     }
+
+    func test_cleanUpAssociationTombstones() async throws {
+        let local = await setUpNode("local") {
+            $0.associationTombstoneTTL = .seconds(0)
+        }
+        let remote = await setUpNode("remote")
+        local.cluster.join(node: remote.cluster.uniqueNode)
+
+        let remoteAssociationControlState0 = local._cluster!.getEnsureAssociation(with: remote.cluster.uniqueNode)
+        guard case ClusterShell.StoredAssociationState.association(let remoteControl0) = remoteAssociationControlState0 else {
+            throw Boom("Expected the association to exist for \(remote.cluster.uniqueNode)")
+        }
+
+        ClusterShell.shootTheOtherNodeAndCloseConnection(system: local, targetNodeAssociation: remoteControl0)
+
+        // Node should eventually appear in tombstones
+        try self.testKit(local).eventually(within: .seconds(3)) {
+            guard local._cluster?._testingOnly_associationTombstones.isEmpty == false else {
+                throw Boom("Expected tombstone for downed node")
+            }
+        }
+
+        local._cluster?.ref.tell(.command(.cleanUpAssociationTombstones))
+
+        try self.testKit(local).eventually(within: .seconds(3)) {
+            guard local._cluster?._testingOnly_associationTombstones.isEmpty == true else {
+                throw Boom("Expected tombstones to get cleared")
+            }
+        }
+    }
 }
 
 private distributed actor DelayedGreeter {
