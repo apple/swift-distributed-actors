@@ -210,6 +210,14 @@ internal class ClusterShell {
     }
 
     /// For testing only.
+    /// Safe to concurrently access by privileged internals.
+    internal var _testingOnly_associationTombstones: [Association.Tombstone] {
+        self._associationsLock.withLock {
+            [Association.Tombstone](self._associationTombstones.values)
+        }
+    }
+
+    /// For testing only.
     internal func _associatedNodes() -> Set<UniqueNode> {
         self._associationsLock.withLock {
             Set(self._associations.keys)
@@ -333,6 +341,7 @@ internal class ClusterShell {
         /// Used to signal a "down was issued" either by the user, or another part of the system.
         case downCommandMember(Cluster.Member)
         case shutdown(BlockingReceptacle<Void>) // TODO: could be NIO future
+        case cleanUpAssociationTombstones
     }
 
     enum QueryMessage: NonTransportableActorMessage {
@@ -461,6 +470,18 @@ extension ClusterShell {
         }
     }
 
+    /// Called periodically to remove association tombstones after the configured TTL.
+    private func cleanUpAssociationTombstones() -> _Behavior<Message> {
+        self._associationsLock.withLockVoid {
+            for (id, tombstone) in self._associationTombstones {
+                if tombstone.removalDeadline.isOverdue() {
+                    self._associationTombstones.removeValue(forKey: id)
+                }
+            }
+        }
+        return .same
+    }
+
     /// Ready and interpreting commands and incoming messages.
     ///
     /// Serves as main "driver" for handshake and association state machines.
@@ -498,6 +519,8 @@ extension ClusterShell {
                 }
             case .downCommandMember(let member):
                 return self.ready(state: self.onDownCommand(context, state: state, member: member))
+            case .cleanUpAssociationTombstones:
+                return self.cleanUpAssociationTombstones()
             }
         }
 

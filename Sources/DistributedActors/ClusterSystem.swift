@@ -57,6 +57,8 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
     internal let lifecycleWatchLock = Lock()
     internal var _lifecycleWatches: [ActorAddress: LifecycleWatchContainer] = [:]
 
+    private var _associationTombstoneCleanupTask: RepeatedTask?
+
     private let dispatcher: InternalMessageDispatcher
 
     // Access MUST be protected with `namingLock`.
@@ -300,6 +302,13 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         let clusterRef = try! cluster.start(system: self, clusterEvents: clusterEvents) // only spawns when cluster is initialized
         _ = self._clusterControlStore.storeIfNilThenLoad(Box(ClusterControl(settings, clusterRef: clusterRef, eventStream: clusterEvents)))
 
+        self._associationTombstoneCleanupTask = eventLoopGroup.next().scheduleRepeatedTask(
+            initialDelay: settings.associationTombstoneCleanupInterval.toNIO,
+            delay: settings.associationTombstoneCleanupInterval.toNIO
+        ) { _ in
+            clusterRef.tell(.command(.cleanUpAssociationTombstones))
+        }
+
         // node watcher MUST be prepared before receptionist (or any other actor) because it (and all actors) need it if we're running clustered
         // Node watcher MUST be started AFTER cluster and clusterEvents
         let lazyNodeDeathWatcher = try! self._prepareSystemActor(
@@ -458,6 +467,8 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
                  // self._serialization = nil // FIXME: need to release serialization
              }
              */
+            self._associationTombstoneCleanupTask?.cancel()
+            self._associationTombstoneCleanupTask = nil
             _ = self._clusterStore.storeIfNilThenLoad(Box(nil))
 
             self.shutdownReceptacle.offerOnce(nil)

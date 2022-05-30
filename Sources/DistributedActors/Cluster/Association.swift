@@ -244,7 +244,7 @@ extension Association {
 
         /// Determines when the Tombstone should be removed from kept tombstones in the ClusterShell.
         /// End of life of the tombstone is calculated as `now + settings.associationTombstoneTTL`.
-        let removalDeadline: Deadline // TODO: cluster should have timer to try to remove those periodically
+        let removalDeadline: Deadline
 
         init(_ node: UniqueNode, settings: ClusterSystemSettings) {
             // TODO: if we made system carry system.time we could always count from that point in time with a TimeAmount; require Clock and settings then
