@@ -42,7 +42,7 @@ public struct _SupervisionProps {
 }
 
 public extension _Props {
-    /// Creates a new `_Props` appending an supervisor for the selected `Error` type, useful for setting a few options in-line when spawning actors.
+    /// Creates a new `_Props` appending a supervisor for the selected `Error` type, useful for setting a few options in-line when spawning actors.
     ///
     /// Note that order in which overlapping selectors/types are added to the chain matters.
     ///
@@ -55,7 +55,7 @@ public extension _Props {
         return props
     }
 
-    /// Creates a new `_Props` appending an supervisor for the selected failure type, useful for setting a few options in-line when spawning actors.
+    /// Creates a new `_Props` appending a supervisor for the selected failure type, useful for setting a few options in-line when spawning actors.
     ///
     /// Note that order in which overlapping selectors/types are added to the chain matters.
     ///
@@ -66,7 +66,7 @@ public extension _Props {
         self.supervision(strategy: strategy, forErrorType: _Supervise.internalErrorTypeFor(selector: selector))
     }
 
-    /// Creates a new `_Props` appending an supervisor for the selected `Error` type, useful for setting a few options in-line when spawning actors.
+    /// Creates a new `_Props` appending a supervisor for the selected `Error` type, useful for setting a few options in-line when spawning actors.
     ///
     /// Note that order in which overlapping selectors/types are added to the chain matters.
     ///
@@ -79,7 +79,7 @@ public extension _Props {
         return props
     }
 
-    /// Creates a new `_Props` appending an supervisor for the selected failure type, useful for setting a few options in-line when spawning actors.
+    /// Creates a new `_Props` appending a supervisor for the selected failure type, useful for setting a few options in-line when spawning actors.
     ///
     /// Note that order in which overlapping selectors/types are added to the chain matters.
     ///
