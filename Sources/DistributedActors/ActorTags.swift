@@ -92,7 +92,7 @@ struct AnyActorTagKey: Hashable {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Known tag: path
+// MARK: Known keys
 
 extension ActorTags {
     static let path = ActorPathTag.Key.self

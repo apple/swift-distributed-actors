@@ -23,12 +23,12 @@ import Distributed
 /// - Warning: Users MUST NOT implement new signals.
 ///            Instances of them are reserved to only be created and managed by the actor system itself.
 /// - SeeAlso: `Signals`, for a complete listing of pre-defined signals.
-public protocol Signal: NonTransportableActorMessage, Sendable {} // FIXME: we could allow them as Codable, we never send them over the wire, but people might manually if they wanted to I suppose
+public protocol _Signal: NonTransportableActorMessage, Sendable {} // FIXME: we could allow them as Codable, we never send them over the wire, but people might manually if they wanted to I suppose
 
 /// Namespace for all pre-defined `Signal` types.
 ///
 /// - SeeAlso: `Signal`, for a semantic overview of what signals are.
-public enum Signals {
+public enum _Signals {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Actor Lifecycle Events
 
@@ -41,7 +41,7 @@ public enum Signals {
     /// careful releasing of resources is generally not a good idea.
     ///
     /// Failing during processing of this signal will abort the restart process, and irrecoverably fail the actor.
-    public struct _PreRestart: Signal {
+    public struct _PreRestart: _Signal {
         @usableFromInline
         init() {}
     }
@@ -51,7 +51,7 @@ public enum Signals {
     /// This signal can be handled just like any other signal, using `_Behavior.receiveSignal((_ActorContext<Message>, Signal) throws -> _Behavior<Message>)`,
     /// however the `_Behavior` returned by the closure will always be ignored and the actor will proceed to its `Terminated` state.
     /// In other words, it is not possible to stop the actor from terminating once it has received the _PostStop signal.
-    public struct _PostStop: Sendable, Signal {
+    public struct _PostStop: Sendable, _Signal {
         @usableFromInline
         init() {}
     }
@@ -68,7 +68,7 @@ public enum Signals {
     /// explaining the reason for an actor having terminated.
     ///
     /// - SeeAlso: `_ChildTerminated` which is sent specifically to a parent-actor once its child has terminated.
-    open class Terminated: @unchecked Sendable, Signal, CustomStringConvertible {
+    open class Terminated: @unchecked Sendable, _Signal, CustomStringConvertible {
         /// Address of the terminated actor.
         public let address: ActorAddress
 
@@ -164,8 +164,8 @@ public enum Signals {
     }
 }
 
-extension Signals.Terminated: Equatable, Hashable {
-    public static func == (lhs: Signals.Terminated, rhs: Signals.Terminated) -> Bool {
+extension _Signals.Terminated: Equatable, Hashable {
+    public static func == (lhs: _Signals.Terminated, rhs: _Signals.Terminated) -> Bool {
         lhs.address == rhs.address &&
             lhs.existenceConfirmed == rhs.existenceConfirmed
     }

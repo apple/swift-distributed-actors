@@ -117,6 +117,9 @@ public struct ClusterSystemSettings {
     /// communicated with again. Tombstones are used to ensure this, even if the downed ("zombie") node, attempts to reconnect.
     public var associationTombstoneTTL: TimeAmount = .hours(24) * 1
 
+    /// Defines the interval with which the list of associated tombstones is freed from expired tombstones.
+    public var associationTombstoneCleanupInterval: TimeAmount = .minutes(10)
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Cluster protocol versioning
 

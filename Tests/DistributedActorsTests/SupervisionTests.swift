@@ -522,7 +522,7 @@ final class SupervisionTests: ActorSystemXCTestCase {
                     }
                 )
 
-                return _Behavior<String>.receiveSpecificSignal(Signals._ChildTerminated.self) { context, terminated in
+                return _Behavior<String>.receiveSpecificSignal(_Signals._ChildTerminated.self) { context, terminated in
                     pp.tell("Prevented escalation to top level in \(context.myself.path), terminated: \(terminated)")
 
                     return .same // stop the failure from reaching the guardian and terminating the system
@@ -600,7 +600,7 @@ final class SupervisionTests: ActorSystemXCTestCase {
                     }
                 )
 
-                return _Behavior<String>.receiveSpecificSignal(Signals._ChildTerminated.self) { context, terminated in
+                return _Behavior<String>.receiveSpecificSignal(_Signals._ChildTerminated.self) { context, terminated in
                     pp.tell("Prevented escalation to top level in \(context.myself.path), terminated: \(terminated)")
 
                     return .same // stop the failure from reaching the guardian and terminating the system
@@ -779,7 +779,7 @@ final class SupervisionTests: ActorSystemXCTestCase {
 
             return .same
         }.receiveSignal { _, signal in
-            if let terminated = signal as? Signals.Terminated {
+            if let terminated = signal as? _Signals.Terminated {
                 parentProbe.tell("terminated:\(terminated.address.name)")
                 try failureMode.fail()
             }
@@ -891,7 +891,7 @@ final class SupervisionTests: ActorSystemXCTestCase {
             try failureMode.fail()
             return .same
         }.receiveSignal { _, signal in
-            if signal is Signals._PreRestart {
+            if signal is _Signals._PreRestart {
                 p.tell("preRestart")
             }
             return .same
@@ -923,7 +923,7 @@ final class SupervisionTests: ActorSystemXCTestCase {
             return .same
         }.receiveSignal { _, signal in
 
-            if signal is Signals._PreRestart {
+            if signal is _Signals._PreRestart {
                 preRestartCounter += 1
                 p.tell("preRestart-\(preRestartCounter)")
                 try failureMode.fail()

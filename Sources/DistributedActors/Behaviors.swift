@@ -97,9 +97,9 @@ extension _Behavior {
     }
 
     func receiveSignalAsync0(
-        _ handleSignal: @Sendable @escaping (_ActorContext<Message>, Signal) async throws -> _Behavior<Message>,
+        _ handleSignal: @Sendable @escaping (_ActorContext<Message>, _Signal) async throws -> _Behavior<Message>,
         context: _ActorContext<Message>,
-        signal: Signal
+        signal: _Signal
     ) -> _Behavior<Message> {
         .setup { context in
             let loop = context.system._eventLoopGroup.next()
@@ -125,10 +125,10 @@ extension _Behavior {
     @usableFromInline
     func receiveSignalAsync(
         context: _ActorContext<Message>,
-        signal: Signal,
+        signal: _Signal,
         handleSignal: @escaping @Sendable(
             _ActorContext<Message>,
-            Signal
+            _Signal
         ) async throws -> _Behavior<Message>
     ) -> _Behavior<Message> {
         .setup { context in
@@ -237,7 +237,7 @@ public extension _Behavior {
     static func stop(_ postStop: @escaping (_ActorContext<Message>) throws -> Void) -> _Behavior<Message> {
         _Behavior.stop(
             postStop: _Behavior.receiveSignal { context, signal in
-                if signal is Signals._PostStop {
+                if signal is _Signals._PostStop {
                     try postStop(context)
                 }
                 return .stop // will be ignored
@@ -294,7 +294,7 @@ public extension _Behavior {
     ///
     /// - SeeAlso: `Signals` for a listing of signals that may be handled using this behavior.
     /// - SeeAlso: `receiveSpecificSignal` for convenience version of this behavior, simplifying handling a single type of `Signal`.
-    func receiveSignal(_ handle: @escaping (_ActorContext<Message>, Signal) throws -> _Behavior<Message>) -> _Behavior<Message> {
+    func receiveSignal(_ handle: @escaping (_ActorContext<Message>, _Signal) throws -> _Behavior<Message>) -> _Behavior<Message> {
         _Behavior(
             underlying: .signalHandling(
                 handleMessage: self,
@@ -304,7 +304,7 @@ public extension _Behavior {
     }
 
     func _receiveSignalAsync(
-        _ handle: @escaping @Sendable(_ActorContext<Message>, Signal) async throws -> _Behavior<Message>
+        _ handle: @escaping @Sendable(_ActorContext<Message>, _Signal) async throws -> _Behavior<Message>
     ) -> _Behavior<Message> {
         _Behavior(
             underlying: .signalHandlingAsync(
@@ -335,7 +335,7 @@ public extension _Behavior {
     ///
     /// - SeeAlso: `Signals` for a listing of signals that may be handled using this behavior.
     /// - SeeAlso: `receiveSpecificSignal` for convenience version of this behavior, simplifying handling a single type of `Signal`.
-    static func receiveSignal(_ handle: @escaping (_ActorContext<Message>, Signal) throws -> _Behavior<Message>) -> _Behavior<Message> {
+    static func receiveSignal(_ handle: @escaping (_ActorContext<Message>, _Signal) throws -> _Behavior<Message>) -> _Behavior<Message> {
         _Behavior(
             underlying: .signalHandling(
                 handleMessage: .unhandled,
@@ -359,7 +359,7 @@ public extension _Behavior {
     ///
     /// - SeeAlso: `Signals` for a listing of signals that may be handled using this behavior.
     /// - SeeAlso: `receiveSignal` which allows receiving multiple types of signals.
-    func receiveSpecificSignal<SpecificSignal: Signal>(_: SpecificSignal.Type, _ handle: @escaping (_ActorContext<Message>, SpecificSignal) throws -> _Behavior<Message>) -> _Behavior<Message> {
+    func receiveSpecificSignal<SpecificSignal: _Signal>(_: SpecificSignal.Type, _ handle: @escaping (_ActorContext<Message>, SpecificSignal) throws -> _Behavior<Message>) -> _Behavior<Message> {
         // TODO: better type printout so we know we only handle SpecificSignal with this one
         self.receiveSignal { context, signal in
             switch signal {
@@ -386,7 +386,7 @@ public extension _Behavior {
     ///
     /// - SeeAlso: `Signals` for a listing of signals that may be handled using this behavior.
     /// - SeeAlso: `receiveSignal` which allows receiving multiple types of signals.
-    static func receiveSpecificSignal<SpecificSignal: Signal>(_: SpecificSignal.Type, _ handle: @escaping (_ActorContext<Message>, SpecificSignal) throws -> _Behavior<Message>) -> _Behavior<Message> {
+    static func receiveSpecificSignal<SpecificSignal: _Signal>(_: SpecificSignal.Type, _ handle: @escaping (_ActorContext<Message>, SpecificSignal) throws -> _Behavior<Message>) -> _Behavior<Message> {
         _Behavior(
             underlying: .signalHandling(
                 handleMessage: .unhandled,
@@ -409,7 +409,7 @@ public extension _Behavior {
 internal extension _Behavior {
     /// Allows handling signals such as termination or lifecycle events.
     @usableFromInline
-    static func signalHandling(handleMessage: _Behavior<Message>, handleSignal: @escaping (_ActorContext<Message>, Signal) throws -> _Behavior<Message>) -> _Behavior<Message> {
+    static func signalHandling(handleMessage: _Behavior<Message>, handleSignal: @escaping (_ActorContext<Message>, _Signal) throws -> _Behavior<Message>) -> _Behavior<Message> {
         _Behavior(underlying: .signalHandling(handleMessage: handleMessage, handleSignal: handleSignal))
     }
 
@@ -417,7 +417,7 @@ internal extension _Behavior {
     @usableFromInline
     static func signalHandlingAsync(
         handleMessage: _Behavior<Message>,
-        handleSignal: @escaping @Sendable(_ActorContext<Message>, Signal) async throws -> _Behavior<Message>
+        handleSignal: @escaping @Sendable(_ActorContext<Message>, _Signal) async throws -> _Behavior<Message>
     ) -> _Behavior<Message> {
         _Behavior(underlying: .signalHandlingAsync(handleMessage: handleMessage, handleSignal: handleSignal))
     }
@@ -473,11 +473,11 @@ internal enum __Behavior<Message: ActorMessage> {
 
     indirect case signalHandling(
         handleMessage: _Behavior<Message>,
-        handleSignal: (_ActorContext<Message>, Signal) throws -> _Behavior<Message>
+        handleSignal: (_ActorContext<Message>, _Signal) throws -> _Behavior<Message>
     )
     indirect case signalHandlingAsync(
         handleMessage: _Behavior<Message>,
-        handleSignal: @Sendable(_ActorContext<Message>, Signal) async throws -> _Behavior<Message>
+        handleSignal: @Sendable(_ActorContext<Message>, _Signal) async throws -> _Behavior<Message>
     )
     case same
     case ignore
@@ -545,7 +545,7 @@ open class _Interceptor<Message: ActorMessage> {
     }
 
     @inlinable
-    open func interceptSignal(target: _Behavior<Message>, context: _ActorContext<Message>, signal: Signal) throws -> _Behavior<Message> {
+    open func interceptSignal(target: _Behavior<Message>, context: _ActorContext<Message>, signal: _Signal) throws -> _Behavior<Message> {
         // no-op interception by default; interceptors may be interested only in the signals or only in messages after all
         try target.interpretSignal(context: context, signal: signal)
     }
@@ -649,7 +649,7 @@ public extension _Behavior {
 
     /// Attempts interpreting signal using the current behavior, or returns `_Behavior.unhandled` if no `_Behavior.signalHandling` was found.
     @inlinable
-    func interpretSignal(context: _ActorContext<Message>, signal: Signal) throws -> _Behavior<Message> {
+    func interpretSignal(context: _ActorContext<Message>, signal: _Signal) throws -> _Behavior<Message> {
         // This switch does not use a `default:` clause on purpose!
         // This is to enforce having to consider consider how a signal should be interpreted if a new behavior case is added.
         switch self.underlying {

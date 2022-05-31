@@ -61,7 +61,7 @@ final class DiscoveryShell {
             case .stop(let reason):
                 return self.stop(reason: reason, context: context)
             }
-        }.receiveSpecificSignal(Signals._PostStop.self) { context, _ in
+        }.receiveSpecificSignal(_Signals._PostStop.self) { context, _ in
             self.stop(reason: .cancellationRequested, context: context)
         }
     }
