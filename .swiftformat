@@ -1,0 +1,25 @@
+# file options
+
+--swiftversion 5.2
+--exclude .build
+--exclude "**/*.pb.swift"
+--exclude "**/*+GenActor.swift"
+--exclude "**/*+GenCodable.swift"
+--exclude "**/*+XPCProtocolStub.swift"
+--disable redundantParens # https://github.com/nicklockwood/SwiftFormat/issues/638
+
+# format options
+
+--ifdef no-indent
+--patternlet inline
+--self insert
+--stripunusedargs closure-only
+--wraparguments before-first
+
+# rules
+
+--disable blankLinesAroundMark
+# since we sometimes MUST invoke MetaType.init explicitly (and not doing so is a compile error)
+--disable redundantInit
+--disable redundantGet
+--disable redundantReturn

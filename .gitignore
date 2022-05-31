@@ -1,0 +1,38 @@
+.DS_Store
+.swift-version
+
+*.orig
+*.app
+
+Instruments/ActorInstruments/ActorInstruments.xcodeproj/xcuserdata
+Instruments/ActorInstruments/build/
+Instruments/ActorInstruments/ActorInstruments.xcodeproj/project.xcworkspace/xcuserdata
+Instruments/ActorInstruments/build
+
+Samples/swift-distributed-actors-samples.xcodeproj
+
+/.build
+/Samples/.build
+/.SourceKitten
+/Packages
+.xcode
+*.app
+/*.xcodeproj
+SwiftDistributedActors.xcworkspace
+.xcode
+.idea
+IntegrationTests/tests_01_cluster/.build
+
+# rendered docs output dirs
+/reference/
+/api/
+.swiftpm/
+Package.resolved
+
+.GenActorInstruments-soundness.instrpkg
+
+# DocC generated files
+.docc-build
+
+# d files
+*.d
