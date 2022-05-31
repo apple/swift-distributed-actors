@@ -27,6 +27,10 @@ else
   version="${short_version}-dev"
   doc_link_version="main" # since dev is latest development we point to main
 fi
+
+# FIXME: hardcoded version for now
+version="1.0.0-beta"
+
 echo "Project version: ${version}"
 
 
@@ -38,20 +42,24 @@ modules=(
 # Build documentation
 
 cd $root_path
-mkdir -p $root_path/.build/symbol-graphs
-
-declare -r SWIFT="$TOOLCHAIN/usr/bin/swift"
 
 for module in "${modules[@]}"; do
-  echo "Building symbol-graph for module [$module]..."
-  $SWIFT build --target $module \
-    -Xswiftc -emit-symbol-graph \
-    -Xswiftc -emit-symbol-graph-dir \
-    -Xswiftc $root_path/.build/symbol-graphs
+  xcrun swift package \
+        --allow-writing-to-directory ./docs/ \
+        generate-documentation \
+        --target "$module" \
+        --output-path ./docs/$version \
+        --transform-for-static-hosting \
+        --hosting-base-path swift-distributed-actors/$version
 
-  echo "Done building module [$module], moving symbols..."
-  mkdir -p $root_path/.build/swift-docc-symbol-graphs
-  mv $root_path/.build/symbol-graphs/$module* $root_path/.build/swift-docc-symbol-graphs
 done
+
+rm -rf /tmp/$version
+cp -R docs/$version /tmp/
+git clean -fdx
+git checkout -f gh-pages
+cp -R /tmp/$version .
+
+git add $version; ci -m "Update documentation: $version"
 
 echo "Done."
