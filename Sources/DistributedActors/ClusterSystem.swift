@@ -880,7 +880,7 @@ public extension ClusterSystem {
         }
         self.namingLock.withLockVoid {
             self._managedRefs.removeValue(forKey: id) // TODO: should not be necessary in the future
-            self._managedDistributedActors.removeActor(identifiedBy: id)
+            _ = self._managedDistributedActors.removeActor(identifiedBy: id)
         }
     }
 }

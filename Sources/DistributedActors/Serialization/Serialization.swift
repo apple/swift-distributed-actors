@@ -39,6 +39,7 @@ import Foundation // for Codable
 public class Serialization {
     private let log: Logger
     internal let settings: Serialization.Settings
+    internal let tagSettings: ActorTagSettings
 
     /// Allocator used by the serialization infrastructure.
     /// Public only for access by other serialization work performed e.g. by other transports.
@@ -147,6 +148,7 @@ public class Serialization {
         settings.register(VersionVector.self, serializerID: ._ProtobufRepresentable)
 
         self.settings = settings
+        self.tagSettings = system.settings.tags
         self.metrics = system.metrics
 
         self.allocator = self.settings.allocator

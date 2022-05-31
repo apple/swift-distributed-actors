@@ -103,36 +103,48 @@ public struct ActorAddress: @unchecked Sendable {
     public let incarnation: ActorIncarnation
 
     /// :nodoc:
-    public init(local node: UniqueNode, path: ActorPath, incarnation: ActorIncarnation) {
+    public init(local node: UniqueNode, path: ActorPath?, incarnation: ActorIncarnation) {
         self._location = .local(node)
         self.tags = ActorTags()
         self.incarnation = incarnation
-        self.tags[ActorTags.path] = path
+        if let path {
+            self.tags[ActorTags.path] = path
+        }
     }
 
     /// :nodoc:
-    public init(remote node: UniqueNode, path: ActorPath, incarnation: ActorIncarnation) {
+    public init(remote node: UniqueNode, path: ActorPath?, incarnation: ActorIncarnation) {
         self._location = .remote(node)
         self.incarnation = incarnation
         self.tags = ActorTags()
-        self.tags[ActorTags.path] = path
+        if let path {
+            self.tags[ActorTags.path] = path
+        }
     }
 
-//    /// :nodoc:
-//    public init(local node: UniqueNode, path: ActorPath, incarnation: ActorIncarnation) {
-//        self._location = .local(node)
-//        self.tags = ActorTags()
-//        self.incarnation = incarnation
-//        self.tags[.path] = path
-//    }
-//
-//    /// :nodoc:
-//    public init(remote node: UniqueNode, path: ActorPath, incarnation: ActorIncarnation) {
-//        self._location = .remote(node)
-//        self.incarnation = incarnation
-//        self.tags = ActorTags()
-//        self.tags[.path] = path
-//    }
+    /// :nodoc:
+    public init<Act>(local node: UniqueNode, type: Act.Type, incarnation: ActorIncarnation)
+            where Act: DistributedActor, Act.ActorSystem == ClusterSystem {
+        self._location = .local(node)
+        self.tags = ActorTags()
+        self.incarnation = incarnation
+        self.tags = ActorTags()
+        // TODO: avoid mangling names on every spawn?
+        if let mangledName = _mangledTypeName(type) {
+            self.tags[ActorTags.type] = .init(mangledName: mangledName)
+        }
+    }
+
+    /// :nodoc:
+    public init(remote node: UniqueNode, type: (some DistributedActor).Type, incarnation: ActorIncarnation) {
+        self._location = .remote(node)
+        self.incarnation = incarnation
+        self.tags = ActorTags()
+        // TODO: avoid mangling names on every spawn?
+        if let mangledName = _mangledTypeName(type) {
+            self.tags[ActorTags.type] = .init(mangledName: mangledName)
+        }
+    }
 }
 
 extension ActorAddress: Hashable {
@@ -768,6 +780,70 @@ extension UniqueNodeID: CustomStringConvertible {
 public extension UniqueNodeID {
     static func random() -> UniqueNodeID {
         UniqueNodeID(UInt64.random(in: 1 ... .max))
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Codable ActorAddress
+
+extension ActorAddress: Codable {
+    public func encode(to encoder: Encoder) throws {
+        let tagSettings = encoder.actorSerializationContext?.system.settings.tags
+        let encodeCustomTags: (ActorAddress, inout KeyedEncodingContainer<ActorCoding.TagKeys>) throws -> () =
+                tagSettings?.encodeCustomTags ?? ({ _, _ in () })
+        
+        var container = encoder.container(keyedBy: ActorCoding.CodingKeys.self)
+        try container.encode(self.uniqueNode, forKey: ActorCoding.CodingKeys.node)
+        
+        if !self.tags.isEmpty {
+            var tagsContainer = container.nestedContainer(keyedBy: ActorCoding.TagKeys.self, forKey: ActorCoding.CodingKeys.tags)
+            
+            if (tagSettings == nil || tagSettings!.propagateTags.contains(AnyActorTagKey(ActorTags.path))),
+               let value = self.tags[ActorTags.path] {
+                try tagsContainer.encode(value, forKey: ActorCoding.TagKeys.path)
+            }
+            if (tagSettings == nil || tagSettings!.propagateTags.contains(AnyActorTagKey(ActorTags.type))),
+               let value = self.tags[ActorTags.type] {
+                try tagsContainer.encode(value, forKey: ActorCoding.TagKeys.type)
+            }
+            
+            try encodeCustomTags(self, &tagsContainer)
+        }
+
+        try container.encode(self.incarnation, forKey: ActorCoding.CodingKeys.incarnation)
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: ActorCoding.CodingKeys.self)
+        let node = try container.decode(UniqueNode.self, forKey: ActorCoding.CodingKeys.node)
+        let incarnation = try container.decode(UInt32.self, forKey: ActorCoding.CodingKeys.incarnation)
+        
+        let path = try container.decodeIfPresent(ActorPath.self, forKey: ActorCoding.CodingKeys.path)
+
+        self.init(remote: node, path: path, incarnation: ActorIncarnation(incarnation))
+        
+        // Decode any tags:
+        if let tagsContainer = try? container.nestedContainer(keyedBy: ActorCoding.TagKeys.self, forKey: ActorCoding.CodingKeys.tags) {
+            // tags container found, try to decode all known tags:
+            if let path = try tagsContainer.decodeIfPresent(ActorPath.self, forKey: .path) {
+                self.tags[ActorTags.path] = path
+            }
+            
+            if let context = decoder.actorSerializationContext {
+                let decodeCustomTags = context.system.settings.tags.decodeCustomTags
+                
+                for tag in try decodeCustomTags(tagsContainer) {
+                    func store<K: ActorTagKey>(_: K.Type) {
+                        if let value = tag.value as? K.Value {
+                            self.tags[K.self] = value
+                        }
+                    }
+                    _openExistential(tag.keyType, do: store)
+                }
+            }
+
+            
+        }
     }
 }
 
