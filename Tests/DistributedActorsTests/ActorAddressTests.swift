@@ -149,58 +149,58 @@ final class ActorAddressTests: XCTestCase {
         var a = try ActorPath._user.appending("a").makeRemoteAddress(on: node, incarnation: 1)
         let addressWithoutTestTag = a
         a.tags[ActorTags.test] = "test-value"
-        
+
         let data = try JSONEncoder().encode(a) // should skip the test tag, it does not know how to encode it
         let serializedJson = String(data: data, encoding: .utf8)!
-        
+
         serializedJson.shouldEqual("""
-                                   {"incarnation":1,"node":["sact","one","127.0.0.1",1234,11111],"tags":{"path":{"path":["user","a"]}}}
-                                   """)
+        {"incarnation":1,"node":["sact","one","127.0.0.1",1234,11111],"tags":{"path":{"path":["user","a"]}}}
+        """)
         let back = try JSONDecoder().decode(ActorAddress.self, from: data)
         back.shouldEqual(addressWithoutTestTag)
     }
-    
+
     func test_serializing_ActorAddress_skipCustomTag() async throws {
         let node = UniqueNode(systemName: "one", host: "127.0.0.1", port: 1234, nid: UniqueNodeID(11111))
         var a = try ActorPath._user.appending("a").makeRemoteAddress(on: node, incarnation: 1)
         a.tags[ActorTags.test] = "test-value"
-        
+
         let system = await ClusterSystem()
         defer { system.shutdown() }
-        
+
         let serialized = try system.serialization.serialize(a)
         let serializedJson = String(data: serialized.buffer.readData(), encoding: .utf8)!
-        
+
         serializedJson.shouldEqual("""
-                                   {"incarnation":1,"node":["sact","one","127.0.0.1",1234,11111],"tags":{"path":{"path":["user","a"]}}}
-                                   """)
+        {"incarnation":1,"node":["sact","one","127.0.0.1",1234,11111],"tags":{"path":{"path":["user","a"]}}}
+        """)
     }
-    
+
     func test_serializing_ActorAddress_propagateCustomTag() async throws {
         let node = UniqueNode(systemName: "one", host: "127.0.0.1", port: 1234, nid: UniqueNodeID(11111))
         var a = try ActorPath._user.appending("a").makeRemoteAddress(on: node, incarnation: 1)
         a.tags[ActorTags.test] = "test-value"
-        
+
         let system = await ClusterSystem("Kappa") { settings in
             settings.tags.encodeCustomTags = { identity, container in
                 try container.encodeIfPresent(identity.tags[ActorTags.test], forKey: ActorCoding.TagKeys.custom(ActorTags.TestTag.Key.id))
             }
-            
+
             settings.tags.decodeCustomTags = { container in
                 var tags: [any ActorTag] = []
                 if let value = try container.decodeIfPresent(String.self, forKey: .custom(ActorTags.TestTag.Key.id)) {
                     tags.append(ActorTags.TestTag(value: value))
                 }
-                
+
                 return tags
             }
         }
         let serialized = try system.serialization.serialize(a)
         let serializedJson = String(data: serialized.buffer.readData(), encoding: .utf8)!
-        
+
         serializedJson.shouldEqual("""
-                                   {"incarnation":1,"node":["sact","one","127.0.0.1",1234,11111],"tags":{"path":{"path":["user","a"]},"\(ActorTags.test.id)":"\(a.tags[ActorTags.test]!)"}}
-                                   """)
+        {"incarnation":1,"node":["sact","one","127.0.0.1",1234,11111],"tags":{"path":{"path":["user","a"]},"\(ActorTags.test.id)":"\(a.tags[ActorTags.test]!)"}}
+        """)
     }
 }
 
@@ -212,7 +212,7 @@ extension ActorTags {
             public static let id: String = "$test"
             public typealias Value = String
         }
+
         public let value: Key.Value
     }
 }
-

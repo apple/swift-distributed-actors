@@ -28,12 +28,12 @@ public enum ActorCoding {
         case tags
         case incarnation
     }
-    
+
     public enum TagKeys: CodingKey {
         case path
         case type
         case custom(String)
-        
+
         public init?(stringValue: String) {
             switch stringValue {
             case "path": self = .path
@@ -41,15 +41,15 @@ public enum ActorCoding {
             default: self = .custom(stringValue)
             }
         }
-        
+
         public var intValue: Int? {
             return nil
         }
-        
+
         public init?(intValue: Int) {
             return nil
         }
-        
+
         public var stringValue: String {
             switch self {
             case .path: return "path"

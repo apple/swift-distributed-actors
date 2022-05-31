@@ -37,7 +37,7 @@ public struct ClusterSystemSettings {
     public var actor: ActorSettings = .default
 
     public var tags: ActorTagSettings = .default
-    
+
     public var plugins: PluginsSettings = .default
 
     public var receptionist: ReceptionistSettings = .default

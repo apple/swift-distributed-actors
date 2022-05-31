@@ -101,6 +101,7 @@ extension ActorTags {
             static let id: String = "path"
             typealias Value = ActorPath
         }
+
         let value: Key.Value
     }
 }
@@ -109,20 +110,21 @@ extension ActorTags {
 // MARK: Known tag: type
 
 extension ActorTags {
-    static let `type` = ActorTypeTag.Key.self
+    static let type = ActorTypeTag.Key.self
     struct ActorTypeTag: ActorTag {
         struct Key: ActorTagKey {
             static let id: String = "$type"
             typealias Value = ActorTypeTagValue
         }
+
         let value: Key.Value
     }
-    
+
     // FIXME: improve representation to be more efficient
     struct ActorTypeTagValue: Codable {
         let mangledName: String
         var simpleName: String {
-            _typeByName(mangledName).map { "\($0)" } ?? mangledName
+            _typeByName(self.mangledName).map { "\($0)" } ?? self.mangledName
         }
     }
 }

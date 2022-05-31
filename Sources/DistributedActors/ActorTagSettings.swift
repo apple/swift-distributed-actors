@@ -39,7 +39,7 @@ public struct ActorTagSettings {
 
     // TODO: expose this eventually
     internal var tagOnInit: [TagOnInit] = []
-    
+
     /// What type of tags, known and defined by the cluster system itself, should be automatically propagated.
     /// Other types of tags, such as user-defined tags, must be propagated by declaring apropriate functions for `encodeCustomTags` and `decodeCustomTags`.
     internal var propagateTags: Set<AnyActorTagKey> = [
@@ -48,8 +48,8 @@ public struct ActorTagSettings {
     ]
 
     // TODO: expose this eventually
-    internal var encodeCustomTags: (ActorAddress, inout KeyedEncodingContainer<ActorCoding.TagKeys>) throws -> () = { _, _ in () }
-    
+    internal var encodeCustomTags: (ActorAddress, inout KeyedEncodingContainer<ActorCoding.TagKeys>) throws -> Void = { _, _ in () }
+
     // TODO: expose this eventually
     internal var decodeCustomTags: ((KeyedDecodingContainer<ActorCoding.TagKeys>) throws -> [any ActorTag]) = { _ in [] }
 }
