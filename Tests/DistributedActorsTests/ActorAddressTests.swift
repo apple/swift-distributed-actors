@@ -205,7 +205,7 @@ final class ActorAddressTests: XCTestCase {
         // TODO: improve serialization format of identities to be more compact
         serializedJson.shouldContain(#""incarnation":1"#)
         serializedJson.shouldContain(#""node":["sact","one","127.0.0.1",1234,11111]"#)
-        serializedJson.shouldContain(#""tags":{"path":{"path":["user","a"]}"#)
+        serializedJson.shouldContain(#""path":{"path":["user","a"]}"#)
         serializedJson.shouldContain("\"\(ActorTags.test.id)\":\"\(a.tags[ActorTags.test]!)\"")
     }
 }

@@ -200,7 +200,8 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
     /// The name is useful for debugging cross system communication.
     ///
     /// - Faults: when configuration closure performs very illegal action, e.g. reusing a serializer identifier
-    public convenience init(_ name: String, configuredWith configureSettings: (inout ClusterSystemSettings) -> Void = { _ in () }) async {
+    public convenience init(_ name: String,
+                            configuredWith configureSettings: @Sendable (inout ClusterSystemSettings) -> Void = { _ in () }) async {
         var settings = ClusterSystemSettings(name: name)
         configureSettings(&settings)
 
