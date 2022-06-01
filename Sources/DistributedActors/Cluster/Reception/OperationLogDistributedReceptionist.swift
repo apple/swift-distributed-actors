@@ -636,7 +636,7 @@ extension OpLogDistributedReceptionist {
                 try await peerReceptionistRef.ackOps(until: latestAppliedSeqNrFromPeer, by: self)
             } catch {
                 switch error {
-                case RemoteCallError.systemAlreadyShutDown:
+                case RemoteCallError.clusterAlreadyShutDown:
                     // ignore silently; this often happens during tests when we terminate systems while interacting with them
                     ()
                 default:

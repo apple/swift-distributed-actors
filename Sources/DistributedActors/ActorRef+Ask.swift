@@ -71,11 +71,11 @@ extension _ActorRef: ReceivesQuestions {
         _ makeQuestion: @escaping (_ActorRef<Answer>) -> Question
     ) -> AskResponse<Answer> {
         guard let system = self._system else {
-            return .completed(.failure(RemoteCallError.systemAlreadyShutDown))
+            return .completed(.failure(RemoteCallError.clusterAlreadyShutDown))
         }
 
         if system.isShuttingDown {
-            return .completed(.failure(RemoteCallError.systemAlreadyShutDown))
+            return .completed(.failure(RemoteCallError.clusterAlreadyShutDown))
         }
 
         do {
