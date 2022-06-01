@@ -152,7 +152,7 @@ public enum _Signals {
             super.init(address: address, existenceConfirmed: true)
         }
 
-        public override var description: String {
+        override public var description: String {
             let reason: String
             if case .some(let r) = self.escalation {
                 reason = ", escalation: \(r)"

@@ -15,12 +15,12 @@
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Cluster Member
 
-public extension Cluster {
+extension Cluster {
     /// A `Member` is a node that is participating in a clustered system.
     ///
     /// It carries `Cluster.MemberStatus` and reachability information.
     /// Its identity is the underlying `UniqueNode`, other fields are not taken into account when comparing members.
-    struct Member: Hashable {
+    public struct Member: Hashable {
         /// Unique node of this cluster member.
         public let uniqueNode: UniqueNode
 
@@ -123,7 +123,7 @@ extension Cluster.Member: Equatable {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Cluster.Member Ordering
 
-public extension Cluster.Member {
+extension Cluster.Member {
     /// Orders nodes by their `.upNumber` which is assigned by the leader when moving a node from joining to up.
     /// This ordering is useful to find the youngest or "oldest" node.
     ///
@@ -131,13 +131,13 @@ public extension Cluster.Member {
     /// few core nodes which become "old" and tons of ad-hoc spun up nodes which are always "young" as they are spawned
     /// and stopped on demand. Putting certain types of workloads onto "old(est)" nodes in such clusters has the benefit
     /// of most likely not needing to balance/move work off them too often (in face of many ad-hoc worker spawns).
-    static let ageOrdering: (Cluster.Member, Cluster.Member) -> Bool = { l, r in
+    public static let ageOrdering: (Cluster.Member, Cluster.Member) -> Bool = { l, r in
         (l._upNumber ?? 0) < (r._upNumber ?? 0)
     }
 
     /// An ordering by the members' `node` properties, e.g. 1.1.1.1 is "lower" than 2.2.2.2.
     /// This ordering somewhat unusual, however always consistent and used to select a leader -- see `LowestReachableMember`.
-    static let lowestAddressOrdering: (Cluster.Member, Cluster.Member) -> Bool = { l, r in
+    public static let lowestAddressOrdering: (Cluster.Member, Cluster.Member) -> Bool = { l, r in
         l.uniqueNode < r.uniqueNode
     }
 }
@@ -159,9 +159,9 @@ extension Cluster.Member: Codable {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Cluster.MemberStatus
 
-public extension Cluster {
+extension Cluster {
     /// Describes the status of a member within the clusters lifecycle.
-    enum MemberStatus: String, CaseIterable, Comparable {
+    public enum MemberStatus: String, CaseIterable, Comparable {
         /// Describes a node which is connected to at least one other member in the cluster,
         /// it may want to serve some traffic, however should await the leader moving it to .up
         /// before it takes on serious work.
@@ -213,33 +213,33 @@ public extension Cluster {
     }
 }
 
-public extension Cluster.MemberStatus {
+extension Cluster.MemberStatus {
     /// Convenience function to check if a status is `.joining`
-    var isJoining: Bool {
+    public var isJoining: Bool {
         self == .joining
     }
 
     /// Convenience function to check if a status is `.up`
-    var isUp: Bool {
+    public var isUp: Bool {
         self == .up
     }
 
     /// Convenience function to check if a status is `.leaving`
-    var isLeaving: Bool {
+    public var isLeaving: Bool {
         self == .leaving
     }
 
     /// Convenience function to check if a status is `.down`
-    var isDown: Bool {
+    public var isDown: Bool {
         self == .down
     }
 
-    func isAtLeast(_ status: Cluster.MemberStatus) -> Bool {
+    public func isAtLeast(_ status: Cluster.MemberStatus) -> Bool {
         self >= status
     }
 
     /// Convenience function to check if a status is `.removed`
-    var isRemoved: Bool {
+    public var isRemoved: Bool {
         self == .removed
     }
 }
@@ -251,12 +251,12 @@ extension Cluster.MemberStatus: Codable {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Cluster.MemberStatus Ordering
 
-public extension Cluster.MemberStatus {
-    static let lifecycleOrdering: (Cluster.Member, Cluster.Member) -> Bool = { $0.status < $1.status }
+extension Cluster.MemberStatus {
+    public static let lifecycleOrdering: (Cluster.Member, Cluster.Member) -> Bool = { $0.status < $1.status }
 }
 
-public extension Cluster.MemberStatus {
-    static func < (lhs: Cluster.MemberStatus, rhs: Cluster.MemberStatus) -> Bool {
+extension Cluster.MemberStatus {
+    public static func < (lhs: Cluster.MemberStatus, rhs: Cluster.MemberStatus) -> Bool {
         switch lhs {
         case .joining:
             return rhs != .joining
@@ -275,7 +275,7 @@ public extension Cluster.MemberStatus {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Cluster.MemberReachability
 
-public extension Cluster {
+extension Cluster {
     /// Reachability indicates a failure detectors assessment of the member node's reachability,
     /// i.e. whether or not the node is responding to health check messages.
     ///
@@ -283,7 +283,7 @@ public extension Cluster {
     /// and `.unreachable` states multiple times during the lifetime of a member.
     ///
     /// - SeeAlso: `SWIM` for a distributed failure detector implementation which may issue unreachable events.
-    enum MemberReachability: String, Equatable {
+    public enum MemberReachability: String, Equatable {
         /// The member is reachable and responding to failure detector probing properly.
         case reachable
         /// Failure detector has determined this node as not reachable.
@@ -292,12 +292,12 @@ public extension Cluster {
     }
 }
 
-public extension Cluster.MemberReachability {
-    var isReachable: Bool {
+extension Cluster.MemberReachability {
+    public var isReachable: Bool {
         self == .reachable
     }
 
-    var isUnreachable: Bool {
+    public var isUnreachable: Bool {
         self == .unreachable
     }
 }

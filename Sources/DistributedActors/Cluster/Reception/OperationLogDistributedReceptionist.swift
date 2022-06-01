@@ -346,7 +346,8 @@ extension OpLogDistributedReceptionist: LifecycleWatch {
     public nonisolated func subscribe<Guest>(
         to key: DistributedReception.Key<Guest>
     ) async -> DistributedReception.GuestListing<Guest>
-        where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem {
+        where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem
+    {
         let res = await self.whenLocal { _ in
             DistributedReception.GuestListing<Guest>(receptionist: self, key: key)
         }
@@ -379,14 +380,16 @@ extension OpLogDistributedReceptionist: LifecycleWatch {
     }
 
     public nonisolated func lookup<Guest>(_ key: DistributedReception.Key<Guest>) async -> Set<Guest>
-        where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem {
+        where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem
+    {
         await self.whenLocal { __secretlyKnownToBeLocal in
             await __secretlyKnownToBeLocal._lookup(key)
         } ?? []
     }
 
     private func _lookup<Guest>(_ key: DistributedReception.Key<Guest>) async -> Set<Guest>
-        where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem {
+        where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem
+    {
         let registrations = self.storage.registrations(forKey: key.asAnyKey) ?? []
 
         // self.instrumentation.listingPublished(key: message._key, subscribers: 1, registrations: registrations.count) // TODO(distributed): make the instrumentation calls compatible with distributed actor based types
@@ -513,7 +516,8 @@ extension OpLogDistributedReceptionist {
         // we will do so below in any case, regardless if we are behind or not; See (4) for ACKing the peer
         for replica in push.observedSeqNrs.replicaIDs
             where replica != peerReplicaId && replica != myselfReplicaID &&
-            self.observedSequenceNrs[replica] < push.observedSeqNrs[replica] {
+            self.observedSequenceNrs[replica] < push.observedSeqNrs[replica]
+        {
             switch replica.storage {
             case .actorAddress(let id):
                 self.sendAckOps(receptionistID: id)
@@ -687,7 +691,8 @@ extension OpLogDistributedReceptionist {
             /// - if we are NOT in the middle of receiving ops, we share our observed versions and ack as means of spreading information about the seen SeqNrs
             ///   - this may cause the other peer to pull (ack) from any other peer receptionist, if it notices it is "behind" with regards to any of them. // FIXME: what if a peer notices "twice" so we also need to prevent a timer from resending that ack?
             if let periodicAckAllowedAgainDeadline = self.nextPeriodicAckPermittedDeadline[peer.id],
-                periodicAckAllowedAgainDeadline.hasTimeLeft() {
+               periodicAckAllowedAgainDeadline.hasTimeLeft()
+            {
                 // we still cannot send acks to this peer, it is in the middle of a message exchange with us already
                 continue
             }
@@ -963,7 +968,7 @@ extension OpLogDistributedReceptionist {
             super.init()
         }
 
-        public override func encode(to encoder: Encoder) throws {
+        override public func encode(to encoder: Encoder) throws {
             var container = encoder.container(keyedBy: CodingKeys.self)
             try container.encode(self.peer, forKey: .peer)
             try container.encode(self.observedSeqNrs, forKey: .observedSeqNrs)
@@ -1012,7 +1017,7 @@ extension OpLogDistributedReceptionist {
             super.init()
         }
 
-        public override func encode(to encoder: Encoder) throws {
+        override public func encode(to encoder: Encoder) throws {
             var container = encoder.container(keyedBy: CodingKeys.self)
             try container.encode(self.until, forKey: .until)
             try container.encode(self.otherObservedSeqNrs, forKey: .otherObservedSeqNrs)

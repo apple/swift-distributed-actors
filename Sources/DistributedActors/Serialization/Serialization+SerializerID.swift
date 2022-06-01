@@ -14,9 +14,9 @@
 
 import SWIM
 
-public extension Serialization {
+extension Serialization {
     /// Used to identify a type (or instance) of a `Serializer`.
-    struct SerializerID: ExpressibleByIntegerLiteral, Hashable, Comparable, CustomStringConvertible {
+    public struct SerializerID: ExpressibleByIntegerLiteral, Hashable, Comparable, CustomStringConvertible {
         public typealias IntegerLiteralType = UInt32
 
         public let value: UInt32
@@ -58,29 +58,29 @@ public extension Serialization {
     }
 }
 
-public extension Optional where Wrapped == Serialization.SerializerID {
+extension Optional where Wrapped == Serialization.SerializerID {
     /// Use the default serializer, as configured in `Serialization.Settings.defaultSerializerID`.
-    static let `default`: Serialization.SerializerID? = nil
+    public static let `default`: Serialization.SerializerID? = nil
 }
 
-public extension Serialization.SerializerID {
-    typealias SerializerID = Serialization.SerializerID
+extension Serialization.SerializerID {
+    public typealias SerializerID = Serialization.SerializerID
 
     // ~~~~~~~~~~~~~~~~ general purpose serializer ids ~~~~~~~~~~~~~~~~
-    static let doNotSerialize: SerializerID = 0
+    public static let doNotSerialize: SerializerID = 0
 
-    static let specializedWithTypeHint: SerializerID = 1
-    static let _ProtobufRepresentable: SerializerID = 2
+    public static let specializedWithTypeHint: SerializerID = 1
+    public static let _ProtobufRepresentable: SerializerID = 2
 
-    static let foundationJSON: SerializerID = 3
-    static let foundationPropertyListBinary: SerializerID = 4
-    static let foundationPropertyListXML: SerializerID = 5
+    public static let foundationJSON: SerializerID = 3
+    public static let foundationPropertyListBinary: SerializerID = 4
+    public static let foundationPropertyListXML: SerializerID = 5
     // ... reserved = 6
     // ... -- || --
     // ... reserved = 16
 
     /// Helper function to never accidentally register a not-Any_ProtobufRepresentable as such.
-    static func check_ProtobufRepresentable<M: Any_ProtobufRepresentable>(_ type: M.Type) -> SerializerID {
+    public static func check_ProtobufRepresentable<M: Any_ProtobufRepresentable>(_ type: M.Type) -> SerializerID {
         ._ProtobufRepresentable
     }
 

@@ -121,15 +121,15 @@ extension TestMetrics.FullKey: Hashable {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Assertions
 
-public extension TestMetrics {
+extension TestMetrics {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Counter
 
-    func expectCounter(_ metric: Counter) throws -> TestCounter {
+    public func expectCounter(_ metric: Counter) throws -> TestCounter {
         metric.handler as! TestCounter
     }
 
-    func expectCounter(_ label: String, _ dimensions: [(String, String)] = []) throws -> TestCounter {
+    public func expectCounter(_ label: String, _ dimensions: [(String, String)] = []) throws -> TestCounter {
         let counter: CounterHandler
         if let c: CounterHandler = self.counters[.init(label: label, dimensions: dimensions)] {
             counter = c
@@ -147,22 +147,22 @@ public extension TestMetrics {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Gauge
 
-    func expectGauge(_ metric: Gauge) throws -> TestRecorder {
+    public func expectGauge(_ metric: Gauge) throws -> TestRecorder {
         try self.expectRecorder(metric)
     }
 
-    func expectGauge(_ label: String, _ dimensions: [(String, String)] = []) throws -> TestRecorder {
+    public func expectGauge(_ label: String, _ dimensions: [(String, String)] = []) throws -> TestRecorder {
         try self.expectRecorder(label, dimensions)
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Recorder
 
-    func expectRecorder(_ metric: Recorder) throws -> TestRecorder {
+    public func expectRecorder(_ metric: Recorder) throws -> TestRecorder {
         metric.handler as! TestRecorder
     }
 
-    func expectRecorder(_ label: String, _ dimensions: [(String, String)] = []) throws -> TestRecorder {
+    public func expectRecorder(_ label: String, _ dimensions: [(String, String)] = []) throws -> TestRecorder {
         guard let counter = self.recorders[.init(label: label, dimensions: dimensions)] else {
             throw TestMetricsError.missingMetric(label: label, dimensions: [])
         }
@@ -176,11 +176,11 @@ public extension TestMetrics {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Timer
 
-    func expectTimer(_ metric: Timer) throws -> TestTimer {
+    public func expectTimer(_ metric: Timer) throws -> TestTimer {
         metric.handler as! TestTimer
     }
 
-    func expectTimer(_ label: String, _ dimensions: [(String, String)] = []) throws -> TestTimer {
+    public func expectTimer(_ label: String, _ dimensions: [(String, String)] = []) throws -> TestTimer {
         guard let counter = self.timers[.init(label: label, dimensions: dimensions)] else {
             throw TestMetricsError.missingMetric(label: label, dimensions: [])
         }
@@ -406,8 +406,8 @@ public final class TestTimer: TestMetric, TimerHandler, Equatable, CustomStringC
     }
 }
 
-private extension NSLock {
-    func withLock<T>(_ body: () -> T) -> T {
+extension NSLock {
+    fileprivate func withLock<T>(_ body: () -> T) -> T {
         self.lock()
         defer {
             self.unlock()

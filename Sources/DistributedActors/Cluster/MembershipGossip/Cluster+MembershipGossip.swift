@@ -83,7 +83,8 @@ extension Cluster {
             // 1.2) Protect from zombies: Any nodes that we know are dead or down, we should not accept any information from
             let incomingConcurrentDownMembers = incoming.membership.members(atLeast: .down)
             for pruneFromIncomingBeforeMerge in incomingConcurrentDownMembers
-                where self.membership.uniqueMember(pruneFromIncomingBeforeMerge.uniqueNode) == nil {
+                where self.membership.uniqueMember(pruneFromIncomingBeforeMerge.uniqueNode) == nil
+            {
                 _ = incoming.pruneMember(pruneFromIncomingBeforeMerge)
             }
 
@@ -104,7 +105,8 @@ extension Cluster {
 
             // 3) if any removals happened, we need to prune the removed nodes from the seen table
             for change in changes
-                where change.status.isRemoved && change.member.uniqueNode != self.owner {
+                where change.status.isRemoved && change.member.uniqueNode != self.owner
+            {
                 self.seen.prune(change.member.uniqueNode)
             }
 

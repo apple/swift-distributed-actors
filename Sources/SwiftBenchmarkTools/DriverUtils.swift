@@ -381,11 +381,11 @@ public final class Timer {
     #endif
 }
 
-public extension UInt64 {
-    var nanoseconds: Int { Int(self) }
-    var microseconds: Int { Int(self / 1000) }
-    var milliseconds: Int { Int(self / 1000 / 1000) }
-    var seconds: Int { Int(self / 1000 / 1000 / 1000) }
+extension UInt64 {
+    public var nanoseconds: Int { Int(self) }
+    public var microseconds: Int { Int(self / 1000) }
+    public var milliseconds: Int { Int(self / 1000 / 1000) }
+    public var seconds: Int { Int(self / 1000 / 1000 / 1000) }
 }
 
 enum TimeUnit: String {

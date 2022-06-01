@@ -22,11 +22,11 @@ public protocol LifecycleWatch: DistributedActor where ActorSystem == ClusterSys
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Lifecycle Watch API
 
-public extension LifecycleWatch {
+extension LifecycleWatch {
     @discardableResult
-    func watchTermination<Watchee>(
+    public func watchTermination<Watchee>(
         of watchee: Watchee,
-        @_inheritActorContext @_implicitSelfCapture whenTerminated: @escaping @Sendable(ID) -> Void,
+        @_inheritActorContext @_implicitSelfCapture whenTerminated: @escaping @Sendable (ID) -> Void,
         file: String = #file, line: UInt = #line
     ) -> Watchee where Watchee: DistributedActor, Watchee.ActorSystem == ClusterSystem {
         // TODO(distributed): reimplement this as self.id as? _ActorContext which will have the watch things.
@@ -52,7 +52,7 @@ public extension LifecycleWatch {
     ///  - MUST NOT be invoked concurrently to the actors execution, i.e. from the "outside" of the current actor.
     ///
     /// - Returns: the passed in watchee reference for easy chaining `e.g. return context.unwatch(ref)`
-    func isWatching<Watchee>(_ watchee: Watchee) -> Bool where Watchee: DistributedActor, Watchee.ActorSystem == ClusterSystem {
+    public func isWatching<Watchee>(_ watchee: Watchee) -> Bool where Watchee: DistributedActor, Watchee.ActorSystem == ClusterSystem {
         // TODO(distributed): reimplement this as self.id as? _ActorContext which will have the watch things.
         return self.actorSystem._getLifecycleWatch(watcher: self)?.isWatching(watchee.id) ?? false
     }
@@ -72,7 +72,7 @@ public extension LifecycleWatch {
     ///
     /// - Returns: the passed in watchee reference for easy chaining `e.g. return context.unwatch(ref)`
     @discardableResult
-    func unwatch<Watchee>(
+    public func unwatch<Watchee>(
         _ watchee: Watchee,
         file: String = #file, line: UInt = #line
     ) -> Watchee where Watchee: DistributedActor, Watchee.ActorSystem == ClusterSystem {
@@ -88,9 +88,9 @@ public extension LifecycleWatch {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: "Internal" functions made to make the watch signals work
 
-public extension LifecycleWatch {
+extension LifecycleWatch {
     /// Function invoked by the actor transport when a distributed termination is detected.
-    func _receiveActorTerminated(identity: ID) async throws {
+    public func _receiveActorTerminated(identity: ID) async throws {
         guard let watch: LifecycleWatchContainer = self.actorSystem._getLifecycleWatch(watcher: self) else {
             return
         }
@@ -102,8 +102,8 @@ public extension LifecycleWatch {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: System extensions to support watching // TODO: move those into context, and make the ActorIdentity the context
 
-public extension ClusterSystem {
-    func _makeLifecycleWatch<Watcher: LifecycleWatch>(watcher: Watcher) -> LifecycleWatchContainer {
+extension ClusterSystem {
+    public func _makeLifecycleWatch<Watcher: LifecycleWatch>(watcher: Watcher) -> LifecycleWatchContainer {
         return self.lifecycleWatchLock.withLock {
             if let watch = self._lifecycleWatches[watcher.id] {
                 return watch
@@ -115,7 +115,7 @@ public extension ClusterSystem {
         }
     }
 
-    func _getLifecycleWatch<Watcher: LifecycleWatch>(watcher: Watcher) -> LifecycleWatchContainer? {
+    public func _getLifecycleWatch<Watcher: LifecycleWatch>(watcher: Watcher) -> LifecycleWatchContainer? {
         return self.lifecycleWatchLock.withLock {
             return self._lifecycleWatches[watcher.id]
         }
@@ -136,7 +136,7 @@ public final class LifecycleWatchContainer {
     private let system: ClusterSystem
     private let nodeDeathWatcher: NodeDeathWatcherShell.Ref?
 
-    typealias OnTerminatedFn = @Sendable(ClusterSystem.ActorID) async -> Void
+    typealias OnTerminatedFn = @Sendable (ClusterSystem.ActorID) async -> Void
     private var watching: [ClusterSystem.ActorID: OnTerminatedFn] = [:]
     private var watchedBy: [ClusterSystem.ActorID: AddressableActorRef] = [:]
 
@@ -158,11 +158,11 @@ public final class LifecycleWatchContainer {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: perform watch/unwatch
 
-public extension LifecycleWatchContainer {
+extension LifecycleWatchContainer {
     /// Performed by the sending side of "watch", therefore the `watcher` should equal `context.myself`
-    func termination<Watchee>(
+    public func termination<Watchee>(
         of watchee: Watchee,
-        @_inheritActorContext @_implicitSelfCapture whenTerminated: @escaping @Sendable(ClusterSystem.ActorID) -> Void,
+        @_inheritActorContext @_implicitSelfCapture whenTerminated: @escaping @Sendable (ClusterSystem.ActorID) -> Void,
         file: String = #file, line: UInt = #line
     ) where Watchee: DistributedActor, Watchee.ActorSystem == ClusterSystem {
         traceLog_DeathWatch("issue watch: \(watchee) (from \(self.watcherID))")
@@ -209,7 +209,7 @@ public extension LifecycleWatchContainer {
     ///  - MUST NOT be invoked concurrently to the actors execution, i.e. from the "outside" of the current actor.
     ///
     /// - Returns: the passed in watchee reference for easy chaining `e.g. return context.unwatch(ref)`
-    func unwatch<Watchee>(
+    public func unwatch<Watchee>(
         watchee: Watchee,
         file: String = #file, line: UInt = #line
     ) -> Watchee where Watchee: DistributedActor, Watchee.ActorSystem == ClusterSystem {
@@ -244,7 +244,7 @@ public extension LifecycleWatchContainer {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: react to watch or unwatch signals
 
-    func becomeWatchedBy(
+    public func becomeWatchedBy(
         watcher: AddressableActorRef
     ) {
         guard watcher.address != self.watcherID else {
@@ -263,11 +263,11 @@ public extension LifecycleWatchContainer {
     }
 
     /// Performs cleanup of references to the dead actor.
-    func receiveTerminated(_ terminated: _Signals.Terminated) {
+    public func receiveTerminated(_ terminated: _Signals.Terminated) {
         self.receiveTerminated(terminated.address)
     }
 
-    func receiveTerminated(_ terminatedIdentity: ClusterSystem.ActorID) {
+    public func receiveTerminated(_ terminatedIdentity: ClusterSystem.ActorID) {
         // we remove the actor from both sets;
         // 1) we don't need to watch it anymore, since it has just terminated,
         let removedOnTerminationFn = self.watching.removeValue(forKey: terminatedIdentity)
@@ -292,7 +292,7 @@ public extension LifecycleWatchContainer {
     ///
     /// Does NOT immediately handle these `Terminated` signals, they are treated as any other normal signal would,
     /// such that the user can have a chance to handle and react to them.
-    func receiveNodeTerminated(_ terminatedNode: UniqueNode) {
+    public func receiveNodeTerminated(_ terminatedNode: UniqueNode) {
         // TODO: remove actors as we notify about them
         for (watched, _) in self.watching {
             guard watched.uniqueNode == terminatedNode else {

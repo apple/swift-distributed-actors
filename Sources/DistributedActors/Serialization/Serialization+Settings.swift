@@ -23,8 +23,8 @@ import Foundation // for Codable
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Serialization Settings
 
-public extension Serialization {
-    struct Settings {
+extension Serialization {
+    public struct Settings {
         // TODO: Workaround for https://bugs.swift.org/browse/SR-12315 "Extension of nested type does not have access to types it is nested in"
         public typealias SerializerID = Serialization.SerializerID
         internal typealias ReservedID = Serialization.ReservedID
@@ -91,7 +91,7 @@ public extension Serialization {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Serialization: Manifest Registration
 
-public extension Serialization.Settings {
+extension Serialization.Settings {
     /// Register a `Serialization.Manifest` for the given `Codable` type and `Serializer`.
     ///
     /// If no `serializer` is selected, it will default to the the `settings.defaultCodableSerializerID`.
@@ -101,7 +101,7 @@ public extension Serialization.Settings {
     /// This can be used to "force" a specific serializer be used for a message type,
     /// regardless if it is codable or not.
     @discardableResult
-    mutating func register<Message: ActorMessage>(
+    public mutating func register<Message: ActorMessage>(
         _ type: Message.Type, hint hintOverride: String? = nil,
         serializerID overrideSerializerID: SerializerID? = nil,
         alsoRegisterActorRef: Bool = true
@@ -146,7 +146,7 @@ public extension Serialization.Settings {
     ///
     /// This manifest will NOT be used when _sending_ messages of the `Message` type.
     @discardableResult
-    mutating func registerInbound<Message: ActorMessage>(
+    public mutating func registerInbound<Message: ActorMessage>(
         _ type: Message.Type, hint hintOverride: String? = nil,
         serializerID overrideSerializerID: SerializerID? = nil
     ) -> Manifest {

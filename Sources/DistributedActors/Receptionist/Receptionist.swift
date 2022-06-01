@@ -53,19 +53,19 @@ public struct Receptionist {
             throw SerializationError.nonTransportableMessage(type: "")
         }
 
-        internal override var _addressableActorRef: AddressableActorRef {
+        override internal var _addressableActorRef: AddressableActorRef {
             AddressableActorRef(self.guest._ref)
         }
 
-        internal override var _key: AnyReceptionKey {
+        override internal var _key: AnyReceptionKey {
             self.key.asAnyKey
         }
 
-        internal override func replyRegistered() {
+        override internal func replyRegistered() {
             self.replyTo?.tell(Reception.Registered(self.guest, key: self.key))
         }
 
-        public override var description: String {
+        override public var description: String {
             "Register(ref: \(self.guest), key: \(self.key), replyTo: \(String(reflecting: self.replyTo))"
         }
     }
@@ -111,15 +111,15 @@ public struct Receptionist {
             throw SerializationError.nonTransportableMessage(type: "\(Self.self)")
         }
 
-        internal override var _key: AnyReceptionKey {
+        override internal var _key: AnyReceptionKey {
             self.key.asAnyKey
         }
 
-        internal override var _boxed: AnySubscribe {
+        override internal var _boxed: AnySubscribe {
             AnySubscribe(subscribe: self)
         }
 
-        internal override var _addressableActorRef: AddressableActorRef {
+        override internal var _addressableActorRef: AddressableActorRef {
             self.subscriber.asAddressable
         }
 
@@ -498,7 +498,7 @@ public class _Subscribe: _ReceptionistMessage, NonTransportableActorMessage {
         fatalErrorBacktrace("failed \(#function)")
     }
 
-    public override init() {
+    override public init() {
         super.init()
     }
 

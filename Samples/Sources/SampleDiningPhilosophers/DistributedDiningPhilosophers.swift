@@ -43,7 +43,8 @@ final class DistributedDiningPhilosophers {
         while !(
             systemA.cluster.membershipSnapshot.count(withStatus: .up) == systems.count &&
                 systemB.cluster.membershipSnapshot.count(withStatus: .up) == systems.count &&
-                systemC.cluster.membershipSnapshot.count(withStatus: .up) == systems.count) {
+                systemC.cluster.membershipSnapshot.count(withStatus: .up) == systems.count)
+        {
             let nanosInSecond: UInt64 = 1_000_000_000
             try await Task.sleep(nanoseconds: 1 * nanosInSecond)
         }

@@ -216,14 +216,14 @@ internal func _left<L, R>(left: L, right: R) -> L {
 
 // MARK: Minor printing/formatting helpers
 
-internal extension BinaryInteger {
-    var hexString: String {
+extension BinaryInteger {
+    internal var hexString: String {
         "0x\(String(self, radix: 16, uppercase: true))"
     }
 }
 
-internal extension Array where Array.Element == UInt8 {
-    var hexString: String {
+extension Array where Array.Element == UInt8 {
+    internal var hexString: String {
         "0x\(self.map(\.hexString).joined(separator: ""))"
     }
 }

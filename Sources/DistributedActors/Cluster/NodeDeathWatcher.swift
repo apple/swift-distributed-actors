@@ -43,7 +43,7 @@ internal final class NodeDeathWatcherInstance: NodeDeathWatcher {
     struct WatcherAndCallback: Hashable {
         /// Address of the local watcher which had issued this watch
         let watcherID: ClusterSystem.ActorID
-        let callback: @Sendable(UniqueNode) async -> Void
+        let callback: @Sendable (UniqueNode) async -> Void
 
         func hash(into hasher: inout Hasher) {
             hasher.combine(self.watcherID)
@@ -89,7 +89,7 @@ internal final class NodeDeathWatcherInstance: NodeDeathWatcher {
     func onActorWatched(
         on remoteNode: UniqueNode,
         by watcher: ClusterSystem.ActorID,
-        whenTerminated nodeTerminatedFn: @escaping @Sendable(UniqueNode) async -> Void
+        whenTerminated nodeTerminatedFn: @escaping @Sendable (UniqueNode) async -> Void
     ) {
         guard !self.nodeTombstones.contains(remoteNode) else {
             // the system the watcher is attempting to watch has terminated before the watch has been processed,
@@ -173,7 +173,7 @@ enum NodeDeathWatcherShell {
     /// it would be possible however to allow implementing the raw protocol by user actors if we ever see the need for it.
     internal enum Message: NonTransportableActorMessage {
         case remoteActorWatched(watcher: AddressableActorRef, remoteNode: UniqueNode)
-        case remoteDistributedActorWatched(remoteNode: UniqueNode, watcherID: ClusterSystem.ActorID, nodeTerminated: @Sendable(UniqueNode) async -> Void)
+        case remoteDistributedActorWatched(remoteNode: UniqueNode, watcherID: ClusterSystem.ActorID, nodeTerminated: @Sendable (UniqueNode) async -> Void)
         case removeWatcher(watcherID: ClusterSystem.ActorID)
         case membershipSnapshot(Cluster.Membership)
         case membershipChange(Cluster.MembershipChange)

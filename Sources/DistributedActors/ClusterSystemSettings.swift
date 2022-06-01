@@ -244,8 +244,8 @@ public struct ClusterSystemSettings {
     }
 }
 
-public extension Array where Element == _InternalActorTransport {
-    static func += <T: _InternalActorTransport>(transports: inout Self, transport: T) {
+extension Array where Element == _InternalActorTransport {
+    public static func += <T: _InternalActorTransport>(transports: inout Self, transport: T) {
         transports.append(transport)
     }
 }
@@ -316,8 +316,8 @@ public struct LoggingSettings {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Actor Settings
 
-public extension ClusterSystemSettings {
-    struct ActorSettings {
+extension ClusterSystemSettings {
+    public struct ActorSettings {
         public static var `default`: ActorSettings {
             .init()
         }
@@ -330,8 +330,8 @@ public extension ClusterSystemSettings {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Instrumentation Settings
 
-public extension ClusterSystemSettings {
-    struct InstrumentationSettings {
+extension ClusterSystemSettings {
+    public struct InstrumentationSettings {
         /// Default set of enabled instrumentations, based on current operating system.
         ///
         /// On Apple platforms, this includes the `OSSignpostInstrumentationProvider` provided instrumentations,
@@ -393,7 +393,8 @@ public struct ServiceDiscoverySettings {
 
     public init<Discovery, S>(_ implementation: Discovery, service: S)
         where Discovery: ServiceDiscovery, Discovery.Instance == Node,
-        S == Discovery.Service {
+        S == Discovery.Service
+    {
         self.implementation = AnyServiceDiscovery(implementation)
         self._subscribe = { onNext, onComplete in
             implementation.subscribe(to: service, onNext: onNext, onComplete: onComplete)
@@ -402,7 +403,8 @@ public struct ServiceDiscoverySettings {
 
     public init<Discovery, S>(_ implementation: Discovery, service: S, mapInstanceToNode transformer: @escaping (Discovery.Instance) throws -> Node)
         where Discovery: ServiceDiscovery,
-        S == Discovery.Service {
+        S == Discovery.Service
+    {
         let mappedDiscovery: MapInstanceServiceDiscovery<Discovery, Node> = implementation.mapInstance(transformer)
         self.implementation = AnyServiceDiscovery(mappedDiscovery)
         self._subscribe = { onNext, onComplete in

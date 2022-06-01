@@ -54,9 +54,9 @@ public struct DeadLetter: NonTransportableActorMessage {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ClusterSystem.deadLetters
 
-public extension ClusterSystem {
+extension ClusterSystem {
     /// Dead letters reference dedicated to a specific address.
-    func personalDeadLetters<Message: ActorMessage>(type: Message.Type = Message.self, recipient: ActorAddress) -> _ActorRef<Message> {
+    public func personalDeadLetters<Message: ActorMessage>(type: Message.Type = Message.self, recipient: ActorAddress) -> _ActorRef<Message> {
         // TODO: rather could we send messages to self._deadLetters with enough info so it handles properly?
 
         guard recipient.uniqueNode == self.settings.uniqueBindNode else {
@@ -81,7 +81,7 @@ public extension ClusterSystem {
     }
 
     /// Anonymous `/dead/letters` reference, which may be used for messages which have no logical recipient.
-    var deadLetters: _ActorRef<DeadLetter> {
+    public var deadLetters: _ActorRef<DeadLetter> {
         self._deadLetters
     }
 }

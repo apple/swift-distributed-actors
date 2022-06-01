@@ -79,7 +79,8 @@ extension RemoteActorRefProvider {
         dispatcher: MessageDispatcher, props: _Props,
         startImmediately: Bool
     ) throws -> _ActorRef<Message>
-        where Message: ActorMessage {
+        where Message: ActorMessage
+    {
         // spawn is always local, thus we delegate to the underlying provider
         return try self.localProvider._spawn(system: system, behavior: behavior, address: address, dispatcher: dispatcher, props: props, startImmediately: startImmediately)
     }
@@ -143,7 +144,8 @@ internal struct LocalActorRefProvider: _ActorRefProvider {
         dispatcher: MessageDispatcher, props: _Props,
         startImmediately: Bool
     ) throws -> _ActorRef<Message>
-        where Message: ActorMessage {
+        where Message: ActorMessage
+    {
         return try self.root.makeChild(path: address.path) {
             // the cell that holds the actual "actor", though one could say the cell *is* the actor...
             let actor: _ActorShell<Message> = _ActorShell(

@@ -827,11 +827,11 @@ extension ClusterShell {
     }
 }
 
-internal extension EventLoop {
+extension EventLoop {
     /// Traverses over a collection and applies the given closure to all elements, while maintaining sequential execution order,
     /// i.e. each element will only be processed once the future returned from the previous call is completed. A failed future
     /// will cause the processing to end and the returned future will be failed.
-    func traverseIgnore<T>(over elements: [T], _ closure: @escaping (T) -> EventLoopFuture<Void>) -> EventLoopFuture<Void> {
+    internal func traverseIgnore<T>(over elements: [T], _ closure: @escaping (T) -> EventLoopFuture<Void>) -> EventLoopFuture<Void> {
         guard let first = elements.first else {
             return self.makeSucceededFuture(())
         }
