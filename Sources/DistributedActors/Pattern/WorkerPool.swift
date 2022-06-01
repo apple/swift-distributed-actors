@@ -15,12 +15,18 @@
 import Distributed
 import Logging
 
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Worker
+
 public protocol DistributedWorker: DistributedActor {
     associatedtype WorkItem: Codable
     associatedtype WorkResult: Codable
 
     distributed func submit(work: WorkItem) async throws -> WorkResult
 }
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: WorkerPool
 
 /// A `WorkerPool` represents a pool of actors that are all equally qualified to handle incoming work items.
 ///
@@ -77,10 +83,6 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
     /// Control for waiting and getting notified for new worker.
     private var newWorkerContinuations: [CheckedContinuation<Void, Never>] = []
 
-    deinit {
-        self.newWorkersSubscribeTask?.cancel()
-    }
-
     init(settings: WorkerPoolSettings<Worker>, system: ActorSystem) async {
         self.actorSystem = system
         self.whenAllWorkersTerminated = settings.whenAllWorkersTerminated
@@ -108,10 +110,19 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
         }
     }
 
+    deinit {
+        self.newWorkersSubscribeTask?.cancel()
+    }
+
     public distributed func submit(work: WorkItem) async throws -> WorkResult {
         let worker = try await self.selectWorker()
         self.actorSystem.log.log(level: self.logLevel, "Submitting [\(work)] to [\(worker)]")
         return try await worker.submit(work: work)
+    }
+    
+    // FIXME: make this a computed property instead when https://github.com/apple/swift/pull/42321 is in
+    internal distributed func size() async throws -> Int {
+        self.workers.count
     }
 
     private func selectWorker() async throws -> Worker {
@@ -125,7 +136,7 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
                 try await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
                     self.newWorkerContinuations.append(continuation)
                 }
-            case (true, .crash(let error)):
+            case (true, .throw(let error)):
                 throw error
             }
         }
@@ -181,8 +192,8 @@ internal extension WorkerPool {
         /// Move the pool back to its initial state and wait for new workers to join.
         /// Messages sent to the pool while in this state will be buffered (up to a configured stash capacity)
         case awaitNewWorkers
-        /// Crash the actor by throwing the following error if all workers it was routing to have terminated.
-        case crash(WorkerPoolError)
+        /// Throwing the following error if all workers it was routing to have terminated.
+        case `throw`(WorkerPoolError)
     }
 }
 
@@ -225,8 +236,8 @@ public struct WorkerPoolSettings<Worker: DistributedWorker> where Worker.ActorSy
         case .dynamic:
             self.whenAllWorkersTerminated = .awaitNewWorkers
         case .static:
-            let message = "Static worker pool exhausted, all workers have terminated, selector was [\(selector)]; terminating myself."
-            self.whenAllWorkersTerminated = .crash(.staticPoolExhausted(message))
+            let message = "Static worker pool exhausted, all workers have terminated, selector was [\(selector)]."
+            self.whenAllWorkersTerminated = .throw(.staticPoolExhausted(message))
         }
     }
 

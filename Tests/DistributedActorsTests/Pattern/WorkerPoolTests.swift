@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2020 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Distributed
 @testable import DistributedActors
 import DistributedActorsTestKit
 import Foundation
@@ -19,234 +20,256 @@ import XCTest
 
 // TODO: "ActorGroup" perhaps could be better name?
 final class WorkerPoolTests: ActorSystemXCTestCase {
-    func test_workerPool_registerNewlyStartedActors() throws {
-        let workerKey = Reception.Key(_ActorRef<String>.self, id: "request-workers")
+    func test_workerPool_registerNewlyStartedActors() async throws {
+        let workerKey = DistributedReception.Key(Greeter.self, id: "request-workers")
 
+        let workers = try await WorkerPool._spawn(self.system, select: .dynamic(workerKey))
+        
         let pA: ActorTestProbe<String> = self.testKit.makeTestProbe("pA")
         let pB: ActorTestProbe<String> = self.testKit.makeTestProbe("pB")
         let pC: ActorTestProbe<String> = self.testKit.makeTestProbe("pC")
-
-        func worker(p: ActorTestProbe<String>) -> _Behavior<String> {
-            .setup { context in
-                context.receptionist.registerMyself(with: workerKey) // could ask and await on the registration
-
-                return .receive { context, work in
-                    p.tell("work:\(work) at \(context.name)")
-                    return .same
+        
+        let workerA = await Greeter(probe: pA, actorSystem: self.system, key: workerKey)
+        let workerB = await Greeter(probe: pB, actorSystem: self.system, key: workerKey)
+        let workerC = await Greeter(probe: pC, actorSystem: self.system, key: workerKey)
+        
+        let workerProbes: [ClusterSystem.ActorID: ActorTestProbe<String>] = [
+            workerA.id: pA,
+            workerB.id: pB,
+            workerC.id: pC
+        ]
+        // Workers are sorted by id then selected round-robin
+        let sortedWorkerIDs = Array(workerProbes.keys).sorted()
+        
+        // Wait for all workers to be registered with the receptionist
+        let finished = expectation(description: "all workers available")
+        Task {
+            while true {
+                if try await workers.size() == workerProbes.count {
+                    break
                 }
+                try await Task.sleep(nanoseconds: 100_000_000)
             }
+            finished.fulfill()
         }
+        wait(for: [finished], timeout: 3.0)
 
-        _ = try self.system._spawn("worker-a", worker(p: pA))
-        _ = try self.system._spawn("worker-b", worker(p: pB))
-        _ = try self.system._spawn("worker-c", worker(p: pC))
-
-        let workers = try WorkerPool._spawn(self.system, "workers", select: .dynamic(workerKey))
-
-        workers.tell("a")
-        workers.tell("b")
-        workers.tell("c")
-        workers.tell("d")
-        workers.tell("e")
-        workers.tell("f")
-        workers.tell("g")
-        workers.tell("h")
-        // no more `c`
-
-        try pA.expectMessage("work:a at worker-a")
-        try pB.expectMessage("work:b at worker-b")
-        try pC.expectMessage("work:c at worker-c")
-        try pA.expectMessage("work:d at worker-a")
-        try pB.expectMessage("work:e at worker-b")
-        try pC.expectMessage("work:f at worker-c")
-        try pA.expectMessage("work:g at worker-a")
-        try pB.expectMessage("work:h at worker-b")
-        try pC.expectNoMessage(for: .milliseconds(50))
+        // Submit work with all workers available
+        for i in 0 ... 7 {
+            _ = try await workers.submit(work: "\(i)")
+            
+            // We are submitting more work than there are workers
+            let workerID = sortedWorkerIDs[i % workerProbes.count]
+            guard let probe = workerProbes[workerID] else {
+                throw testKit.fail("Missing test probe for worker \(workerID)")
+            }
+            try probe.expectMessage("work:\(i) at \(workerID)")
+        }
     }
 
-    func test_workerPool_dynamic_removeDeadActors() throws {
-        let workerKey = Reception.Key(_ActorRef<String>.self, id: "request-workers")
+    // FIXME: revive this test after https://github.com/apple/swift-distributed-actors/issues/831 is fixed
+//    func test_workerPool_dynamic_removeDeadActors() async throws {
+//        let workerKey = DistributedReception.Key(Greeter.self, id: "request-workers")
+//
+//        let workers = try await WorkerPool._spawn(self.system, select: .dynamic(workerKey))
+//
+//        let pA: ActorTestProbe<String> = self.testKit.makeTestProbe("pA")
+//        let pB: ActorTestProbe<String> = self.testKit.makeTestProbe("pB")
+//        let pC: ActorTestProbe<String> = self.testKit.makeTestProbe("pC")
+//
+//        var workerA: Greeter? = await Greeter(probe: pA, actorSystem: self.system, key: workerKey)
+//        var workerB: Greeter? = await Greeter(probe: pB, actorSystem: self.system, key: workerKey)
+//        var workerC: Greeter? = await Greeter(probe: pC, actorSystem: self.system, key: workerKey)
+//
+//        // !-safe since we initialize workers above
+//        let workerProbes: [ClusterSystem.ActorID: ActorTestProbe<String>] = [
+//            workerA!.id: pA,
+//            workerB!.id: pB,
+//            workerC!.id: pC
+//        ]
+//        // Workers are sorted by id then selected round-robin
+//        var sortedWorkerIDs = Array(workerProbes.keys).sorted()
+//
+//        // Wait for all workers to be registered with the receptionist
+//        let finished = expectation(description: "all workers available")
+//        Task {
+//            while true {
+//                if try await workers.size() == workerProbes.count {
+//                    break
+//                }
+//                try await Task.sleep(nanoseconds: 100_000_000)
+//            }
+//            finished.fulfill()
+//        }
+//        wait(for: [finished], timeout: 3.0)
+//
+//        // Submit work with all workers available
+//        for i in 0 ... 2 {
+//            _ = try await workers.submit(work: "all-available-\(i)")
+//
+//            let workerID = sortedWorkerIDs[i]
+//            guard let probe = workerProbes[workerID] else {
+//                throw testKit.fail("Missing test probe for worker \(workerID)")
+//            }
+//            try probe.expectMessage("work:all-available-\(i) at \(workerID)")
+//        }
+//
+//        // Terminate workerA
+//        sortedWorkerIDs.removeAll { $0 == workerA!.id }
+//        workerA = nil
+//        try pA.expectMessage("Greeter deinit")
+//
+//        // The remaining workers should take over
+//        for i in 0 ... 2 {
+//            _ = try await workers.submit(work: "after-A-dead-\(i)")
+//
+//            // We cannot be certain how round-robin position gets reset after A's termination,
+//            // so we don't enforce index check here.
+//            let maybeGotItResults = try sortedWorkerIDs.compactMap {
+//                guard let probe = workerProbes[$0] else {
+//                    throw testKit.fail("Missing test probe for worker \($0)")
+//                }
+//                return try probe.maybeExpectMessage(within: .milliseconds(200))
+//            }
+//
+//            // Exactly one of the remaining workers should receive the work item
+//            (maybeGotItResults.count == 1).shouldBeTrue()
+//            (maybeGotItResults.first ?? "<none>").shouldStartWith(prefix: "work:after-A-dead-\(i) at")
+//        }
+//
+//        // Terminate the rest of the workers
+//        workerB = nil
+//        try pB.expectMessage("Greeter deinit")
+//        workerC = nil
+//        try pC.expectMessage("Greeter deinit")
+//
+//        // Register new worker
+//        let pD: ActorTestProbe<String> = self.testKit.makeTestProbe("pD")
+//        let workerD = await Greeter(probe: pD, actorSystem: self.system, key: workerKey)
+//
+//        // WorkerPool should wait for D to join then assign work to it
+//        _ = try await workers.submit(work: "D-only")
+//        try pD.expectMessage("work:D-only at \(workerD.id)")
+//    }
 
+    func test_workerPool_static_removeDeadActors_throwErrorWhenNoWorkers() async throws {
         let pA: ActorTestProbe<String> = self.testKit.makeTestProbe("pA")
         let pB: ActorTestProbe<String> = self.testKit.makeTestProbe("pB")
         let pC: ActorTestProbe<String> = self.testKit.makeTestProbe("pC")
 
-        func worker(p: ActorTestProbe<String>) -> _Behavior<String> {
-            .setup { context in
-                context.receptionist.registerMyself(with: workerKey) // could ask and await on the registration
-
-                return .receive { context, work in
-                    if work == "stop" {
-                        return .stop
-                    }
-                    p.tell("work:\(work) at \(context.path.name)")
-                    return .same
-                }
-            }
-        }
-
-        let workerA = try system._spawn("worker-a", worker(p: pA))
-        pA.watch(workerA)
-        let workerB = try system._spawn("worker-b", worker(p: pB))
-        pB.watch(workerB)
-        let workerC = try system._spawn("worker-c", worker(p: pC))
-        pC.watch(workerC)
-
-        let workers = try WorkerPool._spawn(self.system, "workersMayDie", select: .dynamic(workerKey))
-
-        // since the workers joining the pool is still technically always a bit racy with the dynamic selection,
-        // we try a few times to send a message and see it delivered at each worker. This would not be the case with a static selector.
-        //
-        // TODO: Go back to just `expectMessage(_: within:)` after #78 is fixed
-        try self.testKit.eventually(within: .seconds(1)) {
-            workers.tell("a")
-            try pA.expectMessage("work:a at worker-a", within: .milliseconds(50))
-        }
-        try self.testKit.eventually(within: .seconds(1)) {
-            workers.tell("b")
-            try pB.expectMessage("work:b at worker-b", within: .milliseconds(50))
-        }
-        try self.testKit.eventually(within: .seconds(1)) {
-            workers.tell("c")
-            try pC.expectMessage("work:c at worker-c", within: .milliseconds(50))
-        }
-        workerA.tell("stop")
-        try pA.expectTerminated(workerA)
-        // clear all other messages to validate only the messages we send to the
-        // pool after workerA has terminated
-        pA.clearMessages()
-
-        // inherently this is racy, if a worker dies it may have taken a message with it
-        // TODO: may introduce work-pulling pool which never would drop a message.
-
-        // with A removed, the worker pool races to get the information about this death,
-        // while we send new work to it -- it may happen that it sends to the dead A since it did not yet
-        // receive the terminated; here we instead check that at least thr work is being handled by the other workers
+        var workerA: Greeter? = Greeter(probe: pA, actorSystem: self.system)
+        var workerB: Greeter? = Greeter(probe: pB, actorSystem: self.system)
+        var workerC: Greeter? = Greeter(probe: pC, actorSystem: self.system)
+        
+        // !-safe since we initialize workers above
+        let workers = try await WorkerPool._spawn(self.system, select: .static([workerA!, workerB!, workerC!]))
+        
+        let workerProbes: [ClusterSystem.ActorID: ActorTestProbe<String>] = [
+            workerA!.id: pA,
+            workerB!.id: pB,
+            workerC!.id: pC
+        ]
+        // Workers are sorted by id then selected round-robin
+        var sortedWorkerIDs = Array(workerProbes.keys).sorted()
+        
+        // Submit work with all workers available
         for i in 0 ... 2 {
-            try self.testKit.eventually(within: .seconds(1)) {
-                workers.tell("after-A-dead-\(i)")
-                let maybeBGotIt = try pB.maybeExpectMessage(within: .milliseconds(200))
-                let maybeCGotIt = try pC.maybeExpectMessage(within: .milliseconds(200))
-
-                // one of the workers should have handled it
-                (maybeBGotIt != nil || maybeCGotIt != nil).shouldBeTrue()
-                // but NOT both!
-                (maybeBGotIt != nil && maybeCGotIt != nil).shouldBeFalse()
-                let theMessage = maybeBGotIt ?? maybeCGotIt ?? "<none>"
-                theMessage.shouldStartWith(prefix: "work:after-A-dead-\(i) at worker")
+            _ = try await workers.submit(work: "all-available-\(i)")
+            
+            let workerID = sortedWorkerIDs[i]
+            guard let probe = workerProbes[workerID] else {
+                throw testKit.fail("Missing test probe for worker \(workerID)")
             }
+            try probe.expectMessage("work:all-available-\(i) at \(workerID)")
         }
-        try pA.expectNoMessage(for: .milliseconds(50))
-    }
-
-    func test_workerPool_ask() throws {
-        let pA: ActorTestProbe<String> = self.testKit.makeTestProbe("pA")
-        let pB: ActorTestProbe<String> = self.testKit.makeTestProbe("pB")
-
-        func worker(p: ActorTestProbe<String>) -> _Behavior<WorkerPoolQuestion> {
-            .receive { context, work in
-                p.tell("work:\(work.id) at \(context.path.name)")
-                return .same
-            }
-        }
-
-        let workerA = try system._spawn("worker-a", worker(p: pA))
-        let workerB = try system._spawn("worker-b", worker(p: pB))
-
-        let workers = try WorkerPool._spawn(self.system, "questioningTheWorkers", select: .static([workerA, workerB]))
-
-        // since using a static pool, we know the messages will arrive; no need to wait for the receptionist dance:
-        let answerA: AskResponse<String> = workers.ask(for: String.self, timeout: .seconds(1)) { WorkerPoolQuestion(id: "AAA", replyTo: $0) }
-        let answerB: AskResponse<String> = workers.ask(for: String.self, timeout: .seconds(1)) { WorkerPoolQuestion(id: "BBB", replyTo: $0) }
-
-        try self.testKit.eventually(within: .seconds(1)) {
-            answerA._onComplete { res in
-                pA.tell("\(res)")
-            }
-        }
-        try self.testKit.eventually(within: .seconds(1)) {
-            answerB._onComplete { res in
-                pB.tell("\(res)")
-            }
-        }
-
-        try pA.expectMessage("work:AAA at \(workerA.path.name)")
-        try pB.expectMessage("work:BBB at \(workerB.path.name)")
-    }
-
-    struct WorkerPoolQuestion: ActorMessage {
-        let id: String
-        let replyTo: _ActorRef<String>
-    }
-
-    func test_workerPool_static_removeDeadActors_terminateItselfWhenNoWorkers() throws {
-        let pA: ActorTestProbe<String> = self.testKit.makeTestProbe("pA")
-        let pB: ActorTestProbe<String> = self.testKit.makeTestProbe("pB")
-        let pC: ActorTestProbe<String> = self.testKit.makeTestProbe("pC")
-        let pW: ActorTestProbe<String> = self.testKit.makeTestProbe("pW")
-
-        func worker(p: ActorTestProbe<String>) -> _Behavior<String> {
-            .receive { context, work in
-                if work == "stop" {
-                    return .stop
-                }
-                p.tell("work:\(work) at \(context.path.name)")
-                return .same
-            }
-        }
-
-        let workerA = try system._spawn("worker-a", worker(p: pA))
-        pA.watch(workerA)
-        let workerB = try system._spawn("worker-b", worker(p: pB))
-        pB.watch(workerB)
-        let workerC = try system._spawn("worker-c", worker(p: pC))
-        pC.watch(workerC)
-
-        let workers = try WorkerPool._spawn(self.system, "staticWorkersMayDie", select: .static([workerA, workerB, workerC]))
-        pW.watch(workers._ref)
-
-        // since using a static pool, we know the messages will arrive; no need to wait for the receptionist dance:
-        workers.tell("a")
-        try pA.expectMessage("work:a at worker-a")
-        workers.tell("b")
-        try pB.expectMessage("work:b at worker-b")
-        workers.tell("c")
-        try pC.expectMessage("work:c at worker-c")
-
-        workerA.tell("stop")
-        try pA.expectTerminated(workerA)
-
+        
+        // Terminate workerA
+        sortedWorkerIDs.removeAll { $0 == workerA!.id }
+        workerA = nil
+        try pA.expectMessage("Greeter deinit")
+        
+        // The remaining workers should take over
         for i in 0 ... 2 {
-            try self.testKit.eventually(within: .seconds(1)) {
-                workers.tell("after-A-dead-\(i)")
-                let maybeBGotIt = try pB.maybeExpectMessage(within: .milliseconds(200))
-                let maybeCGotIt = try pC.maybeExpectMessage(within: .milliseconds(200))
-
-                // one of the workers should have handled it
-                (maybeBGotIt != nil || maybeCGotIt != nil).shouldBeTrue()
-                // but NOT both!
-                (maybeBGotIt != nil && maybeCGotIt != nil).shouldBeFalse()
-                let theMessage = maybeBGotIt ?? maybeCGotIt ?? "<none>"
-                theMessage.shouldStartWith(prefix: "work:after-A-dead-\(i) at worker")
+            _ = try await workers.submit(work: "after-A-dead-\(i)")
+            
+            // We cannot be certain how round-robin position gets reset after A's termination,
+            // so we don't enforce index check here.
+            let maybeGotItResults = try sortedWorkerIDs.compactMap {
+                guard let probe = workerProbes[$0] else {
+                    throw testKit.fail("Missing test probe for worker \($0)")
+                }
+                return try probe.maybeExpectMessage(within: .milliseconds(200))
             }
+
+            // Exactly one of the remaining workers should receive the work item
+            (maybeGotItResults.count == 1).shouldBeTrue()
+            (maybeGotItResults.first ?? "<none>").shouldStartWith(prefix: "work:after-A-dead-\(i) at")
         }
-        try pA.expectNoMessage(for: .milliseconds(50))
-
-        // we continue with stopping all remaining workers, after which the pool should terminate itself
-
-        workerB.tell("stop")
-        try pB.expectTerminated(workerB)
-        workerC.tell("stop")
-        try pC.expectTerminated(workerC)
-
-        try pW.expectTerminated(workers._ref)
+        
+        // Terminate the rest of the workers
+        workerB = nil
+        try pB.expectMessage("Greeter deinit")
+        workerC = nil
+        try pC.expectMessage("Greeter deinit")
+        
+        // WorkerPool now throws error on new work submission
+        let error = try await shouldThrow {
+            _ = try await workers.submit(work: "after-all-dead")
+        }
+        
+        guard case WorkerPoolError.staticPoolExhausted(let errorMessage) = error else {
+            throw testKit.fail("Expected WorkerPoolError.staticPoolExhausted, got \(error)")
+        }
+        errorMessage.shouldContain("Static worker pool exhausted, all workers have terminated")
     }
 
-    func test_workerPool_static_throwOnEmptyInitialSet() throws {
-        let error = try shouldThrow {
-            let _: WorkerPoolRef<Never> = try WorkerPool._spawn(system, "wrongConfigPool", select: .static([]))
+    func test_workerPool_static_throwOnEmptyInitialSet() async throws {
+        let error = try await shouldThrow {
+            let _: WorkerPool<Greeter> = try await WorkerPool._spawn(self.system, select: .static([]))
         }
 
-        "\(error)".shouldContain("Illegal empty collection passed to `.static` worker pool")
+        guard case WorkerPoolError.emptyStaticWorkerPool(let errorMessage) = error else {
+            throw testKit.fail("Expected WorkerPoolError.emptyStaticWorkerPool, got \(error)")
+        }
+        errorMessage.shouldContain("Illegal empty collection passed to `.static` worker pool")
+    }
+}
+
+private distributed actor Greeter: DistributedWorker {
+    typealias ID = ClusterSystem.ActorID
+    typealias ActorSystem = ClusterSystem
+    typealias WorkItem = String
+    typealias WorkResult = String
+    
+    let probe: ActorTestProbe<String>
+
+    init(probe: ActorTestProbe<String>, actorSystem: ActorSystem) {
+        self.actorSystem = actorSystem
+        self.probe = probe
+    }
+    
+    init(probe: ActorTestProbe<String>, actorSystem: ActorSystem, key: DistributedReception.Key<Greeter>) async {
+        self.actorSystem = actorSystem
+        self.probe = probe
+        await self.actorSystem.receptionist.register(self, with: key)
+    }
+    
+    deinit {
+        self.probe.tell("Greeter deinit")
+    }
+
+    distributed func submit(work: WorkItem) async throws -> WorkResult {
+        self.probe.tell("work:\(work) at \(self.id)")
+        return "hello \(work)"
+    }
+}
+
+private extension Array where Element == ClusterSystem.ActorID {
+    mutating func sort() {
+        self.sort(by: { l, r in l.description < r.description })
+    }
+
+    func sorted() -> [Element] {
+        self.sorted(by: { l, r in l.description < r.description })
     }
 }
