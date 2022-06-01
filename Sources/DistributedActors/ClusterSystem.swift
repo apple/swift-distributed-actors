@@ -951,7 +951,7 @@ extension ClusterSystem {
         Err: Error
     {
         guard let shell = self._cluster else {
-            throw AskError.systemAlreadyShutDown
+            throw RemoteCallError.clusterAlreadyShutDown
         }
 
         let recipient = _ActorRef<InvocationMessage>(.remote(.init(shell: shell, address: actor.id._asRemote, system: self)))
@@ -1065,8 +1065,9 @@ internal struct LazyStart<Message: ActorMessage> {
     }
 }
 
-enum RemoteCallError: Error {
+enum RemoteCallError: DistributedActorSystemError, Error {
     case clusterAlreadyShutDown
+    case timedOut(TimeoutError)
 }
 
 /// Allows for configuring of remote calls by setting task-local values around a remote call being made.
