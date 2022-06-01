@@ -856,11 +856,7 @@ public extension ClusterSystem {
 
         self.namingLock.lock()
         defer { self.namingLock.unlock() }
-        guard self._reservedNames.remove(actor.id) != nil else {
-            // FIXME(distributed): this is a bug in the initializers impl, they may call actorReady many times (from async inits) // TODO: probably already solved
-            self.log.warning("Attempted to ready an identity that was not reserved: \(actor.id)")
-            return
-        }
+        precondition(self._reservedNames.remove(actor.id) != nil, "Attempted to ready an identity that was not reserved: \(actor.id)")
 
         if let watcher = actor as? any LifecycleWatch {
             func doMakeLifecycleWatch<Watcher: LifecycleWatch & DistributedActor>(watcher: Watcher) {
