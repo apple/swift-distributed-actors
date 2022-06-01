@@ -23,3 +23,7 @@
 --disable redundantInit
 --disable redundantGet
 --disable redundantReturn
+
+# we want to have fine grained control over extensions by marking each function
+# explicitly, rather than it being forced onto the extension entirely.
+--extensionacl on-declarations
