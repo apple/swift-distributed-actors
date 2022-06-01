@@ -144,13 +144,13 @@ var targets: [PackageDescription.Target] = [
         ],
         path: "IntegrationTests/tests_01_cluster/it_Clustered_swim_suspension_reachability"
     ),
-    .target(
-        name: "it_Clustered_swim_ungraceful_shutdown",
-        dependencies: [
-            "DistributedActors",
-        ],
-        path: "IntegrationTests/tests_04_cluster/it_Clustered_swim_ungraceful_shutdown"
-    ),
+//    .target(
+//        name: "it_Clustered_swim_ungraceful_shutdown",
+//        dependencies: [
+//            "DistributedActors",
+//        ],
+//        path: "IntegrationTests/tests_04_cluster/it_Clustered_swim_ungraceful_shutdown"
+//    ),
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Performance / Benchmarks
@@ -218,6 +218,9 @@ var dependencies: [Package.Dependency] = [
     // swift-metrics 1.x and 2.x are almost API compatible, so most clients should use
     .package(url: "https://github.com/apple/swift-metrics.git", "1.0.0" ..< "3.0.0"),
     .package(url: "https://github.com/apple/swift-service-discovery.git", from: "1.0.0"),
+
+    // ~~~ SwiftPM Plugins ~~~
+    .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.0.0"),
 ]
 
 let products: [PackageDescription.Product] = [
@@ -244,11 +247,11 @@ let products: [PackageDescription.Product] = [
 
 var package = Package(
     name: "swift-distributed-actors",
-    platforms: [
-        .macOS(.v10_15), // because of the 'distributed actor' feature
-        .iOS(.v8),
-        // ...
-    ],
+//    platforms: [
+//        .macOS(.v13), // because of the 'distributed actor' feature
+//        .iOS(.v16),
+//        // ...
+//    ],
     products: products,
 
     dependencies: dependencies,
