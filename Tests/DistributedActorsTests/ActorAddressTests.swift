@@ -171,9 +171,11 @@ final class ActorAddressTests: XCTestCase {
         let serialized = try system.serialization.serialize(a)
         let serializedJson = String(data: serialized.buffer.readData(), encoding: .utf8)!
 
-        serializedJson.shouldEqual("""
-        {"incarnation":1,"node":["sact","one","127.0.0.1",1234,11111],"tags":{"path":{"path":["user","a"]}}}
-        """)
+        // TODO: improve serialization format of identities to be more compact
+        serializedJson.shouldContain(#""incarnation":1"#)
+        serializedJson.shouldContain(#""node":["sact","one","127.0.0.1",1234,11111]"#)
+        serializedJson.shouldContain(#""tags":{"path":{"path":["user","a"]}}"#)
+        serializedJson.shouldNotContain(#"$test":"test-value""#)
     }
 
     func test_serializing_ActorAddress_propagateCustomTag() async throws {
@@ -198,9 +200,11 @@ final class ActorAddressTests: XCTestCase {
         let serialized = try system.serialization.serialize(a)
         let serializedJson = String(data: serialized.buffer.readData(), encoding: .utf8)!
 
-        serializedJson.shouldEqual("""
-        {"incarnation":1,"node":["sact","one","127.0.0.1",1234,11111],"tags":{"path":{"path":["user","a"]},"\(ActorTags.test.id)":"\(a.tags[ActorTags.test]!)"}}
-        """)
+        // TODO: improve serialization format of identities to be more compact
+        serializedJson.shouldContain(#""incarnation":1"#)
+        serializedJson.shouldContain(#""node":["sact","one","127.0.0.1",1234,11111]"#)
+        serializedJson.shouldContain(#""tags":{"path":{"path":["user","a"]}"#)
+        serializedJson.shouldContain("\"\(ActorTags.test.id)\":\"\(a.tags[ActorTags.test]!)\"")
     }
 }
 

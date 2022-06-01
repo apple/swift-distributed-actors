@@ -62,6 +62,7 @@ public final class LogCapture {
     ///
     /// Returns: first log message that matches text predicate (with naive "contains" check).
     /// Throws: an ``EventuallyError`` when the deadline is exceeded without matching a log message.
+    @discardableResult
     public func awaitLogContaining(
         _ testKit: ActorTestKit, text: String,
         within: TimeAmount = .seconds(3),
