@@ -46,8 +46,8 @@ distributed actor StringForwarder: CustomStringConvertible {
     }
 }
 
-private extension DistributedReception.Key {
-    static var stringForwarders: DistributedReception.Key<StringForwarder> {
+extension DistributedReception.Key {
+    fileprivate static var stringForwarders: DistributedReception.Key<StringForwarder> {
         "stringForwarders"
     }
 }

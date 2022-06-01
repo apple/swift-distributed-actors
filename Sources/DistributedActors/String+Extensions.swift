@@ -23,16 +23,16 @@ public protocol CustomPrettyStringConvertible {
     func prettyDescription(depth: Int) -> String
 }
 
-public extension CustomPrettyStringConvertible {
-    var prettyDescription: String {
+extension CustomPrettyStringConvertible {
+    public var prettyDescription: String {
         self.prettyDescription(depth: 0)
     }
 
-    func prettyDescription(depth: Int) -> String {
+    public func prettyDescription(depth: Int) -> String {
         self.prettyDescription(of: self, depth: depth)
     }
 
-    func prettyDescription(of value: Any, depth: Int) -> String {
+    public func prettyDescription(of value: Any, depth: Int) -> String {
         let mirror = Mirror(reflecting: value)
         let padding0 = String(repeating: " ", count: depth * 2)
         let padding1 = String(repeating: " ", count: (depth + 1) * 2)
@@ -135,8 +135,8 @@ extension Dictionary: CustomPrettyStringConvertible {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: String Interpolation: _:leftPad:
 
-internal extension String.StringInterpolation {
-    mutating func appendInterpolation(_ value: CustomStringConvertible, leftPadTo totalLength: Int) {
+extension String.StringInterpolation {
+    internal mutating func appendInterpolation(_ value: CustomStringConvertible, leftPadTo totalLength: Int) {
         let s = "\(value)"
         let pad = String(repeating: " ", count: max(totalLength - s.count, 0))
         self.appendLiteral("\(pad)\(s)")
@@ -146,8 +146,8 @@ internal extension String.StringInterpolation {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: String Interpolation: Message printing [contents]:type which is useful for enums
 
-internal extension String.StringInterpolation {
-    mutating func appendInterpolation(message: Any) {
+extension String.StringInterpolation {
+    internal mutating func appendInterpolation(message: Any) {
         self.appendLiteral("[\(message)]:\(String(reflecting: type(of: message)))")
     }
 }
@@ -155,8 +155,8 @@ internal extension String.StringInterpolation {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: String Interpolation: reflecting:
 
-internal extension String.StringInterpolation {
-    mutating func appendInterpolation(pretty subject: Any) {
+extension String.StringInterpolation {
+    internal mutating func appendInterpolation(pretty subject: Any) {
         if let prettySubject = subject as? CustomPrettyStringConvertible {
             self.appendLiteral(prettySubject.prettyDescription)
         } else {
@@ -164,17 +164,17 @@ internal extension String.StringInterpolation {
         }
     }
 
-    mutating func appendInterpolation(reflecting subject: Any?) {
+    internal mutating func appendInterpolation(reflecting subject: Any?) {
         self.appendLiteral(String(reflecting: subject))
     }
 
-    mutating func appendInterpolation(reflecting subject: Any) {
+    internal mutating func appendInterpolation(reflecting subject: Any) {
         self.appendLiteral(String(reflecting: subject))
     }
 }
 
-internal extension String.StringInterpolation {
-    mutating func appendInterpolation(lineByLine subject: [Any]) {
+extension String.StringInterpolation {
+    internal mutating func appendInterpolation(lineByLine subject: [Any]) {
         self.appendLiteral("\n    \(subject.map { "\($0)" }.joined(separator: "\n    "))")
     }
 }
@@ -182,12 +182,12 @@ internal extension String.StringInterpolation {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: String Interpolation: _:orElse:
 
-public extension String.StringInterpolation {
-    mutating func appendInterpolation<T>(_ value: T?, orElse defaultValue: String) {
+extension String.StringInterpolation {
+    public mutating func appendInterpolation<T>(_ value: T?, orElse defaultValue: String) {
         self.appendLiteral("\(value.map { "\($0)" } ?? defaultValue)")
     }
 
-    mutating func appendInterpolation<T>(optional value: T?) {
+    public mutating func appendInterpolation<T>(optional value: T?) {
         self.appendLiteral("\(value.map { "\($0)" } ?? "nil")")
     }
 }
@@ -195,16 +195,16 @@ public extension String.StringInterpolation {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Actor Ref custom interpolations
 
-public extension String.StringInterpolation {
-    mutating func appendInterpolation<Message>(name ref: _ActorRef<Message>) {
+extension String.StringInterpolation {
+    public mutating func appendInterpolation<Message>(name ref: _ActorRef<Message>) {
         self.appendLiteral("[\(ref.address.name)]")
     }
 
-    mutating func appendInterpolation<Message>(uniquePath ref: _ActorRef<Message>) {
+    public mutating func appendInterpolation<Message>(uniquePath ref: _ActorRef<Message>) {
         self.appendLiteral("[\(ref.address)]") // TODO: make those address
     }
 
-    mutating func appendInterpolation<Message>(path ref: _ActorRef<Message>) {
+    public mutating func appendInterpolation<Message>(path ref: _ActorRef<Message>) {
         self.appendLiteral("[\(ref.address.path)]")
     }
 }

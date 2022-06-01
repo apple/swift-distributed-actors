@@ -79,8 +79,8 @@ public final class LogCapture {
     }
 }
 
-public extension LogCapture {
-    struct Settings {
+extension LogCapture {
+    public struct Settings {
         public var minimumLogLevel: Logger.Level = .trace
 
         /// Filter and capture logs only from actors with the following path prefix
@@ -103,8 +103,8 @@ public extension LogCapture {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: XCTest integrations and helpers
 
-public extension LogCapture {
-    func printIfFailed(_ testRun: XCTestRun?) {
+extension LogCapture {
+    public func printIfFailed(_ testRun: XCTestRun?) {
         if let failureCount = testRun?.failureCount, failureCount > 0 {
             print("------------------------------------------------------------------------------------------------------------------------")
             self.printLogs()
@@ -112,7 +112,7 @@ public extension LogCapture {
         }
     }
 
-    func printLogs() {
+    public func printLogs() {
         for log in self.logs {
             var metadataString: String = ""
             var actorPath: String = ""
@@ -249,12 +249,12 @@ struct LogCaptureLogHandler: LogHandler {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Should matchers
 
-public extension LogCapture {
+extension LogCapture {
     /// Asserts that a message matching the query requirements was captures *already* (without waiting for it to appear)
     ///
     /// - Parameter message: can be surrounded like `*what*` to query as a "contains" rather than an == on the captured logs.
     @discardableResult
-    func shouldContain(
+    public func shouldContain(
         prefix: String? = nil,
         message: String? = nil,
         grep: String? = nil,
@@ -336,7 +336,7 @@ public extension LogCapture {
         }
     }
 
-    func grep(_ string: String, metadata metadataQuery: [String: String] = [:]) -> [CapturedLogMessage] {
+    public func grep(_ string: String, metadata metadataQuery: [String: String] = [:]) -> [CapturedLogMessage] {
         self.logs.filter {
             guard "\($0)".contains(string) else {
                 // mismatch, exclude it

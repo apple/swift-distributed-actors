@@ -66,10 +66,10 @@ internal protocol _ReceptionistOperations: _BaseReceptionistOperations {
     var _system: ClusterSystem { get }
 }
 
-internal extension _ReceptionistOperations {
+extension _ReceptionistOperations {
     @inlinable
     @discardableResult
-    func register<Guest>(
+    internal func register<Guest>(
         _ guest: Guest,
         as id: String,
         replyTo: _ActorRef<Reception.Registered<Guest>>? = nil
@@ -79,7 +79,7 @@ internal extension _ReceptionistOperations {
 
     @inlinable
     @discardableResult
-    func register<Guest>(
+    internal func register<Guest>(
         _ guest: Guest,
         with key: Reception.Key<Guest>,
         replyTo: _ActorRef<Reception.Registered<Guest>>? = nil
@@ -88,7 +88,7 @@ internal extension _ReceptionistOperations {
     }
 
     @inlinable
-    func subscribe<Guest>(
+    internal func subscribe<Guest>(
         _ subscriber: _ActorRef<Reception.Listing<Guest>>,
         to key: Reception.Key<Guest>
     ) where Guest: _ReceptionistGuest {
@@ -96,7 +96,7 @@ internal extension _ReceptionistOperations {
     }
 
     @inlinable
-    func lookup<Guest>(
+    internal func lookup<Guest>(
         _ key: Reception.Key<Guest>,
         replyTo: _ActorRef<Reception.Listing<Guest>>,
         timeout: TimeAmount = .effectivelyInfinite
@@ -151,10 +151,10 @@ internal protocol _MyselfReceptionistOperations: _ReceptionistOperations {
     ) where Guest: _ReceptionistGuest, Myself.Message == Reception.Listing<Guest>
 }
 
-internal extension _MyselfReceptionistOperations {
+extension _MyselfReceptionistOperations {
     @inlinable
     @discardableResult
-    func registerMyself(
+    internal func registerMyself(
         with key: Reception.Key<Myself>,
         replyTo: _ActorRef<Reception.Registered<Myself>>? = nil
     ) -> Reception.Key<Myself> {
@@ -163,7 +163,7 @@ internal extension _MyselfReceptionistOperations {
     }
 
     @inlinable
-    func subscribeMyself<Guest>(
+    internal func subscribeMyself<Guest>(
         to key: Reception.Key<Guest>,
         subReceive callback: @escaping (Reception.Listing<Guest>) -> Void
     ) where Guest: _ReceptionistGuest {
@@ -178,7 +178,7 @@ internal extension _MyselfReceptionistOperations {
     }
 
     @inlinable
-    func subscribeMyself<Guest>(
+    internal func subscribeMyself<Guest>(
         to key: Reception.Key<Guest>
     ) where Guest: _ReceptionistGuest, Myself.Message == Reception.Listing<Guest> {
         self.subscribe(self._myself._ref, to: key)

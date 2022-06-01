@@ -52,7 +52,7 @@ public struct OSSignpostActorInstrumentation: ActorInstrumentation {
 @available(iOS 12.0, *)
 @available(tvOS 12.0, *)
 @available(watchOS 3.0, *)
-public extension OSSignpostActorInstrumentation {
+extension OSSignpostActorInstrumentation {
     internal static let actorSpawnedStartFormat: StaticString =
         """
         spawned;\
@@ -65,7 +65,7 @@ public extension OSSignpostActorInstrumentation {
         reason:%{public}s
         """
 
-    func actorSpawned() {
+    public func actorSpawned() {
         guard OSSignpostActorInstrumentation.logLifecycle.signpostsEnabled else {
             return
         }
@@ -95,7 +95,7 @@ public extension OSSignpostActorInstrumentation {
         )
     }
 
-    func actorStopped() {
+    public func actorStopped() {
         guard OSSignpostActorInstrumentation.logLifecycle.signpostsEnabled else {
             return
         }
@@ -116,7 +116,7 @@ public extension OSSignpostActorInstrumentation {
         )
     }
 
-    func actorFailed(failure: _Supervision.Failure) {
+    public func actorFailed(failure: _Supervision.Failure) {
         guard OSSignpostActorInstrumentation.logLifecycle.signpostsEnabled else {
             return
         }
@@ -145,13 +145,13 @@ public extension OSSignpostActorInstrumentation {
 @available(iOS 12.0, *)
 @available(tvOS 12.0, *)
 @available(watchOS 3.0, *)
-public extension OSSignpostActorInstrumentation {
+extension OSSignpostActorInstrumentation {
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Mailbox
 
-    func actorMailboxRunStarted(mailboxCount: Int) {}
+    public func actorMailboxRunStarted(mailboxCount: Int) {}
 
-    func actorMailboxRunCompleted(processed: Int) {}
+    public func actorMailboxRunCompleted(processed: Int) {}
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Actor Messages: Tell
@@ -168,7 +168,7 @@ public extension OSSignpostActorInstrumentation {
         """
 
     // FIXME: we need the sender() to attach properly
-    func actorTold(message: Any, from: ActorAddress?) {
+    public func actorTold(message: Any, from: ActorAddress?) {
         guard OSSignpostActorInstrumentation.logMessages.signpostsEnabled else {
             return
         }
@@ -211,7 +211,7 @@ public extension OSSignpostActorInstrumentation {
         error-type:%{public}s
         """
 
-    func actorAsked(message: Any, from: ActorAddress?) {
+    public func actorAsked(message: Any, from: ActorAddress?) {
         guard OSSignpostActorInstrumentation.logMessages.signpostsEnabled else {
             return
         }
@@ -228,7 +228,7 @@ public extension OSSignpostActorInstrumentation {
         )
     }
 
-    func actorAskReplied(reply: Any?, error: Error?) {
+    public func actorAskReplied(reply: Any?, error: Error?) {
         guard OSSignpostActorInstrumentation.logMessages.signpostsEnabled else {
             return
         }
@@ -270,7 +270,7 @@ public extension OSSignpostActorInstrumentation {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Actor Messages: Receive
 
-    static let actorReceivedEventPattern: StaticString =
+    public static let actorReceivedEventPattern: StaticString =
         """
         actor-message-received;\
         recipient-node:%{public}s;\
@@ -281,7 +281,7 @@ public extension OSSignpostActorInstrumentation {
         message-type:%{public}s
         """
 
-    func actorReceivedStart(message: Any, from: ActorAddress?) {
+    public func actorReceivedStart(message: Any, from: ActorAddress?) {
         guard OSSignpostActorInstrumentation.logMessages.signpostsEnabled else {
             return
         }
@@ -301,7 +301,7 @@ public extension OSSignpostActorInstrumentation {
         )
     }
 
-    func actorReceivedEnd(error: Error?) {
+    public func actorReceivedEnd(error: Error?) {
         // TODO: make interval so we know the length of how long an actor processes a message
     }
 
@@ -310,7 +310,7 @@ public extension OSSignpostActorInstrumentation {
     internal static let signpostNameActorWatches: StaticString =
         "System Messages (Watch)"
 
-    static let actorReceivedWatchesPattern: StaticString =
+    public static let actorReceivedWatchesPattern: StaticString =
         """
         watch;\
         action:%{public}s;\
@@ -318,7 +318,7 @@ public extension OSSignpostActorInstrumentation {
         watcher:%{public}s
         """
 
-    func actorWatchReceived(watchee: ActorAddress, watcher: ActorAddress) {
+    public func actorWatchReceived(watchee: ActorAddress, watcher: ActorAddress) {
         guard Self.logSystemMessages.signpostsEnabled else {
             return
         }
@@ -333,7 +333,7 @@ public extension OSSignpostActorInstrumentation {
         )
     }
 
-    func actorUnwatchReceived(watchee: ActorAddress, watcher: ActorAddress) {
+    public func actorUnwatchReceived(watchee: ActorAddress, watcher: ActorAddress) {
         guard Self.logSystemMessages.signpostsEnabled else {
             return
         }

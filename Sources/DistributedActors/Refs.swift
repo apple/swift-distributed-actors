@@ -90,14 +90,14 @@ public protocol AddressableActor {
     var asAddressable: AddressableActorRef { get }
 }
 
-public extension _ActorRef {
+extension _ActorRef {
     /// Exposes given the current actor reference as limited capability representation of itself; an `AddressableActorRef`.
     ///
     /// An `AddressableActorRef` can be used to uniquely identify an actor, however it is not possible to directly send
     /// messages to such identified actor via this reference type.
     ///
     /// - SeeAlso: `AddressableActorRef` for a detailed discussion of its typical use-cases.
-    var asAddressable: AddressableActorRef {
+    public var asAddressable: AddressableActorRef {
         AddressableActorRef(self)
     }
 }
@@ -122,8 +122,8 @@ extension _ActorRef: Hashable {
     }
 }
 
-public extension _ActorRef.Personality {
-    static func == (lhs: _ActorRef.Personality, rhs: _ActorRef.Personality) -> Bool {
+extension _ActorRef.Personality {
+    public static func == (lhs: _ActorRef.Personality, rhs: _ActorRef.Personality) -> Bool {
         switch (lhs, rhs) {
         case (.cell(let l), .cell(let r)):
             return l.address == r.address
@@ -189,8 +189,8 @@ public protocol _ReceivesSystemMessages: Codable {
     func _unsafeGetRemotePersonality<M: ActorMessage>(_ type: M.Type) -> _RemoteClusterActorPersonality<M>
 }
 
-public extension _ReceivesSystemMessages {
-    var path: ActorPath {
+extension _ReceivesSystemMessages {
+    public var path: ActorPath {
         self.address.path
     }
 }
@@ -198,8 +198,8 @@ public extension _ReceivesSystemMessages {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Actor Ref Internals and Internal Capabilities
 
-public extension _ActorRef {
-    func _sendSystemMessage(_ message: _SystemMessage, file: String = #file, line: UInt = #line) {
+extension _ActorRef {
+    public func _sendSystemMessage(_ message: _SystemMessage, file: String = #file, line: UInt = #line) {
         switch self.personality {
         case .cell(let cell):
             cell.sendSystemMessage(message, file: file, line: line)
@@ -235,7 +235,7 @@ public extension _ActorRef {
     }
 
     // FIXME: can this be removed?
-    func _tellOrDeadLetter(_ message: Any, file: String = #file, line: UInt = #line) {
+    public func _tellOrDeadLetter(_ message: Any, file: String = #file, line: UInt = #line) {
         guard let _message = message as? Message else {
             traceLog_Mailbox(self.path, "_tellOrDeadLetter: [\(message)] failed because of invalid message type, to: \(self); Sent at \(file):\(line)")
             self._dropAsDeadLetter(message, file: file, line: line)
@@ -245,11 +245,11 @@ public extension _ActorRef {
         self.tell(_message, file: file, line: line)
     }
 
-    func _dropAsDeadLetter(_ message: Any, file: String = #file, line: UInt = #line) {
+    public func _dropAsDeadLetter(_ message: Any, file: String = #file, line: UInt = #line) {
         self._deadLetters.tell(DeadLetter(message, recipient: self.address, sentAtFile: file, sentAtLine: line), file: file, line: line)
     }
 
-    func _deserializeDeliver(
+    public func _deserializeDeliver(
         _ messageBytes: Serialization.Buffer, using manifest: Serialization.Manifest,
         on pool: _SerializationPool,
         file: String = #file, line: UInt = #line
@@ -301,7 +301,7 @@ public extension _ActorRef {
         )
     }
 
-    func _unsafeGetRemotePersonality<M: ActorMessage>(_ type: M.Type = M.self) -> _RemoteClusterActorPersonality<M> {
+    public func _unsafeGetRemotePersonality<M: ActorMessage>(_ type: M.Type = M.self) -> _RemoteClusterActorPersonality<M> {
         switch self.personality {
         case .remote(let personality):
             return personality._unsafeAssumeCast(to: type)
@@ -408,15 +408,15 @@ extension _ActorCell: CustomDebugStringConvertible {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Convenience extensions for dead letters
 
-public extension _ActorRef where Message == DeadLetter {
+extension _ActorRef where Message == DeadLetter {
     /// Simplified `adapt` method for dead letters, since it is known how the adaptation function looks like.
-    func adapt<IncomingMessage>(from: IncomingMessage.Type) -> _ActorRef<IncomingMessage> {
+    public func adapt<IncomingMessage>(from: IncomingMessage.Type) -> _ActorRef<IncomingMessage> {
         let adapter: _AbstractAdapter = _DeadLetterAdapterPersonality(self._deadLetters, deadRecipient: self.address)
         return .init(.adapter(adapter))
     }
 
     /// Simplified `adapt` method for dead letters, which can be used in contexts where the adapted type can be inferred from context
-    func adapted<IncomingMessage>() -> _ActorRef<IncomingMessage> {
+    public func adapted<IncomingMessage>() -> _ActorRef<IncomingMessage> {
         self.adapt(from: IncomingMessage.self)
     }
 }

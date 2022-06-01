@@ -20,9 +20,9 @@ import NIOFoundationCompat
 // FIXME: this is obviously not a good idea
 private let testOnlyAllocator = ByteBufferAllocator()
 
-public extension Data {
+extension Data {
     /// For easier testing, as we want all our assertions etc on ByteBuffers
-    func copyToNewByteBuffer() -> ByteBuffer {
+    public func copyToNewByteBuffer() -> ByteBuffer {
         self._copyToByteBuffer(allocator: testOnlyAllocator)
     }
 }

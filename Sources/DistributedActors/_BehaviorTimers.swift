@@ -220,15 +220,15 @@ extension _BehaviorTimers {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Internal System Timer capabilities
 
-internal extension _BehaviorTimers {
+extension _BehaviorTimers {
     @usableFromInline
-    struct ScheduledResume<T> {
+    internal struct ScheduledResume<T> {
         let token: T
     }
 
     /// Dangerous version of `_startTimer` which allows scheduling a `.resume` system message (directly!) with a token `T`, after a time `delay`.
     /// This can be used e.g. to implement restarting an actor after a backoff delay.
-    func _startResumeTimer<T>(key: TimerKey, delay: TimeAmount, resumeWith token: T) {
+    internal func _startResumeTimer<T>(key: TimerKey, delay: TimeAmount, resumeWith token: T) {
         assert(key.isSystemTimer, "_startResumeTimer MUST ONLY be used by system internal tasks, and keys MUST be `_` prefixed. Key was: \(key)")
         self.cancel(for: key)
 

@@ -34,17 +34,17 @@ internal class JSONCodableSerializer<Message: Codable>: Serializer<Message> {
         self.decoder = decoder
     }
 
-    public override func serialize(_ message: Message) throws -> Serialization.Buffer {
+    override public func serialize(_ message: Message) throws -> Serialization.Buffer {
         let data = try encoder.encode(message)
         traceLog_Serialization("serialized to: \(data)")
         return .data(data)
     }
 
-    public override func deserialize(from buffer: Serialization.Buffer) throws -> Message {
+    override public func deserialize(from buffer: Serialization.Buffer) throws -> Message {
         try self.decoder.decode(Message.self, from: buffer.readData())
     }
 
-    public override func setSerializationContext(_ context: Serialization.Context) {
+    override public func setSerializationContext(_ context: Serialization.Context) {
         // same context shared for encoding/decoding is safe
         self.decoder.userInfo[.actorSystemKey] = context.system
         self.decoder.userInfo[.actorSerializationContext] = context
@@ -53,7 +53,7 @@ internal class JSONCodableSerializer<Message: Codable>: Serializer<Message> {
         self.encoder.userInfo[.actorSerializationContext] = context
     }
 
-    public override func setUserInfo<Value>(key: CodingUserInfoKey, value: Value?) {
+    override public func setUserInfo<Value>(key: CodingUserInfoKey, value: Value?) {
         self.encoder.userInfo[key] = value
         self.decoder.userInfo[key] = value
     }
@@ -85,19 +85,19 @@ internal class PropertyListCodableSerializer<Message: Codable>: Serializer<Messa
         self.decoder = decoder
     }
 
-    public override func serialize(_ message: Message) throws -> Serialization.Buffer {
+    override public func serialize(_ message: Message) throws -> Serialization.Buffer {
         let data = try encoder.encode(message)
         traceLog_Serialization("serialized to: \(data)")
         return .data(data)
     }
 
-    public override func deserialize(from buffer: Serialization.Buffer) throws -> Message {
+    override public func deserialize(from buffer: Serialization.Buffer) throws -> Message {
         var format = self.format
         // FIXME: validate format = self.format?
         return try self.decoder.decode(Message.self, from: buffer.readData(), format: &format)
     }
 
-    public override func setSerializationContext(_ context: Serialization.Context) {
+    override public func setSerializationContext(_ context: Serialization.Context) {
         // same context shared for encoding/decoding is safe
         self.decoder.userInfo[.actorSystemKey] = context.system
         self.decoder.userInfo[.actorSerializationContext] = context
@@ -106,7 +106,7 @@ internal class PropertyListCodableSerializer<Message: Codable>: Serializer<Messa
         self.encoder.userInfo[.actorSerializationContext] = context
     }
 
-    public override func setUserInfo<Value>(key: CodingUserInfoKey, value: Value?) {
+    override public func setUserInfo<Value>(key: CodingUserInfoKey, value: Value?) {
         self.encoder.userInfo[key] = value
         self.decoder.userInfo[key] = value
     }

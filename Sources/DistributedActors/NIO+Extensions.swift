@@ -17,14 +17,14 @@ import NIO
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ByteBuffer extensions
 
-internal extension ByteBuffer {
+extension ByteBuffer {
     /// Intended for ad-hoc debugging purposes of network data or serialized payloads.
-    var formatHexDump: String {
+    internal var formatHexDump: String {
         self.formatHexDump()
     }
 
     /// Intended for ad-hoc debugging purposes of network data or serialized payloads.
-    func formatHexDump(maxBytes: Int = 80, bytesPerLine: Int = 16) -> String {
+    internal func formatHexDump(maxBytes: Int = 80, bytesPerLine: Int = 16) -> String {
         let padding = String(repeating: " ", count: 4)
         func asHex(_ byte: UInt8) -> String {
             let s = String(byte, radix: 16, uppercase: true)

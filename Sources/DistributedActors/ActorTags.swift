@@ -63,9 +63,9 @@ public protocol ActorTag: Sendable where Value == Key.Value {
     var value: Value { get }
 }
 
-public extension ActorTag {
-    var keyType: Key.Type { Key.self }
-    var id: String { Key.id }
+extension ActorTag {
+    public var keyType: Key.Type { Key.self }
+    public var id: String { Key.id }
 }
 
 public protocol ActorTagKey: Sendable {

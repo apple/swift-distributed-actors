@@ -313,11 +313,11 @@ extension Serialization {
 // MARK: Serialization Public API
 
 // TODO: shall we make those return something async-capable, or is our assumption that we invoke these in the serialization pools enough at least until proven wrong?
-public extension Serialization {
+extension Serialization {
     /// Container for serialization output.
     ///
     /// Describing what serializer was used to serialize the value, and its serialized bytes
-    struct Serialized {
+    public struct Serialized {
         public let manifest: Serialization.Manifest
         public let buffer: Serialization.Buffer
     }
@@ -325,7 +325,7 @@ public extension Serialization {
     /// Abstraction of bytes containers.
     ///
     /// Designed to minimize allocation and copies when switching between different byte container types.
-    enum Buffer {
+    public enum Buffer {
         case data(Data)
         case nioByteBuffer(ByteBuffer)
 
@@ -371,7 +371,7 @@ public extension Serialization {
     /// - Returns: `Serialized` describing what serializer was used to serialize the value, and its serialized bytes
     /// - Throws: If no manifest could be created for the value, or a manifest was created however it selected
     ///   a serializer (by ID) that is not registered with the system, or the serializer failing to serialize the message.
-    func serialize<Message>(
+    public func serialize<Message>(
         _ message: Message,
         file: String = #file, line: UInt = #line
     ) throws -> Serialized {
@@ -399,7 +399,8 @@ public extension Serialization {
 
             let result: Serialization.Buffer
             if let predefinedSerializer: AnySerializer =
-                (self._serializersLock.withReaderLock { self._serializers[ObjectIdentifier(messageType)] }) {
+                (self._serializersLock.withReaderLock { self._serializers[ObjectIdentifier(messageType)] })
+            {
                 result = try predefinedSerializer.trySerialize(message)
             } else if let makeSpecializedSerializer = self.settings.specializedSerializerMakers[manifest] {
                 let serializer = makeSpecializedSerializer(self.allocator)
@@ -464,7 +465,7 @@ public extension Serialization {
     /// - Parameters:
     ///   - as: expected type that the deserialized message should be
     ///   - from: `Serialized` containing the manifest used to identify which serializer should be used to deserialize the bytes and the serialized bytes of the message
-    func deserialize<T>(
+    public func deserialize<T>(
         as messageType: T.Type, from serialized: Serialized,
         file: String = #file, line: UInt = #line
     ) throws -> T {
@@ -477,7 +478,7 @@ public extension Serialization {
     ///   - as: expected type that the deserialized message should be
     ///   - from: `Buffer` containing the serialized bytes of the message
     ///   - using: `Manifest` used to identify which serializer should be used to deserialize the bytes (json? protobuf? other?)
-    func deserialize<T>(
+    public func deserialize<T>(
         as messageType: T.Type, from buffer: Serialization.Buffer, using manifest: Serialization.Manifest,
         file: String = #file, line: UInt = #line
     ) throws -> T {
@@ -513,7 +514,7 @@ public extension Serialization {
     /// - Parameters:
     ///   - from: `Buffer` containing the serialized bytes of the message
     ///   - using: `Manifest` used identify the decoder as well as summon the Type of the message. The resulting message is NOT cast to the summoned type.
-    func deserializeAny(
+    public func deserializeAny(
         from buffer: Serialization.Buffer, using manifest: Serialization.Manifest,
         file: String = #file, line: UInt = #line
     ) throws -> Any {
@@ -590,7 +591,7 @@ public extension Serialization {
     /// Validates serialization round-trip is possible for given message.
     ///
     /// Messages marked with `SkipSerializationVerification` are except from this verification.
-    func verifySerializable<Message: ActorMessage>(message: Message) throws {
+    public func verifySerializable<Message: ActorMessage>(message: Message) throws {
         switch message {
         case is NonTransportableActorMessage:
             return // skip
@@ -728,8 +729,8 @@ struct SerializerTypeKey: Hashable, CustomStringConvertible {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Small utility functions
 
-internal extension Foundation.Data {
-    func _copyToByteBuffer(allocator: ByteBufferAllocator) -> ByteBuffer {
+extension Foundation.Data {
+    internal func _copyToByteBuffer(allocator: ByteBufferAllocator) -> ByteBuffer {
         self.withUnsafeBytes { bytes in
             var out: ByteBuffer = allocator.buffer(capacity: self.count)
             out.writeBytes(bytes)
@@ -818,8 +819,8 @@ public protocol SerializationRepresentable {
     static var defaultSerializerID: Serialization.SerializerID? { get }
 }
 
-public extension SerializationRepresentable {
-    static var defaultSerializerID: Serialization.SerializerID? {
+extension SerializationRepresentable {
+    public static var defaultSerializerID: Serialization.SerializerID? {
         nil
     }
 }

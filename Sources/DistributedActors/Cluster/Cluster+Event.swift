@@ -15,11 +15,11 @@
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Cluster Events
 
-public extension Cluster {
+extension Cluster {
     /// Represents cluster events, most notably regarding membership and reachability of other members of the cluster.
     ///
     /// Inspect them directly, or `apply` to a `Membership` copy in order to be able to react to membership state of the cluster.
-    enum Event: ActorMessage, Equatable {
+    public enum Event: ActorMessage, Equatable {
         case snapshot(Membership)
         case membershipChange(MembershipChange)
         case reachabilityChange(ReachabilityChange)
@@ -29,10 +29,10 @@ public extension Cluster {
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 
-public extension Cluster {
+extension Cluster {
     /// Represents a change made to a `Membership`, it can be received from gossip and shall be applied to local memberships,
     /// or may originate from local decisions (such as joining or downing).
-    struct MembershipChange: Hashable {
+    public struct MembershipChange: Hashable {
         /// Current member that is part of the membership after this change
         public internal(set) var member: Member
 
@@ -119,36 +119,36 @@ public extension Cluster {
     }
 }
 
-public extension Cluster.MembershipChange {
+extension Cluster.MembershipChange {
     /// Is a "replace" operation, meaning a new node with different UID has replaced a previousNode.
     /// This can happen upon a service reboot, with stable network address -- the new node then "replaces" the old one,
     /// and the old node shall be removed from the cluster as a result of this.
-    var isReplacement: Bool {
+    public var isReplacement: Bool {
         self.replaced != nil
     }
 
-    var isJoining: Bool {
+    public var isJoining: Bool {
         self.status.isJoining
     }
 
-    var isUp: Bool {
+    public var isUp: Bool {
         self.status.isUp
     }
 
-    var isDown: Bool {
+    public var isDown: Bool {
         self.status.isDown
     }
 
-    func isAtLeast(_ status: Cluster.MemberStatus) -> Bool {
+    public func isAtLeast(_ status: Cluster.MemberStatus) -> Bool {
         self.status >= status
     }
 
-    var isLeaving: Bool {
+    public var isLeaving: Bool {
         self.status.isLeaving
     }
 
     /// Slight rewording of API, as this is the membership _change_, thus it is a "removal", while the `toStatus` is "removed"
-    var isRemoval: Bool {
+    public var isRemoval: Bool {
         self.status.isRemoved
     }
 }
@@ -171,9 +171,9 @@ extension Cluster.MembershipChange: CustomStringConvertible {
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 
-public extension Cluster {
+extension Cluster {
     /// Emitted when the reachability of a member changes, as determined by a failure detector (e.g. `SWIM`).
-    struct ReachabilityChange: Equatable {
+    public struct ReachabilityChange: Equatable {
         public let member: Cluster.Member
 
         public init(member: Member) {
@@ -199,9 +199,9 @@ public extension Cluster {
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 
-public extension Cluster {
+extension Cluster {
     /// Emitted when a change in leader is decided.
-    struct LeadershipChange: Hashable {
+    public struct LeadershipChange: Hashable {
         // let role: Role if this leader was of a specific role, carry the info here? same for DC?
         public let oldLeader: Cluster.Member?
         public let newLeader: Cluster.Member?

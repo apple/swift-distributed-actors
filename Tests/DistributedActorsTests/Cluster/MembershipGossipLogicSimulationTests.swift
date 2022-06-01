@@ -426,8 +426,8 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
     }
 }
 
-private extension MembershipGossipLogic {
-    var nodeName: String {
+extension MembershipGossipLogic {
+    fileprivate var nodeName: String {
         self.localNode.node.systemName
     }
 }

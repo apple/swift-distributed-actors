@@ -158,7 +158,8 @@ struct AnyGossipLogic<Gossip: Codable, Acknowledgement: Codable>: GossipLogic, C
     }
 
     init<Logic>(_ logic: Logic)
-        where Logic: GossipLogic, Logic.Gossip == Gossip, Logic.Acknowledgement == Acknowledgement {
+        where Logic: GossipLogic, Logic.Gossip == Gossip, Logic.Acknowledgement == Acknowledgement
+    {
         var l = logic
         self._selectPeers = { l.selectPeers($0) }
         self._makePayload = { l.makePayload(target: $0) }

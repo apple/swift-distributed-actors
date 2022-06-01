@@ -371,8 +371,9 @@ internal final class _Mailbox<Message: ActorMessage> {
 
         if status.hasSystemMessages {
             while runResult != .shouldStop,
-                runResult != .closed,
-                let message = self.systemMessages.dequeue() {
+                  runResult != .closed,
+                  let message = self.systemMessages.dequeue()
+            {
                 do {
                     try runResult = shell.interpretSystemMessage(message: message)
                 } catch {
