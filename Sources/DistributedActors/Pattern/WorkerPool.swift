@@ -119,7 +119,7 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
         self.actorSystem.log.log(level: self.logLevel, "Submitting [\(work)] to [\(worker)]")
         return try await worker.submit(work: work)
     }
-    
+
     // FIXME: make this a computed property instead when https://github.com/apple/swift/pull/42321 is in
     internal distributed func size() async throws -> Int {
         self.workers.count
