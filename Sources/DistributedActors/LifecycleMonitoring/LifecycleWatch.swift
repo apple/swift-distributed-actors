@@ -29,8 +29,7 @@ public extension LifecycleWatch {
         @_inheritActorContext @_implicitSelfCapture whenTerminated: @escaping @Sendable(ID) -> Void,
         file: String = #file, line: UInt = #line
     ) -> Watchee where Watchee: DistributedActor, Watchee.ActorSystem == ClusterSystem {
-        // TODO(distributed): reimplement this as self.id as? _ActorContext which will have the watch things.
-        guard let watch = self.actorSystem._getLifecycleWatch(watcher: self) else {
+        guard let watch = self.context.lifecycle else {
             return watchee
         }
 
@@ -103,22 +102,8 @@ public extension LifecycleWatch {
 // MARK: System extensions to support watching // TODO: move those into context, and make the ActorIdentity the context
 
 public extension ClusterSystem {
-    func _makeLifecycleWatch<Watcher: LifecycleWatch>(watcher: Watcher) -> LifecycleWatchContainer {
-        return self.lifecycleWatchLock.withLock {
-            if let watch = self._lifecycleWatches[watcher.id] {
-                return watch
-            }
-
-            let watch = LifecycleWatchContainer(watcher)
-            self._lifecycleWatches[watcher.id] = watch
-            return watch
-        }
-    }
-
     func _getLifecycleWatch<Watcher: LifecycleWatch>(watcher: Watcher) -> LifecycleWatchContainer? {
-        return self.lifecycleWatchLock.withLock {
-            return self._lifecycleWatches[watcher.id]
-        }
+        return watcher.id.context.lifecycle
     }
 }
 

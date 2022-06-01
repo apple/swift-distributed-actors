@@ -286,7 +286,6 @@ internal class ClusterShell {
 
         self._ref = delayed.ref
 
-        pprint("Return delayed \(Self.self)")
         return delayed
     }
 

@@ -28,7 +28,6 @@ import NIO
 ///
 /// A `ClusterSystem` and all of the actors contained within remain alive until the `terminate` call is made.
 public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
-    public typealias ActorID = ActorAddress
     public typealias InvocationDecoder = ClusterInvocationDecoder
     public typealias InvocationEncoder = ClusterInvocationEncoder
     public typealias SerializationRequirement = any Codable
@@ -54,8 +53,8 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
     // TODO: collapse it with the other initialization lock; the other one is not needed now I think?
     private let initLock = Lock()
 
-    internal let lifecycleWatchLock = Lock()
-    internal var _lifecycleWatches: [ActorAddress: LifecycleWatchContainer] = [:]
+//    internal let lifecycleWatchLock = Lock()
+//    internal var _lifecycleWatches: [ActorAddress: LifecycleWatchContainer] = [:]
 
     private var _associationTombstoneCleanupTask: RepeatedTask?
 
@@ -835,18 +834,15 @@ public extension ClusterSystem {
     func assignID<Act>(_ actorType: Act.Type) -> ClusterSystem.ActorID
         where Act: DistributedActor {
         let props = _Props.forSpawn // task-local read for any properties this actor should have
-        let address = try! self._reserveName(type: Act.self, props: props)
-
+        let id = try! self._reserveName(type: Act.self, props: props)
+            
         self.log.warning("Assign identity", metadata: [
             "actor/type": "\(actorType)",
-            "actor/id": "\(address)",
-            "actor/id/uniqueNode": "\(address.uniqueNode)",
+            "actor/id": "\(id)",
+            "actor/id/uniqueNode": "\(id.uniqueNode)",
         ])
 
-        return self.namingLock.withLock {
-            self._reservedNames.insert(address)
-            return address
-        }
+        return id
     }
 
     func actorReady<Act>(_ actor: Act) where Act: DistributedActor, Act.ID == ActorID {
@@ -861,7 +857,7 @@ public extension ClusterSystem {
 
         if let watcher = actor as? any LifecycleWatch {
             func doMakeLifecycleWatch<Watcher: LifecycleWatch & DistributedActor>(watcher: Watcher) {
-                _ = self._makeLifecycleWatch(watcher: watcher)
+                watcher.id.context.lifecycle = LifecycleWatchContainer(watcher)
             }
             _openExistential(watcher, do: doMakeLifecycleWatch)
         }
@@ -876,19 +872,23 @@ public extension ClusterSystem {
     func resignID(_ id: ActorAddress) {
         self.log.warning("Resign actor id", metadata: ["actor/id": "\(id)"])
         self.namingLock.withLockVoid {
+            // If we crashed during initialization, but after being fully initialized,
+            // we may need to drop the reserved name:
             self._reservedNames.remove(id)
+            
+            // Remove the distributed actor instance:
+            _ = self._managedDistributedActors.removeActor(identifiedBy: id)
+            
+            // Remove the managed ActorRef and stop the behavior actor:
             if let ref = self._managedRefs.removeValue(forKey: id) {
                 ref._sendSystemMessage(.stop, file: #file, line: #line)
             }
         }
-        self.lifecycleWatchLock.withLockVoid {
-            if let watch = self._lifecycleWatches.removeValue(forKey: id) {
-                watch.notifyWatchersWeDied()
-            }
-        }
-        self.namingLock.withLockVoid {
-            self._managedRefs.removeValue(forKey: id) // TODO: should not be necessary in the future
-            _ = self._managedDistributedActors.removeActor(identifiedBy: id)
+        
+        // No-one should be holding onto the context any longer, so we can clear it out as well:
+        if let watch = id.context.lifecycle {
+            watch.notifyWatchersWeDied()
+            id.context.lifecycle = nil
         }
     }
 }

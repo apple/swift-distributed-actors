@@ -36,9 +36,7 @@ struct DistributedActorTimerEvent {
 
 /// Creates and manages timers which may only be accessed from the actor that owns it.
 ///
-/// _BehaviorTimers are bound to this objects lifecycle, i.e. when the actor owning this object is deallocated,
-/// and the `ActorTimers` are deallocated as well, all timers associated with it are cancelled.
-// TODO(distributed): rename once we're able to hide or remove `_BehaviorTimers`
+/// Actor timers are bound to the actor that owns them, and when the actor is deinitialized, all timers associated with it are cancelled as well.
 public final class ActorTimers<Act: DistributedActor> where Act.ActorSystem == ClusterSystem {
     @usableFromInline
     internal let ownerID: ActorAddress

@@ -35,7 +35,8 @@ enum Main {
 
         print("LOCAL:")
         let greeter = Greeter(actorSystem: system)
-        try await greeter.hi(name: "Caplin")
+        let localGreeting = try await greeter.hi(name: "Caplin")
+        print("Got local greeting: \(localGreeting)")
 
         print("RESOLVE:")
         let resolved = try Greeter.resolve(id: greeter.id, using: system)

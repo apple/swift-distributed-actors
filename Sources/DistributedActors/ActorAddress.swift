@@ -15,134 +15,144 @@
 import Distributed
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: ActorAddress
+// MARK: ActorID
 
-/// Uniquely identifies a DistributedActor within the cluster.
-///
-/// It is assigned by the `ClusterSystem` at initialization time of a distributed actor,
-/// and remains associated with that concrete actor until it terminates.
-///
-/// ## Identity
-/// The address is the source of truth with regards to referring to a _specific_ actor in the system.
-/// This is in contrast to an `ActorPath` which can be thought of as paths in a filesystem, however without any uniqueness
-/// or identity guarantees about the files those paths point to.
-///
-/// ## Lifecycle
-/// Note, that an ActorAddress is a pure value, and as such does not "participate" in an actors lifecycle;
-/// Thus, it may represent an address of an actor that has already terminated, so attempts to locate (resolve)
-/// an `_ActorRef` for this address may result with a reference to dead letters (meaning, that the actor this address
-/// had pointed to does not exist, and most likely is dead / terminated).
-///
-/// ## Serialization
-///
-/// An address can be serialized using `Codable` or other serialization mechanisms, and when shared over the network
-/// it shall include its local system's address. When using Codable serialization this is done automatically,
-/// and when implementing custom serializers the `Serialization.Context` should be used to access the node address
-/// to include while serializing the address.
-///
-/// ## Format
-/// The address consists of the following parts:
-///
-/// ```
-/// |              node                 | path              | incarnation |
-///  (  protocol | name | host | port  ) ( [segments] name ) (  uint32   )
-/// ```
-///
-/// For example: `sact://human-readable-name@127.0.0.1:7337/user/wallet/id-121242`.
-/// Note that the `ActorIncarnation` is not printed by default in the String representation of a path, yet may be inspected on demand.
-@available(macOS 10.15, *)
-public struct ActorAddress: @unchecked Sendable {
-    /// Knowledge about a node being `local` is purely an optimization, and should not be relied on by actual code anywhere.
-    /// It is on purpose not exposed to end-user code as well, and must remain so to not break the location transparency promises made by the runtime.
-    ///
-    /// Internally, this knowledge sometimes is necessary however.
-    ///
-    /// As far as end users are concerned, local/remote manifests mostly in the address being hidden in a `description` of a local actor,
-    /// this way it is not noisy to print actors when running in local only mode, or when listing actors and some of them are local.
-    @usableFromInline
-    internal var _location: ActorLocation
+public typealias ActorAddress = ClusterSystem.ActorID
 
-    /// The unique node on which the actor identified by this identity is located.
-    public var uniqueNode: UniqueNode {
-        switch self._location {
-        case .local(let node): return node
-        case .remote(let node): return node
-        }
-    }
-
-    /// Collection of tags associated with this actor identity.
+extension ClusterSystem {
+    
+    /// Uniquely identifies a DistributedActor within the cluster.
     ///
-    /// Tags MAY be transferred to other peers as the identity is replicated, however they are not necessary to uniquely identify the actor.
-    /// Tags can carry additional information such as the type of the actor identified by this identity, or any other user defined "roles" or similar tags.
+    /// It is assigned by the `ClusterSystem` at initialization time of a distributed actor,
+    /// and remains associated with that concrete actor until it terminates.
     ///
-    /// - SeeAlso: `ActorTags` for a detailed discussion of some frequently used tags.
-    public var tags: ActorTags
-
-    /// Underlying path representation, not attached to a specific Actor instance.
-    // FIXME(distributed): make optional
-    public var path: ActorPath {
-        get {
-            guard let path = tags[ActorTags.path] else {
-                fatalError("FIXME: ActorTags.path was not set on \(self)! NOTE THAT PATHS ARE TO BECOME OPTIONAL!!!") // FIXME(distributed): must be removed
+    /// ## Identity
+    /// The address is the source of truth with regards to referring to a _specific_ actor in the system.
+    /// This is in contrast to an `ActorPath` which can be thought of as paths in a filesystem, however without any uniqueness
+    /// or identity guarantees about the files those paths point to.
+    ///
+    /// ## Lifecycle
+    /// Note, that an ActorAddress is a pure value, and as such does not "participate" in an actors lifecycle;
+    /// Thus, it may represent an address of an actor that has already terminated, so attempts to locate (resolve)
+    /// an `_ActorRef` for this address may result with a reference to dead letters (meaning, that the actor this address
+    /// had pointed to does not exist, and most likely is dead / terminated).
+    ///
+    /// ## Serialization
+    ///
+    /// An address can be serialized using `Codable` or other serialization mechanisms, and when shared over the network
+    /// it shall include its local system's address. When using Codable serialization this is done automatically,
+    /// and when implementing custom serializers the `Serialization.Context` should be used to access the node address
+    /// to include while serializing the address.
+    ///
+    /// ## Format
+    /// The address consists of the following parts:
+    ///
+    /// ```
+    /// |              node                 | path              | incarnation |
+    ///  (  protocol | name | host | port  ) ( [segments] name ) (  uint32   )
+    /// ```
+    ///
+    /// For example: `sact://human-readable-name@127.0.0.1:7337/user/wallet/id-121242`.
+    /// Note that the `ActorIncarnation` is not printed by default in the String representation of a path, yet may be inspected on demand.
+    public struct ActorID: @unchecked Sendable {
+        /// Knowledge about a node being `local` is purely an optimization, and should not be relied on by actual code anywhere.
+        /// It is on purpose not exposed to end-user code as well, and must remain so to not break the location transparency promises made by the runtime.
+        ///
+        /// Internally, this knowledge sometimes is necessary however.
+        ///
+        /// As far as end users are concerned, local/remote manifests mostly in the address being hidden in a `description` of a local actor,
+        /// this way it is not noisy to print actors when running in local only mode, or when listing actors and some of them are local.
+        @usableFromInline
+        internal var _location: ActorLocation
+        
+        /// The unique node on which the actor identified by this identity is located.
+        public var uniqueNode: UniqueNode {
+            switch self._location {
+            case .local(let node): return node
+            case .remote(let node): return node
             }
-            return path
         }
-        set {
-            self.tags[ActorTags.path] = newValue
+        
+        /// Collection of tags associated with this actor identity.
+        ///
+        /// Tags MAY be transferred to other peers as the identity is replicated, however they are not necessary to uniquely identify the actor.
+        /// Tags can carry additional information such as the type of the actor identified by this identity, or any other user defined "roles" or similar tags.
+        ///
+        /// - SeeAlso: `ActorTags` for a detailed discussion of some frequently used tags.
+        public var tags: ActorTags
+        
+        internal let context: DistributedActorContext
+        
+        /// Underlying path representation, not attached to a specific Actor instance.
+        // FIXME(distributed): make optional
+        public var path: ActorPath {
+            get {
+                guard let path = tags[ActorTags.path] else {
+                    fatalError("FIXME: ActorTags.path was not set on \(self)! NOTE THAT PATHS ARE TO BECOME OPTIONAL!!!") // FIXME(distributed): must be removed
+                }
+                return path
+            }
+            set {
+                self.tags[ActorTags.path] = newValue
+            }
         }
-    }
-
-    /// Returns the name of the actor represented by this path.
-    /// This is equal to the last path segments string representation.
-    // FIXME(distributed): make optional
-    public var name: String {
-        self.path.name
-    }
-
-    /// Uniquely identifies the specific "incarnation" of this actor.
-    public let incarnation: ActorIncarnation
-
-    /// :nodoc:
-    public init(local node: UniqueNode, path: ActorPath?, incarnation: ActorIncarnation) {
-        self._location = .local(node)
-        self.tags = ActorTags()
-        self.incarnation = incarnation
-        if let path {
-            self.tags[ActorTags.path] = path
+        
+        /// Returns the name of the actor represented by this path.
+        /// This is equal to the last path segments string representation.
+        // FIXME(distributed): make optional
+        public var name: String {
+            self.path.name
         }
-    }
-
-    /// :nodoc:
-    public init(remote node: UniqueNode, path: ActorPath?, incarnation: ActorIncarnation) {
-        self._location = .remote(node)
-        self.incarnation = incarnation
-        self.tags = ActorTags()
-        if let path {
-            self.tags[ActorTags.path] = path
+        
+        /// Uniquely identifies the specific "incarnation" of this actor.
+        public let incarnation: ActorIncarnation
+        
+        /// :nodoc:
+        public init(local node: UniqueNode, path: ActorPath?, incarnation: ActorIncarnation) {
+            self.context = .init()
+            self._location = .local(node)
+            self.tags = ActorTags()
+            self.incarnation = incarnation
+            if let path {
+                self.tags[ActorTags.path] = path
+            }
         }
-    }
-
-    /// :nodoc:
-    public init<Act>(local node: UniqueNode, type: Act.Type, incarnation: ActorIncarnation)
+        
+        /// :nodoc:
+        public init(remote node: UniqueNode, path: ActorPath?, incarnation: ActorIncarnation) {
+            self.context = .init()
+            self._location = .remote(node)
+            self.incarnation = incarnation
+            self.tags = ActorTags()
+            if let path {
+                self.tags[ActorTags.path] = path
+            }
+        }
+        
+        /// :nodoc:
+        public init<Act>(local node: UniqueNode, type: Act.Type, incarnation: ActorIncarnation)
         where Act: DistributedActor, Act.ActorSystem == ClusterSystem {
-        self._location = .local(node)
-        self.tags = ActorTags()
-        self.incarnation = incarnation
-        self.tags = ActorTags()
-        // TODO: avoid mangling names on every spawn?
-        if let mangledName = _mangledTypeName(type) {
-            self.tags[ActorTags.type] = .init(mangledName: mangledName)
+            self.context = .init()
+            self._location = .local(node)
+            self.tags = ActorTags()
+            self.incarnation = incarnation
+            self.tags = ActorTags()
+            // TODO: avoid mangling names on every spawn?
+            if let mangledName = _mangledTypeName(type) {
+                self.tags[ActorTags.type] = .init(mangledName: mangledName)
+            }
         }
-    }
-
-    /// :nodoc:
-    public init(remote node: UniqueNode, type: (some DistributedActor).Type, incarnation: ActorIncarnation) {
-        self._location = .remote(node)
-        self.incarnation = incarnation
-        self.tags = ActorTags()
-        // TODO: avoid mangling names on every spawn?
-        if let mangledName = _mangledTypeName(type) {
-            self.tags[ActorTags.type] = .init(mangledName: mangledName)
+        
+        /// :nodoc:
+        public init(remote node: UniqueNode, type: (some DistributedActor).Type, incarnation: ActorIncarnation) {
+            self.context = .init()
+            self._location = .remote(node)
+            self.incarnation = incarnation
+            self.tags = ActorTags()
+            // TODO: avoid mangling names on every spawn?
+            if let mangledName = _mangledTypeName(type) {
+                self.tags[ActorTags.type] = .init(mangledName: mangledName)
+            }
         }
     }
 }
@@ -842,6 +852,14 @@ extension ActorAddress: Codable {
                 }
             }
         }
+    }
+}
+
+
+extension DistributedActor where ActorSystem == ClusterSystem {
+    /// Internal actor context which can be used as per-actor state storage for exclusive use by the distributed actor cluster runtime.
+    internal var context: DistributedActorContext {
+        self.id.context
     }
 }
 
