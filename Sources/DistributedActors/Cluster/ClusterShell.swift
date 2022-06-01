@@ -268,7 +268,6 @@ internal class ClusterShell {
         //
         // FIXME: see if we can restructure this to avoid these nil/then-set dance
         self._ref = nil
-        pprint("Started \(Self.self)")
     }
 
     /// Actually starts the shell which kicks off binding to a port, and all further cluster work

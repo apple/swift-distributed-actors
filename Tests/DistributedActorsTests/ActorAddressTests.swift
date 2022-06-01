@@ -153,9 +153,11 @@ final class ActorAddressTests: XCTestCase {
         let data = try JSONEncoder().encode(a) // should skip the test tag, it does not know how to encode it
         let serializedJson = String(data: data, encoding: .utf8)!
 
-        serializedJson.shouldEqual("""
-        {"incarnation":1,"node":["sact","one","127.0.0.1",1234,11111],"tags":{"path":{"path":["user","a"]}}}
-        """)
+        serializedJson.shouldContain(#""incarnation":1"#)
+        serializedJson.shouldContain(#""node":["sact","one","127.0.0.1",1234,11111]"#)
+        serializedJson.shouldContain(#""tags":{"path":{"path":["user","a"]}}"#)
+        serializedJson.shouldNotContain(#"$test":"test-value""#)
+
         let back = try JSONDecoder().decode(ActorAddress.self, from: data)
         back.shouldEqual(addressWithoutTestTag)
     }
