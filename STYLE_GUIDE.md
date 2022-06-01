@@ -7,7 +7,7 @@
 Vocabulary:
 
 We need to flesh the vocabulary out a bit, since we differ from Akka quite a bit in internals:
-This is not fleshed out, we should chat about it.
+This is not fleshed out, we should chat about it. 
 
 - interpret - apply a message to a behavior, not necessarily a full reduction ????
 - reduction - the step of processing a message, including interpretation
