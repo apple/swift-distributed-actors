@@ -66,8 +66,8 @@ final class ActorAskTests: ActorSystemXCTestCase {
             _ = try response.wait()
         }
 
-        guard case AskError.timedOut = error else {
-            throw testKit.fail("Expected AskError.timedOut, got \(error)")
+        guard case RemoteCallError.timedOut = error else {
+            throw testKit.fail("Expected RemoteCallError.timedOut, got \(error)")
         }
     }
 
@@ -197,8 +197,8 @@ final class ActorAskTests: ActorSystemXCTestCase {
             try result.wait()
         }
 
-        guard case AskError.timedOut = error else {
-            throw testKit.fail("Expected AskError.timedOut, got \(error)")
+        guard case RemoteCallError.timedOut = error else {
+            throw testKit.fail("Expected RemoteCallError.timedOut, got \(error)")
         }
     }
 
