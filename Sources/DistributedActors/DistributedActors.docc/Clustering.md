@@ -35,7 +35,19 @@ Declaring a distributed actor is similar to declaring a plain `actor`. We do thi
 
 ## Cluster events
 
-Generally, one should not need to rely on the low-level clustering events emitted by the cluster and focus directly on <doc:Lifecycle>
+Cluster events are events emitted by the cluster as changes happen to the lifecycle of members of the cluster. 
+
+Generally, one should not need to rely on the low-level clustering events emitted by the cluster and focus directly on <doc:Lifecycle> which expresses cluster lifecycle events in terms of emitting signals about an actor's termination. E.g. when a node an actor was known to be living on is declared as ``Cluster.MemberStatus.down`` "terminated" signals are generated for all actors watching this actor. This way, you don't usually have to think about specific nodes of a cluster, but rather focus only on the specific actor's lifecycles you care about and want to be notified about their termination.
+
+Having that said, some actors (or other parts of your program) may be interested in the raw event stream offered by the cluster system. For example, one can implement a stability report by observing how frequently ``Cluster/ReachabilityChange`` events are emitted, or take it one level further and implement your own ``DowningStrategy`` based on observing those reachability changes.
+
+Events emitted by the cluster, are always expressed in terms of cluster _members_ (``Cluster/Member``), which represent some concrete ``UniqueNode`` which is part of the membership. As soon as a node becomes part of the membership, even while it is only ``Cluster/MemberStatus/joining``, events about it will be emitted by the cluster.
+
+A cluster member goes through the following phases in its lifecycle:
+
+![A diagram showing that a node joins as joining, then becomes up, and later on down or removed. It also shows the reachable and unreachable states on the side.](cluster_lifecycle.png)
+
+@Image(source: "cluster_lifecycle.png", alt: "A diagram showing that a node joins as joining, then becomes up, and later on down or removed. It also shows the reachable and unreachable states on the side.")
 
 ## Node discovery
 
