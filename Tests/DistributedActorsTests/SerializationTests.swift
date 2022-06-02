@@ -59,7 +59,7 @@ class SerializationTests: ActorSystemXCTestCase {
 
         deserialized.shouldEqual(value)
     }
-
+    
     func test_serialize_Bool_withData() throws {
         let value = true
 

@@ -4,39 +4,42 @@ A peer-to-peer cluster actor system implementation for Swift.
 
 ## Overview
 
-This project provides a runtime implementation for the language feature offered by Swift 5.7: distributed actors.
-
-This library is currently released as **beta** preview software, and is intended to release a source-stable 1.0 release around the time Swift 5.7 stable is released.
-Until then, source breaks and general API changes may still be happening in the library, however its overall shape and general runtime and cluster implementation have been proven for a long time already and we do not expect many changes there. 
-
-> WARNING: This project depends on un-released (in stable versions of Swift) features.
-> You may download latest **nighly snapshots** of Swift from [Swift.org](https://swift.org/download/#snapshots),
-> in order to build and use distributed actors already, even before officially supported in a stable release.
-
-### Towards a source-stable 1.0
-
-The 1.0 release will follow general semantic versioning guidelines, and will not break source compatibility within a major release.
-
-The 1.0 release will _not_ guarantee wire-compatibility yet, however given enough adoption this is a direction we are interested in exploring - please let us know how you are using the cluster, so we can take this into consideration.
+This project provides a cluster runtime implementation for the distributed actors language feature.
 
 
-## Articles 
+### Beta software
 
-- <doc:Introduction>
+> Important: This library is currently released as **beta** preview software. While we anticipate very few changes, please be mindful that until a stable 1.0 version is announced, this library does not guarantee source compatibility.
+
+This project will continue to be polished along side the beta releases of Xcode and Swift 5.7, with the intention to release a source-stable 1.0 release around the time a stable Swift 5.7 is released. 
+
+Please note that this project requires latest Swift 5.7 language features, and as such to work with it (and the `distributed actor` feature in general), you must be using latest Xcode beta releases, or a nightly 5.7 development toolchain Swift which you can download from [Swift.org](https://swift.org/download/#snapshots),
 
 ## Topics
 
-### Essentials
+### Articles
+
+- <doc:Introduction>
+- <doc:Clustering>
+- <doc:Lifecycle>
+
+<!--### Tutorials -->
+
+### Clustering essentials 
 
 - ``ClusterSystem``
-
-### Cluster
 - ``Cluster``
 - ``Cluster/Member``
 - ``Cluster/Membership``
 - ``Cluster/Event``
 - ``Cluster/events``
  
+### Actor Identity
+
+- ``ClusterSystem/ActorID`` 
+
+
 ### Lifecycle monitoring
+
 - ``LifecycleWatch``
 - ``Signals.Terminated``
