@@ -927,7 +927,7 @@ extension ClusterSystem {
         let recipient = _ActorRef<InvocationMessage>(.remote(.init(shell: clusterShell, address: actor.id._asRemote, system: self)))
 
         let arguments = invocation.arguments
-        let ask: AskResponse<Res> = recipient.ask(timeout: RemoteCall.timeout ?? self.settings.defaultRemoteCallTimeout) { replyTo in
+        let ask: AskResponse<RemoteCallReply<Res>> = recipient.ask(timeout: RemoteCall.timeout ?? self.settings.defaultRemoteCallTimeout) { replyTo in
             let invocation = InvocationMessage(
                 targetIdentifier: target.identifier,
                 arguments: arguments,
@@ -937,7 +937,14 @@ extension ClusterSystem {
             return invocation
         }
 
-        return try await ask.value
+        let reply = try await ask.value
+        if let error = reply.thrownError {
+            throw error
+        }
+        guard let value = reply.value else {
+            fatalError("Invalid RemoteCallReply, expected either value or thrownError to be set.")
+        }
+        return value
     }
 
     public func remoteCallVoid<Act, Err>(
@@ -957,7 +964,7 @@ extension ClusterSystem {
         let recipient = _ActorRef<InvocationMessage>(.remote(.init(shell: shell, address: actor.id._asRemote, system: self)))
 
         let arguments = invocation.arguments
-        let ask: AskResponse<_Done> = recipient.ask(timeout: RemoteCall.timeout ?? self.settings.defaultRemoteCallTimeout) { replyTo in
+        let ask: AskResponse<RemoteCallReply<_Done>> = recipient.ask(timeout: RemoteCall.timeout ?? self.settings.defaultRemoteCallTimeout) { replyTo in
             let invocation = InvocationMessage(
                 targetIdentifier: target.identifier,
                 arguments: arguments,
@@ -967,7 +974,10 @@ extension ClusterSystem {
             return invocation
         }
 
-        _ = try await ask.value // discard the _Done
+        let reply = try await ask.value
+        if let error = reply.thrownError {
+            throw error
+        }
     }
 }
 
@@ -1019,20 +1029,98 @@ public struct ClusterInvocationResultHandler: DistributedTargetInvocationResultH
     }
 
     public func onReturn<Success: Codable>(value: Success) async throws {
-        let ref = _ActorRef<Success>(.remote(.init(shell: clusterShell, address: replyToAddress, system: system)))
-        ref.tell(value)
+        let ref = _ActorRef<RemoteCallReply<Success>>(.remote(.init(shell: clusterShell, address: replyToAddress, system: system)))
+        ref.tell(.init(value: value))
     }
 
     public func onReturnVoid() async throws {
-        let ref = _ActorRef<_Done>(.remote(.init(shell: clusterShell, address: replyToAddress, system: system)))
-        ref.tell(_Done.done)
+        let ref = _ActorRef<RemoteCallReply<_Done>>(.remote(.init(shell: clusterShell, address: replyToAddress, system: system)))
+        ref.tell(.init(value: _Done.done))
     }
 
     public func onThrow<Err: Error>(error: Err) async throws {
         self.system.log.warning("Result handler, onThrow: \(error)")
-        // FIXME(distributed): carry the error back
-        fatalError("FIXME: implement sending back errors")
+        let ref = _ActorRef<RemoteCallReply<_Done>>(.remote(.init(shell: clusterShell, address: replyToAddress, system: system)))
+        if let codableError = error as? (Error & Codable) {
+            ref.tell(.init(error: codableError))
+        } else {
+            ref.tell(.init(error: GenericRemoteCallError(message: "Remote call error of [\(type(of: error as Any))] type occurred")))
+        }
     }
+}
+
+protocol AnyRemoteCallReply: Codable {
+    associatedtype Value: Codable
+
+    var value: Value? { get }
+    var thrownError: (any Error & Codable)? { get }
+
+    init(value: Value)
+    init<Err: Error & Codable>(error: Err)
+}
+
+struct RemoteCallReply<Value: Codable>: AnyRemoteCallReply {
+    let value: Value?
+    let thrownError: (any Error & Codable)?
+
+    init(value: Value) {
+        self.value = value
+        self.thrownError = nil
+    }
+
+    init<Err: Error & Codable>(error: Err) {
+        self.value = nil
+        self.thrownError = error
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case value = "v"
+        case wasThrow = "t"
+        case thrownError = "e"
+        case thrownErrorManifest = "em"
+    }
+
+    init(from decoder: Decoder) throws {
+        guard let context = decoder.actorSerializationContext else {
+            throw SerializationError.missingSerializationContext(decoder, Self.self)
+        }
+
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let wasThrow = try container.decodeIfPresent(Bool.self, forKey: .wasThrow) ?? false
+
+        if wasThrow {
+            let errorManifest = try container.decode(Serialization.Manifest.self, forKey: .thrownErrorManifest)
+            let summonedErrorType = try context.serialization.summonType(from: errorManifest)
+            guard let errorAnyType = summonedErrorType as? (Error & Codable).Type else {
+                throw SerializationError.notAbleToDeserialize(hint: "manifest type results in [\(summonedErrorType)] type, which is NOT \((Error & Codable).self)")
+            }
+            self.thrownError = try container.decode(errorAnyType, forKey: .thrownError)
+            self.value = nil
+        } else {
+            self.value = try container.decode(Value.self, forKey: .value)
+            self.thrownError = nil
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        guard let context = encoder.actorSerializationContext else {
+            throw SerializationError.missingSerializationContext(encoder, Self.self)
+        }
+
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        if let thrownError = self.thrownError {
+            try container.encode(true, forKey: .wasThrow)
+            let errorManifest = try context.serialization.outboundManifest(type(of: thrownError))
+            try container.encode(thrownError, forKey: .thrownError)
+            try container.encode(errorManifest, forKey: .thrownErrorManifest)
+        } else {
+            try container.encode(self.value, forKey: .value)
+        }
+    }
+}
+
+public struct GenericRemoteCallError: Error, Codable {
+    public let message: String
 }
 
 public enum ClusterSystemError: DistributedActorSystemError {
@@ -1065,7 +1153,7 @@ internal struct LazyStart<Message: ActorMessage> {
     }
 }
 
-enum RemoteCallError: DistributedActorSystemError, Error {
+enum RemoteCallError: DistributedActorSystemError {
     case clusterAlreadyShutDown
     case timedOut(TimeoutError)
 }

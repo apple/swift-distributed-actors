@@ -151,28 +151,6 @@ final class ClusterSystemTests: ActorSystemXCTestCase {
         secondReceptacle.wait(atMost: .seconds(3))!.shouldBeNil()
     }
 
-    func test_remoteCall_shouldConfigureTimeout() async throws {
-        let local = await setUpNode("local")
-        let remote = await setUpNode("remote")
-        local.cluster.join(node: remote.cluster.uniqueNode)
-
-        let greeter = DelayedGreeter(actorSystem: local)
-        let remoteGreeter = try DelayedGreeter.resolve(id: greeter.id, using: remote)
-
-        let error = try await shouldThrow {
-            try await RemoteCall.with(timeout: .seconds(1)) {
-                _ = try await remoteGreeter.hello()
-            }
-        }
-
-        guard case RemoteCallError.timedOut(let timeoutError) = error else {
-            throw testKit.fail("Expected RemoteCallError.timedOut, got \(error)")
-        }
-        guard timeoutError.timeout == .seconds(1) else {
-            throw testKit.fail("Expected timeout to be 1 second but was \(timeoutError.timeout)")
-        }
-    }
-
     func test_cleanUpAssociationTombstones() async throws {
         let local = await setUpNode("local") {
             $0.associationTombstoneTTL = .seconds(0)
@@ -202,14 +180,153 @@ final class ClusterSystemTests: ActorSystemXCTestCase {
             }
         }
     }
+
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Remote call API tests
+
+    func test_remoteCall() async throws {
+        let local = await setUpNode("local") { settings in
+            settings.serialization.registerInbound(GreeterCodableError.self)
+        }
+        let remote = await setUpNode("remote") { settings in
+            settings.serialization.registerInbound(GreeterCodableError.self)
+        }
+        local.cluster.join(node: remote.cluster.uniqueNode)
+
+        let greeter = Greeter(actorSystem: local)
+        let remoteGreeter = try Greeter.resolve(id: greeter.id, using: remote)
+
+        try await shouldNotThrow {
+            _ = try await remoteGreeter.hello()
+        }
+
+        let codableError = try await shouldThrow {
+            _ = try await remoteGreeter.helloThrow(codable: true)
+        }
+        guard codableError is GreeterCodableError else {
+            throw testKit.fail("Expected GreeterCodableError, got \(codableError)")
+        }
+
+        let noncodableError = try await shouldThrow {
+            _ = try await remoteGreeter.helloThrow(codable: false)
+        }
+        guard let genericRemoteCallError = noncodableError as? GenericRemoteCallError else {
+            throw testKit.fail("Expected GenericRemoteCallError, got \(noncodableError)")
+        }
+        genericRemoteCallError.message.shouldStartWith(prefix: "Remote call error of [GreeterNonCodableError] type occurred")
+    }
+
+    func test_remoteCallVoid() async throws {
+        let local = await setUpNode("local")
+        let remote = await setUpNode("remote") { settings in
+            settings.serialization.registerInbound(GreeterCodableError.self)
+        }
+        local.cluster.join(node: remote.cluster.uniqueNode)
+
+        let greeter = Greeter(actorSystem: local)
+        let remoteGreeter = try Greeter.resolve(id: greeter.id, using: remote)
+
+        try await shouldNotThrow {
+            try await remoteGreeter.muted()
+        }
+
+        let codableError = try await shouldThrow {
+            try await remoteGreeter.mutedThrow(codable: true)
+        }
+        guard codableError is GreeterCodableError else {
+            throw testKit.fail("Expected GreeterCodableError, got \(codableError)")
+        }
+
+        let noncodableError = try await shouldThrow {
+            try await remoteGreeter.mutedThrow(codable: false)
+        }
+        guard let genericRemoteCallError = noncodableError as? GenericRemoteCallError else {
+            throw testKit.fail("Expected GenericRemoteCallError, got \(noncodableError)")
+        }
+        genericRemoteCallError.message.shouldStartWith(prefix: "Remote call error of [GreeterNonCodableError] type occurred")
+    }
+
+    func test_remoteCall_shouldConfigureTimeout() async throws {
+        let local = await setUpNode("local")
+        let remote = await setUpNode("remote")
+        local.cluster.join(node: remote.cluster.uniqueNode)
+
+        let greeter = Greeter(actorSystem: local)
+        let remoteGreeter = try Greeter.resolve(id: greeter.id, using: remote)
+
+        let error = try await shouldThrow {
+            try await RemoteCall.with(timeout: .milliseconds(200)) {
+                _ = try await remoteGreeter.hello(delayNanos: 3_000_000_000)
+            }
+        }
+
+        guard case RemoteCallError.timedOut(let timeoutError) = error else {
+            throw testKit.fail("Expected RemoteCallError.timedOut, got \(error)")
+        }
+        guard timeoutError.timeout == .milliseconds(200) else {
+            throw testKit.fail("Expected timeout to be 200 milliseconds but was \(timeoutError.timeout)")
+        }
+    }
+
+    func test_remoteCallVoid_shouldConfigureTimeout() async throws {
+        let local = await setUpNode("local")
+        let remote = await setUpNode("remote")
+        local.cluster.join(node: remote.cluster.uniqueNode)
+
+        let greeter = Greeter(actorSystem: local)
+        let remoteGreeter = try Greeter.resolve(id: greeter.id, using: remote)
+
+        let error = try await shouldThrow {
+            try await RemoteCall.with(timeout: .milliseconds(200)) {
+                try await remoteGreeter.muted(delayNanos: 3_000_000_000)
+            }
+        }
+
+        guard case RemoteCallError.timedOut(let timeoutError) = error else {
+            throw testKit.fail("Expected RemoteCallError.timedOut, got \(error)")
+        }
+        guard timeoutError.timeout == .milliseconds(200) else {
+            throw testKit.fail("Expected timeout to be 200 milliseconds but was \(timeoutError.timeout)")
+        }
+    }
 }
 
-private distributed actor DelayedGreeter {
+private distributed actor Greeter {
     typealias ID = ClusterSystem.ActorID
     typealias ActorSystem = ClusterSystem
 
     distributed func hello() async throws -> String {
-        try await Task.sleep(nanoseconds: 5_000_000_000)
-        return "hello"
+        "hello"
+    }
+
+    distributed func helloThrow(codable: Bool) async throws -> String {
+        if codable {
+            throw GreeterCodableError()
+        } else {
+            throw GreeterNonCodableError()
+        }
+    }
+
+    distributed func hello(delayNanos: UInt64) async throws -> String {
+        try await Task.sleep(nanoseconds: delayNanos)
+        return try await self.hello()
+    }
+
+    distributed func muted() async throws {}
+
+    distributed func mutedThrow(codable: Bool) async throws {
+        if codable {
+            throw GreeterCodableError()
+        } else {
+            throw GreeterNonCodableError()
+        }
+    }
+
+    distributed func muted(delayNanos: UInt64) async throws {
+        try await Task.sleep(nanoseconds: delayNanos)
+        try await self.muted()
     }
 }
+
+private struct GreeterCodableError: Error, Codable {}
+private struct GreeterNonCodableError: Error {}
