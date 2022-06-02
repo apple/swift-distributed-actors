@@ -189,9 +189,9 @@ final class DeserializationCallback {
 struct SerializationPoolSettings {
     // TODO: enable configuration again, but base it on tagging actor identities
 
-    public let serializationGroups: [[ActorPath]]
+    let serializationGroups: [[ActorPath]]
 
-    internal static var `default`: SerializationPoolSettings {
+    static var `default`: SerializationPoolSettings {
         SerializationPoolSettings(serializationGroups: [])
     }
 }

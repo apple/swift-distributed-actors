@@ -45,7 +45,13 @@ distributed actor Greeter {
 }
 ```
 
+### Location Transparency
+
 ## Distributed actor isolation
+
+Distributed actors further extend the isolation model introduced by actors.
+
+They need to do this, in order to enable location transparency
 
 ## Distributed actor methods
 
@@ -60,3 +66,10 @@ You can also watch these videos about related topics:
 - [WWDC 2021: Protect mutable state with Swift actors](https://developer.apple.com/videos/play/wwdc2021/10133/)
 - [WWDC 2021: Explore structured concurrency in Swift](https://developer.apple.com/videos/play/wwdc2021/10134/)
 - and related other sessions, mentioned in the above video's *Resources* section
+
+Or refer to the Swift Evolution proposals defining those language features:
+
+- [SE-0306: Actors](https://github.com/apple/swift-evolution/blob/main/proposals/0306-actors.md)
+- [SE-0336: Distributed actor isolation](https://github.com/apple/swift-evolution/blob/main/proposals/0336-distributed-actor-isolation.md)
+- [SE-0344: Distributed actor runtime](https://github.com/apple/swift-evolution/blob/main/proposals/0344-distributed-actor-runtime.md)
+- as well as related proposals, such as [SE-0304: Structured Concurrency](https://github.com/apple/swift-evolution/blob/main/proposals/0304-structured-concurrency.md) or [SE-0327: On Actors and Initialization](https://github.com/apple/swift-evolution/blob/main/proposals/0327-actor-initializers.md) 

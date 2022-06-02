@@ -70,8 +70,8 @@ extension ActorSingletonPlugin {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Plugin protocol conformance
 
-extension ActorSingletonPlugin: Plugin {
-    static let pluginKey = PluginKey<ActorSingletonPlugin>(plugin: "$actorSingleton")
+extension ActorSingletonPlugin: _Plugin {
+    static let pluginKey = _PluginKey<ActorSingletonPlugin>(plugin: "$actorSingleton")
 
     public var key: Key {
         Self.pluginKey
