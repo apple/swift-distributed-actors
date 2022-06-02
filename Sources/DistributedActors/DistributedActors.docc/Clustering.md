@@ -47,16 +47,15 @@ A cluster member goes through the following phases in its lifecycle:
 
 ![A diagram showing that a node joins as joining, then becomes up, and later on down or removed. It also shows the reachable and unreachable states on the side.](cluster_lifecycle.png)
 
-@Image(source: "cluster_lifecycle.png", alt: "A diagram showing that a node joins as joining, then becomes up, and later on down or removed. It also shows the reachable and unreachable states on the side.")
 
 ## Node discovery
 
-TODO
+The cluster system uses [swift-service-discovery](https://github.com/apple/swift-service-discovery) to discover nearby nodes it can connect to. This discovery step is only necessary to find IPs and ports on which we are expecting other cluster actor system instances to be running, the actual joining of the nodes is performed by the cluster itself. It can negotiate, and authenticate the other peer before establishing a connection with it (see also TODO: SECURITY).
 
-### Seed nodes
+As such, it is able to use any node discovery mechanism that has an implementation of the `ServiceDiscovery` protocol, like for example: [tuplestream/swift-k8s-service-discovery](https://github.com/tuplestream/swift-k8s-service-discovery) which implements discovery using the kubernetes (k8s) APIs.
 
-TODO
 
-### Swift Service Discovery
+
+### Configuring service discovery
 
 TODO

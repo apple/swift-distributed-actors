@@ -30,18 +30,44 @@ Please note that this project requires latest Swift 5.7 language features, and a
 
 - ``ClusterSystem``
 - ``Cluster``
-- ``Cluster/Member``
 - ``Cluster/Membership``
+- ``Cluster/Member``
 - ``Cluster/Event``
-- ``Cluster/events``
  
 ### Actor Identity
 
 - ``ClusterSystem/ActorID`` 
-- ``Cluster``
-
+- ``ActorTag``
 
 ### Lifecycle monitoring
 
 - ``LifecycleWatch``
 - ``Signals.Terminated``
+
+### Serialization
+
+- ``Serialization``
+- ``Serialization/Context``
+- ``Serialization/Buffer``
+- ``Serialization/Manifest``
+- ``CodableSerializationContext``
+
+### Distributed Worker Pool
+
+- ``WorkerPool``
+- ``DistributedWorker``
+
+### Leader Election
+
+- ``LeaderElection``
+
+### Settings
+
+- ``ClusterSystemSettings``
+- ``ServiceDiscoverySettings``
+- ``OnDownActionStrategySettings``
+
+### Utilities
+
+- ``ExponentialBackoffStrategy``
+- ``VersionVector``
