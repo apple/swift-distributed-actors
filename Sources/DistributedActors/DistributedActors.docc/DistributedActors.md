@@ -22,6 +22,7 @@ Please note that this project requires latest Swift 5.7 language features, and a
 - <doc:Introduction>
 - <doc:Clustering>
 - <doc:Lifecycle>
+- <doc:Observability>
 
 <!--### Tutorials -->
 
@@ -37,6 +38,7 @@ Please note that this project requires latest Swift 5.7 language features, and a
 ### Actor Identity
 
 - ``ClusterSystem/ActorID`` 
+- ``Cluster``
 
 
 ### Lifecycle monitoring

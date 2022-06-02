@@ -228,7 +228,7 @@ enum NodeDeathWatcherShell {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Errors
 
-public enum NodeDeathWatcherError: Error {
+enum NodeDeathWatcherError: Error {
     case attemptedToFailUnknownAddress(Cluster.Membership, UniqueNode)
     case watcherActorWasNotLocal(watcherAddress: ActorAddress, localNode: UniqueNode?)
 }

@@ -23,6 +23,8 @@ public protocol LifecycleWatch: DistributedActor where ActorSystem == ClusterSys
 // MARK: Lifecycle Watch API
 
 extension LifecycleWatch {
+    
+    /// Watch the `watchee` actor for termination, and trigger the `whenTerminated` callback when
     @discardableResult
     public func watchTermination<Watchee>(
         of watchee: Watchee,
