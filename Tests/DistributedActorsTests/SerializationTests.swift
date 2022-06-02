@@ -31,6 +31,8 @@ class SerializationTests: ActorSystemXCTestCase {
 
             settings.serialization.register(PListBinCodableTest.self, serializerID: .foundationPropertyListBinary)
             settings.serialization.register(PListXMLCodableTest.self, serializerID: .foundationPropertyListXML)
+            
+            settings.serialization.registerInbound(CodableBoom.self)
         }
     }
 
@@ -59,7 +61,95 @@ class SerializationTests: ActorSystemXCTestCase {
 
         deserialized.shouldEqual(value)
     }
+    
+    struct RemoteCallReply<Value: Codable>: Codable {
+        var wasThrow: Bool {
+            thrownError != nil
+        }
+        let thrownError: (any Error & Codable)?
+        let value: Value?
+        
+        enum CodingKeys: String, CodingKey {
+            case wasThrow = "t"
+            case thrownError = "e"
+            case thrownErrorManifest = "em"
+            case value = "v"
+        }
+        
+        func encode(to encoder: Encoder) throws {
+            guard let context = encoder.actorSerializationContext else {
+                fatalError()
+            }
+            
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            if let thrownError = self.thrownError {
+                try container.encode(true, forKey: .wasThrow)
+                let errorManifest = try context.serialization.outboundManifest(type(of: thrownError))
+                try container.encode(thrownError, forKey: .thrownError)
+                try container.encode(errorManifest, forKey: .thrownErrorManifest)
+            } else {
+                try container.encode(self.value, forKey: .value)
+            }
+        }
+        
+        init(value: Value) {
+            self.value = value
+            self.thrownError = nil
+        }
+        
+        init<E: Error & Codable>(error: E) {
+            self.value = nil
+            self.thrownError = error
+        }
+        
+        init(from decoder: Decoder) throws {
+            guard let context = decoder.actorSerializationContext else {
+                fatalError()
+            }
+            
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            let wasThrow = try container.decodeIfPresent(Bool.self, forKey: .wasThrow) ?? false
+            
+            if wasThrow {
+                let errorManifest = try container.decode(Serialization.Manifest.self, forKey: .thrownErrorManifest)
+                let errorAnyType = try context.serialization.summonType(from: errorManifest) as! ((Error & Codable).Type) // TODO: type check guards?
+//                func doDecodeError<E: Error & Codable>(_: E.Type) throws -> E {
+//                    try container.decode(E.self, forKey: .thrownError)
+                self.thrownError = try container.decode(errorAnyType, forKey: .thrownError)
+                self.value = nil
+//                }
+//                self.thrownError = try _openExistential(errorAnyType, do: doDecodeError) // FIXME: existentials mess...
+            } else {
+                self.value = try container.decode(Value.self, forKey: .value)
+                self.thrownError = nil
+            }
+        }
+    }
+    
+    struct CodableBoom: Error, Codable {
+        let message: String
+    }
 
+    func test_serialize_Reply() throws {
+        let ok = RemoteCallReply(value: "OK")
+        let sok = try system.serialization.serialize(ok)
+        let oks = String(data: sok.buffer.readData(), encoding: .utf8)
+        print("OKS: \(oks!)")
+        
+        let bok = try system.serialization.deserialize(as: RemoteCallReply<String>.self, from: sok)
+//        bok.shouldEqual(ok)
+        print("BACK: \(bok)")
+        
+        let bad: RemoteCallReply<String> = RemoteCallReply(error: CodableBoom(message: "oh no"))
+        let sbad = try system.serialization.serialize(bad)
+        let bads = String(data: sbad.buffer.readData(), encoding: .utf8)
+        print("BADS: \(bads!)")
+        
+        let bbad = try system.serialization.deserialize(as: RemoteCallReply<String>.self, from: sok)
+//        bbad.shouldEqual(bad)
+        print("BACK BAD: \(bbad)")
+    }
+    
     func test_serialize_Bool_withData() throws {
         let value = true
 
