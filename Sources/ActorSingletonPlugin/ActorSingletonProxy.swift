@@ -55,14 +55,14 @@ internal class ActorSingletonProxy<Message: ActorMessage> {
     private var managerRef: _ActorRef<ActorSingletonManager<Message>.Directive>?
 
     /// Message buffer in case singleton `ref` is `nil`
-    private let buffer: StashBuffer<Message>
+    private let buffer: _StashBuffer<Message>
 
     init(settings: ActorSingletonSettings, allocationStrategy: ActorSingletonAllocationStrategy, props: _Props? = nil, _ behavior: _Behavior<Message>? = nil) {
         self.settings = settings
         self.allocationStrategy = allocationStrategy
         self.singletonProps = props
         self.singletonBehavior = behavior
-        self.buffer = StashBuffer(capacity: settings.bufferCapacity)
+        self.buffer = _StashBuffer(capacity: settings.bufferCapacity)
     }
 
     var behavior: _Behavior<Message> {
