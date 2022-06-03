@@ -89,7 +89,7 @@ extension RemoteActorRefProvider {
         self.localProvider.stopAll()
     }
 
-    public func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
+    public func _traverse<T>(context: _TraversalContext<T>, _ visit: (_TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
         self.localProvider._traverse(context: context, visit)
     }
 }
@@ -179,7 +179,7 @@ internal struct LocalActorRefProvider: _ActorRefProvider {
 }
 
 extension LocalActorRefProvider {
-    public func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
+    public func _traverse<T>(context: _TraversalContext<T>, _ visit: (_TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
         self.root._traverse(context: context.deeper, visit)
     }
 
@@ -194,7 +194,7 @@ extension LocalActorRefProvider {
 
 /// INTERNAL API
 public protocol _ActorTreeTraversable {
-    func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T>
+    func _traverse<T>(context: _TraversalContext<T>, _ visit: (_TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T>
 
     /// Resolves the given actor path against the underlying actor tree.
     ///
@@ -226,7 +226,7 @@ internal struct CompositeActorTreeTraversable: _ActorTreeTraversable {
 
     // TODO: duplicates some logic from _traverse implementation on Actor system (due to initialization dances), see if we can remove the duplication of this
     // TODO: we may be able to pull this off by implementing the "root" as traversable and then we expose it to the Serialization() impl
-    public func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
+    public func _traverse<T>(context: _TraversalContext<T>, _ visit: (_TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
         let systemTraversed = self.systemTree._traverse(context: context, visit)
 
         switch systemTraversed {
@@ -274,7 +274,7 @@ internal struct CompositeActorTreeTraversable: _ActorTreeTraversable {
 }
 
 /// INTERNAL API: May change without any prior notice.
-public struct TraversalContext<T> {
+public struct _TraversalContext<T> {
     var depth: Int
     var accumulated: [T]
     var selectorSegments: ArraySlice<ActorPathSegment> // "remaining path" that we try to locate, if `nil` we select all actors
@@ -306,15 +306,15 @@ public struct TraversalContext<T> {
         }
     }
 
-    var deeper: TraversalContext<T> {
+    var deeper: _TraversalContext<T> {
         self.deeper(by: 1)
     }
 
     /// Returns copy of traversal context yet "one level deeper"
-    func deeper(by n: Int) -> TraversalContext<T> {
+    func deeper(by n: Int) -> _TraversalContext<T> {
         var deeperSelector = self.selectorSegments
         deeperSelector = deeperSelector.dropFirst()
-        let c = TraversalContext(
+        let c = _TraversalContext(
             depth: self.depth + n,
             accumulated: self.accumulated,
             remainingSelectorSegments: self.selectorSegments.dropFirst()

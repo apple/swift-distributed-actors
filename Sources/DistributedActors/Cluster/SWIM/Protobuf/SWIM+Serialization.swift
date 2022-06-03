@@ -65,7 +65,7 @@ extension SWIM.RemoteMessage: _ProtobufRepresentable {
         switch proto.message {
         case .ping(let ping):
             let pingOriginAddress = try ActorAddress(fromProto: ping.origin, context: context)
-            let pingOrigin: SWIM.PingOriginRef = context.resolveActorRef(identifiedBy: pingOriginAddress)
+            let pingOrigin: SWIM.PingOriginRef = context._resolveActorRef(identifiedBy: pingOriginAddress)
 
             let payload = try SWIM.GossipPayload(fromProto: ping.payload, context: context)
             let sequenceNumber = ping.sequenceNumber
@@ -73,10 +73,10 @@ extension SWIM.RemoteMessage: _ProtobufRepresentable {
 
         case .pingRequest(let pingRequest):
             let targetAddress = try ActorAddress(fromProto: pingRequest.target, context: context)
-            let target: _ActorRef<SWIM.Message> = context.resolveActorRef(SWIM.Message.self, identifiedBy: targetAddress)
+            let target: _ActorRef<SWIM.Message> = context._resolveActorRef(SWIM.Message.self, identifiedBy: targetAddress)
 
             let pingRequestOriginAddress = try ActorAddress(fromProto: pingRequest.origin, context: context)
-            let pingRequestOrigin: SWIM.PingRequestOriginRef = context.resolveActorRef(identifiedBy: pingRequestOriginAddress)
+            let pingRequestOrigin: SWIM.PingRequestOriginRef = context._resolveActorRef(identifiedBy: pingRequestOriginAddress)
 
             let payload = try SWIM.GossipPayload(fromProto: pingRequest.payload, context: context)
             let sequenceNumber = pingRequest.sequenceNumber
@@ -176,7 +176,7 @@ extension SWIM.Member: _ProtobufRepresentable {
 
     public init(fromProto proto: _ProtoSWIMMember, context: Serialization.Context) throws {
         let address = try ActorAddress(fromProto: proto.address, context: context)
-        let peer = context.resolveActorRef(SWIM.Message.self, identifiedBy: address)
+        let peer = context._resolveActorRef(SWIM.Message.self, identifiedBy: address)
         let status = try SWIM.Status(fromProto: proto.status, context: context)
         let protocolPeriod = proto.protocolPeriod
         self.init(peer: peer, status: status, protocolPeriod: protocolPeriod)
@@ -220,14 +220,14 @@ extension SWIM.PingResponse: _ProtobufRepresentable {
         switch pingResponse {
         case .ack(let ack):
             let targetAddress = try ActorAddress(fromProto: ack.target, context: context)
-            let target: SWIM.Ref = context.resolveActorRef(identifiedBy: targetAddress)
+            let target: SWIM.Ref = context._resolveActorRef(identifiedBy: targetAddress)
             let payload = try SWIM.GossipPayload(fromProto: ack.payload, context: context)
             let sequenceNumber = ack.sequenceNumber
             self = .ack(target: target, incarnation: ack.incarnation, payload: payload, sequenceNumber: sequenceNumber)
 
         case .nack(let nack):
             let targetAddress = try ActorAddress(fromProto: nack.target, context: context)
-            let target: SWIM.Ref = context.resolveActorRef(identifiedBy: targetAddress)
+            let target: SWIM.Ref = context._resolveActorRef(identifiedBy: targetAddress)
             let sequenceNumber = nack.sequenceNumber
             self = .nack(target: target, sequenceNumber: sequenceNumber)
         }

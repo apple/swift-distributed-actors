@@ -677,7 +677,7 @@ extension ClusterSystem: _ActorTreeTraversable {
         }
     }
 
-    public func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
+    public func _traverse<T>(context: _TraversalContext<T>, _ visit: (_TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
         let systemTraversed: _TraversalResult<T> = self.systemProvider._traverse(context: context, visit)
 
         switch systemTraversed {
@@ -698,13 +698,13 @@ extension ClusterSystem: _ActorTreeTraversable {
         }
     }
 
-    internal func _traverseAll<T>(_ visit: (TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
-        let context = TraversalContext<T>()
+    internal func _traverseAll<T>(_ visit: (_TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
+        let context = _TraversalContext<T>()
         return self._traverse(context: context, visit)
     }
 
     @discardableResult
-    internal func _traverseAllVoid(_ visit: (TraversalContext<Void>, AddressableActorRef) -> _TraversalDirective<Void>) -> _TraversalResult<Void> {
+    internal func _traverseAllVoid(_ visit: (_TraversalContext<Void>, AddressableActorRef) -> _TraversalDirective<Void>) -> _TraversalResult<Void> {
         self._traverseAll(visit)
     }
 

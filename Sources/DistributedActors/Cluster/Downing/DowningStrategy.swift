@@ -14,6 +14,8 @@
 
 import Logging
 
+public struct DowningStrategies {}
+
 /// Allows implementing downing strategies, without having to re-implement and reinvent logging and subscription logic.
 ///
 /// Downing strategies can focus on inspecting the membership and issuing timers if needed.

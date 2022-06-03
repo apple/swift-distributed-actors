@@ -45,7 +45,7 @@ extension GossipShell.Message: Codable {
             }
 
             let originAddress = try container.decode(ActorAddress.self, forKey: .origin)
-            let origin = context.resolveActorRef(Self.self, identifiedBy: originAddress)
+            let origin = context._resolveActorRef(Self.self, identifiedBy: originAddress)
 
             // FIXME: sometimes we could encode raw and not via the Data -- think about it and fix it
             let payloadManifest = try container.decode(Serialization.Manifest.self, forKey: .gossip_payload_manifest)
@@ -53,7 +53,7 @@ extension GossipShell.Message: Codable {
             let payload = try context.serialization.deserialize(as: Gossip.self, from: .data(payloadPayload), using: payloadManifest)
 
             let ackRefAddress = try container.decodeIfPresent(ActorAddress.self, forKey: .ackRef)
-            let ackRef = ackRefAddress.map { context.resolveActorRef(Acknowledgement.self, identifiedBy: $0) }
+            let ackRef = ackRefAddress.map { context._resolveActorRef(Acknowledgement.self, identifiedBy: $0) }
 
             self = .gossip(identity: identifier, origin: origin, payload, ackRef: ackRef)
         }

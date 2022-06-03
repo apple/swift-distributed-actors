@@ -73,7 +73,7 @@ extension _ActorRef: _ProtobufRepresentable {
     }
 
     public init(fromProto proto: _ProtoActorAddress, context: Serialization.Context) throws {
-        self = context.resolveActorRef(Message.self, identifiedBy: try ActorAddress(fromProto: proto, context: context))
+        self = context._resolveActorRef(Message.self, identifiedBy: try ActorAddress(fromProto: proto, context: context))
     }
 }
 

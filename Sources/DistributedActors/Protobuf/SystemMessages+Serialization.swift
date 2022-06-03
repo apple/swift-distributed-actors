@@ -126,10 +126,10 @@ extension _SystemMessage: _ProtobufRepresentable {
                 throw SerializationError.missingField("watcher", type: "SystemMessage.watch")
             }
             let watcheeAddress: ActorAddress = try .init(fromProto: w.watchee, context: context)
-            let watchee = context.resolveAddressableActorRef(identifiedBy: watcheeAddress)
+            let watchee = context._resolveAddressableActorRef(identifiedBy: watcheeAddress)
 
             let watcherAddress: ActorAddress = try .init(fromProto: w.watcher, context: context)
-            let watcher = context.resolveAddressableActorRef(identifiedBy: watcherAddress)
+            let watcher = context._resolveAddressableActorRef(identifiedBy: watcherAddress)
 
             self = .watch(watchee: watchee, watcher: watcher)
 
@@ -141,10 +141,10 @@ extension _SystemMessage: _ProtobufRepresentable {
                 throw SerializationError.missingField("watcher", type: "SystemMessage.unwatch")
             }
             let watcheeAddress: ActorAddress = try .init(fromProto: u.watchee, context: context)
-            let watchee = context.resolveAddressableActorRef(identifiedBy: watcheeAddress)
+            let watchee = context._resolveAddressableActorRef(identifiedBy: watcheeAddress)
 
             let watcherAddress: ActorAddress = try .init(fromProto: u.watcher, context: context)
-            let watcher = context.resolveAddressableActorRef(identifiedBy: watcherAddress)
+            let watcher = context._resolveAddressableActorRef(identifiedBy: watcherAddress)
 
             self = .watch(watchee: watchee, watcher: watcher)
 
@@ -153,7 +153,7 @@ extension _SystemMessage: _ProtobufRepresentable {
                 throw SerializationError.missingField("ref", type: "SystemMessage.terminated")
             }
             // TODO: it is known dead, optimize the resolve?
-            let ref = try context.resolveAddressableActorRef(identifiedBy: .init(fromProto: t.ref, context: context))
+            let ref = try context._resolveAddressableActorRef(identifiedBy: .init(fromProto: t.ref, context: context))
             self = .terminated(ref: ref, existenceConfirmed: t.existenceConfirmed, addressTerminated: t.addressTerminated)
         }
     }
