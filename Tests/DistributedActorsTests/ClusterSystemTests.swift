@@ -184,7 +184,7 @@ final class ClusterSystemTests: ActorSystemXCTestCase {
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Remote call API tests
 
-    func test_remoteCall() async throws {
+    func test_remoteCall_success() async throws {
         let local = await setUpNode("local") { settings in
             settings.serialization.registerInbound(GreeterCodableError.self)
         }
@@ -196,24 +196,51 @@ final class ClusterSystemTests: ActorSystemXCTestCase {
         let greeter = Greeter(actorSystem: local)
         let remoteGreeter = try Greeter.resolve(id: greeter.id, using: remote)
 
-        try await shouldNotThrow {
-            _ = try await remoteGreeter.hello()
+        let value = try await shouldNotThrow {
+            try await remoteGreeter.hello()
         }
+        value.shouldEqual("hello")
+    }
 
-        let codableError = try await shouldThrow {
+    func test_remoteCall_shouldCarryBackThrownError_Codable() async throws {
+        let local = await setUpNode("local") { settings in
+            settings.serialization.registerInbound(GreeterCodableError.self)
+        }
+        let remote = await setUpNode("remote") { settings in
+            settings.serialization.registerInbound(GreeterCodableError.self)
+        }
+        local.cluster.join(node: remote.cluster.uniqueNode)
+
+        let greeter = Greeter(actorSystem: local)
+        let remoteGreeter = try Greeter.resolve(id: greeter.id, using: remote)
+
+        let error = try await shouldThrow {
             _ = try await remoteGreeter.helloThrow(codable: true)
         }
-        guard codableError is GreeterCodableError else {
-            throw testKit.fail("Expected GreeterCodableError, got \(codableError)")
+        guard error is GreeterCodableError else {
+            throw testKit.fail("Expected GreeterCodableError, got \(error)")
         }
+    }
 
-        let noncodableError = try await shouldThrow {
+    func test_remoteCall_shouldCarryBackThrownError_nonCodable() async throws {
+        let local = await setUpNode("local") { settings in
+            settings.serialization.registerInbound(GreeterCodableError.self)
+        }
+        let remote = await setUpNode("remote") { settings in
+            settings.serialization.registerInbound(GreeterCodableError.self)
+        }
+        local.cluster.join(node: remote.cluster.uniqueNode)
+
+        let greeter = Greeter(actorSystem: local)
+        let remoteGreeter = try Greeter.resolve(id: greeter.id, using: remote)
+
+        let error = try await shouldThrow {
             _ = try await remoteGreeter.helloThrow(codable: false)
         }
-        guard let genericRemoteCallError = noncodableError as? GenericRemoteCallError else {
+        guard let remoteCallError = error as? GenericRemoteCallError else {
             throw testKit.fail("Expected GenericRemoteCallError, got \(noncodableError)")
         }
-        genericRemoteCallError.message.shouldStartWith(prefix: "Remote call error of [GreeterNonCodableError] type occurred")
+        remoteCallError.message.shouldStartWith(prefix: "Remote call error of [GreeterNonCodableError] type occurred")
     }
 
     func test_remoteCallVoid() async throws {
@@ -229,21 +256,43 @@ final class ClusterSystemTests: ActorSystemXCTestCase {
         try await shouldNotThrow {
             try await remoteGreeter.muted()
         }
+    }
 
-        let codableError = try await shouldThrow {
+    func test_remoteCallVoid_shouldCarryBackThrownError_Codable() async throws {
+        let local = await setUpNode("local")
+        let remote = await setUpNode("remote") { settings in
+            settings.serialization.registerInbound(GreeterCodableError.self)
+        }
+        local.cluster.join(node: remote.cluster.uniqueNode)
+
+        let greeter = Greeter(actorSystem: local)
+        let remoteGreeter = try Greeter.resolve(id: greeter.id, using: remote)
+
+        let error = try await shouldThrow {
             try await remoteGreeter.mutedThrow(codable: true)
         }
-        guard codableError is GreeterCodableError else {
-            throw testKit.fail("Expected GreeterCodableError, got \(codableError)")
+        guard error is GreeterCodableError else {
+            throw testKit.fail("Expected GreeterCodableError, got \(error)")
         }
+    }
 
-        let noncodableError = try await shouldThrow {
+    func test_remoteCallVoid_shouldCarryBackThrownError_nonCodable() async throws {
+        let local = await setUpNode("local")
+        let remote = await setUpNode("remote") { settings in
+            settings.serialization.registerInbound(GreeterCodableError.self)
+        }
+        local.cluster.join(node: remote.cluster.uniqueNode)
+
+        let greeter = Greeter(actorSystem: local)
+        let remoteGreeter = try Greeter.resolve(id: greeter.id, using: remote)
+
+        let error = try await shouldThrow {
             try await remoteGreeter.mutedThrow(codable: false)
         }
-        guard let genericRemoteCallError = noncodableError as? GenericRemoteCallError else {
-            throw testKit.fail("Expected GenericRemoteCallError, got \(noncodableError)")
+        guard let remoteCallError = error as? GenericRemoteCallError else {
+            throw testKit.fail("Expected GenericRemoteCallError, got \(error)")
         }
-        genericRemoteCallError.message.shouldStartWith(prefix: "Remote call error of [GreeterNonCodableError] type occurred")
+        remoteCallError.message.shouldStartWith(prefix: "Remote call error of [GreeterNonCodableError] type occurred")
     }
 
     func test_remoteCall_shouldConfigureTimeout() async throws {
