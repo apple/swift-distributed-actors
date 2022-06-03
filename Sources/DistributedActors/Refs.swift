@@ -711,7 +711,7 @@ public class _Guardian {
 }
 
 extension _Guardian: _ActorTreeTraversable {
-    public func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
+    public func _traverse<T>(context: _TraversalContext<T>, _ visit: (_TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
         let children: _Children = self.children
 
         var c = context.deeper

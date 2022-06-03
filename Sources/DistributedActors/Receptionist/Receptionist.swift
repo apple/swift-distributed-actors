@@ -33,7 +33,7 @@ public struct Receptionist {
     // it is more efficient to register on the local one, so what we could do, is when sending to a remote receptionist,
     // is to detect that and rather send to the local one.
 
-    internal static let naming: ActorNaming = .unique("receptionist-ref")
+    internal static let naming: _ActorNaming = .unique("receptionist-ref")
 
     /// INTERNAL API
     /// When sent to receptionist will register the specified `_ActorRef` under the given `Reception.Key`

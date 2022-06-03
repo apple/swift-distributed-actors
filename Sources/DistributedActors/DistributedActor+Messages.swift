@@ -56,7 +56,7 @@ extension DistributedActor where ActorSystem == ClusterSystem {
     // FIXME(distributed): this is not enough since we can't get the Message associated type protocol by casting...
     public static func _spawn(instance: Self, on system: ActorSystem) -> _ActorRef<Message> {
         let behavior: _Behavior<InvocationMessage> = makeBehavior(instance: instance)
-        return try! system._spawn(ActorNaming.prefixed(with: "\(Self.self)"), behavior)
+        return try! system._spawn(_ActorNaming.prefixed(with: "\(Self.self)"), behavior)
     }
 }
 

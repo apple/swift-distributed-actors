@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Distributed
 import class Foundation.JSONDecoder
 import class Foundation.JSONEncoder
 import Logging
@@ -21,9 +22,9 @@ import struct NIO.ByteBufferAllocator
 // MARK: Serialization.Context
 
 extension Serialization {
-    /// A context object provided to any Encoder/Decoder, in order to allow special `ClusterSystem`-bound types (such as _ActorRef).
+    /// A context object provided to any ``Encoder``/``Decoder`` used during remoteCall message serialization
     ///
-    /// Context MAY be accessed concurrently be encoders/decoders.
+    /// `Serialization.Context` may be accessed concurrently be encoders/decoders.
     public struct Context {
         public let log: Logger
         public let system: ClusterSystem
@@ -56,7 +57,7 @@ extension Serialization {
         /// such that a transport may _resolve_ using its own metadata.
         ///
         /// - Returns: the `_ActorRef` for given actor if if exists and is alive in the tree, `nil` otherwise
-        public func resolveActorRef<Message>(
+        public func _resolveActorRef<Message>(
             _ messageType: Message.Type = Message.self, identifiedBy address: ActorAddress,
             userInfo: [CodingUserInfoKey: Any] = [:]
         ) -> _ActorRef<Message> where Message: ActorMessage {
@@ -64,8 +65,8 @@ extension Serialization {
             return self.system._resolve(context: context)
         }
 
-        /// Similar to `resolveActorRef` but for an untyped `AddressableActorRef`.
-        public func resolveAddressableActorRef(identifiedBy address: ActorAddress, userInfo: [CodingUserInfoKey: Any] = [:]) -> AddressableActorRef {
+        /// Similar to `_resolveActorRef` but for an untyped `AddressableActorRef`.
+        public func _resolveAddressableActorRef(identifiedBy address: ActorAddress, userInfo: [CodingUserInfoKey: Any] = [:]) -> AddressableActorRef {
             let context = ResolveContext<Never>(address: address, system: self.system, userInfo: userInfo)
             return self.system._resolveUntyped(context: context)
         }
@@ -90,24 +91,26 @@ extension CodingUserInfoKey {
     public static let actorSerializationContext: CodingUserInfoKey = .init(rawValue: "sact_ser_context")!
 }
 
+/// Protocol conformed to by `Foundation.Encoder` and `Foundation.Decoder`,
+/// which provides simple access to the ``actorSerializationContext``.
 public protocol CodableSerializationContext {
     /// Extracts an `Serialization.Context` which can be used to perform actor serialization specific tasks
     /// such as resolving an actor ref from its serialized form.
     ///
     /// This context is only available when the decoder is invoked from the context of `DistributedActors.Serialization`.
     ///
-    /// ## Example
+    /// ## Examples
     ///
     /// Extracting the context from a `decoder`:
     ///
-    /// ```
+    /// ```swift
     ///    guard let serializationContext = decoder.actorSerializationContext else {
     ///        throw SerializationError.missingSerializationContext(decoder, MyMessage.self)
     ///    }
     /// ```
     ///
     /// Similarly, in case the context is extracted from an `encoder`:
-    /// ```
+    /// ```swift
     ///    guard let serializationContext = encoder.actorSerializationContext else {
     ///        throw SerializationError.missingSerializationContext(encoder, value)
     ///    }

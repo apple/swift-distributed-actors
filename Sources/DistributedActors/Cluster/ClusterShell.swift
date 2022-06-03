@@ -30,7 +30,7 @@ public enum Cluster {}
 ///
 /// It keeps the `Membership` instance that can be seen the source of truth for any membership based decisions.
 internal class ClusterShell {
-    internal static let naming = ActorNaming.unique("cluster")
+    internal static let naming = _ActorNaming.unique("cluster")
     public typealias Ref = _ActorRef<ClusterShell.Message>
 
     static let gossipID: StringGossipIdentifier = "membership"

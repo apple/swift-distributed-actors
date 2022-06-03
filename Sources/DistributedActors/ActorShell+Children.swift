@@ -186,7 +186,7 @@ public class _Children {
 // MARK: Traversal
 
 extension _Children: _ActorTreeTraversable {
-    public func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
+    public func _traverse<T>(context: _TraversalContext<T>, _ visit: (_TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
         var c = context.deeper
 
         let children = self.rwLock.withReaderLock {
@@ -308,7 +308,7 @@ extension _Children {
 // MARK: Internal shell operations
 
 extension _ActorShell {
-    func _spawn<M>(_ naming: ActorNaming, props: _Props, _ behavior: _Behavior<M>) throws -> _ActorRef<M> {
+    func _spawn<M>(_ naming: _ActorNaming, props: _Props, _ behavior: _Behavior<M>) throws -> _ActorRef<M> {
         let name = naming.makeName(&self.namingContext)
 
         try behavior.validateAsInitial()

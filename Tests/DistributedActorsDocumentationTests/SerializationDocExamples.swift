@@ -299,7 +299,7 @@ class SerializationDocExamples {
             guard let context = self.context else {
                 throw CustomCodingError.serializationContextNotAvailable
             }
-            let resolved: _ActorRef<String> = context.resolveActorRef(identifiedBy: address) // <2>
+            let resolved: _ActorRef<String> = context._resolveActorRef(identifiedBy: address) // <2>
             return ContainsActorRef(ref: resolved)
         }
 

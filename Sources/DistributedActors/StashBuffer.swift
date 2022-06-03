@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-/// A `StashBuffer` allows messages that have been received, but can't be
+/// A `_StashBuffer` allows messages that have been received, but can't be
 /// processed right away to be temporarily stored and processed later on. One
 /// use-case actors that have different states (i.e. changing behavior). Some
 /// actors may require data to be fetched from external sources, before they
@@ -20,7 +20,7 @@
 /// of actors, they can't be prevented from receiving messages while waiting for
 /// the external source to respond. In this case messages should be stashed and
 /// then unstashed once the external source has responded.
-public final class StashBuffer<Message: ActorMessage> {
+public final class _StashBuffer<Message: ActorMessage> {
     @usableFromInline
     let buffer: RingBuffer<Message>
 

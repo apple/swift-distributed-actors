@@ -147,7 +147,7 @@ internal final class _ActorRefAdapter<To: ActorMessage>: _AbstractAdapter {
 }
 
 extension _ActorRefAdapter {
-    public func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
+    public func _traverse<T>(context: _TraversalContext<T>, _ visit: (_TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
         var c = context.deeper
         switch visit(context, self.myselfAddressable) {
         case .continue:
@@ -219,7 +219,7 @@ internal final class _DeadLetterAdapterPersonality: _AbstractAdapter {
         // nothing to stop, a dead letters adapter is special
     }
 
-    public func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
+    public func _traverse<T>(context: _TraversalContext<T>, _ visit: (_TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
         .completed
     }
 
@@ -364,7 +364,7 @@ internal final class SubReceiveAdapter<Message: ActorMessage, OwnerMessage: Acto
 }
 
 extension SubReceiveAdapter {
-    public func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
+    public func _traverse<T>(context: _TraversalContext<T>, _ visit: (_TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
         var c = context.deeper
         switch visit(context, self.myself.asAddressable) {
         case .continue:

@@ -164,7 +164,7 @@ internal protocol NodeDeathWatcher {
 enum NodeDeathWatcherShell {
     typealias Ref = _ActorRef<Message>
 
-    static var naming: ActorNaming {
+    static var naming: _ActorNaming {
         "nodeDeathWatcher"
     }
 
@@ -228,7 +228,7 @@ enum NodeDeathWatcherShell {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Errors
 
-public enum NodeDeathWatcherError: Error {
+enum NodeDeathWatcherError: Error {
     case attemptedToFailUnknownAddress(Cluster.Membership, UniqueNode)
     case watcherActorWasNotLocal(watcherAddress: ActorAddress, localNode: UniqueNode?)
 }

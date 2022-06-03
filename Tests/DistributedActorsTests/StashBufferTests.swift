@@ -18,7 +18,7 @@ import XCTest
 
 @testable import DistributedActors
 
-final class StashBufferTests: ActorSystemXCTestCase {
+final class _StashBufferTests: ActorSystemXCTestCase {
     func test_stash_shouldStashMessages() throws {
         let probe: ActorTestProbe<Int> = self.testKit.makeTestProbe()
 
@@ -28,7 +28,7 @@ final class StashBufferTests: ActorSystemXCTestCase {
         }
 
         let behavior: _Behavior<Int> = .setup { _ in
-            let stash: StashBuffer<Int> = StashBuffer(capacity: 100)
+            let stash: _StashBuffer<Int> = _StashBuffer(capacity: 100)
             return .receive { context, message in
                 switch message {
                 case 10:
@@ -56,7 +56,7 @@ final class StashBufferTests: ActorSystemXCTestCase {
     }
 
     func test_fullStash_shouldThrowWhenAttemptToStashSomeMore() throws {
-        let stash: StashBuffer<Int> = StashBuffer(capacity: 1)
+        let stash: _StashBuffer<Int> = _StashBuffer(capacity: 1)
 
         try stash.stash(message: 1)
 
@@ -71,7 +71,7 @@ final class StashBufferTests: ActorSystemXCTestCase {
         _ = try self.system._spawn(
             "unstashIntoSetup",
             _Behavior<Int>.setup { context in
-                let stash = StashBuffer<Int>(capacity: 2)
+                let stash = _StashBuffer<Int>(capacity: 2)
                 try stash.stash(message: 1)
 
                 return try stash.unstashAll(
@@ -92,7 +92,7 @@ final class StashBufferTests: ActorSystemXCTestCase {
     func test_messagesStashedAgainDuringUnstashingShouldNotBeProcessedInTheSameRun() throws {
         let probe: ActorTestProbe<Int> = self.testKit.makeTestProbe()
 
-        let stash: StashBuffer<Int> = StashBuffer(capacity: 100)
+        let stash: _StashBuffer<Int> = _StashBuffer(capacity: 100)
 
         let unstashBehavior: _Behavior<Int> = .receiveMessage { message in
             try! stash.stash(message: message)

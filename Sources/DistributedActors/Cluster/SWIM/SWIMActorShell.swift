@@ -544,7 +544,7 @@ internal struct SWIMActorShell {
 
 extension SWIMActorShell {
     static let name: String = "swim"
-    static let naming: ActorNaming = .unique(SWIMActorShell.name)
+    static let naming: _ActorNaming = .unique(SWIMActorShell.name)
 
     static var props: _Props {
         _Props

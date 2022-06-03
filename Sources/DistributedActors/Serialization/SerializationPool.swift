@@ -184,10 +184,13 @@ final class DeserializationCallback {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Serialization.Settings
 
-public struct SerializationPoolSettings {
-    public let serializationGroups: [[ActorPath]]
+/// Configure specific actor destinations to be serviced by dedicated threads in the serialization pool.
+struct SerializationPoolSettings {
+    // TODO: enable configuration again, but base it on tagging actor identities
 
-    internal static var `default`: SerializationPoolSettings {
+    let serializationGroups: [[ActorPath]]
+
+    static var `default`: SerializationPoolSettings {
         SerializationPoolSettings(serializationGroups: [])
     }
 }

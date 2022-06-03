@@ -498,7 +498,7 @@ extension ClusterSystem: CustomStringConvertible {
 extension ClusterSystem: _ActorRefFactory {
     @discardableResult
     public func _spawn<Message>(
-        _ naming: ActorNaming, of type: Message.Type = Message.self, props: _Props = _Props(),
+        _ naming: _ActorNaming, of type: Message.Type = Message.self, props: _Props = _Props(),
         file: String = #file, line: UInt = #line,
         _ behavior: _Behavior<Message>
     ) throws -> _ActorRef<Message> where Message: ActorMessage {
@@ -514,7 +514,7 @@ extension ClusterSystem: _ActorRefFactory {
     /// This also means that there will only be one instance of that actor that will stay alive for the whole lifetime of the system.
     /// Appropriate supervision strategies should be configured for these types of actors.
     public func _spawnSystemActor<Message>(
-        _ naming: ActorNaming, _ behavior: _Behavior<Message>, props: _Props = _Props()
+        _ naming: _ActorNaming, _ behavior: _Behavior<Message>, props: _Props = _Props()
     ) throws -> _ActorRef<Message>
         where Message: ActorMessage
     {
@@ -533,7 +533,7 @@ extension ClusterSystem: _ActorRefFactory {
     ///
     /// **CAUTION** This methods MUST NOT be used from outside of `ClusterSystem.init`.
     internal func _prepareSystemActor<Message>(
-        _ naming: ActorNaming, _ behavior: _Behavior<Message>, props: _Props = _Props()
+        _ naming: _ActorNaming, _ behavior: _Behavior<Message>, props: _Props = _Props()
     ) throws -> LazyStart<Message>
         where Message: ActorMessage
     {
@@ -545,7 +545,7 @@ extension ClusterSystem: _ActorRefFactory {
     // Actual spawn implementation, minus the leading "$" check on names;
     internal func _spawn<Message>(
         using provider: _ActorRefProvider,
-        _ behavior: _Behavior<Message>, name naming: ActorNaming, props: _Props = _Props(),
+        _ behavior: _Behavior<Message>, name naming: _ActorNaming, props: _Props = _Props(),
         startImmediately: Bool = true
     ) throws -> _ActorRef<Message>
         where Message: ActorMessage
@@ -630,7 +630,7 @@ extension ClusterSystem: _ActorRefFactory {
             if let knownName = props._knownActorName {
                 name = knownName
             } else {
-                let naming = ActorNaming.prefixed(with: "\(Act.self)") // FIXME(distributed): strip generics from the name
+                let naming = _ActorNaming.prefixed(with: "\(Act.self)") // FIXME(distributed): strip generics from the name
                 name = naming.makeName(&namingContext)
             }
 
@@ -678,7 +678,7 @@ extension ClusterSystem: _ActorTreeTraversable {
         }
     }
 
-    public func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
+    public func _traverse<T>(context: _TraversalContext<T>, _ visit: (_TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
         let systemTraversed: _TraversalResult<T> = self.systemProvider._traverse(context: context, visit)
 
         switch systemTraversed {
@@ -699,25 +699,23 @@ extension ClusterSystem: _ActorTreeTraversable {
         }
     }
 
-    internal func _traverseAll<T>(_ visit: (TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
-        let context = TraversalContext<T>()
+    internal func _traverseAll<T>(_ visit: (_TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
+        let context = _TraversalContext<T>()
         return self._traverse(context: context, visit)
     }
 
     @discardableResult
-    internal func _traverseAllVoid(_ visit: (TraversalContext<Void>, AddressableActorRef) -> _TraversalDirective<Void>) -> _TraversalResult<Void> {
+    internal func _traverseAllVoid(_ visit: (_TraversalContext<Void>, AddressableActorRef) -> _TraversalDirective<Void>) -> _TraversalResult<Void> {
         self._traverseAll(visit)
     }
 
     /// INTERNAL API: Not intended to be used by end users.
     public func _resolve<Message: ActorMessage>(context: ResolveContext<Message>) -> _ActorRef<Message> {
-//        if let serialization = context.system._serialization {
         do {
             try context.system.serialization._ensureSerializer(Message.self)
         } catch {
             return context.personalDeadLetters
         }
-//        }
         guard let selector = context.selectorSegments.first else {
             return context.personalDeadLetters
         }

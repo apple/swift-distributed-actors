@@ -631,7 +631,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
 
     @discardableResult
     override public func _spawn<M>(
-        _ naming: ActorNaming,
+        _ naming: _ActorNaming,
         of type: M.Type = M.self,
         props: _Props = _Props(),
         file: String = #file, line: UInt = #line,
@@ -645,7 +645,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
 
     @discardableResult
     override public func _spawnWatch<Message>(
-        _ naming: ActorNaming,
+        _ naming: _ActorNaming,
         of type: Message.Type = Message.self,
         props: _Props = _Props(),
         file: String = #file, line: UInt = #line,
@@ -715,7 +715,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
                 return .init(.adapter(adapter))
             }
 
-            let naming = ActorNaming(unchecked: .prefixed(prefix: "$sub-\(id.id)", suffixScheme: .letters))
+            let naming = _ActorNaming(unchecked: .prefixed(prefix: "$sub-\(id.id)", suffixScheme: .letters))
             let name = naming.makeName(&self.namingContext)
             let adaptedAddress = try self.address.makeChildAddress(name: name, incarnation: .random()) // TODO: actor name to BE the identity
             let ref = SubReceiveAdapter(SubMessage.self, owner: self.myself, address: adaptedAddress, identifier: identifier)
@@ -767,7 +767,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
             if let adapter: _ActorRefAdapter<Message> = self.messageAdapter {
                 return .init(.adapter(adapter))
             } else {
-                let adaptedAddress = try self.address.makeChildAddress(name: ActorNaming.adapter.makeName(&self.namingContext), incarnation: .wellKnown)
+                let adaptedAddress = try self.address.makeChildAddress(name: _ActorNaming.adapter.makeName(&self.namingContext), incarnation: .wellKnown)
                 let adapter = _ActorRefAdapter(fromType: fromType, to: self.myself, address: adaptedAddress)
 
                 self.messageAdapter = adapter
@@ -967,7 +967,7 @@ extension AbstractShellProtocol {
         self._myselfReceivesSystemMessages
     }
 
-    public func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
+    public func _traverse<T>(context: _TraversalContext<T>, _ visit: (_TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
         var c = context.deeper
         switch visit(context, self.asAddressable) {
         case .continue:
