@@ -79,8 +79,8 @@ extension Serialization.SerializerID {
     // ... -- || --
     // ... reserved = 16
 
-    /// Helper function to never accidentally register a not-Any_ProtobufRepresentable as such.
-    public static func check_ProtobufRepresentable<M: Any_ProtobufRepresentable>(_ type: M.Type) -> SerializerID {
+    /// Helper function to never accidentally register a not-_AnyProtobufRepresentable as such.
+    public static func _checkProtobufRepresentable<M: _AnyProtobufRepresentable>(_ type: M.Type) -> SerializerID {
         ._ProtobufRepresentable
     }
 
@@ -95,17 +95,17 @@ extension Serialization {
     /// in order to allow fine grained evolution and payload size savings.
     enum ReservedID {
         internal static let SystemMessage: SerializerID = .doNotSerialize
-        internal static let SystemMessageACK: SerializerID = .check_ProtobufRepresentable(_SystemMessage.ACK.self)
-        internal static let SystemMessageNACK: SerializerID = .check_ProtobufRepresentable(_SystemMessage.NACK.self)
-        internal static let SystemMessageEnvelope: SerializerID = .check_ProtobufRepresentable(DistributedActors.SystemMessageEnvelope.self)
+        internal static let SystemMessageACK: SerializerID = ._checkProtobufRepresentable(_SystemMessage.ACK.self)
+        internal static let SystemMessageNACK: SerializerID = ._checkProtobufRepresentable(_SystemMessage.NACK.self)
+        internal static let SystemMessageEnvelope: SerializerID = ._checkProtobufRepresentable(DistributedActors.SystemMessageEnvelope.self)
 
-        internal static let ActorAddress: SerializerID = .check_ProtobufRepresentable(DistributedActors.ActorAddress.self)
+        internal static let ActorID: SerializerID = ._checkProtobufRepresentable(DistributedActors.ActorID.self)
 
-        internal static let ClusterShellMessage: SerializerID = .check_ProtobufRepresentable(ClusterShell.Message.self)
-        internal static let ClusterEvent: SerializerID = .check_ProtobufRepresentable(Cluster.Event.self)
+        internal static let ClusterShellMessage: SerializerID = ._checkProtobufRepresentable(ClusterShell.Message.self)
+        internal static let ClusterEvent: SerializerID = ._checkProtobufRepresentable(Cluster.Event.self)
 
-        internal static let SWIMMessage: SerializerID = .check_ProtobufRepresentable(SWIM.Message.self)
-        internal static let SWIMPingResponse: SerializerID = .check_ProtobufRepresentable(SWIM.PingResponse.self)
+        internal static let SWIMMessage: SerializerID = ._checkProtobufRepresentable(SWIM.Message.self)
+        internal static let SWIMPingResponse: SerializerID = ._checkProtobufRepresentable(SWIM.PingResponse.self)
 
         // op log receptionist
         internal static let PushOps: SerializerID = .foundationJSON

@@ -64,10 +64,10 @@ final class NodeDeathWatcherTests: ClusteredActorSystemsXCTestCase {
         let termination2: _Signals.Terminated = try p.expectMessage()
         let terminations: [_Signals.Terminated] = [termination1, termination2]
         terminations.shouldContain(where: { terminated in
-            (!terminated.existenceConfirmed) && terminated.address.name == "remote-1"
+            (!terminated.existenceConfirmed) && terminated.id.name == "remote-1"
         })
         terminations.shouldContain(where: { terminated in
-            (!terminated.existenceConfirmed) && terminated.address.name == "remote-2"
+            (!terminated.existenceConfirmed) && terminated.id.name == "remote-2"
         })
 
         // should not trigger terminated again for any of the remote refs

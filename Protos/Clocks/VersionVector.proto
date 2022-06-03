@@ -18,7 +18,7 @@ syntax = "proto3";
 option optimize_for = SPEED;
 option swift_prefix = "_Proto";
 
-import "ActorAddress.proto";
+import "ActorID.proto";
 import "Serialization/Serialization.proto";
 
 // ==== Replica ID -----------------------------------------------------------------------------------------------------
@@ -30,7 +30,7 @@ message ActorIdentity {
 
 message VersionReplicaID {
     oneof value {
-        ActorAddress actorAddress   = 1;
+        ActorID actorID             = 1;
         UniqueNode uniqueNode       = 2;
         uint64 uniqueNodeID         = 3;
     }

@@ -111,7 +111,7 @@ extension Serialization.Settings {
         // TODO: add test for sending raw SwiftProtobuf.Message
         if overrideSerializerID == SerializerID._ProtobufRepresentable {
             precondition(
-                type is Any_ProtobufRepresentable.Type || type is SwiftProtobuf.Message.Type,
+                type is _AnyProtobufRepresentable.Type || type is SwiftProtobuf.Message.Type,
                 """
                 Attempted to register \(String(reflecting: type)) as \
                 serializable using \(reflecting: overrideSerializerID), \

@@ -25,7 +25,7 @@ import NIO
 /// In order to avoid every actor having to subscribe to cluster events and individually handle the relationship between those
 /// and individually watched actors, the watcher handles subscribing for cluster events on behalf of actors which watch
 /// other actors on remote nodes, and messages them `SystemMessage.nodeTerminated(node)` upon node termination (down),
-/// which are in turn translated by the actors locally to `SystemMessage.terminated(ref:existenceConfirmed:addressTerminated:true)`
+/// which are in turn translated by the actors locally to `SystemMessage.terminated(ref:existenceConfirmed:idTerminated:true)`
 ///
 /// to any actor which watched at least one actor on a node that has been downed.
 ///
@@ -72,11 +72,11 @@ internal final class NodeDeathWatcherInstance: NodeDeathWatcher {
             return
         }
 
-        guard watcher.address._isLocal else {
+        guard watcher.id._isLocal else {
             // a failure detector must never register non-local actors, it would not make much sense,
             // as they should have their own local failure detectors on their own systems.
             // If we reach this it is most likely a bug in the library itself.
-            let err = NodeDeathWatcherError.watcherActorWasNotLocal(watcherAddress: watcher.address, localNode: self.selfNode)
+            let err = NodeDeathWatcherError.watcherActorWasNotLocal(watcherID: watcher.id, localNode: self.selfNode)
             return fatalErrorBacktrace("Attempted registering non-local actor with node-death watcher: \(err)")
         }
 
@@ -230,5 +230,5 @@ enum NodeDeathWatcherShell {
 
 enum NodeDeathWatcherError: Error {
     case attemptedToFailUnknownAddress(Cluster.Membership, UniqueNode)
-    case watcherActorWasNotLocal(watcherAddress: ActorAddress, localNode: UniqueNode?)
+    case watcherActorWasNotLocal(watcherID: ActorID, localNode: UniqueNode?)
 }

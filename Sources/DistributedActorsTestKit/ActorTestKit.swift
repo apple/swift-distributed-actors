@@ -249,7 +249,7 @@ extension ActorTestKit {
 
         let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
         let res: _TraversalResult<AddressableActorRef> = self.system._traverseAll { _, ref in
-            if ref.address.path.description == path {
+            if ref.id.path.description == path {
                 return .accumulateSingle(ref)
             } else {
                 return .continue
@@ -268,14 +268,14 @@ extension ActorTestKit {
     /// If unable to resolve a not-dead reference, this function throws, rather than returning the dead reference.
     ///
     /// This is useful when the resolution might be racing against the startup of the actor we are trying to resolve.
-    public func _eventuallyResolve<Message>(address: ActorAddress, of: Message.Type = Message.self, within: TimeAmount = .seconds(5)) throws -> _ActorRef<Message> {
-        let context = ResolveContext<Message>(address: address, system: self.system)
+    public func _eventuallyResolve<Message>(id: ActorID, of: Message.Type = Message.self, within: TimeAmount = .seconds(5)) throws -> _ActorRef<Message> {
+        let context = ResolveContext<Message>(id: id, system: self.system)
 
         return try self.eventually(within: .seconds(3)) {
             let resolved = self.system._resolve(context: context)
 
-            if resolved.address.starts(with: ._dead) {
-                throw self.error("Attempting to resolve not-dead [\(address)] yet resolved: \(resolved)")
+            if resolved.id.starts(with: ._dead) {
+                throw self.error("Attempting to resolve not-dead [\(id)] yet resolved: \(resolved)")
             } else {
                 return resolved
             }

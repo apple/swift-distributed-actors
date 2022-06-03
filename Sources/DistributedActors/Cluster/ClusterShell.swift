@@ -268,7 +268,6 @@ internal class ClusterShell {
         //
         // FIXME: see if we can restructure this to avoid these nil/then-set dance
         self._ref = nil
-        pprint("Started \(Self.self)")
     }
 
     /// Actually starts the shell which kicks off binding to a port, and all further cluster work
@@ -427,7 +426,7 @@ extension ClusterShell {
                         intervalRandomFactor: self.settings.membershipGossipIntervalRandomFactor,
                         style: .acknowledged(timeout: self.settings.membershipGossipInterval),
                         peerDiscovery: .onClusterMember(atLeast: .joining, resolve: { member in
-                            let resolveContext = ResolveContext<GossipShell<Cluster.MembershipGossip, Cluster.MembershipGossip>.Message>(address: ._clusterGossip(on: member.uniqueNode), system: context.system)
+                            let resolveContext = ResolveContext<GossipShell<Cluster.MembershipGossip, Cluster.MembershipGossip>.Message>(id: ._clusterGossip(on: member.uniqueNode), system: context.system)
                             return context.system._resolve(context: resolveContext).asAddressable
                         })
                     ),
@@ -648,7 +647,7 @@ extension ClusterShell {
                 }
             }
             .receiveSpecificSignal(_Signals.Terminated.self) { context, signal in
-                context.log.error("Cluster actor \(signal.address) terminated unexpectedly! Will initiate cluster shutdown.")
+                context.log.error("Cluster actor \(signal.id) terminated unexpectedly! Will initiate cluster shutdown.")
                 context.system.shutdown()
                 return .same // the system shutdown will cause downing which we may want to still handle, and then will stop us
             }
@@ -671,7 +670,7 @@ extension ClusterShell {
 
         // TODO: consider receptionist instead of this; we're "early" but receptionist could already be spreading its info to this node, since we associated.
         let gossipPeer: GossipShell<Cluster.MembershipGossip, Cluster.MembershipGossip>.Ref = context.system._resolve(
-            context: .init(address: ._clusterGossip(on: change.member.uniqueNode), system: context.system)
+            context: .init(id: ._clusterGossip(on: change.member.uniqueNode), system: context.system)
         )
         // FIXME: make sure that if the peer terminated, we don't add it again in here, receptionist would be better then to power this...
         // today it can happen that a node goes down but we dont know yet so we add it again :O
@@ -1300,13 +1299,13 @@ extension ClusterShell {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ClusterShell's actor address
 
-extension ActorAddress {
-    static func _clusterShell(on node: UniqueNode) -> ActorAddress {
-        ActorPath._clusterShell.makeRemoteAddress(on: node, incarnation: .wellKnown)
+extension ActorID {
+    static func _clusterShell(on node: UniqueNode) -> ActorID {
+        ActorPath._clusterShell.makeRemoteID(on: node, incarnation: .wellKnown)
     }
 
-    static func _clusterGossip(on node: UniqueNode) -> ActorAddress {
-        ActorPath._clusterGossip.makeRemoteAddress(on: node, incarnation: .wellKnown)
+    static func _clusterGossip(on node: UniqueNode) -> ActorID {
+        ActorPath._clusterGossip.makeRemoteID(on: node, incarnation: .wellKnown)
     }
 }
 

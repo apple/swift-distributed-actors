@@ -64,18 +64,18 @@ extension SWIM.RemoteMessage: _ProtobufRepresentable {
     public init(fromProto proto: ProtobufRepresentation, context: Serialization.Context) throws {
         switch proto.message {
         case .ping(let ping):
-            let pingOriginAddress = try ActorAddress(fromProto: ping.origin, context: context)
-            let pingOrigin: SWIM.PingOriginRef = context._resolveActorRef(identifiedBy: pingOriginAddress)
+            let pingOriginID = try ActorID(fromProto: ping.origin, context: context)
+            let pingOrigin: SWIM.PingOriginRef = context._resolveActorRef(identifiedBy: pingOriginID)
 
             let payload = try SWIM.GossipPayload(fromProto: ping.payload, context: context)
             let sequenceNumber = ping.sequenceNumber
             self = .ping(pingOrigin: pingOrigin, payload: payload, sequenceNumber: sequenceNumber)
 
         case .pingRequest(let pingRequest):
-            let targetAddress = try ActorAddress(fromProto: pingRequest.target, context: context)
-            let target: _ActorRef<SWIM.Message> = context._resolveActorRef(SWIM.Message.self, identifiedBy: targetAddress)
+            let targetID = try ActorID(fromProto: pingRequest.target, context: context)
+            let target: _ActorRef<SWIM.Message> = context._resolveActorRef(SWIM.Message.self, identifiedBy: targetID)
 
-            let pingRequestOriginAddress = try ActorAddress(fromProto: pingRequest.origin, context: context)
+            let pingRequestOriginAddress = try ActorID(fromProto: pingRequest.origin, context: context)
             let pingRequestOrigin: SWIM.PingRequestOriginRef = context._resolveActorRef(identifiedBy: pingRequestOriginAddress)
 
             let payload = try SWIM.GossipPayload(fromProto: pingRequest.payload, context: context)
@@ -168,15 +168,15 @@ extension SWIM.Member: _ProtobufRepresentable {
         guard let actorPeer = self.peer as? SWIM.Ref else {
             throw SerializationError.unableToSerialize(hint: "Expected peer to be \(SWIM.Ref.self) but was \(self.peer)!")
         }
-        proto.address = try actorPeer.toProto(context: context)
+        proto.id = try actorPeer.toProto(context: context)
         proto.status = try self.status.toProto(context: context)
         proto.protocolPeriod = self.protocolPeriod
         return proto
     }
 
     public init(fromProto proto: _ProtoSWIMMember, context: Serialization.Context) throws {
-        let address = try ActorAddress(fromProto: proto.address, context: context)
-        let peer = context._resolveActorRef(SWIM.Message.self, identifiedBy: address)
+        let id = try ActorID(fromProto: proto.id, context: context)
+        let peer = context._resolveActorRef(SWIM.Message.self, identifiedBy: id)
         let status = try SWIM.Status(fromProto: proto.status, context: context)
         let protocolPeriod = proto.protocolPeriod
         self.init(peer: peer, status: status, protocolPeriod: protocolPeriod)
@@ -219,15 +219,15 @@ extension SWIM.PingResponse: _ProtobufRepresentable {
         }
         switch pingResponse {
         case .ack(let ack):
-            let targetAddress = try ActorAddress(fromProto: ack.target, context: context)
-            let target: SWIM.Ref = context._resolveActorRef(identifiedBy: targetAddress)
+            let targetID = try ActorID(fromProto: ack.target, context: context)
+            let target: SWIM.Ref = context._resolveActorRef(identifiedBy: targetID)
             let payload = try SWIM.GossipPayload(fromProto: ack.payload, context: context)
             let sequenceNumber = ack.sequenceNumber
             self = .ack(target: target, incarnation: ack.incarnation, payload: payload, sequenceNumber: sequenceNumber)
 
         case .nack(let nack):
-            let targetAddress = try ActorAddress(fromProto: nack.target, context: context)
-            let target: SWIM.Ref = context._resolveActorRef(identifiedBy: targetAddress)
+            let targetID = try ActorID(fromProto: nack.target, context: context)
+            let target: SWIM.Ref = context._resolveActorRef(identifiedBy: targetID)
             let sequenceNumber = nack.sequenceNumber
             self = .nack(target: target, sequenceNumber: sequenceNumber)
         }

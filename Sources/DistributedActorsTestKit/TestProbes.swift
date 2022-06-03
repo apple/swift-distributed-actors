@@ -87,7 +87,7 @@ public final class ActorTestProbe<Message: ActorMessage>: @unchecked Sendable {
             let _: Never = fatalErrorBacktrace("Failed to make actor ref for \(ActorTestProbe<Message>.self): [\(error)]:\(String(reflecting: type(of: error)))", file: file, line: line)
         }
 
-        self.name = self.internalRef.address.name
+        self.name = self.internalRef.id.name
 
         let wrapRealMessages: (Message) -> ProbeCommands = { msg in
             ProbeCommands.realMessage(message: msg)
@@ -155,7 +155,7 @@ public final class ActorTestProbe<Message: ActorMessage>: @unchecked Sendable {
 extension ActorTestProbe: CustomStringConvertible {
     public var description: String {
         let prettyTypeName = String(reflecting: Message.self).split(separator: ".").dropFirst().joined(separator: ".")
-        return "ActorTestProbe<\(prettyTypeName)>(\(self.ref.address))"
+        return "ActorTestProbe<\(prettyTypeName)>(\(self.ref.id))"
     }
 }
 
@@ -478,8 +478,8 @@ extension ActorTestProbe {
 // MARK: TestProbes can _ReceivesMessages
 
 extension ActorTestProbe: _ReceivesMessages {
-    public var address: ActorAddress {
-        self.exposedRef.address
+    public var id: ActorID {
+        self.exposedRef.id
     }
 
     public func tell(_ message: Message, file: String = #file, line: UInt = #line) {
@@ -700,10 +700,10 @@ extension ActorTestProbe {
         let timeout = timeout ?? self.expectationTimeout
 
         guard let terminated = self.terminationsQueue.poll(timeout) else {
-            throw callSite.error("Expected [\(ref.address)] to terminate within \(timeout.prettyDescription)")
+            throw callSite.error("Expected [\(ref.id)] to terminate within \(timeout.prettyDescription)")
         }
-        guard terminated.address == ref.address else {
-            throw callSite.error("Expected [\(ref.address)] to terminate, but received [\(terminated.address)] terminated signal first instead. " +
+        guard terminated.id == ref.id else {
+            throw callSite.error("Expected [\(ref.id)] to terminate, but received [\(terminated.id)] terminated signal first instead. " +
                 "This could be an ordering issue, inspect your signal order assumptions.")
         }
 
@@ -717,7 +717,7 @@ extension ActorTestProbe {
     /// - SeeAlso: `DeathWatch`
     public func expectTerminatedInAnyOrder(_ refs: [AddressableActorRef], file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
-        var pathSet: Set<ActorAddress> = Set(refs.map(\.address))
+        var pathSet: Set<ActorAddress> = Set(refs.map(\.id))
 
         let deadline = Deadline.fromNow(self.expectationTimeout)
         while !pathSet.isEmpty, deadline.hasTimeLeft() {
@@ -725,8 +725,8 @@ extension ActorTestProbe {
                 throw callSite.error("Expected [\(refs)] to terminate within \(self.expectationTimeout.prettyDescription)")
             }
 
-            guard pathSet.remove(terminated.address) != nil else {
-                throw callSite.error("Expected any of \(pathSet) to terminate, but received [\(terminated.address)] terminated signal first instead. " +
+            guard pathSet.remove(terminated.id) != nil else {
+                throw callSite.error("Expected any of \(pathSet) to terminate, but received [\(terminated.id)] terminated signal first instead. " +
                     "This could be an ordering issue, inspect your signal order assumptions.")
             }
         }

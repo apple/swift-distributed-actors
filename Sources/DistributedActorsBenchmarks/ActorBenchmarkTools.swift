@@ -31,8 +31,8 @@ internal class BenchmarkLatchPersonality<Message: Codable>: _CellDelegate<Messag
         self.startTime.store(SwiftBenchmarkTools.Timer().getTimeAsInt(), ordering: .relaxed)
     }
 
-    override var address: ActorAddress {
-        ActorAddress(local: .init(protocol: "test", systemName: "test", host: "127.0.0.1", port: 7337, nid: .random()), path: ._system, incarnation: .wellKnown)
+    override var id: ActorID {
+        ActorID(local: .init(protocol: "test", systemName: "test", host: "127.0.0.1", port: 7337, nid: .random()), path: ._system, incarnation: .wellKnown)
     }
 
     var ref: _ActorRef<Message> {

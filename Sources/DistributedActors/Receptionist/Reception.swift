@@ -59,8 +59,8 @@ extension Reception {
             }
         }
 
-        internal func resolve(system: ClusterSystem, address: ActorAddress) -> AddressableActorRef {
-            let ref: _ActorRef<Guest.Message> = system._resolve(context: ResolveContext(address: address, system: system))
+        internal func resolve(system: ClusterSystem, id: ActorID) -> AddressableActorRef {
+            let ref: _ActorRef<Guest.Message> = system._resolve(context: ResolveContext(id: id, system: system))
             return ref.asAddressable
         }
 
@@ -101,7 +101,7 @@ extension Reception {
         }
 
         public var description: String {
-            "Reception.Listing<\(Guest.self)>(\(self.underlying.map(\.address)))"
+            "Reception.Listing<\(Guest.self)>(\(self.underlying.map(\.id)))"
         }
 
         public static func == (lhs: Listing<Guest>, rhs: Listing<Guest>) -> Bool {
@@ -124,10 +124,10 @@ extension Reception.Listing where Guest: _ReceivesMessages {
         }
     }
 
-    public func first(where matches: (ActorAddress) -> Bool) -> _ActorRef<Guest.Message>? {
+    public func first(where matches: (ActorID) -> Bool) -> _ActorRef<Guest.Message>? {
         self.underlying.first {
             let ref: _ActorRef<Guest.Message> = self.key._unsafeAsActorRef($0)
-            return matches(ref.address)
+            return matches(ref.id)
         }.map {
             self.key._unsafeAsActorRef($0)
         }
@@ -202,6 +202,6 @@ extension Reception.Registered where Guest: DistributedActor, Guest.ActorSystem 
     public var actor: Guest {
         let system = self._guest.actorSystem
 
-        return try! Guest.resolve(id: self._guest._ref.address, using: system) // FIXME: cleanup these APIs, should never need throws, resolve earlier
+        return try! Guest.resolve(id: self._guest._ref.id, using: system) // FIXME: cleanup these APIs, should never need throws, resolve earlier
     }
 }

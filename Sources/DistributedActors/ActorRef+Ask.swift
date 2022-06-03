@@ -87,7 +87,7 @@ extension _ActorRef: ReceivesQuestions {
         let promise = system._eventLoopGroup.next().makePromise(of: answerType)
 
         // TODO: maybe a specialized one... for ask?
-        let instrumentation = system.settings.instrumentation.makeActorInstrumentation(promise.futureResult, self.address)
+        let instrumentation = system.settings.instrumentation.makeActorInstrumentation(promise.futureResult, self.id)
 
         do {
             // TODO: implement special actor ref instead of using real actor
@@ -106,7 +106,7 @@ extension _ActorRef: ReceivesQuestions {
             let message = makeQuestion(askRef)
             self.tell(message, file: file, line: line)
 
-            instrumentation.actorAsked(message: message, from: askRef.address)
+            instrumentation.actorAsked(message: message, from: askRef.id)
             promise.futureResult.whenComplete {
                 switch $0 {
                 case .success(let answer):
@@ -274,7 +274,7 @@ internal enum AskActor {
                     switch event {
                     case .timeout:
                         let errorMessage = """
-                        No response received for ask to [\(ref.address)] within timeout [\(timeout.prettyDescription)]. \
+                        No response received for ask to [\(ref.id)] within timeout [\(timeout.prettyDescription)]. \
                         Ask was initiated from function [\(function)] in [\(file):\(line)] and \
                         expected response of type [\(String(reflecting: ResponseType.self))].
                         """

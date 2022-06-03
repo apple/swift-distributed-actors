@@ -17,7 +17,7 @@
 public struct OSSignpostInstrumentationProvider: ClusterSystemInstrumentationProvider {
     public init() {}
 
-    public var actorInstrumentation: ((AnyObject, ActorAddress) -> ActorInstrumentation)? {
+    public var actorInstrumentation: ((AnyObject, ActorID) -> ActorInstrumentation)? {
         if #available(OSX 10.14, iOS 12.0, *) {
             // TODO: how to guard in iOS etc here?
             return OSSignpostActorInstrumentation.init

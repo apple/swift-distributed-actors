@@ -3,9 +3,10 @@
 
 Peer-to-peer server-side focused clustering transport implementation for Swift Distributed Actors.
 
-> **NOTE:** This is a work in progress, early preview project. All APIs may (and will) change. Please read more about our plans the introduction below.
+> **NOTE:** This library is currently released as **beta** preview software. While we anticipate very few changes, please be mindful that until a stable 1.0 version is announced, this library does not guarantee source compatibility.
 
 * [Introduction](#introduction)
+* [Documentation](#documentation)
 * [Development](#development)
 
 ## Introduction

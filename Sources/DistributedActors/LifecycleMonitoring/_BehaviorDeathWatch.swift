@@ -154,11 +154,11 @@ internal struct DeathWatchImpl<Message: ActorMessage> {
         let addressableWatchee: AddressableActorRef = watchee.asAddressable
 
         // watching ourselves is a no-op, since we would never be able to observe the Terminated message anyway:
-        guard addressableWatchee.address != watcher.address else {
+        guard addressableWatchee.id != watcher.id else {
             return
         }
 
-        if self.isWatching(addressableWatchee.address) {
+        if self.isWatching(addressableWatchee.id) {
             // While we bail out early here, we DO override whichever value was set as the customized termination message.
             // This is to enable being able to keep updating the context associated with a watched actor, e.g. if how
             // we should react to its termination has changed since the last time watch() was invoked.
@@ -169,7 +169,7 @@ internal struct DeathWatchImpl<Message: ActorMessage> {
             // not yet watching, so let's add it:
             self.watching[addressableWatchee] = OnTerminationMessage(customize: terminationMessage)
 
-            if !watcher.children.contains(identifiedBy: watchee.asAddressable.address) {
+            if !watcher.children.contains(identifiedBy: watchee.asAddressable.id) {
                 // We ONLY send the watch message if it is NOT our own child;
                 //
                 // Because a child ALWAYS sends a .childTerminated to its parent on termination, so there is no need to watch it again,
@@ -180,7 +180,7 @@ internal struct DeathWatchImpl<Message: ActorMessage> {
                 addressableWatchee._sendSystemMessage(.watch(watchee: addressableWatchee, watcher: watcher.asAddressable), file: file, line: line)
             }
 
-            self.subscribeNodeTerminatedEvents(myself: watcher.myself, watchedAddress: addressableWatchee.address, file: file, line: line)
+            self.subscribeNodeTerminatedEvents(myself: watcher.myself, watchedID: addressableWatchee.id, file: file, line: line)
         }
     }
 
@@ -200,8 +200,8 @@ internal struct DeathWatchImpl<Message: ActorMessage> {
 
     /// - Returns `true` if the passed in actor ref is being watched
     @usableFromInline
-    internal func isWatching(_ address: ActorAddress) -> Bool {
-        let mockRefForEquality = _ActorRef<Never>(.deadLetters(.init(.init(label: "x"), address: address, system: nil))).asAddressable
+    internal func isWatching(_ id: ActorID) -> Bool {
+        let mockRefForEquality = _ActorRef<Never>(.deadLetters(.init(.init(label: "x"), id: id, system: nil))).asAddressable
         return self.watching[mockRefForEquality] != nil
     }
 
@@ -209,7 +209,7 @@ internal struct DeathWatchImpl<Message: ActorMessage> {
     // MARK: react to watch or unwatch signals
 
     public mutating func becomeWatchedBy(watcher: AddressableActorRef, myself: _ActorRef<Message>, parent: AddressableActorRef) {
-        guard watcher.address != myself.address else {
+        guard watcher.id != myself.id else {
             traceLog_DeathWatch("Attempted to watch 'myself' [\(myself)], which is a no-op, since such watch's terminated can never be observed. " +
                 "Likely a programming error where the wrong actor ref was passed to watch(), please check your code.")
             return
@@ -224,12 +224,12 @@ internal struct DeathWatchImpl<Message: ActorMessage> {
             return
         }
 
-        traceLog_DeathWatch("Become watched by: \(watcher.address)     inside: \(myself)")
+        traceLog_DeathWatch("Become watched by: \(watcher.id)     inside: \(myself)")
         self.watchedBy.insert(watcher)
     }
 
     public mutating func removeWatchedBy(watcher: AddressableActorRef, myself: _ActorRef<Message>) {
-        traceLog_DeathWatch("Remove watched by: \(watcher.address)     inside: \(myself)")
+        traceLog_DeathWatch("Remove watched by: \(watcher.id)     inside: \(myself)")
         self.watchedBy.remove(watcher)
     }
 
@@ -238,7 +238,7 @@ internal struct DeathWatchImpl<Message: ActorMessage> {
     /// Returns: `true` if the termination was concerning a currently watched actor, false otherwise.
     public mutating func receiveTerminated(_ terminated: _Signals.Terminated) -> TerminatedMessageDirective {
         // refs are compared ONLY by address, thus we can make such mock reference, and it will be properly remove the right "real" refs from the collections below
-        let mockRefForEquality = _ActorRef<Never>(.deadLetters(.init(.init(label: "x"), address: terminated.address, system: nil))).asAddressable
+        let mockRefForEquality = _ActorRef<Never>(.deadLetters(.init(.init(label: "x"), id: terminated.id, system: nil))).asAddressable
 
         // we remove the actor from both sets;
         // 1) we don't need to watch it anymore, since it has just terminated,
@@ -274,11 +274,11 @@ internal struct DeathWatchImpl<Message: ActorMessage> {
     /// Does NOT immediately handle these `Terminated` signals, they are treated as any other normal signal would,
     /// such that the user can have a chance to handle and react to them.
     public mutating func receiveNodeTerminated(_ terminatedNode: UniqueNode, myself: _ReceivesSystemMessages) {
-        for watched: AddressableActorRef in self.watching.keys where watched.address.uniqueNode == terminatedNode {
+        for watched: AddressableActorRef in self.watching.keys where watched.id.uniqueNode == terminatedNode {
             // we KNOW an actor existed if it is local and not resolved as /dead; otherwise it may have existed
             // for a remote ref we don't know for sure if it existed
-            let existenceConfirmed = watched.refType.isLocal && !watched.address.path.starts(with: ._dead)
-            myself._sendSystemMessage(.terminated(ref: watched, existenceConfirmed: existenceConfirmed, addressTerminated: true), file: #file, line: #line)
+            let existenceConfirmed = watched.refType.isLocal && !watched.id.path.starts(with: ._dead)
+            myself._sendSystemMessage(.terminated(ref: watched, existenceConfirmed: existenceConfirmed, idTerminated: true), file: #file, line: #line)
         }
     }
 
@@ -298,11 +298,11 @@ internal struct DeathWatchImpl<Message: ActorMessage> {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Node termination
 
-    private func subscribeNodeTerminatedEvents(myself: _ActorRef<Message>, watchedAddress: ActorAddress, file: String = #file, line: UInt = #line) {
-        guard watchedAddress._isRemote else {
+    private func subscribeNodeTerminatedEvents(myself: _ActorRef<Message>, watchedID: ActorID, file: String = #file, line: UInt = #line) {
+        guard watchedID._isRemote else {
             return
         }
-        self.nodeDeathWatcher.tell(.remoteActorWatched(watcher: AddressableActorRef(myself), remoteNode: watchedAddress.uniqueNode), file: file, line: line)
+        self.nodeDeathWatcher.tell(.remoteActorWatched(watcher: AddressableActorRef(myself), remoteNode: watchedID.uniqueNode), file: file, line: line)
     }
 }
 
@@ -310,6 +310,6 @@ internal struct DeathWatchImpl<Message: ActorMessage> {
 // MARK: Errors
 
 public enum DeathPactError: Error {
-    case unhandledDeathPact(ActorAddress, myself: AddressableActorRef, message: String)
+    case unhandledDeathPact(ActorID, myself: AddressableActorRef, message: String)
     case unhandledDeathPactError(ClusterSystem.ActorID, myself: ClusterSystem.ActorID, message: String)
 }

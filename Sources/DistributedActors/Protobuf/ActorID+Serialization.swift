@@ -13,23 +13,23 @@
 //===----------------------------------------------------------------------===//
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: _ProtoActorAddress
+// MARK: _ProtoActorID
 
-extension ActorAddress: _ProtobufRepresentable {
-    public typealias ProtobufRepresentation = _ProtoActorAddress
+extension ActorID: _ProtobufRepresentable {
+    public typealias ProtobufRepresentation = _ProtoActorID
 
-    public func toProto(context: Serialization.Context) throws -> _ProtoActorAddress {
-        var address = _ProtoActorAddress()
+    public func toProto(context: Serialization.Context) throws -> _ProtoActorID {
+        var id = _ProtoActorID()
         let node = self.uniqueNode
-        address.node = try node.toProto(context: context)
+        id.node = try node.toProto(context: context)
 
-        address.path.segments = self.segments.map(\.value)
-        address.incarnation = self.incarnation.value
+        id.path.segments = self.segments.map(\.value)
+        id.incarnation = self.incarnation.value
 
-        return address
+        return id
     }
 
-    public init(fromProto proto: _ProtoActorAddress, context: Serialization.Context) throws {
+    public init(fromProto proto: _ProtoActorID, context: Serialization.Context) throws {
         let uniqueNode: UniqueNode = try .init(fromProto: proto.node, context: context)
 
         // TODO: make Error
@@ -66,14 +66,14 @@ extension UniqueNode: _ProtobufRepresentable {
 }
 
 extension _ActorRef: _ProtobufRepresentable {
-    public typealias ProtobufRepresentation = _ProtoActorAddress
+    public typealias ProtobufRepresentation = _ProtoActorID
 
-    public func toProto(context: Serialization.Context) throws -> _ProtoActorAddress {
-        try self.address.toProto(context: context)
+    public func toProto(context: Serialization.Context) throws -> _ProtoActorID {
+        try self.id.toProto(context: context)
     }
 
-    public init(fromProto proto: _ProtoActorAddress, context: Serialization.Context) throws {
-        self = context._resolveActorRef(Message.self, identifiedBy: try ActorAddress(fromProto: proto, context: context))
+    public init(fromProto proto: _ProtoActorID, context: Serialization.Context) throws {
+        self = context._resolveActorRef(Message.self, identifiedBy: try ActorID(fromProto: proto, context: context))
     }
 }
 

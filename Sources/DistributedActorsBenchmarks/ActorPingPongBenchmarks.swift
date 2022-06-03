@@ -201,7 +201,7 @@ private struct EchoMessage: ActorMessage, CustomStringConvertible {
     }
 
     var description: String {
-        "EchoMessage(\(seqNr) replyTo: \(replyTo.address.name))"
+        "EchoMessage(\(seqNr) replyTo: \(replyTo.id.name))"
     }
 }
 

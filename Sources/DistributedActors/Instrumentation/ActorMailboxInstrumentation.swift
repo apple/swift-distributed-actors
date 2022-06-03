@@ -17,7 +17,7 @@
 
 // TODO: all these to accept trace context or something similar
 public protocol _ActorMailboxInstrumentation {
-    init(id: AnyObject, address: ActorAddress)
+    init(id: AnyObject, actorID: ActorID)
 
     func actorMailboxRunStarted(mailboxCount: Int)
     func actorMailboxRunCompleted(processed: Int, error: Error?)
@@ -27,7 +27,7 @@ public protocol _ActorMailboxInstrumentation {
 // MARK: Noop _ActorMailboxInstrumentation
 
 struct NoopActorMailboxInstrumentation: _ActorMailboxInstrumentation {
-    public init(id: AnyObject, address: ActorAddress) {}
+    public init(id: AnyObject, actorID: ActorID) {}
 
     public func actorMailboxRunStarted(mailboxCount: Int) {}
 

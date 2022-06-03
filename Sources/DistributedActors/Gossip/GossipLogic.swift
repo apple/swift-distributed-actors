@@ -120,8 +120,8 @@ struct GossipLogicContext<Envelope: Codable, Acknowledgement: Codable> {
     ///
     /// Should not be used to arbitrarily allow sending messages to the gossiper from gossip logics,
     /// which is why it is only an address and not full _ActorRef to the gossiper.
-    var gossiperAddress: ActorAddress {
-        self.gossiperContext.myself.address
+    var gossiperAddress: ActorID {
+        self.gossiperContext.myself.id
     }
 
     /// Logger associated with the owning `Gossiper`.

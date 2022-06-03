@@ -130,6 +130,13 @@ extension Cluster {
             }
         }
 
+        /// Returns all members that are part of this membership, and have the any ``Cluster/MemberStatus`` that is *at least*
+        /// the passed in `status` passed in and `reachability` status. See ``Cluster/MemberStatus`` to learn more about the meaning of "at least".
+        ///
+        /// - Parameters:
+        ///   - statuses: statuses for which to check the members for
+        ///   - reachability: optional reachability that is the members will be filtered by
+        /// - Returns: array of members matching those checks. Can be empty.
         public func members(atLeast status: Cluster.MemberStatus, reachability: Cluster.MemberReachability? = nil) -> [Cluster.Member] {
             if status == .joining, reachability == nil {
                 return Array(self._members.values)

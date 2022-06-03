@@ -18,7 +18,7 @@ syntax = "proto3";
 option optimize_for = SPEED;
 option swift_prefix = "_Proto";
 
-import "ActorAddress.proto";
+import "ActorID.proto";
 
 message SWIMRemoteMessage {
     oneof message {
@@ -29,27 +29,27 @@ message SWIMRemoteMessage {
 }
 
 message SWIMPing {
-    ActorAddress origin       = 1;
+    ActorID origin            = 1;
     SWIMGossipPayload payload = 2;
     uint32 sequenceNumber     = 3;
 }
 
 message SWIMPingRequest {
-    ActorAddress target       = 1;
-    ActorAddress origin       = 2;
+    ActorID target            = 1;
+    ActorID origin            = 2;
     SWIMGossipPayload payload = 3;
     uint32 sequenceNumber     = 4;
 }
 
 message SWIMPingResponse {
     message Ack {
-        ActorAddress target       = 1;
+        ActorID target            = 1;
         uint64 incarnation        = 2;
         SWIMGossipPayload payload = 3;
         uint32 sequenceNumber     = 4;
     }
     message Nack {
-        ActorAddress target   = 1;
+        ActorID target        = 1;
         uint32 sequenceNumber = 2;
     }
     oneof pingResponse {
@@ -73,7 +73,7 @@ message SWIMStatus {
 }
 
 message SWIMMember {
-    ActorAddress address  = 1;
+    ActorID id            = 1;
     SWIMStatus status     = 2;
     uint64 protocolPeriod = 3;
 }

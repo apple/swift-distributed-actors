@@ -15,9 +15,7 @@
 import Distributed
 import Logging
 
-public struct DowningStrategies {
-
-}
+public struct DowningStrategies {}
 
 /// Allows implementing downing strategies, without having to re-implement and reinvent logging and subscription logic.
 ///

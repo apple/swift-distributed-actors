@@ -361,8 +361,8 @@ extension ClusterSystemSettings {
         }
 
         /// - SeeAlso: `ActorInstrumentation`
-        public var makeActorInstrumentation: (AnyObject, ActorAddress) -> ActorInstrumentation = { id, address in
-            NoopActorInstrumentation(id: id, address: address)
+        public var makeActorInstrumentation: (AnyObject, ActorID) -> ActorInstrumentation = { id, actorID in
+            NoopActorInstrumentation(id: id, actorID: actorID)
         }
 
         /// - SeeAlso: `_InternalActorTransportInstrumentation`
@@ -392,7 +392,7 @@ extension ClusterSystemSettings {
 }
 
 public protocol ClusterSystemInstrumentationProvider {
-    var actorInstrumentation: ((AnyObject, ActorAddress) -> ActorInstrumentation)? { get }
+    var actorInstrumentation: ((AnyObject, ActorID) -> ActorInstrumentation)? { get }
     var actorTransportInstrumentation: (() -> _InternalActorTransportInstrumentation)? { get }
     var receptionistInstrumentation: (() -> ReceptionistInstrumentation)? { get }
 }

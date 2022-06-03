@@ -20,7 +20,7 @@ import struct Foundation.Data
 public struct InvocationMessage: Sendable, Codable, CustomStringConvertible {
     let targetIdentifier: String
     let arguments: [Data]
-    var replyToAddress: ActorAddress
+    var replyToAddress: ActorID
 
     var target: RemoteCallTarget {
         RemoteCallTarget(targetIdentifier)
@@ -37,7 +37,7 @@ enum InvocationBehavior {
             return ._receiveMessageAsync { (message) async throws -> _Behavior<InvocationMessage> in
                 guard let instance = weakInstance.actor else {
                     context.log.warning("Received message \(message) while distributed actor instance was released! Stopping...")
-                    context.system.personalDeadLetters(type: InvocationMessage.self, recipient: context.address).tell(message)
+                    context.system.personalDeadLetters(type: InvocationMessage.self, recipient: context.id).tell(message)
                     return .stop
                 }
 

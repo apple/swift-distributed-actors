@@ -75,8 +75,8 @@ extension Cluster.MembershipGossip: _ProtobufRepresentable {
                     replicaID = .uniqueNode(member.uniqueNode)
                 case .some(.uniqueNode(let protoUniqueNode)):
                     replicaID = try .uniqueNode(.init(fromProto: protoUniqueNode, context: context))
-                case .some(.actorAddress(let address)):
-                    context.log.warning("Unexpected .actorAddress key in replicaVersion of Cluster.MembershipGossip, which is expected to only use unique node ids as replica versions; was: \(address)")
+                case .some(.actorID(let address)):
+                    context.log.warning("Unexpected .actorID key in replicaVersion of Cluster.MembershipGossip, which is expected to only use unique node ids as replica versions; was: \(address)")
                     continue
                 case .none:
                     continue

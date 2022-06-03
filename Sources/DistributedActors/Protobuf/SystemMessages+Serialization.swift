@@ -11,7 +11,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import struct Foundation.Data
 import NIO
 import SwiftProtobuf
@@ -19,7 +18,7 @@ import SwiftProtobuf
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ACK / NACK
 
-extension _SystemMessage.ACK: Internal_ProtobufRepresentable {
+extension _SystemMessage.ACK: _InternalProtobufRepresentable {
     typealias ProtobufRepresentation = _ProtoSystemMessageACK
 
     func toProto(context: Serialization.Context) -> _ProtoSystemMessageACK {
@@ -33,7 +32,7 @@ extension _SystemMessage.ACK: Internal_ProtobufRepresentable {
     }
 }
 
-extension _SystemMessage.NACK: Internal_ProtobufRepresentable {
+extension _SystemMessage.NACK: _InternalProtobufRepresentable {
     typealias ProtobufRepresentation = _ProtoSystemMessageNACK
 
     func toProto(context: Serialization.Context) -> _ProtoSystemMessageNACK {
@@ -50,7 +49,7 @@ extension _SystemMessage.NACK: Internal_ProtobufRepresentable {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: SystemMessageEnvelope
 
-extension SystemMessageEnvelope: Internal_ProtobufRepresentable {
+extension SystemMessageEnvelope: _InternalProtobufRepresentable {
     typealias ProtobufRepresentation = _ProtoSystemMessageEnvelope
 
     func toProto(context: Serialization.Context) throws -> _ProtoSystemMessageEnvelope {
@@ -77,21 +76,21 @@ extension _SystemMessage: _ProtobufRepresentable {
         switch self {
         case .watch(let watchee, let watcher):
             var watch = _ProtoSystemMessage_Watch()
-            watch.watchee = try watchee.address.toProto(context: context)
-            watch.watcher = try watcher.address.toProto(context: context)
+            watch.watchee = try watchee.id.toProto(context: context)
+            watch.watcher = try watcher.id.toProto(context: context)
             proto.payload = .watch(watch)
 
         case .unwatch(let watchee, let watcher):
             var unwatch = _ProtoSystemMessage_Unwatch()
-            unwatch.watchee = try watchee.address.toProto(context: context)
-            unwatch.watcher = try watcher.address.toProto(context: context)
+            unwatch.watchee = try watchee.id.toProto(context: context)
+            unwatch.watcher = try watcher.id.toProto(context: context)
             proto.payload = .unwatch(unwatch)
 
-        case .terminated(let ref, let existenceConfirmed, let addressTerminated):
+        case .terminated(let ref, let existenceConfirmed, let idTerminated):
             var terminated = _ProtoSystemMessage_Terminated()
-            terminated.ref = try ref.address.toProto(context: context)
+            terminated.ref = try ref.id.toProto(context: context)
             terminated.existenceConfirmed = existenceConfirmed
-            terminated.addressTerminated = addressTerminated
+            terminated.idTerminated = idTerminated
             proto.payload = .terminated(terminated)
 
         case .carrySignal(let signal):
@@ -99,7 +98,7 @@ extension _SystemMessage: _ProtobufRepresentable {
         case .start:
             throw SerializationError.nonTransportableMessage(type: "SystemMessage.start")
         case .nodeTerminated:
-            throw SerializationError.nonTransportableMessage(type: "SystemMessage.addressTerminated")
+            throw SerializationError.nonTransportableMessage(type: "SystemMessage.idTerminated")
         case .childTerminated:
             throw SerializationError.nonTransportableMessage(type: "SystemMessage.childTerminated")
         case .resume:
@@ -125,11 +124,11 @@ extension _SystemMessage: _ProtobufRepresentable {
             guard w.hasWatcher else {
                 throw SerializationError.missingField("watcher", type: "SystemMessage.watch")
             }
-            let watcheeAddress: ActorAddress = try .init(fromProto: w.watchee, context: context)
-            let watchee = context._resolveAddressableActorRef(identifiedBy: watcheeAddress)
+            let watcheeID: ActorID = try .init(fromProto: w.watchee, context: context)
+            let watchee = context._resolveAddressableActorRef(identifiedBy: watcheeID)
 
-            let watcherAddress: ActorAddress = try .init(fromProto: w.watcher, context: context)
-            let watcher = context._resolveAddressableActorRef(identifiedBy: watcherAddress)
+            let watcherID: ActorID = try .init(fromProto: w.watcher, context: context)
+            let watcher = context._resolveAddressableActorRef(identifiedBy: watcherID)
 
             self = .watch(watchee: watchee, watcher: watcher)
 
@@ -140,11 +139,11 @@ extension _SystemMessage: _ProtobufRepresentable {
             guard u.hasWatcher else {
                 throw SerializationError.missingField("watcher", type: "SystemMessage.unwatch")
             }
-            let watcheeAddress: ActorAddress = try .init(fromProto: u.watchee, context: context)
-            let watchee = context._resolveAddressableActorRef(identifiedBy: watcheeAddress)
+            let watcheeID: ActorID = try .init(fromProto: u.watchee, context: context)
+            let watchee = context._resolveAddressableActorRef(identifiedBy: watcheeID)
 
-            let watcherAddress: ActorAddress = try .init(fromProto: u.watcher, context: context)
-            let watcher = context._resolveAddressableActorRef(identifiedBy: watcherAddress)
+            let watcherID: ActorID = try .init(fromProto: u.watcher, context: context)
+            let watcher = context._resolveAddressableActorRef(identifiedBy: watcherID)
 
             self = .watch(watchee: watchee, watcher: watcher)
 
@@ -154,7 +153,7 @@ extension _SystemMessage: _ProtobufRepresentable {
             }
             // TODO: it is known dead, optimize the resolve?
             let ref = try context._resolveAddressableActorRef(identifiedBy: .init(fromProto: t.ref, context: context))
-            self = .terminated(ref: ref, existenceConfirmed: t.existenceConfirmed, addressTerminated: t.addressTerminated)
+            self = .terminated(ref: ref, existenceConfirmed: t.existenceConfirmed, idTerminated: t.idTerminated)
         }
     }
 }

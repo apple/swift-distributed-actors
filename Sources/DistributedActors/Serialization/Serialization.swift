@@ -140,7 +140,7 @@ public class Serialization {
 
         // TODO: Allow plugins to register types...?
 
-        settings.register(ActorAddress.self, serializerID: .foundationJSON) // TODO: this was protobuf
+        settings.register(ActorID.self, serializerID: .foundationJSON) // TODO: this was protobuf
         settings.register(ClusterSystem.ActorID.self, serializerID: .foundationJSON)
         settings.register(ReplicaID.self, serializerID: .foundationJSON)
         settings.register(VersionDot.self, serializerID: ._ProtobufRepresentable)

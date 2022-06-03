@@ -143,21 +143,21 @@ public struct Receptionist {
         private var _registeredKeysByNode: [UniqueNode: Set<AnyReceptionKey>] = [:]
 
         /// Allows for reverse lookups, when an actor terminates, we know from which registrations and subscriptions to remove it from.
-        internal var _addressToKeys: [ActorAddress: Set<AnyReceptionKey>] = [:]
+        internal var _idToKeys: [ActorID: Set<AnyReceptionKey>] = [:]
 
         // ==== --------------------------------------------------------------------------------------------------------
         // MARK: Registrations
 
         /// - returns: `true` if the value was a newly inserted value, `false` otherwise
         func addRegistration(key: AnyReceptionKey, ref: AddressableActorRef) -> Bool {
-            self.addRefKeyMapping(address: ref.address, key: key)
-            self.storeRegistrationNodeRelation(key: key, node: ref.address.uniqueNode)
+            self.addRefKeyMapping(id: ref.id, key: key)
+            self.storeRegistrationNodeRelation(key: key, node: ref.id.uniqueNode)
             return self.addTo(dict: &self._registrations, key: key, value: ref)
         }
 
         func removeRegistration(key: AnyReceptionKey, ref: AddressableActorRef) -> Set<AddressableActorRef>? {
             _ = self.removeFromKeyMappings(ref)
-            self.removeSingleRegistrationNodeRelation(key: key, node: ref.address.uniqueNode)
+            self.removeSingleRegistrationNodeRelation(key: key, node: ref.id.uniqueNode)
             return self.removeFrom(dict: &self._registrations, key: key, value: ref)
         }
 
@@ -181,13 +181,13 @@ public struct Receptionist {
         // MARK: Subscriptions
 
         func addSubscription(key: AnyReceptionKey, subscription: AnySubscribe) -> Bool {
-            self.addRefKeyMapping(address: subscription.address, key: key)
+            self.addRefKeyMapping(id: subscription.id, key: key)
             return self.addTo(dict: &self._subscriptions, key: key, value: subscription)
         }
 
         @discardableResult
         func removeSubscription(key: AnyReceptionKey, subscription: AnySubscribe) -> Set<AnySubscribe>? {
-            _ = self.removeFromKeyMappings(address: subscription.address)
+            _ = self.removeFromKeyMappings(id: subscription.id)
             return self.removeFrom(dict: &self._subscriptions, key: key, value: subscription)
         }
 
@@ -197,14 +197,14 @@ public struct Receptionist {
 
         // FIXME: improve this to always pass around AddressableActorRef rather than just address (in receptionist Subscribe message), remove this trick then
         /// - Returns: set of keys that this actor was REGISTERED under, and thus listings associated with it should be updated
-        func removeFromKeyMappings(address: ActorAddress) -> RefMappingRemovalResult {
-            let equalityHackRef = _ActorRef<Never>(.deadLetters(.init(Logger(label: ""), address: address, system: nil)))
+        func removeFromKeyMappings(id: ActorID) -> RefMappingRemovalResult {
+            let equalityHackRef = _ActorRef<Never>(.deadLetters(.init(Logger(label: ""), id: id, system: nil)))
             return self.removeFromKeyMappings(equalityHackRef.asAddressable)
         }
 
         /// - Returns: set of keys that this actor was REGISTERED under, and thus listings associated with it should be updated
         func removeFromKeyMappings(_ ref: AddressableActorRef) -> RefMappingRemovalResult {
-            guard let associatedKeys = self._addressToKeys.removeValue(forKey: ref.address) else {
+            guard let associatedKeys = self._idToKeys.removeValue(forKey: ref.id) else {
                 return RefMappingRemovalResult(registeredUnderKeys: [])
             }
 
@@ -213,7 +213,7 @@ public struct Receptionist {
                 if self._registrations[key]?.remove(ref) != nil {
                     _ = registeredKeys.insert(key)
                 }
-                self._subscriptions[key]?.remove(.init(address: ref.address))
+                self._subscriptions[key]?.remove(.init(id: ref.id))
             }
 
             return RefMappingRemovalResult(
@@ -246,14 +246,14 @@ public struct Receptionist {
             for key in keys {
                 // 1) we remove any registrations that it hosted
                 let registrations: Set<AddressableActorRef> = self._registrations.removeValue(forKey: key) ?? []
-                let remainingRegistrations = registrations.filter { $0.address.uniqueNode != node }
+                let remainingRegistrations = registrations.filter { $0.id.uniqueNode != node }
                 if !remainingRegistrations.isEmpty {
                     self._registrations[key] = remainingRegistrations
                 }
 
                 // 2) and remove any of our subscriptions
                 let subs: Set<AnySubscribe> = self._subscriptions.removeValue(forKey: key) ?? []
-                let prunedSubs = subs.filter { $0.address.uniqueNode != node }
+                let prunedSubs = subs.filter { $0.id.uniqueNode != node }
                 if remainingRegistrations.count != registrations.count {
                     // only if the set of registered actors for this key was actually affected by this prune
                     // we want to mark it as changed and ensure we contact all of such keys subscribers about the change.
@@ -298,8 +298,8 @@ public struct Receptionist {
             return dict[key]
         }
 
-        private func addRefKeyMapping(address: ActorAddress, key: AnyReceptionKey) {
-            self._addressToKeys[address, default: []].insert(key)
+        private func addRefKeyMapping(id: ActorID, key: AnyReceptionKey) {
+            self._idToKeys[id, default: []].insert(key)
         }
     }
 }
@@ -314,18 +314,18 @@ extension ActorPath {
         try! ActorPath([ActorPathSegment("system"), ActorPathSegment("receptionist")])
 }
 
-extension ActorAddress {
+extension ActorID {
     enum ReceptionistType {
         case actorRefs
         case distributedActors
     }
 
-    static func _receptionist(on node: UniqueNode, for type: ReceptionistType) -> ActorAddress {
+    static func _receptionist(on node: UniqueNode, for type: ReceptionistType) -> ActorID {
         switch type {
         case .actorRefs:
-            return ActorPath.actorRefReceptionist.makeRemoteAddress(on: node, incarnation: .wellKnown)
+            return ActorPath.actorRefReceptionist.makeRemoteID(on: node, incarnation: .wellKnown)
         case .distributedActors:
-            return ActorPath.distributedActorReceptionist.makeRemoteAddress(on: node, incarnation: .wellKnown)
+            return ActorPath.distributedActorReceptionist.makeRemoteID(on: node, incarnation: .wellKnown)
         }
     }
 }
@@ -409,7 +409,7 @@ protocol ReceptionKeyProtocol {
 
     // `resolve` has to be here, because the key is the only thing that knows which
     // type is requested. See implementation in `Reception.Key`
-    func resolve(system: ClusterSystem, address: ActorAddress) -> AddressableActorRef
+    func resolve(system: ClusterSystem, id: ActorID) -> AddressableActorRef
 }
 
 // :nodoc:
@@ -427,10 +427,10 @@ public struct AnyReceptionKey: ReceptionKeyProtocol, Sendable, Codable, Hashable
         self.guestType = Guest.self
     }
 
-    func resolve(system: ClusterSystem, address: ActorAddress) -> AddressableActorRef {
+    func resolve(system: ClusterSystem, id: ActorID) -> AddressableActorRef {
         // Since we don't have the type information here, we can't properly resolve
         // and the only safe thing to do is to return `deadLetters`.
-        system.personalDeadLetters(type: Never.self, recipient: address).asAddressable
+        system.personalDeadLetters(type: Never.self, recipient: id).asAddressable
     }
 
     var asAnyKey: AnyReceptionKey {
@@ -508,16 +508,16 @@ public class _Subscribe: _ReceptionistMessage, NonTransportableActorMessage {
 }
 
 internal struct AnySubscribe: Hashable {
-    let address: ActorAddress
+    let id: ActorID
     let _replyWith: (Set<AddressableActorRef>) -> Void
 
     init<Guest>(subscribe: Receptionist.Subscribe<Guest>) where Guest: _ReceptionistGuest {
-        self.address = subscribe.subscriber.address
+        self.id = subscribe.subscriber.id
         self._replyWith = subscribe.replyWith
     }
 
-    init(address: ActorAddress) {
-        self.address = address
+    init(id: ActorID) {
+        self.id = id
         self._replyWith = { _ in () }
     }
 
@@ -526,11 +526,11 @@ internal struct AnySubscribe: Hashable {
     }
 
     static func == (lhs: AnySubscribe, rhs: AnySubscribe) -> Bool {
-        lhs.address == rhs.address
+        lhs.id == rhs.id
     }
 
     func hash(into hasher: inout Hasher) {
-        hasher.combine(self.address)
+        hasher.combine(self.id)
     }
 }
 

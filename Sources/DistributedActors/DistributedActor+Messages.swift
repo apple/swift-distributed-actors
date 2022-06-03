@@ -64,7 +64,7 @@ extension DistributedActor where ActorSystem == ClusterSystem {
 //    public typealias ProtobufRepresentation = _ProtoActorIdentity
 //
 //    public func toProto(context: Serialization.Context) throws -> _ProtoActorIdentity {
-//        let address = self._forceUnwrapActorAddress
+//        let address = self._forceUnwrapActorID
 //        let serialized = try context.serialization.serialize(address)
 //
 //        var proto = _ProtoActorIdentity()
@@ -78,8 +78,8 @@ extension DistributedActor where ActorSystem == ClusterSystem {
 //        let manifest = Serialization.Manifest(fromProto: proto.manifest)
 //        let ManifestedType = try context.summonType(from: manifest)
 //
-//        precondition(ManifestedType == ActorAddress.self)
-//        let address = try context.serialization.deserialize(as: ActorAddress.self, from: .data(proto.payload), using: manifest)
-//        self = address
+//        precondition(ManifestedType == ActorID.self)
+//        let address = try context.serialization.deserialize(as: ActorID.self, from: .data(proto.payload), using: manifest)
+//        self = id
 //    }
 // }

@@ -220,7 +220,7 @@ final class ActorSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCase 
         // The stashed messages get routed to new singleton running on `fourth`
         let got2 = try replyProbe2.expectMessage()
         got2.shouldStartWith(prefix: "Hello-4 Bob-2")
-        pinfo("Received reply (by \(replyProbe2.address.path)) from singleton: \(got2)")
+        pinfo("Received reply (by \(replyProbe2.id.path)) from singleton: \(got2)")
         if got2 == "Hello-4 Bob-2 (1)!" {
             var counter = 0
             while try replyProbe2.maybeExpectMessage(within: .milliseconds(100)) != nil {
@@ -233,7 +233,7 @@ final class ActorSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCase 
 
         let got3 = try replyProbe3.expectMessage()
         got3.shouldStartWith(prefix: "Hello-4 Charlie-3")
-        pinfo("Received reply (by \(replyProbe3.address.path)) from singleton: \(got3)")
+        pinfo("Received reply (by \(replyProbe3.id.path)) from singleton: \(got3)")
         if got3 == "Hello-4 Charlie-3 (1)!" {
             var counter = 0
             while try replyProbe3.maybeExpectMessage(within: .milliseconds(100)) != nil {
