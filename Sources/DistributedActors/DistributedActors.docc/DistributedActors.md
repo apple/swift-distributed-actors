@@ -33,6 +33,7 @@ Please note that this project requires latest Swift 5.7 language features, and a
 - ``Cluster/Membership``
 - ``Cluster/Member``
 - ``Cluster/Event``
+- ``DowningStrategies``
  
 ### Actor Identity
 

@@ -15,6 +15,7 @@
 import Distributed
 import class Foundation.JSONDecoder
 import class Foundation.JSONEncoder
+import Distributed
 import Logging
 import struct NIO.ByteBufferAllocator
 
