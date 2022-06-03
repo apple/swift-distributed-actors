@@ -13,9 +13,21 @@ var globalConcurrencyFlags: [String] = [
     "-Xfrontend", "-disable-availability-checking", // TODO(distributed): remove this flag
 ]
 
+// TODO: currently disabled warnings as errors because of Sendable check noise and work in progress on different toolchains
+// if ProcessInfo.processInfo.environment["SACT_WARNINGS_AS_ERRORS"] != nil {
+//    print("SACT_WARNINGS_AS_ERRORS enabled, passing `-warnings-as-errors`")
+//    var allUnsafeFlags = globalConcurrencyFlags
+//    allUnsafeFlags.append(contentsOf: [
+//        "-warnings-as-errors",
+//    ])
+//    globalSwiftSettings = [
+//        SwiftSetting.unsafeFlags(allUnsafeFlags),
+//    ]
+// } else {
 globalSwiftSettings = [
     SwiftSetting.unsafeFlags(globalConcurrencyFlags),
 ]
+// }
 
 var targets: [PackageDescription.Target] = [
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -190,7 +202,6 @@ var dependencies: [Package.Dependency] = [
     .package(url: "https://github.com/apple/swift-cluster-membership.git", from: "0.3.0"),
 
     .package(url: "https://github.com/apple/swift-nio.git", from: "2.12.0"),
-//    .package(name: "swift-nio", path: "/Users/ktoso/code/swift-distributed-actors/Packages/swift-nio"),
     .package(url: "https://github.com/apple/swift-nio-extras.git", from: "1.2.0"),
     .package(url: "https://github.com/apple/swift-nio-ssl.git", from: "2.16.1"),
 
