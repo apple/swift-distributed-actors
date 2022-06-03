@@ -60,13 +60,13 @@ public enum ActorCoding {
     }
 }
 
-public extension _ActorRef {
-    func encode(to encoder: Encoder) throws {
+extension _ActorRef {
+    public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
         try container.encode(self.address)
     }
 
-    init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         let container: SingleValueDecodingContainer = try decoder.singleValueContainer()
         let address = try container.decode(ActorAddress.self)
 
@@ -83,8 +83,8 @@ public extension _ActorRef {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Codable _ReceivesMessages
 
-public extension _ReceivesMessages {
-    func encode(to encoder: Encoder) throws {
+extension _ReceivesMessages {
+    public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
         switch self {
         case let ref as _ActorRef<Message>:
@@ -94,7 +94,7 @@ public extension _ReceivesMessages {
         }
     }
 
-    init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         let container: SingleValueDecodingContainer = try decoder.singleValueContainer()
         let address: ActorAddress = try container.decode(ActorAddress.self)
 
@@ -115,14 +115,14 @@ public extension _ReceivesMessages {
 /// this type automatically, since users can not access the type at all.
 /// The `ReceivesSystemMessagesDecoder` however does enable this library itself to embed and use this type in Codable
 /// messages, if the need were to arise.
-public extension _ReceivesSystemMessages {
-    func encode(to encoder: Encoder) throws {
+extension _ReceivesSystemMessages {
+    public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
         traceLog_Serialization("encode \(self.address) WITH address")
         try container.encode(self.address)
     }
 
-    init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         self = try ReceivesSystemMessagesDecoder.decode(from: decoder) as! Self // as! safe, since we know definitely that Self IS-A ReceivesSystemMessages
     }
 }
@@ -255,8 +255,8 @@ extension UniqueNode: Codable {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Convenience coding functions
 
-internal extension SingleValueDecodingContainer {
-    func decodeNonEmpty(_ type: String.Type, hint: String) throws -> String {
+extension SingleValueDecodingContainer {
+    internal func decodeNonEmpty(_ type: String.Type, hint: String) throws -> String {
         let value = try self.decode(type)
         if value.isEmpty {
             throw DecodingError.dataCorruptedError(in: self, debugDescription: "Cannot initialize [\(hint)] from an empty string!")
@@ -265,8 +265,8 @@ internal extension SingleValueDecodingContainer {
     }
 }
 
-internal extension UnkeyedDecodingContainer {
-    mutating func decodeNonEmpty(_ type: String.Type, hint: String) throws -> String {
+extension UnkeyedDecodingContainer {
+    internal mutating func decodeNonEmpty(_ type: String.Type, hint: String) throws -> String {
         let value = try self.decode(type)
         if value.isEmpty {
             throw DecodingError.dataCorruptedError(in: self, debugDescription: "Cannot initialize [\(hint)] from an empty string!")

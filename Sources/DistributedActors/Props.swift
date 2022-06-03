@@ -82,16 +82,16 @@ public struct _Props: @unchecked Sendable {
 
 // TODO: likely better as class hierarchy, by we'll see...
 
-public extension _Props {
+extension _Props {
     /// Creates a new `_Props` with default values, and overrides the `dispatcher` with the provided one.
-    static func dispatcher(_ dispatcher: _DispatcherProps) -> _Props {
+    public static func dispatcher(_ dispatcher: _DispatcherProps) -> _Props {
         var props = _Props()
         props.dispatcher = dispatcher
         return props
     }
 
     /// Creates copy of this `_Props` changing the dispatcher props, useful for setting a few options in-line when spawning actors.
-    func dispatcher(_ dispatcher: _DispatcherProps) -> _Props {
+    public func dispatcher(_ dispatcher: _DispatcherProps) -> _Props {
         var props = self
         props.dispatcher = dispatcher
         return props
@@ -151,14 +151,14 @@ public enum _DispatcherProps {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Internal _Props settings
 
-public extension _Props {
+extension _Props {
     /// Shorthand for `_Props()._asSellKnown`
     /// - SeeAlso: `_Props._asWellKnown`
-    static let _wellKnown: Self = _Props()._asWellKnown
+    public static let _wellKnown: Self = _Props()._asWellKnown
 
     /// Use with great care, and ONLY if a path is known to only ever be occupied by the one and only actor that is going to be spawned using this well known identity.
     /// Allows spawning actors with "well known" identity (meaning the unique actor incarnation identifier will be set to `ActorIncarnation.wellKnown`).
-    var _asWellKnown: Self {
+    public var _asWellKnown: Self {
         var p = self
         p._wellKnown = true
         return p
@@ -166,7 +166,7 @@ public extension _Props {
 
     /// All "normal" actors are not-so well-known.
     /// Inverse of a well-known actor, i.e. having it's unique identity generated upon spawning.
-    var _asNotSoWellKnown: Self {
+    public var _asNotSoWellKnown: Self {
         var p = self
         p._wellKnown = false
         return p

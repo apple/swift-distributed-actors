@@ -200,10 +200,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
     /// The name is useful for debugging cross system communication.
     ///
     /// - Faults: when configuration closure performs very illegal action, e.g. reusing a serializer identifier
-    public convenience init(
-        _ name: String,
-        configuredWith configureSettings: @Sendable (inout ClusterSystemSettings) -> Void = { _ in () }
-    ) async {
+    public convenience init(_ name: String, configuredWith configureSettings: (inout ClusterSystemSettings) -> Void = { _ in () }) async {
         var settings = ClusterSystemSettings(name: name)
         configureSettings(&settings)
 
@@ -781,10 +778,10 @@ extension ClusterSystem: _ActorTreeTraversable {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Actor Lifecycle
 
-internal extension ClusterSystem {
+extension ClusterSystem {
     /// Allows creating a distributed actor with additional configuration applied during its initialization.
-    func actorWith<Act: DistributedActor>(props: _Props? = nil,
-                                          _ makeActor: () throws -> Act) rethrows -> Act
+    internal func actorWith<Act: DistributedActor>(props: _Props? = nil,
+                                                   _ makeActor: () throws -> Act) rethrows -> Act
     {
         guard let props = props else {
             return try makeActor()
@@ -796,8 +793,8 @@ internal extension ClusterSystem {
     }
 
     /// Allows creating a distributed actor with additional configuration applied during its initialization.
-    func actorWith<Act: DistributedActor>(_ tags: (any ActorTag)...,
-                                          makeActor: () throws -> Act) rethrows -> Act
+    internal func actorWith<Act: DistributedActor>(_ tags: (any ActorTag)...,
+                                                   makeActor: () throws -> Act) rethrows -> Act
     {
         var props = _Props.forSpawn
         props.tags = .init(tags: tags)
@@ -808,8 +805,8 @@ internal extension ClusterSystem {
     }
 }
 
-public extension ClusterSystem {
-    func resolve<Act>(id address: ActorID, as actorType: Act.Type) throws -> Act?
+extension ClusterSystem {
+    public func resolve<Act>(id address: ActorID, as actorType: Act.Type) throws -> Act?
         where Act: DistributedActor
     {
         self.log.info("RESOLVE: \(address)")
@@ -841,7 +838,7 @@ public extension ClusterSystem {
         }
     }
 
-    func assignID<Act>(_ actorType: Act.Type) -> ClusterSystem.ActorID
+    public func assignID<Act>(_ actorType: Act.Type) -> ClusterSystem.ActorID
         where Act: DistributedActor
     {
         let props = _Props.forSpawn // task-local read for any properties this actor should have
@@ -859,7 +856,7 @@ public extension ClusterSystem {
         }
     }
 
-    func actorReady<Act>(_ actor: Act) where Act: DistributedActor, Act.ID == ActorID {
+    public func actorReady<Act>(_ actor: Act) where Act: DistributedActor, Act.ID == ActorID {
         self.log.trace("Actor ready", metadata: [
             "actor/id": "\(actor.id)",
             "actor/type": "\(type(of: actor))",
@@ -883,7 +880,7 @@ public extension ClusterSystem {
     }
 
     /// Called during actor deinit/destroy.
-    func resignID(_ id: ActorAddress) {
+    public func resignID(_ id: ActorAddress) {
         self.log.warning("Resign actor id", metadata: ["actor/id": "\(id)"])
         self.namingLock.withLockVoid {
             self._reservedNames.remove(id)
@@ -906,12 +903,12 @@ public extension ClusterSystem {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Remote Calls
 
-public extension ClusterSystem {
-    func makeInvocationEncoder() -> InvocationEncoder {
+extension ClusterSystem {
+    public func makeInvocationEncoder() -> InvocationEncoder {
         InvocationEncoder(system: self)
     }
 
-    func remoteCall<Act, Err, Res>(
+    public func remoteCall<Act, Err, Res>(
         on actor: Act,
         target: RemoteCallTarget,
         invocation: inout InvocationEncoder,
@@ -943,7 +940,7 @@ public extension ClusterSystem {
         return try await ask.value
     }
 
-    func remoteCallVoid<Act, Err>(
+    public func remoteCallVoid<Act, Err>(
         on actor: Act,
         target: RemoteCallTarget,
         invocation: inout InvocationEncoder,
@@ -954,7 +951,7 @@ public extension ClusterSystem {
         Err: Error
     {
         guard let shell = self._cluster else {
-            throw AskError.systemAlreadyShutDown
+            throw RemoteCallError.clusterAlreadyShutDown
         }
 
         let recipient = _ActorRef<InvocationMessage>(.remote(.init(shell: shell, address: actor.id._asRemote, system: self)))
@@ -1068,8 +1065,9 @@ internal struct LazyStart<Message: ActorMessage> {
     }
 }
 
-enum RemoteCallError: Error {
+enum RemoteCallError: DistributedActorSystemError, Error {
     case clusterAlreadyShutDown
+    case timedOut(TimeoutError)
 }
 
 /// Allows for configuring of remote calls by setting task-local values around a remote call being made.

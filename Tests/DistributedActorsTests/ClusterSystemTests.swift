@@ -165,8 +165,8 @@ final class ClusterSystemTests: ActorSystemXCTestCase {
             }
         }
 
-        guard case AskError.timedOut(let timeoutError) = error else {
-            throw testKit.fail("Expected AskError.timedOut, got \(error)")
+        guard case RemoteCallError.timedOut(let timeoutError) = error else {
+            throw testKit.fail("Expected RemoteCallError.timedOut, got \(error)")
         }
         guard timeoutError.timeout == .seconds(1) else {
             throw testKit.fail("Expected timeout to be 1 second but was \(timeoutError.timeout)")

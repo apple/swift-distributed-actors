@@ -213,10 +213,10 @@ extension ActorAddress {
     }
 }
 
-public extension ActorAddress {
+extension ActorAddress {
     /// :nodoc:
     @inlinable
-    var _isLocal: Bool {
+    public var _isLocal: Bool {
         switch self._location {
         case .local: return true
         default: return false
@@ -225,20 +225,20 @@ public extension ActorAddress {
 
     /// :nodoc:
     @inlinable
-    var _isRemote: Bool {
+    public var _isRemote: Bool {
         !self._isLocal
     }
 
     /// :nodoc:
     @inlinable
-    var _asRemote: Self {
+    public var _asRemote: Self {
         let remote = Self(remote: self.uniqueNode, path: self.path, incarnation: self.incarnation)
         return remote
     }
 
     /// :nodoc:
     @inlinable
-    var _asLocal: Self {
+    public var _asLocal: Self {
         let local = Self(local: self.uniqueNode, path: self.path, incarnation: self.incarnation)
         return local
     }
@@ -392,10 +392,10 @@ extension ActorPath: CustomStringConvertible {
     }
 }
 
-public extension ActorPath {
-    static let _root: ActorPath = .init() // also known as "/"
-    static let _user: ActorPath = try! ActorPath(root: "user")
-    static let _system: ActorPath = try! ActorPath(root: "system")
+extension ActorPath {
+    public static let _root: ActorPath = .init() // also known as "/"
+    public static let _user: ActorPath = try! ActorPath(root: "user")
+    public static let _system: ActorPath = try! ActorPath(root: "system")
 
     internal func makeLocalAddress(on node: UniqueNode, incarnation: ActorIncarnation) -> ActorAddress {
         .init(local: node, path: self, incarnation: incarnation)
@@ -421,14 +421,14 @@ public protocol _PathRelationships {
     func appending(segment: ActorPathSegment) -> Self
 }
 
-public extension _PathRelationships {
+extension _PathRelationships {
     /// Combines the base path with a child segment returning the concatenated path.
     internal static func / (base: Self, child: ActorPathSegment) -> Self {
         base.appending(segment: child)
     }
 
     /// Checks whether this path starts with the passed in `path`.
-    func starts(with path: ActorPath) -> Bool {
+    public func starts(with path: ActorPath) -> Bool {
         self.segments.starts(with: path.segments)
     }
 
@@ -440,7 +440,7 @@ public extension _PathRelationships {
     ///
     /// - Parameter path: The path that is suspected to be the parent of `self`
     /// - Returns: `true` if this [ActorPath] is a direct descendant of `maybeParentPath`, `false` otherwise
-    func isChildPathOf(_ maybeParentPath: _PathRelationships) -> Bool {
+    public func isChildPathOf(_ maybeParentPath: _PathRelationships) -> Bool {
         Array(self.segments.dropLast()) == maybeParentPath.segments // TODO: more efficient impl, without the copying
     }
 
@@ -452,7 +452,7 @@ public extension _PathRelationships {
     ///
     /// - Parameter path: The path that is suspected to be a child of `self`
     /// - Returns: `true` if this [ActorPath] is a direct ancestor of `maybeChildPath`, `false` otherwise
-    func isParentOf(_ maybeChildPath: _PathRelationships) -> Bool {
+    public func isParentOf(_ maybeChildPath: _PathRelationships) -> Bool {
         maybeChildPath.isChildPathOf(self)
     }
 
@@ -582,18 +582,18 @@ public struct ActorIncarnation: Equatable, Hashable, ExpressibleByIntegerLiteral
     }
 }
 
-public extension ActorIncarnation {
+extension ActorIncarnation {
     /// To be used ONLY by special actors whose existence is wellKnown and identity never-changing.
     /// Examples: `/system/deadLetters` or `/system/cluster`.
-    static let wellKnown: ActorIncarnation = .init(0)
+    public static let wellKnown: ActorIncarnation = .init(0)
 
-    static func random() -> ActorIncarnation {
+    public static func random() -> ActorIncarnation {
         ActorIncarnation(UInt32.random(in: UInt32(1) ... UInt32.max))
     }
 }
 
-internal extension ActorIncarnation {
-    init?(_ value: String?) {
+extension ActorIncarnation {
+    internal init?(_ value: String?) {
         guard let int = (value.flatMap {
             Int($0)
         }), int >= 0 else {
@@ -778,8 +778,8 @@ extension UniqueNodeID: CustomStringConvertible {
     }
 }
 
-public extension UniqueNodeID {
-    static func random() -> UniqueNodeID {
+extension UniqueNodeID {
+    public static func random() -> UniqueNodeID {
         UniqueNodeID(UInt64.random(in: 1 ... .max))
     }
 }

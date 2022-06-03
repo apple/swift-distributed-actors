@@ -1196,8 +1196,8 @@ extension ClusterShell {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Shutdown
 
-private extension ClusterShell {
-    func onShutdownCommand(_ context: _ActorContext<Message>, state: ClusterShellState, signalOnceUnbound: BlockingReceptacle<Void>) -> _Behavior<Message> {
+extension ClusterShell {
+    private func onShutdownCommand(_ context: _ActorContext<Message>, state: ClusterShellState, signalOnceUnbound: BlockingReceptacle<Void>) -> _Behavior<Message> {
         // we exit the death-pact with any children we spawned, even if they fail now, we don't mind because we're shutting down
         context.children.forEach { ref in
             context.unwatch(ref)

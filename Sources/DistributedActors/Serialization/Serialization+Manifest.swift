@@ -23,7 +23,7 @@ import Foundation // for Codable
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Serialization Manifest
 
-public extension Serialization {
+extension Serialization {
     /// Serialization manifests are used to carry enough information along a serialized payload,
     /// such that the payload may be safely deserialized into the right type on the recipient system.
     ///
@@ -32,7 +32,7 @@ public extension Serialization {
     /// payload into the "right" type. Some serializers may not need hints, e.g. if the serializer is specialized to a
     /// specific type already -- in those situations not carrying the type `hint` is recommended as it may save precious
     /// bytes from the message envelope size on the wire.
-    struct Manifest: Codable, Hashable {
+    public struct Manifest: Codable, Hashable {
         /// Serializer used to serialize accompanied message.
         public let serializerID: SerializerID
 
@@ -94,14 +94,14 @@ extension Serialization.Manifest: _ProtobufRepresentable {
     }
 }
 
-public extension Serialization {
+extension Serialization {
     /// Creates a manifest, a _recoverable_ representation of a message.
     /// Manifests may be serialized and later used to recover (manifest) type information on another
     /// node which can understand it.
     ///
     /// Manifests only represent names of types, and do not carry versioning information,
     /// as such it may be necessary to carry additional information in order to version APIs more resiliently.
-    func outboundManifest(_ messageType: Any.Type) throws -> Manifest {
+    public func outboundManifest(_ messageType: Any.Type) throws -> Manifest {
         assert(messageType != Any.self, "Any.Type was passed in to outboundManifest, this cannot be right.")
 
         if let manifest = self.settings.typeToManifestRegistry[SerializerTypeKey(any: messageType)] {
@@ -140,7 +140,7 @@ public extension Serialization {
     /// While such `Any.Type` can not be used to invoke Codable's decode() and friends directly,
     /// it does allow us to locate by type identifier the exact right Serializer which knows about the specific type
     /// and can perform the cast safely.
-    func summonType(from manifest: Manifest) throws -> Any.Type {
+    public func summonType(from manifest: Manifest) throws -> Any.Type {
         // TODO: register types until https://github.com/apple/swift/pull/30318 is merged?
         if let custom = self.settings.manifest2TypeRegistry[manifest] {
             return custom

@@ -91,12 +91,12 @@ extension AddressableActorRef: CustomStringConvertible {
     }
 }
 
-public extension AddressableActorRef {
-    func hash(into hasher: inout Hasher) {
+extension AddressableActorRef {
+    public func hash(into hasher: inout Hasher) {
         self.address.hash(into: &hasher)
     }
 
-    static func == (lhs: AddressableActorRef, rhs: AddressableActorRef) -> Bool {
+    public static func == (lhs: AddressableActorRef, rhs: AddressableActorRef) -> Bool {
         lhs.address == rhs.address
     }
 }
@@ -126,9 +126,9 @@ extension AddressableActorRef: _ReceivesSystemMessages {
     }
 }
 
-internal extension _RemoteClusterActorPersonality {
+extension _RemoteClusterActorPersonality {
     @usableFromInline
-    func _tellUnsafe(_ message: Any, file: String = #file, line: UInt = #line) {
+    internal func _tellUnsafe(_ message: Any, file: String = #file, line: UInt = #line) {
         guard let _message = message as? Message else {
             traceLog_Remote(self.system.cluster.uniqueNode, "\(self.address)._tellUnsafe [\(message)] failed because of invalid type; self: \(self); Sent at \(file):\(line)")
             return // TODO: drop the message
@@ -138,12 +138,12 @@ internal extension _RemoteClusterActorPersonality {
     }
 }
 
-internal extension _ActorRef {
+extension _ActorRef {
     /// UNSAFE API, DO NOT TOUCH.
     /// This may only be used when certain that a given ref points to a local actor, and thus contains a cell.
     /// May be used by internals when things are to be attached to "myself's cell".
     @usableFromInline
-    var _unsafeUnwrapCell: _ActorCell<Message> {
+    internal var _unsafeUnwrapCell: _ActorCell<Message> {
         switch self.personality {
         case .cell(let cell): return cell
         default: fatalError("Illegal downcast attempt from \(String(reflecting: self)) to _ActorRefWithCell. This is a Swift Distributed Actors bug, please report this on the issue tracker.")
@@ -151,7 +151,7 @@ internal extension _ActorRef {
     }
 
     @usableFromInline
-    var _unwrapActorMetrics: ActiveActorMetrics {
+    internal var _unwrapActorMetrics: ActiveActorMetrics {
         switch self.personality {
         case .cell(let cell):
             return cell.actor?.metrics ?? ActiveActorMetrics.noop
@@ -161,7 +161,7 @@ internal extension _ActorRef {
     }
 
     @usableFromInline
-    var _unsafeUnwrapRemote: _RemoteClusterActorPersonality<Message> {
+    internal var _unsafeUnwrapRemote: _RemoteClusterActorPersonality<Message> {
         switch self.personality {
         case .remote(let remote): return remote
         default: fatalError("Illegal downcast attempt from \(String(reflecting: self)) to _ActorRefWithCell. This is a Swift Distributed Actors bug, please report this on the issue tracker.")

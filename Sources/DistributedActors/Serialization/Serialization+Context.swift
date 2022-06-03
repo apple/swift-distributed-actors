@@ -20,11 +20,11 @@ import struct NIO.ByteBufferAllocator
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Serialization.Context
 
-public extension Serialization {
+extension Serialization {
     /// A context object provided to any Encoder/Decoder, in order to allow special `ClusterSystem`-bound types (such as _ActorRef).
     ///
     /// Context MAY be accessed concurrently be encoders/decoders.
-    struct Context {
+    public struct Context {
         public let log: Logger
         public let system: ClusterSystem
 
@@ -86,8 +86,8 @@ public extension Serialization {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Serialization.Context for Encoder & Decoder
 
-public extension CodingUserInfoKey {
-    static let actorSerializationContext: CodingUserInfoKey = .init(rawValue: "sact_ser_context")!
+extension CodingUserInfoKey {
+    public static let actorSerializationContext: CodingUserInfoKey = .init(rawValue: "sact_ser_context")!
 }
 
 public protocol CodableSerializationContext {
@@ -115,8 +115,8 @@ public protocol CodableSerializationContext {
     var actorSerializationContext: Serialization.Context? { get }
 }
 
-public extension Decoder {
-    var actorSerializationContext: Serialization.Context? {
+extension Decoder {
+    public var actorSerializationContext: Serialization.Context? {
         self.userInfo[.actorSerializationContext] as? Serialization.Context
     }
 }
@@ -127,8 +127,8 @@ extension JSONDecoder: CodableSerializationContext {
     }
 }
 
-public extension Encoder {
-    var actorSerializationContext: Serialization.Context? {
+extension Encoder {
+    public var actorSerializationContext: Serialization.Context? {
         self.userInfo[.actorSerializationContext] as? Serialization.Context
     }
 }

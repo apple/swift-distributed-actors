@@ -50,8 +50,8 @@ public protocol DistributedReceptionist: DistributedActor {
         where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem
 }
 
-public extension DistributedReception {
-    struct GuestListing<Guest: DistributedActor>: AsyncSequence, Sendable where Guest.ActorSystem == ClusterSystem {
+extension DistributedReception {
+    public struct GuestListing<Guest: DistributedActor>: AsyncSequence, Sendable where Guest.ActorSystem == ClusterSystem {
         public typealias Element = Guest
 
         let receptionist: OpLogDistributedReceptionist

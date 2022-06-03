@@ -17,12 +17,12 @@ import DistributedActorsTestKit
 import XCTest
 
 /// Internal testing extensions allowing inspecting behavior internals
-internal extension _Behavior {
+extension _Behavior {
     /// Similar to canonicalize but counts the nesting depth, be it in setup calls or interceptors.
     ///
     // TODO: Implemented recursively and may stack overflow on insanely deep structures.
     // TODO: not all cases are covered, only enough to implement specific tests currently is.
-    func nestingDepth(context: _ActorContext<Message>) throws -> Int {
+    internal func nestingDepth(context: _ActorContext<Message>) throws -> Int {
         func nestingDepth0(_ b: _Behavior<Message>) throws -> Int {
             switch b.underlying {
             case .setup(let onStart):
@@ -55,7 +55,7 @@ internal extension _Behavior {
     //       )
     // TODO: Implemented recursively and may stack overflow on insanely deep structures.
     // TODO: not all cases are covered, only enough to implement specific tests currently is.
-    func prettyFormat(context: _ActorContext<Message>, padWith padding: String = "  ") throws -> String {
+    internal func prettyFormat(context: _ActorContext<Message>, padWith padding: String = "  ") throws -> String {
         func prettyFormat0(_ b: _Behavior<Message>, depth: Int) throws -> String {
             let pad = String(repeating: padding, count: depth)
 

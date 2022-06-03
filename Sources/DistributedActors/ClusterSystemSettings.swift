@@ -246,8 +246,8 @@ public struct ClusterSystemSettings {
     }
 }
 
-public extension Array where Element == _InternalActorTransport {
-    static func += <T: _InternalActorTransport>(transports: inout Self, transport: T) {
+extension Array where Element == _InternalActorTransport {
+    public static func += <T: _InternalActorTransport>(transports: inout Self, transport: T) {
         transports.append(transport)
     }
 }
@@ -318,8 +318,8 @@ public struct LoggingSettings {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Actor Settings
 
-public extension ClusterSystemSettings {
-    struct ActorSettings {
+extension ClusterSystemSettings {
+    public struct ActorSettings {
         public static var `default`: ActorSettings {
             .init()
         }
@@ -332,8 +332,8 @@ public extension ClusterSystemSettings {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Instrumentation Settings
 
-public extension ClusterSystemSettings {
-    struct InstrumentationSettings {
+extension ClusterSystemSettings {
+    public struct InstrumentationSettings {
         /// Default set of enabled instrumentations, based on current operating system.
         ///
         /// On Apple platforms, this includes the `OSSignpostInstrumentationProvider` provided instrumentations,

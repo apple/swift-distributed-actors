@@ -106,25 +106,25 @@ public enum TerminationCircumstances {
     case escalating(_Supervision.Failure)
 }
 
-internal extension _SystemMessage {
+extension _SystemMessage {
     @inlinable
-    static func terminated(ref: AddressableActorRef) -> _SystemMessage {
+    internal static func terminated(ref: AddressableActorRef) -> _SystemMessage {
         .terminated(ref: ref, existenceConfirmed: false, addressTerminated: false)
     }
 
     @inlinable
-    static func terminated(ref: AddressableActorRef, existenceConfirmed: Bool) -> _SystemMessage {
+    internal static func terminated(ref: AddressableActorRef, existenceConfirmed: Bool) -> _SystemMessage {
         .terminated(ref: ref, existenceConfirmed: existenceConfirmed, addressTerminated: false)
     }
 
     @inlinable
-    static func terminated(ref: AddressableActorRef, addressTerminated: Bool) -> _SystemMessage {
+    internal static func terminated(ref: AddressableActorRef, addressTerminated: Bool) -> _SystemMessage {
         .terminated(ref: ref, existenceConfirmed: false, addressTerminated: addressTerminated)
     }
 }
 
-public extension _SystemMessage {
-    static func == (lhs: _SystemMessage, rhs: _SystemMessage) -> Bool {
+extension _SystemMessage {
+    public static func == (lhs: _SystemMessage, rhs: _SystemMessage) -> Bool {
         switch (lhs, rhs) {
         case (.start, .start): return true
 

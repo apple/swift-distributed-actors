@@ -1029,10 +1029,10 @@ extension AbstractShellProtocol {
     }
 }
 
-internal extension _ActorContext {
+extension _ActorContext {
     /// INTERNAL API: UNSAFE, DO NOT TOUCH.
     @usableFromInline
-    var _downcastUnsafe: _ActorShell<Message> {
+    internal var _downcastUnsafe: _ActorShell<Message> {
         switch self {
         case let shell as _ActorShell<Message>: return shell
         default: fatalError("Illegal downcast attempt from \(String(reflecting: self)) to ActorCell. This is a bug, please report this on the issue tracker.")

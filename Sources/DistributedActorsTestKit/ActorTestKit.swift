@@ -63,9 +63,9 @@ public struct ActorTestKitSettings {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Test Probes
 
-public extension ActorTestKit {
+extension ActorTestKit {
     /// Spawn an `ActorTestProbe` which offers various assertion methods for actor messaging interactions.
-    func makeTestProbe<Message: ActorMessage>(
+    public func makeTestProbe<Message: ActorMessage>(
         _ naming: ActorNaming? = nil,
         expecting type: Message.Type = Message.self,
         file: StaticString = #file, line: UInt = #line
@@ -99,7 +99,7 @@ public extension ActorTestKit {
     /// Spawns an `ActorTestProbe` and immediately subscribes it to the passed in event stream.
     ///
     /// - Hint: Use `fishForMessages` and `fishFor` to filter expectations for specific events.
-    func spawnEventStreamTestProbe<Event: ActorMessage>(
+    public func spawnEventStreamTestProbe<Event: ActorMessage>(
         _ naming: ActorNaming? = nil,
         subscribedTo eventStream: EventStream<Event>,
         file: String = #file, line: UInt = #line, column: UInt = #column
@@ -113,7 +113,7 @@ public extension ActorTestKit {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Eventually
 
-public extension ActorTestKit {
+extension ActorTestKit {
     /// Executes passed in block numerous times, until a the expected value is obtained or the `within` time limit expires,
     /// in which case an `EventuallyError` is thrown, along with the last encountered error thrown by block.
     ///
@@ -124,7 +124,7 @@ public extension ActorTestKit {
     // TODO: does not handle blocking longer than `within` well
     // TODO: should use default `within` from TestKit
     @discardableResult
-    func eventually<T>(
+    public func eventually<T>(
         within timeAmount: TimeAmount, interval: TimeAmount = .milliseconds(100),
         file: StaticString = #file, line: UInt = #line, column: UInt = #column,
         _ block: () throws -> T
@@ -205,10 +205,10 @@ public struct EventuallyError: Error, CustomStringConvertible, CustomDebugString
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: assertHolds
 
-public extension ActorTestKit {
+extension ActorTestKit {
     /// Executes passed in block numerous times, to check the assertion holds over time.
     /// Throws an error when the block fails within the specified time amount.
-    func assertHolds(
+    public func assertHolds(
         for timeAmount: TimeAmount, interval: TimeAmount = .milliseconds(100),
         file: StaticString = #file, line: UInt = #line, column: UInt = #column,
         _ block: () throws -> Void
@@ -241,10 +241,10 @@ public extension ActorTestKit {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: "Power" assertions, should not be used lightly as they are quite heavy and potentially racy
 
-public extension ActorTestKit {
+extension ActorTestKit {
     // TODO: how to better hide such more nasty assertions?
     // TODO: Not optimal since we always do traverseAll rather than follow the Path of the context
-    func _assertActorPathOccupied(_ path: String, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
+    public func _assertActorPathOccupied(_ path: String, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
         precondition(!path.contains("#"), "assertion path MUST NOT contain # id section of an unique path.")
 
         let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
@@ -268,7 +268,7 @@ public extension ActorTestKit {
     /// If unable to resolve a not-dead reference, this function throws, rather than returning the dead reference.
     ///
     /// This is useful when the resolution might be racing against the startup of the actor we are trying to resolve.
-    func _eventuallyResolve<Message>(address: ActorAddress, of: Message.Type = Message.self, within: TimeAmount = .seconds(5)) throws -> _ActorRef<Message> {
+    public func _eventuallyResolve<Message>(address: ActorAddress, of: Message.Type = Message.self, within: TimeAmount = .seconds(5)) throws -> _ActorRef<Message> {
         let context = ResolveContext<Message>(address: address, system: self.system)
 
         return try self.eventually(within: .seconds(3)) {
@@ -286,16 +286,16 @@ public extension ActorTestKit {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Fake and mock contexts
 
-public extension ActorTestKit {
+extension ActorTestKit {
     /// Creates a _fake_ `_ActorContext` which can be used to pass around to fulfil type argument requirements,
     /// however it DOES NOT have the ability to perform any of the typical actor context actions (such as spawning etc).
-    func makeFakeContext<M: ActorMessage>(of: M.Type = M.self) -> _ActorContext<M> {
+    public func makeFakeContext<M: ActorMessage>(of: M.Type = M.self) -> _ActorContext<M> {
         Mock_ActorContext(self.system)
     }
 
     /// Creates a _fake_ `_ActorContext` which can be used to pass around to fulfil type argument requirements,
     /// however it DOES NOT have the ability to perform any of the typical actor context actions (such as spawning etc).
-    func makeFakeContext<M: ActorMessage>(for: _Behavior<M>) -> _ActorContext<M> {
+    public func makeFakeContext<M: ActorMessage>(for: _Behavior<M>) -> _ActorContext<M> {
         self.makeFakeContext(of: M.self)
     }
 }
@@ -402,7 +402,7 @@ public final class Mock_ActorContext<Message: ActorMessage>: _ActorContext<Messa
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Error
 
-public extension ActorTestKit {
+extension ActorTestKit {
     /// Returns an error that can be used when conditions in tests are not met. This is especially useful in
     /// calls to `testKit.eventually`, where a condition is checked multiple times, until it is successful
     /// or times out.
@@ -412,7 +412,7 @@ public extension ActorTestKit {
     ///     testKit.eventually(within: .seconds(3)) {
     ///         guard ... else { throw testKit.error("failed to extract expected information") }
     ///     }
-    func error(_ message: String? = nil, file: StaticString = #file, line: UInt = #line, column: UInt = #column) -> Error {
+    public func error(_ message: String? = nil, file: StaticString = #file, line: UInt = #line, column: UInt = #column) -> Error {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
         let fullMessage: String = message ?? "<no message>"
         return callSite.error(fullMessage, failTest: false)
@@ -423,7 +423,7 @@ public extension ActorTestKit {
     /// Examples:
     ///
     ///     guard ... else { throw testKit.fail("failed to extract expected information") }
-    func fail(_ message: String? = nil, file: StaticString = #file, line: UInt = #line, column: UInt = #column) -> Error {
+    public func fail(_ message: String? = nil, file: StaticString = #file, line: UInt = #line, column: UInt = #column) -> Error {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
         let fullMessage: String = message ?? "<no message>"
         return callSite.error(fullMessage, failTest: true)
@@ -436,20 +436,20 @@ public extension ActorTestKit {
 // Used to mark a repeatable context, in which `ActorTestProbe.expectX` does not
 // immediately fail the test, but instead lets the `ActorTestKit.eventually`
 // block handle it.
-internal extension ActorTestKit {
-    static let threadLocalContextKey: String = "SACT_TESTKIT_REPEATABLE_CONTEXT"
+extension ActorTestKit {
+    internal static let threadLocalContextKey: String = "SACT_TESTKIT_REPEATABLE_CONTEXT"
 
     // Sets a flag that can be checked with `isInRepeatableContext`, to avoid
     // failing a test from within blocks that continuously check conditions,
     // e.g. `ActorTestKit.eventually`. This is safe to use in nested calls.
-    static func enterRepeatableContext() {
+    internal static func enterRepeatableContext() {
         let currentDepth = self.currentRepeatableContextDepth
         Foundation.Thread.current.threadDictionary[self.threadLocalContextKey] = currentDepth + 1
     }
 
     // Unsets the flag and causes `isInRepeatableContext` to return `false`.
     // This is safe to use in nested calls.
-    static func leaveRepeatableContext() {
+    internal static func leaveRepeatableContext() {
         let currentDepth = self.currentRepeatableContextDepth
         precondition(currentDepth > 0, "Imbalanced `leaveRepeatableContext` detected. Depth was \(currentDepth)")
         Foundation.Thread.current.threadDictionary[self.threadLocalContextKey] = currentDepth - 1
@@ -459,12 +459,12 @@ internal extension ActorTestKit {
     // checks conditions. Used in `ActorTestProbe.expectX` and `ActorTestKit.error`
     // to avoid failing the test on the first iteration in e.g. an
     // `ActorTestKit.eventually` block.
-    static func isInRepeatableContext() -> Bool {
+    internal static func isInRepeatableContext() -> Bool {
         self.currentRepeatableContextDepth > 0
     }
 
     // Returns the current depth of nested repeatable context calls.
-    static var currentRepeatableContextDepth: Int {
+    internal static var currentRepeatableContextDepth: Int {
         guard let currentValue = Foundation.Thread.current.threadDictionary[self.threadLocalContextKey] else {
             return 0
         }
@@ -480,11 +480,11 @@ internal extension ActorTestKit {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Receptionist
 
-public extension ActorTestKit {
+extension ActorTestKit {
     /// Ensures that a given number of refs are registered with the Receptionist under `key`.
     /// If `expectedRefs` is specified, also compares it to the listing for `key` and requires an exact match.
     @available(*, deprecated, message: "Will be removed and replaced by API based on DistributedActor. Issue #824")
-    func ensureRegistered<Message>(
+    public func ensureRegistered<Message>(
         key: Reception.Key<_ActorRef<Message>>,
         expectedCount: Int = 1,
         expectedRefs: Set<_ActorRef<Message>>? = nil,

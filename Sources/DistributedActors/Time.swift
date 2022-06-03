@@ -229,78 +229,78 @@ extension TimeAmount: CustomStringConvertible, CustomPrettyStringConvertible {
     }
 }
 
-public extension TimeAmount {
+extension TimeAmount {
     /// The microseconds representation of the `TimeAmount`.
-    var microseconds: Int64 {
+    public var microseconds: Int64 {
         self.nanoseconds / TimeAmount.TimeUnit.microseconds.rawValue
     }
 
     /// The milliseconds representation of the `TimeAmount`.
-    var milliseconds: Int64 {
+    public var milliseconds: Int64 {
         self.nanoseconds / TimeAmount.TimeUnit.milliseconds.rawValue
     }
 
     /// The seconds representation of the `TimeAmount`.
-    var seconds: Int64 {
+    public var seconds: Int64 {
         self.nanoseconds / TimeAmount.TimeUnit.seconds.rawValue
     }
 
     /// The minutes representation of the `TimeAmount`.
-    var minutes: Int64 {
+    public var minutes: Int64 {
         self.nanoseconds / TimeAmount.TimeUnit.minutes.rawValue
     }
 
     /// The hours representation of the `TimeAmount`.
-    var hours: Int64 {
+    public var hours: Int64 {
         self.nanoseconds / TimeAmount.TimeUnit.hours.rawValue
     }
 
     /// The days representation of the `TimeAmount`.
-    var days: Int64 {
+    public var days: Int64 {
         self.nanoseconds / TimeAmount.TimeUnit.days.rawValue
     }
 
     /// Returns true if the time amount is "effectively infinite" (equal to `TimeAmount.effectivelyInfinite`)
-    var isEffectivelyInfinite: Bool {
+    public var isEffectivelyInfinite: Bool {
         self == TimeAmount.effectivelyInfinite
     }
 }
 
-public extension TimeAmount {
+extension TimeAmount {
     /// Largest time amount expressible using this type.
     /// Roughly equivalent to 292 years, which for the intents and purposes of this type can serve as "infinite".
-    static var effectivelyInfinite: TimeAmount {
+    public static var effectivelyInfinite: TimeAmount {
         TimeAmount(Value.max)
     }
 
     /// Smallest non-negative time amount.
-    static var zero: TimeAmount {
+    public static var zero: TimeAmount {
         TimeAmount(0)
     }
 }
 
-public extension TimeAmount {
-    static func + (lhs: TimeAmount, rhs: TimeAmount) -> TimeAmount {
+extension TimeAmount {
+    public static func + (lhs: TimeAmount, rhs: TimeAmount) -> TimeAmount {
         .nanoseconds(lhs.nanoseconds + rhs.nanoseconds)
     }
 
-    static func - (lhs: TimeAmount, rhs: TimeAmount) -> TimeAmount {
+    public static func - (lhs: TimeAmount, rhs: TimeAmount) -> TimeAmount {
         .nanoseconds(lhs.nanoseconds - rhs.nanoseconds)
     }
 
-    static func * (lhs: TimeAmount, rhs: Int) -> TimeAmount {
+    public static func * (lhs: TimeAmount, rhs: Int) -> TimeAmount {
         TimeAmount(lhs.nanoseconds * Value(rhs))
     }
 
-    static func * (lhs: TimeAmount, rhs: Double) -> TimeAmount {
+    public static func * (lhs: TimeAmount, rhs: Double) -> TimeAmount {
         TimeAmount(Int64(Double(lhs.nanoseconds) * rhs))
     }
 
-    static func / (lhs: TimeAmount, rhs: Int) -> TimeAmount {
+    public static func / (lhs: TimeAmount, rhs: Int) -> TimeAmount {
         TimeAmount(lhs.nanoseconds / Value(rhs))
     }
 
-    static func / (lhs: TimeAmount, rhs: Double) -> TimeAmount {
+    public static func / (lhs: TimeAmount, rhs: Double) -> TimeAmount {
         TimeAmount(Int64(Double(lhs.nanoseconds) / rhs))
     }
 }
@@ -368,12 +368,12 @@ extension Deadline: CustomStringConvertible {
     }
 }
 
-public extension Deadline {
-    static func - (lhs: Deadline, rhs: Deadline) -> TimeAmount {
+extension Deadline {
+    public static func - (lhs: Deadline, rhs: Deadline) -> TimeAmount {
         .nanoseconds(TimeAmount.Value(lhs.uptimeNanoseconds) - TimeAmount.Value(rhs.uptimeNanoseconds))
     }
 
-    static func + (lhs: Deadline, rhs: TimeAmount) -> Deadline {
+    public static func + (lhs: Deadline, rhs: TimeAmount) -> Deadline {
         if rhs.nanoseconds < 0 {
             return Deadline(lhs.uptimeNanoseconds - Deadline.Value(rhs.nanoseconds.magnitude))
         } else {
@@ -381,7 +381,7 @@ public extension Deadline {
         }
     }
 
-    static func - (lhs: Deadline, rhs: TimeAmount) -> Deadline {
+    public static func - (lhs: Deadline, rhs: TimeAmount) -> Deadline {
         if rhs.nanoseconds < 0 {
             return Deadline(lhs.uptimeNanoseconds + Deadline.Value(rhs.nanoseconds.magnitude))
         } else {
@@ -390,30 +390,30 @@ public extension Deadline {
     }
 }
 
-public extension Deadline {
-    static func fromNow(_ amount: TimeAmount) -> Deadline {
+extension Deadline {
+    public static func fromNow(_ amount: TimeAmount) -> Deadline {
         .now() + amount
     }
 
     /// - Returns: true if the deadline is still pending with respect to the passed in `now` time instant
-    func hasTimeLeft() -> Bool {
+    public func hasTimeLeft() -> Bool {
         self.hasTimeLeft(until: .now())
     }
 
-    func hasTimeLeft(until: Deadline) -> Bool {
+    public func hasTimeLeft(until: Deadline) -> Bool {
         !self.isBefore(until)
     }
 
     /// - Returns: true if the deadline is overdue with respect to the passed in `now` time instant
-    func isOverdue() -> Bool {
+    public func isOverdue() -> Bool {
         self.isBefore(.now())
     }
 
-    func isBefore(_ until: Deadline) -> Bool {
+    public func isBefore(_ until: Deadline) -> Bool {
         self.uptimeNanoseconds < until.uptimeNanoseconds
     }
 
-    var timeLeft: TimeAmount {
+    public var timeLeft: TimeAmount {
         .nanoseconds(self.uptimeNanoseconds - Deadline.now().uptimeNanoseconds)
     }
 }

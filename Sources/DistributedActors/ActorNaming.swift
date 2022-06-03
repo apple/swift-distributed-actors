@@ -17,7 +17,7 @@ import DistributedActorsConcurrencyHelpers
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Actor Name
 
-public extension ActorNaming {
+extension ActorNaming {
     /// Default actor naming strategy; whereas the name MUST be unique under a given path.
     ///
     /// I.e. if a parent actor spawns `.unique(worker)`
@@ -25,7 +25,7 @@ public extension ActorNaming {
     /// This naming is used by the `ExpressibleByStringLiteral` and `ExpressibleByStringInterpolation` conversions.
     ///
     /// - Faults: when passed in name contains illegal characters. See `ActorNaming` for detailed rules about actor naming.
-    static func unique(_ name: String) -> ActorNaming {
+    public static func unique(_ name: String) -> ActorNaming {
         ActorNaming.validateUserProvided(nameOrPrefix: name)
         return .init(unchecked: .unique(name))
     }
@@ -35,13 +35,13 @@ public extension ActorNaming {
     /// actor, it may name them with subsequent numbers or letters of a limited alphabet.
     ///
     /// - Faults: when passed in name contains illegal characters. See `ActorNaming` for detailed rules about actor naming.
-    static func prefixed(with prefix: String) -> ActorNaming {
+    public static func prefixed(with prefix: String) -> ActorNaming {
         ActorNaming.validateUserProvided(nameOrPrefix: prefix)
         return .init(unchecked: .prefixed(prefix: prefix, suffixScheme: .letters))
     }
 
     /// Shorthand for defining "anonymous" actor names, which carry
-    static var anonymous: ActorNaming {
+    public static var anonymous: ActorNaming {
         .init(unchecked: .prefixed(prefix: "$anonymous", suffixScheme: .letters))
     }
 

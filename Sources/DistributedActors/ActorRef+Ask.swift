@@ -71,11 +71,11 @@ extension _ActorRef: ReceivesQuestions {
         _ makeQuestion: @escaping (_ActorRef<Answer>) -> Question
     ) -> AskResponse<Answer> {
         guard let system = self._system else {
-            return .completed(.failure(AskError.systemAlreadyShutDown))
+            return .completed(.failure(RemoteCallError.clusterAlreadyShutDown))
         }
 
         if system.isShuttingDown {
-            return .completed(.failure(AskError.systemAlreadyShutDown))
+            return .completed(.failure(RemoteCallError.clusterAlreadyShutDown))
         }
 
         do {
@@ -147,11 +147,6 @@ enum AskResponse<Value> {
     case nioFuture(EventLoopFuture<Value>)
 }
 
-enum AskError: DistributedActorSystemError, Error {
-    case timedOut(TimeoutError)
-    case systemAlreadyShutDown
-}
-
 extension AskResponse {
     /// Blocks and waits until there is a response or fails with an error.
     @available(*, deprecated, message: "Blocking API will be removed in favor of async await")
@@ -203,7 +198,7 @@ extension AskResponse: _AsyncResult {
             let eventLoop = nioFuture.eventLoop
             let promise: EventLoopPromise<Value> = eventLoop.makePromise()
             let timeoutTask = eventLoop.scheduleTask(in: timeout.toNIO) {
-                promise.fail(AskError.timedOut(TimeoutError(message: "\(type(of: self)) timed out after \(timeout.prettyDescription)", timeout: timeout)))
+                promise.fail(RemoteCallError.timedOut(TimeoutError(message: "\(type(of: self)) timed out after \(timeout.prettyDescription)", timeout: timeout)))
             }
             nioFuture.whenFailure {
                 timeoutTask.cancel()
@@ -283,7 +278,7 @@ internal enum AskActor {
                         Ask was initiated from function [\(function)] in [\(file):\(line)] and \
                         expected response of type [\(String(reflecting: ResponseType.self))].
                         """
-                        completable.fail(AskError.timedOut(TimeoutError(message: errorMessage, timeout: timeout)))
+                        completable.fail(RemoteCallError.timedOut(TimeoutError(message: errorMessage, timeout: timeout)))
 
                         // FIXME: Hack to stop from subReceive. Should we allow this somehow?
                         //        Maybe add a SubReceiveContext or similar?

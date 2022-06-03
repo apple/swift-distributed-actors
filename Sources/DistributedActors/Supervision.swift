@@ -41,7 +41,7 @@ public struct _SupervisionProps {
     }
 }
 
-public extension _Props {
+extension _Props {
     /// Creates a new `_Props` appending a supervisor for the selected `Error` type, useful for setting a few options in-line when spawning actors.
     ///
     /// Note that order in which overlapping selectors/types are added to the chain matters.
@@ -49,7 +49,7 @@ public extension _Props {
     /// - Parameters:
     ///   - strategy: supervision strategy to apply for the given class of failures
     ///   - forErrorType: error type selector, determining for what type of error the given supervisor should perform its logic.
-    static func supervision(strategy: _SupervisionStrategy, forErrorType errorType: Error.Type) -> _Props {
+    public static func supervision(strategy: _SupervisionStrategy, forErrorType errorType: Error.Type) -> _Props {
         var props = _Props()
         props.supervise(strategy: strategy, forErrorType: errorType)
         return props
@@ -62,7 +62,7 @@ public extension _Props {
     /// - Parameters:
     ///   - strategy: supervision strategy to apply for the given class of failures
     ///   - forAll: failure type selector, working as a "catch all" for the specific types of failures.
-    static func supervision(strategy: _SupervisionStrategy, forAll selector: _Supervise.All = .failures) -> _Props {
+    public static func supervision(strategy: _SupervisionStrategy, forAll selector: _Supervise.All = .failures) -> _Props {
         self.supervision(strategy: strategy, forErrorType: _Supervise.internalErrorTypeFor(selector: selector))
     }
 
@@ -73,7 +73,7 @@ public extension _Props {
     /// - Parameters:
     ///   - strategy: supervision strategy to apply for the given class of failures
     ///   - forErrorType: error type selector, determining for what type of error the given supervisor should perform its logic.
-    func supervision(strategy: _SupervisionStrategy, forErrorType errorType: Error.Type) -> _Props {
+    public func supervision(strategy: _SupervisionStrategy, forErrorType errorType: Error.Type) -> _Props {
         var props = self
         props.supervise(strategy: strategy, forErrorType: errorType)
         return props
@@ -86,7 +86,7 @@ public extension _Props {
     /// - Parameters:
     ///   - strategy: supervision strategy to apply for the given class of failures
     ///   - forAll: failure type selector, working as a "catch all" for the specific types of failures.
-    func supervision(strategy: _SupervisionStrategy, forAll selector: _Supervise.All = .failures) -> _Props {
+    public func supervision(strategy: _SupervisionStrategy, forAll selector: _Supervise.All = .failures) -> _Props {
         self.supervision(strategy: strategy, forErrorType: _Supervise.internalErrorTypeFor(selector: selector))
     }
 
@@ -97,7 +97,7 @@ public extension _Props {
     /// - Parameters:
     ///   - strategy: supervision strategy to apply for the given class of failures
     ///   - forErrorType: failure type selector, working as a "catch all" for the specific types of failures.
-    mutating func supervise(strategy: _SupervisionStrategy, forErrorType errorType: Error.Type) {
+    public mutating func supervise(strategy: _SupervisionStrategy, forErrorType errorType: Error.Type) {
         self.supervision.add(strategy: strategy, forErrorType: errorType)
     }
 
@@ -108,7 +108,7 @@ public extension _Props {
     /// - Parameters:
     ///   - strategy: supervision strategy to apply for the given class of failures
     ///   - forAll: failure type selector, working as a "catch all" for the specific types of failures.
-    mutating func supervise(strategy: _SupervisionStrategy, forAll selector: _Supervise.All = .failures) {
+    public mutating func supervise(strategy: _SupervisionStrategy, forAll selector: _Supervise.All = .failures) {
         self.supervise(strategy: strategy, forErrorType: _Supervise.internalErrorTypeFor(selector: selector))
     }
 }
@@ -209,7 +209,7 @@ public enum _SupervisionStrategy {
     case escalate
 }
 
-public extension _SupervisionStrategy {
+extension _SupervisionStrategy {
     /// Simplified version of `_SupervisionStrategy.restart(atMost:within:backoff:)`.
     ///
     /// - SeeAlso: The top level `_SupervisionStrategy` documentation explores semantics of supervision in more depth.
@@ -234,7 +234,7 @@ public extension _SupervisionStrategy {
     ///   - `within` amount of time within which the `atMost` failures are allowed to happen. This defines the so called "failure period",
     ///     which runs from the first failure encountered for `within` time, and if more than `atMost` failures happen in this time amount then
     ///     no restart is performed and the failure is escalated (and the actor terminates in the process).
-    static func restart(atMost: Int, within: TimeAmount?) -> _SupervisionStrategy {
+    public static func restart(atMost: Int, within: TimeAmount?) -> _SupervisionStrategy {
         .restart(atMost: atMost, within: within, backoff: nil)
     }
 }
@@ -873,8 +873,8 @@ extension RestartingSupervisor: CustomStringConvertible {
     }
 }
 
-private extension _Supervision.Failure {
-    func shouldBeHandled(bySupervisorHandling handledType: Error.Type) -> Bool {
+extension _Supervision.Failure {
+    fileprivate func shouldBeHandled(bySupervisorHandling handledType: Error.Type) -> Bool {
         let supervisorHandlesEverything = handledType == _Supervise.AllFailures.self
 
         func matchErrorTypes0() -> Bool {

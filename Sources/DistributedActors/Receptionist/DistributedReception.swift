@@ -23,14 +23,14 @@ public enum DistributedReception {}
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: DistributedReception Key
 
-public extension DistributedReception {
+extension DistributedReception {
     /// Used to register and lookup actors in the receptionist.
     /// The key is a combination the Guest's type and an identifier to identify sub-groups of actors of that type.
     ///
     /// The id defaults to "*" which can be used "all actors of that type" (if and only if they registered using this key,
     /// actors which do not opt-into discovery by registering themselves WILL NOT be discovered using this, or any other, key).
     // FIXME(distributed): __DistributedClusterActor must go away, we don't need to be aware of `Message`
-    struct Key<Guest: DistributedActor>: Codable, Sendable,
+    public struct Key<Guest: DistributedActor>: Codable, Sendable,
         ExpressibleByStringLiteral, ExpressibleByStringInterpolation,
         CustomStringConvertible where Guest.ActorSystem == ClusterSystem
     {

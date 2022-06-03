@@ -31,9 +31,9 @@ internal typealias TimeSpec = timespec
 // TODO: move to Time.swift?
 
 /// Not intended for general use. TOD
-internal extension TimeSpec {
+extension TimeSpec {
     @usableFromInline
-    static func from(timeAmount amount: TimeAmount) -> timespec {
+    internal static func from(timeAmount amount: TimeAmount) -> timespec {
         let seconds = Int(amount.nanoseconds) / NANOS
         let nanos = Int(amount.nanoseconds) % NANOS
         var time = timespec()
@@ -43,7 +43,7 @@ internal extension TimeSpec {
     }
 
     @usableFromInline
-    static func + (a: timespec, b: timespec) -> timespec {
+    internal static func + (a: timespec, b: timespec) -> timespec {
         let totalNanos = a.toNanos() + b.toNanos()
         let seconds = totalNanos / NANOS
         var result = timespec()
@@ -53,7 +53,7 @@ internal extension TimeSpec {
     }
 
     @usableFromInline
-    func toNanos() -> Int {
+    internal func toNanos() -> Int {
         self.tv_nsec + (self.tv_sec * NANOS)
     }
 }
