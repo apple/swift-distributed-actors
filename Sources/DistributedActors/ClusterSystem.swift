@@ -942,7 +942,7 @@ extension ClusterSystem {
             throw error
         }
         guard let value = reply.value else {
-            fatalError("Invalid RemoteCallReply, expected either value or thrownError to be set.")
+            throw RemoteCallError.invalidReply
         }
         return value
     }
@@ -1156,6 +1156,7 @@ internal struct LazyStart<Message: ActorMessage> {
 enum RemoteCallError: DistributedActorSystemError {
     case clusterAlreadyShutDown
     case timedOut(TimeoutError)
+    case invalidReply
 }
 
 /// Allows for configuring of remote calls by setting task-local values around a remote call being made.
