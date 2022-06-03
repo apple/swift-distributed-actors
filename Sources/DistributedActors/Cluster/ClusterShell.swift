@@ -1083,7 +1083,8 @@ extension ClusterShell {
         // on the other connection; and the terminated one may yield an error (e.g. truncation error during proto parsing etc),
         // however that error is harmless - as we associated with the "other" right connection.
         if let existingAssociation = self.getSpecificExistingAssociation(with: reject.targetNode),
-            existingAssociation.isAssociating {
+           existingAssociation.isAssociating
+        {
             state.log.warning(
                 "Handshake rejected by [\(reject.targetNode)], it was associating and is now tombstoned",
                 metadata: state.metadataForHandshakes(uniqueNode: reject.targetNode, error: nil)
@@ -1093,7 +1094,8 @@ extension ClusterShell {
         }
 
         if let existingAssociation = self.getAnyExistingAssociation(with: reject.targetNode.node),
-            existingAssociation.isAssociated || existingAssociation.isTombstone {
+           existingAssociation.isAssociated || existingAssociation.isTombstone
+        {
             state.log.debug(
                 "Handshake rejected by [\(reject.targetNode)], however existing association with node exists. Could be that a concurrent handshake was failed on purpose.",
                 metadata: state.metadataForHandshakes(uniqueNode: reject.targetNode, error: nil)
@@ -1116,7 +1118,8 @@ extension ClusterShell {
         // on the other connection; and the terminated one may yield an error (e.g. truncation error during proto parsing etc),
         // however that error is harmless - as we associated with the "other" right connection.
         if let existingAssociation = self.getAnyExistingAssociation(with: node),
-            existingAssociation.isAssociated || existingAssociation.isTombstone {
+           existingAssociation.isAssociated || existingAssociation.isTombstone
+        {
             state.log.debug(
                 "Handshake failed, however existing association with node exists. Could be that a concurrent handshake was failed on purpose.",
                 metadata: state.metadataForHandshakes(node: node, error: error)

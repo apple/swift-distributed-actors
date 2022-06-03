@@ -378,13 +378,15 @@ public extension Collection {
 
 public extension Collection where Element: Equatable {
     func shouldStartWith<PossiblePrefix>(prefix: PossiblePrefix, file: StaticString = #file, line: UInt = #line, column: UInt = #column)
-        where PossiblePrefix: Collection, Element == PossiblePrefix.Element {
+        where PossiblePrefix: Collection, Element == PossiblePrefix.Element
+    {
         let csInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
         return TestMatchers(it: self, callSite: csInfo).toStartWith(prefix: prefix)
     }
 
     func shouldEndWith<PossibleSuffix>(suffix: PossibleSuffix, file: StaticString = #file, line: UInt = #line, column: UInt = #column)
-        where PossibleSuffix: Collection, Element == PossibleSuffix.Element {
+        where PossibleSuffix: Collection, Element == PossibleSuffix.Element
+    {
         let csInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
         return TestMatchers(it: self, callSite: csInfo).toEndWith(suffix: suffix)
     }

@@ -160,7 +160,8 @@ internal final class DistributedReceptionistStorage {
         key: AnyDistributedReceptionKey,
         guest: Guest
     ) -> Bool
-        where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem {
+        where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem
+    {
         guard sequenced.op.isRegister else {
             fatalError("\(#function) can only be called with .register operations, was: \(sequenced)")
         }
@@ -176,7 +177,8 @@ internal final class DistributedReceptionistStorage {
     }
 
     func removeRegistration<Guest>(key: AnyDistributedReceptionKey, guest: Guest) -> Set<VersionedRegistration>?
-        where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem {
+        where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem
+    {
         let address = guest.id
 
         _ = self.removeFromKeyMappings(guest.asAnyDistributedActor)
@@ -325,7 +327,7 @@ internal final class AnyDistributedReceptionListingSubscription: Hashable, @unch
     let key: AnyDistributedReceptionKey
 
     /// Offer a new listing to the subscription stream. // FIXME: implement this by offering single elements (!!!)
-    private let onNext: @Sendable(AnyDistributedActor) -> Void
+    private let onNext: @Sendable (AnyDistributedActor) -> Void
 
     /// We very carefully only modify this from the owning actor (receptionist).
     // TODO: It would be lovely to be able to express this in the type system as "actor owned" or "actor local" to some actor instance.
@@ -334,7 +336,7 @@ internal final class AnyDistributedReceptionListingSubscription: Hashable, @unch
     init(
         subscriptionID: ObjectIdentifier,
         key: AnyDistributedReceptionKey,
-        onNext: @escaping @Sendable(AnyDistributedActor) -> Void
+        onNext: @escaping @Sendable (AnyDistributedActor) -> Void
     ) {
         self.subscriptionID = subscriptionID
         self.key = key

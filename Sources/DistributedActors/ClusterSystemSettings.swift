@@ -395,7 +395,8 @@ public struct ServiceDiscoverySettings {
 
     public init<Discovery, S>(_ implementation: Discovery, service: S)
         where Discovery: ServiceDiscovery, Discovery.Instance == Node,
-        S == Discovery.Service {
+        S == Discovery.Service
+    {
         self.implementation = AnyServiceDiscovery(implementation)
         self._subscribe = { onNext, onComplete in
             implementation.subscribe(to: service, onNext: onNext, onComplete: onComplete)
@@ -404,7 +405,8 @@ public struct ServiceDiscoverySettings {
 
     public init<Discovery, S>(_ implementation: Discovery, service: S, mapInstanceToNode transformer: @escaping (Discovery.Instance) throws -> Node)
         where Discovery: ServiceDiscovery,
-        S == Discovery.Service {
+        S == Discovery.Service
+    {
         let mappedDiscovery: MapInstanceServiceDiscovery<Discovery, Node> = implementation.mapInstance(transformer)
         self.implementation = AnyServiceDiscovery(mappedDiscovery)
         self._subscribe = { onNext, onComplete in

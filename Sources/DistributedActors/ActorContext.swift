@@ -126,7 +126,8 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
         file: String = #file, line: UInt = #line,
         _ behavior: _Behavior<M>
     ) throws -> _ActorRef<M>
-        where M: ActorMessage {
+        where M: ActorMessage
+    {
         _undefined()
     }
 
@@ -144,7 +145,8 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
         file: String = #file, line: UInt = #line,
         _ behavior: _Behavior<M>
     ) throws -> _ActorRef<M>
-        where M: ActorMessage {
+        where M: ActorMessage
+    {
         _undefined()
     }
 
@@ -330,7 +332,8 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
     /// being silently dropped. This can be useful when not all messages `From` have a valid representation in
     /// `Message`, or if not all `From` messages are of interest for this particular actor.
     public final func messageAdapter<From>(_ adapt: @escaping (From) -> Message?) -> _ActorRef<From>
-        where From: ActorMessage {
+        where From: ActorMessage
+    {
         return self.messageAdapter(from: From.self, adapt: adapt)
     }
 
@@ -346,7 +349,8 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
     /// being silently dropped. This can be useful when not all messages `From` have a valid representation in
     /// `Message`, or if not all `From` messages are of interest for this particular actor.
     public func messageAdapter<From>(from type: From.Type, adapt: @escaping (From) -> Message?) -> _ActorRef<From>
-        where From: ActorMessage {
+        where From: ActorMessage
+    {
         return _undefined()
     }
 
@@ -361,7 +365,8 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
     /// with an existing `_SubReceiveId`, it replaces the old one. All references will remain valid and point to
     /// the new behavior.
     public func subReceive<SubMessage>(_: _SubReceiveId<SubMessage>, _: SubMessage.Type, _: @escaping (SubMessage) throws -> Void) -> _ActorRef<SubMessage>
-        where SubMessage: ActorMessage {
+        where SubMessage: ActorMessage
+    {
         return _undefined()
     }
 

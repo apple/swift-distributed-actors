@@ -126,7 +126,7 @@ extension _Behavior {
     func receiveSignalAsync(
         context: _ActorContext<Message>,
         signal: _Signal,
-        handleSignal: @escaping @Sendable(
+        handleSignal: @escaping @Sendable (
             _ActorContext<Message>,
             _Signal
         ) async throws -> _Behavior<Message>
@@ -304,7 +304,7 @@ public extension _Behavior {
     }
 
     func _receiveSignalAsync(
-        _ handle: @escaping @Sendable(_ActorContext<Message>, _Signal) async throws -> _Behavior<Message>
+        _ handle: @escaping @Sendable (_ActorContext<Message>, _Signal) async throws -> _Behavior<Message>
     ) -> _Behavior<Message> {
         _Behavior(
             underlying: .signalHandlingAsync(
@@ -417,7 +417,7 @@ internal extension _Behavior {
     @usableFromInline
     static func signalHandlingAsync(
         handleMessage: _Behavior<Message>,
-        handleSignal: @escaping @Sendable(_ActorContext<Message>, _Signal) async throws -> _Behavior<Message>
+        handleSignal: @escaping @Sendable (_ActorContext<Message>, _Signal) async throws -> _Behavior<Message>
     ) -> _Behavior<Message> {
         _Behavior(underlying: .signalHandlingAsync(handleMessage: handleMessage, handleSignal: handleSignal))
     }
@@ -463,10 +463,10 @@ internal enum __Behavior<Message: ActorMessage> {
     case setup(_ onStart: (_ActorContext<Message>) throws -> _Behavior<Message>)
 
     case receive(_ handle: (_ActorContext<Message>, Message) throws -> _Behavior<Message>)
-    case receiveAsync(_ handle: @Sendable(_ActorContext<Message>, Message) async throws -> _Behavior<Message>)
+    case receiveAsync(_ handle: @Sendable (_ActorContext<Message>, Message) async throws -> _Behavior<Message>)
 
     case receiveMessage(_ handle: (Message) throws -> _Behavior<Message>)
-    case receiveMessageAsync(_ handle: @Sendable(Message) async throws -> _Behavior<Message>)
+    case receiveMessageAsync(_ handle: @Sendable (Message) async throws -> _Behavior<Message>)
 
     indirect case stop(postStop: _Behavior<Message>?, reason: StopReason)
     indirect case failed(behavior: _Behavior<Message>, cause: _Supervision.Failure)
@@ -477,7 +477,7 @@ internal enum __Behavior<Message: ActorMessage> {
     )
     indirect case signalHandlingAsync(
         handleMessage: _Behavior<Message>,
-        handleSignal: @Sendable(_ActorContext<Message>, _Signal) async throws -> _Behavior<Message>
+        handleSignal: @Sendable (_ActorContext<Message>, _Signal) async throws -> _Behavior<Message>
     )
     case same
     case ignore

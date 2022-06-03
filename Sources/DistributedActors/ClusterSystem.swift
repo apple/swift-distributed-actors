@@ -200,8 +200,10 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
     /// The name is useful for debugging cross system communication.
     ///
     /// - Faults: when configuration closure performs very illegal action, e.g. reusing a serializer identifier
-    public convenience init(_ name: String,
-                            configuredWith configureSettings: @Sendable (inout ClusterSystemSettings) -> Void = { _ in () }) async {
+    public convenience init(
+        _ name: String,
+        configuredWith configureSettings: @Sendable (inout ClusterSystemSettings) -> Void = { _ in () }
+    ) async {
         var settings = ClusterSystemSettings(name: name)
         configureSettings(&settings)
 
@@ -516,7 +518,8 @@ extension ClusterSystem: _ActorRefFactory {
     public func _spawnSystemActor<Message>(
         _ naming: ActorNaming, _ behavior: _Behavior<Message>, props: _Props = _Props()
     ) throws -> _ActorRef<Message>
-        where Message: ActorMessage {
+        where Message: ActorMessage
+    {
         try self.serialization._ensureSerializer(Message.self)
         return try self._spawn(using: self.systemProvider, behavior, name: naming, props: props)
     }
@@ -534,7 +537,8 @@ extension ClusterSystem: _ActorRefFactory {
     internal func _prepareSystemActor<Message>(
         _ naming: ActorNaming, _ behavior: _Behavior<Message>, props: _Props = _Props()
     ) throws -> LazyStart<Message>
-        where Message: ActorMessage {
+        where Message: ActorMessage
+    {
         // try self._serialization._ensureSerializer(Message.self)
         let ref = try self._spawn(using: self.systemProvider, behavior, name: naming, props: props, startImmediately: false)
         return LazyStart(ref: ref)
@@ -546,7 +550,8 @@ extension ClusterSystem: _ActorRefFactory {
         _ behavior: _Behavior<Message>, name naming: ActorNaming, props: _Props = _Props(),
         startImmediately: Bool = true
     ) throws -> _ActorRef<Message>
-        where Message: ActorMessage {
+        where Message: ActorMessage
+    {
         try behavior.validateAsInitial()
 
         let incarnation: ActorIncarnation = props._wellKnown ? .wellKnown : .random()
@@ -589,7 +594,8 @@ extension ClusterSystem: _ActorRefFactory {
         _ behavior: _Behavior<Message>, address: ActorAddress, props: _Props = _Props(),
         startImmediately: Bool = true
     ) throws -> _ActorRef<Message>
-        where Message: ActorMessage {
+        where Message: ActorMessage
+    {
         try behavior.validateAsInitial()
 
         let dispatcher: MessageDispatcher
@@ -775,10 +781,11 @@ extension ClusterSystem: _ActorTreeTraversable {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Actor Lifecycle
 
-public extension ClusterSystem {
+internal extension ClusterSystem {
     /// Allows creating a distributed actor with additional configuration applied during its initialization.
-    internal func actorWith<Act: DistributedActor>(props: _Props? = nil,
-                                                   _ makeActor: () throws -> Act) rethrows -> Act {
+    func actorWith<Act: DistributedActor>(props: _Props? = nil,
+                                          _ makeActor: () throws -> Act) rethrows -> Act
+    {
         guard let props = props else {
             return try makeActor()
         }
@@ -789,8 +796,9 @@ public extension ClusterSystem {
     }
 
     /// Allows creating a distributed actor with additional configuration applied during its initialization.
-    internal func actorWith<Act: DistributedActor>(_ tags: (any ActorTag)...,
-                                                   makeActor: () throws -> Act) rethrows -> Act {
+    func actorWith<Act: DistributedActor>(_ tags: (any ActorTag)...,
+                                          makeActor: () throws -> Act) rethrows -> Act
+    {
         var props = _Props.forSpawn
         props.tags = .init(tags: tags)
 
@@ -802,7 +810,8 @@ public extension ClusterSystem {
 
 public extension ClusterSystem {
     func resolve<Act>(id address: ActorID, as actorType: Act.Type) throws -> Act?
-        where Act: DistributedActor {
+        where Act: DistributedActor
+    {
         self.log.info("RESOLVE: \(address)")
         guard self.cluster.uniqueNode == address.uniqueNode else {
             self.log.info("Resolved \(address) as remote, on node: \(address.uniqueNode)")
@@ -833,7 +842,8 @@ public extension ClusterSystem {
     }
 
     func assignID<Act>(_ actorType: Act.Type) -> ClusterSystem.ActorID
-        where Act: DistributedActor {
+        where Act: DistributedActor
+    {
         let props = _Props.forSpawn // task-local read for any properties this actor should have
         let address = try! self._reserveName(type: Act.self, props: props)
 
@@ -911,7 +921,8 @@ public extension ClusterSystem {
         where Act: DistributedActor,
         Act.ID == ActorID,
         Err: Error,
-        Res: Codable {
+        Res: Codable
+    {
         guard let clusterShell = _cluster else {
             throw RemoteCallError.clusterAlreadyShutDown
         }
@@ -940,7 +951,8 @@ public extension ClusterSystem {
     ) async throws
         where Act: DistributedActor,
         Act.ID == ActorID,
-        Err: Error {
+        Err: Error
+    {
         guard let shell = self._cluster else {
             throw AskError.systemAlreadyShutDown
         }

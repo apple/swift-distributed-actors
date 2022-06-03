@@ -148,7 +148,8 @@ public extension Serialization {
 
         // TODO: mark as unsafe mode only
         if let hint = manifest.hint,
-            let type = _typeByName(hint) {
+           let type = _typeByName(hint)
+        {
             return type
         }
 

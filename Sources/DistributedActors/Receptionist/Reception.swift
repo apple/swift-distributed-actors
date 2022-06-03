@@ -31,7 +31,8 @@ public extension Reception {
     /// actors which do not opt-into discovery by registering themselves WILL NOT be discovered using this, or any other, key).
     struct Key<Guest: _ReceptionistGuest>: ReceptionKeyProtocol, Codable,
         ExpressibleByStringLiteral, ExpressibleByStringInterpolation,
-        CustomStringConvertible {
+        CustomStringConvertible
+    {
         let id: String
         var guestType: Any.Type {
             Guest.self

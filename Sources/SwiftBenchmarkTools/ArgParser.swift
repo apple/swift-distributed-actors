@@ -207,7 +207,7 @@ class ArgumentParser<U> {
     ) {
         self.arguments.append(
             Argument(name: name, help: help)
-            { try self.parseArgument(name, property, defaultValue, parser) }
+                { try self.parseArgument(name, property, defaultValue, parser) }
         )
     }
 

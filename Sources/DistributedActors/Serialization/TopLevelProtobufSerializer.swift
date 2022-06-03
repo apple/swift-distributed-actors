@@ -26,7 +26,7 @@ internal class _TopLevel_ProtobufSerializer<Message>: Serializer<Message> {
         self.context = context
     }
 
-    public override func serialize(_ message: Message) throws -> Serialization.Buffer {
+    override public func serialize(_ message: Message) throws -> Serialization.Buffer {
         guard let repr = message as? Any_ProtobufRepresentable else {
             throw SerializationError.unableToSerialize(hint: "Can only serialize AnyInternal_ProtobufRepresentable types, was: \(String(reflecting: Message.self))")
         }
@@ -44,7 +44,7 @@ internal class _TopLevel_ProtobufSerializer<Message>: Serializer<Message> {
         return buffer
     }
 
-    public override func deserialize(from buffer: Serialization.Buffer) throws -> Message {
+    override public func deserialize(from buffer: Serialization.Buffer) throws -> Message {
         guard let ProtoType = Message.self as? Any_ProtobufRepresentable.Type else {
             throw SerializationError.unableToDeserialize(hint: "Can only deserialize AnyInternal_ProtobufRepresentable but was \(Message.self)")
         }
@@ -56,9 +56,9 @@ internal class _TopLevel_ProtobufSerializer<Message>: Serializer<Message> {
         return try ProtoType.init(from: decoder) as! Message // explicit .init() is required here (!)
     }
 
-    public override func setSerializationContext(_ context: Serialization.Context) {
+    override public func setSerializationContext(_ context: Serialization.Context) {
         // self.context = context
     }
 
-    public override func setUserInfo<Value>(key: CodingUserInfoKey, value: Value?) {}
+    override public func setUserInfo<Value>(key: CodingUserInfoKey, value: Value?) {}
 }

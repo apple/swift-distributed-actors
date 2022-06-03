@@ -26,7 +26,7 @@ public extension LifecycleWatch {
     @discardableResult
     func watchTermination<Watchee>(
         of watchee: Watchee,
-        @_inheritActorContext @_implicitSelfCapture whenTerminated: @escaping @Sendable(ID) -> Void,
+        @_inheritActorContext @_implicitSelfCapture whenTerminated: @escaping @Sendable (ID) -> Void,
         file: String = #file, line: UInt = #line
     ) -> Watchee where Watchee: DistributedActor, Watchee.ActorSystem == ClusterSystem {
         // TODO(distributed): reimplement this as self.id as? _ActorContext which will have the watch things.
@@ -136,7 +136,7 @@ public final class LifecycleWatchContainer {
     private let system: ClusterSystem
     private let nodeDeathWatcher: NodeDeathWatcherShell.Ref?
 
-    typealias OnTerminatedFn = @Sendable(ClusterSystem.ActorID) async -> Void
+    typealias OnTerminatedFn = @Sendable (ClusterSystem.ActorID) async -> Void
     private var watching: [ClusterSystem.ActorID: OnTerminatedFn] = [:]
     private var watchedBy: [ClusterSystem.ActorID: AddressableActorRef] = [:]
 
@@ -162,7 +162,7 @@ public extension LifecycleWatchContainer {
     /// Performed by the sending side of "watch", therefore the `watcher` should equal `context.myself`
     func termination<Watchee>(
         of watchee: Watchee,
-        @_inheritActorContext @_implicitSelfCapture whenTerminated: @escaping @Sendable(ClusterSystem.ActorID) -> Void,
+        @_inheritActorContext @_implicitSelfCapture whenTerminated: @escaping @Sendable (ClusterSystem.ActorID) -> Void,
         file: String = #file, line: UInt = #line
     ) where Watchee: DistributedActor, Watchee.ActorSystem == ClusterSystem {
         traceLog_DeathWatch("issue watch: \(watchee) (from \(self.watcherID))")

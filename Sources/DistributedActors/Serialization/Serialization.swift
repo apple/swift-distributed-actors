@@ -401,7 +401,8 @@ public extension Serialization {
 
             let result: Serialization.Buffer
             if let predefinedSerializer: AnySerializer =
-                (self._serializersLock.withReaderLock { self._serializers[ObjectIdentifier(messageType)] }) {
+                (self._serializersLock.withReaderLock { self._serializers[ObjectIdentifier(messageType)] })
+            {
                 result = try predefinedSerializer.trySerialize(message)
             } else if let makeSpecializedSerializer = self.settings.specializedSerializerMakers[manifest] {
                 let serializer = makeSpecializedSerializer(self.allocator)

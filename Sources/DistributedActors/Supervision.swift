@@ -831,7 +831,7 @@ final class RestartingSupervisor<Message: ActorMessage>: Supervisor<Message> {
     }
 
     // TODO: complete impl
-    public override func isSame(as other: Supervisor<Message>) -> Bool {
+    override public func isSame(as other: Supervisor<Message>) -> Bool {
         other is RestartingSupervisor<Message>
     }
 

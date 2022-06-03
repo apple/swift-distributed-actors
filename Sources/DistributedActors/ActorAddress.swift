@@ -124,7 +124,8 @@ public struct ActorAddress: @unchecked Sendable {
 
     /// :nodoc:
     public init<Act>(local node: UniqueNode, type: Act.Type, incarnation: ActorIncarnation)
-        where Act: DistributedActor, Act.ActorSystem == ClusterSystem {
+        where Act: DistributedActor, Act.ActorSystem == ClusterSystem
+    {
         self._location = .local(node)
         self.tags = ActorTags()
         self.incarnation = incarnation
@@ -796,16 +797,18 @@ extension ActorAddress: Codable {
         try container.encode(self.uniqueNode, forKey: ActorCoding.CodingKeys.node)
         try container.encode(self.path, forKey: ActorCoding.CodingKeys.path) // TODO: remove as we remove the tree
         try container.encode(self.incarnation, forKey: ActorCoding.CodingKeys.incarnation)
-        
+
         if !self.tags.isEmpty {
             var tagsContainer = container.nestedContainer(keyedBy: ActorCoding.TagKeys.self, forKey: ActorCoding.CodingKeys.tags)
 
             if (tagSettings == nil || tagSettings!.propagateTags.contains(AnyActorTagKey(ActorTags.path))),
-                let value = self.tags[ActorTags.path] {
+               let value = self.tags[ActorTags.path]
+            {
                 try tagsContainer.encode(value, forKey: ActorCoding.TagKeys.path)
             }
             if (tagSettings == nil || tagSettings!.propagateTags.contains(AnyActorTagKey(ActorTags.type))),
-                let value = self.tags[ActorTags.type] {
+               let value = self.tags[ActorTags.type]
+            {
                 try tagsContainer.encode(value, forKey: ActorCoding.TagKeys.type)
             }
 

@@ -316,24 +316,24 @@ public final class Mock_ActorContext<Message: ActorMessage>: _ActorContext<Messa
         self._system = system
     }
 
-    public override var system: ClusterSystem {
+    override public var system: ClusterSystem {
         self._system
     }
 
-    public override var path: ActorPath {
+    override public var path: ActorPath {
         super.path
     }
 
-    public override var name: String {
+    override public var name: String {
         "Mock_ActorContext<\(Message.self)>"
     }
 
-    public override var myself: _ActorRef<Message> {
+    override public var myself: _ActorRef<Message> {
         self.system.deadLetters.adapted()
     }
 
     private lazy var _log: Logger = .init(label: "\(type(of: self))")
-    public override var log: Logger {
+    override public var log: Logger {
         get {
             self._log
         }
@@ -342,12 +342,12 @@ public final class Mock_ActorContext<Message: ActorMessage>: _ActorContext<Messa
         }
     }
 
-    public override var props: _Props {
+    override public var props: _Props {
         .init() // mock impl
     }
 
     @discardableResult
-    public override func watch<Watchee>(
+    override public func watch<Watchee>(
         _ watchee: Watchee,
         with terminationMessage: Message? = nil,
         file: String = #file, line: UInt = #line
@@ -356,7 +356,7 @@ public final class Mock_ActorContext<Message: ActorMessage>: _ActorContext<Messa
     }
 
     @discardableResult
-    public override func unwatch<Watchee>(
+    override public func unwatch<Watchee>(
         _ watchee: Watchee,
         file: String = #file, line: UInt = #line
     ) -> Watchee where Watchee: _DeathWatchable {
@@ -364,26 +364,28 @@ public final class Mock_ActorContext<Message: ActorMessage>: _ActorContext<Messa
     }
 
     @discardableResult
-    public override func _spawn<M>(
+    override public func _spawn<M>(
         _ naming: ActorNaming, of type: M.Type = M.self, props: _Props = _Props(),
         file: String = #file, line: UInt = #line,
         _ behavior: _Behavior<M>
     ) throws -> _ActorRef<M>
-        where M: ActorMessage {
+        where M: ActorMessage
+    {
         fatalError("Failed: \(MockActorContextError())")
     }
 
     @discardableResult
-    public override func _spawnWatch<M>(
+    override public func _spawnWatch<M>(
         _ naming: ActorNaming, of type: M.Type = M.self, props: _Props = _Props(),
         file: String = #file, line: UInt = #line,
         _ behavior: _Behavior<M>
     ) throws -> _ActorRef<M>
-        where M: ActorMessage {
+        where M: ActorMessage
+    {
         fatalError("Failed: \(MockActorContextError())")
     }
 
-    public override var children: _Children {
+    override public var children: _Children {
         get {
             fatalError("Failed: \(MockActorContextError())")
         }
@@ -392,7 +394,7 @@ public final class Mock_ActorContext<Message: ActorMessage>: _ActorContext<Messa
         }
     }
 
-    public override func stop<M>(child ref: _ActorRef<M>) throws {
+    override public func stop<M>(child ref: _ActorRef<M>) throws {
         fatalError("Failed: \(MockActorContextError())")
     }
 }

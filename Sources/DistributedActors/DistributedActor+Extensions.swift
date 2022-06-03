@@ -14,8 +14,8 @@
 
 import Distributed
 
-extension DistributedActor where Self: CustomStringConvertible {
-    public nonisolated var description: String {
+public extension DistributedActor where Self: CustomStringConvertible {
+    nonisolated var description: String {
         "\(Self.self)(\(id))"
     }
 }

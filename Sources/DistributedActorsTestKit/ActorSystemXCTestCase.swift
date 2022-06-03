@@ -42,12 +42,12 @@ open class ActorSystemXCTestCase: ClusteredActorSystemsXCTestCase {
         return handler
     }
 
-    open override func setUp() async throws {
+    override open func setUp() async throws {
         try await super.setUp()
         _ = await self.setUpNode(String(describing: type(of: self)))
     }
 
-    open override func tearDown() {
+    override open func tearDown() {
         super.tearDown()
     }
 }

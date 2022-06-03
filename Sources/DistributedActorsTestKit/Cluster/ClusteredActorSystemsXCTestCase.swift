@@ -98,7 +98,7 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
         return (first, second)
     }
 
-    open override func tearDown() {
+    override open func tearDown() {
         let testsFailed = self.testRun?.totalFailureCount ?? 0 > 0
         if self.captureLogs, self.alwaysPrintCaptureLogs || testsFailed {
             self.printAllCapturedLogs()

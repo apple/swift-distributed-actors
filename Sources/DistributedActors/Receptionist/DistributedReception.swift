@@ -32,7 +32,8 @@ public extension DistributedReception {
     // FIXME(distributed): __DistributedClusterActor must go away, we don't need to be aware of `Message`
     struct Key<Guest: DistributedActor>: Codable, Sendable,
         ExpressibleByStringLiteral, ExpressibleByStringInterpolation,
-        CustomStringConvertible where Guest.ActorSystem == ClusterSystem {
+        CustomStringConvertible where Guest.ActorSystem == ClusterSystem
+    {
         public let id: String
         public var guestType: Any.Type {
             Guest.self

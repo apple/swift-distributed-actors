@@ -507,7 +507,7 @@ public final class ProbeInterceptor<Message: ActorMessage>: _Interceptor<Message
         self.probe = probe
     }
 
-    public final override func interceptMessage(target: _Behavior<Message>, context: _ActorContext<Message>, message: Message) throws -> _Behavior<Message> {
+    override public final func interceptMessage(target: _Behavior<Message>, context: _ActorContext<Message>, message: Message) throws -> _Behavior<Message> {
         self.probe.tell(message)
         return try target.interpretMessage(context: context, message: message)
     }

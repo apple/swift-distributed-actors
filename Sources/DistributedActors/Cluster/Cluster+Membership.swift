@@ -239,9 +239,10 @@ extension Cluster.Membership: Hashable {
         }
         for (lNode, lMember) in lhs._members {
             if let rMember = rhs._members[lNode],
-                lMember.uniqueNode != rMember.uniqueNode ||
-                lMember.status != rMember.status ||
-                lMember.reachability != rMember.reachability {
+               lMember.uniqueNode != rMember.uniqueNode ||
+               lMember.status != rMember.status ||
+               lMember.reachability != rMember.reachability
+            {
                 return false
             }
         }

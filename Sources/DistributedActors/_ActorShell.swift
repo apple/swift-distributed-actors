@@ -62,7 +62,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
     @usableFromInline
     internal var _system: ClusterSystem?
 
-    public override var system: ClusterSystem {
+    override public var system: ClusterSystem {
         if let system = self._system {
             return system
         } else {
@@ -98,7 +98,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: _BehaviorTimers
 
-    public override var timers: _BehaviorTimers<Message> {
+    override public var timers: _BehaviorTimers<Message> {
         self._timers
     }
 
@@ -114,7 +114,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Hacky internal trickery to stop an actor from the outside (but same execution context)
 
-    internal override func _forceStop() {
+    override internal func _forceStop() {
         do {
             try self.becomeNext(behavior: .stop(reason: .stopMyself))
         } catch {
@@ -207,7 +207,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
     private let _childrenLock = ReadWriteLock()
     // All access must be protected with `_childrenLock`, or via `children` helper
     internal var _children: _Children = .init()
-    public override var children: _Children {
+    override public var children: _Children {
         set {
             self._childrenLock.lockWrite()
             defer { self._childrenLock.unlock() }
@@ -227,31 +227,31 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
     /// threads, actors, and even nodes (if clustering is used).
     ///
     /// Warning: Do not use after actor has terminated (!)
-    public override var myself: _ActorRef<Message> {
+    override public var myself: _ActorRef<Message> {
         .init(.cell(self._myCell))
     }
 
-    public override var props: _Props {
+    override public var props: _Props {
         self._props
     }
 
-    public override var address: ActorAddress {
+    override public var address: ActorAddress {
         self._address
     }
 
     // Implementation note: Watch out when accessing from outside of an actor run, myself could have been unset (!)
-    public override var path: ActorPath {
+    override public var path: ActorPath {
         self._address.path
     }
 
     // Implementation note: Watch out when accessing from outside of an actor run, myself could have been unset (!)
-    public override var name: String {
+    override public var name: String {
         self._address.name
     }
 
     // access only from within actor
     private var _log: Logger
-    public override var log: Logger {
+    override public var log: Logger {
         get {
             self._log
         }
@@ -630,31 +630,33 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
     // MARK: Spawn implementations
 
     @discardableResult
-    public override func _spawn<M>(
+    override public func _spawn<M>(
         _ naming: ActorNaming,
         of type: M.Type = M.self,
         props: _Props = _Props(),
         file: String = #file, line: UInt = #line,
         _ behavior: _Behavior<M>
     ) throws -> _ActorRef<M>
-        where M: ActorMessage {
+        where M: ActorMessage
+    {
         try self.system.serialization._ensureSerializer(type, file: file, line: line)
         return try self._spawn(naming, props: props, behavior)
     }
 
     @discardableResult
-    public override func _spawnWatch<Message>(
+    override public func _spawnWatch<Message>(
         _ naming: ActorNaming,
         of type: Message.Type = Message.self,
         props: _Props = _Props(),
         file: String = #file, line: UInt = #line,
         _ behavior: _Behavior<Message>
     ) throws -> _ActorRef<Message>
-        where Message: ActorMessage {
+        where Message: ActorMessage
+    {
         self.watch(try self._spawn(naming, props: props, behavior))
     }
 
-    public override func stop<Message: ActorMessage>(child ref: _ActorRef<Message>) throws {
+    override public func stop<Message: ActorMessage>(child ref: _ActorRef<Message>) throws {
         try self._stop(child: ref)
     }
 
@@ -662,7 +664,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
     // MARK: Death Watch
 
     @discardableResult
-    public override func watch<Watchee>(
+    override public func watch<Watchee>(
         _ watchee: Watchee,
         with terminationMessage: Message? = nil,
         file: String = #file, line: UInt = #line
@@ -672,7 +674,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
     }
 
     @discardableResult
-    public override func unwatch<Watchee>(
+    override public func unwatch<Watchee>(
         _ watchee: Watchee,
         file: String = #file, line: UInt = #line
     ) -> Watchee where Watchee: _DeathWatchable {
@@ -690,8 +692,9 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
         self.subReceives[identifier]?.0
     }
 
-    public override func subReceive<SubMessage>(_ id: _SubReceiveId<SubMessage>, _ subType: SubMessage.Type, _ closure: @escaping (SubMessage) throws -> Void) -> _ActorRef<SubMessage>
-        where SubMessage: ActorMessage {
+    override public func subReceive<SubMessage>(_ id: _SubReceiveId<SubMessage>, _ subType: SubMessage.Type, _ closure: @escaping (SubMessage) throws -> Void) -> _ActorRef<SubMessage>
+        where SubMessage: ActorMessage
+    {
         do {
             let wrappedClosure: (SubMessageCarry) throws -> _Behavior<Message> = { carry in
                 guard let message = carry.message as? SubMessage else {
@@ -742,8 +745,9 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
         let closure: (Any) -> Message?
     }
 
-    public override func messageAdapter<From>(from fromType: From.Type, adapt: @escaping (From) -> Message?) -> _ActorRef<From>
-        where From: ActorMessage {
+    override public func messageAdapter<From>(from fromType: From.Type, adapt: @escaping (From) -> Message?) -> _ActorRef<From>
+        where From: ActorMessage
+    {
         do {
             let metaType = MetaType(fromType)
             let anyAdapter: (Any) -> Message? = { message in
@@ -981,7 +985,8 @@ extension AbstractShellProtocol {
     }
 
     public func _resolve<Message>(context: ResolveContext<Message>) -> _ActorRef<Message>
-        where Message: ActorMessage {
+        where Message: ActorMessage
+    {
         let myself: _ReceivesSystemMessages = self._myselfReceivesSystemMessages
 
         do {
