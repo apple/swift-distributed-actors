@@ -238,7 +238,7 @@ final class ClusterSystemTests: ActorSystemXCTestCase {
             _ = try await remoteGreeter.helloThrow(codable: false)
         }
         guard let remoteCallError = error as? GenericRemoteCallError else {
-            throw testKit.fail("Expected GenericRemoteCallError, got \(noncodableError)")
+            throw testKit.fail("Expected GenericRemoteCallError, got \(error)")
         }
         remoteCallError.message.shouldStartWith(prefix: "Remote call error of [GreeterNonCodableError] type occurred")
     }
