@@ -25,10 +25,12 @@ guard args.count >= 1 else {
     fatalError("no port given")
 }
 
+let bindPort = Int(args[0])!
+
 let system = await ClusterSystem("System") { settings in
     settings.logging.logLevel = .info
 
-    settings.bindPort = Int(args[0])!
+    settings.bindPort = bindPort
 
     settings.swim.probeInterval = .milliseconds(300)
     settings.swim.pingTimeout = .milliseconds(100)

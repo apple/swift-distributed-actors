@@ -794,7 +794,9 @@ extension ActorAddress: Codable {
 
         var container = encoder.container(keyedBy: ActorCoding.CodingKeys.self)
         try container.encode(self.uniqueNode, forKey: ActorCoding.CodingKeys.node)
-
+        try container.encode(self.path, forKey: ActorCoding.CodingKeys.path) // TODO: remove as we remove the tree
+        try container.encode(self.incarnation, forKey: ActorCoding.CodingKeys.incarnation)
+        
         if !self.tags.isEmpty {
             var tagsContainer = container.nestedContainer(keyedBy: ActorCoding.TagKeys.self, forKey: ActorCoding.CodingKeys.tags)
 
@@ -809,16 +811,13 @@ extension ActorAddress: Codable {
 
             try encodeCustomTags(self, &tagsContainer)
         }
-
-        try container.encode(self.incarnation, forKey: ActorCoding.CodingKeys.incarnation)
     }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: ActorCoding.CodingKeys.self)
         let node = try container.decode(UniqueNode.self, forKey: ActorCoding.CodingKeys.node)
-        let incarnation = try container.decode(UInt32.self, forKey: ActorCoding.CodingKeys.incarnation)
-
         let path = try container.decodeIfPresent(ActorPath.self, forKey: ActorCoding.CodingKeys.path)
+        let incarnation = try container.decode(UInt32.self, forKey: ActorCoding.CodingKeys.incarnation)
 
         self.init(remote: node, path: path, incarnation: ActorIncarnation(incarnation))
 
