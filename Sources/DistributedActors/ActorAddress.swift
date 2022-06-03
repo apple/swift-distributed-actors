@@ -840,7 +840,7 @@ extension ActorAddress: Codable {
                             self.tags[K.self] = value
                         }
                     }
-                    _openExistential(tag.keyType, do: store)
+                    _openExistential(tag.keyType as any ActorTagKey.Type, do: store) // the `as` here is required, because: inferred result type 'any ActorTagKey.Type' requires explicit coercion due to loss of generic requirements
                 }
             }
         }
