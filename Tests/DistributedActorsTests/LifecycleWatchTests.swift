@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2021 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -71,6 +71,22 @@ distributed actor Juliet: LifecycleWatch, CustomStringConvertible {
         }
     }
 
+    distributed func meetWatchAsyncCallback(
+        _ romeo: Romeo,
+        unwatch doUnwatch: Bool
+    ) async throws {
+        @Sendable
+        func asyncTerminated(_ terminatedIdentity: ClusterSystem.ActorID) async {
+            await self.probe.tell("Received terminated: \(terminatedIdentity)")
+        }
+
+        watchTermination(of: romeo, whenTerminated: asyncTerminated)
+
+        if doUnwatch {
+            unwatch(romeo)
+        }
+    }
+
     nonisolated var description: String {
         "\(Self.self)(\(id))"
     }
@@ -89,6 +105,25 @@ final class LifecycleWatchTests: ActorSystemXCTestCase, @unchecked Sendable {
             var romeo: Romeo? = Romeo(probe: pr, actorSystem: system)
 
             try await juliet.meetWatchCallback(romeo!, unwatch: false)
+            romeo = nil
+        }
+        try await meet()
+
+        try pj.expectMessage("Juliet init")
+        try pr.expectMessage("Romeo init")
+        try pr.expectMessage("Romeo deinit")
+        try pj.expectMessage("Received terminated: /user/Romeo-b")
+    }
+
+    func test_watch_shouldTriggerTerminatedWhenWatchedActorDeinits_async() async throws {
+        let pj = self.testKit.makeTestProbe(expecting: String.self)
+        let pr = self.testKit.makeTestProbe(expecting: String.self)
+        let juliet = Juliet(probe: pj, actorSystem: system)
+
+        func meet() async throws {
+            var romeo: Romeo? = Romeo(probe: pr, actorSystem: system)
+
+            try await juliet.meetWatchAsyncCallback(romeo!, unwatch: false)
             romeo = nil
         }
         try await meet()
