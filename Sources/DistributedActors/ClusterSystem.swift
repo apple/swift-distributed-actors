@@ -354,7 +354,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         lazyNodeDeathWatcher.wakeUp()
 
         /// Starts plugins after the system is fully initialized
-        self.settings.plugins.startAll(self)
+        await self.settings.plugins.startAll(self)
 
         self.log.info("ClusterSystem [\(self.name)] initialized, listening on: \(self.settings.uniqueBindNode)")
         self.log.info("Setting in effect: .autoLeaderElection: \(self.settings.autoLeaderElection)")
@@ -446,7 +446,9 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
             self.cluster.down(member: myselfMember)
         }
 
-        self.settings.plugins.stopAll(self)
+        Task {
+            await self.settings.plugins.stopAll(self)
+        }
 
         queue.async {
             self.log.log(level: .debug, "Shutting down actor system [\(self.name)]. All actors will be stopped.", file: #file, function: #function, line: #line)
