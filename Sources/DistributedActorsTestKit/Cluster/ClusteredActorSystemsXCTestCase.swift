@@ -29,7 +29,7 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
     ///
     /// - Default: `true`
     open var captureLogs: Bool {
-        true
+        false
     }
 
     /// Enables logging all captured logs, even if the test passed successfully.

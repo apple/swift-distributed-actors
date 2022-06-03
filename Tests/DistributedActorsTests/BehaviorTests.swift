@@ -349,9 +349,9 @@ final class BehaviorTests: ActorSystemXCTestCase {
         let system = await ClusterSystem("CallbackCrash") { settings in
             settings.logging.baseLogger = capture.logger(label: "mock")
         }
-        defer {
-            try! system.shutdown().wait()
-        }
+//        defer {
+//            try! system.shutdown().wait()
+//        }
 
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 

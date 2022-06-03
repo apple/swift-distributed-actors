@@ -614,6 +614,7 @@ public class _Guardian {
                     "actor/path": "\(self.address.path)",
                     "error": "\(failure)",
                 ])
+                fatalError("FAIL GUARDIAN: \(failure)")
 
                 _ = Task {
                     try! system.shutdown().wait() // so we don't block anyone who sent us this signal (as we execute synchronously in the guardian)

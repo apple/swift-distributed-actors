@@ -43,7 +43,12 @@ public enum ActorCoding {
         }
 
         public var intValue: Int? {
-            return nil
+            switch self {
+            case .path: return 0
+            case .type: return 1
+            case .custom: return 2
+            @unknown default: return nil
+            }
         }
 
         public init?(intValue: Int) {
