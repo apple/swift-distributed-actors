@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -12,9 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Distributed
 import Logging
-
-public struct DowningStrategies {}
 
 /// Allows implementing downing strategies, without having to re-implement and reinvent logging and subscription logic.
 ///
@@ -33,7 +32,7 @@ public protocol DowningStrategy {
 public enum DowningStrategyDirective {
     case none
     case markAsDown(Set<Cluster.Member>)
-    case startTimer(key: TimerKey, message: DowningStrategyMessage, delay: TimeAmount)
+    case startTimer(key: TimerKey, member: Cluster.Member, delay: TimeAmount)
     case cancelTimer(key: TimerKey)
 
     static func markAsDown(_ member: Cluster.Member) -> Self {
@@ -41,78 +40,83 @@ public enum DowningStrategyDirective {
     }
 }
 
-public enum DowningStrategyMessage: NonTransportableActorMessage {
-    case timeout(Cluster.Member)
-}
-
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Downing Shell
 
-internal struct DowningStrategyShell {
-    typealias Message = DowningStrategyMessage
-    var naming: _ActorNaming = "downingStrategy"
+internal distributed actor DowningStrategyShell: DistributedActor {
+    typealias ActorSystem = ClusterSystem
+
+    static let path: ActorPath =
+        try! ActorPath([ActorPathSegment("system"), ActorPathSegment("downingStrategy")])
+
+    static var props: _Props {
+        var ps = _Props()
+        ps._knownActorName = Self.path.name
+        ps._systemActor = true
+        ps._wellKnown = true
+        return ps
+    }
 
     let strategy: DowningStrategy
 
-    init(_ strategy: DowningStrategy) {
+    /// `Task` for subscribing to cluster events.
+    private var eventsListeningTask: Task<Void, Error>?
+
+    private lazy var timers = ActorTimers<DowningStrategyShell>(self)
+
+    init(_ strategy: DowningStrategy, system: ActorSystem) async {
         self.strategy = strategy
-    }
-
-    var behavior: _Behavior<Message> {
-        .setup { context in
-            let clusterEventSubRef = context.subReceive(Cluster.Event.self) { event in
-                do {
-                    try self.receiveClusterEvent(context, event: event)
-                } catch {
-                    context.log.warning("Error while handling cluster event: [\(error)]\(type(of: error))")
-                }
-            }
-            context.system.cluster.events.subscribe(clusterEventSubRef)
-
-            return .receiveMessage { message in
-                switch message {
-                case .timeout(let member):
-                    let directive = self.strategy.onTimeout(member)
-                    context.log.debug("Received timeout for [\(member)], resulting in: \(directive)")
-                    self.interpret(context, directive)
-                }
-
-                return .same
+        self.actorSystem = system
+        self.eventsListeningTask = Task {
+            for await event in await system.cluster.events {
+                try self.receiveClusterEvent(event)
             }
         }
     }
 
-    func receiveClusterEvent(_ context: _ActorContext<Message>, event: Cluster.Event) throws {
-        let directive: DowningStrategyDirective = try self.strategy.onClusterEvent(event: event)
-        self.interpret(context, directive)
+    deinit {
+        self.eventsListeningTask?.cancel()
     }
 
-    func interpret(_ context: _ActorContext<Message>, _ directive: DowningStrategyDirective) {
+    func receiveClusterEvent(_ event: Cluster.Event) throws {
+        let directive: DowningStrategyDirective = try self.strategy.onClusterEvent(event: event)
+        self.interpret(directive: directive)
+    }
+
+    func interpret(directive: DowningStrategyDirective) {
         switch directive {
         case .markAsDown(let members):
-            self.markAsDown(context, members: members)
+            self.markAsDown(members: members)
 
-        case .startTimer(let key, let message, let delay):
-            context.log.trace("Start timer \(key), message: \(message), delay: \(delay)")
-            context.timers.startSingle(key: key, message: message, delay: delay)
+        case .startTimer(let key, let member, let delay):
+            self.actorSystem.log.trace("Start timer \(key), member: \(member), delay: \(delay)")
+            self.timers.startSingle(key: key, delay: delay) {
+                self.onTimeout(member: member)
+            }
         case .cancelTimer(let key):
-            context.log.trace("Cancel timer \(key)")
-            context.timers.cancel(for: key)
+            self.actorSystem.log.trace("Cancel timer \(key)")
+            self.timers.cancel(for: key)
 
         case .none:
             () // nothing to be done
         }
     }
 
-    func markAsDown(_ context: _ActorContext<Message>, members: Set<Cluster.Member>) {
+    func markAsDown(members: Set<Cluster.Member>) {
         for member in members {
-            context.log.info(
+            self.actorSystem.log.info(
                 "Decision to [.down] member [\(member)]!", metadata: self.metadata([
                     "downing/node": "\(reflecting: member.uniqueNode)",
                 ])
             )
-            context.system.cluster.down(member: member)
+            self.actorSystem.cluster.down(member: member)
         }
+    }
+
+    func onTimeout(member: Cluster.Member) {
+        let directive = self.strategy.onTimeout(member)
+        self.actorSystem.log.debug("Received timeout for [\(member)], resulting in: \(directive)")
+        self.interpret(directive: directive)
     }
 
     var metadata: Logger.Metadata {
