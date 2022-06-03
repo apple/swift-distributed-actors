@@ -452,6 +452,9 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
             self.systemProvider.stopAll()
             self.dispatcher.shutdown()
 
+            self._associationTombstoneCleanupTask?.cancel()
+            self._associationTombstoneCleanupTask = nil
+            
             do {
                 try self._eventLoopGroup.syncShutdownGracefully()
                 // self._receptionistRef = self.deadLetters.adapted()
@@ -467,8 +470,6 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
                  // self._serialization = nil // FIXME: need to release serialization
              }
              */
-            self._associationTombstoneCleanupTask?.cancel()
-            self._associationTombstoneCleanupTask = nil
             _ = self._clusterStore.storeIfNilThenLoad(Box(nil))
 
             self.shutdownReceptacle.offerOnce(nil)
