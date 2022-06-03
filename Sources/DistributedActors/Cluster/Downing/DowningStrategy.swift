@@ -48,7 +48,7 @@ public enum DowningStrategyMessage: NonTransportableActorMessage {
 
 internal struct DowningStrategyShell {
     typealias Message = DowningStrategyMessage
-    var naming: ActorNaming = "downingStrategy"
+    var naming: _ActorNaming = "downingStrategy"
 
     let strategy: DowningStrategy
 

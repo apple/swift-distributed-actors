@@ -120,7 +120,7 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
 
     @discardableResult
     public func _spawn<M>(
-        _ naming: ActorNaming,
+        _ naming: _ActorNaming,
         of type: M.Type = M.self,
         props: _Props = _Props(),
         file: String = #file, line: UInt = #line,
@@ -139,7 +139,7 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
     /// - SeeAlso: `watch`
     @discardableResult
     public func _spawnWatch<M>(
-        _ naming: ActorNaming,
+        _ naming: _ActorNaming,
         of type: M.Type = M.self,
         props: _Props = _Props(),
         file: String = #file, line: UInt = #line,

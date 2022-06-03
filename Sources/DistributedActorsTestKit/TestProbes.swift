@@ -38,9 +38,9 @@ public final class ActorTestProbe<Message: ActorMessage>: @unchecked Sendable {
 
     /// Naming strategy for anonymous test probes.
     /// By default test probes are named as `$testProbe-###`.
-    public static var naming: ActorNaming {
+    public static var naming: _ActorNaming {
         // has to be computed property since: static stored properties are not supported in generic types
-        ActorNaming(unchecked: .prefixed(prefix: "$testProbe", suffixScheme: .sequentialNumeric))
+        _ActorNaming(unchecked: .prefixed(prefix: "$testProbe", suffixScheme: .sequentialNumeric))
     }
 
     typealias ProbeCommands = ActorTestProbeCommand<Message>

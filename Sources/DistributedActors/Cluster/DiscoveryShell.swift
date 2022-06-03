@@ -91,5 +91,5 @@ final class DiscoveryShell {
 
 extension DiscoveryShell {
     static let name: String = "discovery"
-    static let naming: ActorNaming = .unique(DiscoveryShell.name)
+    static let naming: _ActorNaming = .unique(DiscoveryShell.name)
 }

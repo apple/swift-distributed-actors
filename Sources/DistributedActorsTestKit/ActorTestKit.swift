@@ -66,7 +66,7 @@ public struct ActorTestKitSettings {
 extension ActorTestKit {
     /// Spawn an `ActorTestProbe` which offers various assertion methods for actor messaging interactions.
     public func makeTestProbe<Message: ActorMessage>(
-        _ naming: ActorNaming? = nil,
+        _ naming: _ActorNaming? = nil,
         expecting type: Message.Type = Message.self,
         file: StaticString = #file, line: UInt = #line
     ) -> ActorTestProbe<Message> {
@@ -100,11 +100,11 @@ extension ActorTestKit {
     ///
     /// - Hint: Use `fishForMessages` and `fishFor` to filter expectations for specific events.
     public func spawnEventStreamTestProbe<Event: ActorMessage>(
-        _ naming: ActorNaming? = nil,
+        _ naming: _ActorNaming? = nil,
         subscribedTo eventStream: EventStream<Event>,
         file: String = #file, line: UInt = #line, column: UInt = #column
     ) -> ActorTestProbe<Event> {
-        let p = self.makeTestProbe(naming ?? ActorNaming.prefixed(with: "\(eventStream.ref.path.name)-subscriberProbe"), expecting: Event.self)
+        let p = self.makeTestProbe(naming ?? _ActorNaming.prefixed(with: "\(eventStream.ref.path.name)-subscriberProbe"), expecting: Event.self)
         eventStream.subscribe(p.ref)
         return p
     }
@@ -365,7 +365,7 @@ public final class Mock_ActorContext<Message: ActorMessage>: _ActorContext<Messa
 
     @discardableResult
     override public func _spawn<M>(
-        _ naming: ActorNaming, of type: M.Type = M.self, props: _Props = _Props(),
+        _ naming: _ActorNaming, of type: M.Type = M.self, props: _Props = _Props(),
         file: String = #file, line: UInt = #line,
         _ behavior: _Behavior<M>
     ) throws -> _ActorRef<M>
@@ -376,7 +376,7 @@ public final class Mock_ActorContext<Message: ActorMessage>: _ActorContext<Messa
 
     @discardableResult
     override public func _spawnWatch<M>(
-        _ naming: ActorNaming, of type: M.Type = M.self, props: _Props = _Props(),
+        _ naming: _ActorNaming, of type: M.Type = M.self, props: _Props = _Props(),
         file: String = #file, line: UInt = #line,
         _ behavior: _Behavior<M>
     ) throws -> _ActorRef<M>

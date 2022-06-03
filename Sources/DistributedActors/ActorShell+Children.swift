@@ -308,7 +308,7 @@ extension _Children {
 // MARK: Internal shell operations
 
 extension _ActorShell {
-    func _spawn<M>(_ naming: ActorNaming, props: _Props, _ behavior: _Behavior<M>) throws -> _ActorRef<M> {
+    func _spawn<M>(_ naming: _ActorNaming, props: _Props, _ behavior: _Behavior<M>) throws -> _ActorRef<M> {
         let name = naming.makeName(&self.namingContext)
 
         try behavior.validateAsInitial()

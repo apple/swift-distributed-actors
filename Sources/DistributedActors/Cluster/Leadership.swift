@@ -99,7 +99,7 @@ public struct Leadership {}
 
 extension Leadership {
     final class Shell {
-        static let naming: ActorNaming = "leadership"
+        static let naming: _ActorNaming = "leadership"
 
         private var membership: Cluster.Membership // FIXME: we need to ensure the membership is always up to date -- we need the initial snapshot or a diff from a zero state etc.
         private var election: LeaderElection
