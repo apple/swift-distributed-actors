@@ -789,67 +789,61 @@ extension UniqueNodeID {
 
 extension ActorAddress: Codable {
     public func encode(to encoder: Encoder) throws {
-        do {
-            let tagSettings = encoder.actorSerializationContext?.system.settings.tags
-            let encodeCustomTags: (ActorAddress, inout KeyedEncodingContainer<ActorCoding.TagKeys>) throws -> Void =
-                tagSettings?.encodeCustomTags ?? ({ _, _ in () })
+        let tagSettings = encoder.actorSerializationContext?.system.settings.tags
+        let encodeCustomTags: (ActorAddress, inout KeyedEncodingContainer<ActorCoding.TagKeys>) throws -> Void =
+            tagSettings?.encodeCustomTags ?? ({ _, _ in () })
 
-            var container = encoder.container(keyedBy: ActorCoding.CodingKeys.self)
-            try container.encode(self.uniqueNode, forKey: ActorCoding.CodingKeys.node)
-            try container.encode(self.path, forKey: ActorCoding.CodingKeys.path) // TODO: remove as we remove the tree
-            try container.encode(self.incarnation, forKey: ActorCoding.CodingKeys.incarnation)
+        var container = encoder.container(keyedBy: ActorCoding.CodingKeys.self)
+        try container.encode(self.uniqueNode, forKey: ActorCoding.CodingKeys.node)
+        try container.encode(self.path, forKey: ActorCoding.CodingKeys.path) // TODO: remove as we remove the tree
+        try container.encode(self.incarnation, forKey: ActorCoding.CodingKeys.incarnation)
 
-//        if !self.tags.isEmpty {
-//            var tagsContainer = container.nestedContainer(keyedBy: ActorCoding.TagKeys.self, forKey: ActorCoding.CodingKeys.tags)
-//
-//            if (tagSettings == nil || tagSettings!.propagateTags.contains(AnyActorTagKey(ActorTags.path))),
-//               let value = self.tags[ActorTags.path] {
-//                try tagsContainer.encode(value, forKey: ActorCoding.TagKeys.path)
-//            }
-//            if (tagSettings == nil || tagSettings!.propagateTags.contains(AnyActorTagKey(ActorTags.type))),
-//               let value = self.tags[ActorTags.type] {
-//                try tagsContainer.encode(value, forKey: ActorCoding.TagKeys.type)
-//            }
-//
-//            try encodeCustomTags(self, &tagsContainer)
-//        }
-        } catch {
-            pprint("OH NO: \(error)")
+        if !self.tags.isEmpty {
+            var tagsContainer = container.nestedContainer(keyedBy: ActorCoding.TagKeys.self, forKey: ActorCoding.CodingKeys.tags)
+
+            if (tagSettings == nil || tagSettings!.propagateTags.contains(AnyActorTagKey(ActorTags.path))),
+               let value = self.tags[ActorTags.path]
+            {
+                try tagsContainer.encode(value, forKey: ActorCoding.TagKeys.path)
+            }
+            if (tagSettings == nil || tagSettings!.propagateTags.contains(AnyActorTagKey(ActorTags.type))),
+               let value = self.tags[ActorTags.type]
+            {
+                try tagsContainer.encode(value, forKey: ActorCoding.TagKeys.type)
+            }
+
+            try encodeCustomTags(self, &tagsContainer)
         }
     }
 
     public init(from decoder: Decoder) throws {
-        do {
-            let container = try decoder.container(keyedBy: ActorCoding.CodingKeys.self)
-            let node = try container.decode(UniqueNode.self, forKey: ActorCoding.CodingKeys.node)
-            let path = try container.decodeIfPresent(ActorPath.self, forKey: ActorCoding.CodingKeys.path)
-            let incarnation = try container.decode(UInt32.self, forKey: ActorCoding.CodingKeys.incarnation)
+        let container = try decoder.container(keyedBy: ActorCoding.CodingKeys.self)
+        let node = try container.decode(UniqueNode.self, forKey: ActorCoding.CodingKeys.node)
+        let path = try container.decodeIfPresent(ActorPath.self, forKey: ActorCoding.CodingKeys.path)
+        let incarnation = try container.decode(UInt32.self, forKey: ActorCoding.CodingKeys.incarnation)
 
-            self.init(remote: node, path: path, incarnation: ActorIncarnation(incarnation))
-        } catch {
-            pprint("OH NO: \(error)")
-            fatalError()
-        }
+        self.init(remote: node, path: path, incarnation: ActorIncarnation(incarnation))
+
         // Decode any tags:
-//        if let tagsContainer = try? container.nestedContainer(keyedBy: ActorCoding.TagKeys.self, forKey: ActorCoding.CodingKeys.tags) {
-//            // tags container found, try to decode all known tags:
-//            if let path = try tagsContainer.decodeIfPresent(ActorPath.self, forKey: .path) {
-//                self.tags[ActorTags.path] = path
-//            }
-//
-//            if let context = decoder.actorSerializationContext {
-//                let decodeCustomTags = context.system.settings.tags.decodeCustomTags
-//
-//                for tag in try decodeCustomTags(tagsContainer) {
-//                    func store<K: ActorTagKey>(_: K.Type) {
-//                        if let value = tag.value as? K.Value {
-//                            self.tags[K.self] = value
-//                        }
-//                    }
-//                    _openExistential(tag.keyType as any ActorTagKey.Type, do: store) // the `as` here is required, because: inferred result type 'any ActorTagKey.Type' requires explicit coercion due to loss of generic requirements
-//                }
-//            }
-//        }
+        if let tagsContainer = try? container.nestedContainer(keyedBy: ActorCoding.TagKeys.self, forKey: ActorCoding.CodingKeys.tags) {
+            // tags container found, try to decode all known tags:
+            if let path = try tagsContainer.decodeIfPresent(ActorPath.self, forKey: .path) {
+                self.tags[ActorTags.path] = path
+            }
+
+            if let context = decoder.actorSerializationContext {
+                let decodeCustomTags = context.system.settings.tags.decodeCustomTags
+
+                for tag in try decodeCustomTags(tagsContainer) {
+                    func store<K: ActorTagKey>(_: K.Type) {
+                        if let value = tag.value as? K.Value {
+                            self.tags[K.self] = value
+                        }
+                    }
+                    _openExistential(tag.keyType as any ActorTagKey.Type, do: store) // the `as` here is required, because: inferred result type 'any ActorTagKey.Type' requires explicit coercion due to loss of generic requirements
+                }
+            }
+        }
     }
 }
 

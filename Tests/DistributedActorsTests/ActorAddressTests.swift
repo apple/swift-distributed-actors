@@ -16,7 +16,7 @@
 import DistributedActorsTestKit
 import XCTest
 
-final class ActorAddressTests: XCTestCase {
+final class ActorAddressTests: ClusteredActorSystemsXCTestCase {
     func test_local_actorAddress_shouldPrintNicely() throws {
         let node: UniqueNode = .init(protocol: "sact", systemName: "\(Self.self)", host: "127.0.0.1", port: 7337, nid: .random())
         let address = try ActorAddress(local: node, path: ActorPath._user.appending("hello"), incarnation: ActorIncarnation(8888))
@@ -167,8 +167,10 @@ final class ActorAddressTests: XCTestCase {
         var a = try ActorPath._user.appending("a").makeRemoteAddress(on: node, incarnation: 1)
         a.tags[ActorTags.test] = "test-value"
 
-        let system = await ClusterSystem()
-        defer { system.shutdown() }
+        let system = await self.setUpNode("test_serializing_ActorAddress_skipCustomTag") { settings in
+            settings.bindPort = 1234
+        }
+        pprint("NODE: \(system.cluster.uniqueNode)")
 
         let serialized = try system.serialization.serialize(a)
         let serializedJson = String(data: serialized.buffer.readData(), encoding: .utf8)!
@@ -185,7 +187,8 @@ final class ActorAddressTests: XCTestCase {
         var a = try ActorPath._user.appending("a").makeRemoteAddress(on: node, incarnation: 1)
         a.tags[ActorTags.test] = "test-value"
 
-        let system = await ClusterSystem("Kappa") { settings in
+        let system = await self.setUpNode("test_serializing_ActorAddress_propagateCustomTag") { settings in
+            settings.bindPort = 1234
             settings.tags.encodeCustomTags = { identity, container in
                 try container.encodeIfPresent(identity.tags[ActorTags.test], forKey: ActorCoding.TagKeys.custom(ActorTags.TestTag.Key.id))
             }
@@ -199,6 +202,7 @@ final class ActorAddressTests: XCTestCase {
                 return tags
             }
         }
+
         let serialized = try system.serialization.serialize(a)
         let serializedJson = String(data: serialized.buffer.readData(), encoding: .utf8)!
 

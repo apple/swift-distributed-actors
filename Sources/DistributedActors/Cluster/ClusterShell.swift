@@ -412,6 +412,7 @@ extension ClusterShell {
             }
 
             context.log.info("Binding to: [\(uniqueBindAddress)]")
+            pprint("Binding to: [\(uniqueBindAddress)]")
 
             let chanElf = self.bootstrapServerSide(
                 system: context.system,

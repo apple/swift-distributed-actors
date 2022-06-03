@@ -29,7 +29,7 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
     ///
     /// - Default: `true`
     open var captureLogs: Bool {
-        false
+        true
     }
 
     /// Enables logging all captured logs, even if the test passed successfully.
@@ -104,7 +104,10 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
             self.printAllCapturedLogs()
         }
 
-        self._nodes.forEach { try! $0.shutdown().wait() }
+        self._nodes.forEach {
+            $0.log.warning("Test complete; Shutting down...")
+            try! $0.shutdown().wait()
+        }
 
         self._nodes = []
         self._testKits = []
