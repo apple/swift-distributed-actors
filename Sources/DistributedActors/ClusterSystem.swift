@@ -331,6 +331,13 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
             _ = self._receptionistStore.storeIfNilThenLoad(receptionist)
         }
 
+        // downing strategy (automatic downing)
+        await _Props.$forSpawn.withValue(DowningStrategyShell.props) {
+            if let downingStrategy = self.settings.downingStrategy.make(self.settings) {
+                let downingStrategyShell = await DowningStrategyShell(downingStrategy, system: self)
+            }
+        }
+
         #if SACT_TESTS_LEAKS
         _ = ClusterSystem.actorSystemInitCounter.loadThenWrappingIncrement(ordering: .relaxed)
         #endif

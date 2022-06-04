@@ -406,12 +406,6 @@ extension ClusterShell {
                 context.watch(leadership) // if leadership fails for some reason, we are in trouble and need to know about it
             }
 
-            // 4) downing strategy (automatic downing)
-            if let downing = self.settings.downingStrategy.make(context.system.cluster.settings) {
-                let shell = DowningStrategyShell(downing)
-                try context._spawn(shell.naming, shell.behavior)
-            }
-
             context.log.info("Binding to: [\(uniqueBindAddress)]")
 
             let chanElf = self.bootstrapServerSide(
