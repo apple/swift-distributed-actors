@@ -43,11 +43,10 @@ public enum DowningStrategyDirective {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Downing Shell
 
-internal distributed actor DowningStrategyShell: DistributedActor {
+internal distributed actor DowningStrategyShell {
     typealias ActorSystem = ClusterSystem
 
-    static let path: ActorPath =
-        try! ActorPath([ActorPathSegment("system"), ActorPathSegment("downingStrategy")])
+    static let path: ActorPath = try! ActorPath._system.appending(segment: ActorPathSegment("downingStrategy"))
 
     static var props: _Props {
         var ps = _Props()
@@ -58,6 +57,8 @@ internal distributed actor DowningStrategyShell: DistributedActor {
     }
 
     let strategy: DowningStrategy
+    
+    private lazy var log = Logger(actor: self)
 
     /// `Task` for subscribing to cluster events.
     private var eventsListeningTask: Task<Void, Error>?
@@ -89,12 +90,12 @@ internal distributed actor DowningStrategyShell: DistributedActor {
             self.markAsDown(members: members)
 
         case .startTimer(let key, let member, let delay):
-            self.actorSystem.log.trace("Start timer \(key), member: \(member), delay: \(delay)")
+            self.log.trace("Start timer \(key), member: \(member), delay: \(delay)")
             self.timers.startSingle(key: key, delay: delay) {
                 self.onTimeout(member: member)
             }
         case .cancelTimer(let key):
-            self.actorSystem.log.trace("Cancel timer \(key)")
+            self.log.trace("Cancel timer \(key)")
             self.timers.cancel(for: key)
 
         case .none:
@@ -104,7 +105,7 @@ internal distributed actor DowningStrategyShell: DistributedActor {
 
     func markAsDown(members: Set<Cluster.Member>) {
         for member in members {
-            self.actorSystem.log.info(
+            self.log.info(
                 "Decision to [.down] member [\(member)]!", metadata: self.metadata([
                     "downing/node": "\(reflecting: member.uniqueNode)",
                 ])
@@ -115,7 +116,7 @@ internal distributed actor DowningStrategyShell: DistributedActor {
 
     func onTimeout(member: Cluster.Member) {
         let directive = self.strategy.onTimeout(member)
-        self.actorSystem.log.debug("Received timeout for [\(member)], resulting in: \(directive)")
+        self.log.debug("Received timeout for [\(member)], resulting in: \(directive)")
         self.interpret(directive: directive)
     }
 
