@@ -152,10 +152,13 @@ final class ClusterSystemTests: ActorSystemXCTestCase {
     }
 
     func test_cleanUpAssociationTombstones() async throws {
-        let local = await setUpNode("local") {
-            $0.associationTombstoneTTL = .seconds(0)
+        let local = await setUpNode("local") { settings in
+            settings.enabled = true
+            settings.associationTombstoneTTL = .seconds(0)
         }
-        let remote = await setUpNode("remote")
+        let remote = await setUpNode("remote") { settings in
+            settings.enabled = true
+        }
         local.cluster.join(node: remote.cluster.uniqueNode)
 
         let remoteAssociationControlState0 = local._cluster!.getEnsureAssociation(with: remote.cluster.uniqueNode)
@@ -186,9 +189,11 @@ final class ClusterSystemTests: ActorSystemXCTestCase {
 
     func test_remoteCall_success() async throws {
         let local = await setUpNode("local") { settings in
+            settings.enabled = true
             settings.serialization.registerInbound(GreeterCodableError.self)
         }
         let remote = await setUpNode("remote") { settings in
+            settings.enabled = true
             settings.serialization.registerInbound(GreeterCodableError.self)
         }
         local.cluster.join(node: remote.cluster.uniqueNode)
@@ -204,9 +209,11 @@ final class ClusterSystemTests: ActorSystemXCTestCase {
 
     func test_remoteCall_shouldCarryBackThrownError_Codable() async throws {
         let local = await setUpNode("local") { settings in
+            settings.enabled = true
             settings.serialization.registerInbound(GreeterCodableError.self)
         }
         let remote = await setUpNode("remote") { settings in
+            settings.enabled = true
             settings.serialization.registerInbound(GreeterCodableError.self)
         }
         local.cluster.join(node: remote.cluster.uniqueNode)
@@ -224,9 +231,11 @@ final class ClusterSystemTests: ActorSystemXCTestCase {
 
     func test_remoteCall_shouldCarryBackThrownError_nonCodable() async throws {
         let local = await setUpNode("local") { settings in
+            settings.enabled = true
             settings.serialization.registerInbound(GreeterCodableError.self)
         }
         let remote = await setUpNode("remote") { settings in
+            settings.enabled = true
             settings.serialization.registerInbound(GreeterCodableError.self)
         }
         local.cluster.join(node: remote.cluster.uniqueNode)
@@ -244,8 +253,11 @@ final class ClusterSystemTests: ActorSystemXCTestCase {
     }
 
     func test_remoteCallVoid() async throws {
-        let local = await setUpNode("local")
+        let local = await setUpNode("local") { settings in
+            settings.enabled = true
+        }
         let remote = await setUpNode("remote") { settings in
+            settings.enabled = true
             settings.serialization.registerInbound(GreeterCodableError.self)
         }
         local.cluster.join(node: remote.cluster.uniqueNode)
@@ -259,8 +271,11 @@ final class ClusterSystemTests: ActorSystemXCTestCase {
     }
 
     func test_remoteCallVoid_shouldCarryBackThrownError_Codable() async throws {
-        let local = await setUpNode("local")
+        let local = await setUpNode("local") { settings in
+            settings.enabled = true
+        }
         let remote = await setUpNode("remote") { settings in
+            settings.enabled = true
             settings.serialization.registerInbound(GreeterCodableError.self)
         }
         local.cluster.join(node: remote.cluster.uniqueNode)
@@ -277,8 +292,11 @@ final class ClusterSystemTests: ActorSystemXCTestCase {
     }
 
     func test_remoteCallVoid_shouldCarryBackThrownError_nonCodable() async throws {
-        let local = await setUpNode("local")
+        let local = await setUpNode("local") { settings in
+            settings.enabled = true
+        }
         let remote = await setUpNode("remote") { settings in
+            settings.enabled = true
             settings.serialization.registerInbound(GreeterCodableError.self)
         }
         local.cluster.join(node: remote.cluster.uniqueNode)
@@ -296,8 +314,12 @@ final class ClusterSystemTests: ActorSystemXCTestCase {
     }
 
     func test_remoteCall_shouldConfigureTimeout() async throws {
-        let local = await setUpNode("local")
-        let remote = await setUpNode("remote")
+        let local = await setUpNode("local") { settings in
+            settings.enabled = true
+        }
+        let remote = await setUpNode("remote") { settings in
+            settings.enabled = true
+        }
         local.cluster.join(node: remote.cluster.uniqueNode)
 
         let greeter = Greeter(actorSystem: local)
@@ -318,8 +340,12 @@ final class ClusterSystemTests: ActorSystemXCTestCase {
     }
 
     func test_remoteCallVoid_shouldConfigureTimeout() async throws {
-        let local = await setUpNode("local")
-        let remote = await setUpNode("remote")
+        let local = await setUpNode("local") { settings in
+            settings.enabled = true
+        }
+        let remote = await setUpNode("remote") { settings in
+            settings.enabled = true
+        }
         local.cluster.join(node: remote.cluster.uniqueNode)
 
         let greeter = Greeter(actorSystem: local)
