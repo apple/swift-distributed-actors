@@ -83,7 +83,7 @@ final class TraversalTests: ActorSystemXCTestCase {
                 "receptionist",
                 "receptionist-ref",
                 // cluster actors ---
-                //"downingStrategy", "swim", "nodeDeathWatcher", "gossip", "cluster", "leadership",
+                // "downingStrategy", "swim", "nodeDeathWatcher", "gossip", "cluster", "leadership",
                 // end of cluster actors ---
                 "clusterEvents",
                 "user",
