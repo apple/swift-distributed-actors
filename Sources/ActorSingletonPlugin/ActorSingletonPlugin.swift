@@ -79,7 +79,7 @@ extension ActorSingletonPlugin: _Plugin {
 
     public func start(_ system: ClusterSystem) async throws {}
 
-    public func stop(_ system: ClusterSystem) async throws {
+    public func stop(_ system: ClusterSystem) {
         self.singletonsLock.withLock {
             for (_, singleton) in self.singletons {
                 singleton.stop(system)

@@ -446,9 +446,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
             self.cluster.down(member: myselfMember)
         }
 
-        Task {
-            await self.settings.plugins.stopAll(self)
-        }
+        self.settings.plugins.stopAll(self)
 
         queue.async {
             self.log.log(level: .debug, "Shutting down actor system [\(self.name)]. All actors will be stopped.", file: #file, function: #function, line: #line)
