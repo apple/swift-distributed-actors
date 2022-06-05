@@ -201,7 +201,7 @@ var dependencies: [Package.Dependency] = [
 
     .package(url: "https://github.com/apple/swift-cluster-membership.git", from: "0.3.0"),
 
-    .package(url: "https://github.com/apple/swift-nio.git", from: "2.12.0"),
+    .package(url: "https://github.com/apple/swift-nio.git", from: "2.40.0"),
     .package(url: "https://github.com/apple/swift-nio-extras.git", from: "1.2.0"),
     .package(url: "https://github.com/apple/swift-nio-ssl.git", from: "2.16.1"),
 
