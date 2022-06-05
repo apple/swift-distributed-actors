@@ -8,10 +8,24 @@ In this article, we'll learn how to configure and use multiple ``ClusterSystem``
 
 ## Initializing a ClusterSystem
 
+In this section, we will discuss initializing and using a distributed cluster system.
+
+First, import the `Distributed` module to enable the capability to declare `distributed actor` types, 
+and the `DistributedActors` module which is the main module of the cluster library which contains the `ClusterSystem` types.
+
 ```swift
 import Distributed
 import DistributedActors
 ```
+
+Next, the first thing you need to do in your clustered applications is to create a `ClusterSystem`.
+You can use the default `ClusterSystem()` initializer which defaults to a `"ClusterSystem"` system name and the default `127.0.0.1:7337` host/port:
+
+```
+let system = await ClusterSystem() // default 127.0.0.1:7337 bound actor system```
+```
+
+For more realistic uses, it is expected that you will configure your cluster system as you start it up, so here is how a typical `Main` struct of an server-side application might look like:
 
 ```swift
 @main
@@ -20,16 +34,15 @@ struct Main {
         let system = await ClusterSystem("FirstSystem") { settings in
             settings.node.host = "127.0.0.1"
             settings.node.port = 7337
-            settings.logging.useBuiltInFormatter = true
         }
-
-        system.cluster.join(node: second.cluster.uniqueNode)
-
-        let greeter = Greeter(actorSystem: system)
-        try await greeter.hi(name: "Caplin")
+        
+        
+        try await system.terminated
     }
 }
 ```
+
+The `try await system.terminated` will suspend the `main()` function until the cluster is shut down, by calling `shutdown()`.
 
 Declaring a distributed actor is similar to declaring a plain `actor`. We do this by prepending the actor declaratio
 
