@@ -169,6 +169,8 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         return box.value
     }
 
+    internal var downing: DowningStrategyShell?
+
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Logging
 
@@ -358,10 +360,14 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         }
 
         // downing strategy (automatic downing)
-        await _Props.$forSpawn.withValue(DowningStrategyShell.props) {
-            if let downingStrategy = self.settings.downingStrategy.make(self.settings) {
-                let downingStrategyShell = await DowningStrategyShell(downingStrategy, system: self)
+        if settings.enabled {
+            await _Props.$forSpawn.withValue(DowningStrategyShell.props) {
+                if let downingStrategy = self.settings.downingStrategy.make(self.settings) {
+                    self.downing = await DowningStrategyShell(downingStrategy, system: self)
+                }
             }
+        } else {
+            self.downing = nil
         }
 
         #if SACT_TESTS_LEAKS
@@ -486,6 +492,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
             self.userProvider.stopAll()
             self.systemProvider.stopAll()
             self.dispatcher.shutdown()
+            self.downing = nil
 
             self._associationTombstoneCleanupTask?.cancel()
             self._associationTombstoneCleanupTask = nil
