@@ -15,7 +15,7 @@
 import Logging
 
 /// Specialized event stream behavior which takes into account emitting a snapshot event on first subscription,
-/// followed by a stream of `Cluster.Event`s.
+/// followed by a stream of ``Cluster/Event``s.
 ///
 /// This ensures that every subscriber to cluster events never misses any of the membership events, meaning
 /// it is possible for anyone to maintain a local up-to-date copy of `Membership` by applying all these events to that copy.
@@ -26,7 +26,7 @@ internal enum ClusterEventStream {
 
                 // We maintain a snapshot i.e. the "latest version of the membership",
                 // in order to eagerly publish it to anyone who subscribes immediately,
-                // followed by joining them to the subsequent `Cluster.Event` publishes.
+                // followed by joining them to the subsequent ``Cluster/Event`` publishes.
                 //
                 // Thanks to this, any subscriber immediately gets a pretty recent view of the membership,
                 // followed by the usual updates via events. Since all events are published through this

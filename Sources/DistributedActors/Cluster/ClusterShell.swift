@@ -313,7 +313,7 @@ internal class ClusterShell {
         case inbound(InboundMessage)
         /// Used to request making a change to the membership owned by the ClusterShell;
         /// Issued by downing or leader election and similar facilities. Thanks to centralizing the application of changes,
-        /// we can ensure that a `Cluster.Event` is signalled only once, and only when it is really needed.
+        /// we can ensure that a ``Cluster/Event`` is signalled only once, and only when it is really needed.
         /// E.g. signalling a down twice for whatever reason, needs not be notified two times to all subscribers of cluster events.
         ///
         /// If the passed in event applied to the current membership is an effective change, the change will be published using the `system.cluster.events`.
