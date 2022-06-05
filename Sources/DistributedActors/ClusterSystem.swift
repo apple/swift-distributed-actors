@@ -856,30 +856,31 @@ extension ClusterSystem {
     public func resolve<Act>(id address: ActorID, as actorType: Act.Type) throws -> Act?
         where Act: DistributedActor
     {
-        self.log.info("RESOLVE: \(address)")
+        self.log.trace("Resolve: \(address)")
         guard self.cluster.uniqueNode == address.uniqueNode else {
-            self.log.info("Resolved \(address) as remote, on node: \(address.uniqueNode)")
+            self.log.trace("Resolved \(address) as remote, on node: \(address.uniqueNode)")
             return nil
         }
 
         return self.namingLock.withLock {
             guard let managed = self._managedDistributedActors.get(identifiedBy: address) else {
-                log.info("Unknown reference on our UniqueNode", metadata: [
-                    "actor/identity": "\(address.detailedDescription)",
+                log.trace("Resolved as remote reference", metadata: [
+                    "actor/identity": "\(address)",
                 ])
                 // TODO(distributed): throw here, this should be a dead letter
                 return nil
             }
 
-            log.info("Resolved as local instance", metadata: [
-                "actor/identity": "\(address)",
-                "actor": "\(managed)",
-            ])
             if let resolved = managed as? Act {
-                log.info("Resolved \(address) as local")
+                log.trace("Resolved as local instance", metadata: [
+                    "actor/identity": "\(address)",
+                    "actor": "\(managed)",
+                ])
                 return resolved
             } else {
-                log.info("Resolved \(address) as remote")
+                log.trace("Resolved as remote reference", metadata: [
+                    "actor/identity": "\(address)",
+                ])
                 return nil
             }
         }

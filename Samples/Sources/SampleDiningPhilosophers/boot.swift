@@ -43,7 +43,7 @@ typealias DefaultDistributedActorSystem = ClusterSystem
         let time = TimeAmount.seconds(20)
 
         switch CommandLine.arguments.dropFirst().first {
-        case "dist":
+        case "dist", "distributed":
             try! await DistributedDiningPhilosophers().run(for: time)
         default:
             try! await DiningPhilosophers().run(for: time)
