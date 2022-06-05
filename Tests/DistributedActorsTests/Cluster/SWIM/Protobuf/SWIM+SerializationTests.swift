@@ -17,7 +17,7 @@ import DistributedActorsTestKit
 import SWIM
 import XCTest
 
-final class SWIMSerializationTests: ActorSystemXCTestCase {
+final class SWIMSerializationTests: ClusterSystemXCTestCase {
     func test_serializationOf_ping() throws {
         let memberProbe = self.testKit.makeTestProbe(expecting: SWIM.Message.self)
         let ackProbe = self.testKit.makeTestProbe(expecting: SWIM.Message.self)

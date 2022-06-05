@@ -18,7 +18,7 @@ import XCTest
 
 @testable import DistributedActors
 
-final class _StashBufferTests: ActorSystemXCTestCase {
+final class _StashBufferTests: ClusterSystemXCTestCase {
     func test_stash_shouldStashMessages() throws {
         let probe: ActorTestProbe<Int> = self.testKit.makeTestProbe()
 

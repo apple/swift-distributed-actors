@@ -19,7 +19,7 @@ import Foundation
 import XCTest
 
 // TODO: "ActorGroup" perhaps could be better name?
-final class WorkerPoolTests: ActorSystemXCTestCase {
+final class WorkerPoolTests: ClusterSystemXCTestCase {
     func test_workerPool_registerNewlyStartedActors() async throws {
         throw XCTSkip("!!! Skipping test \(#function) !!!") // FIXME(distributed): #919
 

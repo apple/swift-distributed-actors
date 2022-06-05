@@ -17,7 +17,7 @@ import DistributedActorsTestKit
 import Foundation
 import XCTest
 
-final class ActorIsolationFailureHandlingTests: ActorSystemXCTestCase {
+final class ActorIsolationFailureHandlingTests: ClusterSystemXCTestCase {
     private enum SimpleTestError: Error {
         case simpleError(reason: String)
     }

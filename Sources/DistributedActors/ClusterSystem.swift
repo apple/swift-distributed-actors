@@ -456,6 +456,15 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         }
     }
 
+    /// Suspends until the ``ClusterSystem`` is terminated by a call to ``shutdown``.
+    var terminated: Void {
+        get async {
+            Task.detached {
+
+            }
+        }
+    }
+
     /// Forcefully stops this actor system and all actors that live within it.
     /// This is an asynchronous operation and will be executed on a separate thread.
     ///
