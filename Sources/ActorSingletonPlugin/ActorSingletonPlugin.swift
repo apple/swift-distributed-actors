@@ -77,18 +77,14 @@ extension ActorSingletonPlugin: _Plugin {
         Self.pluginKey
     }
 
-    public func start(_ system: ClusterSystem) -> Result<Void, Error> {
-        .success(())
-    }
+    public func start(_ system: ClusterSystem) async throws {}
 
-    // TODO: Future; TODO2: no need for this at all now since we have async await
-    public func stop(_ system: ClusterSystem) -> Result<Void, Error> {
+    public func stop(_ system: ClusterSystem) {
         self.singletonsLock.withLock {
             for (_, singleton) in self.singletons {
                 singleton.stop(system)
             }
         }
-        return .success(())
     }
 }
 

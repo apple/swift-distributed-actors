@@ -17,12 +17,10 @@
 
 public protocol _AnyPlugin {
     /// Starts the plugin.
-    // TODO: move to async function
-    func start(_ system: ClusterSystem) -> Result<Void, Error>
+    func start(_ system: ClusterSystem) async throws
 
     /// Stops the plugin.
-    // TODO: move to async function
-    func stop(_ system: ClusterSystem) -> Result<Void, Error>
+    func stop(_ system: ClusterSystem)
 }
 
 /// A plugin provides specific features and capabilities (e.g., singleton) to a `ClusterSystem`.
@@ -50,11 +48,11 @@ internal struct BoxedPlugin: _AnyPlugin {
         return unwrapped
     }
 
-    func start(_ system: ClusterSystem) -> Result<Void, Error> {
-        self.underlying.start(system)
+    func start(_ system: ClusterSystem) async throws {
+        try await self.underlying.start(system)
     }
 
-    func stop(_ system: ClusterSystem) -> Result<Void, Error> {
+    func stop(_ system: ClusterSystem) {
         self.underlying.stop(system)
     }
 }

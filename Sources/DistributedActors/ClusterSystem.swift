@@ -380,7 +380,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         lazyNodeDeathWatcher?.wakeUp()
 
         /// Starts plugins after the system is fully initialized
-        self.settings.plugins.startAll(self)
+        await self.settings.plugins.startAll(self)
 
         self.log.info("ClusterSystem [\(self.name)] initialized, listening on: \(self.settings.uniqueBindNode)")
         if settings.enabled {

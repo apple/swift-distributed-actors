@@ -41,9 +41,11 @@ public struct PluginsSettings {
     }
 
     /// Starts all plugins in the same order as they were added.
-    internal func startAll(_ system: ClusterSystem) {
+    internal func startAll(_ system: ClusterSystem) async {
         for plugin in self.plugins {
-            if case .failure(let error) = plugin.start(system) {
+            do {
+                try await plugin.start(system)
+            } catch {
                 fatalError("Failed to start plugin \(plugin.key)! Error: \(error)")
             }
         }
@@ -54,9 +56,7 @@ public struct PluginsSettings {
     internal func stopAll(_ system: ClusterSystem) {
         // Shut down in reversed order so plugins with the fewest dependencies are stopped first!
         for plugin in self.plugins.reversed() {
-            if case .failure(let error) = plugin.stop(system) {
-                fatalError("Failed to stop plugin \(plugin.key)! Error: \(error)")
-            }
+            plugin.stop(system)
         }
     }
 
