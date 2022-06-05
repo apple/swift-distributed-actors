@@ -110,6 +110,18 @@ final class ClusterSystemTests: ClusterSystemXCTestCase {
 
         try p.expectTerminated(selfSender)
     }
+    
+    func test_terminated_triggerOnceSystemIsShutdown() async throws {
+        let system2 = await ClusterSystem("ShutdownSystem") {
+            $0.enabled = false // no clustering
+        }
+        
+        Task.detached {
+            system2.shutdown()
+        }
+
+        try await system2.terminated // should be terminated after shutdown()
+    }
 
     func test_resolveUnknownActor_shouldReturnPersonalDeadLetters() throws {
         let path = try ActorPath._user.appending("test").appending("foo").appending("bar")
