@@ -45,6 +45,7 @@ class _ActorRefAdapterTests: ActorSystemXCTestCase {
 
     func test_adaptedRef_overNetwork_shouldConvertMessages() async throws {
         let firstSystem = await setUpNode("One-RemoteActorRefAdapterTests") { settings in
+            settings.enabled = true
             settings.node.host = "127.0.0.1"
             settings.node.port = 1881
         }
@@ -53,6 +54,7 @@ class _ActorRefAdapterTests: ActorSystemXCTestCase {
         let refProbe = firstTestKit.makeTestProbe(expecting: _ActorRef<Int>.self)
 
         let systemTwo = await setUpNode("Two-RemoteActorRefAdapterTests") { settings in
+            settings.enabled = true
             settings.node.host = "127.0.0.1"
             settings.node.port = 1991
         }

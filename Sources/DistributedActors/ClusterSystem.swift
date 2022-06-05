@@ -251,7 +251,11 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
             settings.logging._logger.logLevel = settings.logging.logLevel
         }
 
-        settings.logging._logger[metadataKey: "cluster/node"] = "\(settings.uniqueBindNode)"
+        if settings.enabled {
+            settings.logging._logger[metadataKey: "cluster/node"] = "\(settings.uniqueBindNode)"
+        } else {
+            settings.logging._logger[metadataKey: "cluster/node"] = "\(self.name)"
+        }
 
         self.settings = settings
         self.log = settings.logging.baseLogger
@@ -276,47 +280,69 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         // dead letters init
         self._deadLetters = _ActorRef(.deadLetters(.init(self.log, address: ActorAddress._deadLetters(on: settings.uniqueBindNode), system: self)))
 
-        let cluster = ClusterShell(settings: settings)
-        _ = self._clusterStore.storeIfNilThenLoad(Box(cluster))
-
         // actor providers
         let localUserProvider = LocalActorRefProvider(root: _Guardian(parent: theOne, name: "user", localNode: settings.uniqueBindNode, system: self))
         let localSystemProvider = LocalActorRefProvider(root: _Guardian(parent: theOne, name: "system", localNode: settings.uniqueBindNode, system: self))
         // TODO: want to reconcile those into one, and allow /dead as well
-        let effectiveUserProvider = RemoteActorRefProvider(settings: settings, cluster: cluster, localProvider: localUserProvider)
-        let effectiveSystemProvider = RemoteActorRefProvider(settings: settings, cluster: cluster, localProvider: localSystemProvider)
+        var effectiveUserProvider: _ActorRefProvider = localUserProvider
+        var effectiveSystemProvider: _ActorRefProvider = localSystemProvider
+
+        if settings.enabled {
+            let cluster = ClusterShell(settings: settings)
+            _ = self._clusterStore.storeIfNilThenLoad(Box(cluster))
+            effectiveUserProvider = RemoteActorRefProvider(settings: settings, cluster: cluster, localProvider: localUserProvider)
+            effectiveSystemProvider = RemoteActorRefProvider(settings: settings, cluster: cluster, localProvider: localSystemProvider)
+        }
 
         initializationLock.withWriterLockVoid {
             self.systemProvider = effectiveSystemProvider
             self.userProvider = effectiveUserProvider
         }
 
-        // try!-safe, this will spawn under /system/... which we have full control over,
-        // and there /system namespace and it is known there will be no conflict for this name
-        let clusterEvents = try! EventStream<Cluster.Event>(
-            self,
-            name: "clusterEvents",
-            systemStream: true,
-            customBehavior: ClusterEventStream.Shell.behavior
-        )
-        let clusterRef = try! cluster.start(system: self, clusterEvents: clusterEvents) // only spawns when cluster is initialized
-        _ = self._clusterControlStore.storeIfNilThenLoad(Box(ClusterControl(settings, clusterRef: clusterRef, eventStream: clusterEvents)))
+        if !settings.enabled {
+            let clusterEvents = try! EventStream<Cluster.Event>(
+                self,
+                name: "clusterEvents",
+                systemStream: true,
+                customBehavior: ClusterEventStream.Shell.behavior
+            )
 
-        self._associationTombstoneCleanupTask = eventLoopGroup.next().scheduleRepeatedTask(
-            initialDelay: settings.associationTombstoneCleanupInterval.toNIO,
-            delay: settings.associationTombstoneCleanupInterval.toNIO
-        ) { _ in
-            clusterRef.tell(.command(.cleanUpAssociationTombstones))
+            _ = self._clusterStore.storeIfNilThenLoad(Box(nil))
+            _ = self._clusterControlStore.storeIfNilThenLoad(Box(ClusterControl(settings, clusterRef: self.deadLetters.adapted(), eventStream: clusterEvents)))
         }
 
         // node watcher MUST be prepared before receptionist (or any other actor) because it (and all actors) need it if we're running clustered
         // Node watcher MUST be started AFTER cluster and clusterEvents
-        let lazyNodeDeathWatcher = try! self._prepareSystemActor(
-            NodeDeathWatcherShell.naming,
-            NodeDeathWatcherShell.behavior(clusterEvents: clusterEvents),
-            props: ._wellKnown
-        )
-        _ = self._nodeDeathWatcherStore.storeIfNilThenLoad(Box(lazyNodeDeathWatcher.ref))
+        var lazyNodeDeathWatcher: LazyStart<NodeDeathWatcherShell.Message>?
+
+        if let cluster = self._cluster {
+            // try!-safe, this will spawn under /system/... which we have full control over,
+            // and there /system namespace and it is known there will be no conflict for this name
+            let clusterEvents = try! EventStream<Cluster.Event>(
+                self,
+                name: "clusterEvents",
+                systemStream: true,
+                customBehavior: ClusterEventStream.Shell.behavior
+            )
+            let clusterRef = try! cluster.start(system: self, clusterEvents: clusterEvents) // only spawns when cluster is initialized
+            _ = self._clusterControlStore.storeIfNilThenLoad(Box(ClusterControl(settings, clusterRef: clusterRef, eventStream: clusterEvents)))
+
+            self._associationTombstoneCleanupTask = eventLoopGroup.next().scheduleRepeatedTask(
+                initialDelay: settings.associationTombstoneCleanupInterval.toNIO,
+                delay: settings.associationTombstoneCleanupInterval.toNIO
+            ) { _ in
+                clusterRef.tell(.command(.cleanUpAssociationTombstones))
+            }
+
+            lazyNodeDeathWatcher = try! self._prepareSystemActor(
+                NodeDeathWatcherShell.naming,
+                NodeDeathWatcherShell.behavior(clusterEvents: clusterEvents),
+                props: ._wellKnown
+            )
+            _ = self._nodeDeathWatcherStore.storeIfNilThenLoad(Box(lazyNodeDeathWatcher!.ref))
+        } else {
+            _ = self._nodeDeathWatcherStore.storeIfNilThenLoad(Box(nil))
+        }
 
         // OLD receptionist // TODO(distributed): remove when possible
         let receptionistBehavior = self.settings.receptionist.behavior(settings: self.settings)
@@ -351,15 +377,17 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
             transport.onActorSystemStart(system: self)
         }
         // lazyCluster?.wakeUp()
-        lazyNodeDeathWatcher.wakeUp()
+        lazyNodeDeathWatcher?.wakeUp()
 
         /// Starts plugins after the system is fully initialized
         self.settings.plugins.startAll(self)
 
         self.log.info("ClusterSystem [\(self.name)] initialized, listening on: \(self.settings.uniqueBindNode)")
-        self.log.info("Setting in effect: .autoLeaderElection: \(self.settings.autoLeaderElection)")
-        self.log.info("Setting in effect: .downingStrategy: \(self.settings.downingStrategy)")
-        self.log.info("Setting in effect: .onDownAction: \(self.settings.onDownAction)")
+        if settings.enabled {
+            self.log.info("Setting in effect: .autoLeaderElection: \(self.settings.autoLeaderElection)")
+            self.log.info("Setting in effect: .downingStrategy: \(self.settings.downingStrategy)")
+            self.log.info("Setting in effect: .onDownAction: \(self.settings.onDownAction)")
+        }
     }
 
     public convenience init() async {
@@ -495,7 +523,13 @@ extension ClusterSystem: Equatable {
 
 extension ClusterSystem: CustomStringConvertible {
     public var description: String {
-        "ClusterSystem(\(self.name), \(self.cluster.uniqueNode))"
+        var res = "ClusterSystem("
+        res.append(self.name)
+        if self.settings.enabled {
+            res.append(", \(self.cluster.uniqueNode)")
+        }
+        res.append(")")
+        return res
     }
 }
 

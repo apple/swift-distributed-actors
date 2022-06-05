@@ -67,12 +67,18 @@ internal class ActorSingletonProxy<Message: ActorMessage> {
 
     var behavior: _Behavior<Message> {
         .setup { context in
-            // Subscribe to `Cluster.Event` in order to update `targetNode`
-            context.system.cluster.events.subscribe(
-                context.subReceive(_SubReceiveId(id: "clusterEvent-\(context.name)"), Cluster.Event.self) { event in
-                    try self.receiveClusterEvent(context, event)
-                }
-            )
+            if context.system.settings.enabled {
+                // Subscribe to `Cluster.Event` in order to update `targetNode`
+                context.system.cluster.events.subscribe(
+                    context.subReceive(_SubReceiveId(id: "clusterEvent-\(context.name)"), Cluster.Event.self) { event in
+                        try self.receiveClusterEvent(context, event)
+                    }
+                )
+            } else {
+                // Run singleton on this node if clustering is not enabled
+                context.log.debug("Clustering not enabled. Taking over singleton.")
+                try self.takeOver(context, from: nil)
+            }
 
             return _Behavior<Message>.receiveMessage { message in
                 try self.forwardOrStash(context, message: message)

@@ -46,6 +46,20 @@ public struct ClusterSystemSettings {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Connection establishment, protocol settings
 
+    // Internal for tests only
+    /// If `true` the `ClusterSystem` starts the cluster subsystem upon startup.
+    /// The address bound to will be `bindAddress`.
+    public internal(set) var enabled: Bool = true
+    internal mutating func enable(host: String, port: Int) {
+        self.enabled = true
+        self.bindHost = host
+        self.bindPort = port
+    }
+
+    internal mutating func disable() {
+        self.enabled = false
+    }
+
     /// If configured, the system will receive contact point updates.
     public var discovery: ServiceDiscoverySettings?
 
