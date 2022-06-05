@@ -110,12 +110,12 @@ final class ClusterSystemTests: ClusterSystemXCTestCase {
 
         try p.expectTerminated(selfSender)
     }
-    
+
     func test_terminated_triggerOnceSystemIsShutdown() async throws {
         let system2 = await ClusterSystem("ShutdownSystem") {
             $0.enabled = false // no clustering
         }
-        
+
         Task.detached {
             system2.shutdown()
         }

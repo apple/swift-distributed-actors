@@ -1185,9 +1185,9 @@ public enum ClusterSystemError: DistributedActorSystemError {
     case shuttingDown(String)
 }
 
-/// Error thrown when unable to resolve an ``ActorIdentity``.
+/// Error thrown when unable to resolve an ``ActorID``.
 ///
-/// Refer to ``ClusterSystem/resolve(_:as:)`` or the distributed actors Swift Evolution proposal for details.
+/// Refer to ``ClusterSystem/resolve(id:as:)`` or the distributed actors Swift Evolution proposal for details.
 public enum ResolveError: DistributedActorSystemError {
     case illegalIdentity(ClusterSystem.ActorID)
 }

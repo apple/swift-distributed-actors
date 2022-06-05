@@ -58,9 +58,23 @@ Once a node joins at least one other node of an already established cluster, it 
 which participate in this cluster. This is why often it is not necessary to give all nodes the information about all other nodes in a cluster,
 but only attempt to join one or a few o them. The first join "wins" and the cluster welcome the new node into the ``Cluster/Membership``.
 
-### Joining nodes
+### Joining existing nodes
 
-In the simplest scenario
+In the simplest scenario we already about some existing node that we can join to form a cluster, or become part of a cluster that node already is in.
+
+This is done using the system's ``ClusterControl`` object, like this:
+
+```swift
+system.cluster.join(node: Node(systemName: "JoiningExample", host: "127.0.0.1", port: 8228))
+```
+
+> Note: The difference between a ``Node`` and ``UniqueNode`` is that a ``Node`` is "some node on that address", while 
+> an ``UniqueNode`` is a node that we have contacted and know its exact unique node identifier. Therefore, when reaching 
+> out to a node we know nothing about just yet, we use the `Node` type. 
+
+You can observe <doc:#Cluster-events> in order to see when a node has been successfully joined.
+
+TODO: More async/await APIs will be nice here to await for joining a concrete node etc.
 
 ### Node discovery
 
@@ -68,6 +82,7 @@ The cluster system uses [swift-service-discovery](https://github.com/apple/swift
 
 As such, it is able to use any node discovery mechanism that has an implementation of the `ServiceDiscovery` protocol, like for example: [tuplestream/swift-k8s-service-discovery](https://github.com/tuplestream/swift-k8s-service-discovery) which implements discovery using the kubernetes (k8s) APIs.
 
+### Leadership
 
 
 #### Configuring service discovery
