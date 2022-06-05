@@ -196,7 +196,7 @@ internal class ActorSingletonProxy<Message: ActorMessage> {
                 context.log.trace("Stashed message: \(message)", metadata: self.metadata(context))
             } catch {
                 switch error {
-                case StashError.full:
+                case _StashError.full:
                     // TODO: log this warning only "once in while" after buffer becomes full
                     context.log.warning("Buffer is full. Messages might start getting disposed.", metadata: self.metadata(context))
                     // Move the oldest message to dead letters to make room

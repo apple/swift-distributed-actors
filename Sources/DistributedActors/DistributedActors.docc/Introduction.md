@@ -17,7 +17,7 @@ See also:
 
 In order to build distributed systems successfully you will need to get into the right mindset. 
 
-While distributed actors make calling methods (i.e. sending messages to them) on _potentially remote_ actors trivial and safe, thanks to compile time guarantees about the serializability of arguments to be delivered to the remote peer. It is important to stay in the mindset of "what should happen if this actor were indeed remote...?"
+While distributed actors make calling methods (i.e. sending messages to them) on _potentially remote_ actors simple and safe, thanks to compile time guarantees about the serializability of arguments to be delivered to the remote peer. It is important to stay in the mindset of "what should happen if this actor were indeed remote...?"
 
 Distribution comes with the added complexity of _partial failure_ of systems. Messages may be dropped as networks face issues, or a remote call may be delivered (and processed!) successfully, while only the reply to it may not have been able to be delivered back to the caller of a distributed function. In most, if not all, such situations the distributed actor cluster will signal problems by throwing transport errors from the remote function invocation.
 

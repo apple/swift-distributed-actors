@@ -60,7 +60,7 @@ final class _StashBufferTests: ActorSystemXCTestCase {
 
         try stash.stash(message: 1)
 
-        try shouldThrow(expected: StashError.self) {
+        try shouldThrow(expected: _StashError.self) {
             _ = try stash.stash(message: 2)
         }
     }
