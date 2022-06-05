@@ -44,7 +44,39 @@ struct Main {
 
 The `try await system.terminated` will suspend the `main()` function until the cluster is shut down, by calling `shutdown()`.
 
-Declaring a distributed actor is similar to declaring a plain `actor`. We do this by prepending the actor declaratio
+Declaring a distributed actor is similar to declaring a plain `actor`. We do this by prepending the actor declaration
+
+### Configuring TLS
+
+TODO: documentation of TLS config
+
+## Forming clusters
+
+Forming a cluster is the first step towards making use of distributed clusters across multiple nodes.
+
+Once a node joins at least one other node of an already established cluster, it will receive information about all other nodes
+which participate in this cluster. This is why often it is not necessary to give all nodes the information about all other nodes in a cluster,
+but only attempt to join one or a few o them. The first join "wins" and the cluster welcome the new node into the ``Cluster/Membership``.
+
+### Joining nodes
+
+In the simplest scenario
+
+### Node discovery
+
+The cluster system uses [swift-service-discovery](https://github.com/apple/swift-service-discovery) to discover nearby nodes it can connect to. This discovery step is only necessary to find IPs and ports on which we are expecting other cluster actor system instances to be running, the actual joining of the nodes is performed by the cluster itself. It can negotiate, and authenticate the other peer before establishing a connection with it (see also TODO: SECURITY).
+
+As such, it is able to use any node discovery mechanism that has an implementation of the `ServiceDiscovery` protocol, like for example: [tuplestream/swift-k8s-service-discovery](https://github.com/tuplestream/swift-k8s-service-discovery) which implements discovery using the kubernetes (k8s) APIs.
+
+
+
+#### Configuring service discovery
+
+TODO
+
+## Cluster Membership
+
+As nodes join and leave the cluster, the `cluster.membership`
 
 ## Cluster events
 
@@ -61,14 +93,3 @@ A cluster member goes through the following phases in its lifecycle:
 ![A diagram showing that a node joins as joining, then becomes up, and later on down or removed. It also shows the reachable and unreachable states on the side.](cluster_lifecycle.png)
 
 
-## Node discovery
-
-The cluster system uses [swift-service-discovery](https://github.com/apple/swift-service-discovery) to discover nearby nodes it can connect to. This discovery step is only necessary to find IPs and ports on which we are expecting other cluster actor system instances to be running, the actual joining of the nodes is performed by the cluster itself. It can negotiate, and authenticate the other peer before establishing a connection with it (see also TODO: SECURITY).
-
-As such, it is able to use any node discovery mechanism that has an implementation of the `ServiceDiscovery` protocol, like for example: [tuplestream/swift-k8s-service-discovery](https://github.com/tuplestream/swift-k8s-service-discovery) which implements discovery using the kubernetes (k8s) APIs.
-
-
-
-### Configuring service discovery
-
-TODO
