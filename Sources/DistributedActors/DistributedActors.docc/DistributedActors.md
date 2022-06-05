@@ -32,7 +32,6 @@ Please note that this project requires the latest **Swift 5.7** language feature
 - ``Cluster/Membership``
 - ``Cluster/Member``
 - ``Cluster/Event``
-- ``DowningStrategies``
  
 ### Actor Identity
 
@@ -42,7 +41,6 @@ Please note that this project requires the latest **Swift 5.7** language feature
 ### Lifecycle monitoring
 
 - ``LifecycleWatch``
-- ``Signals.Terminated``
 
 ### Serialization
 

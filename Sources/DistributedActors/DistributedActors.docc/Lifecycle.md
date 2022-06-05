@@ -45,7 +45,7 @@ distributed actor Juliet: LifecycleWatch {
 }
 ```
 
-The ``LifecycleWatch/watchTermination(of:)`` API purposefully does not use async/await because that would cause `romeo` to be retained as this function suspends. Instead, we allow it to complete and once the romeo actor is determined terminated, we get called back with its ``ActorID``.
+The ``LifecycleWatch/watchTermination(of:whenTerminated:file:line:)`` API purposefully does not use async/await because that would cause `romeo` to be retained as this function suspends. Instead, we allow it to complete and once the romeo actor is determined terminated, we get called back with its ``ActorID``.
 
 This API offers the same semantics, regardless where the actors are located, and always triggers the termination closure as the watched actor is considered to have terminated.
 

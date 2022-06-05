@@ -82,12 +82,14 @@ The cluster system uses [swift-service-discovery](https://github.com/apple/swift
 
 As such, it is able to use any node discovery mechanism that has an implementation of the `ServiceDiscovery` protocol, like for example: [tuplestream/swift-k8s-service-discovery](https://github.com/tuplestream/swift-k8s-service-discovery) which implements discovery using the kubernetes (k8s) APIs.
 
-### Leadership
-
-
 #### Configuring service discovery
 
 TODO
+
+### Leadership
+
+TODO: document leadership and Leadership changes.
+
 
 ## Cluster Membership
 
