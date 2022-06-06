@@ -45,7 +45,7 @@ You can run it all in a single node (`run --package-path Samples/ SampleDiningPh
 
 ## Documentation
 
-Please refer to the rendered docc [reference documentation](https://apple.github.io/swift-distributed-actors/1.0.0-beta/documentation/distributedactors/) to learn about distributed actors and how to use this library and its various features.
+Please refer to the rendered docc [reference documentation](https://apple.github.io/swift-distributed-actors/) to learn about distributed actors and how to use this library and its various features.
 
 > **Note:** Documentation is still work in progress, please feel free to submit issues or patches about missing or unclear documentation.
 
