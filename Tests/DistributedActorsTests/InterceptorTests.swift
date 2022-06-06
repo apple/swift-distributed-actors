@@ -55,7 +55,7 @@ final class TerminatedInterceptor<Message: ActorMessage>: _Interceptor<Message> 
     }
 }
 
-final class InterceptorTests: ActorSystemXCTestCase {
+final class InterceptorTests: ClusterSystemXCTestCase {
     func test_interceptor_shouldConvertMessages() throws {
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 

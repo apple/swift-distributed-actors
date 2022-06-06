@@ -19,7 +19,7 @@ import NIO
 import ServiceDiscovery
 import XCTest
 
-final class ClusterDiscoveryTests: ActorSystemXCTestCase {
+final class ClusterDiscoveryTests: ClusterSystemXCTestCase {
     let A = Cluster.Member(node: UniqueNode(node: Node(systemName: "A", host: "1.1.1.1", port: 7337), nid: .random()), status: .up)
     let B = Cluster.Member(node: UniqueNode(node: Node(systemName: "B", host: "2.2.2.2", port: 8228), nid: .random()), status: .up)
     let C = Cluster.Member(node: UniqueNode(node: Node(systemName: "C", host: "2.2.2.2", port: 9119), nid: .random()), status: .up)

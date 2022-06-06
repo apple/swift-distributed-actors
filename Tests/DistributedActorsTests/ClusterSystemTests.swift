@@ -18,7 +18,7 @@ import DistributedActorsTestKit
 import Foundation
 import XCTest
 
-final class ClusterSystemTests: ActorSystemXCTestCase {
+final class ClusterSystemTests: ClusterSystemXCTestCase {
     let MaxSpecialTreatedValueTypeSizeInBytes = 24
 
     func test_system_spawn_shouldThrowOnDuplicateName() throws {
@@ -109,6 +109,18 @@ final class ClusterSystemTests: ActorSystemXCTestCase {
         try system2.shutdown().wait()
 
         try p.expectTerminated(selfSender)
+    }
+
+    func test_terminated_triggerOnceSystemIsShutdown() async throws {
+        let system2 = await ClusterSystem("ShutdownSystem") {
+            $0.enabled = false // no clustering
+        }
+
+        Task.detached {
+            system2.shutdown()
+        }
+
+        try await system2.terminated // should be terminated after shutdown()
     }
 
     func test_resolveUnknownActor_shouldReturnPersonalDeadLetters() throws {

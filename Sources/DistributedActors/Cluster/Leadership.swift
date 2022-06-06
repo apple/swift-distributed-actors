@@ -39,7 +39,7 @@ import NIO // Future
 /// e.g. when a partition in the cluster occurs. This is usually beneficial to _liveness_
 ///
 /// ### Leadership Change Cluster Event
-/// If a new member is selected as leader, a ``Cluster.Event`` carrying ``Cluster.LeadershipChange`` will be emitted.
+/// If a new member is selected as leader, a ``Cluster/Event`` carrying ``Cluster/LeadershipChange`` will be emitted.
 /// Other actors may subscribe to `ClusterSystem.cluster.events` in order to receive and react to such changes,
 /// e.g. if an actor should only perform its duties if it is residing on the current leader node.
 public protocol LeaderElection {
@@ -315,7 +315,7 @@ extension Leadership {
 
 extension ClusterSystemSettings {
     public enum LeadershipSelectionSettings {
-        /// No automatic leader selection, you can write your own logic and issue a `Cluster.LeadershipChange` `Cluster.Event` to the `system.cluster.events` event stream.
+        /// No automatic leader selection, you can write your own logic and issue a `Cluster.LeadershipChange` ``Cluster/Event`` to the `system.cluster.events` event stream.
         case none
         /// All nodes get ordered by their node addresses and the "lowest" is always selected as a leader.
         case lowestReachable(minNumberOfMembers: Int)

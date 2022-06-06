@@ -18,7 +18,7 @@ import Foundation
 import NIOSSL
 import XCTest
 
-final class GossiperShellTests: ActorSystemXCTestCase {
+final class GossiperShellTests: ClusterSystemXCTestCase {
     func peerBehavior<T: Codable>() -> _Behavior<GossipShell<T, String>.Message> {
         .receiveMessage { msg in
             if "\(msg)".contains("stop") { return .stop } else { return .same }

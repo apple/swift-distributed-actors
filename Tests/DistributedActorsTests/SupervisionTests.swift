@@ -24,7 +24,7 @@ import Darwin
 import Glibc
 #endif
 
-final class SupervisionTests: ActorSystemXCTestCase {
+final class SupervisionTests: ClusterSystemXCTestCase {
     enum FaultyError: Error, NonTransportableActorMessage {
         case boom(message: String)
     }
