@@ -91,7 +91,7 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
         switch settings.selector {
         case .dynamic(let key):
             self.newWorkersSubscribeTask = Task {
-                for await worker in await self.actorSystem.receptionist.subscribe(to: key) {
+                for await worker in await self.actorSystem.receptionist.listing(of: key) {
                     self.actorSystem.log.log(level: self.logLevel, "Got listing member for \(key): \(worker)")
                     self.workers[worker.id] = Weak(worker)
                     // Notify those waiting for new worker

@@ -56,7 +56,7 @@ extension ClusterSystem {
     ///
     /// Storing an `ActorID` instead of the concrete `DistributedActor` is also a common pattern to avoid
     /// retaining the actor, while retaining the ability to know if we have already stored this actor or not.
-    /// For example, in a lobby system, we might need to only store actor identifiers, and ``LifecycleWatch/watchTermination``
+    /// For example, in a lobby system, we might need to only store actor identifiers, and ``LifecycleWatch/watchTermination(of:whenTerminated:file:line:)``
     /// some actors, in order to not retain them in the lobby actor itself. If the same actor messages us again to "join",
     /// we would already know that we have already seen it, and could handle it joining again in some other way.
     ///
