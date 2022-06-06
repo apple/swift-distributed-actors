@@ -256,6 +256,9 @@ extension Cluster.MemberStatus {
 }
 
 extension Cluster.MemberStatus {
+    /// Compares two member status in terms of their "order" in the lifecycle of a member.
+
+    /// Ordering of membership status is as follows: `.joining` < `.up` < `.leaving` < `.down` < `.removed`.
     public static func < (lhs: Cluster.MemberStatus, rhs: Cluster.MemberStatus) -> Bool {
         switch lhs {
         case .joining:
@@ -293,10 +296,12 @@ extension Cluster {
 }
 
 extension Cluster.MemberReachability {
+    /// Returns `true` if the reachability is `.reachable`.
     public var isReachable: Bool {
         self == .reachable
     }
 
+    /// Returns `true` if the reachability is `.unreachable`.
     public var isUnreachable: Bool {
         self == .unreachable
     }

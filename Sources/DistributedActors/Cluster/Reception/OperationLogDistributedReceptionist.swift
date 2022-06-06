@@ -239,7 +239,6 @@ public distributed actor OpLogDistributedReceptionist: DistributedReceptionist, 
         return ps
     }
 
-    // FIXME(swift 6): initializer must become async
     init(settings: ReceptionistSettings, system: ActorSystem) async {
         self.actorSystem = system
         self.instrumentation = system.settings.instrumentation.makeReceptionistInstrumentation()
@@ -284,21 +283,21 @@ public distributed actor OpLogDistributedReceptionist: DistributedReceptionist, 
 // MARK: Receptionist API impl
 
 extension OpLogDistributedReceptionist: LifecycleWatch {
-    public nonisolated func register<Guest>(
+    public nonisolated func checkIn<Guest>(
         _ guest: Guest,
         with key: DistributedReception.Key<Guest>
     ) async where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem {
         await self.whenLocal { __secretlyKnownToBeLocal in
-            await __secretlyKnownToBeLocal._register(guest, with: key)
+            await __secretlyKnownToBeLocal._checkIn(guest, with: key)
         }
     }
 
-    // 'local' implementation of register
-    private func _register<Guest>(
+    // 'local' implementation of checkIn
+    private func _checkIn<Guest>(
         _ guest: Guest,
         with key: DistributedReception.Key<Guest>
     ) async where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem {
-        self.log.warning("distributed receptionist: register(\(guest), with: \(key)")
+        self.log.warning("distributed receptionist: checkIn(\(guest), with: \(key)")
         let key = key.asAnyKey
 
         let id = guest.id
@@ -306,10 +305,10 @@ extension OpLogDistributedReceptionist: LifecycleWatch {
 
         guard id._isLocal || (id.uniqueNode == actorSystem.cluster.uniqueNode) else {
             self.log.warning("""
-            Actor [\(guest.id)] attempted to register under key [\(key)], with NOT-local receptionist! \
-            Actors MUST register with their local receptionist in today's Receptionist implementation.
+            Actor [\(guest.id)] attempted to checkIn under key [\(key)], with NOT-local receptionist! \
+            Actors MUST checkIn with their local receptionist in today's Receptionist implementation.
             """)
-            return // TODO: This restriction could be lifted; perhaps we can direct the register to the right node?
+            return // TODO: This restriction could be lifted; perhaps we can direct the checkIn to the right node?
         }
 
         let sequenced: OpLog<ReceptionistOp>.SequencedOp =
@@ -343,8 +342,8 @@ extension OpLogDistributedReceptionist: LifecycleWatch {
         // TODO: reply "registered"?
     }
 
-    public nonisolated func subscribe<Guest>(
-        to key: DistributedReception.Key<Guest>
+    public nonisolated func listing<Guest>(
+        of key: DistributedReception.Key<Guest>
     ) async -> DistributedReception.GuestListing<Guest>
         where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem
     {
@@ -359,7 +358,7 @@ extension OpLogDistributedReceptionist: LifecycleWatch {
         return r
     }
 
-    func _subscribe(
+    func _listing(
         subscription: AnyDistributedReceptionListingSubscription
     ) {
         if self.storage.addSubscription(key: subscription.key, subscription: subscription) {

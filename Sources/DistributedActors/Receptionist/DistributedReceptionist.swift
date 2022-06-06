@@ -32,14 +32,18 @@ public protocol DistributedReceptionist: DistributedActor {
     ///   - guest: the actor to register with the receptionist.
     ///   - id: id used for the key identifier. E.g. when aiming to register all instances of "Sensor" in the same group,
     ///         the recommended id is "all/sensors".
-    func register<Guest>(
+    func checkIn<Guest>(
         _ guest: Guest,
         with key: DistributedReception.Key<Guest>
         // TODO(distributed): should gain a "retain (or not)" version, the receptionist can keep alive actors, but sometimes we don't want that, it depends
     ) async where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem
 
-    /// Subscribe to changes in checked-in actors under given `key`.
-    func subscribe<Guest>(to key: DistributedReception.Key<Guest>) async -> DistributedReception.GuestListing<Guest>
+    /// Returns a "listing" asynchronous sequence which will emit actor references,
+    /// for every distributed actor that the receptionist discovers for the specific key.
+    ///
+    /// It emits both values for already existing, checked-in before the listing was created,
+    /// actors; as well as new actors which are checked-in while the listing was already subscribed to.
+    func listing<Guest>(of key: DistributedReception.Key<Guest>) async -> DistributedReception.GuestListing<Guest>
         where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem
 
     /// Perform a *single* lookup for a distributed actor identified by the passed in `key`.
@@ -84,8 +88,8 @@ extension DistributedReception {
                         }
                     )
 
-                    Task { // FIXME(swift): really would like for this to be send{} and not Task{}
-                        await __secretlyKnownToBeLocal._subscribe(subscription: anySubscribe)
+                    Task {
+                        await __secretlyKnownToBeLocal._listing(subscription: anySubscribe)
                     }
 
                     continuation.onTermination = { @Sendable termination in

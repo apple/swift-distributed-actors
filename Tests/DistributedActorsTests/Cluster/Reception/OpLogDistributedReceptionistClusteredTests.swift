@@ -20,8 +20,8 @@ import XCTest
 distributed actor UnregisterOnMessage {
     typealias ActorSystem = ClusterSystem
 
-    distributed func register(with key: DistributedReception.Key<UnregisterOnMessage>) async {
-        await actorSystem.receptionist.register(self, with: key)
+    distributed func checkIn(with key: DistributedReception.Key<UnregisterOnMessage>) async {
+        await actorSystem.receptionist.checkIn(self, with: key)
     }
 }
 
@@ -97,7 +97,7 @@ final class OpLogDistributedReceptionistClusteredTests: ClusteredActorSystemsXCT
         // subscribe on `remote`
         let subscriberProbe = testKit.makeTestProbe("subscriber", expecting: StringForwarder.self)
         let subscriptionTask = Task {
-            for try await forwarder in await remote.receptionist.subscribe(to: .stringForwarders) {
+            for try await forwarder in await remote.receptionist.listing(of: .stringForwarders) {
                 subscriberProbe.tell(forwarder)
             }
         }
@@ -105,8 +105,8 @@ final class OpLogDistributedReceptionistClusteredTests: ClusteredActorSystemsXCT
             subscriptionTask.cancel()
         }
 
-        // register on `local`
-        await local.receptionist.register(forwarder, with: .stringForwarders)
+        // checkIn on `local`
+        await local.receptionist.checkIn(forwarder, with: .stringForwarders)
 
         try await Task {
             let found = try subscriberProbe.expectMessage()
@@ -137,14 +137,14 @@ final class OpLogDistributedReceptionistClusteredTests: ClusteredActorSystemsXCT
 
             // Subscribe on remote
             let remoteSubscriberTask = Task {
-                for try await found in await remote.receptionist.subscribe(to: key) {
+                for try await found in await remote.receptionist.listing(of: key) {
                     subscriberProbe.tell(found)
                 }
             }
             defer { remoteSubscriberTask.cancel() }
 
             // Register on local
-            await local.receptionist.register(forwarder, with: key)
+            await local.receptionist.checkIn(forwarder, with: key)
 
             // Join the nodes
             local.cluster.join(node: remote.cluster.uniqueNode.node)

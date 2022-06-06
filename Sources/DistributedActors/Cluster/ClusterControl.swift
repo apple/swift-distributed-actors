@@ -128,7 +128,6 @@ public struct ClusterControl {
     /// pair however are accepted to join the cluster (though technically this is a newly joining node, not really a "re-join").
     ///
     /// - SeeAlso: `Cluster.MemberStatus` for more discussion about what the `.down` status implies.
-
     public func down(node: Node) {
         self.ref.tell(.command(.downCommand(node)))
     }
