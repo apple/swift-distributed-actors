@@ -38,7 +38,7 @@ public enum OnDownActionStrategySettings {
     /// Take no (automatic) action upon noticing that this member is marked as [.down].
     ///
     /// When using this mode you should take special care to implement some form of shutting down of this node (!).
-    /// As a `Cluster.MemberStatus.down` node is effectively useless for the rest of the cluster -- i.e. other
+    /// As a ``Cluster/MemberStatus/down`` node is effectively useless for the rest of the cluster -- i.e. other
     /// members MUST refuse communication with this down node.
     case none
     /// Upon noticing that this member is marked as [.down], initiate a shutdown.

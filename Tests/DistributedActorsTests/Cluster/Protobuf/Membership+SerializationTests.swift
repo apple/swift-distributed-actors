@@ -19,7 +19,7 @@ import Logging
 import NIO
 import XCTest
 
-final class MembershipSerializationTests: ActorSystemXCTestCase {
+final class MembershipSerializationTests: ClusterSystemXCTestCase {
     lazy var context: Serialization.Context! = Serialization.Context(
         log: system.log,
         system: system,

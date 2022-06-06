@@ -413,7 +413,7 @@ extension ClusteredActorSystemsXCTestCase {
         return expectedAtLeastStatus
     }
 
-    /// Assert based on the event stream of `Cluster.Event` that the given `node` was downed or removed.
+    /// Assert based on the event stream of ``Cluster/Event`` that the given `node` was downed or removed.
     public func assertMemberDown(_ eventStreamProbe: ActorTestProbe<Cluster.Event>, node: UniqueNode) throws {
         let events = try eventStreamProbe.fishFor(Cluster.Event.self, within: .seconds(5)) {
             switch $0 {

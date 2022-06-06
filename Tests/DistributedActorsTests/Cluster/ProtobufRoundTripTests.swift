@@ -19,7 +19,7 @@ import NIO
 import SwiftProtobuf
 import XCTest
 
-final class ProtobufRoundTripTests: ActorSystemXCTestCase {
+final class ProtobufRoundTripTests: ClusterSystemXCTestCase {
     func check<Value: _ProtobufRepresentable & Equatable>(_ value: Value) throws {
         let context = Serialization.Context(log: self.system.log, system: self.system, allocator: self.system.serialization.allocator)
         let proto = try value.toProto(context: context)

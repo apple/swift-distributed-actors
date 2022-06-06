@@ -18,7 +18,7 @@ import DistributedActorsTestKit
 import Foundation
 import XCTest
 
-final class ActorAskTests: ActorSystemXCTestCase {
+final class ActorAskTests: ClusterSystemXCTestCase {
     struct TestMessage: ActorMessage {
         let replyTo: _ActorRef<String>
     }

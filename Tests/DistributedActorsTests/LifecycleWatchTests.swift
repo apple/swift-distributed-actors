@@ -95,7 +95,7 @@ distributed actor Juliet: LifecycleWatch, CustomStringConvertible {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Tests
 
-final class LifecycleWatchTests: ActorSystemXCTestCase, @unchecked Sendable {
+final class LifecycleWatchTests: ClusterSystemXCTestCase, @unchecked Sendable {
     func test_watch_shouldTriggerTerminatedWhenWatchedActorDeinits() async throws {
         let pj = self.testKit.makeTestProbe(expecting: String.self)
         let pr = self.testKit.makeTestProbe(expecting: String.self)
