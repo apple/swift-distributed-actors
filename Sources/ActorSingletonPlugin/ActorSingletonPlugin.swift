@@ -70,25 +70,21 @@ extension ActorSingletonPlugin {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Plugin protocol conformance
 
-extension ActorSingletonPlugin: Plugin {
-    static let pluginKey = PluginKey<ActorSingletonPlugin>(plugin: "$actorSingleton")
+extension ActorSingletonPlugin: _Plugin {
+    static let pluginKey = _PluginKey<ActorSingletonPlugin>(plugin: "$actorSingleton")
 
     public var key: Key {
         Self.pluginKey
     }
 
-    public func start(_ system: ClusterSystem) -> Result<Void, Error> {
-        .success(())
-    }
+    public func start(_ system: ClusterSystem) async throws {}
 
-    // TODO: Future; TODO2: no need for this at all now since we have async await
-    public func stop(_ system: ClusterSystem) -> Result<Void, Error> {
+    public func stop(_ system: ClusterSystem) {
         self.singletonsLock.withLock {
             for (_, singleton) in self.singletons {
                 singleton.stop(system)
             }
         }
-        return .success(())
     }
 }
 

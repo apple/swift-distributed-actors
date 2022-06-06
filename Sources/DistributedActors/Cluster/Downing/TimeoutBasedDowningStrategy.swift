@@ -95,7 +95,7 @@ public final class TimeoutBasedDowningStrategy: DowningStrategy {
 
         self._unreachable.insert(member)
 
-        return .startTimer(key: self.timerKey(member), message: .timeout(member), delay: self.settings.downUnreachableMembersAfter)
+        return .startTimer(key: self.timerKey(member), member: member, delay: self.settings.downUnreachableMembersAfter)
     }
 
     func onMemberReachable(_ change: Cluster.ReachabilityChange) -> DowningStrategyDirective {

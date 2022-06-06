@@ -23,10 +23,11 @@ public protocol LifecycleWatch: DistributedActor where ActorSystem == ClusterSys
 // MARK: Lifecycle Watch API
 
 extension LifecycleWatch {
+    /// Watch the `watchee` actor for termination, and trigger the `whenTerminated` callback when
     @discardableResult
     public func watchTermination<Watchee>(
         of watchee: Watchee,
-        @_inheritActorContext @_implicitSelfCapture whenTerminated: @escaping @Sendable (ID) -> Void,
+        @_inheritActorContext @_implicitSelfCapture whenTerminated: @escaping @Sendable (ID) async -> Void,
         file: String = #file, line: UInt = #line
     ) -> Watchee where Watchee: DistributedActor, Watchee.ActorSystem == ClusterSystem {
         // TODO(distributed): reimplement this as self.id as? _ActorContext which will have the watch things.
@@ -162,7 +163,7 @@ extension LifecycleWatchContainer {
     /// Performed by the sending side of "watch", therefore the `watcher` should equal `context.myself`
     public func termination<Watchee>(
         of watchee: Watchee,
-        @_inheritActorContext @_implicitSelfCapture whenTerminated: @escaping @Sendable (ClusterSystem.ActorID) -> Void,
+        @_inheritActorContext @_implicitSelfCapture whenTerminated: @escaping @Sendable (ClusterSystem.ActorID) async -> Void,
         file: String = #file, line: UInt = #line
     ) where Watchee: DistributedActor, Watchee.ActorSystem == ClusterSystem {
         traceLog_DeathWatch("issue watch: \(watchee) (from \(self.watcherID))")

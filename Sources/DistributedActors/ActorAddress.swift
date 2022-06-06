@@ -360,9 +360,9 @@ public struct ActorPath: _PathRelationships, Hashable, Sendable {
     }
 
     /// Creates a new path with a known-to-be-unique naming appended, otherwise faults
-    internal func appendingKnownUnique(_ unique: ActorNaming) throws -> ActorPath {
+    internal func appendingKnownUnique(_ unique: _ActorNaming) throws -> ActorPath {
         guard case .unique(let name) = unique.naming else {
-            fatalError("Expected known-to-be-unique ActorNaming in this unsafe call; Was: \(unique)")
+            fatalError("Expected known-to-be-unique _ActorNaming in this unsafe call; Was: \(unique)")
         }
         return try self.appending(segment: ActorPathSegment(name))
     }

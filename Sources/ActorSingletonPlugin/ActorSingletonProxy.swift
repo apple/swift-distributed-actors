@@ -55,24 +55,30 @@ internal class ActorSingletonProxy<Message: ActorMessage> {
     private var managerRef: _ActorRef<ActorSingletonManager<Message>.Directive>?
 
     /// Message buffer in case singleton `ref` is `nil`
-    private let buffer: StashBuffer<Message>
+    private let buffer: _StashBuffer<Message>
 
     init(settings: ActorSingletonSettings, allocationStrategy: ActorSingletonAllocationStrategy, props: _Props? = nil, _ behavior: _Behavior<Message>? = nil) {
         self.settings = settings
         self.allocationStrategy = allocationStrategy
         self.singletonProps = props
         self.singletonBehavior = behavior
-        self.buffer = StashBuffer(capacity: settings.bufferCapacity)
+        self.buffer = _StashBuffer(capacity: settings.bufferCapacity)
     }
 
     var behavior: _Behavior<Message> {
         .setup { context in
-            // Subscribe to `Cluster.Event` in order to update `targetNode`
-            context.system.cluster.events.subscribe(
-                context.subReceive(_SubReceiveId(id: "clusterEvent-\(context.name)"), Cluster.Event.self) { event in
-                    try self.receiveClusterEvent(context, event)
-                }
-            )
+            if context.system.settings.enabled {
+                // Subscribe to `Cluster.Event` in order to update `targetNode`
+                context.system.cluster.events.subscribe(
+                    context.subReceive(_SubReceiveId(id: "clusterEvent-\(context.name)"), Cluster.Event.self) { event in
+                        try self.receiveClusterEvent(context, event)
+                    }
+                )
+            } else {
+                // Run singleton on this node if clustering is not enabled
+                context.log.debug("Clustering not enabled. Taking over singleton.")
+                try self.takeOver(context, from: nil)
+            }
 
             return _Behavior<Message>.receiveMessage { message in
                 try self.forwardOrStash(context, message: message)

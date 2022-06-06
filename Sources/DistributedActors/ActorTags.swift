@@ -55,8 +55,12 @@ public struct ActorTags {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ActorTagKey
 
+/// Used to tag actor identities with additional information.
 public protocol ActorTag: Sendable where Value == Key.Value {
+    /// Type of the actor tag key, used to obtain an actor tag instance.
     associatedtype Key: ActorTagKey
+
+    /// Type of the value stored by this tag.
     associatedtype Value
 
     var keyType: Key.Type { get }
@@ -64,8 +68,11 @@ public protocol ActorTag: Sendable where Value == Key.Value {
 }
 
 extension ActorTag {
-    public var keyType: Key.Type { Key.self }
+    /// String representation of the unique key tag identity, equal to `Key.id`.
+    ///
+    /// Tag keys should be unique, and must not start with $ unless they are declared by the ClusterSystem itself.
     public var id: String { Key.id }
+    public var keyType: Key.Type { Key.self }
 }
 
 public protocol ActorTagKey: Sendable {

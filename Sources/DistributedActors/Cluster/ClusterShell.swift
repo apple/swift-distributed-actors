@@ -30,7 +30,7 @@ public enum Cluster {}
 ///
 /// It keeps the `Membership` instance that can be seen the source of truth for any membership based decisions.
 internal class ClusterShell {
-    internal static let naming = ActorNaming.unique("cluster")
+    internal static let naming = _ActorNaming.unique("cluster")
     public typealias Ref = _ActorRef<ClusterShell.Message>
 
     static let gossipID: StringGossipIdentifier = "membership"
@@ -403,12 +403,6 @@ extension ClusterShell {
                 let leadershipShell = Leadership.Shell(leaderElection)
                 let leadership = try context._spawn(Leadership.Shell.naming, leadershipShell.behavior)
                 context.watch(leadership) // if leadership fails for some reason, we are in trouble and need to know about it
-            }
-
-            // 4) downing strategy (automatic downing)
-            if let downing = self.settings.downingStrategy.make(context.system.cluster.settings) {
-                let shell = DowningStrategyShell(downing)
-                try context._spawn(shell.naming, shell.behavior)
             }
 
             context.log.info("Binding to: [\(uniqueBindAddress)]")

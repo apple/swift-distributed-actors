@@ -32,7 +32,7 @@ enum Gossiper {
     /// Spawns a gossip actor, that will periodically gossip with its peers about the provided payload.
     static func _spawn<Logic, Envelope, Acknowledgement>(
         _ context: _ActorRefFactory,
-        name naming: ActorNaming,
+        name naming: _ActorNaming,
         settings: Settings,
         props: _Props = .init(),
         makeLogic: @escaping (Logic.Context) -> Logic

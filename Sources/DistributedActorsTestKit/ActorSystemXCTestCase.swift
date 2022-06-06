@@ -50,4 +50,11 @@ open class ActorSystemXCTestCase: ClusteredActorSystemsXCTestCase {
     override open func tearDown() {
         super.tearDown()
     }
+
+    override open func setUpNode(_ name: String, _ modifySettings: ((inout ClusterSystemSettings) -> Void)? = nil) async -> ClusterSystem {
+        await super.setUpNode(name) { settings in
+            settings.enabled = false
+            modifySettings?(&settings)
+        }
+    }
 }

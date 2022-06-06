@@ -237,6 +237,19 @@ extension _ActorRef {
     // FIXME: can this be removed?
     public func _tellOrDeadLetter(_ message: Any, file: String = #file, line: UInt = #line) {
         guard let _message = message as? Message else {
+            // ClusterInvocationResultHandler.onThrow returns RemoteCallReply<_Done> for both
+            // remoteCallVoid and remoteCall (i.e., it doesn't send back RemoteCallReply<Res>).
+            // The guard check above fails for the latter use-case because of message type mismatch.
+            // The logic below converts the error reply to the proper type then sends it to the actor.
+            if let ReplyType = Message.self as? any AnyRemoteCallReply.Type,
+               let remoteCallReply = message as? any AnyRemoteCallReply,
+               let remoteCallError = remoteCallReply.thrownError,
+               let _message = ReplyType.init(error: remoteCallError) as? Message
+            {
+                self.tell(_message, file: file, line: line)
+                return
+            }
+
             traceLog_Mailbox(self.path, "_tellOrDeadLetter: [\(message)] failed because of invalid message type, to: \(self); Sent at \(file):\(line)")
             self._dropAsDeadLetter(message, file: file, line: line)
             return // TODO: "drop" the message rather than dead letter it?
@@ -699,7 +712,7 @@ public class _Guardian {
 }
 
 extension _Guardian: _ActorTreeTraversable {
-    public func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
+    public func _traverse<T>(context: _TraversalContext<T>, _ visit: (_TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
         let children: _Children = self.children
 
         var c = context.deeper

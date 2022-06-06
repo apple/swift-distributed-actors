@@ -15,46 +15,44 @@
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Plugin protocol
 
-public protocol AnyPlugin {
+public protocol _AnyPlugin {
     /// Starts the plugin.
-    // TODO: move to async function
-    func start(_ system: ClusterSystem) -> Result<Void, Error>
+    func start(_ system: ClusterSystem) async throws
 
     /// Stops the plugin.
-    // TODO: move to async function
-    func stop(_ system: ClusterSystem) -> Result<Void, Error>
+    func stop(_ system: ClusterSystem)
 }
 
 /// A plugin provides specific features and capabilities (e.g., singleton) to a `ClusterSystem`.
-public protocol Plugin: AnyPlugin {
-    typealias Key = PluginKey<Self>
+public protocol _Plugin: _AnyPlugin {
+    typealias Key = _PluginKey<Self>
 
     /// The plugin's unique identifier
     var key: Key { get }
 }
 
-internal struct BoxedPlugin: AnyPlugin {
-    private let underlying: AnyPlugin
+internal struct BoxedPlugin: _AnyPlugin {
+    private let underlying: _AnyPlugin
 
     let key: AnyPluginKey
 
-    init<P: Plugin>(_ plugin: P) {
+    init<P: _Plugin>(_ plugin: P) {
         self.underlying = plugin
         self.key = AnyPluginKey(plugin.key)
     }
 
-    func unsafeUnwrapAs<P: Plugin>(_: P.Type) -> P {
+    func unsafeUnwrapAs<P: _Plugin>(_: P.Type) -> P {
         guard let unwrapped = self.underlying as? P else {
             fatalError("Type mismatch, expected: [\(String(reflecting: P.self))] got [\(self.underlying)]")
         }
         return unwrapped
     }
 
-    func start(_ system: ClusterSystem) -> Result<Void, Error> {
-        self.underlying.start(system)
+    func start(_ system: ClusterSystem) async throws {
+        try await self.underlying.start(system)
     }
 
-    func stop(_ system: ClusterSystem) -> Result<Void, Error> {
+    func stop(_ system: ClusterSystem) {
         self.underlying.stop(system)
     }
 }
@@ -62,7 +60,7 @@ internal struct BoxedPlugin: AnyPlugin {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Plugin key
 
-public struct PluginKey<P: Plugin>: CustomStringConvertible {
+public struct _PluginKey<P: _Plugin>: CustomStringConvertible {
     public let plugin: String
     public let sub: String?
 
@@ -79,7 +77,7 @@ public struct PluginKey<P: Plugin>: CustomStringConvertible {
         self.sub = sub
     }
 
-    public func makeSub(_ sub: String) -> PluginKey {
+    public func makeSub(_ sub: String) -> _PluginKey {
         precondition(self.sub == nil, "Cannot make a sub plugin key from \(self) (sub MUST be nil)")
         return .init(plugin: self.plugin, sub: sub)
     }
@@ -98,7 +96,7 @@ internal struct AnyPluginKey: Hashable, CustomStringConvertible {
     let plugin: String
     let sub: String?
 
-    init<P: Plugin>(_ key: PluginKey<P>) {
+    init<P: _Plugin>(_ key: _PluginKey<P>) {
         self.pluginTypeId = ObjectIdentifier(P.self)
         self.plugin = key.plugin
         self.sub = key.sub

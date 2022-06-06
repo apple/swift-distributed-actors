@@ -12,10 +12,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-/// Version of wire protocol used by the given node.
-///
-// TODO: Exact semantics remain to be defined. Reserved likely to be used for flags "connection modes" etc "don't connect me, I just send 1 message" etc?
+/// Version struct used to determine the version of an actor system,
+/// including its wire compatibility with another system.
 public struct Version: Equatable, CustomStringConvertible {
+    // TODO: Exact semantics remain to be defined. Reserved likely to be used for flags "connection modes" etc "don't connect me, I just send 1 message" etc?
     public var reserved: UInt8
     public var major: UInt8
     public var minor: UInt8

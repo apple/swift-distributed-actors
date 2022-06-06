@@ -169,6 +169,8 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         return box.value
     }
 
+    internal var downing: DowningStrategyShell?
+
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Logging
 
@@ -251,7 +253,11 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
             settings.logging._logger.logLevel = settings.logging.logLevel
         }
 
-        settings.logging._logger[metadataKey: "cluster/node"] = "\(settings.uniqueBindNode)"
+        if settings.enabled {
+            settings.logging._logger[metadataKey: "cluster/node"] = "\(settings.uniqueBindNode)"
+        } else {
+            settings.logging._logger[metadataKey: "cluster/node"] = "\(self.name)"
+        }
 
         self.settings = settings
         self.log = settings.logging.baseLogger
@@ -276,47 +282,69 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         // dead letters init
         self._deadLetters = _ActorRef(.deadLetters(.init(self.log, address: ActorAddress._deadLetters(on: settings.uniqueBindNode), system: self)))
 
-        let cluster = ClusterShell(settings: settings)
-        _ = self._clusterStore.storeIfNilThenLoad(Box(cluster))
-
         // actor providers
         let localUserProvider = LocalActorRefProvider(root: _Guardian(parent: theOne, name: "user", localNode: settings.uniqueBindNode, system: self))
         let localSystemProvider = LocalActorRefProvider(root: _Guardian(parent: theOne, name: "system", localNode: settings.uniqueBindNode, system: self))
         // TODO: want to reconcile those into one, and allow /dead as well
-        let effectiveUserProvider = RemoteActorRefProvider(settings: settings, cluster: cluster, localProvider: localUserProvider)
-        let effectiveSystemProvider = RemoteActorRefProvider(settings: settings, cluster: cluster, localProvider: localSystemProvider)
+        var effectiveUserProvider: _ActorRefProvider = localUserProvider
+        var effectiveSystemProvider: _ActorRefProvider = localSystemProvider
+
+        if settings.enabled {
+            let cluster = ClusterShell(settings: settings)
+            _ = self._clusterStore.storeIfNilThenLoad(Box(cluster))
+            effectiveUserProvider = RemoteActorRefProvider(settings: settings, cluster: cluster, localProvider: localUserProvider)
+            effectiveSystemProvider = RemoteActorRefProvider(settings: settings, cluster: cluster, localProvider: localSystemProvider)
+        }
 
         initializationLock.withWriterLockVoid {
             self.systemProvider = effectiveSystemProvider
             self.userProvider = effectiveUserProvider
         }
 
-        // try!-safe, this will spawn under /system/... which we have full control over,
-        // and there /system namespace and it is known there will be no conflict for this name
-        let clusterEvents = try! EventStream<Cluster.Event>(
-            self,
-            name: "clusterEvents",
-            systemStream: true,
-            customBehavior: ClusterEventStream.Shell.behavior
-        )
-        let clusterRef = try! cluster.start(system: self, clusterEvents: clusterEvents) // only spawns when cluster is initialized
-        _ = self._clusterControlStore.storeIfNilThenLoad(Box(ClusterControl(settings, clusterRef: clusterRef, eventStream: clusterEvents)))
+        if !settings.enabled {
+            let clusterEvents = try! EventStream<Cluster.Event>(
+                self,
+                name: "clusterEvents",
+                systemStream: true,
+                customBehavior: ClusterEventStream.Shell.behavior
+            )
 
-        self._associationTombstoneCleanupTask = eventLoopGroup.next().scheduleRepeatedTask(
-            initialDelay: settings.associationTombstoneCleanupInterval.toNIO,
-            delay: settings.associationTombstoneCleanupInterval.toNIO
-        ) { _ in
-            clusterRef.tell(.command(.cleanUpAssociationTombstones))
+            _ = self._clusterStore.storeIfNilThenLoad(Box(nil))
+            _ = self._clusterControlStore.storeIfNilThenLoad(Box(ClusterControl(settings, clusterRef: self.deadLetters.adapted(), eventStream: clusterEvents)))
         }
 
         // node watcher MUST be prepared before receptionist (or any other actor) because it (and all actors) need it if we're running clustered
         // Node watcher MUST be started AFTER cluster and clusterEvents
-        let lazyNodeDeathWatcher = try! self._prepareSystemActor(
-            NodeDeathWatcherShell.naming,
-            NodeDeathWatcherShell.behavior(clusterEvents: clusterEvents),
-            props: ._wellKnown
-        )
-        _ = self._nodeDeathWatcherStore.storeIfNilThenLoad(Box(lazyNodeDeathWatcher.ref))
+        var lazyNodeDeathWatcher: LazyStart<NodeDeathWatcherShell.Message>?
+
+        if let cluster = self._cluster {
+            // try!-safe, this will spawn under /system/... which we have full control over,
+            // and there /system namespace and it is known there will be no conflict for this name
+            let clusterEvents = try! EventStream<Cluster.Event>(
+                self,
+                name: "clusterEvents",
+                systemStream: true,
+                customBehavior: ClusterEventStream.Shell.behavior
+            )
+            let clusterRef = try! cluster.start(system: self, clusterEvents: clusterEvents) // only spawns when cluster is initialized
+            _ = self._clusterControlStore.storeIfNilThenLoad(Box(ClusterControl(settings, clusterRef: clusterRef, eventStream: clusterEvents)))
+
+            self._associationTombstoneCleanupTask = eventLoopGroup.next().scheduleRepeatedTask(
+                initialDelay: settings.associationTombstoneCleanupInterval.toNIO,
+                delay: settings.associationTombstoneCleanupInterval.toNIO
+            ) { _ in
+                clusterRef.tell(.command(.cleanUpAssociationTombstones))
+            }
+
+            lazyNodeDeathWatcher = try! self._prepareSystemActor(
+                NodeDeathWatcherShell.naming,
+                NodeDeathWatcherShell.behavior(clusterEvents: clusterEvents),
+                props: ._wellKnown
+            )
+            _ = self._nodeDeathWatcherStore.storeIfNilThenLoad(Box(lazyNodeDeathWatcher!.ref))
+        } else {
+            _ = self._nodeDeathWatcherStore.storeIfNilThenLoad(Box(nil))
+        }
 
         // OLD receptionist // TODO(distributed): remove when possible
         let receptionistBehavior = self.settings.receptionist.behavior(settings: self.settings)
@@ -329,6 +357,17 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
                 system: self
             )
             _ = self._receptionistStore.storeIfNilThenLoad(receptionist)
+        }
+
+        // downing strategy (automatic downing)
+        if settings.enabled {
+            await _Props.$forSpawn.withValue(DowningStrategyShell.props) {
+                if let downingStrategy = self.settings.downingStrategy.make(self.settings) {
+                    self.downing = await DowningStrategyShell(downingStrategy, system: self)
+                }
+            }
+        } else {
+            self.downing = nil
         }
 
         #if SACT_TESTS_LEAKS
@@ -344,15 +383,17 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
             transport.onActorSystemStart(system: self)
         }
         // lazyCluster?.wakeUp()
-        lazyNodeDeathWatcher.wakeUp()
+        lazyNodeDeathWatcher?.wakeUp()
 
         /// Starts plugins after the system is fully initialized
-        self.settings.plugins.startAll(self)
+        await self.settings.plugins.startAll(self)
 
         self.log.info("ClusterSystem [\(self.name)] initialized, listening on: \(self.settings.uniqueBindNode)")
-        self.log.info("Setting in effect: .autoLeaderElection: \(self.settings.autoLeaderElection)")
-        self.log.info("Setting in effect: .downingStrategy: \(self.settings.downingStrategy)")
-        self.log.info("Setting in effect: .onDownAction: \(self.settings.onDownAction)")
+        if settings.enabled {
+            self.log.info("Setting in effect: .autoLeaderElection: \(self.settings.autoLeaderElection)")
+            self.log.info("Setting in effect: .downingStrategy: \(self.settings.downingStrategy)")
+            self.log.info("Setting in effect: .onDownAction: \(self.settings.onDownAction)")
+        }
     }
 
     public convenience init() async {
@@ -451,6 +492,10 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
             self.userProvider.stopAll()
             self.systemProvider.stopAll()
             self.dispatcher.shutdown()
+            self.downing = nil
+
+            self._associationTombstoneCleanupTask?.cancel()
+            self._associationTombstoneCleanupTask = nil
 
             do {
                 try self._eventLoopGroup.syncShutdownGracefully()
@@ -467,8 +512,6 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
                  // self._serialization = nil // FIXME: need to release serialization
              }
              */
-            self._associationTombstoneCleanupTask?.cancel()
-            self._associationTombstoneCleanupTask = nil
             _ = self._clusterStore.storeIfNilThenLoad(Box(nil))
 
             self.shutdownReceptacle.offerOnce(nil)
@@ -487,7 +530,13 @@ extension ClusterSystem: Equatable {
 
 extension ClusterSystem: CustomStringConvertible {
     public var description: String {
-        "ClusterSystem(\(self.name), \(self.cluster.uniqueNode))"
+        var res = "ClusterSystem("
+        res.append(self.name)
+        if self.settings.enabled {
+            res.append(", \(self.cluster.uniqueNode)")
+        }
+        res.append(")")
+        return res
     }
 }
 
@@ -497,7 +546,7 @@ extension ClusterSystem: CustomStringConvertible {
 extension ClusterSystem: _ActorRefFactory {
     @discardableResult
     public func _spawn<Message>(
-        _ naming: ActorNaming, of type: Message.Type = Message.self, props: _Props = _Props(),
+        _ naming: _ActorNaming, of type: Message.Type = Message.self, props: _Props = _Props(),
         file: String = #file, line: UInt = #line,
         _ behavior: _Behavior<Message>
     ) throws -> _ActorRef<Message> where Message: ActorMessage {
@@ -513,7 +562,7 @@ extension ClusterSystem: _ActorRefFactory {
     /// This also means that there will only be one instance of that actor that will stay alive for the whole lifetime of the system.
     /// Appropriate supervision strategies should be configured for these types of actors.
     public func _spawnSystemActor<Message>(
-        _ naming: ActorNaming, _ behavior: _Behavior<Message>, props: _Props = _Props()
+        _ naming: _ActorNaming, _ behavior: _Behavior<Message>, props: _Props = _Props()
     ) throws -> _ActorRef<Message>
         where Message: ActorMessage
     {
@@ -532,7 +581,7 @@ extension ClusterSystem: _ActorRefFactory {
     ///
     /// **CAUTION** This methods MUST NOT be used from outside of `ClusterSystem.init`.
     internal func _prepareSystemActor<Message>(
-        _ naming: ActorNaming, _ behavior: _Behavior<Message>, props: _Props = _Props()
+        _ naming: _ActorNaming, _ behavior: _Behavior<Message>, props: _Props = _Props()
     ) throws -> LazyStart<Message>
         where Message: ActorMessage
     {
@@ -544,7 +593,7 @@ extension ClusterSystem: _ActorRefFactory {
     // Actual spawn implementation, minus the leading "$" check on names;
     internal func _spawn<Message>(
         using provider: _ActorRefProvider,
-        _ behavior: _Behavior<Message>, name naming: ActorNaming, props: _Props = _Props(),
+        _ behavior: _Behavior<Message>, name naming: _ActorNaming, props: _Props = _Props(),
         startImmediately: Bool = true
     ) throws -> _ActorRef<Message>
         where Message: ActorMessage
@@ -629,7 +678,7 @@ extension ClusterSystem: _ActorRefFactory {
             if let knownName = props._knownActorName {
                 name = knownName
             } else {
-                let naming = ActorNaming.prefixed(with: "\(Act.self)") // FIXME(distributed): strip generics from the name
+                let naming = _ActorNaming.prefixed(with: "\(Act.self)") // FIXME(distributed): strip generics from the name
                 name = naming.makeName(&namingContext)
             }
 
@@ -677,7 +726,7 @@ extension ClusterSystem: _ActorTreeTraversable {
         }
     }
 
-    public func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
+    public func _traverse<T>(context: _TraversalContext<T>, _ visit: (_TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
         let systemTraversed: _TraversalResult<T> = self.systemProvider._traverse(context: context, visit)
 
         switch systemTraversed {
@@ -698,25 +747,23 @@ extension ClusterSystem: _ActorTreeTraversable {
         }
     }
 
-    internal func _traverseAll<T>(_ visit: (TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
-        let context = TraversalContext<T>()
+    internal func _traverseAll<T>(_ visit: (_TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
+        let context = _TraversalContext<T>()
         return self._traverse(context: context, visit)
     }
 
     @discardableResult
-    internal func _traverseAllVoid(_ visit: (TraversalContext<Void>, AddressableActorRef) -> _TraversalDirective<Void>) -> _TraversalResult<Void> {
+    internal func _traverseAllVoid(_ visit: (_TraversalContext<Void>, AddressableActorRef) -> _TraversalDirective<Void>) -> _TraversalResult<Void> {
         self._traverseAll(visit)
     }
 
     /// INTERNAL API: Not intended to be used by end users.
     public func _resolve<Message: ActorMessage>(context: ResolveContext<Message>) -> _ActorRef<Message> {
-//        if let serialization = context.system._serialization {
         do {
             try context.system.serialization._ensureSerializer(Message.self)
         } catch {
             return context.personalDeadLetters
         }
-//        }
         guard let selector = context.selectorSegments.first else {
             return context.personalDeadLetters
         }
@@ -927,7 +974,7 @@ extension ClusterSystem {
         let recipient = _ActorRef<InvocationMessage>(.remote(.init(shell: clusterShell, address: actor.id._asRemote, system: self)))
 
         let arguments = invocation.arguments
-        let ask: AskResponse<Res> = recipient.ask(timeout: RemoteCall.timeout ?? self.settings.defaultRemoteCallTimeout) { replyTo in
+        let ask: AskResponse<RemoteCallReply<Res>> = recipient.ask(timeout: RemoteCall.timeout ?? self.settings.defaultRemoteCallTimeout) { replyTo in
             let invocation = InvocationMessage(
                 targetIdentifier: target.identifier,
                 arguments: arguments,
@@ -937,7 +984,14 @@ extension ClusterSystem {
             return invocation
         }
 
-        return try await ask.value
+        let reply = try await ask.value
+        if let error = reply.thrownError {
+            throw error
+        }
+        guard let value = reply.value else {
+            throw RemoteCallError.invalidReply
+        }
+        return value
     }
 
     public func remoteCallVoid<Act, Err>(
@@ -957,7 +1011,7 @@ extension ClusterSystem {
         let recipient = _ActorRef<InvocationMessage>(.remote(.init(shell: shell, address: actor.id._asRemote, system: self)))
 
         let arguments = invocation.arguments
-        let ask: AskResponse<_Done> = recipient.ask(timeout: RemoteCall.timeout ?? self.settings.defaultRemoteCallTimeout) { replyTo in
+        let ask: AskResponse<RemoteCallReply<_Done>> = recipient.ask(timeout: RemoteCall.timeout ?? self.settings.defaultRemoteCallTimeout) { replyTo in
             let invocation = InvocationMessage(
                 targetIdentifier: target.identifier,
                 arguments: arguments,
@@ -967,7 +1021,10 @@ extension ClusterSystem {
             return invocation
         }
 
-        _ = try await ask.value // discard the _Done
+        let reply = try await ask.value
+        if let error = reply.thrownError {
+            throw error
+        }
     }
 }
 
@@ -1019,20 +1076,98 @@ public struct ClusterInvocationResultHandler: DistributedTargetInvocationResultH
     }
 
     public func onReturn<Success: Codable>(value: Success) async throws {
-        let ref = _ActorRef<Success>(.remote(.init(shell: clusterShell, address: replyToAddress, system: system)))
-        ref.tell(value)
+        let ref = _ActorRef<RemoteCallReply<Success>>(.remote(.init(shell: clusterShell, address: replyToAddress, system: system)))
+        ref.tell(.init(value: value))
     }
 
     public func onReturnVoid() async throws {
-        let ref = _ActorRef<_Done>(.remote(.init(shell: clusterShell, address: replyToAddress, system: system)))
-        ref.tell(_Done.done)
+        let ref = _ActorRef<RemoteCallReply<_Done>>(.remote(.init(shell: clusterShell, address: replyToAddress, system: system)))
+        ref.tell(.init(value: _Done.done))
     }
 
     public func onThrow<Err: Error>(error: Err) async throws {
         self.system.log.warning("Result handler, onThrow: \(error)")
-        // FIXME(distributed): carry the error back
-        fatalError("FIXME: implement sending back errors")
+        let ref = _ActorRef<RemoteCallReply<_Done>>(.remote(.init(shell: clusterShell, address: replyToAddress, system: system)))
+        if let codableError = error as? (Error & Codable) {
+            ref.tell(.init(error: codableError))
+        } else {
+            ref.tell(.init(error: GenericRemoteCallError(message: "Remote call error of [\(type(of: error as Any))] type occurred")))
+        }
     }
+}
+
+protocol AnyRemoteCallReply: Codable {
+    associatedtype Value: Codable
+
+    var value: Value? { get }
+    var thrownError: (any Error & Codable)? { get }
+
+    init(value: Value)
+    init<Err: Error & Codable>(error: Err)
+}
+
+struct RemoteCallReply<Value: Codable>: AnyRemoteCallReply {
+    let value: Value?
+    let thrownError: (any Error & Codable)?
+
+    init(value: Value) {
+        self.value = value
+        self.thrownError = nil
+    }
+
+    init<Err: Error & Codable>(error: Err) {
+        self.value = nil
+        self.thrownError = error
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case value = "v"
+        case wasThrow = "t"
+        case thrownError = "e"
+        case thrownErrorManifest = "em"
+    }
+
+    init(from decoder: Decoder) throws {
+        guard let context = decoder.actorSerializationContext else {
+            throw SerializationError.missingSerializationContext(decoder, Self.self)
+        }
+
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let wasThrow = try container.decodeIfPresent(Bool.self, forKey: .wasThrow) ?? false
+
+        if wasThrow {
+            let errorManifest = try container.decode(Serialization.Manifest.self, forKey: .thrownErrorManifest)
+            let summonedErrorType = try context.serialization.summonType(from: errorManifest)
+            guard let errorAnyType = summonedErrorType as? (Error & Codable).Type else {
+                throw SerializationError.notAbleToDeserialize(hint: "manifest type results in [\(summonedErrorType)] type, which is NOT \((Error & Codable).self)")
+            }
+            self.thrownError = try container.decode(errorAnyType, forKey: .thrownError)
+            self.value = nil
+        } else {
+            self.value = try container.decode(Value.self, forKey: .value)
+            self.thrownError = nil
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        guard let context = encoder.actorSerializationContext else {
+            throw SerializationError.missingSerializationContext(encoder, Self.self)
+        }
+
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        if let thrownError = self.thrownError {
+            try container.encode(true, forKey: .wasThrow)
+            let errorManifest = try context.serialization.outboundManifest(type(of: thrownError))
+            try container.encode(thrownError, forKey: .thrownError)
+            try container.encode(errorManifest, forKey: .thrownErrorManifest)
+        } else {
+            try container.encode(self.value, forKey: .value)
+        }
+    }
+}
+
+public struct GenericRemoteCallError: Error, Codable {
+    public let message: String
 }
 
 public enum ClusterSystemError: DistributedActorSystemError {
@@ -1065,9 +1200,10 @@ internal struct LazyStart<Message: ActorMessage> {
     }
 }
 
-enum RemoteCallError: DistributedActorSystemError, Error {
+enum RemoteCallError: DistributedActorSystemError {
     case clusterAlreadyShutDown
     case timedOut(TimeoutError)
+    case invalidReply
 }
 
 /// Allows for configuring of remote calls by setting task-local values around a remote call being made.

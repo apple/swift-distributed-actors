@@ -81,7 +81,7 @@ extension _ActorRef {
 
         // Important: We need to carry the `userInfo` as it may contain information set by a Transport that it needs in
         // order to resolve a ref. This allows the transport to resolve any actor ref, even if they are contained in user-messages.
-        self = context.resolveActorRef(identifiedBy: address, userInfo: decoder.userInfo)
+        self = context._resolveActorRef(identifiedBy: address, userInfo: decoder.userInfo)
     }
 }
 
@@ -107,7 +107,7 @@ extension _ReceivesMessages {
             fatalError("Can not resolve actor refs without CodingUserInfoKey.actorSerializationContext set!") // TODO: better message
         }
 
-        let resolved: _ActorRef<Self.Message> = context.resolveActorRef(identifiedBy: address)
+        let resolved: _ActorRef<Self.Message> = context._resolveActorRef(identifiedBy: address)
         self = resolved as! Self // this is safe, we know Self IS-A _ActorRef
     }
 }
@@ -141,7 +141,7 @@ internal enum ReceivesSystemMessagesDecoder {
         let container: SingleValueDecodingContainer = try decoder.singleValueContainer()
         let address: ActorAddress = try container.decode(ActorAddress.self)
 
-        return context.resolveAddressableActorRef(identifiedBy: address)
+        return context._resolveAddressableActorRef(identifiedBy: address)
     }
 }
 
@@ -307,14 +307,14 @@ extension _SystemMessage: Codable {
             let context = decoder.actorSerializationContext!
             let watcheeAddress = try container.decode(ActorAddress.self, forKey: CodingKeys.watchee)
             let watcherAddress = try container.decode(ActorAddress.self, forKey: CodingKeys.watcher)
-            let watchee = context.resolveAddressableActorRef(identifiedBy: watcheeAddress)
-            let watcher = context.resolveAddressableActorRef(identifiedBy: watcherAddress)
+            let watchee = context._resolveAddressableActorRef(identifiedBy: watcheeAddress)
+            let watcher = context._resolveAddressableActorRef(identifiedBy: watcherAddress)
             self = .watch(watchee: watchee, watcher: watcher)
 
         case Types.terminated:
             let context = decoder.actorSerializationContext!
             let address = try container.decode(ActorAddress.self, forKey: CodingKeys.ref)
-            let ref = context.resolveAddressableActorRef(identifiedBy: address)
+            let ref = context._resolveAddressableActorRef(identifiedBy: address)
             let existenceConfirmed = try container.decode(Bool.self, forKey: CodingKeys.existenceConfirmed)
             let addressTerminated = try container.decode(Bool.self, forKey: CodingKeys.addressTerminated)
             self = .terminated(ref: ref, existenceConfirmed: existenceConfirmed, addressTerminated: addressTerminated)

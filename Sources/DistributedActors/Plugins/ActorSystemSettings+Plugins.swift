@@ -26,7 +26,7 @@ public struct PluginsSettings {
     ///
     /// - Note: A plugin that depends on others should be added *after* its dependencies.
     /// - Faults, when plugin of the exact same `PluginKey` is already included in the settings.
-    public mutating func add<P: Plugin>(_ plugin: P) {
+    public mutating func add<P: _Plugin>(_ plugin: P) {
         precondition(
             !self.plugins.contains(where: { $0.key == plugin.key.asAny }),
             "Attempted to add plugin \(plugin.key) but key already used! Plugin [\(plugin)], installed plugins: \(self.plugins)."
@@ -36,14 +36,16 @@ public struct PluginsSettings {
     }
 
     /// Returns `Plugin` identified by `key`.
-    public subscript<P: Plugin>(_ key: PluginKey<P>) -> P? {
+    public subscript<P: _Plugin>(_ key: _PluginKey<P>) -> P? {
         self.plugins.first { $0.key == key.asAny }?.unsafeUnwrapAs(P.self)
     }
 
     /// Starts all plugins in the same order as they were added.
-    internal func startAll(_ system: ClusterSystem) {
+    internal func startAll(_ system: ClusterSystem) async {
         for plugin in self.plugins {
-            if case .failure(let error) = plugin.start(system) {
+            do {
+                try await plugin.start(system)
+            } catch {
                 fatalError("Failed to start plugin \(plugin.key)! Error: \(error)")
             }
         }
@@ -54,9 +56,7 @@ public struct PluginsSettings {
     internal func stopAll(_ system: ClusterSystem) {
         // Shut down in reversed order so plugins with the fewest dependencies are stopped first!
         for plugin in self.plugins.reversed() {
-            if case .failure(let error) = plugin.stop(system) {
-                fatalError("Failed to stop plugin \(plugin.key)! Error: \(error)")
-            }
+            plugin.stop(system)
         }
     }
 
@@ -74,13 +74,13 @@ public struct PluginsSettings {
 }
 
 extension PluginsSettings {
-    public static func += <P: Plugin>(plugins: inout PluginsSettings, plugin: P) {
+    public static func += <P: _Plugin>(plugins: inout PluginsSettings, plugin: P) {
         plugins.add(plugin)
     }
 }
 
 extension ClusterSystemSettings {
-    public static func += <P: Plugin>(settings: inout ClusterSystemSettings, plugin: P) {
+    public static func += <P: _Plugin>(settings: inout ClusterSystemSettings, plugin: P) {
         settings.plugins.add(plugin)
     }
 }
