@@ -455,6 +455,15 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         }
     }
 
+    /// Suspends until the ``ClusterSystem`` is terminated by a call to ``shutdown``.
+    var terminated: Void {
+        get async throws {
+            try await Task.detached {
+                try Shutdown(receptacle: self.shutdownReceptacle).wait()
+            }.value
+        }
+    }
+
     /// Forcefully stops this actor system and all actors that live within it.
     /// This is an asynchronous operation and will be executed on a separate thread.
     ///
@@ -791,8 +800,7 @@ extension ClusterSystem: _ActorTreeTraversable {
     }
 
     func _resolveStub(identity: ActorID) throws -> StubDistributedActor {
-        return try StubDistributedActor.resolve(id: identity, using: self) // FIXME(!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!)
-        fatalError("Not necessary anymore") // TODO: remove the stub resolving
+        return try StubDistributedActor.resolve(id: identity, using: self)
     }
 
     public func _resolveUntyped(context: ResolveContext<Never>) -> AddressableActorRef {
@@ -855,29 +863,31 @@ extension ClusterSystem {
     public func resolve<Act>(id: ActorID, as actorType: Act.Type) throws -> Act?
         where Act: DistributedActor
     {
+        self.log.trace("Resolve: \(id)")
         guard self.cluster.uniqueNode == id.uniqueNode else {
-            self.log.info("Resolved \(id) as remote, on node: \(id.uniqueNode)")
+            self.log.trace("Resolved \(id) as remote, on node: \(id.uniqueNode)")
             return nil
         }
 
         return self.namingLock.withLock {
             guard let managed = self._managedDistributedActors.get(identifiedBy: id) else {
-                log.info("Unknown reference on our UniqueNode", metadata: [
-                    "actor/identity": "\(id.detailedDescription)",
+                log.trace("Resolved as remote reference", metadata: [
+                    "actor/id": "\(id)",
                 ])
                 // TODO(distributed): throw here, this should be a dead letter
                 return nil
             }
 
-            log.info("Resolved as local instance", metadata: [
-                "actor/identity": "\(id)",
-                "actor": "\(managed)",
-            ])
             if let resolved = managed as? Act {
-                log.info("Resolved \(id) as local")
+                log.info("Resolved as local instance", metadata: [
+                    "actor/id": "\(id)",
+                    "actor": "\(resolved)",
+                ])
                 return resolved
             } else {
-                log.info("Resolved \(id) as remote")
+                log.trace("Resolved as remote reference", metadata: [
+                    "actor/id": "\(id)",
+                ])
                 return nil
             }
         }
@@ -940,7 +950,7 @@ extension ClusterSystem {
         }
         self.namingLock.withLockVoid {
             self._managedRefs.removeValue(forKey: id) // TODO: should not be necessary in the future
-            self._managedDistributedActors.removeActor(identifiedBy: id)
+            _ = self._managedDistributedActors.removeActor(identifiedBy: id)
         }
     }
 }
@@ -1173,9 +1183,9 @@ public enum ClusterSystemError: DistributedActorSystemError {
     case shuttingDown(String)
 }
 
-/// Error thrown when unable to resolve an ``ActorIdentity``.
+/// Error thrown when unable to resolve an ``ActorID``.
 ///
-/// Refer to ``ClusterSystem/resolve(_:as:)`` or the distributed actors Swift Evolution proposal for details.
+/// Refer to ``ClusterSystem/resolve(id:as:)`` or the distributed actors Swift Evolution proposal for details.
 public enum ResolveError: DistributedActorSystemError {
     case illegalIdentity(ClusterSystem.ActorID)
 }

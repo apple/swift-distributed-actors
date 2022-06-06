@@ -17,7 +17,7 @@ import DistributedActorsTestKit
 @testable import Logging
 import XCTest
 
-final class DeadLetterTests: ActorSystemXCTestCase {
+final class DeadLetterTests: ClusterSystemXCTestCase {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: DeadLetterOffice tests
 

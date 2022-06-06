@@ -34,14 +34,14 @@ public final class _StashBuffer<Message: ActorMessage> {
     }
 
     /// Adds a message to the stash buffer, if the buffer is not full, otherwise
-    /// throws `StashError.full`.
+    /// throws `_StashError.full`.
     ///
     /// - Parameter message: The message to be stored in the buffer
-    /// - Throws: `StashError.full` when underlying stash would overflow its capacity
+    /// - Throws: `_StashError.full` when underlying stash would overflow its capacity
     @inlinable
     public func stash(message: Message) throws {
         guard self.buffer.offer(element: message) else {
-            throw StashError.full
+            throw _StashError.full
         }
     }
 
@@ -94,7 +94,7 @@ public final class _StashBuffer<Message: ActorMessage> {
     }
 }
 
-public enum StashError: Error {
+public enum _StashError: Error {
     case full
     case empty
 }

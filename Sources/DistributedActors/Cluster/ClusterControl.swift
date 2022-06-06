@@ -35,7 +35,7 @@ public struct ClusterControl {
     ///
     /// Consider subscribing to `cluster.events` in order to react to membership changes dynamically, and never miss a change.
     ///
-    /// It is guaranteed that a `membershipSnapshot` is always at-least as up-to-date as an emitted `Cluster.Event`.
+    /// It is guaranteed that a `membershipSnapshot` is always at-least as up-to-date as an emitted ``Cluster/Event``.
     /// It may be "ahead" however, for example if a series of 3 events are published closely one after another,
     /// if one were to observe the `cluster.membershipSnapshot` when receiving the first event, it may already contain
     /// information related to the next two incoming events. For that reason is recommended to stick to one of the ways
@@ -115,7 +115,7 @@ public struct ClusterControl {
         self.ref.tell(.command(.downCommand(self.uniqueNode.node)))
     }
 
-    /// Mark *any* currently known member as `Cluster.MemberStatus.down`.
+    /// Mark *any* currently known member as ``Cluster/MemberStatus/down``.
     ///
     /// Beware that this API is not very precise and, if possible, the `down(Cluster.Member)` is preferred, as it indicates
     /// the downing intent of a *specific* actor system instance, rather than any system running on the given host-port pair.

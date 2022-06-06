@@ -71,7 +71,7 @@ internal distributed actor DowningStrategyShell {
         self.strategy = strategy
         self.actorSystem = system
         self.eventsListeningTask = Task {
-            for await event in await system.cluster.events {
+            for await event in system.cluster.events {
                 try self.receiveClusterEvent(event)
             }
         }

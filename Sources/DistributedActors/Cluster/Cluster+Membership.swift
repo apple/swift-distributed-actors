@@ -114,7 +114,7 @@ extension Cluster {
             self.members(withStatus: [status], reachability: reachability)
         }
 
-        /// Returns all members that are part of this membership, and have the any ``Cluster.MemberStatus`` that is part
+        /// Returns all members that are part of this membership, and have the any ``Cluster/MemberStatus`` that is part
         /// of the `statuses` passed in and `reachability` status.
         ///
         /// - Parameters:
@@ -581,7 +581,7 @@ extension Cluster.Membership {
 // MARK: Applying Cluster.Event to Membership
 
 extension Cluster.Membership {
-    /// Applies any kind of `Cluster.Event` to the `Membership`, modifying it appropriately.
+    /// Applies any kind of ``Cluster/Event`` to the `Membership`, modifying it appropriately.
     /// This apply does not yield detailed information back about the type of change performed,
     /// and is useful as a catch-all to keep a `Membership` copy up-to-date, but without reacting on any specific transition.
     ///

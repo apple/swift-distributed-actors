@@ -17,6 +17,9 @@ import Distributed
 import NIO
 
 /// Provides a distributed actor with the ability to "watch" other actors lifecycles.
+///
+/// - SeeAlso:
+///     - <doc:Lifecycle>
 public protocol LifecycleWatch: DistributedActor where ActorSystem == ClusterSystem {}
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -73,10 +76,10 @@ extension LifecycleWatch {
     ///
     /// - Returns: the passed in watchee reference for easy chaining `e.g. return context.unwatch(ref)`
     @discardableResult
-    public func unwatch<Watchee>(
+    public func unwatch<Watchee: DistributedActor>(
         _ watchee: Watchee,
         file: String = #file, line: UInt = #line
-    ) -> Watchee where Watchee: DistributedActor, Watchee.ActorSystem == ClusterSystem {
+    ) -> Watchee where Watchee.ActorSystem == ClusterSystem {
         // TODO(distributed): reimplement this as self.id as? _ActorContext which will have the watch things.
         guard let watch = self.actorSystem._getLifecycleWatch(watcher: self) else {
             return watchee

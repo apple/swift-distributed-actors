@@ -68,7 +68,7 @@ internal class ActorSingletonProxy<Message: ActorMessage> {
     var behavior: _Behavior<Message> {
         .setup { context in
             if context.system.settings.enabled {
-                // Subscribe to `Cluster.Event` in order to update `targetNode`
+                // Subscribe to ``Cluster/Event`` in order to update `targetNode`
                 context.system.cluster.events.subscribe(
                     context.subReceive(_SubReceiveId(id: "clusterEvent-\(context.name)"), Cluster.Event.self) { event in
                         try self.receiveClusterEvent(context, event)
@@ -196,7 +196,7 @@ internal class ActorSingletonProxy<Message: ActorMessage> {
                 context.log.trace("Stashed message: \(message)", metadata: self.metadata(context))
             } catch {
                 switch error {
-                case StashError.full:
+                case _StashError.full:
                     // TODO: log this warning only "once in while" after buffer becomes full
                     context.log.warning("Buffer is full. Messages might start getting disposed.", metadata: self.metadata(context))
                     // Move the oldest message to dead letters to make room
@@ -237,8 +237,8 @@ extension ActorSingletonProxy {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Singleton path / address
 
-extension ActorAddress {
-    static func _singletonProxy(name: String, remote node: UniqueNode) -> ActorAddress {
+extension ActorID {
+    static func _singletonProxy(name: String, remote node: UniqueNode) -> ActorID {
         .init(remote: node, path: ._singletonProxy(name: name), incarnation: .wellKnown)
     }
 }

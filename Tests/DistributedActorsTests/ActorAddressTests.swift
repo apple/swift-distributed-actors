@@ -16,7 +16,7 @@
 import DistributedActorsTestKit
 import XCTest
 
-final class ActorAddressTests: XCTestCase {
+final class ActorIDTests: XCTestCase {
     func test_local_actorAddress_shouldPrintNicely() throws {
         let node: UniqueNode = .init(protocol: "sact", systemName: "\(Self.self)", host: "127.0.0.1", port: 7337, nid: .random())
         let id = try ActorID(local: node, path: ActorPath._user.appending("hello"), incarnation: ActorIncarnation(8888))
@@ -99,9 +99,9 @@ final class ActorAddressTests: XCTestCase {
         one.shouldNotEqual(one2)
     }
 
-    func test_sortingOf_ActorAddresses() throws {
+    func test_sortingOf_actorIDs() throws {
         let node = UniqueNode(systemName: "one", host: "127.0.0.1", port: 1234, nid: UniqueNodeID(11111))
-        var ids: [ActorAddress] = []
+        var ids: [ActorID] = []
         let a: ActorID = try ActorPath._user.appending("a").makeLocalID(on: node, incarnation: .random())
         let b: ActorID = try ActorPath._user.appending("b").makeLocalID(on: node, incarnation: .random())
         let c: ActorID = try ActorPath._user.appending("c").makeLocalID(on: node, incarnation: .random())
@@ -113,9 +113,9 @@ final class ActorAddressTests: XCTestCase {
         ids.sorted().shouldEqual([a, b, c])
     }
 
-    func test_sortingOf_sameNode_ActorAddresses() throws {
+    func test_sortingOf_sameNode_actorIDs() throws {
         let node = UniqueNode(systemName: "one", host: "127.0.0.1", port: 1234, nid: UniqueNodeID(11111))
-        var ids: [ActorAddress] = []
+        var ids: [ActorID] = []
         let a: ActorID = try ActorPath._user.appending("a").makeLocalID(on: node, incarnation: .wellKnown)
         let b: ActorID = try ActorPath._user.appending("b").makeLocalID(on: node, incarnation: .wellKnown)
         let c: ActorID = try ActorPath._user.appending("c").makeLocalID(on: node, incarnation: .wellKnown)
@@ -127,9 +127,9 @@ final class ActorAddressTests: XCTestCase {
         ids.sorted().shouldEqual([a, b, c])
     }
 
-    func test_sortingOf_diffNodes_ActorAddresses() throws {
+    func test_sortingOf_diffNodes_actorIDs() throws {
         let node = UniqueNode(systemName: "one", host: "127.0.0.1", port: 1234, nid: UniqueNodeID(11111))
-        var ids: [ActorAddress] = []
+        var ids: [ActorID] = []
         let a: ActorID = try ActorPath._user.appending("a").makeRemoteID(on: node, incarnation: 1)
         let b: ActorID = try ActorPath._user.appending("a").makeRemoteID(on: node, incarnation: 1)
         let c: ActorID = try ActorPath._user.appending("a").makeRemoteID(on: node, incarnation: 1)

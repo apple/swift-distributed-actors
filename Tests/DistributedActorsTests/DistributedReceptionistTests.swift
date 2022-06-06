@@ -44,7 +44,7 @@ extension DistributedReception.Key {
     }
 }
 
-final class DistributedReceptionistTests: ActorSystemXCTestCase {
+final class DistributedReceptionistTests: ClusterSystemXCTestCase {
     let receptionistBehavior = _OperationLogClusterReceptionist(settings: .default).behavior
 
     func test_receptionist_mustHaveWellKnownAddress() throws {

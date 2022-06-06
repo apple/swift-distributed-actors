@@ -22,7 +22,7 @@ import struct NIO.ByteBufferAllocator
 // MARK: Serialization.Context
 
 extension Serialization {
-    /// A context object provided to any ``Encoder``/``Decoder`` used during remoteCall message serialization
+    /// A context object provided to any `Swift/Encoder`/`Swift/Decoder` used during remoteCall message serialization
     ///
     /// `Serialization.Context` may be accessed concurrently be encoders/decoders.
     public struct Context {

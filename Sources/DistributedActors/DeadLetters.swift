@@ -20,8 +20,10 @@ import Logging
 /// A "dead letter" is a message ("letter") that is impossible to deliver to its designated recipient.
 ///
 /// Often the reason for this is that the message was sent to given actor while it was still alive,
-/// yet once it arrived the destination node (or mailbox) the actor had already terminated, leaving the message to be dropped.
-/// Since such races can happen and point to problems in an actor based algorithm, such messages are not silently dropped,
+/// yet once it arrived the destination node the actor had already terminated, leaving the message to be dropped.
+///
+/// Since such races can happen when a distributed remote actor is e.g. passivated before it receives a remote call,
+/// and can be tricky to diagnose otherwise, such messages are  such messages are not silently dropped,
 /// but rather logged, with as much information as available (e.g. about the sender or source location of the initiating tell),
 /// such that when operating the system, bugs regarding undelivered messages can be spotted and fixed.
 ///

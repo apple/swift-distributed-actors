@@ -717,7 +717,7 @@ extension ActorTestProbe {
     /// - SeeAlso: `DeathWatch`
     public func expectTerminatedInAnyOrder(_ refs: [AddressableActorRef], file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
-        var pathSet: Set<ActorAddress> = Set(refs.map(\.id))
+        var pathSet: Set<ActorID> = Set(refs.map(\.id))
 
         let deadline = Deadline.fromNow(self.expectationTimeout)
         while !pathSet.isEmpty, deadline.hasTimeLeft() {
