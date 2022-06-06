@@ -254,7 +254,7 @@ private distributed actor Greeter: DistributedWorker {
     init(probe: ActorTestProbe<String>, actorSystem: ActorSystem, key: DistributedReception.Key<Greeter>) async {
         self.actorSystem = actorSystem
         self.probe = probe
-        await self.actorSystem.receptionist.register(self, with: key)
+        await self.actorSystem.receptionist.checkIn(self, with: key)
     }
 
     deinit {
