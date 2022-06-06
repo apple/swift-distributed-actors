@@ -167,13 +167,13 @@ final class Association: CustomStringConvertible, @unchecked Sendable {
 
 extension Association {
     /// Concurrency: safe to invoke from any thread.
-    func sendUserMessage(envelope: Payload, recipient: ActorAddress, promise: EventLoopPromise<Void>? = nil) {
+    func sendUserMessage(envelope: Payload, recipient: ActorID, promise: EventLoopPromise<Void>? = nil) {
         let transportEnvelope = TransportEnvelope(envelope: envelope, recipient: recipient)
         self._send(transportEnvelope, promise: promise)
     }
 
     /// Concurrency: safe to invoke from any thread.
-    func sendSystemMessage(_ message: _SystemMessage, recipient: ActorAddress, promise: EventLoopPromise<Void>? = nil) {
+    func sendSystemMessage(_ message: _SystemMessage, recipient: ActorID, promise: EventLoopPromise<Void>? = nil) {
         let transportEnvelope = TransportEnvelope(systemMessage: message, recipient: recipient)
         self._send(transportEnvelope, promise: promise)
     }

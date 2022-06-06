@@ -240,7 +240,7 @@ final class BehaviorTests: ClusterSystemXCTestCase {
             return .receiveSignal { _, signal in
                 switch signal {
                 case let terminated as _Signals.Terminated:
-                    p.tell("first:terminated-name:\(terminated.address.name)")
+                    p.tell("first:terminated-name:\(terminated.id.name)")
                 default:
                     ()
                 }
@@ -250,7 +250,7 @@ final class BehaviorTests: ClusterSystemXCTestCase {
         let second: _Behavior<Never> = .receiveSignal { _, signal in
             switch signal {
             case let terminated as _Signals.Terminated:
-                p.tell("second:terminated-name:\(terminated.address.name)")
+                p.tell("second:terminated-name:\(terminated.id.name)")
             default:
                 ()
             }
@@ -867,7 +867,7 @@ final class BehaviorTests: ClusterSystemXCTestCase {
             guard let s = signal as? _Signals.Terminated else {
                 return .same
             }
-            p.tell("signal:\(s.address.name)")
+            p.tell("signal:\(s.id.name)")
 
             // returning this behavior should not unsuspend the actor
             return _Behavior<String>.receiveMessage { msg in

@@ -18,10 +18,10 @@
 public protocol ReceptionistInstrumentation: Sendable {
     init()
 
-    func actorSubscribed(key: AnyReceptionKey, address: ActorAddress)
+    func actorSubscribed(key: AnyReceptionKey, id: ActorID)
 
-    func actorRegistered(key: AnyReceptionKey, address: ActorAddress)
-    func actorRemoved(key: AnyReceptionKey, address: ActorAddress)
+    func actorRegistered(key: AnyReceptionKey, id: ActorID)
+    func actorRemoved(key: AnyReceptionKey, id: ActorID)
 
     // TODO: lookup separately?
     func listingPublished(key: AnyReceptionKey, subscribers: Int, registrations: Int)
@@ -33,11 +33,11 @@ public protocol ReceptionistInstrumentation: Sendable {
 struct NoopReceptionistInstrumentation: ReceptionistInstrumentation {
     public init() {}
 
-    func actorSubscribed(key: AnyReceptionKey, address: ActorAddress) {}
+    func actorSubscribed(key: AnyReceptionKey, id: ActorID) {}
 
-    func actorRegistered(key: AnyReceptionKey, address: ActorAddress) {}
+    func actorRegistered(key: AnyReceptionKey, id: ActorID) {}
 
-    func actorRemoved(key: AnyReceptionKey, address: ActorAddress) {}
+    func actorRemoved(key: AnyReceptionKey, id: ActorID) {}
 
     func listingPublished(key: AnyReceptionKey, subscribers: Int, registrations: Int) {}
 }

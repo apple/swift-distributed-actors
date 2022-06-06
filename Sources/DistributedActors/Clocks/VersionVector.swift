@@ -243,14 +243,14 @@ extension VersionDot: Codable {
 
 public struct ReplicaID: Hashable {
     internal enum Storage: Hashable {
-        case actorAddress(ActorAddress)
+        case actorID(ActorID)
         // case actorIdentity(ClusterSystem.ActorID)
         case uniqueNode(UniqueNode)
         case uniqueNodeID(UniqueNode.ID)
 
-        var isActorAddress: Bool {
+        var isActorID: Bool {
             switch self {
-            case .actorAddress: return true
+            case .actorID: return true
             default: return false
             }
         }
@@ -284,16 +284,11 @@ public struct ReplicaID: Hashable {
     }
 
     public static func actor<M: Codable>(_ context: _ActorContext<M>) -> ReplicaID {
-        .init(.actorAddress(context.address))
+        .init(.actorID(context.id))
     }
 
-    internal static func actorAddress(_ address: ActorAddress) -> ReplicaID {
-        .init(.actorAddress(address))
-    }
-
-    internal static func actorIdentity(_ id: ClusterSystem.ActorID) -> ReplicaID {
-        // .init(.actorIdentity(id))
-        .init(.actorAddress(id))
+    internal static func actorID(_ id: ActorID) -> ReplicaID {
+        .init(.actorID(id))
     }
 
     public static func uniqueNode(_ uniqueNode: UniqueNode) -> ReplicaID {
@@ -310,10 +305,8 @@ public struct ReplicaID: Hashable {
 
     func ensuringNode(_ node: UniqueNode) -> ReplicaID {
         switch self.storage {
-        case .actorAddress(let address):
-            return .actorAddress(address)
-//        case .actorIdentity(let id):
-//            return .actorIdentity(id) // FIXME(distributed) does nothing right now
+        case .actorID(let id):
+            return .actorID(id)
         case .uniqueNode(let existingNode):
             assert(existingNode.nid == node.nid, "Attempted to ensureNode with non-matching node identifier, was: \(existingNode)], attempted: \(node)")
             return self
@@ -327,10 +320,8 @@ public struct ReplicaID: Hashable {
 extension ReplicaID: CustomStringConvertible {
     public var description: String {
         switch self.storage {
-        case .actorAddress(let address):
-            return "actor:\(address)"
-//        case .actorIdentity(let identity):
-//            return "actor:\(identity)"
+        case .actorID(let id):
+            return "actor:\(id)"
         case .uniqueNode(let node):
             return "uniqueNode:\(node)"
         case .uniqueNodeID(let nid):
@@ -342,26 +333,21 @@ extension ReplicaID: CustomStringConvertible {
 extension ReplicaID: Comparable {
     public static func < (lhs: ReplicaID, rhs: ReplicaID) -> Bool {
         switch (lhs.storage, rhs.storage) {
-        case (.actorAddress(let l), .actorAddress(let r)):
+        case (.actorID(let l), .actorID(let r)):
             return l < r
-//        case (.actorIdentity(let l), .actorIdentity(let r)):
-//            return "\(l)" < "\(r)" // FIXME(distributed): not so great...
         case (.uniqueNode(let l), .uniqueNode(let r)):
             return l < r
         case (.uniqueNodeID(let l), .uniqueNodeID(let r)):
             return l < r
-        case (.uniqueNode, _), (.uniqueNodeID, _), (.actorAddress, _):
+        case (.uniqueNode, _), (.uniqueNodeID, _), (.actorID, _):
             return false
         }
     }
 
     public static func == (lhs: ReplicaID, rhs: ReplicaID) -> Bool {
         switch (lhs.storage, rhs.storage) {
-        case (.actorAddress(let l), .actorAddress(let r)):
+        case (.actorID(let l), .actorID(let r)):
             return l == r
-
-//        case (.actorIdentity(let l), .actorIdentity(let r)):
-//            return l == r
 
         case (.uniqueNode(let l), .uniqueNode(let r)):
             return l == r
@@ -373,7 +359,7 @@ extension ReplicaID: Comparable {
         case (.uniqueNodeID(let l), .uniqueNode(let r)):
             return l == r.nid
 
-        case (.uniqueNode, _), (.uniqueNodeID, _), (.actorAddress, _):
+        case (.uniqueNode, _), (.uniqueNodeID, _), (.actorID, _):
             return false
         }
     }
@@ -381,7 +367,7 @@ extension ReplicaID: Comparable {
 
 extension ReplicaID: Codable {
     public enum DiscriminatorKeys: String, Codable {
-        case actorAddress = "a"
+        case actorID = "a"
         case uniqueNode = "N"
         case uniqueNodeID = "n"
     }
@@ -395,8 +381,8 @@ extension ReplicaID: Codable {
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         switch try container.decode(DiscriminatorKeys.self, forKey: ._case) {
-        case .actorAddress:
-            self = try .actorAddress(container.decode(ActorAddress.self, forKey: .value))
+        case .actorID:
+            self = try .actorID(container.decode(ActorID.self, forKey: .value))
         case .uniqueNode:
             self = try .uniqueNode(container.decode(UniqueNode.self, forKey: .value))
         case .uniqueNodeID:
@@ -407,12 +393,9 @@ extension ReplicaID: Codable {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         switch self.storage {
-        case .actorAddress(let address):
-            try container.encode(DiscriminatorKeys.actorAddress, forKey: ._case)
+        case .actorID(let address):
+            try container.encode(DiscriminatorKeys.actorID, forKey: ._case)
             try container.encode(address, forKey: .value)
-//        case .actorIdentity(let id):
-//            try container.encode(DiscriminatorKeys.actorIdentity, forKey: ._case)
-//            try container.encode(id, forKey: .value)
         case .uniqueNode(let node):
             try container.encode(DiscriminatorKeys.uniqueNode, forKey: ._case)
             try container.encode(node, forKey: .value)

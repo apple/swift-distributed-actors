@@ -28,7 +28,6 @@ import NIO
 ///
 /// A `ClusterSystem` and all of the actors contained within remain alive until the `terminate` call is made.
 public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
-    public typealias ActorID = ActorAddress
     public typealias InvocationDecoder = ClusterInvocationDecoder
     public typealias InvocationEncoder = ClusterInvocationEncoder
     public typealias SerializationRequirement = any Codable
@@ -55,16 +54,16 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
     private let initLock = Lock()
 
     internal let lifecycleWatchLock = Lock()
-    internal var _lifecycleWatches: [ActorAddress: LifecycleWatchContainer] = [:]
+    internal var _lifecycleWatches: [ActorID: LifecycleWatchContainer] = [:]
 
     private var _associationTombstoneCleanupTask: RepeatedTask?
 
     private let dispatcher: InternalMessageDispatcher
 
     // Access MUST be protected with `namingLock`.
-    private var _managedRefs: [ActorAddress: _ReceivesSystemMessages] = [:]
+    private var _managedRefs: [ActorID: _ReceivesSystemMessages] = [:]
     private var _managedDistributedActors: WeakActorDictionary = .init()
-    private var _reservedNames: Set<ActorAddress> = []
+    private var _reservedNames: Set<ActorID> = []
 
     // TODO: converge into one tree
     // Note: This differs from Akka, we do full separate trees here
@@ -280,7 +279,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         _ = self._serialization.storeIfNilThenLoad(serialization)
 
         // dead letters init
-        self._deadLetters = _ActorRef(.deadLetters(.init(self.log, address: ActorAddress._deadLetters(on: settings.uniqueBindNode), system: self)))
+        self._deadLetters = _ActorRef(.deadLetters(.init(self.log, id: ActorID._deadLetters(on: settings.uniqueBindNode), system: self)))
 
         // actor providers
         let localUserProvider = LocalActorRefProvider(root: _Guardian(parent: theOne, name: "user", localNode: settings.uniqueBindNode, system: self))
@@ -613,12 +612,12 @@ extension ClusterSystem: _ActorRefFactory {
 
         // TODO: lock inside provider, not here
         // FIXME: protect the naming context access and name reservation; add a test
-        let address: ActorAddress = try self.withNamingContext { namingContext in
+        let id: ActorID = try self.withNamingContext { namingContext in
             let name = naming.makeName(&namingContext)
 
             return try provider.rootAddress.makeChildAddress(name: name, incarnation: incarnation)
             // FIXME: reserve the name, atomically
-            // provider.reserveName(name) -> ActorAddress
+            // provider.reserveName(name) -> ActorID
         }
 
         let dispatcher: MessageDispatcher
@@ -637,7 +636,7 @@ extension ClusterSystem: _ActorRefFactory {
 
         return try provider._spawn(
             system: self,
-            behavior: behavior, address: address,
+            behavior: behavior, id: id,
             dispatcher: dispatcher, props: props,
             startImmediately: startImmediately
         )
@@ -646,7 +645,7 @@ extension ClusterSystem: _ActorRefFactory {
     // Actual spawn implementation, minus the leading "$" check on names;
     internal func _spawn<Message>(
         using provider: _ActorRefProvider,
-        _ behavior: _Behavior<Message>, address: ActorAddress, props: _Props = _Props(),
+        _ behavior: _Behavior<Message>, id: ActorID, props: _Props = _Props(),
         startImmediately: Bool = true
     ) throws -> _ActorRef<Message>
         where Message: ActorMessage
@@ -669,14 +668,14 @@ extension ClusterSystem: _ActorRefFactory {
 
         return try provider._spawn(
             system: self,
-            behavior: behavior, address: address,
+            behavior: behavior, id: id,
             dispatcher: dispatcher, props: props,
             startImmediately: startImmediately
         )
     }
 
     // Reserve an actor address.
-    internal func _reserveName<Act>(type: Act.Type, props: _Props) throws -> ActorAddress where Act: DistributedActor {
+    internal func _reserveName<Act>(type: Act.Type, props: _Props) throws -> ActorID where Act: DistributedActor {
         let incarnation: ActorIncarnation = props._wellKnown ? .wellKnown : .random()
         guard let provider = (props._systemActor ? self.systemProvider : self.userProvider) else {
             fatalError("Unable to obtain system/user actor provider") // TODO(distributed): just throw here instead
@@ -716,7 +715,7 @@ extension ClusterSystem: _ActorRefFactory {
             provider = self.userProvider
         }
 
-        return try! self._spawn(using: provider, behavior, address: id, props: props) // try!-safe, since the naming must have been correct
+        return try! self._spawn(using: provider, behavior, id: id, props: props) // try!-safe, since the naming must have been correct
     }
 }
 
@@ -730,7 +729,7 @@ extension ClusterSystem: _ActorTreeTraversable {
     /// the print completes already have terminated, or may not print actors which started just after a visit at certain parent.
     internal func _printTree() {
         self._traverseAllVoid { context, ref in
-            print("\(String(repeating: "  ", count: context.depth))- /\(ref.address.name) - \(ref) @ incarnation:\(ref.address.incarnation)")
+            print("\(String(repeating: "  ", count: context.depth))- /\(ref.id.name) - \(ref) @ incarnation:\(ref.id.incarnation)")
             return .continue
         }
     }
@@ -796,13 +795,12 @@ extension ClusterSystem: _ActorTreeTraversable {
         }
     }
 
-    public func _resolveUntyped(identity address: ClusterSystem.ActorID) -> AddressableActorRef {
-        return self._resolveUntyped(context: .init(address: address, system: self))
+    public func _resolveUntyped(id: ActorID) -> AddressableActorRef {
+        return self._resolveUntyped(context: .init(id: id, system: self))
     }
 
-    func _resolveStub(identity: ActorAddress) throws -> StubDistributedActor {
-        return try StubDistributedActor.resolve(id: identity, using: self) // FIXME(!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!)
-        fatalError("NEIN")
+    func _resolveStub(identity: ActorID) throws -> StubDistributedActor {
+        return try StubDistributedActor.resolve(id: identity, using: self)
     }
 
     public func _resolveUntyped(context: ResolveContext<Never>) -> AddressableActorRef {
@@ -862,33 +860,33 @@ extension ClusterSystem {
 }
 
 extension ClusterSystem {
-    public func resolve<Act>(id address: ActorID, as actorType: Act.Type) throws -> Act?
+    public func resolve<Act>(id: ActorID, as actorType: Act.Type) throws -> Act?
         where Act: DistributedActor
     {
-        self.log.trace("Resolve: \(address)")
-        guard self.cluster.uniqueNode == address.uniqueNode else {
-            self.log.trace("Resolved \(address) as remote, on node: \(address.uniqueNode)")
+        self.log.trace("Resolve: \(id)")
+        guard self.cluster.uniqueNode == id.uniqueNode else {
+            self.log.trace("Resolved \(id) as remote, on node: \(id.uniqueNode)")
             return nil
         }
 
         return self.namingLock.withLock {
-            guard let managed = self._managedDistributedActors.get(identifiedBy: address) else {
+            guard let managed = self._managedDistributedActors.get(identifiedBy: id) else {
                 log.trace("Resolved as remote reference", metadata: [
-                    "actor/identity": "\(address)",
+                    "actor/id": "\(id)",
                 ])
                 // TODO(distributed): throw here, this should be a dead letter
                 return nil
             }
 
             if let resolved = managed as? Act {
-                log.trace("Resolved as local instance", metadata: [
-                    "actor/identity": "\(address)",
-                    "actor": "\(managed)",
+                log.info("Resolved as local instance", metadata: [
+                    "actor/id": "\(id)",
+                    "actor": "\(resolved)",
                 ])
                 return resolved
             } else {
                 log.trace("Resolved as remote reference", metadata: [
-                    "actor/identity": "\(address)",
+                    "actor/id": "\(id)",
                 ])
                 return nil
             }
@@ -937,7 +935,7 @@ extension ClusterSystem {
     }
 
     /// Called during actor deinit/destroy.
-    public func resignID(_ id: ActorAddress) {
+    public func resignID(_ id: ActorID) {
         self.log.warning("Resign actor id", metadata: ["actor/id": "\(id)"])
         self.namingLock.withLockVoid {
             self._reservedNames.remove(id)
@@ -952,7 +950,7 @@ extension ClusterSystem {
         }
         self.namingLock.withLockVoid {
             self._managedRefs.removeValue(forKey: id) // TODO: should not be necessary in the future
-            self._managedDistributedActors.removeActor(identifiedBy: id)
+            _ = self._managedDistributedActors.removeActor(identifiedBy: id)
         }
     }
 }
@@ -981,14 +979,14 @@ extension ClusterSystem {
             throw RemoteCallError.clusterAlreadyShutDown
         }
 
-        let recipient = _ActorRef<InvocationMessage>(.remote(.init(shell: clusterShell, address: actor.id._asRemote, system: self)))
+        let recipient = _ActorRef<InvocationMessage>(.remote(.init(shell: clusterShell, id: actor.id._asRemote, system: self)))
 
         let arguments = invocation.arguments
         let ask: AskResponse<RemoteCallReply<Res>> = recipient.ask(timeout: RemoteCall.timeout ?? self.settings.defaultRemoteCallTimeout) { replyTo in
             let invocation = InvocationMessage(
                 targetIdentifier: target.identifier,
                 arguments: arguments,
-                replyToAddress: replyTo.address
+                replyToAddress: replyTo.id
             )
 
             return invocation
@@ -1018,14 +1016,14 @@ extension ClusterSystem {
             throw RemoteCallError.clusterAlreadyShutDown
         }
 
-        let recipient = _ActorRef<InvocationMessage>(.remote(.init(shell: shell, address: actor.id._asRemote, system: self)))
+        let recipient = _ActorRef<InvocationMessage>(.remote(.init(shell: shell, id: actor.id._asRemote, system: self)))
 
         let arguments = invocation.arguments
         let ask: AskResponse<RemoteCallReply<_Done>> = recipient.ask(timeout: RemoteCall.timeout ?? self.settings.defaultRemoteCallTimeout) { replyTo in
             let invocation = InvocationMessage(
                 targetIdentifier: target.identifier,
                 arguments: arguments,
-                replyToAddress: replyTo.address
+                replyToAddress: replyTo.id
             )
 
             return invocation
@@ -1077,27 +1075,27 @@ public struct ClusterInvocationResultHandler: DistributedTargetInvocationResultH
 
     let system: ClusterSystem
     let clusterShell: ClusterShell
-    let replyToAddress: ActorAddress
+    let replyToID: ActorID
 
-    init(system: ClusterSystem, clusterShell: ClusterShell, replyTo: ActorAddress) {
+    init(system: ClusterSystem, clusterShell: ClusterShell, replyTo: ActorID) {
         self.system = system
         self.clusterShell = clusterShell
-        self.replyToAddress = replyTo
+        self.replyToID = replyTo
     }
 
     public func onReturn<Success: Codable>(value: Success) async throws {
-        let ref = _ActorRef<RemoteCallReply<Success>>(.remote(.init(shell: clusterShell, address: replyToAddress, system: system)))
+        let ref = _ActorRef<RemoteCallReply<Success>>(.remote(.init(shell: clusterShell, id: replyToID, system: system)))
         ref.tell(.init(value: value))
     }
 
     public func onReturnVoid() async throws {
-        let ref = _ActorRef<RemoteCallReply<_Done>>(.remote(.init(shell: clusterShell, address: replyToAddress, system: system)))
+        let ref = _ActorRef<RemoteCallReply<_Done>>(.remote(.init(shell: clusterShell, id: replyToID, system: system)))
         ref.tell(.init(value: _Done.done))
     }
 
     public func onThrow<Err: Error>(error: Err) async throws {
         self.system.log.warning("Result handler, onThrow: \(error)")
-        let ref = _ActorRef<RemoteCallReply<_Done>>(.remote(.init(shell: clusterShell, address: replyToAddress, system: system)))
+        let ref = _ActorRef<RemoteCallReply<_Done>>(.remote(.init(shell: clusterShell, id: replyToID, system: system)))
         if let codableError = error as? (Error & Codable) {
             ref.tell(.init(error: codableError))
         } else {

@@ -47,8 +47,8 @@ extension DistributedReception {
             self.id = value
         }
 
-        internal func resolve(system: ClusterSystem, address: ActorAddress) -> AddressableActorRef {
-            let ref: _ActorRef<InvocationMessage> = system._resolve(context: ResolveContext(address: address, system: system))
+        internal func resolve(system: ClusterSystem, id: ActorID) -> AddressableActorRef {
+            let ref: _ActorRef<InvocationMessage> = system._resolve(context: ResolveContext(id: id, system: system))
             return ref.asAddressable
         }
 
@@ -76,10 +76,10 @@ struct AnyDistributedReceptionKey: Sendable, Codable, Hashable, CustomStringConv
         self.guestType = Guest.self
     }
 
-    func resolve(system: ClusterSystem, address: ActorAddress) -> AddressableActorRef {
+    func resolve(system: ClusterSystem, id: ActorID) -> AddressableActorRef {
         // Since we don't have the type information here, we can't properly resolve
         // and the only safe thing to do is to return `deadLetters`.
-        system.personalDeadLetters(type: Never.self, recipient: address).asAddressable
+        system.personalDeadLetters(type: Never.self, recipient: id).asAddressable
     }
 
     var asAnyKey: AnyDistributedReceptionKey {
@@ -161,7 +161,7 @@ struct AnyDistributedReceptionKey: Sendable, Codable, Hashable, CustomStringConv
 //        }
 //
 //        public var description: String {
-//            "DistributedReception.Listing<\(Guest.self)>(\(self.underlying.map { $0.address }))"
+//            "DistributedReception.Listing<\(Guest.self)>(\(self.underlying.map { $0.id }))"
 //        }
 //
 //        public static func == (lhs: Listing<Guest>, rhs: Listing<Guest>) -> Bool {
@@ -190,10 +190,10 @@ struct AnyDistributedReceptionKey: Sendable, Codable, Hashable, CustomStringConv
 //        }
 //    }
 //
-//    public func first(where matches: (ActorAddress) -> Bool) -> _ActorRef<Guest.Message>? {
+//    public func first(where matches: (ActorID) -> Bool) -> _ActorRef<Guest.Message>? {
 //        self.underlying.first {
 //            let ref: _ActorRef<Guest.Message> = self.key._unsafeAsActorRef($0)
-//            return matches(ref.address)
+//            return matches(ref.id)
 //        }.map {
 //            self.key._unsafeAsActorRef($0)
 //        }

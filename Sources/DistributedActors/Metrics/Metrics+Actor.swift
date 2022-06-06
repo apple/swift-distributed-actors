@@ -56,7 +56,7 @@ struct ActiveActorMetrics {
         self.metrics = [:]
     }
 
-    init(system: ClusterSystem, address: ActorAddress, props: MetricsProps) {
+    init(system: ClusterSystem, id: ActorID, props: MetricsProps) {
         // initialize metric objects required by this instance
         let active: ActiveMetricsOptionSet = props.active
         self.active = active

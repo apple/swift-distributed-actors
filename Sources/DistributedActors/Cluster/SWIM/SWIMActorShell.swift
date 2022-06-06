@@ -144,7 +144,7 @@ internal struct SWIMActorShell {
 
     private func handlePing(context: MyselfContext, replyTo pingOrigin: SWIM.PingOriginRef, payload: SWIM.GossipPayload, sequenceNumber: SWIM.SequenceNumber) {
         context.log.trace("Received ping@\(sequenceNumber)", metadata: self.swim.metadata([
-            "swim/ping/origin": "\(pingOrigin.address)",
+            "swim/ping/origin": "\(pingOrigin.id)",
             "swim/ping/payload": "\(payload)",
             "swim/ping/seqNr": "\(sequenceNumber)",
         ]))
@@ -555,8 +555,8 @@ extension SWIMActorShell {
     static let protocolPeriodTimerKey = TimerKey("\(SWIMActorShell.name)/periodic-ping")
 }
 
-extension ActorAddress {
-    static func _swim(on node: UniqueNode) -> ActorAddress {
+extension ActorID {
+    static func _swim(on node: UniqueNode) -> ActorID {
         .init(remote: node, path: ActorPath._swim, incarnation: .wellKnown)
     }
 }
@@ -582,11 +582,11 @@ internal enum TraceLogType: CustomStringConvertible {
         case .receive(nil):
             return "RECV"
         case .receive(let .some(pinged)):
-            return "RECV(pinged:\(pinged.address))"
+            return "RECV(pinged:\(pinged.id))"
         case .reply(let to):
-            return "REPL(to:\(to.address))"
+            return "REPL(to:\(to.id))"
         case .ask(let who):
-            return "ASK(\(who.address))"
+            return "ASK(\(who.id))"
         }
     }
 }

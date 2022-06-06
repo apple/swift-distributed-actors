@@ -35,7 +35,7 @@ struct Timer<Message> { // FIXME(distributed): deprecate and remove in favor of 
 struct TimerEvent {
     let key: TimerKey
     let generation: Int
-    let owner: ActorAddress
+    let owner: ActorID
 }
 
 /// A `TimerKey` is used to identify a timer. It can be stored and re-used.
@@ -158,7 +158,7 @@ public final class _BehaviorTimers<Message: ActorMessage> {
         self.cancel(for: key)
 
         let generation = self.nextTimerGen()
-        let event = TimerEvent(key: key, generation: generation, owner: self.context.myself.address)
+        let event = TimerEvent(key: key, generation: generation, owner: self.context.myself.id)
         let handle: Cancelable
         let cb = self.timerCallback
         if repeated {

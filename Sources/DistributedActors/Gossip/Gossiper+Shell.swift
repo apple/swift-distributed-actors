@@ -75,9 +75,9 @@ internal final class GossipShell<Gossip: Codable, Acknowledgement: Codable> {
                 }
                 return .same
             }.receiveSpecificSignal(_Signals.Terminated.self) { context, terminated in
-                context.log.trace("Peer terminated: \(terminated.address), will not gossip to it anymore")
+                context.log.trace("Peer terminated: \(terminated.id), will not gossip to it anymore")
                 self.peers = self.peers.filter {
-                    $0.address != terminated.address
+                    $0.id != terminated.id
                 }
                 if self.peers.isEmpty {
                     context.log.trace("No peers available, cancelling periodic gossip timer")
@@ -97,7 +97,7 @@ internal final class GossipShell<Gossip: Codable, Acknowledgement: Codable> {
     ) {
         context.log.trace("Received gossip [\(identifier.gossipIdentifier)]", metadata: [
             "gossip/identity": "\(identifier.gossipIdentifier)",
-            "gossip/origin": "\(origin.address)",
+            "gossip/origin": "\(origin.id)",
             "gossip/incoming": Logger.MetadataValue.pretty(payload),
         ])
 
@@ -119,7 +119,7 @@ internal final class GossipShell<Gossip: Codable, Acknowledgement: Codable> {
                     This is potentially a bug in the logic or the Gossiper's configuration. Dropping acknowledgement.
                     """, metadata: [
                         "gossip/identity": "\(identifier.gossipIdentifier)",
-                        "gossip/origin": "\(origin.address)",
+                        "gossip/origin": "\(origin.id)",
                         "gossip/ack": "\(unexpectedAck)",
                     ]
                 )
@@ -131,7 +131,7 @@ internal final class GossipShell<Gossip: Codable, Acknowledgement: Codable> {
                     This is potentially a bug in the logic or the Gossiper's configuration.
                     """, metadata: [
                         "gossip/identity": "\(identifier.gossipIdentifier)",
-                        "gossip/origin": "\(origin.address)",
+                        "gossip/origin": "\(origin.id)",
                         "gossip/ackRef": "\(unexpectedAckRef)",
                     ]
                 )
@@ -232,8 +232,8 @@ internal final class GossipShell<Gossip: Codable, Acknowledgement: Codable> {
         to target: PeerRef,
         onGossipAck: @escaping (Acknowledgement) -> Void
     ) {
-        context.log.trace("Sending gossip to \(target.address)", metadata: [
-            "gossip/target": "\(target.address)",
+        context.log.trace("Sending gossip to \(target.id)", metadata: [
+            "gossip/target": "\(target.id)",
             "gossip/peers/count": "\(self.peers.count)",
             "actor/message": Logger.MetadataValue.pretty(payload),
         ])
@@ -310,7 +310,7 @@ extension GossipShell {
                         context.log.debug("Automatically discovered peer", metadata: [
                             "gossip/peer": "\(peer)",
                             "gossip/peerCount": "\(self.peers.count)",
-                            "gossip/peers": "\(self.peers.map(\.address))",
+                            "gossip/peers": "\(self.peers.map(\.id))",
                         ])
                     }
                 } else {
@@ -358,7 +358,7 @@ extension GossipShell {
         if self.peers.insert(context.watch(peer)).inserted {
             context.log.trace("Got introduced to peer [\(peer)]", metadata: [
                 "gossip/peerCount": "\(self.peers.count)",
-                "gossip/peers": "\(self.peers.map(\.address))",
+                "gossip/peers": "\(self.peers.map(\.id))",
             ])
 
 //            // TODO: implement this rather as "high priority peer to gossip to"

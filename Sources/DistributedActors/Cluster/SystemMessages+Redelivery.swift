@@ -141,7 +141,7 @@ internal final class OutboundSystemMessageRedelivery {
         self.redeliveryIntervalBackoff = settings.makeRedeliveryBackoff
     }
 
-    func offer(_ message: _SystemMessage, recipient: ActorAddress) -> OfferedDirective {
+    func offer(_ message: _SystemMessage, recipient: ActorID) -> OfferedDirective {
         // Are we able to buffer this message?
         let nrOfMessagesPendingAcknowledgement = self.messagesPendingAcknowledgement.count
         guard nrOfMessagesPendingAcknowledgement < self.settings.redeliveryBufferLimit else {

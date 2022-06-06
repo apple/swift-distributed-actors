@@ -41,8 +41,8 @@ public final class _OperationLogClusterReceptionist {
     let storage = Receptionist.Storage()
 
     internal enum ReceptionistOp: OpLogStreamOp, Codable {
-        case register(key: AnyReceptionKey, address: ActorAddress)
-        case remove(key: AnyReceptionKey, address: ActorAddress)
+        case register(key: AnyReceptionKey, id: ActorID)
+        case remove(key: AnyReceptionKey, id: ActorID)
 
         var key: AnyReceptionKey {
             switch self {
@@ -171,10 +171,10 @@ extension _OperationLogClusterReceptionist {
         let boxedMessage = message._boxed
         let anyKey = message._key
         if self.storage.addSubscription(key: anyKey, subscription: boxedMessage) {
-            self.instrumentation.actorSubscribed(key: anyKey, address: message._addressableActorRef.address)
+            self.instrumentation.actorSubscribed(key: anyKey, id: message._addressableActorRef.id)
 
             context.watch(message._addressableActorRef)
-            context.log.trace("Subscribed \(message._addressableActorRef.address) to \(anyKey)")
+            context.log.trace("Subscribed \(message._addressableActorRef.id) to \(anyKey)")
             boxedMessage.replyWith(self.storage.registrations(forKey: anyKey) ?? [])
         }
     }
@@ -190,7 +190,7 @@ extension _OperationLogClusterReceptionist {
         let key = message._key.asAnyKey
         let ref = message._addressableActorRef
 
-        guard ref.address._isLocal || (ref.address.uniqueNode == context.system.cluster.uniqueNode) else {
+        guard ref.id._isLocal || (ref.id.uniqueNode == context.system.cluster.uniqueNode) else {
             context.log.warning("""
             Actor [\(ref)] attempted to register under key [\(key)], with NOT-local receptionist! \
             Actors MUST register with their local receptionist in today's Receptionist implementation.
@@ -199,17 +199,17 @@ extension _OperationLogClusterReceptionist {
         }
 
         if self.storage.addRegistration(key: key, ref: ref) {
-            self.instrumentation.actorRegistered(key: key, address: ref.address)
+            self.instrumentation.actorRegistered(key: key, id: ref.id)
 
             context.watch(ref)
 
-            self.addOperation(context, .register(key: key, address: ref.address))
+            self.addOperation(context, .register(key: key, id: ref.id))
 
             context.log.debug(
-                "Registered [\(ref.address)] for key [\(key)]",
+                "Registered [\(ref.id)] for key [\(key)]",
                 metadata: [
                     "receptionist/key": "\(key)",
-                    "receptionist/registered": "\(ref.address)",
+                    "receptionist/registered": "\(ref.id)",
                     "receptionist/opLog/maxSeqNr": "\(self.ops.maxSeqNr)",
                 ]
             )
@@ -284,7 +284,7 @@ extension _OperationLogClusterReceptionist {
         let peer = push.peer
 
         // 1.1) apply the pushed ops to our state
-        let peerReplicaId: ReplicaID = .actorAddress(push.peer.address)
+        let peerReplicaId: ReplicaID = .actorID(push.peer.id)
         let lastAppliedSeqNrAtPeer = self.appliedSequenceNrs[peerReplicaId]
 
         // De-duplicate
@@ -297,7 +297,7 @@ extension _OperationLogClusterReceptionist {
         context.log.trace(
             "Received \(push.sequencedOps.count) ops",
             metadata: [
-                "receptionist/peer": "\(push.peer.address)",
+                "receptionist/peer": "\(push.peer.id)",
                 "receptionist/lastKnownSeqNrAtPeer": "\(lastAppliedSeqNrAtPeer)",
                 "receptionist/opsToApply": Logger.Metadata.Value.array(opsToApply.map { Logger.Metadata.Value.string("\($0)") }),
             ]
@@ -318,7 +318,7 @@ extension _OperationLogClusterReceptionist {
         // 2) check for all peers if we are "behind", and should pull information from them
         //    if this message indicated "end" of the push, then we assume we are up to date with it
         //    and will only pull again from it on the SlowACK
-        let myselfReplicaID: ReplicaID = .actorAddress(context.myself.address)
+        let myselfReplicaID: ReplicaID = .actorID(context.myself.id)
         // Note that we purposefully also skip replying to the peer (sender) to the sender of this push yet,
         // we will do so below in any case, regardless if we are behind or not; See (4) for ACKing the peer
         for replica in push.observedSeqNrs.replicaIDs
@@ -326,10 +326,10 @@ extension _OperationLogClusterReceptionist {
             self.observedSequenceNrs[replica] < push.observedSeqNrs[replica]
         {
             switch replica.storage {
-            case .actorAddress(let address):
+            case .actorID(let address):
                 self.sendAckOps(context, receptionistAddress: address)
             default:
-                fatalError("Only .actorAddress supported as replica ID")
+                fatalError("Only .actorID supported as replica ID")
             }
         }
 
@@ -341,7 +341,7 @@ extension _OperationLogClusterReceptionist {
         // 4) ACK that we processed the ops, if there's any more to be replayed
         //    the peer will then send us another chunk of data.
         //    IMPORTANT: We want to confirm until the _latest_ number we know about
-        self.sendAckOps(context, receptionistAddress: peer.address, maybeReceptionistRef: peer)
+        self.sendAckOps(context, receptionistAddress: peer.id, maybeReceptionistRef: peer)
 
         // 5) Since we just received ops from `peer` AND also sent it an `AckOps`,
         //    there is no need to send it another _periodic_ AckOps potentially right after.
@@ -360,23 +360,23 @@ extension _OperationLogClusterReceptionist {
 
         // apply operation to storage
         switch op {
-        case .register(let key, let address):
-            let resolved = context.system._resolveUntyped(context: .init(address: address, system: context.system))
+        case .register(let key, let id):
+            let resolved = context.system._resolveUntyped(context: .init(id: id, system: context.system))
             context.watch(resolved)
             if self.storage.addRegistration(key: key, ref: resolved) {
-                self.instrumentation.actorRegistered(key: key, address: address)
+                self.instrumentation.actorRegistered(key: key, id: id)
             }
 
-        case .remove(let key, let address):
-            let resolved = context.system._resolveUntyped(context: .init(address: address, system: context.system))
+        case .remove(let key, let id):
+            let resolved = context.system._resolveUntyped(context: .init(id: id, system: context.system))
             context.unwatch(resolved)
             if self.storage.removeRegistration(key: key, ref: resolved) != nil {
-                self.instrumentation.actorRemoved(key: key, address: address)
+                self.instrumentation.actorRemoved(key: key, id: id)
             }
         }
 
         // update the version up until which we updated the state
-        self.appliedSequenceNrs.merge(other: VersionVector(sequenced.sequenceRange.max, at: .actorAddress(peer.address)))
+        self.appliedSequenceNrs.merge(other: VersionVector(sequenced.sequenceRange.max, at: .actorID(peer.id)))
 
         return op.key
     }
@@ -387,10 +387,10 @@ extension _OperationLogClusterReceptionist {
     /// as well as potentially causing further data to be sent.
     private func sendAckOps(
         _ context: _ActorContext<Message>,
-        receptionistAddress: ActorAddress,
+        receptionistAddress: ActorID,
         maybeReceptionistRef: ReceptionistRef? = nil
     ) {
-        assert(maybeReceptionistRef == nil || maybeReceptionistRef?.address == receptionistAddress, "Provided receptionistRef does NOT match passed Address, this is a bug in receptionist.")
+        assert(maybeReceptionistRef == nil || maybeReceptionistRef?.id == receptionistAddress, "Provided receptionistRef does NOT match passed Address, this is a bug in receptionist.")
         guard case .remote = receptionistAddress._location else {
             return // this would mean we tried to pull from a "local" receptionist, bail out
         }
@@ -405,13 +405,13 @@ extension _OperationLogClusterReceptionist {
         if let ref = maybeReceptionistRef {
             peerReceptionistRef = ref // allows avoiding to have to perform a resolve here
         } else {
-            peerReceptionistRef = context.system._resolve(context: .init(address: receptionistAddress, system: context.system))
+            peerReceptionistRef = context.system._resolve(context: .init(id: receptionistAddress, system: context.system))
         }
 
         // Get the latest seqNr of the op that we have applied to our state
         // If we never applied anything, this automatically is `0`, and by sending an `ack(0)`,
         // we effectively initiate the "first pull"
-        let latestAppliedSeqNrFromPeer = self.appliedSequenceNrs[.actorAddress(receptionistAddress)]
+        let latestAppliedSeqNrFromPeer = self.appliedSequenceNrs[.actorID(receptionistAddress)]
 
         let ack = AckOps(
             appliedUntil: latestAppliedSeqNrFromPeer,
@@ -470,7 +470,7 @@ extension _OperationLogClusterReceptionist {
             // the deadline is clearly overdue, so we remove the value completely to avoid them piling up in there even as peers terminate
             _ = self.nextPeriodicAckPermittedDeadline.removeValue(forKey: peer)
 
-            self.sendAckOps(context, receptionistAddress: peer.address, maybeReceptionistRef: peer)
+            self.sendAckOps(context, receptionistAddress: peer.id, maybeReceptionistRef: peer)
         }
     }
 
@@ -488,7 +488,7 @@ extension _OperationLogClusterReceptionist {
     }
 
     private func replicateOpsBatch(_ context: _ActorContext<Message>, to peer: _ActorRef<Receptionist.Message>) {
-        guard peer.address != context.address else {
+        guard peer.id != context.id else {
             return // no reason to stream updates to myself
         }
 
@@ -505,7 +505,7 @@ extension _OperationLogClusterReceptionist {
         context.log.debug(
             "Streaming \(sequencedOps.count) ops: from [\(replayer.atSeqNr)]",
             metadata: [
-                "receptionist/peer": "\(peer.address)",
+                "receptionist/peer": "\(peer.id)",
                 "receptionist/ops/replay/atSeqNr": "\(replayer.atSeqNr)",
                 "receptionist/ops/maxSeqNr": "\(self.ops.maxSeqNr)",
             ]
@@ -523,7 +523,7 @@ extension _OperationLogClusterReceptionist {
         case .remote(let remote):
             remote.sendUserMessage(pushOps)
         default:
-            fatalError("Remote receptionists MUST be of .remote personality, was: \(peer.personality), \(peer.address)")
+            fatalError("Remote receptionists MUST be of .remote personality, was: \(peer.personality), \(peer.id)")
         }
     }
 
@@ -536,7 +536,7 @@ extension _OperationLogClusterReceptionist {
             context.system.metrics._receptionist_registrations.decrement()
         }
 
-        let latestSelfSeqNr = VersionVector(self.ops.maxSeqNr, at: .actorAddress(context.myself.address))
+        let latestSelfSeqNr = VersionVector(self.ops.maxSeqNr, at: .actorID(context.myself.id))
         self.observedSequenceNrs.merge(other: latestSelfSeqNr)
         self.appliedSequenceNrs.merge(other: latestSelfSeqNr)
 
@@ -549,7 +549,7 @@ extension _OperationLogClusterReceptionist {
 
 extension _OperationLogClusterReceptionist {
     private func onTerminated(context: _ActorContext<_ReceptionistMessage>, terminated: _Signals.Terminated) {
-        if terminated.address == ActorAddress._receptionist(on: terminated.address.uniqueNode, for: .actorRefs) {
+        if terminated.id == ActorID._receptionist(on: terminated.id.uniqueNode, for: .actorRefs) {
             context.log.debug("Watched receptionist terminated: \(terminated)")
             self.onReceptionistTerminated(context, terminated: terminated)
         } else {
@@ -559,23 +559,23 @@ extension _OperationLogClusterReceptionist {
     }
 
     private func onReceptionistTerminated(_ context: _ActorContext<Message>, terminated: _Signals.Terminated) {
-        self.pruneClusterMember(context, removedNode: terminated.address.uniqueNode)
+        self.pruneClusterMember(context, removedNode: terminated.id.uniqueNode)
     }
 
     private func onActorTerminated(_ context: _ActorContext<Message>, terminated: _Signals.Terminated) {
-        self.onActorTerminated(context, address: terminated.address)
+        self.onActorTerminated(context, id: terminated.id)
     }
 
-    private func onActorTerminated(_ context: _ActorContext<Message>, address: ActorAddress) {
-        let equalityHackRef = _ActorRef<Never>(.deadLetters(.init(context.log, address: address, system: nil)))
+    private func onActorTerminated(_ context: _ActorContext<Message>, id: ActorID) {
+        let equalityHackRef = _ActorRef<Never>(.deadLetters(.init(context.log, id: id, system: nil)))
         let wasRegisteredWithKeys = self.storage.removeFromKeyMappings(equalityHackRef.asAddressable)
 
         for key in wasRegisteredWithKeys.registeredUnderKeys {
-            self.addOperation(context, .remove(key: key, address: address))
+            self.addOperation(context, .remove(key: key, id: id))
             self.publishListings(context, forKey: key)
         }
 
-        context.log.trace("Actor terminated \(address), and removed from receptionist.")
+        context.log.trace("Actor terminated \(id), and removed from receptionist.")
     }
 }
 
@@ -630,8 +630,8 @@ extension _OperationLogClusterReceptionist {
         context.log.debug("New member, contacting its receptionist: \(change.node)")
 
         // resolve receptionist on the other node, so we can stream our registrations to it
-        let remoteReceptionistAddress = ActorAddress._receptionist(on: change.node, for: .actorRefs)
-        let remoteReceptionist: _ActorRef<Message> = context.system._resolve(context: .init(address: remoteReceptionistAddress, system: context.system))
+        let remoteReceptionistAddress = ActorID._receptionist(on: change.node, for: .actorRefs)
+        let remoteReceptionist: _ActorRef<Message> = context.system._resolve(context: .init(id: remoteReceptionistAddress, system: context.system))
 
         // ==== "push" replication -----------------------------
         // we noticed a new member, and want to offer it our information right away
@@ -645,8 +645,8 @@ extension _OperationLogClusterReceptionist {
 
     private func pruneClusterMember(_ context: _ActorContext<_OperationLogClusterReceptionist.Message>, removedNode: UniqueNode) {
         context.log.trace("Pruning cluster member: \(removedNode)")
-        let terminatedReceptionistAddress = ActorAddress._receptionist(on: removedNode, for: .actorRefs)
-        let equalityHackPeerRef = _ActorRef<Message>(.deadLetters(.init(context.log, address: terminatedReceptionistAddress, system: nil)))
+        let terminatedReceptionistAddress = ActorID._receptionist(on: removedNode, for: .actorRefs)
+        let equalityHackPeerRef = _ActorRef<Message>(.deadLetters(.init(context.log, id: terminatedReceptionistAddress, system: nil)))
 
         guard self.peerReceptionistReplayers.removeValue(forKey: equalityHackPeerRef) != nil else {
             // we already removed it, so no need to keep scanning for it.
@@ -658,8 +658,8 @@ extension _OperationLogClusterReceptionist {
 
         // clear observations; we only get them directly from the origin node, so since it has been downed
         // we will never receive more observations from it.
-        _ = self.observedSequenceNrs.pruneReplica(.actorAddress(terminatedReceptionistAddress))
-        _ = self.appliedSequenceNrs.pruneReplica(.actorAddress(terminatedReceptionistAddress))
+        _ = self.observedSequenceNrs.pruneReplica(.actorID(terminatedReceptionistAddress))
+        _ = self.appliedSequenceNrs.pruneReplica(.actorID(terminatedReceptionistAddress))
 
         // clear state any registrations still lingering about the now-known-to-be-down node
         let pruned = self.storage.pruneNode(removedNode)
@@ -682,7 +682,7 @@ extension _OperationLogClusterReceptionist {
         /// Overview of all receptionist's latest SeqNr the `peer` receptionist was aware of at time of pushing.
         /// Recipient shall compare these versions and pull from appropriate nodes.
         ///
-        /// Guaranteed to be keyed with `.actorAddress`. // FIXME ensure this
+        /// Guaranteed to be keyed with `.actorID`. // FIXME ensure this
         // Yes, we're somewhat abusing the VV for our "container of sequence numbers",
         // but its merge() facility is quite handy here.
         let observedSeqNrs: VersionVector
@@ -839,9 +839,9 @@ extension _OperationLogClusterReceptionist {
             case .receive(nil):
                 return "RECV"
             case .push(let to):
-                return "PUSH(to:\(to.address))"
+                return "PUSH(to:\(to.id))"
             case .receive(let .some(from)):
-                return "RECV(from:\(from.address))"
+                return "RECV(from:\(from.id))"
             }
         }
     }

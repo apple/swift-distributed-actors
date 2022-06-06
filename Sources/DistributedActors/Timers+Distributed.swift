@@ -31,7 +31,7 @@ struct DistributedActorTimer {
 struct DistributedActorTimerEvent {
     let key: TimerKey
 //    let generation: Int
-    let owner: ActorAddress
+    let owner: ActorID
 }
 
 /// Creates and manages timers which may only be accessed from the actor that owns it.
@@ -41,7 +41,7 @@ struct DistributedActorTimerEvent {
 // TODO(distributed): rename once we're able to hide or remove `_BehaviorTimers`
 public final class ActorTimers<Act: DistributedActor> where Act.ActorSystem == ClusterSystem {
     @usableFromInline
-    internal let ownerID: ActorAddress
+    internal let ownerID: ActorID
 
     @usableFromInline
     internal let dispatchQueue = DispatchQueue.global()

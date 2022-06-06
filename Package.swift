@@ -208,6 +208,7 @@ var dependencies: [Package.Dependency] = [
     .package(url: "https://github.com/apple/swift-protobuf.git", from: "1.7.0"),
 
     // ~~~ backtraces ~~~
+    // TODO: optimally, library should not pull swift-backtrace
     .package(url: "https://github.com/swift-server/swift-backtrace.git", from: "1.1.1"),
 
     // ~~~ Swift Collections  ~~~

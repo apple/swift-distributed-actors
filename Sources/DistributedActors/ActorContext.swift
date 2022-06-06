@@ -28,7 +28,7 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
     }
 
     /// Uniquely identifies this actor in the cluster.
-    public var address: ActorAddress {
+    public var id: ActorID {
         _undefined()
     }
 

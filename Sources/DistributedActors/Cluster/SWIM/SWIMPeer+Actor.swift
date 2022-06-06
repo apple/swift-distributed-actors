@@ -37,7 +37,7 @@ extension SWIM.PingResponse: _AnySWIMMessage {}
 /// :nodoc:
 extension _ActorRef: SWIMAddressablePeer where Message: _AnySWIMMessage {
     public var node: ClusterMembership.Node {
-        .init(protocol: self.address.uniqueNode.node.protocol, host: self.address.uniqueNode.host, port: self.address.uniqueNode.port, uid: self.address.uniqueNode.nid.value)
+        .init(protocol: self.id.uniqueNode.node.protocol, host: self.id.uniqueNode.host, port: self.id.uniqueNode.port, uid: self.id.uniqueNode.nid.value)
     }
 }
 

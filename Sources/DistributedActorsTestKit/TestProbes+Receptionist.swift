@@ -37,7 +37,7 @@ extension ActorTestProbe where Message == Reception.Listing<_ActorRef<String>> {
                 else { return .ignore }
             }.first!
 
-            listing.refs.map(\.path).sorted().shouldEqual(expected.map(\.address.path).sorted(), file: file, line: line, column: column)
+            listing.refs.map(\.path).sorted().shouldEqual(expected.map(\.id.path).sorted(), file: file, line: line, column: column)
         } catch {
             throw self.error("Expected \(expected), error: \(error)", file: file, line: line)
         }

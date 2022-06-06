@@ -25,7 +25,7 @@ import protocol NIO.EventLoop
 /// as they may still be compared with the `AddressableActorRef` by comparing their respective addressable.
 ///
 /// This enables an `AddressableActorRef` to be useful for watching, storing and comparing actor references of various types with another.
-/// Note that unlike a plain `ActorAddress` an `AddressableActorRef` still DOES hold an actual reference to the pointed to actor,
+/// Note that unlike a plain `ActorID` an `AddressableActorRef` still DOES hold an actual reference to the pointed to actor,
 /// even though it is not able to send messages to it (due to the lack of type-safety when doing so).
 public struct AddressableActorRef: _DeathWatchable, Hashable {
     @usableFromInline
@@ -61,8 +61,8 @@ public struct AddressableActorRef: _DeathWatchable, Hashable {
         }
     }
 
-    public var address: ActorAddress {
-        self.ref.address
+    public var id: ActorID {
+        self.ref.id
     }
 
     public var asAddressable: AddressableActorRef {
@@ -87,17 +87,17 @@ public struct AddressableActorRef: _DeathWatchable, Hashable {
 
 extension AddressableActorRef: CustomStringConvertible {
     public var description: String {
-        "AddressableActorRef(\(self.ref.address))"
+        "AddressableActorRef(\(self.ref.id))"
     }
 }
 
 extension AddressableActorRef {
     public func hash(into hasher: inout Hasher) {
-        self.address.hash(into: &hasher)
+        self.id.hash(into: &hasher)
     }
 
     public static func == (lhs: AddressableActorRef, rhs: AddressableActorRef) -> Bool {
-        lhs.address == rhs.address
+        lhs.id == rhs.id
     }
 }
 
@@ -130,7 +130,7 @@ extension _RemoteClusterActorPersonality {
     @usableFromInline
     internal func _tellUnsafe(_ message: Any, file: String = #file, line: UInt = #line) {
         guard let _message = message as? Message else {
-            traceLog_Remote(self.system.cluster.uniqueNode, "\(self.address)._tellUnsafe [\(message)] failed because of invalid type; self: \(self); Sent at \(file):\(line)")
+            traceLog_Remote(self.system.cluster.uniqueNode, "\(self.id)._tellUnsafe [\(message)] failed because of invalid type; self: \(self); Sent at \(file):\(line)")
             return // TODO: drop the message
         }
 

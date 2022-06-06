@@ -780,7 +780,7 @@ final class SupervisionTests: ClusterSystemXCTestCase {
             return .same
         }.receiveSignal { _, signal in
             if let terminated = signal as? _Signals.Terminated {
-                parentProbe.tell("terminated:\(terminated.address.name)")
+                parentProbe.tell("terminated:\(terminated.id.name)")
                 try failureMode.fail()
             }
             return .same

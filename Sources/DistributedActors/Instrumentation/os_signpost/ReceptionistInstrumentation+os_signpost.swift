@@ -51,7 +51,7 @@ extension OSSignpostReceptionistInstrumentation {
         type:%{public}s
         """
 
-    public func actorSubscribed(key: AnyReceptionKey, address: ActorAddress) {
+    public func actorSubscribed(key: AnyReceptionKey, id: ActorID) {
         guard Self.log.signpostsEnabled else {
             return
         }
@@ -74,7 +74,7 @@ extension OSSignpostReceptionistInstrumentation {
         type:%{public}s
         """
 
-    public func actorRegistered(key: AnyReceptionKey, address: ActorAddress) {
+    public func actorRegistered(key: AnyReceptionKey, id: ActorID) {
         guard Self.log.signpostsEnabled else {
             return
         }
@@ -97,7 +97,7 @@ extension OSSignpostReceptionistInstrumentation {
         type:%{public}s
         """
 
-    public func actorRemoved(key: AnyReceptionKey, address: ActorAddress) {
+    public func actorRemoved(key: AnyReceptionKey, id: ActorID) {
         guard Self.log.signpostsEnabled else {
             return
         }

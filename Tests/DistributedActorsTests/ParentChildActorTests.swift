@@ -97,7 +97,7 @@ final class ParentChildActorTests: ClusterSystemXCTestCase {
             switch signal {
             case let terminated as _Signals.Terminated:
                 if notifyWhenChildStops {
-                    probe.tell(.childStopped(name: terminated.address.name))
+                    probe.tell(.childStopped(name: terminated.id.name))
                 }
             default:
                 ()
@@ -146,17 +146,17 @@ final class ParentChildActorTests: ClusterSystemXCTestCase {
         parent.tell(.findByName(name: unknownName))
         try p.expectMessage(.childNotFound(name: unknownName))
 
-        parent.tell(.findByName(name: child.address.name))
-        try p.expectMessage(.childFound(name: child.address.name, ref: child)) // should return same (or equal) ref
+        parent.tell(.findByName(name: child.id.name))
+        try p.expectMessage(.childFound(name: child.id.name, ref: child)) // should return same (or equal) ref
 
-        parent.tell(.stopByName(name: child.address.name)) // stopping by name
-        try p.expectMessage(.childFound(name: child.address.name, ref: child)) // we get the same, now dead, ref back
+        parent.tell(.stopByName(name: child.id.name)) // stopping by name
+        try p.expectMessage(.childFound(name: child.id.name, ref: child)) // we get the same, now dead, ref back
 
         p.watch(child) // watching dead ref triggers terminated
         try p.expectTerminated(child)
 
-        parent.tell(.findByName(name: child.address.name)) // should not find that child anymore, it was stopped
-        try p.expectMessage(.childNotFound(name: child.address.name))
+        parent.tell(.findByName(name: child.id.name)) // should not find that child anymore, it was stopped
+        try p.expectMessage(.childNotFound(name: child.id.name))
     }
 
     func test_contextSpawnAnonymous_shouldSpawnChildActorOnAppropriatePath() throws {
@@ -167,17 +167,17 @@ final class ParentChildActorTests: ClusterSystemXCTestCase {
 
         guard case .spawned(let child) = try p.expectMessage() else { throw p.error() }
 
-        parent.tell(.findByName(name: child.address.name))
-        try p.expectMessage(.childFound(name: child.address.name, ref: child)) // should return same (or equal) ref
+        parent.tell(.findByName(name: child.id.name))
+        try p.expectMessage(.childFound(name: child.id.name, ref: child)) // should return same (or equal) ref
 
-        parent.tell(.stopByName(name: child.address.name)) // stopping by name
-        try p.expectMessage(.childFound(name: child.address.name, ref: child)) // we get the same, now dead, ref back
+        parent.tell(.stopByName(name: child.id.name)) // stopping by name
+        try p.expectMessage(.childFound(name: child.id.name, ref: child)) // we get the same, now dead, ref back
 
         p.watch(child) // watching dead ref triggers terminated
         try p.expectTerminated(child)
 
-        parent.tell(.findByName(name: child.address.name)) // should not find that child anymore, it was stopped
-        try p.expectMessage(.childNotFound(name: child.address.name))
+        parent.tell(.findByName(name: child.id.name)) // should not find that child anymore, it was stopped
+        try p.expectMessage(.childNotFound(name: child.id.name))
     }
 
     func test_contextSpawn_duplicateNameShouldFail() throws {
@@ -359,8 +359,8 @@ final class ParentChildActorTests: ClusterSystemXCTestCase {
             return p.watch(ref)
         }
 
-        secondChild.address.path.shouldEqual(child.address.path)
-        secondChild.address.incarnation.shouldNotEqual(child.address.incarnation)
+        secondChild.id.path.shouldEqual(child.id.path)
+        secondChild.id.incarnation.shouldNotEqual(child.id.incarnation)
     }
 
     func test_throwOfWatchedSpawnedChild_shouldCauseParentToTerminate() throws {
@@ -412,10 +412,10 @@ final class ParentChildActorTests: ClusterSystemXCTestCase {
             switch signal {
             case let terminated as _Signals._ChildTerminated:
                 // only this should match
-                p.tell(.childStopped(name: "child-term:\(terminated.address.name)"))
+                p.tell(.childStopped(name: "child-term:\(terminated.id.name)"))
             case let terminated as _Signals.Terminated:
                 // no second "generic" terminated should be sent (though one could match for just Terminated)
-                p.tell(.childStopped(name: "term:\(terminated.address.name)"))
+                p.tell(.childStopped(name: "term:\(terminated.id.name)"))
             default:
                 return .ignore
             }
@@ -464,7 +464,7 @@ final class ParentChildActorTests: ClusterSystemXCTestCase {
             .anonymous,
             parentBehavior.receiveSignal { _, signal in
                 if case let terminated as _Signals.Terminated = signal {
-                    p.tell(.childStopped(name: terminated.address.name))
+                    p.tell(.childStopped(name: terminated.id.name))
                 }
 
                 return .same
@@ -476,7 +476,7 @@ final class ParentChildActorTests: ClusterSystemXCTestCase {
         guard case .spawned(let childRef) = try p.expectMessage() else { throw p.error() }
         guard case .childStopped(let name) = try p.expectMessage() else { throw p.error() }
 
-        childRef.address.name.shouldEqual(name)
+        childRef.id.name.shouldEqual(name)
     }
 
     func test_stopParent_shouldWaitForChildrenToStop() throws {

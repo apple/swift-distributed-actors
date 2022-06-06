@@ -284,7 +284,7 @@ extension _Behavior {
     ///     guard let terminated = signal as? Signals.Terminated else {
     ///         return .unhandled
     ///     }
-    ///     if terminated.address.name == "Juliet" {
+    ///     if terminated.id.name == "Juliet" {
     ///         return .stop // if Juliet died, we end ourselves as well
     ///     } else {
     ///         return .same
@@ -325,7 +325,7 @@ extension _Behavior {
     ///     guard let terminated = signal as? Signals.Terminated else {
     ///         return .unhandled
     ///     }
-    ///     if terminated.address.name == "Juliet" {
+    ///     if terminated.id.name == "Juliet" {
     ///         return .stop // if Juliet died, we end ourselves as well
     ///     } else {
     ///         return .ignore
@@ -349,7 +349,7 @@ extension _Behavior {
     /// #### Example usage
     /// ```
     /// let withSignalHandling = behavior.receiveSpecificSignal(Signals.Terminated.self) { context, terminated in
-    ///     if terminated.address.name == "Juliet" {
+    ///     if terminated.id.name == "Juliet" {
     ///         return .stop // if Juliet died, we end ourselves as well
     ///     } else {
     ///         return .ignore
@@ -376,7 +376,7 @@ extension _Behavior {
     /// #### Example usage
     /// ```
     /// return .receiveSpecificSignal(Signals.Terminated.self) { context, terminated in
-    ///     if terminated.address.name == "Juliet" {
+    ///     if terminated.id.name == "Juliet" {
     ///         return .stop // if Juliet died, we end ourselves as well
     ///     } else {
     ///         return .ignore
@@ -625,7 +625,7 @@ extension _Behavior {
             return fatalErrorBacktrace("""
             Illegal attempt to interpret message with .setup behavior! Behaviors MUST be canonicalized before interpreting. This is a bug, please open a ticket. 
               System: \(context.system)
-              Address: \(context.address.detailedDescription)
+              Address: \(context.id.detailedDescription)
               Message: \(message): \(type(of: message))
               _Behavior: \(self)
             """, file: file, line: line)

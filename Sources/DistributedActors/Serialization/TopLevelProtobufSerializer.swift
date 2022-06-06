@@ -27,8 +27,8 @@ internal class _TopLevel_ProtobufSerializer<Message>: Serializer<Message> {
     }
 
     override public func serialize(_ message: Message) throws -> Serialization.Buffer {
-        guard let repr = message as? Any_ProtobufRepresentable else {
-            throw SerializationError.unableToSerialize(hint: "Can only serialize AnyInternal_ProtobufRepresentable types, was: \(String(reflecting: Message.self))")
+        guard let repr = message as? _AnyProtobufRepresentable else {
+            throw SerializationError.unableToSerialize(hint: "Can only serialize Any_InternalProtobufRepresentable types, was: \(String(reflecting: Message.self))")
         }
 
         let encoder = TopLevelProtobufBlobEncoder(allocator: self.allocator)
@@ -45,8 +45,8 @@ internal class _TopLevel_ProtobufSerializer<Message>: Serializer<Message> {
     }
 
     override public func deserialize(from buffer: Serialization.Buffer) throws -> Message {
-        guard let ProtoType = Message.self as? Any_ProtobufRepresentable.Type else {
-            throw SerializationError.unableToDeserialize(hint: "Can only deserialize AnyInternal_ProtobufRepresentable but was \(Message.self)")
+        guard let ProtoType = Message.self as? _AnyProtobufRepresentable.Type else {
+            throw SerializationError.unableToDeserialize(hint: "Can only deserialize Any_InternalProtobufRepresentable but was \(Message.self)")
         }
 
         let decoder = TopLevelProtobufBlobDecoder()

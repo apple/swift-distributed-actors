@@ -60,13 +60,13 @@ final class DeathWatchTests: ClusterSystemXCTestCase {
             "watcher",
             of: String.self,
             .setup { context in
-                context.watch(stoppableRef, with: "terminated:\(stoppableRef.address.path)")
+                context.watch(stoppableRef, with: "terminated:\(stoppableRef.id.path)")
                 stoppableRef.tell(.stop)
                 return (_Behavior<String>.receiveMessage { message in
                     p.tell(message)
                     return .same
                 }).receiveSpecificSignal(_Signals.Terminated.self) { _, terminated in
-                    p.tell("signal:\(terminated.address.path)") // should not be signalled (!)
+                    p.tell("signal:\(terminated.id.path)") // should not be signalled (!)
                     return .same
                 }
             }
@@ -88,9 +88,9 @@ final class DeathWatchTests: ClusterSystemXCTestCase {
             "watcher",
             of: String.self,
             .setup { context in
-                context.watch(stoppableRef, with: "terminated-1:\(stoppableRef.address.path)")
-                context.watch(stoppableRef, with: "terminated-2:\(stoppableRef.address.path)")
-                context.watch(stoppableRef, with: "terminated-3:\(stoppableRef.address.path)")
+                context.watch(stoppableRef, with: "terminated-1:\(stoppableRef.id.path)")
+                context.watch(stoppableRef, with: "terminated-2:\(stoppableRef.id.path)")
+                context.watch(stoppableRef, with: "terminated-3:\(stoppableRef.id.path)")
                 stoppableRef.tell(.stop)
                 return (_Behavior<String>.receiveMessage { message in
                     p.tell(message)
@@ -118,15 +118,15 @@ final class DeathWatchTests: ClusterSystemXCTestCase {
             "watcher",
             of: String.self,
             .setup { context in
-                context.watch(stoppableRef, with: "terminated-1:\(stoppableRef.address.path)")
-                context.watch(stoppableRef, with: "terminated-2:\(stoppableRef.address.path)")
+                context.watch(stoppableRef, with: "terminated-1:\(stoppableRef.id.path)")
+                context.watch(stoppableRef, with: "terminated-2:\(stoppableRef.id.path)")
                 context.watch(stoppableRef, with: nil)
                 stoppableRef.tell(.stop)
                 return (_Behavior<String>.receiveMessage { message in
                     p.tell(message) // should NOT be signalled, we're back to Signals
                     return .same
                 }).receiveSpecificSignal(_Signals.Terminated.self) { _, terminated in
-                    p.tell("signal:\(terminated.address.path)") // should be signalled (!)
+                    p.tell("signal:\(terminated.id.path)") // should be signalled (!)
                     return .same
                 }
             }
@@ -426,7 +426,7 @@ final class DeathWatchTests: ClusterSystemXCTestCase {
         let _: _ActorRef<String> = try system._spawn("parent", spawnSomeStoppers)
 
         let terminated = try p.expectMessage()
-        terminated.address.path.shouldEqual(try! ActorPath._user.appending("parent").appending("stopper"))
+        terminated.id.path.shouldEqual(try! ActorPath._user.appending("parent").appending("stopper"))
         terminated.existenceConfirmed.shouldBeTrue()
         terminated.nodeTerminated.shouldBeFalse()
         terminated.shouldBe(_Signals._ChildTerminated.self)

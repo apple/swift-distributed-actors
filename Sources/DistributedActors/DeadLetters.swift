@@ -38,14 +38,14 @@ import Logging
 /// - SeeAlso: [Dead letter office](https://en.wikipedia.org/wiki/Dead_letter_office) on Wikipedia.
 public struct DeadLetter: NonTransportableActorMessage {
     let message: Any
-    let recipient: ActorAddress?
+    let recipient: ActorID?
 
     // TODO: sender and other metadata
 
     let sentAtFile: String?
     let sentAtLine: UInt?
 
-    public init(_ message: Any, recipient: ActorAddress?, sentAtFile: String? = #file, sentAtLine: UInt? = #line) {
+    public init(_ message: Any, recipient: ActorID?, sentAtFile: String? = #file, sentAtLine: UInt? = #line) {
         self.message = message
         self.recipient = recipient
         self.sentAtFile = sentAtFile
@@ -58,7 +58,7 @@ public struct DeadLetter: NonTransportableActorMessage {
 
 extension ClusterSystem {
     /// Dead letters reference dedicated to a specific address.
-    public func personalDeadLetters<Message: ActorMessage>(type: Message.Type = Message.self, recipient: ActorAddress) -> _ActorRef<Message> {
+    public func personalDeadLetters<Message: ActorMessage>(type: Message.Type = Message.self, recipient: ActorID) -> _ActorRef<Message> {
         // TODO: rather could we send messages to self._deadLetters with enough info so it handles properly?
 
         guard recipient.uniqueNode == self.settings.uniqueBindNode else {
@@ -68,18 +68,18 @@ extension ClusterSystem {
             ///
             /// We don't apply the special /dead path, as to not complicate diagnosing who actually terminated or if we were accidentally sent
             /// a remote actor ref that was dead(!)
-            return _ActorRef(.deadLetters(.init(self.log, address: recipient, system: self))).adapt(from: Message.self)
+            return _ActorRef(.deadLetters(.init(self.log, id: recipient, system: self))).adapt(from: Message.self)
         }
 
-        let localRecipient: ActorAddress
+        let localRecipient: ActorID
         if recipient.path.segments.first == ActorPath._dead.segments.first {
             // drop the node from the address; and we know the pointed at ref is already dead; do not prefix it again
-            localRecipient = ActorAddress(local: self.settings.uniqueBindNode, path: recipient.path, incarnation: recipient.incarnation)
+            localRecipient = ActorID(local: self.settings.uniqueBindNode, path: recipient.path, incarnation: recipient.incarnation)
         } else {
             // drop the node from the address; and prepend it as known-to-be-dead
-            localRecipient = ActorAddress(local: self.settings.uniqueBindNode, path: ActorPath._dead.appending(segments: recipient.segments), incarnation: recipient.incarnation)
+            localRecipient = ActorID(local: self.settings.uniqueBindNode, path: ActorPath._dead.appending(segments: recipient.segments), incarnation: recipient.incarnation)
         }
-        return _ActorRef(.deadLetters(.init(self.log, address: localRecipient, system: self))).adapt(from: Message.self)
+        return _ActorRef(.deadLetters(.init(self.log, id: localRecipient, system: self))).adapt(from: Message.self)
     }
 
     /// Anonymous `/dead/letters` reference, which may be used for messages which have no logical recipient.
@@ -114,7 +114,7 @@ extension ClusterSystem {
 ///
 /// ## Dead References
 ///
-/// An `ActorAddress` pointing to a local actor, yet obtained via clustered communication MAY be resolved as so called "dead reference".
+/// An `ActorID` pointing to a local actor, yet obtained via clustered communication MAY be resolved as so called "dead reference".
 ///
 /// A dead actor reference is defined by its inherent inability to *ever* have a chance to deliver messages to its target actor.
 /// While rare, such references may occur when a reference to a _local_ actor is obtained from remote communication, and thus
@@ -136,14 +136,14 @@ extension ClusterSystem {
 ///
 /// - SeeAlso: [Dead letter office](https://en.wikipedia.org/wiki/Dead_letter_office) on Wikipedia.
 public final class DeadLetterOffice {
-    let _address: ActorAddress
+    let _id: ActorID
     let log: Logger
     weak var system: ClusterSystem?
     let isShuttingDown: () -> Bool
 
-    init(_ log: Logger, address: ActorAddress, system: ClusterSystem?) {
+    init(_ log: Logger, id: ActorID, system: ClusterSystem?) {
         self.log = log
-        self._address = address
+        self._id = id
         self.system = system
         self.isShuttingDown = { [weak system] in
             system?.isShuttingDown ?? false
@@ -151,13 +151,13 @@ public final class DeadLetterOffice {
     }
 
     @usableFromInline
-    var address: ActorAddress {
-        self._address
+    var id: ActorID {
+        self._id
     }
 
     @usableFromInline
     var path: ActorPath {
-        self._address.path
+        self._id.path
     }
 
     @usableFromInline
@@ -169,7 +169,7 @@ public final class DeadLetterOffice {
         if let alreadyDeadLetter = message as? DeadLetter {
             self.onDeadLetter(alreadyDeadLetter, file: alreadyDeadLetter.sentAtFile ?? file, line: alreadyDeadLetter.sentAtLine ?? line)
         } else {
-            self.onDeadLetter(DeadLetter(message, recipient: self.address, sentAtFile: file, sentAtLine: line), file: file, line: line)
+            self.onDeadLetter(DeadLetter(message, recipient: self.id, sentAtFile: file, sentAtLine: line), file: file, line: line)
         }
     }
 
@@ -183,7 +183,7 @@ public final class DeadLetterOffice {
 
         let recipientString: String
         if let recipient = deadLetter.recipient {
-            let deadAddress: ActorAddress = .init(remote: recipient.uniqueNode, path: recipient.path, incarnation: recipient.incarnation)
+            let deadID: ActorID = .init(remote: recipient.uniqueNode, path: recipient.path, incarnation: recipient.incarnation)
 
             // should not really happen, as the only way to get a remote ref is to resolve it, and a remote resolve always yields a remote ref
             // thus, it is impossible to resolve a remote address into a dead ref; however keeping this path in case we manually make such mistake
@@ -192,7 +192,7 @@ public final class DeadLetterOffice {
                 return // do not log dead letters to /system actors while shutting down
             }
 
-            metadata["actor/path"] = Logger.MetadataValue.stringConvertible(deadAddress.path)
+            metadata["actor/path"] = Logger.MetadataValue.stringConvertible(deadID.path)
             recipientString = "to [\(String(reflecting: recipient.detailedDescription))]"
         } else {
             recipientString = ""
@@ -218,13 +218,13 @@ public final class DeadLetterOffice {
         )
     }
 
-    private func specialHandled(_ message: _SystemMessage, recipient: ActorAddress?) -> Bool {
+    private func specialHandled(_ message: _SystemMessage, recipient: ActorID?) -> Bool {
         // TODO: special handle $ask- replies; those mean we got a reply to an ask which timed out already
 
         switch message {
         case .tombstone:
             // FIXME: this should never happen; tombstone must always be taken in by the actor as last message
-            traceLog_Mailbox(self.address.path, "Tombstone arrived in dead letters. TODO: make sure these dont happen")
+            traceLog_Mailbox(self.id.path, "Tombstone arrived in dead letters. TODO: make sure these dont happen")
             return true // TODO: would be better to avoid them ending up here at all, this means that likely a double dead letter was sent
         case .watch(let watchee, let watcher):
             // if a watch message arrived here it either:

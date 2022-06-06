@@ -18,7 +18,7 @@
 public protocol _AbstractAdapter: _ActorTreeTraversable {
     var fromType: Any.Type { get }
 
-    var address: ActorAddress { get }
+    var id: ActorID { get }
     var deadLetters: _ActorRef<DeadLetter> { get }
 
     /// Try to `tell` given message, if the type matches the adapted (or direct) message type, it will be delivered.
@@ -43,16 +43,16 @@ public protocol _AbstractAdapter: _ActorTreeTraversable {
 internal final class _ActorRefAdapter<To: ActorMessage>: _AbstractAdapter {
     public let fromType: Any.Type
     private let target: _ActorRef<To>
-    let address: ActorAddress
+    let id: ActorID
     private var watchers: Set<AddressableActorRef>?
     private let lock = _Mutex()
 
     let deadLetters: _ActorRef<DeadLetter>
 
-    init<From>(fromType: From.Type, to ref: _ActorRef<To>, address: ActorAddress) {
+    init<From>(fromType: From.Type, to ref: _ActorRef<To>, id: ActorID) {
         self.fromType = fromType
         self.target = ref
-        self.address = address
+        self.id = id
         self.watchers = []
 
         // since we are an adapter, we must be attached to some "real" actor ref (be it local, remote or dead),
@@ -87,7 +87,7 @@ internal final class _ActorRefAdapter<To: ActorMessage>: _AbstractAdapter {
     }
 
     private func addWatcher(watchee: AddressableActorRef, watcher: AddressableActorRef) {
-        assert(watchee.address == self.address && watcher.address != self.address, "Illegal watch received. Watchee: [\(watchee)], watcher: [\(watcher)]")
+        assert(watchee.id == self.id && watcher.id != self.id, "Illegal watch received. Watchee: [\(watchee)], watcher: [\(watcher)]")
 
         self.lock.synchronized {
             guard self.watchers != nil else {
@@ -105,7 +105,7 @@ internal final class _ActorRefAdapter<To: ActorMessage>: _AbstractAdapter {
     }
 
     private func removeWatcher(watchee: AddressableActorRef, watcher: AddressableActorRef) {
-        assert(watchee.address == self.address && watcher.address != self.address, "Illegal unwatch received. Watchee: [\(watchee)], watcher: [\(watcher)]")
+        assert(watchee.id == self.id && watcher.id != self.id, "Illegal unwatch received. Watchee: [\(watchee)], watcher: [\(watcher)]")
 
         self.lock.synchronized {
             guard self.watchers != nil else {
@@ -125,7 +125,7 @@ internal final class _ActorRefAdapter<To: ActorMessage>: _AbstractAdapter {
     }
 
     private func sendTerminated(_ ref: AddressableActorRef) {
-        ref._sendSystemMessage(.terminated(ref: self.myselfAddressable, existenceConfirmed: true, addressTerminated: false))
+        ref._sendSystemMessage(.terminated(ref: self.myselfAddressable, existenceConfirmed: true, idTerminated: false))
     }
 
     func stop() {
@@ -165,7 +165,7 @@ extension _ActorRefAdapter {
 
     public func _resolve<Message>(context: ResolveContext<Message>) -> _ActorRef<Message> {
         guard context.selectorSegments.first == nil,
-              self.address.incarnation == context.address.incarnation
+              self.id.incarnation == context.id.incarnation
         else {
             return context.personalDeadLetters
         }
@@ -174,7 +174,7 @@ extension _ActorRefAdapter {
     }
 
     public func _resolveUntyped(context: ResolveContext<Never>) -> AddressableActorRef {
-        guard context.selectorSegments.first == nil, self.address.incarnation == context.address.incarnation else {
+        guard context.selectorSegments.first == nil, self.id.incarnation == context.id.incarnation else {
             return context.personalDeadLetters.asAddressable
         }
 
@@ -192,15 +192,15 @@ internal final class _DeadLetterAdapterPersonality: _AbstractAdapter {
     public let fromType: Any.Type = Never.self
 
     let deadLetters: _ActorRef<DeadLetter>
-    let deadRecipient: ActorAddress
+    let deadRecipient: ActorID
 
-    init(_ ref: _ActorRef<DeadLetter>, deadRecipient: ActorAddress) {
+    init(_ ref: _ActorRef<DeadLetter>, deadRecipient: ActorID) {
         self.deadLetters = ref
         self.deadRecipient = deadRecipient
     }
 
-    var address: ActorAddress {
-        self.deadLetters.address
+    var id: ActorID {
+        self.deadLetters.id
     }
 
     var system: ClusterSystem? {
@@ -240,20 +240,20 @@ internal final class SubReceiveAdapter<Message: ActorMessage, OwnerMessage: Acto
 
     private let target: _ActorRef<OwnerMessage>
     private let identifier: _AnySubReceiveId
-    private let adapterAddress: ActorAddress
+    private let adapterAddress: ActorID
     private var watchers: Set<AddressableActorRef>?
     private let lock = _Mutex()
 
-    var address: ActorAddress {
+    var id: ActorID {
         self.adapterAddress
     }
 
     let deadLetters: _ActorRef<DeadLetter>
 
-    init(_ type: Message.Type, owner ref: _ActorRef<OwnerMessage>, address: ActorAddress, identifier: _AnySubReceiveId) {
+    init(_ type: Message.Type, owner ref: _ActorRef<OwnerMessage>, id: ActorID, identifier: _AnySubReceiveId) {
         self.fromType = Message.self
         self.target = ref
-        self.adapterAddress = address
+        self.adapterAddress = id
         self.identifier = identifier
         self.watchers = []
 
@@ -297,14 +297,14 @@ internal final class SubReceiveAdapter<Message: ActorMessage, OwnerMessage: Acto
                 fatalError("trySendUserMessage on subReceive \(self.myself) was attempted with `To = \(OwnerMessage.self)` message [\(directMessage)], " +
                     "which is the original adapted-to message type. This should never happen, as on compile-level the message type should have been enforced to be `From = \(Message.self)`.")
             } else {
-                traceLog_Mailbox(self.address.path, "trySendUserMessage: [\(message)] failed because of invalid message type, to: \(self)")
+                traceLog_Mailbox(self.id.path, "trySendUserMessage: [\(message)] failed because of invalid message type, to: \(self)")
                 return // TODO: "drop" the message
             }
         }
     }
 
     private func addWatcher(watchee: AddressableActorRef, watcher: AddressableActorRef) {
-        assert(watchee.address == self.adapterAddress && watcher.address != self.adapterAddress, "Illegal watch received. Watchee: [\(watchee)], watcher: [\(watcher)]")
+        assert(watchee.id == self.adapterAddress && watcher.id != self.adapterAddress, "Illegal watch received. Watchee: [\(watchee)], watcher: [\(watcher)]")
 
         self.lock.synchronized {
             guard self.watchers != nil else {
@@ -322,7 +322,7 @@ internal final class SubReceiveAdapter<Message: ActorMessage, OwnerMessage: Acto
     }
 
     private func removeWatcher(watchee: AddressableActorRef, watcher: AddressableActorRef) {
-        assert(watchee.address == self.adapterAddress && watcher.address != self.adapterAddress, "Illegal unwatch received. Watchee: [\(watchee)], watcher: [\(watcher)]")
+        assert(watchee.id == self.adapterAddress && watcher.id != self.adapterAddress, "Illegal unwatch received. Watchee: [\(watchee)], watcher: [\(watcher)]")
 
         self.lock.synchronized {
             guard self.watchers != nil else {
@@ -342,7 +342,7 @@ internal final class SubReceiveAdapter<Message: ActorMessage, OwnerMessage: Acto
     }
 
     private func sendTerminated(_ ref: AddressableActorRef) {
-        ref._sendSystemMessage(.terminated(ref: self.myself.asAddressable, existenceConfirmed: true, addressTerminated: false))
+        ref._sendSystemMessage(.terminated(ref: self.myself.asAddressable, existenceConfirmed: true, idTerminated: false))
     }
 
     func stop() {
@@ -382,7 +382,7 @@ extension SubReceiveAdapter {
 
     public func _resolve<Message>(context: ResolveContext<Message>) -> _ActorRef<Message> {
         guard context.selectorSegments.first == nil,
-              self.address.incarnation == context.address.incarnation
+              self.id.incarnation == context.id.incarnation
         else {
             return context.personalDeadLetters
         }
@@ -396,7 +396,7 @@ extension SubReceiveAdapter {
     }
 
     public func _resolveUntyped(context: ResolveContext<Never>) -> AddressableActorRef {
-        guard context.selectorSegments.first == nil, self.address.incarnation == context.address.incarnation else {
+        guard context.selectorSegments.first == nil, self.id.incarnation == context.id.incarnation else {
             return context.personalDeadLetters.asAddressable
         }
 

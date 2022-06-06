@@ -18,7 +18,7 @@ syntax = "proto3";
 option optimize_for = SPEED;
 option swift_prefix = "_Proto";
 
-import "ActorAddress.proto";
+import "ActorID.proto";
 import "Serialization/Serialization.proto";
 
 // ==== Handshake ------------------------------------------------------------------------------------------------------
@@ -57,7 +57,7 @@ message HandshakeReject {
 // ==== Envelope -------------------------------------------------------------------------------------------------------
 
 message Envelope {
-    ActorAddress recipient = 1;
+    ActorID recipient = 1;
 
     Manifest manifest = 2;
     bytes payload     = 3;

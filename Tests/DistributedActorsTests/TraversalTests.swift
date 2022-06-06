@@ -71,8 +71,8 @@ final class TraversalTests: ClusterSystemXCTestCase {
         var seen: Set<String> = []
 
         self.system._traverseAllVoid { _, ref in
-            if ref.address.name != "traversalProbe", !ref.address.name.starts(with: "$") { // skip subReceive, etc.
-                seen.insert(ref.address.name)
+            if ref.id.name != "traversalProbe", !ref.id.name.starts(with: "$") { // skip subReceive, etc.
+                seen.insert(ref.id.name)
             }
             return .continue
         }
@@ -99,9 +99,9 @@ final class TraversalTests: ClusterSystemXCTestCase {
 
     func test_traverse_shouldAllowImplementingCollect() {
         let found: _TraversalResult<String> = self.system._traverseAll { _, ref in
-            if ref.address.name.contains("inner") {
+            if ref.id.name.contains("inner") {
                 // collect it
-                return .accumulateSingle(ref.address.name)
+                return .accumulateSingle(ref.id.name)
             } else {
                 return .continue
             }
@@ -120,10 +120,10 @@ final class TraversalTests: ClusterSystemXCTestCase {
 
     func test_traverse_shouldHaveRightDepthInContext() {
         let _: _TraversalResult<String> = self.system._traverseAll { context, ref in
-            if ref.address.name == "hello" {
+            if ref.id.name == "hello" {
                 context.depth.shouldEqual(1)
                 return .continue
-            } else if ref.address.name == "world" {
+            } else if ref.id.name == "world" {
                 context.depth.shouldEqual(2)
                 return .continue
             } else {

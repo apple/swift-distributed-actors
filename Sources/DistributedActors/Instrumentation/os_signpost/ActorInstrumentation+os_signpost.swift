@@ -33,11 +33,11 @@ public struct OSSignpostActorInstrumentation: ActorInstrumentation {
 
     static let logSystemMessages = OSLog(subsystem: "\(Self.subsystem)", category: "\(Self.categorySystemMessages)")
 
-    let address: ActorAddress
+    let actorID: ActorID
     let signpostID: OSSignpostID
 
-    public init(id: AnyObject, address: ActorAddress) {
-        self.address = address
+    public init(id: AnyObject, actorID: ActorID) {
+        self.actorID = actorID
         self.signpostID = OSSignpostID(
             log: OSSignpostActorInstrumentation.logMessages,
             object: id
@@ -70,7 +70,7 @@ extension OSSignpostActorInstrumentation {
             return
         }
 
-        guard !self.address.name.hasPrefix("$ask") else {
+        guard !self.actorID.name.hasPrefix("$ask") else {
             // don't track ask actor's int spawned etc, since they should eventually go away
             // ask timings are to be found in the Asks instrument
             return
@@ -82,7 +82,7 @@ extension OSSignpostActorInstrumentation {
             name: "Actor Lifecycle",
             signpostID: self.signpostID,
             Self.actorSpawnedStartFormat,
-            "\(self.address.uniqueNode)", "\(self.address.path)"
+            "\(self.actorID.uniqueNode)", "\(self.actorID.path)"
         )
 
         os_signpost(
@@ -91,7 +91,7 @@ extension OSSignpostActorInstrumentation {
             name: "Actor Lifecycle",
             signpostID: self.signpostID,
             Self.actorSpawnedStartFormat,
-            "\(self.address.uniqueNode)", "\(self.address.path)"
+            "\(self.actorID.uniqueNode)", "\(self.actorID.path)"
         )
     }
 
@@ -100,7 +100,7 @@ extension OSSignpostActorInstrumentation {
             return
         }
 
-        guard !self.address.name.hasPrefix("$ask") else {
+        guard !self.actorID.name.hasPrefix("$ask") else {
             // don't track ask actor's int spawned etc, since they should eventually go away
             // ask timings are to be found in the Asks instrument
             return
@@ -121,7 +121,7 @@ extension OSSignpostActorInstrumentation {
             return
         }
 
-        guard !self.address.name.hasPrefix("$ask") else {
+        guard !self.actorID.name.hasPrefix("$ask") else {
             // don't track ask actor's int spawned etc, since they should eventually go away
             // ask timings are to be found in the Asks instrument
             return
@@ -168,7 +168,7 @@ extension OSSignpostActorInstrumentation {
         """
 
     // FIXME: we need the sender() to attach properly
-    public func actorTold(message: Any, from: ActorAddress?) {
+    public func actorTold(message: Any, from: ActorID?) {
         guard OSSignpostActorInstrumentation.logMessages.signpostsEnabled else {
             return
         }
@@ -179,7 +179,7 @@ extension OSSignpostActorInstrumentation {
             name: "Actor Message (Tell)",
             signpostID: self.signpostID,
             Self.actorToldEventPattern,
-            "\(self.address.uniqueNode)", "\(self.address.path)",
+            "\(self.actorID.uniqueNode)", "\(self.actorID.path)",
             "\(from?.uniqueNode.description ?? "")", "\(from?.path.description ?? "")",
             "\(message)", String(reflecting: type(of: message))
         )
@@ -211,7 +211,7 @@ extension OSSignpostActorInstrumentation {
         error-type:%{public}s
         """
 
-    public func actorAsked(message: Any, from: ActorAddress?) {
+    public func actorAsked(message: Any, from: ActorID?) {
         guard OSSignpostActorInstrumentation.logMessages.signpostsEnabled else {
             return
         }
@@ -222,7 +222,7 @@ extension OSSignpostActorInstrumentation {
             name: "Actor Message (Ask)",
             signpostID: self.signpostID,
             Self.actorAskedEventPattern,
-            "\(self.address.uniqueNode)", "\(self.address.path)",
+            "\(self.actorID.uniqueNode)", "\(self.actorID.path)",
             "\(from?.uniqueNode.description ?? "")", "\(from?.path.description ?? "")",
             "\(message)", String(reflecting: type(of: message))
         )
@@ -281,7 +281,7 @@ extension OSSignpostActorInstrumentation {
         message-type:%{public}s
         """
 
-    public func actorReceivedStart(message: Any, from: ActorAddress?) {
+    public func actorReceivedStart(message: Any, from: ActorID?) {
         guard OSSignpostActorInstrumentation.logMessages.signpostsEnabled else {
             return
         }
@@ -292,8 +292,8 @@ extension OSSignpostActorInstrumentation {
             name: "Actor Message (Received)",
             signpostID: self.signpostID,
             Self.actorReceivedEventPattern,
-            "\(self.address.uniqueNode.description)",
-            "\(self.address.path)",
+            "\(self.actorID.uniqueNode.description)",
+            "\(self.actorID.path)",
             "\(from?.uniqueNode.description ?? "")",
             "\(from?.path.description ?? "")",
             "\(message)",
@@ -318,7 +318,7 @@ extension OSSignpostActorInstrumentation {
         watcher:%{public}s
         """
 
-    public func actorWatchReceived(watchee: ActorAddress, watcher: ActorAddress) {
+    public func actorWatchReceived(watchee: ActorID, watcher: ActorID) {
         guard Self.logSystemMessages.signpostsEnabled else {
             return
         }
@@ -333,7 +333,7 @@ extension OSSignpostActorInstrumentation {
         )
     }
 
-    public func actorUnwatchReceived(watchee: ActorAddress, watcher: ActorAddress) {
+    public func actorUnwatchReceived(watchee: ActorID, watcher: ActorID) {
         guard Self.logSystemMessages.signpostsEnabled else {
             return
         }

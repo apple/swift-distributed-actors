@@ -477,7 +477,7 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
         switch self.inboundSystemMessages.onDelivery(systemEnvelope) {
         case .accept(let ack):
             // unwrap and immediately deliver the message; we do not need to forward it to the user-message handler
-            let ref = self.system._resolveUntyped(context: .init(address: wireEnvelope.recipient, system: self.system))
+            let ref = self.system._resolveUntyped(context: .init(id: wireEnvelope.recipient, system: self.system))
             ref._sendSystemMessage(systemEnvelope.message)
 
             // TODO: potential for coalescing some ACKs here; schedule "lets write back in 300ms"
@@ -637,7 +637,7 @@ private final class UserMessageHandler: ChannelInboundHandler {
 
         // 1. Resolve the actor, it MUST be local and MUST contain the actual Message type it expects
         let ref = self.system._resolveUntyped(
-            context: .init(address: wireEnvelope.recipient, system: self.system)
+            context: .init(id: wireEnvelope.recipient, system: self.system)
         )
         // We resolved "untyped" meaning that we did not take into account the Type of the actor when looking for it.
         // However, the actor ref "inside" has strict knowledge about what specific Message type it is about (!).
@@ -870,11 +870,11 @@ internal struct TransportEnvelope: CustomStringConvertible, CustomDebugStringCon
         case nack(_SystemMessage.NACK)
     }
 
-    let recipient: ActorAddress
+    let recipient: ActorID
 
     // TODO: carry same data as Envelope -- baggage etc
 
-    init(envelope: Payload, recipient: ActorAddress) {
+    init(envelope: Payload, recipient: ActorID) {
         switch envelope.payload {
         case .message(let message):
             self.storage = .message(message)
@@ -889,28 +889,28 @@ internal struct TransportEnvelope: CustomStringConvertible, CustomDebugStringCon
         // TODO: carry metadata from Envelope
     }
 
-    init<Message>(message: Message, recipient: ActorAddress) {
+    init<Message>(message: Message, recipient: ActorID) {
         // assert(Message.self != Any.self)
         self.storage = .message(message)
         self.recipient = recipient
     }
 
-    init(systemMessage: _SystemMessage, recipient: ActorAddress) {
+    init(systemMessage: _SystemMessage, recipient: ActorID) {
         self.storage = .systemMessage(systemMessage)
         self.recipient = recipient
     }
 
-    init(systemMessageEnvelope: SystemMessageEnvelope, recipient: ActorAddress) {
+    init(systemMessageEnvelope: SystemMessageEnvelope, recipient: ActorID) {
         self.storage = .systemMessageEnvelope(systemMessageEnvelope)
         self.recipient = recipient
     }
 
-    init(ack: _SystemMessage.ACK, recipient: ActorAddress) {
+    init(ack: _SystemMessage.ACK, recipient: ActorID) {
         self.storage = .systemMessageDelivery(.ack(ack))
         self.recipient = recipient
     }
 
-    init(nack: _SystemMessage.NACK, recipient: ActorAddress) {
+    init(nack: _SystemMessage.NACK, recipient: ActorID) {
         self.storage = .systemMessageDelivery(.nack(nack))
         self.recipient = recipient
     }
