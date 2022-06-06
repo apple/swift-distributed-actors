@@ -170,7 +170,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
         // We deliberately only count user actors here, because the number of
         // system actors may change over time and they are also not relevant for
         // this type of test.
-        if actorID.segments.first?.value == "user" {
+        if id.segments.first?.value == "user" {
             system.userCellInitCounter.loadThenWrappingIncrement(ordering: .relaxed)
         }
         #endif
