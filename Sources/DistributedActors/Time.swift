@@ -20,8 +20,6 @@ import struct NIO.TimeAmount
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: TimeAmount
 
-// TODO: We have discussed and wanted to "do your own" rather than import the NIO ones, but not entirely sold on the usefulness of replicating them -- ktoso
-
 /// Represents a time _interval_.
 ///
 /// - note: `TimeAmount` should not be used to represent a point in time.
@@ -31,7 +29,7 @@ public struct TimeAmount: Codable, Sendable {
     /// The nanoseconds representation of the `TimeAmount`.
     public let nanoseconds: Value
 
-    fileprivate init(_ nanoseconds: Value) { // FIXME: Needed the copy since this constructor
+    fileprivate init(_ nanoseconds: Value) {
         self.nanoseconds = nanoseconds
     }
 
@@ -415,36 +413,6 @@ extension Deadline {
 
     public var timeLeft: TimeAmount {
         .nanoseconds(self.uptimeNanoseconds - Deadline.now().uptimeNanoseconds)
-    }
-}
-
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Clock
-
-/// A `Clock` implementation using `Date`.
-public struct WallTimeClock: Codable, Sendable, Comparable, CustomStringConvertible {
-    internal let timestamp: Date
-
-    public static let zero = WallTimeClock(timestamp: Date.distantPast)
-
-    public init() {
-        self.init(timestamp: Date())
-    }
-
-    public init(timestamp: Date) {
-        self.timestamp = timestamp
-    }
-
-    public static func < (lhs: WallTimeClock, rhs: WallTimeClock) -> Bool {
-        lhs.timestamp < rhs.timestamp
-    }
-
-    public static func == (lhs: WallTimeClock, rhs: WallTimeClock) -> Bool {
-        lhs.timestamp == rhs.timestamp
-    }
-
-    public var description: String {
-        "\(self.timestamp.description)"
     }
 }
 
