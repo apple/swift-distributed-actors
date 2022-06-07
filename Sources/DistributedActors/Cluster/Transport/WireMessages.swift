@@ -22,7 +22,7 @@ internal enum Wire {
     typealias Message = WireMessage
 
     /// The wire protocol version is the DistributedActors version (at least now)
-    public typealias Version = DistributedActors.Version
+    public typealias Version = ClusterSystem.Version
 
     /// Envelope type carrying messages over the network.
     struct Envelope: Codable {

@@ -136,12 +136,12 @@ public struct ClusterSystemSettings {
     // MARK: Cluster protocol versioning
 
     /// `ProtocolVersion` to be used when exposing `UniqueNode` for node configured by using these settings.
-    public var protocolVersion: DistributedActors.Version {
+    public var protocolVersion: ClusterSystem.Version {
         self._protocolVersion
     }
 
     /// FOR TESTING ONLY: Exposed for testing handshake negotiation while joining nodes of different versions.
-    internal var _protocolVersion: DistributedActors.Version = DistributedActorsProtocolVersion
+    internal var _protocolVersion: ClusterSystem.Version = DistributedActorsProtocolVersion
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Cluster.Membership Gossip
@@ -267,9 +267,8 @@ extension Array where Element == _InternalActorTransport {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Logging Settings
 
-/// Note that some of these settings would be obsolete if we had a nice configurable LogHandler which could selectively
-/// log some labelled loggers and some not. Until we land such log handler we have to manually in-project opt-in/-out
-/// of logging some subsystems.
+/// Settings which allow customizing logging behavior by various sub-systems of the cluster system.
+///
 public struct LoggingSettings {
     public static var `default`: LoggingSettings {
         .init()
@@ -308,23 +307,18 @@ public struct LoggingSettings {
     }
 
     internal var customizedLogger: Bool = false
-    internal var _logger: Logger = LoggingSettings.makeDefaultLogger()
-    static func makeDefaultLogger() -> Logger {
-        Logger(label: "ClusterSystem-initializing") // replaced by specific system name during startup
-    }
+    internal var _logger: Logger = Logger(label: "ClusterSystem-initializing") // replaced by specific system name during startup
 
-    // TODO: hope to remove this once a StdOutLogHandler lands that has formatting support;
-    // logs are hard to follow with not consistent order of metadata etc (like system address etc).
-    public var useBuiltInFormatter: Bool = true
+    internal var useBuiltInFormatter: Bool = true
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Verbose logging of sub-systems (again, would not be needed with configurable appenders)
 
     /// Log all detailed timer start/cancel events
-    public var verboseTimers = false
+    internal var verboseTimers = false
 
     /// Log all actor `spawn` events
-    public var verboseSpawning = false
+    internal var verboseSpawning = false
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------

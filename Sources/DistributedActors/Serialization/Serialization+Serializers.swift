@@ -96,8 +96,6 @@ internal class NonTransportableSerializer<Message>: Serializer<Message> {
 /// Abstracts over different Encoder/Decoder and other serialization mechanisms.
 ///
 /// Serializers may directly work on `NIO.ByteBuffer` or on `Foundation.Data`.
-///
-/// - Warning: This type may be replaced if we managed to pull Combine's "TopLevelEncoder" types into stdlib.
 public protocol AnySerializer {
     func trySerialize(_ message: Any) throws -> Serialization.Buffer
 
