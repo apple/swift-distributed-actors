@@ -13,9 +13,9 @@
 //===----------------------------------------------------------------------===//
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: ReceptionistInstrumentation
+// MARK: _ReceptionistInstrumentation
 
-public protocol ReceptionistInstrumentation: Sendable {
+protocol _ReceptionistInstrumentation: Sendable {
     init()
 
     func actorSubscribed(key: AnyReceptionKey, id: ActorID)
@@ -30,7 +30,7 @@ public protocol ReceptionistInstrumentation: Sendable {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Noop ReceptionistInstrumentation
 
-struct NoopReceptionistInstrumentation: ReceptionistInstrumentation {
+struct NoopReceptionistInstrumentation: _ReceptionistInstrumentation {
     public init() {}
 
     func actorSubscribed(key: AnyReceptionKey, id: ActorID) {}

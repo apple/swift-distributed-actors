@@ -68,10 +68,6 @@ public final class _RemoteClusterActorPersonality<Message: ActorMessage> {
     //   we only pay the cost of this atomic read, rather than the expensive hashmap lookup and locking!
     private var _cachedAssociation: ManagedAtomicLazyReference<Association>
 
-    // TODO: move instrumentation into the transport?
-    @usableFromInline
-    internal var instrumentation: ActorInstrumentation!
-
     init(shell: ClusterShell, id: ActorID, system: ClusterSystem) {
         precondition(id._isRemote, "RemoteActorRef MUST be remote. ActorID was: \(String(reflecting: id))")
 
@@ -84,8 +80,6 @@ public final class _RemoteClusterActorPersonality<Message: ActorMessage> {
 
         self.clusterShell = shell
         self.system = system
-
-        self.instrumentation = system.settings.instrumentation.makeActorInstrumentation(self, id) // TODO: could be in association, per node
     }
 
     @usableFromInline
@@ -95,7 +89,6 @@ public final class _RemoteClusterActorPersonality<Message: ActorMessage> {
         switch self.association {
         case .association(let association):
             association.sendUserMessage(envelope: Payload(payload: .message(message)), recipient: self.id)
-            self.instrumentation.actorTold(message: message, from: nil)
         case .tombstone:
             // TODO: metric for dead letter: self.instrumentation.deadLetter(message: message, from: nil)
             self.deadLetters.tell(message, file: file, line: line)
@@ -125,7 +118,6 @@ public final class _RemoteClusterActorPersonality<Message: ActorMessage> {
         switch self.association {
         case .association(let association):
             association.sendSystemMessage(message, recipient: self.id)
-            self.instrumentation.actorTold(message: message, from: nil)
         case .tombstone:
             // TODO: metric for dead letter: self.instrumentation.deadLetter(message: message, from: nil)
             self.system.personalDeadLetters(recipient: self.id).tell(message, file: file, line: line)

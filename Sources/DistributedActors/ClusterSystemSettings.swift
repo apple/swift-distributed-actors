@@ -230,10 +230,13 @@ public struct ClusterSystemSettings {
     }
 
     public var metrics: MetricsSettings = .default(rootName: nil)
-    public var instrumentation: InstrumentationSettings = .default
+    
+    /// Internal only; Instrumentation configuration, allowing to set instrumentation objects to be called by actor system internals, for purpose of metrics collection etc.
+    internal var instrumentation: InstrumentationSettings = .default
 
     /// Installs a global backtrace (on fault) pretty-print facility upon actor system start.
-    public var installSwiftBacktrace: Bool = true
+    @available(*, deprecated, message: "Backtrace will not longer be offered by the actor system by default, and has to be depended on by end-users")
+    internal var installSwiftBacktrace: Bool = true
 
     // FIXME: should have more proper config section
     public var threadPoolSize: Int = ProcessInfo.processInfo.activeProcessorCount
@@ -339,24 +342,24 @@ extension ClusterSystemSettings {
 // MARK: Instrumentation Settings
 
 extension ClusterSystemSettings {
-    public struct InstrumentationSettings {
+    
+    /// Prototype instrumentation mechanism settings.
+    ///
+    /// These can be used to inject implementations of instrumentation into the cluster system,
+    /// which are invoked at apropriate times and can be uset to emit metrics about a specific `ClusterSystem` sub-system.
+    struct InstrumentationSettings {
         /// Default set of enabled instrumentations, based on current operating system.
         ///
         /// On Apple platforms, this includes the `OSSignpostInstrumentationProvider` provided instrumentations,
         /// as they carry only minimal overhead in release builds when the signposts are not active.
         ///
         /// You may easily installing any kind of instrumentations, regardless of platform, by using `.none` instead of `.default`.
-        public static var `default`: InstrumentationSettings {
+        static var `default`: InstrumentationSettings {
             .init()
         }
 
-        public static var none: InstrumentationSettings {
+        static var none: InstrumentationSettings {
             InstrumentationSettings()
-        }
-
-        /// - SeeAlso: `ActorInstrumentation`
-        public var makeActorInstrumentation: (AnyObject, ActorID) -> ActorInstrumentation = { id, actorID in
-            NoopActorInstrumentation(id: id, actorID: actorID)
         }
 
         /// - SeeAlso: `_InternalActorTransportInstrumentation`
@@ -365,15 +368,11 @@ extension ClusterSystemSettings {
         }
 
         /// - SeeAlso: `ReceptionistInstrumentation`
-        public var makeReceptionistInstrumentation: () -> ReceptionistInstrumentation = { () in
+        var makeReceptionistInstrumentation: () -> _ReceptionistInstrumentation = { () in
             NoopReceptionistInstrumentation()
         }
 
-        public mutating func configure(with provider: ClusterSystemInstrumentationProvider) {
-            if let instrumentFactory = provider.actorInstrumentation {
-                self.makeActorInstrumentation = instrumentFactory
-            }
-
+        mutating func configure(with provider: ClusterSystemInstrumentationProvider) {
             if let instrumentFactory = provider.actorTransportInstrumentation {
                 self.makeInternalActorTransportInstrumentation = instrumentFactory
             }
@@ -385,16 +384,19 @@ extension ClusterSystemSettings {
     }
 }
 
-public protocol ClusterSystemInstrumentationProvider {
-    var actorInstrumentation: ((AnyObject, ActorID) -> ActorInstrumentation)? { get }
+protocol ClusterSystemInstrumentationProvider {
     var actorTransportInstrumentation: (() -> _InternalActorTransportInstrumentation)? { get }
-    var receptionistInstrumentation: (() -> ReceptionistInstrumentation)? { get }
+    var receptionistInstrumentation: (() -> _ReceptionistInstrumentation)? { get }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Cluster Service Discovery Settings
 
 /// Configure initial contact point discovery to use a `ServiceDiscovery` implementation.
+///
+/// By providing a service discovery implementation, the `ClusterSystem` will reach out to nodes discovered using this mechanism,
+/// in an attempt to form (or join) a cluster with those nodes. These typically should include a few initial contact points, but can also include
+/// all the nodes of an existing cluster.
 public struct ServiceDiscoverySettings {
     internal let implementation: AnyServiceDiscovery
     private let _subscribe: (@escaping (Result<[Node], Error>) -> Void, @escaping (CompletionReason) -> Void) -> CancellationToken

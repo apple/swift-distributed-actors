@@ -154,7 +154,7 @@ public distributed actor OpLogDistributedReceptionist: DistributedReceptionist, 
     typealias ReceptionistRef = OpLogDistributedReceptionist
     typealias Key<Guest: DistributedActor> = DistributedReception.Key<Guest> where Guest.ActorSystem == ClusterSystem
 
-    internal let instrumentation: ReceptionistInstrumentation
+    internal let instrumentation: _ReceptionistInstrumentation
 
     /// Stores the actual mappings of keys to actors.
     let storage = DistributedReceptionistStorage()
