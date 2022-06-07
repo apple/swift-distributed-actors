@@ -21,7 +21,7 @@ extension Cluster {
     /// Represents the set of members of this cluster.
     ///
     /// Membership changes are driven by nodes joining and leaving the cluster.
-    /// Leaving the cluster may be graceful or triggered by a ``FailureDetector``.
+    /// Leaving the cluster may be graceful or triggered by a failure detector.
     ///
     /// ### Replacement (Unique)Nodes
     /// A node (or member) is referred to as a "replacement" if it shares _the same_ protocol+host+address (i.e. ``Node``),
