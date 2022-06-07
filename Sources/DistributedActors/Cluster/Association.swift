@@ -171,6 +171,12 @@ extension Association {
         let transportEnvelope = TransportEnvelope(envelope: envelope, recipient: recipient)
         self._send(transportEnvelope, promise: promise)
     }
+    
+    /// Concurrency: safe to invoke from any thread.
+    func sendInvocation(_ invocation: InvocationMessage, recipient: ActorID, promise: EventLoopPromise<Void>? = nil) {
+        let transportEnvelope = TransportEnvelope(invocation: invocation, recipient: recipient)
+        self._send(transportEnvelope, promise: promise)
+    }
 
     /// Concurrency: safe to invoke from any thread.
     func sendSystemMessage(_ message: _SystemMessage, recipient: ActorID, promise: EventLoopPromise<Void>? = nil) {

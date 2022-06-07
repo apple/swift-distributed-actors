@@ -199,7 +199,7 @@ final class ClusterSystemTests: ClusterSystemXCTestCase {
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Remote call API tests
 
-    func test_remoteCall_success() async throws {
+    func test_remoteCall() async throws {
         let local = await setUpNode("local") { settings in
             settings.enabled = true
             settings.serialization.registerInbound(GreeterCodableError.self)

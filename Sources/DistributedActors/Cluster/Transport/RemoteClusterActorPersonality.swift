@@ -101,6 +101,20 @@ public final class _RemoteClusterActorPersonality<Message: ActorMessage> {
             self.deadLetters.tell(message, file: file, line: line)
         }
     }
+    
+    @usableFromInline
+    func sendInvocation(_ invocation: InvocationMessage, file: String = #file, line: UInt = #line) {
+        traceLog_Cell("RemoteActorRef(\(self.id)) sendInvocation: \(invocation)")
+
+        switch self.association {
+        case .association(let association):
+            association.sendInvocation(invocation, recipient: self.id)
+            self.instrumentation.actorTold(message: invocation, from: nil)
+        case .tombstone:
+            // TODO: metric for dead letter: self.instrumentation.deadLetter(message: message, from: nil)
+            self.system.deadLetters.tell(DeadLetter(invocation, recipient: self.id), file: file, line: line)
+        }
+    }
 
     @usableFromInline
     func sendSystemMessage(_ message: _SystemMessage, file: String = #file, line: UInt = #line) {
