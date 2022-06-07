@@ -125,11 +125,11 @@ final class DistributedReceptionistTests: ClusterSystemXCTestCase {
 
 //    func test_receptionist_shouldNotRegisterTheSameRefTwice() throws {
 //        let receptionist = SystemReceptionist(ref: try system._spawn("receptionist", self.receptionistBehavior))
-//        let lookupProbe: ActorTestProbe<Reception.Listing<_ActorRef<String>>> = self.testKit.makeTestProbe()
+//        let lookupProbe: ActorTestProbe<_Reception.Listing<_ActorRef<String>>> = self.testKit.makeTestProbe()
 //
 //        let ref: _ActorRef<String> = try system._spawn(.anonymous, .receiveMessage { _ in .same })
 //
-//        let key = Reception.Key(_ActorRef<String>.self, id: "test")
+//        let key = _Reception.Key(_ActorRef<String>.self, id: "test")
 //
 //        receptionist.checkIn(ref, with: key)
 //        receptionist.checkIn(ref, with: key)
@@ -143,7 +143,7 @@ final class DistributedReceptionistTests: ClusterSystemXCTestCase {
 //
 //    func test_receptionist_shouldRemoveAndAddNewSingletonRef() throws {
 //        let receptionist = SystemReceptionist(ref: try system._spawn("receptionist", self.receptionistBehavior))
-//        let lookupProbe: ActorTestProbe<Reception.Listing<_ActorRef<String>>> = self.testKit.makeTestProbe()
+//        let lookupProbe: ActorTestProbe<_Reception.Listing<_ActorRef<String>>> = self.testKit.makeTestProbe()
 //
 //        let old: _ActorRef<String> = try system._spawn(
 //                .anonymous,
@@ -159,7 +159,7 @@ final class DistributedReceptionistTests: ClusterSystemXCTestCase {
 //                }
 //        )
 //
-//        let key = Reception.Key(_ActorRef<String>.self, id: "shouldBeOne")
+//        let key = _Reception.Key(_ActorRef<String>.self, id: "shouldBeOne")
 //
 //        receptionist.checkIn(old, with: key)
 //        old.tell("stop")
@@ -177,7 +177,7 @@ final class DistributedReceptionistTests: ClusterSystemXCTestCase {
 //
 //    func test_receptionist_shouldReplyWithRegistered() throws {
 //        let receptionist = SystemReceptionist(ref: try system._spawn("receptionist", self.receptionistBehavior))
-//        let probe: ActorTestProbe<Reception.Registered<_ActorRef<String>>> = self.testKit.makeTestProbe()
+//        let probe: ActorTestProbe<_Reception.Registered<_ActorRef<String>>> = self.testKit.makeTestProbe()
 //
 //        let key = DistributedReception.Key(_ActorRef<String>.self, id: "test")
 //
@@ -191,7 +191,7 @@ final class DistributedReceptionistTests: ClusterSystemXCTestCase {
 //
 //    func test_receptionist_shouldCheckOutTerminatedRefs() throws {
 //        let receptionist = SystemReceptionist(ref: try system._spawn("receptionist", self.receptionistBehavior))
-//        let lookupProbe: ActorTestProbe<Reception.Listing<_ActorRef<String>>> = self.testKit.makeTestProbe()
+//        let lookupProbe: ActorTestProbe<_Reception.Listing<_ActorRef<String>>> = self.testKit.makeTestProbe()
 //
 //        let ref: _ActorRef<String> = try system._spawn(
 //                .anonymous,
@@ -200,7 +200,7 @@ final class DistributedReceptionistTests: ClusterSystemXCTestCase {
 //                }
 //        )
 //
-//        let key = Reception.Key(_ActorRef<String>.self, id: "test")
+//        let key = _Reception.Key(_ActorRef<String>.self, id: "test")
 //
 //        receptionist.checkIn(ref, with: key)
 //
@@ -219,7 +219,7 @@ final class DistributedReceptionistTests: ClusterSystemXCTestCase {
 //
 //    func test_receptionist_shouldContinuouslySendUpdatesForSubscriptions() throws {
 //        let receptionist = SystemReceptionist(ref: try system._spawn("receptionist", self.receptionistBehavior))
-//        let lookupProbe: ActorTestProbe<Reception.Listing<_ActorRef<String>>> = self.testKit.makeTestProbe()
+//        let lookupProbe: ActorTestProbe<_Reception.Listing<_ActorRef<String>>> = self.testKit.makeTestProbe()
 //
 //        let refA: _ActorRef<String> = try system._spawn(
 //                .anonymous,
@@ -235,19 +235,19 @@ final class DistributedReceptionistTests: ClusterSystemXCTestCase {
 //                }
 //        )
 //
-//        let key = Reception.Key(_ActorRef<String>.self, id: "test")
+//        let key = _Reception.Key(_ActorRef<String>.self, id: "test")
 //
 //        receptionist.listing(lookupProbe.ref, to: key)
-//        try lookupProbe.expectMessage(Reception.Listing(refs: [], key: key))
+//        try lookupProbe.expectMessage(_Reception.Listing(refs: [], key: key))
 //
 //        receptionist.checkIn(refA, with: key)
-//        try lookupProbe.expectMessage(Reception.Listing(refs: [refA.asAddressable], key: key))
+//        try lookupProbe.expectMessage(_Reception.Listing(refs: [refA.asAddressable], key: key))
 //
 //        receptionist.checkIn(refB, with: key)
-//        try lookupProbe.expectMessage(Reception.Listing(refs: [refA.asAddressable, refB.asAddressable], key: key))
+//        try lookupProbe.expectMessage(_Reception.Listing(refs: [refA.asAddressable, refB.asAddressable], key: key))
 //
 //        refB.tell("stop")
-//        try lookupProbe.expectMessage(Reception.Listing(refs: [refA.asAddressable], key: key))
+//        try lookupProbe.expectMessage(_Reception.Listing(refs: [refA.asAddressable], key: key))
 //    }
 //
 //    // ==== ------------------------------------------------------------------------------------------------------------
@@ -255,9 +255,9 @@ final class DistributedReceptionistTests: ClusterSystemXCTestCase {
 //
 //    func test_delayedFlush_shouldEmitEvenWhenAllPeersRemoved() throws {
 //        let receptionist = SystemReceptionist(ref: try system._spawn("receptionist", self.receptionistBehavior))
-//        let lookupProbe: ActorTestProbe<Reception.Listing<_ActorRef<String>>> = self.testKit.makeTestProbe()
+//        let lookupProbe: ActorTestProbe<_Reception.Listing<_ActorRef<String>>> = self.testKit.makeTestProbe()
 //
-//        let key = Reception.Key(_ActorRef<String>.self, id: "test")
+//        let key = _Reception.Key(_ActorRef<String>.self, id: "test")
 //
 //        receptionist.listing(lookupProbe.ref, to: key)
 //        _ = try lookupProbe.expectMessage()

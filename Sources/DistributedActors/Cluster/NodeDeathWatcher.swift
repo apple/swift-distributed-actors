@@ -55,7 +55,7 @@ internal final class NodeDeathWatcherInstance: NodeDeathWatcher {
     }
 
     /// Mapping between remote node, and actors which have watched some actors on given remote node.
-    private var remoteWatchers: [UniqueNode: Set<AddressableActorRef>] = [:]
+    private var remoteWatchers: [UniqueNode: Set<_AddressableActorRef>] = [:]
     private var remoteWatchCallbacks: [UniqueNode: Set<WatcherAndCallback>] = [:]
 
     init(selfNode: UniqueNode) {
@@ -64,7 +64,7 @@ internal final class NodeDeathWatcherInstance: NodeDeathWatcher {
     }
 
     @available(*, deprecated, message: "will be replaced by distributed actor / closure version")
-    func onActorWatched(by watcher: AddressableActorRef, remoteNode: UniqueNode) {
+    func onActorWatched(by watcher: _AddressableActorRef, remoteNode: UniqueNode) {
         guard !self.nodeTombstones.contains(remoteNode) else {
             // the system the watcher is attempting to watch has terminated before the watch has been processed,
             // thus we have to immediately reply with a termination system message, as otherwise it would never receive one
@@ -149,7 +149,7 @@ internal protocol NodeDeathWatcher {
     /// Called when the `watcher` watches a remote actor which resides on the `remoteNode`.
     /// A failure detector may have to start monitoring this node using some internal mechanism,
     /// in order to be able to signal the watcher in case the node terminates (e.g. the node crashes).
-    func onActorWatched(by watcher: AddressableActorRef, remoteNode: UniqueNode)
+    func onActorWatched(by watcher: _AddressableActorRef, remoteNode: UniqueNode)
 
     /// Called when the cluster membership changes.
     ///
@@ -172,7 +172,7 @@ enum NodeDeathWatcherShell {
     /// By default, the `FailureDetectorShell` handles these messages by interpreting them with an underlying `FailureDetector`,
     /// it would be possible however to allow implementing the raw protocol by user actors if we ever see the need for it.
     internal enum Message: NonTransportableActorMessage {
-        case remoteActorWatched(watcher: AddressableActorRef, remoteNode: UniqueNode)
+        case remoteActorWatched(watcher: _AddressableActorRef, remoteNode: UniqueNode)
         case remoteDistributedActorWatched(remoteNode: UniqueNode, watcherID: ClusterSystem.ActorID, nodeTerminated: @Sendable (UniqueNode) async -> Void)
         case removeWatcher(watcherID: ClusterSystem.ActorID)
         case membershipSnapshot(Cluster.Membership)

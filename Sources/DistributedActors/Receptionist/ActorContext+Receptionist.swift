@@ -24,7 +24,7 @@ extension _ActorContext {
 extension _ActorContext {
     /// The receptionist enables type-safe and dynamic (subscription based) actor discovery.
     ///
-    /// Actors may register themselves when they start with an `Reception.Key<A>`
+    /// Actors may register themselves when they start with an `_Reception.Key<A>`
     ///
     /// - SeeAlso: `DistributedActors.Receptionist` for the `_ActorRef<Message>` version of this API.
     internal struct Receptionist: _MyselfReceptionistOperations {
@@ -53,10 +53,10 @@ extension _ActorContext {
         /// thread-safe to mutate any of the actors state from this callback.
         @inlinable
         public func subscribeMyself<Guest>(
-            to key: Reception.Key<Guest>,
-            subReceive: @escaping (Reception.Listing<Guest>) -> Void
+            to key: _Reception.Key<Guest>,
+            subReceive: @escaping (_Reception.Listing<Guest>) -> Void
         ) where Guest: _ReceptionistGuest {
-            let ref = self._underlyingContext.subReceive(Reception.Listing<Guest>.self, subReceive)
+            let ref = self._underlyingContext.subReceive(_Reception.Listing<Guest>.self, subReceive)
             self._system._receptionist.subscribe(ref, to: key)
         }
     }

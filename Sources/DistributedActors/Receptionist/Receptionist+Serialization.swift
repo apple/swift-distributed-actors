@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-extension Reception.Listing: ActorMessage {
+extension _Reception.Listing: ActorMessage {
     enum CodingKeys: CodingKey {
         case listing
         case key
@@ -21,9 +21,9 @@ extension Reception.Listing: ActorMessage {
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
-        self.key = try container.decode(Reception.Key<Guest>.self, forKey: .key)
+        self.key = try container.decode(_Reception.Key<Guest>.self, forKey: .key)
         let listingDecoder = try container.superDecoder(forKey: .listing)
-        self.underlying = try Set<AddressableActorRef>(from: listingDecoder)
+        self.underlying = try Set<_AddressableActorRef>(from: listingDecoder)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -36,7 +36,7 @@ extension Reception.Listing: ActorMessage {
     }
 }
 
-extension Reception.Key {
+extension _Reception.Key {
     internal enum CodingKeys: CodingKey {
         case manifest
         case id
@@ -44,7 +44,7 @@ extension Reception.Key {
 
     public init(from decoder: Decoder) throws {
         guard let context = decoder.actorSerializationContext else {
-            throw SerializationError.missingSerializationContext(decoder, Reception.Listing<Guest>.self)
+            throw SerializationError.missingSerializationContext(decoder, _Reception.Listing<Guest>.self)
         }
 
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -62,7 +62,7 @@ extension Reception.Key {
 
     public func encode(to encoder: Encoder) throws {
         guard let context: Serialization.Context = encoder.actorSerializationContext else {
-            throw SerializationError.missingSerializationContext(encoder, Reception.Listing<Guest>.self)
+            throw SerializationError.missingSerializationContext(encoder, _Reception.Listing<Guest>.self)
         }
         var container = encoder.container(keyedBy: CodingKeys.self)
 

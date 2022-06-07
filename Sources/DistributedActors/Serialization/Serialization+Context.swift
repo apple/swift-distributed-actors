@@ -65,8 +65,8 @@ extension Serialization {
             return self.system._resolve(context: context)
         }
 
-        /// Similar to `_resolveActorRef` but for an untyped `AddressableActorRef`.
-        public func _resolveAddressableActorRef(identifiedBy id: ActorID, userInfo: [CodingUserInfoKey: Any] = [:]) -> AddressableActorRef {
+        /// Similar to `_resolveActorRef` but for an untyped `_AddressableActorRef`.
+        public func _resolveAddressableActorRef(identifiedBy id: ActorID, userInfo: [CodingUserInfoKey: Any] = [:]) -> _AddressableActorRef {
             let context = ResolveContext<Never>(id: id, system: self.system, userInfo: userInfo)
             return self.system._resolveUntyped(context: context)
         }

@@ -18,12 +18,6 @@ import NIO
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Actor Message
 
-/// An Actor message is simply a Codable type.
-///
-/// Any Codable it able to be sent as an actor message.
-///
-/// You can customize which coder/decoder should be used by registering specialized manifests for the message type,
-/// or having the type conform to one of the special `...Representable` (e.g. `_ProtobufRepresentable`) protocols.
 public typealias ActorMessage = Codable // FIXME: MAKE THIS SENDABLE: & Sendable
 
 /// A `Never` can never be sent as message, even more so over the wire.

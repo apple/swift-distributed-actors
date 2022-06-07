@@ -141,7 +141,7 @@ final class ActorTestKitTests: XCTestCase {
 
     func test_ensureRegistered() throws {
         let p = self.testKit.makeTestProbe(expecting: String.self)
-        let receptionKey: Reception.Key<_ActorRef<String>> = "*"
+        let receptionKey: _Reception.Key<_ActorRef<String>> = "*"
 
         self.system._receptionist.register(p.ref, as: "*")
 

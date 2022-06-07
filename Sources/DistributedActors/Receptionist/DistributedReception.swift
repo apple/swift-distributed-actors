@@ -47,7 +47,7 @@ extension DistributedReception {
             self.id = value
         }
 
-        internal func resolve(system: ClusterSystem, id: ActorID) -> AddressableActorRef {
+        internal func resolve(system: ClusterSystem, id: ActorID) -> _AddressableActorRef {
             let ref: _ActorRef<InvocationMessage> = system._resolve(context: ResolveContext(id: id, system: system))
             return ref.asAddressable
         }
@@ -76,7 +76,7 @@ struct AnyDistributedReceptionKey: Sendable, Codable, Hashable, CustomStringConv
         self.guestType = Guest.self
     }
 
-    func resolve(system: ClusterSystem, id: ActorID) -> AddressableActorRef {
+    func resolve(system: ClusterSystem, id: ActorID) -> _AddressableActorRef {
         // Since we don't have the type information here, we can't properly resolve
         // and the only safe thing to do is to return `deadLetters`.
         system.personalDeadLetters(type: Never.self, recipient: id).asAddressable
@@ -141,10 +141,10 @@ struct AnyDistributedReceptionKey: Sendable, Codable, Hashable, CustomStringConv
 //    /// Response to `Lookup` and `Subscribe` requests.
 //    /// A listing MAY be empty.
 //    public struct Listing<Guest: _ReceptionistGuest>: Equatable, CustomStringConvertible {
-//        let underlying: Set<AddressableActorRef>
+//        let underlying: Set<_AddressableActorRef>
 //        let key: DistributedReception.Key<Guest>
 //
-//        init(refs: Set<AddressableActorRef>, key: DistributedReception.Key<Guest>) {
+//        init(refs: Set<_AddressableActorRef>, key: DistributedReception.Key<Guest>) {
 //            // TODO: assert the refs match type?
 //            self.underlying = refs
 //            self.key = key
@@ -174,7 +174,7 @@ struct AnyDistributedReceptionKey: Sendable, Codable, Hashable, CustomStringConv
 //    /// Retrieve all listed actor references, mapping them to their appropriate type.
 //    /// Note that this operation is lazy and has to iterate over all the actors when performing the
 //    /// iteration.
-//    public var refs: LazyMapSequence<Set<AddressableActorRef>, _ActorRef<Guest.Message>> {
+//    public var refs: LazyMapSequence<Set<_AddressableActorRef>, _ActorRef<Guest.Message>> {
 //        self.underlying.lazy.map { self.key._unsafeAsActorRef($0) }
 //    }
 //

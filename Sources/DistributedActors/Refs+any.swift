@@ -21,13 +21,13 @@ import protocol NIO.EventLoop
 
 /// Represents an actor which we know existed at some point in time and this represents its type-erased reference.
 ///
-/// An `AddressableActorRef` can be used as type-eraser for specific actor references (be it `Actor` or `_ActorRef` based),
-/// as they may still be compared with the `AddressableActorRef` by comparing their respective addressable.
+/// An `_AddressableActorRef` can be used as type-eraser for specific actor references (be it `Actor` or `_ActorRef` based),
+/// as they may still be compared with the `_AddressableActorRef` by comparing their respective addressable.
 ///
-/// This enables an `AddressableActorRef` to be useful for watching, storing and comparing actor references of various types with another.
-/// Note that unlike a plain `ActorID` an `AddressableActorRef` still DOES hold an actual reference to the pointed to actor,
+/// This enables an `_AddressableActorRef` to be useful for watching, storing and comparing actor references of various types with another.
+/// Note that unlike a plain `ActorID` an `_AddressableActorRef` still DOES hold an actual reference to the pointed to actor,
 /// even though it is not able to send messages to it (due to the lack of type-safety when doing so).
-public struct AddressableActorRef: _DeathWatchable, Hashable {
+public struct _AddressableActorRef: _DeathWatchable, Hashable {
     @usableFromInline
     enum RefType {
         case remote
@@ -65,7 +65,7 @@ public struct AddressableActorRef: _DeathWatchable, Hashable {
         self.ref.id
     }
 
-    public var asAddressable: AddressableActorRef {
+    public var asAddressable: _AddressableActorRef {
         self
     }
 
@@ -85,18 +85,18 @@ public struct AddressableActorRef: _DeathWatchable, Hashable {
     }
 }
 
-extension AddressableActorRef: CustomStringConvertible {
+extension _AddressableActorRef: CustomStringConvertible {
     public var description: String {
-        "AddressableActorRef(\(self.ref.id))"
+        "_AddressableActorRef(\(self.ref.id))"
     }
 }
 
-extension AddressableActorRef {
+extension _AddressableActorRef {
     public func hash(into hasher: inout Hasher) {
         self.id.hash(into: &hasher)
     }
 
-    public static func == (lhs: AddressableActorRef, rhs: AddressableActorRef) -> Bool {
+    public static func == (lhs: _AddressableActorRef, rhs: _AddressableActorRef) -> Bool {
         lhs.id == rhs.id
     }
 }
@@ -104,7 +104,7 @@ extension AddressableActorRef {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Internal or unsafe methods
 
-extension AddressableActorRef: _ReceivesSystemMessages {
+extension _AddressableActorRef: _ReceivesSystemMessages {
     public func _tellOrDeadLetter(_ message: Any, file: String = #file, line: UInt = #line) {
         self.ref._tellOrDeadLetter(message, file: file, line: line)
     }

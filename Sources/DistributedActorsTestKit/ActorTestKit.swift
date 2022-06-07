@@ -248,7 +248,7 @@ extension ActorTestKit {
         precondition(!path.contains("#"), "assertion path MUST NOT contain # id section of an unique path.")
 
         let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
-        let res: _TraversalResult<AddressableActorRef> = self.system._traverseAll { _, ref in
+        let res: _TraversalResult<_AddressableActorRef> = self.system._traverseAll { _, ref in
             if ref.id.path.description == path {
                 return .accumulateSingle(ref)
             } else {
@@ -485,23 +485,23 @@ extension ActorTestKit {
     /// If `expectedRefs` is specified, also compares it to the listing for `key` and requires an exact match.
     @available(*, deprecated, message: "Will be removed and replaced by API based on DistributedActor. Issue #824")
     public func ensureRegistered<Message>(
-        key: Reception.Key<_ActorRef<Message>>,
+        key: _Reception.Key<_ActorRef<Message>>,
         expectedCount: Int = 1,
         expectedRefs: Set<_ActorRef<Message>>? = nil,
         within: TimeAmount = .seconds(3)
     ) throws {
-        let lookupProbe = self.makeTestProbe(expecting: Reception.Listing<_ActorRef<Message>>.self)
+        let lookupProbe = self.makeTestProbe(expecting: _Reception.Listing<_ActorRef<Message>>.self)
 
         try self.eventually(within: within) {
             self.system._receptionist.lookup(key, replyTo: lookupProbe.ref)
 
             let listing = try lookupProbe.expectMessage()
             guard listing.refs.count == expectedCount else {
-                throw self.error("Expected Reception.Listing for key [\(key)] to have count [\(expectedCount)], but got [\(listing.refs.count)]")
+                throw self.error("Expected _Reception.Listing for key [\(key)] to have count [\(expectedCount)], but got [\(listing.refs.count)]")
             }
             if let expectedRefs = expectedRefs {
                 guard Set(listing.refs) == expectedRefs else {
-                    throw self.error("Expected Reception.Listing for key [\(key)] to have refs \(expectedRefs), but got \(listing.refs)")
+                    throw self.error("Expected _Reception.Listing for key [\(key)] to have refs \(expectedRefs), but got \(listing.refs)")
                 }
             }
         }

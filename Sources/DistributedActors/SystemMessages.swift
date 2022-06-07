@@ -46,9 +46,9 @@ public enum _SystemMessage: Equatable {
     case start
 
     /// Notifies an actor that it is being watched by the `from` actor
-    case watch(watchee: AddressableActorRef, watcher: AddressableActorRef)
+    case watch(watchee: _AddressableActorRef, watcher: _AddressableActorRef)
     /// Notifies an actor that it is no longer being watched by the `from` actor
-    case unwatch(watchee: AddressableActorRef, watcher: AddressableActorRef)
+    case unwatch(watchee: _AddressableActorRef, watcher: _AddressableActorRef)
 
     /// Received after `watch` was issued to an actor ref
     /// - Parameters:
@@ -56,7 +56,7 @@ public enum _SystemMessage: Equatable {
     ///   - existenceConfirmed: true if the `terminated` message is sent as response to a watched actor terminating,
     ///     and `false` if the existence of the actor could not be proven (e.g. message ended up being routed to deadLetters,
     ///     or the node hosting the actor has been downed, thus we assumed the actor has died as well, but we cannot prove it did).
-    case terminated(ref: AddressableActorRef, existenceConfirmed: Bool, idTerminated: Bool) // TODO: more additional info? // TODO: send terminated PATH, not ref, sending to it does not make sense after all
+    case terminated(ref: _AddressableActorRef, existenceConfirmed: Bool, idTerminated: Bool) // TODO: more additional info? // TODO: send terminated PATH, not ref, sending to it does not make sense after all
 
     /// Extension point for transports or other plugins which may need to send custom signals to actors.
     /// The carried signal will be delivered as-is to the recipient actor.
@@ -64,7 +64,7 @@ public enum _SystemMessage: Equatable {
 
     /// Child actor has terminated. This system message by itself does not necessarily cause a DeathPact and termination of the parent.
     /// If the message carries an `escalated` failure, the failure should apply to the parent as well, potentially tearing it down as well.
-    case childTerminated(ref: AddressableActorRef, TerminationCircumstances)
+    case childTerminated(ref: _AddressableActorRef, TerminationCircumstances)
 
     /// Node has terminated, and all actors of this node shall be considered as terminated.
     /// This system message does _not_ have a direct counter part as `Signal`, and instead results in the sending of multiple
@@ -108,17 +108,17 @@ public enum TerminationCircumstances {
 
 extension _SystemMessage {
     @inlinable
-    internal static func terminated(ref: AddressableActorRef) -> _SystemMessage {
+    internal static func terminated(ref: _AddressableActorRef) -> _SystemMessage {
         .terminated(ref: ref, existenceConfirmed: false, idTerminated: false)
     }
 
     @inlinable
-    internal static func terminated(ref: AddressableActorRef, existenceConfirmed: Bool) -> _SystemMessage {
+    internal static func terminated(ref: _AddressableActorRef, existenceConfirmed: Bool) -> _SystemMessage {
         .terminated(ref: ref, existenceConfirmed: existenceConfirmed, idTerminated: false)
     }
 
     @inlinable
-    internal static func terminated(ref: AddressableActorRef, idTerminated: Bool) -> _SystemMessage {
+    internal static func terminated(ref: _AddressableActorRef, idTerminated: Bool) -> _SystemMessage {
         .terminated(ref: ref, existenceConfirmed: false, idTerminated: idTerminated)
     }
 }

@@ -85,20 +85,20 @@ public struct _ActorRef<Message: ActorMessage>: @unchecked Sendable, _ReceivesMe
     }
 }
 
-/// Any actor which is able to erase itself into an untyped `AddressableActorRef`.
+/// Any actor which is able to erase itself into an untyped `_AddressableActorRef`.
 public protocol AddressableActor {
-    var asAddressable: AddressableActorRef { get }
+    var asAddressable: _AddressableActorRef { get }
 }
 
 extension _ActorRef {
-    /// Exposes given the current actor reference as limited capability representation of itself; an `AddressableActorRef`.
+    /// Exposes given the current actor reference as limited capability representation of itself; an `_AddressableActorRef`.
     ///
-    /// An `AddressableActorRef` can be used to uniquely identify an actor, however it is not possible to directly send
+    /// An `_AddressableActorRef` can be used to uniquely identify an actor, however it is not possible to directly send
     /// messages to such identified actor via this reference type.
     ///
-    /// - SeeAlso: `AddressableActorRef` for a detailed discussion of its typical use-cases.
-    public var asAddressable: AddressableActorRef {
-        AddressableActorRef(self)
+    /// - SeeAlso: `_AddressableActorRef` for a detailed discussion of its typical use-cases.
+    public var asAddressable: _AddressableActorRef {
+        _AddressableActorRef(self)
     }
 }
 
@@ -654,7 +654,7 @@ public class _Guardian {
         }
     }
 
-    func stopChild(_ childRef: AddressableActorRef) throws {
+    func stopChild(_ childRef: _AddressableActorRef) throws {
         try self._childrenLock.synchronized {
             guard self._children.contains(identifiedBy: childRef.id) else {
                 throw _ActorContextError.attemptedStoppingNonChildActor(ref: childRef)
@@ -698,7 +698,7 @@ public class _Guardian {
 }
 
 extension _Guardian: _ActorTreeTraversable {
-    public func _traverse<T>(context: _TraversalContext<T>, _ visit: (_TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
+    public func _traverse<T>(context: _TraversalContext<T>, _ visit: (_TraversalContext<T>, _AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
         let children: _Children = self.children
 
         var c = context.deeper
@@ -728,7 +728,7 @@ extension _Guardian: _ActorTreeTraversable {
         }
     }
 
-    public func _resolveUntyped(context: ResolveContext<Never>) -> AddressableActorRef {
+    public func _resolveUntyped(context: ResolveContext<Never>) -> _AddressableActorRef {
         guard let selector = context.selectorSegments.first else {
             fatalError("Expected selector in guardian._resolve()!")
         }

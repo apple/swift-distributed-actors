@@ -181,7 +181,7 @@ internal final class GossipShell<Gossip: Codable, Acknowledgement: Codable> {
             self.ensureNextGossipRound(context)
         }
 
-        let allPeers: [AddressableActorRef] = Array(self.peers).map(\.asAddressable) // TODO: some protocol Addressable so we can avoid this mapping?
+        let allPeers: [_AddressableActorRef] = Array(self.peers).map(\.asAddressable) // TODO: some protocol Addressable so we can avoid this mapping?
 
         guard !allPeers.isEmpty else {
             // no members to gossip with, skip this round
@@ -280,8 +280,8 @@ internal final class GossipShell<Gossip: Codable, Acknowledgement: Codable> {
 // MARK: ConvergentGossip: Peer Discovery
 
 extension GossipShell {
-    static func receptionKey(id: String) -> Reception.Key<_ActorRef<Message>> {
-        Reception.Key(id: id)
+    static func receptionKey(id: String) -> _Reception.Key<_ActorRef<Message>> {
+        _Reception.Key(id: id)
     }
 
     private func initPeerDiscovery(_ context: _ActorContext<Message>) {
@@ -299,7 +299,7 @@ extension GossipShell {
                     return // too "early" status of the member
                 }
 
-                let resolved: AddressableActorRef = resolvePeerOn(member)
+                let resolved: _AddressableActorRef = resolvePeerOn(member)
                 if let peer = resolved.ref as? PeerRef {
                     // We MUST always watch all peers we gossip with, as if they (or their nodes) were to terminate
                     // they MUST be removed from the peer list we offer to gossip logics. Otherwise a naive gossip logic
@@ -333,7 +333,7 @@ extension GossipShell {
             context.system.cluster.events.subscribe(onClusterEventRef)
 
         case .fromReceptionistListing(let id):
-            let key = Reception.Key(_ActorRef<Message>.self, id: id)
+            let key = _Reception.Key(_ActorRef<Message>.self, id: id)
             context.receptionist.registerMyself(with: key)
             context.log.debug("Registered with receptionist key: \(key)")
 
