@@ -253,7 +253,7 @@ extension _OperationLogClusterReceptionist {
     }
 
     func notifySubscribers(of key: AnyReceptionKey) {
-        let registrations: Set<AddressableActorRef> = self.storage.registrations(forKey: key) ?? []
+        let registrations: Set<_AddressableActorRef> = self.storage.registrations(forKey: key) ?? []
 
         guard let subscriptions = self.storage.subscriptions(forKey: key) else {
             self.instrumentation.listingPublished(key: key, subscribers: 0, registrations: registrations.count)

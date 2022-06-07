@@ -35,7 +35,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
     var behavior: _Behavior<Message>
 
     @usableFromInline
-    let _parent: AddressableActorRef
+    let _parent: _AddressableActorRef
 
     @usableFromInline
     let _id: ActorID
@@ -91,7 +91,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
     }
 
     @usableFromInline
-    var asAddressable: AddressableActorRef {
+    var asAddressable: _AddressableActorRef {
         self.myself.asAddressable
     }
 
@@ -145,7 +145,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
     // MARK: _ActorShell implementation
 
     internal init(
-        system: ClusterSystem, parent: AddressableActorRef,
+        system: ClusterSystem, parent: _AddressableActorRef,
         behavior: _Behavior<Message>, id: ActorID,
         props: _Props, dispatcher: MessageDispatcher
     ) {
@@ -610,7 +610,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
     }
 
     func notifyParentOfTermination() {
-        let parent: AddressableActorRef = self._parent
+        let parent: _AddressableActorRef = self._parent
         traceLog_DeathWatch("NOTIFY PARENT WE ARE DEAD, myself: [\(self.id)], parent [\(parent.id)]")
 
         guard case .failed(_, let failure) = self.behavior.underlying else {
@@ -789,7 +789,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
 // MARK: Internal system message / signal handling functions
 
 extension _ActorShell {
-    @inlinable func interpretSystemWatch(watcher: AddressableActorRef) {
+    @inlinable func interpretSystemWatch(watcher: _AddressableActorRef) {
         if self.behavior.isStillAlive {
             self.instrumentation.actorWatchReceived(watchee: self.id, watcher: watcher.id)
             self.deathWatch.becomeWatchedBy(watcher: watcher, myself: self.myself, parent: self._parent)
@@ -799,7 +799,7 @@ extension _ActorShell {
         }
     }
 
-    @inlinable func interpretSystemUnwatch(watcher: AddressableActorRef) {
+    @inlinable func interpretSystemUnwatch(watcher: _AddressableActorRef) {
         self.instrumentation.actorUnwatchReceived(watchee: self.id, watcher: watcher.id)
         self.deathWatch.removeWatchedBy(watcher: watcher, myself: self.myself)
     }
@@ -886,7 +886,7 @@ extension _ActorShell {
     }
 
     @inlinable
-    func interpretChildTerminatedSignal(who terminatedRef: AddressableActorRef, terminated: _Signals._ChildTerminated) throws {
+    func interpretChildTerminatedSignal(who terminatedRef: _AddressableActorRef, terminated: _Signals._ChildTerminated) throws {
         #if SACT_TRACE_ACTOR_SHELL
         self.log.info("Received \(terminated)")
         #endif
@@ -957,7 +957,7 @@ extension _ActorShell: CustomStringConvertible {
 internal protocol AbstractShellProtocol: _ActorTreeTraversable {
     var _myselfReceivesSystemMessages: _ReceivesSystemMessages { get }
     var children: _Children { get set } // lock-protected
-    var asAddressable: AddressableActorRef { get }
+    var asAddressable: _AddressableActorRef { get }
     var metrics: ActiveActorMetrics { get }
 }
 
@@ -967,7 +967,7 @@ extension AbstractShellProtocol {
         self._myselfReceivesSystemMessages
     }
 
-    public func _traverse<T>(context: _TraversalContext<T>, _ visit: (_TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
+    public func _traverse<T>(context: _TraversalContext<T>, _ visit: (_TraversalContext<T>, _AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
         var c = context.deeper
         switch visit(context, self.asAddressable) {
         case .continue:
@@ -1014,7 +1014,7 @@ extension AbstractShellProtocol {
         return self.children._resolve(context: context)
     }
 
-    public func _resolveUntyped(context: ResolveContext<Never>) -> AddressableActorRef {
+    public func _resolveUntyped(context: ResolveContext<Never>) -> _AddressableActorRef {
         guard context.selectorSegments.first != nil else {
             // no remaining selectors == we are the "selected" ref, apply uid check
             if self._myselfReceivesSystemMessages.id.incarnation == context.id.incarnation {

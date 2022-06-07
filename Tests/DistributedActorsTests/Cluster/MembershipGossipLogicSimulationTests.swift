@@ -41,7 +41,7 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
         self._nodes.map(\.cluster.uniqueNode)
     }
 
-    var mockPeers: [AddressableActorRef] = []
+    var mockPeers: [_AddressableActorRef] = []
 
     var testKit: ActorTestKit {
         self.testKit(self.systems.first!)
@@ -347,7 +347,7 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
                 // information.
                 let participatingGossips = self.logics.shuffled()
                 for logic in participatingGossips {
-                    let selectedPeers: [AddressableActorRef] = logic.selectPeers(self.peers(of: logic))
+                    let selectedPeers: [_AddressableActorRef] = logic.selectPeers(self.peers(of: logic))
                     log.notice("[\(logic.nodeName)] selected peers: \(selectedPeers.map(\.id.uniqueNode.node.systemName))")
 
                     for targetPeer in selectedPeers {
@@ -418,15 +418,15 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Support functions
 
-    func peers(of logic: MembershipGossipLogic) -> [AddressableActorRef] {
+    func peers(of logic: MembershipGossipLogic) -> [_AddressableActorRef] {
         Array(self.mockPeers.filter { $0.id.uniqueNode != logic.localNode })
     }
 
-    func selectLogic(_ peer: AddressableActorRef) -> MembershipGossipLogic {
+    func selectLogic(_ peer: _AddressableActorRef) -> MembershipGossipLogic {
         (self.logics.first { $0.localNode == peer.id.uniqueNode })!
     }
 
-    func peer(_ logic: MembershipGossipLogic) -> AddressableActorRef {
+    func peer(_ logic: MembershipGossipLogic) -> _AddressableActorRef {
         let nodeName = logic.localNode.node.systemName
         if let peer = (self.mockPeers.first { $0.id.uniqueNode.node.systemName == nodeName }) {
             return peer

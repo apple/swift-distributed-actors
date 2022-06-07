@@ -103,7 +103,7 @@ class SerializationTests: ClusterSystemXCTestCase {
         let encoded = try encoder.encode(id)
         pinfo("Serialized actor path: \(encoded.copyToNewByteBuffer().stringDebugDescription())")
 
-        let decodedID = try decoder.decode(ActorAddress.self, from: encoded)
+        let decodedID = try decoder.decode(ActorID.self, from: encoded)
         pinfo("Deserialized again: \(String(reflecting: decodedID))")
 
         "\(decodedID)".shouldEqual("sact://one@127.0.0.1:1234/user/hello")

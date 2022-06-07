@@ -20,9 +20,6 @@ import Distributed
 /// Convenience alias for ``ClusterSystem/ActorID``.
 public typealias ActorID = ClusterSystem.ActorID
 
-@available(*, deprecated, message: "Old name of this type, to be replaced by ActorID")
-public typealias ActorAddress = ActorID
-
 extension ClusterSystem {
     /// Uniquely identifies a DistributedActor within the cluster.
     ///

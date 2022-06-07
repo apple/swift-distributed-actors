@@ -62,14 +62,14 @@ extension Gossiper {
             case manuallyIntroduced
 
             /// Automatically register this gossiper and subscribe for any others identifying under the same
-            /// `Reception.Key<GossipShell<Gossip, Acknowledgement>.Message>(id)`.
+            /// `_Reception.Key<GossipShell<Gossip, Acknowledgement>.Message>(id)`.
             case fromReceptionistListing(id: String)
 
             /// Automatically discover and add cluster members to the gossip group when they become reachable in `atLeast` status.
             ///
             /// Note that by default `.leaving`, `.down` and `.removed` members are NOT added to the gossip group,
             /// even if they were never contacted by this gossiper before.
-            case onClusterMember(atLeast: Cluster.MemberStatus, resolve: (Cluster.Member) -> AddressableActorRef)
+            case onClusterMember(atLeast: Cluster.MemberStatus, resolve: (Cluster.Member) -> _AddressableActorRef)
         }
     }
 }

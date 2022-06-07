@@ -739,7 +739,7 @@ extension ClusterSystem: _ActorTreeTraversable {
         }
     }
 
-    public func _traverse<T>(context: _TraversalContext<T>, _ visit: (_TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
+    public func _traverse<T>(context: _TraversalContext<T>, _ visit: (_TraversalContext<T>, _AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
         let systemTraversed: _TraversalResult<T> = self.systemProvider._traverse(context: context, visit)
 
         switch systemTraversed {
@@ -760,13 +760,13 @@ extension ClusterSystem: _ActorTreeTraversable {
         }
     }
 
-    internal func _traverseAll<T>(_ visit: (_TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
+    internal func _traverseAll<T>(_ visit: (_TraversalContext<T>, _AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
         let context = _TraversalContext<T>()
         return self._traverse(context: context, visit)
     }
 
     @discardableResult
-    internal func _traverseAllVoid(_ visit: (_TraversalContext<Void>, AddressableActorRef) -> _TraversalDirective<Void>) -> _TraversalResult<Void> {
+    internal func _traverseAllVoid(_ visit: (_TraversalContext<Void>, _AddressableActorRef) -> _TraversalDirective<Void>) -> _TraversalResult<Void> {
         self._traverseAll(visit)
     }
 
@@ -800,7 +800,7 @@ extension ClusterSystem: _ActorTreeTraversable {
         }
     }
 
-    public func _resolveUntyped(id: ActorID) -> AddressableActorRef {
+    public func _resolveUntyped(id: ActorID) -> _AddressableActorRef {
         return self._resolveUntyped(context: .init(id: id, system: self))
     }
 
@@ -808,12 +808,12 @@ extension ClusterSystem: _ActorTreeTraversable {
         return try StubDistributedActor.resolve(id: identity, using: self)
     }
 
-    public func _resolveUntyped(context: ResolveContext<Never>) -> AddressableActorRef {
+    public func _resolveUntyped(context: ResolveContext<Never>) -> _AddressableActorRef {
         guard let selector = context.selectorSegments.first else {
             return context.personalDeadLetters.asAddressable
         }
 
-        var resolved: AddressableActorRef?
+        var resolved: _AddressableActorRef?
         // TODO: The looping through transports could be ineffective... but realistically we dont have many
         // TODO: realistically we ARE becoming a transport and thus should be able to remove 'transports' entirely
         for transport in context.system.settings.transports {

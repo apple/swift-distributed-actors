@@ -158,7 +158,7 @@ public class _Children {
     }
 
     @usableFromInline
-    internal func forEach(_ body: (AddressableActorRef) throws -> Void) rethrows {
+    internal func forEach(_ body: (_AddressableActorRef) throws -> Void) rethrows {
         try self.rwLock.withReaderLock {
             try self.container.values.forEach {
                 switch $0 {
@@ -186,7 +186,7 @@ public class _Children {
 // MARK: Traversal
 
 extension _Children: _ActorTreeTraversable {
-    public func _traverse<T>(context: _TraversalContext<T>, _ visit: (_TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
+    public func _traverse<T>(context: _TraversalContext<T>, _ visit: (_TraversalContext<T>, _AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
         var c = context.deeper
 
         let children = self.rwLock.withReaderLock {
@@ -242,7 +242,7 @@ extension _Children: _ActorTreeTraversable {
         }
     }
 
-    public func _resolveUntyped(context: ResolveContext<Never>) -> AddressableActorRef {
+    public func _resolveUntyped(context: ResolveContext<Never>) -> _AddressableActorRef {
         guard let selector = context.selectorSegments.first else {
             // no selector, we should not be in this place!
             fatalError("Resolve should have stopped before stepping into children._resolve, this is a bug!")
@@ -385,11 +385,11 @@ public enum _ActorContextError: Error {
     /// as the actor would continue running until it receives the stop message. Rather, to stop the current actor
     /// it should return `_Behavior.stop` from its receive block, which will cause it to immediately stop processing
     /// any further messages.
-    case attemptedStoppingMyselfUsingContext(ref: AddressableActorRef)
+    case attemptedStoppingMyselfUsingContext(ref: _AddressableActorRef)
     /// Only the parent actor is allowed to stop its children. This is to avoid mistakes in which one part of the system
     /// can stop arbitrary actors of another part of the system which was programmed under the assumption such actor would
     /// wellKnownly exist.
-    case attemptedStoppingNonChildActor(ref: AddressableActorRef)
+    case attemptedStoppingNonChildActor(ref: _AddressableActorRef)
     /// It is not allowed to spawn
     case duplicateActorPath(path: ActorPath)
     /// It is not allowed to spawn new actors when the system is stopping

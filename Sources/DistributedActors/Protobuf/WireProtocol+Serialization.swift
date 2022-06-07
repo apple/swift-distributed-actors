@@ -46,7 +46,7 @@ extension Wire.Envelope: _ProtobufRepresentable {
             throw WireEnvelopeError.missingManifest
         }
 
-        self.recipient = try ActorAddress(fromProto: proto.recipient, context: context)
+        self.recipient = try ActorID(fromProto: proto.recipient, context: context)
         self.payload = .data(proto.payload)
         self.manifest = .init(fromProto: proto.manifest)
     }

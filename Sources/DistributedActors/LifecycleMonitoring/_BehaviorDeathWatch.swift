@@ -21,7 +21,7 @@ import NIO
 
 /// Marks an entity to be "watchable", meaning it may participate in Death Watch and form Death Pacts.
 ///
-/// Watchable entities are `_ActorRef<>`, `Actor<>` but also actors of unknown type such as `AddressableActorRef`.
+/// Watchable entities are `_ActorRef<>`, `Actor<>` but also actors of unknown type such as `_AddressableActorRef`.
 ///
 /// - SeeAlso: `_ActorContext.watch`
 /// - SeeAlso: `DeathWatch`
@@ -118,8 +118,8 @@ public protocol _DeathWatchProtocol {
 // Care was taken to keep this implementation separate from the ActorCell however not require more storage space.
 @usableFromInline
 internal struct DeathWatchImpl<Message: ActorMessage> {
-    private var watching: [AddressableActorRef: OnTerminationMessage] = [:]
-    private var watchedBy: Set<AddressableActorRef> = []
+    private var watching: [_AddressableActorRef: OnTerminationMessage] = [:]
+    private var watchedBy: Set<_AddressableActorRef> = []
 
     private var nodeDeathWatcher: NodeDeathWatcherShell.Ref
 
@@ -151,7 +151,7 @@ internal struct DeathWatchImpl<Message: ActorMessage> {
         file: String, line: UInt
     ) where Watchee: _DeathWatchable {
         traceLog_DeathWatch("issue watch: \(watchee) (from \(watcher) (myself))")
-        let addressableWatchee: AddressableActorRef = watchee.asAddressable
+        let addressableWatchee: _AddressableActorRef = watchee.asAddressable
 
         // watching ourselves is a no-op, since we would never be able to observe the Terminated message anyway:
         guard addressableWatchee.id != watcher.id else {
@@ -194,7 +194,7 @@ internal struct DeathWatchImpl<Message: ActorMessage> {
         let addressableWatchee = watchee.asAddressable
         // we could short circuit "if watchee == myself return" but it's not really worth checking since no-op anyway
         if self.watching.removeValue(forKey: addressableWatchee) != nil {
-            addressableWatchee._sendSystemMessage(.unwatch(watchee: addressableWatchee, watcher: AddressableActorRef(watcher)), file: file, line: line)
+            addressableWatchee._sendSystemMessage(.unwatch(watchee: addressableWatchee, watcher: _AddressableActorRef(watcher)), file: file, line: line)
         }
     }
 
@@ -208,7 +208,7 @@ internal struct DeathWatchImpl<Message: ActorMessage> {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: react to watch or unwatch signals
 
-    public mutating func becomeWatchedBy(watcher: AddressableActorRef, myself: _ActorRef<Message>, parent: AddressableActorRef) {
+    public mutating func becomeWatchedBy(watcher: _AddressableActorRef, myself: _ActorRef<Message>, parent: _AddressableActorRef) {
         guard watcher.id != myself.id else {
             traceLog_DeathWatch("Attempted to watch 'myself' [\(myself)], which is a no-op, since such watch's terminated can never be observed. " +
                 "Likely a programming error where the wrong actor ref was passed to watch(), please check your code.")
@@ -228,7 +228,7 @@ internal struct DeathWatchImpl<Message: ActorMessage> {
         self.watchedBy.insert(watcher)
     }
 
-    public mutating func removeWatchedBy(watcher: AddressableActorRef, myself: _ActorRef<Message>) {
+    public mutating func removeWatchedBy(watcher: _AddressableActorRef, myself: _ActorRef<Message>) {
         traceLog_DeathWatch("Remove watched by: \(watcher.id)     inside: \(myself)")
         self.watchedBy.remove(watcher)
     }
@@ -274,7 +274,7 @@ internal struct DeathWatchImpl<Message: ActorMessage> {
     /// Does NOT immediately handle these `Terminated` signals, they are treated as any other normal signal would,
     /// such that the user can have a chance to handle and react to them.
     public mutating func receiveNodeTerminated(_ terminatedNode: UniqueNode, myself: _ReceivesSystemMessages) {
-        for watched: AddressableActorRef in self.watching.keys where watched.id.uniqueNode == terminatedNode {
+        for watched: _AddressableActorRef in self.watching.keys where watched.id.uniqueNode == terminatedNode {
             // we KNOW an actor existed if it is local and not resolved as /dead; otherwise it may have existed
             // for a remote ref we don't know for sure if it existed
             let existenceConfirmed = watched.refType.isLocal && !watched.id.path.starts(with: ._dead)
@@ -291,7 +291,7 @@ internal struct DeathWatchImpl<Message: ActorMessage> {
 
         for watcher in self.watchedBy {
             traceLog_DeathWatch("[\(myself)] Notify \(watcher) that we died")
-            watcher._sendSystemMessage(.terminated(ref: AddressableActorRef(myself), existenceConfirmed: true), file: #file, line: #line)
+            watcher._sendSystemMessage(.terminated(ref: _AddressableActorRef(myself), existenceConfirmed: true), file: #file, line: #line)
         }
     }
 
@@ -302,14 +302,17 @@ internal struct DeathWatchImpl<Message: ActorMessage> {
         guard watchedID._isRemote else {
             return
         }
-        self.nodeDeathWatcher.tell(.remoteActorWatched(watcher: AddressableActorRef(myself), remoteNode: watchedID.uniqueNode), file: file, line: line)
+        self.nodeDeathWatcher.tell(.remoteActorWatched(watcher: _AddressableActorRef(myself), remoteNode: watchedID.uniqueNode), file: file, line: line)
     }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Errors
 
-public enum DeathPactError: Error {
-    case unhandledDeathPact(ActorID, myself: AddressableActorRef, message: String)
+/// Death pact error is thrown when a watched behavior actor terminates,
+/// and we do not handle the termination, triggering the "death pact"
+/// which is "when the watched actor terminates, I terminate".
+internal enum DeathPactError: Error {
+    case unhandledDeathPact(ActorID, myself: _AddressableActorRef, message: String)
     case unhandledDeathPactError(ClusterSystem.ActorID, myself: ClusterSystem.ActorID, message: String)
 }

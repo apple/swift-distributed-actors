@@ -142,7 +142,7 @@ public final class LifecycleWatchContainer {
 
     typealias OnTerminatedFn = @Sendable (ClusterSystem.ActorID) async -> Void
     private var watching: [ClusterSystem.ActorID: OnTerminatedFn] = [:]
-    private var watchedBy: [ClusterSystem.ActorID: AddressableActorRef] = [:]
+    private var watchedBy: [ClusterSystem.ActorID: _AddressableActorRef] = [:]
 
     init<Act>(_ watcher: Act) where Act: DistributedActor, Act.ActorSystem == ClusterSystem {
         traceLog_DeathWatch("Make LifecycleWatchContainer owned by \(watcher.id)")
@@ -249,7 +249,7 @@ extension LifecycleWatchContainer {
     // MARK: react to watch or unwatch signals
 
     public func becomeWatchedBy(
-        watcher: AddressableActorRef
+        watcher: _AddressableActorRef
     ) {
         guard watcher.id != self.watcherID else {
             traceLog_DeathWatch("Attempted to watch 'myself' [\(self.watcherID)], which is a no-op, since such watch's terminated can never be observed. " +
@@ -261,7 +261,7 @@ extension LifecycleWatchContainer {
         self.watchedBy[watcher.id] = watcher
     }
 
-    internal func removeWatchedBy(watcher: AddressableActorRef) {
+    internal func removeWatchedBy(watcher: _AddressableActorRef) {
         traceLog_DeathWatch("Remove watched by: \(watcher.id)     inside: \(self.watcherID)")
         self.watchedBy.removeValue(forKey: watcher.id)
     }

@@ -24,7 +24,7 @@ public enum _Done: String, ActorMessage {
 
 //// TODO(distributed): remove this, actually system._spawn the underlying reference for the reserved address
 // public protocol __AnyDistributedClusterActor {
-//    static func _spawnAny(instance: Self, on system: ClusterSystem) throws -> AddressableActorRef
+//    static func _spawnAny(instance: Self, on system: ClusterSystem) throws -> _AddressableActorRef
 // }
 
 // FIXME: workaround (!)
@@ -38,7 +38,7 @@ extension DistributedActor where ActorSystem == ClusterSystem {
         }
     }
 
-    static func _spawnAny(instance: Self, on system: ActorSystem) throws -> AddressableActorRef {
+    static func _spawnAny(instance: Self, on system: ActorSystem) throws -> _AddressableActorRef {
         self._spawn(instance: instance, on: system).asAddressable
     }
 }

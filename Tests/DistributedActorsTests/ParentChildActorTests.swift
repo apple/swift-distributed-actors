@@ -244,7 +244,7 @@ final class ParentChildActorTests: ClusterSystemXCTestCase {
 
         parent.tell("stop")
 
-        try p.expectMessage().shouldStartWith(prefix: "Errored:attemptedStoppingNonChildActor(ref: AddressableActorRef(/user/$testProbe")
+        try p.expectMessage().shouldStartWith(prefix: "Errored:attemptedStoppingNonChildActor(ref: _AddressableActorRef(/user/$testProbe")
         try p.expectTerminated(parent)
     }
 
@@ -268,7 +268,7 @@ final class ParentChildActorTests: ClusterSystemXCTestCase {
 
         parent.tell("stop")
 
-        try p.expectMessage().shouldStartWith(prefix: "Errored:attemptedStoppingMyselfUsingContext(ref: AddressableActorRef(/user/parent-5")
+        try p.expectMessage().shouldStartWith(prefix: "Errored:attemptedStoppingMyselfUsingContext(ref: _AddressableActorRef(/user/parent-5")
         try p.expectTerminated(parent)
     }
 

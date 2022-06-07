@@ -321,7 +321,6 @@ final class OutboundSerializationHandler: ChannelOutboundHandler {
         serializationPromise.futureResult.whenComplete {
             switch $0 {
             case .success(let serialized):
-                // force unwrapping here is safe because we read exactly the amount of readable bytes
                 let wireEnvelope = Wire.Envelope(
                     recipient: transportEnvelope.recipient,
                     payload: serialized.buffer,

@@ -50,7 +50,7 @@ protocol GossipLogic {
     ///
     /// Useful to implement using `PeerSelection`
     // TODO: OrderedSet would be the right thing here to be honest...
-    mutating func selectPeers(_ peers: [AddressableActorRef]) -> [AddressableActorRef]
+    mutating func selectPeers(_ peers: [_AddressableActorRef]) -> [_AddressableActorRef]
     // TODO: make a directive here
 
     /// Allows for customizing the payload for each of the selected peers.
@@ -59,7 +59,7 @@ protocol GossipLogic {
     /// e.g. by excluding information the peer is already aware of or similar.
     ///
     /// Returning `nil` means that the peer will be skipped in this gossip round, even though it was a candidate selected by peer selection.
-    mutating func makePayload(target: AddressableActorRef) -> Gossip?
+    mutating func makePayload(target: _AddressableActorRef) -> Gossip?
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Receiving gossip
@@ -69,7 +69,7 @@ protocol GossipLogic {
     /// Note that a single gossiper instance may create _multiple_ `GossipLogic` instances,
     /// one for each `GossipIdentifier` it is managing. This function is guaranteed to be invoked with the
     /// gossip targeted to the same gossip identity as the logic's context
-    mutating func receiveGossip(_ gossip: Gossip, from peer: AddressableActorRef) -> Acknowledgement?
+    mutating func receiveGossip(_ gossip: Gossip, from peer: _AddressableActorRef) -> Acknowledgement?
 
     /// Invoked when the specific gossiped payload is acknowledged by the target.
     ///
@@ -81,7 +81,7 @@ protocol GossipLogic {
     ///   - peer: The target which has acknowledged the gossiped payload.
     ///     It corresponds to the parameter that was passed to the `makePayload(target:)` which created this gossip payload.
     ///   - gossip:
-    mutating func receiveAcknowledgement(_ acknowledgement: Acknowledgement, from peer: AddressableActorRef, confirming gossip: Gossip)
+    mutating func receiveAcknowledgement(_ acknowledgement: Acknowledgement, from peer: _AddressableActorRef, confirming gossip: Gossip)
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Local interactions / control messages
@@ -93,7 +93,7 @@ protocol GossipLogic {
 }
 
 extension GossipLogic {
-    mutating func receiveAcknowledgement(_ acknowledgement: Acknowledgement, from peer: AddressableActorRef, confirming gossip: Gossip) {
+    mutating func receiveAcknowledgement(_ acknowledgement: Acknowledgement, from peer: _AddressableActorRef, confirming gossip: Gossip) {
         // ignore by default
     }
 
@@ -140,13 +140,13 @@ struct GossipLogicContext<Envelope: Codable, Acknowledgement: Codable> {
 
 struct AnyGossipLogic<Gossip: Codable, Acknowledgement: Codable>: GossipLogic, CustomStringConvertible {
     @usableFromInline
-    let _selectPeers: ([AddressableActorRef]) -> [AddressableActorRef]
+    let _selectPeers: ([_AddressableActorRef]) -> [_AddressableActorRef]
     @usableFromInline
-    let _makePayload: (AddressableActorRef) -> Gossip?
+    let _makePayload: (_AddressableActorRef) -> Gossip?
     @usableFromInline
-    let _receiveGossip: (Gossip, AddressableActorRef) -> Acknowledgement?
+    let _receiveGossip: (Gossip, _AddressableActorRef) -> Acknowledgement?
     @usableFromInline
-    let _receiveAcknowledgement: (Acknowledgement, AddressableActorRef, Gossip) -> Void
+    let _receiveAcknowledgement: (Acknowledgement, _AddressableActorRef, Gossip) -> Void
 
     @usableFromInline
     let _receiveLocalGossipUpdate: (Gossip) -> Void
@@ -171,19 +171,19 @@ struct AnyGossipLogic<Gossip: Codable, Acknowledgement: Codable>: GossipLogic, C
         self._receiveSideChannelMessage = { try l.receiveSideChannelMessage($0) }
     }
 
-    func selectPeers(_ peers: [AddressableActorRef]) -> [AddressableActorRef] {
+    func selectPeers(_ peers: [_AddressableActorRef]) -> [_AddressableActorRef] {
         self._selectPeers(peers)
     }
 
-    func makePayload(target: AddressableActorRef) -> Gossip? {
+    func makePayload(target: _AddressableActorRef) -> Gossip? {
         self._makePayload(target)
     }
 
-    func receiveGossip(_ gossip: Gossip, from peer: AddressableActorRef) -> Acknowledgement? {
+    func receiveGossip(_ gossip: Gossip, from peer: _AddressableActorRef) -> Acknowledgement? {
         self._receiveGossip(gossip, peer)
     }
 
-    func receiveAcknowledgement(_ acknowledgement: Acknowledgement, from peer: AddressableActorRef, confirming gossip: Gossip) {
+    func receiveAcknowledgement(_ acknowledgement: Acknowledgement, from peer: _AddressableActorRef, confirming gossip: Gossip) {
         self._receiveAcknowledgement(acknowledgement, peer, gossip)
     }
 

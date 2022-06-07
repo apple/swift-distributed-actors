@@ -29,7 +29,7 @@ final class GossiperShellTests: ClusterSystemXCTestCase {
     // MARK: test_down_beGossipedToOtherNodes
 
     func test_down_beGossipedToOtherNodes() throws {
-        let p = self.testKit.makeTestProbe(expecting: [AddressableActorRef].self)
+        let p = self.testKit.makeTestProbe(expecting: [_AddressableActorRef].self)
 
         let control = try Gossiper._spawn(
             self.system,
@@ -71,23 +71,23 @@ final class GossiperShellTests: ClusterSystemXCTestCase {
 
         typealias Acknowledgement = String
 
-        let offeredPeersProbe: _ActorRef<[AddressableActorRef]>
-        init(offeredPeersProbe: _ActorRef<[AddressableActorRef]>) {
+        let offeredPeersProbe: _ActorRef<[_AddressableActorRef]>
+        init(offeredPeersProbe: _ActorRef<[_AddressableActorRef]>) {
             self.offeredPeersProbe = offeredPeersProbe
         }
 
-        func selectPeers(_ peers: [AddressableActorRef]) -> [AddressableActorRef] {
+        func selectPeers(_ peers: [_AddressableActorRef]) -> [_AddressableActorRef] {
             self.offeredPeersProbe.tell(peers)
             return []
         }
 
-        func makePayload(target: AddressableActorRef) -> Gossip? {
+        func makePayload(target: _AddressableActorRef) -> Gossip? {
             nil
         }
 
-        func receiveAcknowledgement(_ acknowledgement: Acknowledgement, from peer: AddressableActorRef, confirming gossip: Gossip) {}
+        func receiveAcknowledgement(_ acknowledgement: Acknowledgement, from peer: _AddressableActorRef, confirming gossip: Gossip) {}
 
-        func receiveGossip(_ gossip: Gossip, from peer: AddressableActorRef) -> Acknowledgement? {
+        func receiveGossip(_ gossip: Gossip, from peer: _AddressableActorRef) -> Acknowledgement? {
             nil
         }
 
@@ -144,19 +144,19 @@ final class GossiperShellTests: ClusterSystemXCTestCase {
 
         typealias Acknowledgement = String
 
-        func selectPeers(_ peers: [AddressableActorRef]) -> [AddressableActorRef] {
+        func selectPeers(_ peers: [_AddressableActorRef]) -> [_AddressableActorRef] {
             peers
         }
 
-        func makePayload(target: AddressableActorRef) -> Gossip? {
+        func makePayload(target: _AddressableActorRef) -> Gossip? {
             .init("Hello") // legal but will produce a warning
         }
 
-        func receiveAcknowledgement(_ acknowledgement: Acknowledgement, from peer: AddressableActorRef, confirming gossip: Gossip) {
+        func receiveAcknowledgement(_ acknowledgement: Acknowledgement, from peer: _AddressableActorRef, confirming gossip: Gossip) {
             self.probe.tell("un-expected acknowledgement: \(acknowledgement) from \(peer) confirming \(gossip)")
         }
 
-        func receiveGossip(_ gossip: Gossip, from peer: AddressableActorRef) -> Acknowledgement? {
+        func receiveGossip(_ gossip: Gossip, from peer: _AddressableActorRef) -> Acknowledgement? {
             nil
         }
 

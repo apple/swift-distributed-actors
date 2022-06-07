@@ -18,8 +18,8 @@ import Foundation
 import XCTest
 
 internal enum ActorTestProbeCommand<M> {
-    case watchCommand(who: AddressableActorRef, file: String, line: UInt)
-    case unwatchCommand(who: AddressableActorRef)
+    case watchCommand(who: _AddressableActorRef, file: String, line: UInt)
+    case unwatchCommand(who: _AddressableActorRef)
     case forwardCommand(send: () -> Void)
     case stopCommand
 
@@ -715,7 +715,7 @@ extension ActorTestProbe {
     /// - ***Warning**: Remember to first `watch` the actors you are expecting termination for,
     ///                 otherwise the termination signal will never be received.
     /// - SeeAlso: `DeathWatch`
-    public func expectTerminatedInAnyOrder(_ refs: [AddressableActorRef], file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
+    public func expectTerminatedInAnyOrder(_ refs: [_AddressableActorRef], file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
         var pathSet: Set<ActorID> = Set(refs.map(\.id))
 
