@@ -24,7 +24,7 @@ public final class _OperationLogClusterReceptionist {
     typealias Message = Receptionist.Message
     typealias ReceptionistRef = _ActorRef<Message>
 
-    internal let instrumentation: ReceptionistInstrumentation
+    internal let instrumentation: _ReceptionistInstrumentation
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Timer Keys
@@ -80,7 +80,7 @@ public final class _OperationLogClusterReceptionist {
     /// gives a good idea how far "behind" we are with regards to changed performed at that peer.
     var appliedSequenceNrs: VersionVector
 
-    internal init(settings: ReceptionistSettings, instrumentation: ReceptionistInstrumentation = NoopReceptionistInstrumentation()) {
+    internal init(settings: ReceptionistSettings, instrumentation: _ReceptionistInstrumentation = NoopReceptionistInstrumentation()) {
         self.instrumentation = instrumentation
 
         self.ops = .init(batchSize: settings.syncBatchSize)

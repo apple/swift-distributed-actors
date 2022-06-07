@@ -86,12 +86,8 @@ extension _ActorRef: ReceivesQuestions {
 
         let promise = system._eventLoopGroup.next().makePromise(of: answerType)
 
-        // TODO: maybe a specialized one... for ask?
-        let instrumentation = system.settings.instrumentation.makeActorInstrumentation(promise.futureResult, self.id)
-
         do {
-            // TODO: implement special actor ref instead of using real actor
-            let askRef = try system._spawn(
+            let askRef = try system._spawn( // TODO: "ask" is going away in favor of raw "remoteCalls"
                 .ask,
                 AskActor.behavior(
                     promise,
@@ -105,18 +101,7 @@ extension _ActorRef: ReceivesQuestions {
 
             let message = makeQuestion(askRef)
             self.tell(message, file: file, line: line)
-
-            instrumentation.actorAsked(message: message, from: askRef.id)
-            promise.futureResult.whenComplete {
-                switch $0 {
-                case .success(let answer):
-                    instrumentation.actorAskReplied(reply: answer, error: nil)
-                case .failure(let error):
-                    instrumentation.actorAskReplied(reply: nil, error: error)
-                }
-            }
         } catch {
-            instrumentation.actorAskReplied(reply: nil, error: error)
             promise.fail(error)
         }
 

@@ -48,9 +48,6 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
     // MARK: Instrumentation
 
     @usableFromInline
-    var instrumentation: ActorInstrumentation!
-
-    @usableFromInline
     let metrics: ActiveActorMetrics
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -177,8 +174,6 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
 
         super.init()
 
-        self.instrumentation = system.settings.instrumentation.makeActorInstrumentation(self, id)
-        self.instrumentation.actorSpawned()
         system.metrics.recordActorStart(self)
     }
 
@@ -189,7 +184,6 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
             self.system.userCellInitCounter.loadThenWrappingDecrement(ordering: .relaxed)
         }
         #endif
-        self.instrumentation.actorStopped()
         self.system.metrics.recordActorStop(self)
 
         self._system = nil
@@ -281,8 +275,6 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
     /// Returns: `true` if the actor remains alive, and `false` if it now is becoming `.stop`
     @inlinable
     func interpretMessage(message: Message) throws -> ActorRunResult {
-        self.instrumentation.actorReceivedStart(message: message, from: nil)
-
         do {
             let next: _Behavior<Message> = try self.supervisor.interpretSupervised(target: self.behavior, context: self, message: message)
 
@@ -291,10 +283,8 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
             #endif // TODO: make the \next printout nice TODO dont log messages (could leak pass etc)
 
             let runResult = try self.finishInterpretAnyMessage(next)
-            self.instrumentation.actorReceivedEnd(error: nil)
             return runResult
         } catch {
-            self.instrumentation.actorReceivedEnd(error: error)
             throw error
         }
     }
@@ -791,7 +781,6 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
 extension _ActorShell {
     @inlinable func interpretSystemWatch(watcher: _AddressableActorRef) {
         if self.behavior.isStillAlive {
-            self.instrumentation.actorWatchReceived(watchee: self.id, watcher: watcher.id)
             self.deathWatch.becomeWatchedBy(watcher: watcher, myself: self.myself, parent: self._parent)
         } else {
             // so we are in the middle of terminating already anyway
@@ -800,7 +789,6 @@ extension _ActorShell {
     }
 
     @inlinable func interpretSystemUnwatch(watcher: _AddressableActorRef) {
-        self.instrumentation.actorUnwatchReceived(watchee: self.id, watcher: watcher.id)
         self.deathWatch.removeWatchedBy(watcher: watcher, myself: self.myself)
     }
 

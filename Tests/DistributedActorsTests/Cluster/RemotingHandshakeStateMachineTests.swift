@@ -115,7 +115,7 @@ final class RemoteHandshakeStateMachineTests: XCTestCase {
             error = rejected.error
         }
 
-        "\(error)".shouldEqual("incompatibleProtocolVersion(local: Version(0.0.1, reserved:0), remote: Version(1.0.1, reserved:0))")
+        "\(error)".shouldEqual("incompatibleProtocolVersion(local: Version(1.0.0, reserved:0), remote: Version(2.0.0, reserved:0))")
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
