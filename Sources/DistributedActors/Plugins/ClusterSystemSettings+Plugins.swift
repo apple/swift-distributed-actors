@@ -13,8 +13,8 @@
 //===----------------------------------------------------------------------===//
 
 /// Settings for `ClusterSystem` plugins.
-public struct PluginsSettings {
-    public static var `default`: PluginsSettings {
+public struct _PluginsSettings {
+    public static var `default`: _PluginsSettings {
         .init()
     }
 
@@ -61,8 +61,8 @@ public struct PluginsSettings {
     }
 }
 
-extension PluginsSettings {
-    public static func += <P: _Plugin>(plugins: inout PluginsSettings, plugin: P) {
+extension _PluginsSettings {
+    public static func += <P: _Plugin>(plugins: inout _PluginsSettings, plugin: P) {
         plugins.add(plugin)
     }
 }

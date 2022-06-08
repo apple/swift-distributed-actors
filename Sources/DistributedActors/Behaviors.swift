@@ -501,7 +501,7 @@ internal enum StopReason {
     case failure(_Supervision.Failure)
 }
 
-public enum IllegalBehaviorError<Message: Codable>: Error {
+enum IllegalBehaviorError<Message: Codable>: Error {
     /// Some behaviors, like `.same` and `.unhandled` are not allowed to be used as initial behaviors.
     /// See their individual documentation for the rationale why that is so.
     case notAllowedAsInitial(_ behavior: _Behavior<Message>)
