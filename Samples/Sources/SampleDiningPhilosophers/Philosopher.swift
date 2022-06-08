@@ -24,7 +24,7 @@ distributed actor Philosopher: CustomStringConvertible {
     private let rightFork: Fork
     private var state: State = .thinking
 
-    private lazy var timers = DistributedActors.ActorTimers<Philosopher>(self)
+    private lazy var timers = DistributedActors._ActorTimers<Philosopher>(self)
 
     init(name: String, leftFork: Fork, rightFork: Fork, actorSystem: ActorSystem) {
         self.actorSystem = actorSystem
@@ -151,7 +151,7 @@ distributed actor Philosopher: CustomStringConvertible {
     }
 }
 
-extension TimerKey {
+extension _TimerKey {
     static let becomeHungry: Self = "become-hungry"
     static let finishEating: Self = "finish-eating"
 }
