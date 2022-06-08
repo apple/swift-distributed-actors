@@ -268,3 +268,24 @@ distributed actor Boss: LifecycleWatch {
     }
 }
 ```
+
+## Customizing Remote Calls
+
+Remote calls are at the heart of what makes distributed actors actually distributed.
+
+A call made on a remote distributed actor reference, will cross network boundaries, and therefore may way due to 
+network issues, message loss, serialization errors, or other reasons such as the recipient node crashing as it 
+processes the message. Even replies to remote calls could sometimes fail being delivered, so you might need to 
+design your distributed actors with idempotency (the resilience of a method being called more than once, e.g. due to a retry) in mind.
+
+By default, to avoid "hanging" a remote caller forever on a suspended remote call as the recipient node fails to reply to it,
+for example because it (or the network itself), are currently unresponsive, remote calls have a default timeout configured,
+and if no reply is received within this duration, the call will fail with a ``RemoteCallError``.
+
+You can configure the default timeout used by the cluster system during its initialization:
+
+```swift
+ClusterSystem() { settings in 
+    settings.
+}
+```

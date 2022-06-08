@@ -40,7 +40,7 @@ public struct ClusterSystemSettings {
 
     public var receptionist: ReceptionistSettings = .default
 
-    public var transports: [_InternalActorTransport] = []
+    internal var transports: [_InternalActorTransport] = []
     public var serialization: Serialization.Settings = .default
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -124,6 +124,7 @@ public struct ClusterSystemSettings {
     )
 
     /// Defines the Time-To-Live of an association, i.e. when it shall be completely dropped from the tombstones list.
+    ///
     /// An association ("unique connection identifier between two nodes") is kept as tombstone when severing a connection between nodes,
     /// in order to avoid accidental re-connections to given node. Once a node has been downed, removed, and disassociated, it MUST NOT be
     /// communicated with again. Tombstones are used to ensure this, even if the downed ("zombie") node, attempts to reconnect.
@@ -141,7 +142,7 @@ public struct ClusterSystemSettings {
     }
 
     /// FOR TESTING ONLY: Exposed for testing handshake negotiation while joining nodes of different versions.
-    internal var _protocolVersion: ClusterSystem.Version = DistributedActorsProtocolVersion
+    internal var _protocolVersion: ClusterSystem.Version = ClusterSystem.protocolVersion
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Cluster.Membership Gossip

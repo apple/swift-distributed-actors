@@ -17,9 +17,6 @@ import Logging
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Cluster (OpLog) Receptionist
 
-/// ClusterReceptionist namespace
-public enum ClusterReceptionist {}
-
 public final class _OperationLogClusterReceptionist {
     typealias Message = Receptionist.Message
     typealias ReceptionistRef = _ActorRef<Message>
