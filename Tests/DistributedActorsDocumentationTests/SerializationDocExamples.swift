@@ -128,7 +128,7 @@ extension ParkingGarageStatus {
 // MARK: Serialization example - custom messages
 
 // tag::serialization_custom_messages[]
-enum CustomlyEncodedMessage: Codable, NonTransportableActorMessage {
+enum CustomlyEncodedMessage: Codable, NotActuallyCodableMessage {
     case available
     case taken
 }

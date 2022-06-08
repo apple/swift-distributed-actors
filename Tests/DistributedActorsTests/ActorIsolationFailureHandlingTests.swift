@@ -22,12 +22,12 @@ final class ActorIsolationFailureHandlingTests: ClusterSystemXCTestCase {
         case simpleError(reason: String)
     }
 
-    enum SimpleProbeMessage: Equatable, NonTransportableActorMessage {
+    enum SimpleProbeMessage: Equatable, NotActuallyCodableMessage {
         case spawned(child: _ActorRef<FaultyWorkerMessage>)
         case echoing(message: String)
     }
 
-    enum FaultyWorkerMessage: NonTransportableActorMessage {
+    enum FaultyWorkerMessage: NotActuallyCodableMessage {
         case work(n: Int, divideBy: Int)
         case throwError(error: Error)
     }

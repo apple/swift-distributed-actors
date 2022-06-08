@@ -79,7 +79,7 @@ extension TimerKey: ExpressibleByStringLiteral, ExpressibleByStringInterpolation
     }
 }
 
-public final class _BehaviorTimers<Message: ActorMessage> {
+public final class _BehaviorTimers<Message: Codable> {
     @usableFromInline
     internal var timerGen: Int = 0
 

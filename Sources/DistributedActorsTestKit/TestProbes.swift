@@ -26,13 +26,13 @@ internal enum ActorTestProbeCommand<M> {
     case realMessage(message: M)
 }
 
-extension ActorTestProbeCommand: NonTransportableActorMessage {}
+extension ActorTestProbeCommand: NotActuallyCodableMessage {}
 
 /// A special actor that can be used in place of real actors, yet in addition exposes useful assertion methods
 /// which make testing asynchronous actor interactions simpler.
 ///
 /// - SeeAlso: `ActorableTestProbe` which is the equivalent API for `Actorable`s.
-public final class ActorTestProbe<Message: ActorMessage>: @unchecked Sendable {
+public final class ActorTestProbe<Message: Codable>: @unchecked Sendable {
     /// Name of the test probe (and underlying actor).
     public let name: String
 
@@ -500,7 +500,7 @@ extension ActorTestProbe {
 }
 
 /// Allows intercepting messages
-public final class ProbeInterceptor<Message: ActorMessage>: _Interceptor<Message> {
+public final class ProbeInterceptor<Message: Codable>: _Interceptor<Message> {
     let probe: ActorTestProbe<Message>
 
     public init(probe: ActorTestProbe<Message>) {

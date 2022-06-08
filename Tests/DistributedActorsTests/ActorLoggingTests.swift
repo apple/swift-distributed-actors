@@ -117,6 +117,6 @@ final class ActorLoggingTests: ClusterSystemXCTestCase {
     }
 }
 
-private enum Rendered: String, ActorMessage {
+private enum Rendered: String, Codable {
     case instance
 }

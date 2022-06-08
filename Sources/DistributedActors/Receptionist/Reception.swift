@@ -146,7 +146,7 @@ extension _Reception.Listing where Guest: _ReceivesMessages {
     }
 }
 
-protocol AnyReceptionistListing: ActorMessage {
+protocol AnyReceptionistListing: Codable {
     // For comparing if two listings are equal
     var refsAsAnyHashable: AnyHashable { get }
 }
@@ -161,7 +161,7 @@ extension AnyReceptionistListing {
 }
 
 protocol ReceptionistListing: AnyReceptionistListing, Equatable {
-    associatedtype Message: ActorMessage
+    associatedtype Message: Codable
 
     var refs: Set<_ActorRef<Message>> { get }
 }
@@ -177,7 +177,7 @@ extension ReceptionistListing {
 
 extension _Reception {
     /// Response to a `Register` message
-    public final class Registered<Guest: _ReceptionistGuest>: NonTransportableActorMessage, CustomStringConvertible {
+    public final class Registered<Guest: _ReceptionistGuest>: NotActuallyCodableMessage, CustomStringConvertible {
         internal let _guest: Guest
         public let key: _Reception.Key<Guest>
 

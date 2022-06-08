@@ -16,13 +16,13 @@ import ClusterMembership
 import SWIM
 
 extension SWIM {
-    public enum Message: ActorMessage {
+    public enum Message: Codable {
         case remote(SWIM.RemoteMessage)
         case local(SWIM.LocalMessage)
         case _testing(SWIM._TestingMessage)
     }
 
-    public enum RemoteMessage: ActorMessage {
+    public enum RemoteMessage: Codable {
         case ping(pingOrigin: SWIM.PingOriginRef, payload: SWIM.GossipPayload, sequenceNumber: SWIM.SequenceNumber)
 
         /// "Ping Request" requests a SWIM probe.
@@ -31,7 +31,7 @@ extension SWIM {
         case pingResponse(SWIM.PingResponse)
     }
 
-    public enum LocalMessage: NonTransportableActorMessage {
+    public enum LocalMessage: NotActuallyCodableMessage {
         /// Periodic message used to wake up SWIM and perform a random ping probe among its members.
         case protocolPeriodTick
 
@@ -75,7 +75,7 @@ extension SWIM {
         case confirmDead(UniqueNode)
     }
 
-    public enum _TestingMessage: NonTransportableActorMessage {
+    public enum _TestingMessage: NotActuallyCodableMessage {
         /// FOR TESTING: Expose the entire membership state
         case _getMembershipState(replyTo: _ActorRef<[SWIM.Member]>)
     }

@@ -20,7 +20,7 @@ import NIO
 import XCTest
 
 final class BehaviorTests: ClusterSystemXCTestCase {
-    public struct TestMessage: ActorMessage {
+    public struct TestMessage: Codable {
         let message: String
         let replyTo: _ActorRef<String>
     }
@@ -144,7 +144,7 @@ final class BehaviorTests: ClusterSystemXCTestCase {
         // receiveSignalType was invoked successfully
     }
 
-    enum OrElseMessage: String, ActorMessage {
+    enum OrElseMessage: String, Codable {
         case first
         case second
         case other
@@ -376,7 +376,7 @@ final class BehaviorTests: ClusterSystemXCTestCase {
         try capture.shouldContain(message: "*BehaviorTests.swift:\(mockLine)*")
     }
 
-    enum ContextClosureMessage: NonTransportableActorMessage {
+    enum ContextClosureMessage: NotActuallyCodableMessage {
         case context(() -> _ActorRef<String>)
     }
 

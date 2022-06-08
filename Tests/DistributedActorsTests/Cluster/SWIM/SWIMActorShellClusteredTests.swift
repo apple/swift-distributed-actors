@@ -340,7 +340,7 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: utility functions
 
-    struct ForwardedSWIMMessage: ActorMessage {
+    struct ForwardedSWIMMessage: Codable {
         let message: SWIM.Message
         let recipient: _ActorRef<SWIM.Message>
     }

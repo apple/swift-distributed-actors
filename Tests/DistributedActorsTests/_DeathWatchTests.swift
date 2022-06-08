@@ -458,11 +458,11 @@ final class DeathWatchTests: ClusterSystemXCTestCase {
     }
 }
 
-private enum Done: String, ActorMessage {
+private enum Done: String, Codable {
     case done
 }
 
-private enum RomeoMessage: ActorMessage {
+private enum RomeoMessage: Codable {
     case pleaseWatch(juliet: _ActorRef<JulietMessage>, probe: _ActorRef<Done>)
 }
 
@@ -498,10 +498,10 @@ extension RomeoMessage {
     }
 }
 
-private enum JulietMessage: String, ActorMessage {
+private enum JulietMessage: String, Codable {
     case takePoison
 }
 
-private enum StoppableRefMessage: String, ActorMessage {
+private enum StoppableRefMessage: String, Codable {
     case stop
 }

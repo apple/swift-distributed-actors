@@ -21,7 +21,7 @@ import NIOFoundationCompat
 import XCTest
 
 final class TraversalTests: ClusterSystemXCTestCase {
-    struct ActorReady: ActorMessage {
+    struct ActorReady: Codable {
         let name: String
     }
 

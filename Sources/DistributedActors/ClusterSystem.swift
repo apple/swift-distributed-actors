@@ -562,7 +562,7 @@ extension ClusterSystem: _ActorRefFactory {
         _ naming: _ActorNaming, of type: Message.Type = Message.self, props: _Props = _Props(),
         file: String = #file, line: UInt = #line,
         _ behavior: _Behavior<Message>
-    ) throws -> _ActorRef<Message> where Message: ActorMessage {
+    ) throws -> _ActorRef<Message> where Message: Codable {
         try self.serialization._ensureSerializer(type, file: file, line: line)
         return try self._spawn(using: self.userProvider, behavior, name: naming, props: props)
     }
@@ -577,7 +577,7 @@ extension ClusterSystem: _ActorRefFactory {
     public func _spawnSystemActor<Message>(
         _ naming: _ActorNaming, _ behavior: _Behavior<Message>, props: _Props = _Props()
     ) throws -> _ActorRef<Message>
-        where Message: ActorMessage
+        where Message: Codable
     {
         try self.serialization._ensureSerializer(Message.self)
         return try self._spawn(using: self.systemProvider, behavior, name: naming, props: props)
@@ -596,7 +596,7 @@ extension ClusterSystem: _ActorRefFactory {
     internal func _prepareSystemActor<Message>(
         _ naming: _ActorNaming, _ behavior: _Behavior<Message>, props: _Props = _Props()
     ) throws -> LazyStart<Message>
-        where Message: ActorMessage
+        where Message: Codable
     {
         // try self._serialization._ensureSerializer(Message.self)
         let ref = try self._spawn(using: self.systemProvider, behavior, name: naming, props: props, startImmediately: false)
@@ -609,7 +609,7 @@ extension ClusterSystem: _ActorRefFactory {
         _ behavior: _Behavior<Message>, name naming: _ActorNaming, props: _Props = _Props(),
         startImmediately: Bool = true
     ) throws -> _ActorRef<Message>
-        where Message: ActorMessage
+        where Message: Codable
     {
         try behavior.validateAsInitial()
 
@@ -653,7 +653,7 @@ extension ClusterSystem: _ActorRefFactory {
         _ behavior: _Behavior<Message>, id: ActorID, props: _Props = _Props(),
         startImmediately: Bool = true
     ) throws -> _ActorRef<Message>
-        where Message: ActorMessage
+        where Message: Codable
     {
         try behavior.validateAsInitial()
 
@@ -709,7 +709,7 @@ extension ClusterSystem: _ActorRefFactory {
 
     public func _spawnDistributedActor<Message>(
         _ behavior: _Behavior<Message>, identifiedBy id: ClusterSystem.ActorID
-    ) -> _ActorRef<Message> where Message: ActorMessage {
+    ) -> _ActorRef<Message> where Message: Codable {
         var props = _Props.forSpawn
         props._distributedActor = true
 
@@ -771,7 +771,7 @@ extension ClusterSystem: _ActorTreeTraversable {
     }
 
     /// INTERNAL API: Not intended to be used by end users.
-    public func _resolve<Message: ActorMessage>(context: ResolveContext<Message>) -> _ActorRef<Message> {
+    public func _resolve<Message: Codable>(context: ResolveContext<Message>) -> _ActorRef<Message> {
         do {
             try context.system.serialization._ensureSerializer(Message.self)
         } catch {
@@ -1283,7 +1283,7 @@ public enum ResolveError: DistributedActorSystemError {
 /// **CAUTION** Not calling `wakeUp` will prevent the actor from ever running
 /// and can cause leaks. Also `wakeUp` MUST NOT be called more than once,
 /// as that would violate the single-threaded execution guaranteed of actors.
-internal struct LazyStart<Message: ActorMessage> {
+internal struct LazyStart<Message: Codable> {
     let ref: _ActorRef<Message>
 
     init(ref: _ActorRef<Message>) {

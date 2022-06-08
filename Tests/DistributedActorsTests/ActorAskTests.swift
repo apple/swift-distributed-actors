@@ -19,7 +19,7 @@ import Foundation
 import XCTest
 
 final class ActorAskTests: ClusterSystemXCTestCase {
-    struct TestMessage: ActorMessage {
+    struct TestMessage: Codable {
         let replyTo: _ActorRef<String>
     }
 
@@ -87,7 +87,7 @@ final class ActorAskTests: ClusterSystemXCTestCase {
         result.shouldEqual("received:1")
     }
 
-    struct AnswerMePlease: ActorMessage {
+    struct AnswerMePlease: Codable {
         let replyTo: _ActorRef<String>
     }
 

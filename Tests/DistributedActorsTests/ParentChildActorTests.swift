@@ -19,7 +19,7 @@ import XCTest
 
 final class ParentChildActorTests: ClusterSystemXCTestCase {
     typealias ParentRef = _ActorRef<ParentProtocol>
-    enum ParentProtocol: NonTransportableActorMessage {
+    enum ParentProtocol: NotActuallyCodableMessage {
         case spawnChild(name: String, behavior: _Behavior<ChildProtocol>)
         case spawnAnonymousChild(behavior: _Behavior<ChildProtocol>)
 
@@ -29,7 +29,7 @@ final class ParentChildActorTests: ClusterSystemXCTestCase {
     }
 
     typealias ChildRef = _ActorRef<ChildProtocol>
-    enum ChildProtocol: NonTransportableActorMessage {
+    enum ChildProtocol: NotActuallyCodableMessage {
         case howAreYou(replyTo: _ActorRef<String>)
         case fail
         case throwWhoops
@@ -37,7 +37,7 @@ final class ParentChildActorTests: ClusterSystemXCTestCase {
     }
 
     typealias ParentChildProbeRef = _ActorRef<ParentChildProbeProtocol>
-    enum ParentChildProbeProtocol: Equatable, NonTransportableActorMessage {
+    enum ParentChildProbeProtocol: Equatable, NotActuallyCodableMessage {
         case spawned(child: ChildRef)
         case spawnFailed(path: ActorPath)
 

@@ -54,7 +54,7 @@ public protocol _ActorRefFactory {
         props: _Props,
         file: String, line: UInt,
         _ behavior: _Behavior<Message>
-    ) throws -> _ActorRef<Message> where Message: ActorMessage
+    ) throws -> _ActorRef<Message> where Message: Codable
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -64,7 +64,7 @@ public protocol _ChildActorRefFactory: _ActorRefFactory {
     var children: _Children { get set } // lock-protected
 
     func stop<Message>(child ref: _ActorRef<Message>) throws
-        where Message: ActorMessage
+        where Message: Codable
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------

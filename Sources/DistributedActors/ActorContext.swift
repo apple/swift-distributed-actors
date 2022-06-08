@@ -19,7 +19,7 @@ import Logging
 /// - Warning:
 ///   - It MUST only ever be accessed from its own Actor. It is fine though to close over it in the actors behaviours.
 ///   - It MUST NOT be shared to other actors, and MUST NOT be accessed concurrently (e.g. from outside the actor).
-public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable*/ {
+public class _ActorContext<Message: Codable> /* TODO(sendable): NOTSendable*/ {
     public typealias Myself = _ActorRef<Message>
 
     /// Returns `ClusterSystem` which this context belongs to.
@@ -126,7 +126,7 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
         file: String = #file, line: UInt = #line,
         _ behavior: _Behavior<M>
     ) throws -> _ActorRef<M>
-        where M: ActorMessage
+        where M: Codable
     {
         _undefined()
     }
@@ -145,7 +145,7 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
         file: String = #file, line: UInt = #line,
         _ behavior: _Behavior<M>
     ) throws -> _ActorRef<M>
-        where M: ActorMessage
+        where M: Codable
     {
         _undefined()
     }
@@ -174,7 +174,7 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
     /// - Throws: an `_ActorContextError` when an actor ref is passed in that is NOT a child of the current actor.
     ///           An actor may not terminate another's child actors. Attempting to stop `myself` using this method will
     ///           also throw, as the proper way of stopping oneself is returning a `_Behavior.stop`.
-    public func stop<M>(child ref: _ActorRef<M>) throws where M: ActorMessage {
+    public func stop<M>(child ref: _ActorRef<M>) throws where M: Codable {
         return _undefined()
     }
 
@@ -332,7 +332,7 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
     /// being silently dropped. This can be useful when not all messages `From` have a valid representation in
     /// `Message`, or if not all `From` messages are of interest for this particular actor.
     public final func messageAdapter<From>(_ adapt: @escaping (From) -> Message?) -> _ActorRef<From>
-        where From: ActorMessage
+        where From: Codable
     {
         return self.messageAdapter(from: From.self, adapt: adapt)
     }
@@ -349,7 +349,7 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
     /// being silently dropped. This can be useful when not all messages `From` have a valid representation in
     /// `Message`, or if not all `From` messages are of interest for this particular actor.
     public func messageAdapter<From>(from type: From.Type, adapt: @escaping (From) -> Message?) -> _ActorRef<From>
-        where From: ActorMessage
+        where From: Codable
     {
         return _undefined()
     }
@@ -365,7 +365,7 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
     /// with an existing `_SubReceiveId`, it replaces the old one. All references will remain valid and point to
     /// the new behavior.
     public func subReceive<SubMessage>(_: _SubReceiveId<SubMessage>, _: SubMessage.Type, _: @escaping (SubMessage) throws -> Void) -> _ActorRef<SubMessage>
-        where SubMessage: ActorMessage
+        where SubMessage: Codable
     {
         return _undefined()
     }

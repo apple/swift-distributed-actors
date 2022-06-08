@@ -40,7 +40,7 @@ public protocol _AbstractAdapter: _ActorTreeTraversable {
 /// The adapter can be watched and shares the lifecycle with the adapted actor,
 /// meaning that it will terminate when the actor terminates. It will survive
 /// restarts after failures.
-internal final class _ActorRefAdapter<To: ActorMessage>: _AbstractAdapter {
+internal final class _ActorRefAdapter<To: Codable>: _AbstractAdapter {
     public let fromType: Any.Type
     private let target: _ActorRef<To>
     let id: ActorID
@@ -235,7 +235,7 @@ internal final class _DeadLetterAdapterPersonality: _AbstractAdapter {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: SubReceiveAdapter
 
-internal final class SubReceiveAdapter<Message: ActorMessage, OwnerMessage: ActorMessage>: _AbstractAdapter {
+internal final class SubReceiveAdapter<Message: Codable, OwnerMessage: Codable>: _AbstractAdapter {
     internal let fromType: Any.Type
 
     private let target: _ActorRef<OwnerMessage>

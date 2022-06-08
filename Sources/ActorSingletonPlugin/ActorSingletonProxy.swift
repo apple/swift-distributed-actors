@@ -31,7 +31,7 @@ import Logging
 /// singleton runs on. If the singleton falls on *this* node, the proxy will spawn a `ActorSingletonManager`,
 /// which manages the actual singleton actor, and obtain the ref from it. The proxy instructs the
 /// `ActorSingletonManager` to hand over the singleton whenever the node changes.
-internal class ActorSingletonProxy<Message: ActorMessage> {
+internal class ActorSingletonProxy<Message: Codable> {
     /// Settings for the `ActorSingleton`
     private let settings: ActorSingletonSettings
 

@@ -89,11 +89,11 @@ final class ActorSubReceiveTests: ClusterSystemXCTestCase {
         let p = self.testKit.makeTestProbe(expecting: Int.self)
         let refProbe = self.testKit.makeTestProbe(expecting: _ActorRef<IncrementAndGet>.self)
 
-        struct GetState: ActorMessage {
+        struct GetState: Codable {
             let replyTo: _ActorRef<Int>
         }
 
-        struct IncrementAndGet: ActorMessage {
+        struct IncrementAndGet: Codable {
             let replyTo: _ActorRef<Int>
         }
 
@@ -205,7 +205,7 @@ final class ActorSubReceiveTests: ClusterSystemXCTestCase {
     }
 
     func test_subReceive_shouldBeReplacedIfRegisteredAgainUnderSameKey() throws {
-        struct TestMessage: ActorMessage {
+        struct TestMessage: Codable {
             let replyTo: _ActorRef<String>
             let message: String
         }
