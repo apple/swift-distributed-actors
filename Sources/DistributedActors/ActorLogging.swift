@@ -270,7 +270,7 @@ struct ActorOriginLogHandler: LogHandler {
 /// This can be used to offload the action of actually writing the log statements to an asynchronous worker actor.
 /// This is useful to not block the (current) actors processing with any potential IO operations a `LogHandler` may
 /// need to perform.
-public struct LogMessage {
+struct LogMessage {
     let identifier: String
 
     let time: Date

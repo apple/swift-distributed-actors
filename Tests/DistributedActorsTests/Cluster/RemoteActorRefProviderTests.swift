@@ -45,7 +45,7 @@ final class RemoteActorRefProviderTests: ClusterSystemXCTestCase {
 
         let node = UniqueNode(node: .init(systemName: "system", host: "3.3.3.3", port: 2322), nid: .random())
         let remoteNode = ActorID(remote: node, path: try ActorPath._user.appending("henry").appending("hacker"), incarnation: ActorIncarnation(1337))
-        let resolveContext = ResolveContext<String>(id: remoteNode, system: system)
+        let resolveContext = _ResolveContext<String>(id: remoteNode, system: system)
 
         // when
         let madeUpRef = provider._resolveAsRemoteRef(resolveContext, remoteAddress: remoteNode)
@@ -70,7 +70,7 @@ final class RemoteActorRefProviderTests: ClusterSystemXCTestCase {
         var id: ActorID = ref.id
         id._location = .remote(self.system.settings.uniqueBindNode)
 
-        let resolveContext = ResolveContext<Int>(id: id, system: system)
+        let resolveContext = _ResolveContext<Int>(id: id, system: system)
         let resolvedRef = self.system._resolve(context: resolveContext)
 
         "\(resolvedRef)".shouldEqual("_ActorRef<Int>(/dead/user/ignoresStrings)")
@@ -81,7 +81,7 @@ final class RemoteActorRefProviderTests: ClusterSystemXCTestCase {
         var id: ActorID = ref.id
         id._location = .remote(self.system.settings.uniqueBindNode)
 
-        let resolveContext = ResolveContext<DeadLetter>(id: id, system: system)
+        let resolveContext = _ResolveContext<DeadLetter>(id: id, system: system)
         let resolvedRef = self.system._resolve(context: resolveContext)
 
         "\(resolvedRef)".shouldEqual("_ActorRef<DeadLetter>(/dead/letters)")
@@ -93,7 +93,7 @@ final class RemoteActorRefProviderTests: ClusterSystemXCTestCase {
         let unknownNode = UniqueNode(node: .init(systemName: "something", host: "1.1.1.1", port: 1111), nid: UniqueNodeID(1211))
         id._location = .remote(unknownNode)
 
-        let resolveContext = ResolveContext<DeadLetter>(id: id, system: system)
+        let resolveContext = _ResolveContext<DeadLetter>(id: id, system: system)
         let resolvedRef = self.system._resolve(context: resolveContext)
 
         "\(resolvedRef)".shouldEqual("_ActorRef<DeadLetter>(sact://something@1.1.1.1:1111/dead/letters)")
@@ -103,7 +103,7 @@ final class RemoteActorRefProviderTests: ClusterSystemXCTestCase {
         let unknownNode = UniqueNode(node: .init(systemName: "something", host: "1.1.1.1", port: 1111), nid: UniqueNodeID(1211))
         let id: ActorID = try .init(remote: unknownNode, path: ActorPath._dead.appending("already"), incarnation: .wellKnown)
 
-        let resolveContext = ResolveContext<DeadLetter>(id: id, system: system)
+        let resolveContext = _ResolveContext<DeadLetter>(id: id, system: system)
         let resolvedRef = self.system._resolve(context: resolveContext)
 
         "\(resolvedRef)".shouldEqual("_ActorRef<DeadLetter>(sact://something@1.1.1.1:1111/dead/already)")
@@ -115,7 +115,7 @@ final class RemoteActorRefProviderTests: ClusterSystemXCTestCase {
         var id: ActorID = ref.id
         id._location = .remote(self.system.settings.uniqueBindNode)
 
-        let resolveContext = ResolveContext<String>(id: id, system: system)
+        let resolveContext = _ResolveContext<String>(id: id, system: system)
         let resolvedRef = self.system._resolve(context: resolveContext)
 
         // then

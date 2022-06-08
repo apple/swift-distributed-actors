@@ -162,7 +162,7 @@ internal class ActorSingletonProxy<Message: Codable> {
             // to have proxies ask the `targetNode` proxy to "send me the ref once you have taken over"
             // and before then the proxies can either set `ref` to `nil` (to stash messages) or to `targetNode`
             // proxy as we do today. The challenge lies in serialization, as ActorSingletonProxy and ActorSingletonManager are generic.
-            let resolveContext = ResolveContext<Message>(id: ._singletonProxy(name: self.settings.name, remote: node), system: context.system)
+            let resolveContext = _ResolveContext<Message>(id: ._singletonProxy(name: self.settings.name, remote: node), system: context.system)
             let ref = context.system._resolve(context: resolveContext)
             self.updateRef(context, ref)
         case .none:

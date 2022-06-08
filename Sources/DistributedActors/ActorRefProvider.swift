@@ -100,7 +100,7 @@ extension RemoteActorRefProvider {
 // MARK: RemoteActorRefProvider implements resolve differently, by being aware of remote addresses
 
 extension RemoteActorRefProvider {
-    public func _resolve<Message>(context: ResolveContext<Message>) -> _ActorRef<Message> {
+    public func _resolve<Message>(context: _ResolveContext<Message>) -> _ActorRef<Message> {
         switch context.id._location {
         case .local:
             return self.localProvider._resolve(context: context)
@@ -113,7 +113,7 @@ extension RemoteActorRefProvider {
         }
     }
 
-    public func _resolveUntyped(context: ResolveContext<Never>) -> _AddressableActorRef {
+    public func _resolveUntyped(context: _ResolveContext<Never>) -> _AddressableActorRef {
         if self.localNode == context.id.uniqueNode {
             return self.localProvider._resolveUntyped(context: context)
         } else {
@@ -121,7 +121,7 @@ extension RemoteActorRefProvider {
         }
     }
 
-    internal func _resolveAsRemoteRef<Message>(_ context: ResolveContext<Message>, remoteAddress id: ActorID) -> _ActorRef<Message> {
+    internal func _resolveAsRemoteRef<Message>(_ context: _ResolveContext<Message>, remoteAddress id: ActorID) -> _ActorRef<Message> {
         _ActorRef(.remote(.init(shell: self.cluster, id: id, system: context.system)))
     }
 }
@@ -185,11 +185,11 @@ extension LocalActorRefProvider {
         self.root._traverse(context: context.deeper, visit)
     }
 
-    public func _resolve<Message>(context: ResolveContext<Message>) -> _ActorRef<Message> {
+    public func _resolve<Message>(context: _ResolveContext<Message>) -> _ActorRef<Message> {
         self.root._resolve(context: context)
     }
 
-    public func _resolveUntyped(context: ResolveContext<Never>) -> _AddressableActorRef {
+    public func _resolveUntyped(context: _ResolveContext<Never>) -> _AddressableActorRef {
         self.root._resolveUntyped(context: context)
     }
 }
@@ -203,14 +203,14 @@ public protocol _ActorTreeTraversable {
     /// Depending on the underlying implementation, the returned ref MAY be a remote one.
     ///
     /// - Returns: `deadLetters` if actor path resolves to no live actor, a valid `_ActorRef` otherwise.
-    func _resolve<Message>(context: ResolveContext<Message>) -> _ActorRef<Message> where Message: Codable
+    func _resolve<Message>(context: _ResolveContext<Message>) -> _ActorRef<Message> where Message: Codable
 
     /// Resolves the given actor path against the underlying actor tree.
     ///
     /// Depending on the underlying implementation, the returned ref MAY be a remote one.
     ///
     /// - Returns: `deadLetters` if actor path resolves to no live actor, a valid `_ActorRef` otherwise.
-    func _resolveUntyped(context: ResolveContext<Never>) -> _AddressableActorRef
+    func _resolveUntyped(context: _ResolveContext<Never>) -> _AddressableActorRef
 }
 
 // TODO: Would be nice to not need this type at all; though initialization dance prohibiting self access makes this a bit hard
@@ -250,7 +250,7 @@ internal struct CompositeActorTreeTraversable: _ActorTreeTraversable {
     }
 
     @usableFromInline
-    func _resolve<Message>(context: ResolveContext<Message>) -> _ActorRef<Message> {
+    func _resolve<Message>(context: _ResolveContext<Message>) -> _ActorRef<Message> {
         guard let selector = context.selectorSegments.first else {
             return context.personalDeadLetters // i.e. we resolved a "dead reference" as it points to nothing
         }
@@ -262,7 +262,7 @@ internal struct CompositeActorTreeTraversable: _ActorTreeTraversable {
         }
     }
 
-    public func _resolveUntyped(context: ResolveContext<Never>) -> _AddressableActorRef {
+    public func _resolveUntyped(context: _ResolveContext<Never>) -> _AddressableActorRef {
         guard let selector = context.selectorSegments.first else {
             return context.personalDeadLetters.asAddressable // i.e. we resolved a "dead reference" as it points to nothing
         }
@@ -326,7 +326,7 @@ public struct _TraversalContext<T> {
 }
 
 /// INTERNAL API: May change without any prior notice.
-public struct ResolveContext<Message: Codable> {
+public struct _ResolveContext<Message: Codable> {
     /// The "remaining path" of the resolve being performed
     public var selectorSegments: ArraySlice<ActorPathSegment>
 
@@ -348,7 +348,7 @@ public struct ResolveContext<Message: Codable> {
     /// Returns copy of traversal context yet "one level deeper."
     ///
     /// Note that this also drops the `path` if it was present, but retains the `incarnation` as we may want to resolve a _specific_ ref after all.
-    public var deeper: ResolveContext {
+    public var deeper: _ResolveContext {
         var next = self
         next.selectorSegments = self.selectorSegments.dropFirst()
         return next

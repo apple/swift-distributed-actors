@@ -775,7 +775,7 @@ extension ClusterSystem: _ActorTreeTraversable {
     }
 
     /// INTERNAL API: Not intended to be used by end users.
-    public func _resolve<Message: Codable>(context: ResolveContext<Message>) -> _ActorRef<Message> {
+    public func _resolve<Message: Codable>(context: _ResolveContext<Message>) -> _ActorRef<Message> {
         do {
             try context.system.serialization._ensureSerializer(Message.self)
         } catch {
@@ -812,7 +812,7 @@ extension ClusterSystem: _ActorTreeTraversable {
         return try StubDistributedActor.resolve(id: identity, using: self)
     }
 
-    public func _resolveUntyped(context: ResolveContext<Never>) -> _AddressableActorRef {
+    public func _resolveUntyped(context: _ResolveContext<Never>) -> _AddressableActorRef {
         guard let selector = context.selectorSegments.first else {
             return context.personalDeadLetters.asAddressable
         }

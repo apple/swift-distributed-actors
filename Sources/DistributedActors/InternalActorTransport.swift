@@ -41,12 +41,12 @@ open class _InternalActorTransport {
     }
 
     /// May return `nil` if this transport is NOT able to resolve this ref.
-    open func _resolve<Message>(context: ResolveContext<Message>) -> _ActorRef<Message>? {
+    open func _resolve<Message>(context: _ResolveContext<Message>) -> _ActorRef<Message>? {
         fatalError("Not implemented: \(#function) in \(self) transport! Attempted to resolve: \(context)")
     }
 
     /// May return `nil` if this transport is NOT able to resolve this ref.
-    open func _resolveUntyped(context: ResolveContext<Never>) -> _AddressableActorRef? {
+    open func _resolveUntyped(context: _ResolveContext<Never>) -> _AddressableActorRef? {
         fatalError("Not implemented: \(#function) in \(self) transport! Attempted to resolve: \(context)")
     }
 

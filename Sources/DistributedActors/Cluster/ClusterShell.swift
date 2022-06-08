@@ -426,7 +426,7 @@ extension ClusterShell {
                         intervalRandomFactor: self.settings.membershipGossipIntervalRandomFactor,
                         style: .acknowledged(timeout: self.settings.membershipGossipInterval),
                         peerDiscovery: .onClusterMember(atLeast: .joining, resolve: { member in
-                            let resolveContext = ResolveContext<GossipShell<Cluster.MembershipGossip, Cluster.MembershipGossip>.Message>(id: ._clusterGossip(on: member.uniqueNode), system: context.system)
+                            let resolveContext = _ResolveContext<GossipShell<Cluster.MembershipGossip, Cluster.MembershipGossip>.Message>(id: ._clusterGossip(on: member.uniqueNode), system: context.system)
                             return context.system._resolve(context: resolveContext).asAddressable
                         })
                     ),

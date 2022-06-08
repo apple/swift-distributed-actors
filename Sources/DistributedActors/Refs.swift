@@ -716,7 +716,7 @@ extension _Guardian: _ActorTreeTraversable {
         }
     }
 
-    public func _resolve<Message>(context: ResolveContext<Message>) -> _ActorRef<Message> {
+    public func _resolve<Message>(context: _ResolveContext<Message>) -> _ActorRef<Message> {
         guard let selector = context.selectorSegments.first else {
             fatalError("Expected selector in guardian._resolve()!")
         }
@@ -728,7 +728,7 @@ extension _Guardian: _ActorTreeTraversable {
         }
     }
 
-    public func _resolveUntyped(context: ResolveContext<Never>) -> _AddressableActorRef {
+    public func _resolveUntyped(context: _ResolveContext<Never>) -> _AddressableActorRef {
         guard let selector = context.selectorSegments.first else {
             fatalError("Expected selector in guardian._resolve()!")
         }

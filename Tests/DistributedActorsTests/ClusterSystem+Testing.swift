@@ -27,7 +27,7 @@ extension ClusterSystem {
 
         let remoteID = ActorID(remote: remoteSystem.settings.uniqueBindNode, path: ref.path, incarnation: ref.id.incarnation)
 
-        let resolveContext = ResolveContext<Message>(id: remoteID, system: self)
+        let resolveContext = _ResolveContext<Message>(id: remoteID, system: self)
         return self._resolve(context: resolveContext)
     }
 

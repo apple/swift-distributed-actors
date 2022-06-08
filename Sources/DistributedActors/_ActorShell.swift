@@ -972,7 +972,7 @@ extension AbstractShellProtocol {
         }
     }
 
-    public func _resolve<Message>(context: ResolveContext<Message>) -> _ActorRef<Message>
+    public func _resolve<Message>(context: _ResolveContext<Message>) -> _ActorRef<Message>
         where Message: Codable
     {
         let myself: _ReceivesSystemMessages = self._myselfReceivesSystemMessages
@@ -1002,7 +1002,7 @@ extension AbstractShellProtocol {
         return self.children._resolve(context: context)
     }
 
-    public func _resolveUntyped(context: ResolveContext<Never>) -> _AddressableActorRef {
+    public func _resolveUntyped(context: _ResolveContext<Never>) -> _AddressableActorRef {
         guard context.selectorSegments.first != nil else {
             // no remaining selectors == we are the "selected" ref, apply uid check
             if self._myselfReceivesSystemMessages.id.incarnation == context.id.incarnation {
