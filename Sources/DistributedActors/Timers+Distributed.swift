@@ -14,7 +14,6 @@
 
 import Dispatch
 import Distributed
-import Logging
 import struct NIO.TimeAmount
 
 @usableFromInline
@@ -48,8 +47,8 @@ public final class ActorTimers<Act: DistributedActor> where Act.ActorSystem == C
     @usableFromInline
     internal var installedTimers: [TimerKey: DistributedActorTimer] = [:]
 
-    @usableFromInline
-    internal var log: Logger
+    // TODO: this is a workaround, we're removing ActorTimers since they can't participate in structured cancellation
+    weak var actorSystem: Act.ActorSystem?
 
     /// Create a timers instance owned by the passed in actor.
     ///
@@ -57,15 +56,10 @@ public final class ActorTimers<Act: DistributedActor> where Act.ActorSystem == C
     ///
     /// - Parameter myself:
     public init(_ myself: Act) {
-        self.log = Logger(label: "\(myself)") // FIXME(distributed): pick up the actor logger (!!!)
-        log[metadataKey: "actor/id"] = "\(myself.id.detailedDescription)"
         self.ownerID = myself.id
     }
 
     deinit {
-        if installedTimers.count > 0 {
-            log.debug("\(Self.self) deinit, cancelling [\(installedTimers.count)] timers") // TODO: include actor address
-        }
         self._cancelAll(includeSystemTimers: true)
     }
 
@@ -76,7 +70,6 @@ public final class ActorTimers<Act: DistributedActor> where Act.ActorSystem == C
 
     internal func _cancelAll(includeSystemTimers: Bool) {
         for key in self.installedTimers.keys where includeSystemTimers || !key.isSystemTimer {
-            // TODO: represent with "system timer key" type?
             // TODO: the reason the `_` keys are not cancelled is because we want to cancel timers in _restartPrepare but we need "our restart timer" to remain
             self.cancel(for: key)
         }
@@ -88,9 +81,6 @@ public final class ActorTimers<Act: DistributedActor> where Act.ActorSystem == C
     @inlinable
     public func cancel(for key: TimerKey) {
         if let timer = self.installedTimers.removeValue(forKey: key) {
-//            if system.settings.logging.verboseTimers {
-//                self.log.trace("Cancel timer [\(key)] with generation [\(timer.generation)]", metadata: self.metadata)
-//            }
             timer.handle.cancel()
         }
     }
@@ -104,8 +94,6 @@ public final class ActorTimers<Act: DistributedActor> where Act.ActorSystem == C
     }
 
     /// Starts a timer that will invoke the provided `call` closure on the actor's context after the specified delay.
-    ///
-    /// Timer keys are used for logging purposes and should descriptively explain the purpose of this timer.
     ///
     /// - Parameters:
     ///   - key: the key associated with the timer
@@ -121,8 +109,6 @@ public final class ActorTimers<Act: DistributedActor> where Act.ActorSystem == C
     }
 
     /// Starts a timer that will periodically invoke the passed in `call` closure on the actor's context.
-    ///
-    /// Timer keys are used for logging purposes and should descriptively explain the purpose of this timer.
     ///
     /// - Parameters:
     ///   - key: the key associated with the timer
@@ -146,22 +132,37 @@ public final class ActorTimers<Act: DistributedActor> where Act.ActorSystem == C
     ) {
         self.cancel(for: key)
 
-//        let generation = self.nextTimerGen() // TODO(distributed): we're not using generations since we don't have restarts
-        // let event = DistributedActorTimerEvent(key: key, generation: generation, owner: self.ownerID)
         let handle: Cancelable
         if repeated {
             handle = self.dispatchQueue.scheduleAsync(initialDelay: interval, interval: interval) {
+                // We take the lock to prevent the system from shutting down
+                // while we're in the middle of potentially issuing remote calls
+                // Which may cause: Cannot schedule tasks on an EventLoop that has already shut down.
+                // The actual solution is outstanding work tracking potentially.
+                let system = self.actorSystem
+                system?.shutdownLock.lock()
+                defer {
+                    system?.shutdownLock.unlock()
+                }
+
                 await call()
             }
         } else {
             handle = self.dispatchQueue.scheduleOnceAsync(delay: interval) {
+                // We take the lock to prevent the system from shutting down
+                // while we're in the middle of potentially issuing remote calls
+                // Which may cause: Cannot schedule tasks on an EventLoop that has already shut down.
+                // The actual solution is outstanding work tracking potentially.
+                let system = self.actorSystem
+                system?.shutdownLock.lock()
+                defer {
+                    system?.shutdownLock.unlock()
+                }
+
                 await call()
             }
         }
 
-//        if system.settings.logging.verboseTimers {
-//            self.log.trace("Started timer [\(key)] with generation [\(generation)]", metadata: self.metadata)
-//        }
         self.installedTimers[key] = DistributedActorTimer(key: key, repeated: repeated, handle: handle)
     }
 }

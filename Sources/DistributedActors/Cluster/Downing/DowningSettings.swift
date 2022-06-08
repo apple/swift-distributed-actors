@@ -57,7 +57,9 @@ public enum OnDownActionStrategySettings {
                     .setup { context in
                         guard .milliseconds(0) < shutdownDelay else {
                             context.log.warning("This node was marked as [.down], delay is immediate. Shutting down the system immediately!")
-                            system.shutdown()
+                            Task {
+                                system.shutdown()
+                            }
                             return .stop
                         }
 
@@ -66,7 +68,9 @@ public enum OnDownActionStrategySettings {
 
                         return .receiveMessage { _ in
                             system.log.warning("Shutting down...")
-                            system.shutdown()
+                            Task {
+                                system.shutdown()
+                            }
                             return .stop
                         }
                     }

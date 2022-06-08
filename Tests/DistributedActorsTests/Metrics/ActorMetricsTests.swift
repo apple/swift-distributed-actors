@@ -72,7 +72,6 @@ final class ActorMetricsTests: ClusteredActorSystemsXCTestCase {
 
         sleep(5)
         let gauge = try self.metrics.expectGauge("first.measuredActorGroup.mailbox.count")
-        pprint("Mailbox run visualized via \(gauge): \(gauge.values)")
         // we can't really reliably test that we get to some "maximum" since the actor starts processing messages as they come in
         gauge.lastValue.shouldEqual(0) // after processing we must always go back to zero
     }

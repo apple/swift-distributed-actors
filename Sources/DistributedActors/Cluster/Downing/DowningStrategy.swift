@@ -50,6 +50,7 @@ public struct DowningStrategyDirective {
     public static func startTimer(key: TimerKey, member: Cluster.Member, delay: TimeAmount) -> Self {
         .init(.startTimer(key: key, member: member, delay: delay))
     }
+
     public static func cancelTimer(key: TimerKey) -> Self {
         .init(.cancelTimer(key: key))
     }
@@ -57,6 +58,7 @@ public struct DowningStrategyDirective {
     public static func markAsDown(members: Set<Cluster.Member>) -> Self {
         .init(.markAsDown(members))
     }
+
     public static func markAsDown(_ member: Cluster.Member) -> Self {
         .init(.markAsDown([member]))
     }
