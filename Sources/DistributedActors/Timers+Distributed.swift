@@ -18,7 +18,7 @@ import struct NIO.TimeAmount
 
 struct DistributedActorTimer {
     @usableFromInline
-    let key: _TimerKey
+    let key: TimerKey
     @usableFromInline
     let repeated: Bool
     @usableFromInline
@@ -26,22 +26,22 @@ struct DistributedActorTimer {
 }
 
 struct DistributedActorTimerEvent {
-    let key: _TimerKey
-//    let generation: Int
+    let key: TimerKey
     let owner: ActorID
 }
 
 /// Creates and manages timers which may only be accessed from the actor that owns it.
 ///
 /// _BehaviorTimers are bound to this objects lifecycle, i.e. when the actor owning this object is deallocated,
-/// and the `_ActorTimers` are deallocated as well, all timers associated with it are cancelled.
-public final class _ActorTimers<Act: DistributedActor> where Act.ActorSystem == ClusterSystem {
+/// and the `ActorTimers` are deallocated as well, all timers associated with it are cancelled.
+@available(*, deprecated, message: "Actor timers cannot participate in structured cancellation, and will be replaced with patterns using swift-async-algorithms (see Timer)")
+public final class ActorTimers<Act: DistributedActor> where Act.ActorSystem == ClusterSystem {
     internal let ownerID: ActorID
 
     internal let dispatchQueue = DispatchQueue.global()
-    internal var installedTimers: [_TimerKey: DistributedActorTimer] = [:]
+    internal var installedTimers: [TimerKey: DistributedActorTimer] = [:]
 
-    // TODO: this is a workaround, we're removing _ActorTimers since they can't participate in structured cancellation
+    // TODO: this is a workaround, we're removing ActorTimers since they can't participate in structured cancellation
     weak var actorSystem: Act.ActorSystem?
 
     /// Create a timers instance owned by the passed in actor.
@@ -57,7 +57,7 @@ public final class _ActorTimers<Act: DistributedActor> where Act.ActorSystem == 
         self._cancelAll(includeSystemTimers: true)
     }
 
-    /// Cancel all timers currently stored in this ``_ActorTimers`` instance.
+    /// Cancel all timers currently stored in this ``ActorTimers`` instance.
     public func cancelAll() {
         self._cancelAll(includeSystemTimers: false)
     }
@@ -72,7 +72,7 @@ public final class _ActorTimers<Act: DistributedActor> where Act.ActorSystem == 
     /// Cancels timer associated with the given key.
     ///
     /// - Parameter key: key of the timer to cancel
-    public func cancel(for key: _TimerKey) {
+    public func cancel(for key: TimerKey) {
         if let timer = self.installedTimers.removeValue(forKey: key) {
             timer.handle.cancel()
         }
@@ -81,7 +81,7 @@ public final class _ActorTimers<Act: DistributedActor> where Act.ActorSystem == 
     /// Checks for the existence of a scheduler timer for given key (single or periodic).
     ///
     /// - Returns: true if timer exists, false otherwise
-    public func exists(key: _TimerKey) -> Bool {
+    public func exists(key: TimerKey) -> Bool {
         self.installedTimers[key] != nil
     }
 
@@ -92,7 +92,7 @@ public final class _ActorTimers<Act: DistributedActor> where Act.ActorSystem == 
     ///   - call: the call that will be made after the `delay` amount of time elapses
     ///   - delay: the delay after which the message will be sent
     public func startSingle(
-        key: _TimerKey,
+        key: TimerKey,
         delay: TimeAmount,
         @_inheritActorContext @_implicitSelfCapture call: @Sendable @escaping () async -> Void
     ) {
@@ -106,7 +106,7 @@ public final class _ActorTimers<Act: DistributedActor> where Act.ActorSystem == 
     ///   - call: the call that will be executed after the `delay` amount of time elapses
     ///   - interval: the interval with which the message will be sent
     public func startPeriodic(
-        key: _TimerKey,
+        key: TimerKey,
         interval: TimeAmount,
         @_inheritActorContext @_implicitSelfCapture call: @Sendable @escaping () async -> Void
     ) {
@@ -114,7 +114,7 @@ public final class _ActorTimers<Act: DistributedActor> where Act.ActorSystem == 
     }
 
     internal func start(
-        key: _TimerKey,
+        key: TimerKey,
         @_inheritActorContext @_implicitSelfCapture call: @Sendable @escaping () async -> Void,
         interval: TimeAmount,
         repeated: Bool

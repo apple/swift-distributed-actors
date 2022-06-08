@@ -28,7 +28,7 @@ final class MembershipGossipClusteredTests: ClusteredActorSystemsXCTestCase {
             "/system/receptionist",
         ]
         settings.excludeGrep = [
-            "_TimerKey",
+            "TimerKey",
             "schedule next gossip",
             "Gossip payload updated",
         ]

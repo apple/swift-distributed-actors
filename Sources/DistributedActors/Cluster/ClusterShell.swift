@@ -937,7 +937,7 @@ extension ClusterShell {
                     "handshake/retryDelay": "\(retryDelay)",
                 ])
                 context.timers.startSingle(
-                    key: _TimerKey("handshake-timer-\(remoteNode)"),
+                    key: TimerKey("handshake-timer-\(remoteNode)"),
                     message: .command(.retryHandshake(initiated)),
                     delay: retryDelay
                 )
