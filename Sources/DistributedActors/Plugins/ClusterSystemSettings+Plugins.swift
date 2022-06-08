@@ -59,7 +59,6 @@ public struct PluginsSettings {
             plugin.stop(system)
         }
     }
-
 }
 
 extension PluginsSettings {

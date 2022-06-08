@@ -22,7 +22,7 @@ extension ClusterSystem {
     ///
     /// This version does not have to match the project version, i.e. a library version `1.5.0` may still be using the protocol version `1.0.0`,
     /// as this version number is more about the _wire_ compatibility of the underlying protocol, rather than the library capabilities
-    public static let protocolVersion: ClusterSystem.Version = ClusterSystem.Version(reserved: 0, major: 1, minor: 0, patch: 0)
+    public static let protocolVersion = ClusterSystem.Version(reserved: 0, major: 1, minor: 0, patch: 0)
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------

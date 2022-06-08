@@ -184,7 +184,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Shutdown
     private var shutdownReceptacle = BlockingReceptacle<Error?>()
-    private let shutdownLock = Lock()
+    internal let shutdownLock = Lock()
 
     /// Greater than 0 shutdown has been initiated / is in progress.
     private let shutdownFlag: ManagedAtomic<Int> = .init(0)
@@ -488,6 +488,8 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
             return Shutdown(receptacle: self.shutdownReceptacle)
         }
 
+        self.shutdownLock.lock()
+
         /// Down this member as part of shutting down; it may have enough time to notify other nodes on an best effort basis.
         if let myselfMember = self.cluster.membershipSnapshot.uniqueMember(self.cluster.uniqueNode) {
             self.cluster.down(member: myselfMember)
@@ -495,41 +497,43 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
 
         self.settings.plugins.stopAll(self)
 
-        queue.async {
-            self.log.log(level: .debug, "Shutting down actor system [\(self.name)]. All actors will be stopped.", file: #file, function: #function, line: #line)
-            if let cluster = self._cluster {
-                let receptacle = BlockingReceptacle<Void>()
-                cluster.ref.tell(.command(.shutdown(receptacle)))
-                receptacle.wait()
-            }
-            self.userProvider.stopAll()
-            self.systemProvider.stopAll()
-            self.dispatcher.shutdown()
-            self.downing = nil
-
-            self._associationTombstoneCleanupTask?.cancel()
-            self._associationTombstoneCleanupTask = nil
-
-            do {
-                try self._eventLoopGroup.syncShutdownGracefully()
-                // self._receptionistRef = self.deadLetters.adapted()
-            } catch {
-                self.shutdownReceptacle.offerOnce(error)
-                afterShutdownCompleted(error)
-            }
-
-            /// Only once we've shutdown all dispatchers and loops, we clear cycles between the serialization and system,
-            /// as they should never be invoked anymore.
-            /*
-             self.lazyInitializationLock.withWriterLockVoid {
-                 // self._serialization = nil // FIXME: need to release serialization
-             }
-             */
-            _ = self._clusterStore.storeIfNilThenLoad(Box(nil))
-
-            self.shutdownReceptacle.offerOnce(nil)
-            afterShutdownCompleted(nil)
+        self.log.log(level: .debug, "Shutting down actor system [\(self.name)]. All actors will be stopped.", file: #file, function: #function, line: #line)
+        defer {
+            self.shutdownLock.unlock()
         }
+
+        if let cluster = self._cluster {
+            let receptacle = BlockingReceptacle<Void>()
+            cluster.ref.tell(.command(.shutdown(receptacle)))
+            receptacle.wait()
+        }
+        self.userProvider.stopAll()
+        self.systemProvider.stopAll()
+        self.dispatcher.shutdown()
+        self.downing = nil
+
+        self._associationTombstoneCleanupTask?.cancel()
+        self._associationTombstoneCleanupTask = nil
+
+        do {
+            try self._eventLoopGroup.syncShutdownGracefully()
+            // self._receptionistRef = self.deadLetters.adapted()
+        } catch {
+            self.shutdownReceptacle.offerOnce(error)
+            afterShutdownCompleted(error)
+        }
+
+        /// Only once we've shutdown all dispatchers and loops, we clear cycles between the serialization and system,
+        /// as they should never be invoked anymore.
+        /*
+         self.lazyInitializationLock.withWriterLockVoid {
+             // self._serialization = nil // FIXME: need to release serialization
+         }
+         */
+        _ = self._clusterStore.storeIfNilThenLoad(Box(nil))
+
+        self.shutdownReceptacle.offerOnce(nil)
+        afterShutdownCompleted(nil)
 
         return Shutdown(receptacle: self.shutdownReceptacle)
     }
@@ -983,6 +987,9 @@ extension ClusterSystem {
         guard let clusterShell = _cluster else {
             throw RemoteCallError.clusterAlreadyShutDown
         }
+        guard self.shutdownFlag.load(ordering: .relaxed) == 0 else {
+            throw RemoteCallError.clusterAlreadyShutDown
+        }
 
         let recipient = _RemoteClusterActorPersonality<InvocationMessage>(shell: clusterShell, id: actor.id._asRemote, system: self)
         let arguments = invocation.arguments
@@ -1016,6 +1023,9 @@ extension ClusterSystem {
         Err: Error
     {
         guard let clusterShell = self._cluster else {
+            throw RemoteCallError.clusterAlreadyShutDown
+        }
+        guard self.shutdownFlag.load(ordering: .relaxed) == 0 else {
             throw RemoteCallError.clusterAlreadyShutDown
         }
 
