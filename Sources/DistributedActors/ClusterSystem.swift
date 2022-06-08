@@ -933,6 +933,9 @@ extension ClusterSystem {
             _openExistential(watcher, do: doMakeLifecycleWatch)
         }
 
+        let behavior = InvocationBehavior.behavior(instance: Weak(actor))
+        let ref = self._spawnDistributedActor(behavior, identifiedBy: actor.id)
+        self._managedRefs[actor.id] = ref
         self._managedDistributedActors.insert(actor: actor)
     }
 
