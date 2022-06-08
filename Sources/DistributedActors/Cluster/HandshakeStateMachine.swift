@@ -17,14 +17,19 @@ import NIO
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Protocol version
 
-/// Wire Protocol version of this Swift Distributed Actors build.
-public let DistributedActorsProtocolVersion: ClusterSystem.Version = .init(reserved: 0, major: 1, minor: 0, patch: 0)
+extension ClusterSystem {
+    /// Wire protocol version of this `ClusterSystem`.
+    ///
+    /// This version does not have to match the project version, i.e. a library version `1.5.0` may still be using the protocol version `1.0.0`,
+    /// as this version number is more about the _wire_ compatibility of the underlying protocol, rather than the library capabilities
+    public static let protocolVersion: ClusterSystem.Version = ClusterSystem.Version(reserved: 0, major: 1, minor: 0, patch: 0)
+}
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Constants for Cluster
 
 /// Magic 2 byte value for use as initial bytes in connections (before handshake).
-/// Reads as: `5AC7 == SACT == S Act == Swift/Swift Distributed Actors Act == Swift/Swift Distributed Actors`
+/// Reads as: `5AC7 == SACT == S Act == Swift/ (Distributed) Actors
 internal let HandshakeMagicBytes: UInt16 = 0x5AC7
 
 // ==== ----------------------------------------------------------------------------------------------------------------

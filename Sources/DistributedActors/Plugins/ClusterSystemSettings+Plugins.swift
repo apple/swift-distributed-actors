@@ -60,17 +60,6 @@ public struct PluginsSettings {
         }
     }
 
-//    /// Stops all plugins in the *reversed* order as they were added.
-//    internal func stopAll(_ transport: ActorClusterTransport) async {
-//        // Shut down in reversed order so plugins with the fewest dependencies are stopped first!
-//        for plugin in self.plugins.reversed() {
-//            do {
-//                try await plugin.stop(transport)
-//            } catch {
-//                fatalError("Failed to stop plugin \(plugin.key)! Error: \(error)")
-//            }
-//        }
-//    }
 }
 
 extension PluginsSettings {

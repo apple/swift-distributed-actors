@@ -64,7 +64,7 @@ public enum _SystemMessage: Equatable {
 
     /// Child actor has terminated. This system message by itself does not necessarily cause a DeathPact and termination of the parent.
     /// If the message carries an `escalated` failure, the failure should apply to the parent as well, potentially tearing it down as well.
-    case childTerminated(ref: _AddressableActorRef, TerminationCircumstances)
+    case childTerminated(ref: _AddressableActorRef, _TerminationCircumstances)
 
     /// Node has terminated, and all actors of this node shall be considered as terminated.
     /// This system message does _not_ have a direct counter part as `Signal`, and instead results in the sending of multiple
@@ -92,8 +92,9 @@ public enum _SystemMessage: Equatable {
     case tombstone
 }
 
+// TODO: Child actors are being removed
 /// The circumstances under which a child actor has terminated.
-public enum TerminationCircumstances {
+public enum _TerminationCircumstances {
     /// The actor stopped naturally, by becoming `.stop`
     case stopped
     /// The actor has failed during message processing.
