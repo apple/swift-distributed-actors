@@ -129,9 +129,9 @@ public final class ActorTimers<Act: DistributedActor> where Act.ActorSystem == C
                 // Which may cause: Cannot schedule tasks on an EventLoop that has already shut down.
                 // The actual solution is outstanding work tracking potentially.
                 let system = self.actorSystem
-                system?.shutdownLock.lock()
+                system?.shutdownSemaphore.wait()
                 defer {
-                    system?.shutdownLock.unlock()
+                    system?.shutdownSemaphore.signal()
                 }
 
                 await call()
@@ -143,9 +143,9 @@ public final class ActorTimers<Act: DistributedActor> where Act.ActorSystem == C
                 // Which may cause: Cannot schedule tasks on an EventLoop that has already shut down.
                 // The actual solution is outstanding work tracking potentially.
                 let system = self.actorSystem
-                system?.shutdownLock.lock()
+                system?.shutdownSemaphore.wait()
                 defer {
-                    system?.shutdownLock.unlock()
+                    system?.shutdownSemaphore.signal()
                 }
 
                 await call()

@@ -184,7 +184,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Shutdown
     private var shutdownReceptacle = BlockingReceptacle<Error?>()
-    internal let shutdownLock = Lock()
+    internal let shutdownSemaphore = DispatchSemaphore(value: 1)
 
     /// Greater than 0 shutdown has been initiated / is in progress.
     private let shutdownFlag: ManagedAtomic<Int> = .init(0)
@@ -488,7 +488,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
             return Shutdown(receptacle: self.shutdownReceptacle)
         }
 
-        self.shutdownLock.lock()
+        self.shutdownSemaphore.wait()
 
         /// Down this member as part of shutting down; it may have enough time to notify other nodes on an best effort basis.
         if let myselfMember = self.cluster.membershipSnapshot.uniqueMember(self.cluster.uniqueNode) {
@@ -499,7 +499,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
 
         self.log.log(level: .debug, "Shutting down actor system [\(self.name)]. All actors will be stopped.", file: #file, function: #function, line: #line)
         defer {
-            self.shutdownLock.unlock()
+            self.shutdownSemaphore.signal()
         }
 
         if let cluster = self._cluster {
