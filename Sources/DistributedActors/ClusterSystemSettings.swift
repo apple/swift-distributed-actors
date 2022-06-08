@@ -230,7 +230,7 @@ public struct ClusterSystemSettings {
     }
 
     public var metrics: MetricsSettings = .default(rootName: nil)
-    
+
     /// Internal only; Instrumentation configuration, allowing to set instrumentation objects to be called by actor system internals, for purpose of metrics collection etc.
     internal var instrumentation: InstrumentationSettings = .default
 
@@ -310,7 +310,7 @@ public struct LoggingSettings {
     }
 
     internal var customizedLogger: Bool = false
-    internal var _logger: Logger = Logger(label: "ClusterSystem-initializing") // replaced by specific system name during startup
+    internal var _logger = Logger(label: "ClusterSystem-initializing") // replaced by specific system name during startup
 
     internal var useBuiltInFormatter: Bool = true
 
@@ -342,7 +342,6 @@ extension ClusterSystemSettings {
 // MARK: Instrumentation Settings
 
 extension ClusterSystemSettings {
-    
     /// Prototype instrumentation mechanism settings.
     ///
     /// These can be used to inject implementations of instrumentation into the cluster system,
