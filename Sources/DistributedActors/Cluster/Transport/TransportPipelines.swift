@@ -624,7 +624,7 @@ private final class UserMessageHandler: ChannelInboundHandler {
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         let wireEnvelope = self.unwrapInboundIn(data)
         let manifestMessageType = try? self.serializationPool.serialization.summonType(from: wireEnvelope.manifest)
-        
+
         // FIXME(distributed): we should be able to assume we always get either a remote invocation or reply here
         switch manifestMessageType {
         case .some(is InvocationMessage.Type):

@@ -91,7 +91,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
             return s
         }
     }
-    
+
     private let inFlightCallLock = Lock()
     private var _inFlightCalls: [CallID: CheckedContinuation<any AnyRemoteCallReply, Error>] = [:]
 
@@ -986,7 +986,7 @@ extension ClusterSystem {
 
         let recipient = _RemoteClusterActorPersonality<InvocationMessage>(shell: clusterShell, id: actor.id._asRemote, system: self)
         let arguments = invocation.arguments
-        
+
         let reply: RemoteCallReply<Res> = try await self.withCallID { callID in
             let invocation = InvocationMessage(
                 callID: callID,
@@ -1035,11 +1035,12 @@ extension ClusterSystem {
             throw error
         }
     }
-    
+
     private func withCallID<Reply>(
         body: (CallID) -> Void
     ) async throws -> Reply
-        where Reply: AnyRemoteCallReply {
+        where Reply: AnyRemoteCallReply
+    {
         let callID = UUID()
 
         let timeout = RemoteCall.timeout ?? self.settings.defaultRemoteCallTimeout
@@ -1057,7 +1058,7 @@ extension ClusterSystem {
         defer {
             timeoutTask.cancel()
         }
-            
+
         let reply: any AnyRemoteCallReply = try await withCheckedThrowingContinuation { continuation in
             self.inFlightCallLock.withLock {
                 self._inFlightCalls[callID] = continuation // this is to be resumed from an incoming reply or timeout
@@ -1073,7 +1074,7 @@ extension ClusterSystem {
             if let thrownError = reply.thrownError {
                 return Reply.init(callID: reply.callID, error: thrownError)
             }
-            
+
             self.log.error("Expected [\(Reply.self)] but got [\(type(of: reply as Any))]")
             throw RemoteCallError.invalidReply
         }
@@ -1087,7 +1088,7 @@ extension ClusterSystem {
             self.log.error("Cluster has shut down already, yet received message. Message will be dropped: \(invocation)")
             return
         }
-        
+
         guard let actor = self.resolve(id: recipient) else {
             self.log.error("Unable to resolve recipient \(recipient). Message will be dropped: \(invocation)")
             return
@@ -1122,7 +1123,7 @@ extension ClusterSystem {
             }
         }
     }
-    
+
     func receiveRemoteCallReply(_ reply: any AnyRemoteCallReply) {
         self.inFlightCallLock.withLockVoid {
             guard let continuation = self._inFlightCalls.removeValue(forKey: reply.callID) else {
@@ -1132,7 +1133,7 @@ extension ClusterSystem {
             continuation.resume(returning: reply)
         }
     }
-    
+
     private func resolve(id: ActorID) -> (any DistributedActor)? {
         self.namingLock.withLock {
             self._managedDistributedActors.get(identifiedBy: id)
@@ -1159,12 +1160,12 @@ public struct ClusterInvocationResultHandler: DistributedTargetInvocationResultH
 
     public func onReturn<Success: Codable>(value: Success) async throws {
         let reply = RemoteCallReply<Success>(callID: self.callID, value: value)
-        try await channel.writeAndFlush(TransportEnvelope(envelope: Payload(payload: .message(reply)), recipient: self.recipient))
+        try await self.channel.writeAndFlush(TransportEnvelope(envelope: Payload(payload: .message(reply)), recipient: self.recipient))
     }
 
     public func onReturnVoid() async throws {
         let reply = RemoteCallReply<_Done>(callID: self.callID, value: .done)
-        try await channel.writeAndFlush(TransportEnvelope(envelope: Payload(payload: .message(reply)), recipient: self.recipient))
+        try await self.channel.writeAndFlush(TransportEnvelope(envelope: Payload(payload: .message(reply)), recipient: self.recipient))
     }
 
     public func onThrow<Err: Error>(error: Err) async throws {
@@ -1175,7 +1176,7 @@ public struct ClusterInvocationResultHandler: DistributedTargetInvocationResultH
         } else {
             reply = .init(callID: self.callID, error: GenericRemoteCallError(message: "Remote call error of [\(type(of: error as Any))] type occurred"))
         }
-        try await channel.writeAndFlush(TransportEnvelope(envelope: Payload(payload: .message(reply)), recipient: self.recipient))
+        try await self.channel.writeAndFlush(TransportEnvelope(envelope: Payload(payload: .message(reply)), recipient: self.recipient))
     }
 }
 
@@ -1193,7 +1194,7 @@ protocol AnyRemoteCallReply: Codable {
 
 struct RemoteCallReply<Value: Codable>: AnyRemoteCallReply {
     typealias CallID = ClusterSystem.CallID
-    
+
     let callID: CallID
     let value: Value?
     let thrownError: (any Error & Codable)?
@@ -1225,7 +1226,7 @@ struct RemoteCallReply<Value: Codable>: AnyRemoteCallReply {
 
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.callID = try container.decode(CallID.self, forKey: .callID)
-        
+
         let wasThrow = try container.decodeIfPresent(Bool.self, forKey: .wasThrow) ?? false
         if wasThrow {
             let errorManifest = try container.decode(Serialization.Manifest.self, forKey: .thrownErrorManifest)
@@ -1248,7 +1249,7 @@ struct RemoteCallReply<Value: Codable>: AnyRemoteCallReply {
 
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(self.callID, forKey: .callID)
-        
+
         if let thrownError = self.thrownError {
             try container.encode(true, forKey: .wasThrow)
             let errorManifest = try context.serialization.outboundManifest(type(of: thrownError))
