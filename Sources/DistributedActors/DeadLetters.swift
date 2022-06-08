@@ -36,7 +36,7 @@ import Logging
 /// mail would be called such, and shipped to one specific place to deal with these letters.
 ///
 /// - SeeAlso: [Dead letter office](https://en.wikipedia.org/wiki/Dead_letter_office) on Wikipedia.
-public struct DeadLetter: NotActuallyCodableMessage {
+public struct DeadLetter: _NotActuallyCodableMessage {
     let message: Any
     let recipient: ActorID?
 

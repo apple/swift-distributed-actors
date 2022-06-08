@@ -171,7 +171,7 @@ enum NodeDeathWatcherShell {
     /// Message protocol for interacting with the failure detector.
     /// By default, the `FailureDetectorShell` handles these messages by interpreting them with an underlying `FailureDetector`,
     /// it would be possible however to allow implementing the raw protocol by user actors if we ever see the need for it.
-    internal enum Message: NotActuallyCodableMessage {
+    internal enum Message: _NotActuallyCodableMessage {
         case remoteActorWatched(watcher: _AddressableActorRef, remoteNode: UniqueNode)
         case remoteDistributedActorWatched(remoteNode: UniqueNode, watcherID: ClusterSystem.ActorID, nodeTerminated: @Sendable (UniqueNode) async -> Void)
         case removeWatcher(watcherID: ClusterSystem.ActorID)

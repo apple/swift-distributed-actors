@@ -25,27 +25,27 @@ import Glibc
 #endif
 
 final class SupervisionTests: ClusterSystemXCTestCase {
-    enum FaultyError: Error, NotActuallyCodableMessage {
+    enum FaultyError: Error, _NotActuallyCodableMessage {
         case boom(message: String)
     }
 
-    enum FaultyMessage: NotActuallyCodableMessage {
+    enum FaultyMessage: _NotActuallyCodableMessage {
         case pleaseThrow(error: Error)
         case echo(message: String, replyTo: _ActorRef<WorkerMessages>)
         case pleaseFailAwaiting(message: String)
     }
 
-    enum SimpleProbeMessages: Equatable, NotActuallyCodableMessage {
+    enum SimpleProbeMessages: Equatable, _NotActuallyCodableMessage {
         case spawned(child: _ActorRef<FaultyMessage>)
         case echoing(message: String)
     }
 
-    enum WorkerMessages: Equatable, NotActuallyCodableMessage {
+    enum WorkerMessages: Equatable, _NotActuallyCodableMessage {
         case setupRunning(ref: _ActorRef<FaultyMessage>)
         case echo(message: String)
     }
 
-    enum FailureMode: NotActuallyCodableMessage {
+    enum FailureMode: _NotActuallyCodableMessage {
         case throwing
         // case faulting // Not implemented
 

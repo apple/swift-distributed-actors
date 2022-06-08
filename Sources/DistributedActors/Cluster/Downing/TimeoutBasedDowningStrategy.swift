@@ -60,7 +60,7 @@ public final class TimeoutBasedDowningStrategy: DowningStrategy {
             } else if let replaced = change.replaced {
                 _ = self._markAsDown.remove(replaced)
                 _ = self._unreachable.remove(replaced)
-                return .markAsDown([replaced])
+                return .markAsDown(members: [replaced])
             }
 
             return .none
@@ -82,7 +82,7 @@ public final class TimeoutBasedDowningStrategy: DowningStrategy {
             return .none // perhaps we removed it already for other reasons (e.g. node replacement)
         }
         if self.isLeader {
-            return .markAsDown([nodeToDown])
+            return .markAsDown(members: [nodeToDown])
         } else {
             self._markAsDown.insert(nodeToDown)
             return .none
@@ -119,7 +119,7 @@ public final class TimeoutBasedDowningStrategy: DowningStrategy {
 
         if self.isLeader, !self._markAsDown.isEmpty {
             defer { self._markAsDown = [] }
-            return .markAsDown(self._markAsDown)
+            return .markAsDown(members: self._markAsDown)
         } else {
             return .none
         }

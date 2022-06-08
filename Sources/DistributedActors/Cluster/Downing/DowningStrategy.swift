@@ -21,7 +21,7 @@ import Logging
 public protocol DowningStrategy {
     /// Invoked whenever the cluster emits an event.
     ///
-    /// - Parameter event: cluster event that just ocurred
+    /// - Parameter event: cluster event that just occurred
     /// - Returns: directive, instructing the cluster to take some specific action.
     /// - Throws: If unable to handle the event for some reason; the failure will be logged and ignored.
     func onClusterEvent(event: Cluster.Event) throws -> DowningStrategyDirective
@@ -29,14 +29,36 @@ public protocol DowningStrategy {
     func onTimeout(_ member: Cluster.Member) -> DowningStrategyDirective
 }
 
-public enum DowningStrategyDirective {
-    case none
-    case markAsDown(Set<Cluster.Member>)
-    case startTimer(key: TimerKey, member: Cluster.Member, delay: TimeAmount)
-    case cancelTimer(key: TimerKey)
+/// Return to instruct the downing shell how to react.
+public struct DowningStrategyDirective {
+    internal let underlying: Repr
+    internal enum Repr {
+        case none
+        case markAsDown(Set<Cluster.Member>)
+        case startTimer(key: TimerKey, member: Cluster.Member, delay: TimeAmount)
+        case cancelTimer(key: TimerKey)
+    }
 
-    static func markAsDown(_ member: Cluster.Member) -> Self {
-        Self.markAsDown([member])
+    internal init(_ underlying: Repr) {
+        self.underlying = underlying
+    }
+
+    public static var none: Self {
+        .init(.none)
+    }
+
+    public static func startTimer(key: TimerKey, member: Cluster.Member, delay: TimeAmount) -> Self {
+        .init(.startTimer(key: key, member: member, delay: delay))
+    }
+    public static func cancelTimer(key: TimerKey) -> Self {
+        .init(.cancelTimer(key: key))
+    }
+
+    public static func markAsDown(members: Set<Cluster.Member>) -> Self {
+        .init(.markAsDown(members))
+    }
+    public static func markAsDown(_ member: Cluster.Member) -> Self {
+        .init(.markAsDown([member]))
     }
 }
 
@@ -85,7 +107,7 @@ internal distributed actor DowningStrategyShell {
     }
 
     func interpret(directive: DowningStrategyDirective) {
-        switch directive {
+        switch directive.underlying {
         case .markAsDown(let members):
             self.markAsDown(members: members)
 

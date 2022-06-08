@@ -42,7 +42,7 @@ final class TimeoutBasedDowningInstanceTests: XCTestCase {
         self.instance.isLeader.shouldBeFalse()
         let directive = try self.instance.onLeaderChange(to: self.selfMember)
         // when no nodes are pending to be downed, the directive should be `.none`
-        guard case .none = directive else {
+        guard case .none = directive.underlying else {
             throw TestError("Expected directive to be .none")
         }
         self.instance.isLeader.shouldBeTrue()
@@ -55,7 +55,7 @@ final class TimeoutBasedDowningInstanceTests: XCTestCase {
         _ = self.instance.membership.join(self.otherNode)
         let directive = try self.instance.onLeaderChange(to: self.otherMember)
         // we the node does not become the leader, the directive should be `.none`
-        guard case .none = directive else {
+        guard case .none = directive.underlying else {
             throw TestError("Expected directive to be .none")
         }
         self.instance.isLeader.shouldBeFalse()
@@ -69,7 +69,7 @@ final class TimeoutBasedDowningInstanceTests: XCTestCase {
         self.instance.isLeader.shouldBeTrue()
         let directive = try self.instance.onLeaderChange(to: self.otherMember)
         // when losing leadership, the directive should be `.none`
-        guard case .none = directive else {
+        guard case .none = directive.underlying else {
             throw TestError("Expected directive to be .none")
         }
         self.instance.isLeader.shouldBeFalse()
@@ -99,7 +99,7 @@ final class TimeoutBasedDowningInstanceTests: XCTestCase {
         let member = Cluster.Member(node: self.otherNode, status: .up)
         self.instance._markAsDown.insert(member)
         let directive = try self.instance.onLeaderChange(to: self.selfMember)
-        guard case .markAsDown(let addresses) = directive else {
+        guard case .markAsDown(let addresses) = directive.underlying else {
             throw Boom()
         }
         addresses.count.shouldEqual(1)
@@ -116,7 +116,7 @@ final class TimeoutBasedDowningInstanceTests: XCTestCase {
         self.instance._unreachable.insert(member)
         let directive = self.instance.onTimeout(member)
 
-        guard case .none = directive else {
+        guard case .none = directive.underlying else {
             throw TestError("Expected directive to be .none")
         }
 
@@ -129,7 +129,7 @@ final class TimeoutBasedDowningInstanceTests: XCTestCase {
         self.instance._unreachable.insert(member)
         let directive = self.instance.onTimeout(member)
 
-        guard case .markAsDown(let node) = directive else {
+        guard case .markAsDown(let node) = directive.underlying else {
             throw TestError("Expected directive to be .markAsDown")
         }
 
@@ -147,12 +147,12 @@ final class TimeoutBasedDowningInstanceTests: XCTestCase {
         let unreachableMember = self.otherMember.asUnreachable
 
         let directive = self.instance.onMemberUnreachable(.init(member: unreachableMember))
-        guard case .startTimer = directive else {
+        guard case .startTimer = directive.underlying else {
             throw TestError("Expected .startTimer, but got \(directive)")
         }
 
         let downDecision = self.instance.onTimeout(unreachableMember)
-        guard case .markAsDown(let nodesToDown) = downDecision else {
+        guard case .markAsDown(let nodesToDown) = downDecision.underlying else {
             throw TestError("Expected .markAsDown, but got \(directive)")
         }
 
@@ -172,7 +172,7 @@ final class TimeoutBasedDowningInstanceTests: XCTestCase {
         self.instance._unreachable.insert(member)
         let directive = self.instance.onMemberRemoved(member)
 
-        guard case .cancelTimer = directive else {
+        guard case .cancelTimer = directive.underlying else {
             throw TestError("Expected directive to be .cancelTimer")
         }
     }
@@ -182,7 +182,7 @@ final class TimeoutBasedDowningInstanceTests: XCTestCase {
         self.instance._markAsDown.insert(member)
         let directive = self.instance.onMemberRemoved(member)
 
-        guard case .none = directive else {
+        guard case .none = directive.underlying else {
             throw TestError("Expected directive to be .none")
         }
     }
@@ -191,7 +191,7 @@ final class TimeoutBasedDowningInstanceTests: XCTestCase {
         let member = Cluster.Member(node: self.otherNode, status: .up)
         let directive = self.instance.onMemberRemoved(member)
 
-        guard case .none = directive else {
+        guard case .none = directive.underlying else {
             throw TestError("Expected directive to be .none")
         }
     }
@@ -204,7 +204,7 @@ final class TimeoutBasedDowningInstanceTests: XCTestCase {
         self.instance._unreachable.insert(member)
         let directive = self.instance.onMemberReachable(.init(member: member.asUnreachable))
 
-        guard case .cancelTimer = directive else {
+        guard case .cancelTimer = directive.underlying else {
             throw TestError("Expected directive to be .cancelTimer")
         }
     }
@@ -214,7 +214,7 @@ final class TimeoutBasedDowningInstanceTests: XCTestCase {
         self.instance._markAsDown.insert(member)
         let directive = self.instance.onMemberReachable(.init(member: member.asUnreachable))
 
-        guard case .none = directive else {
+        guard case .none = directive.underlying else {
             throw TestError("Expected directive to be .none")
         }
     }
@@ -223,7 +223,7 @@ final class TimeoutBasedDowningInstanceTests: XCTestCase {
         let member = Cluster.Member(node: self.otherNode, status: .up)
         let directive = self.instance.onMemberReachable(.init(member: member.asUnreachable))
 
-        guard case .none = directive else {
+        guard case .none = directive.underlying else {
             throw TestError("Expected directive to be .none")
         }
     }
@@ -233,7 +233,7 @@ final class TimeoutBasedDowningInstanceTests: XCTestCase {
 
     func test_onMemberUnreachable_shouldAddAddressOfMemberToUnreachableSet() throws {
         let member = Cluster.Member(node: self.otherNode, status: .up)
-        guard case .startTimer = self.instance.onMemberUnreachable(.init(member: member.asUnreachable)) else {
+        guard case .startTimer = self.instance.onMemberUnreachable(.init(member: member.asUnreachable)).underlying else {
             throw TestError("Expected directive to be .startTimer")
         }
         self.instance._unreachable.shouldContain(member.asUnreachable)

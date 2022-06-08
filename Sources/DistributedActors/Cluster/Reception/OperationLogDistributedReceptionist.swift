@@ -85,7 +85,6 @@ import Logging
 /// number observations.
 ///
 /// #### Optimization: "Blip" Registration Replication Avoidance
-// TODO: This is done "automatically" once we do log compaction
 /// We define a "blip registration" as a registration of an actor, which immediately (or very quickly) after registering
 /// terminates. It can be argued it is NOT useful to replicate the very existence of such short lived actor to other peers,
 /// as even if they'd act on the `register`, it'd be immediately followed by `remove` and/or a termination signal.
@@ -139,15 +138,16 @@ import Logging
 ///   (Note that we simply always `ack(latest)` and if in the meantime the pusher got more updates, it'll push those to us as well.
 ///
 /// - SeeAlso: [Wikipedia: Atomic broadcast](https://en.wikipedia.org/wiki/Atomic_broadcast)
-// TODO: compact the log whenever we know all members of the cluster have seen
-// TODO: Optimization: gap collapsing: [+a,+b,+c,-c] -> [+a,+b,gap(until:4)]
-// TODO: Optimization: head collapsing: [+a,+b,+c,-b,-a] -> [gap(until:2),+c,-b]
-//
-// TODO: slow/fast ticks: When we know there's nothing new to share with others, we use the slow tick (which should be increased to 5 seconds or less)
-//       when we received a register() or observed an "ahead" receptionist, we should schedule a "fast tick" in order to more quickly spread this information
-//       This should still be done on a delay, e.g. if we are receiving many registrations, we want to get the benefit of batching them up before sending after all
-//       The fast tick could be 1s or 0.5s for example as a default.
 public distributed actor OpLogDistributedReceptionist: DistributedReceptionist, CustomStringConvertible {
+    // TODO: compact the log whenever we know all members of the cluster have seen
+    // TODO: Optimization: gap collapsing: [+a,+b,+c,-c] -> [+a,+b,gap(until:4)]
+    // TODO: Optimization: head collapsing: [+a,+b,+c,-b,-a] -> [gap(until:2),+c,-b]
+    //
+    // TODO: slow/fast ticks: When we know there's nothing new to share with others, we use the slow tick (which should be increased to 5 seconds or less)
+    //       when we received a register() or observed an "ahead" receptionist, we should schedule a "fast tick" in order to more quickly spread this information
+    //       This should still be done on a delay, e.g. if we are receiving many registrations, we want to get the benefit of batching them up before sending after all
+    //       The fast tick could be 1s or 0.5s for example as a default.
+
     public typealias ActorSystem = ClusterSystem
 
     // TODO: remove this
@@ -1028,7 +1028,7 @@ extension OpLogDistributedReceptionist {
         }
     }
 
-    final class PublishLocalListingsTrigger: Receptionist.Message, NotActuallyCodableMessage, CustomStringConvertible {
+    final class PublishLocalListingsTrigger: Receptionist.Message, _NotActuallyCodableMessage, CustomStringConvertible {
         override init() {
             super.init()
         }

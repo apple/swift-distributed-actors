@@ -243,7 +243,7 @@ struct AnyDistributedReceptionKey: Sendable, Codable, Hashable, CustomStringConv
 //
 // extension DistributedReception {
 //    /// Response to a `Register` message
-//    public final class Registered<Guest: _ReceptionistGuest>: NotActuallyCodableMessage, CustomStringConvertible {
+//    public final class Registered<Guest: _ReceptionistGuest>: _NotActuallyCodableMessage, CustomStringConvertible {
 //        internal let _guest: Guest
 //        public let key: DistributedReception.Key<Guest>
 //
