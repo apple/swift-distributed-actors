@@ -796,7 +796,7 @@ extension UniqueNodeID {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Path errors
 
-public enum ActorPathError: Error {
+enum ActorPathError: Error {
     case illegalEmptyActorPath
     case illegalLeadingSpecialCharacter(name: String, illegal: Character)
     case illegalActorPathElement(name: String, illegal: String, index: Int)
