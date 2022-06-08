@@ -552,7 +552,7 @@ extension SWIMActorShell {
             .metrics(group: "swim.shell", measure: [.serialization, .deserialization])
     }
 
-    static let protocolPeriodTimerKey = _TimerKey("\(SWIMActorShell.name)/periodic-ping")
+    static let protocolPeriodTimerKey = TimerKey("\(SWIMActorShell.name)/periodic-ping")
 }
 
 extension ActorID {

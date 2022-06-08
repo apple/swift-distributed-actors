@@ -129,7 +129,7 @@ class DeathWatchDocExamples {
             false
         }
         // tag::handling_termination_deathwatch[]
-        let concedeTimer: _TimerKey = "concede-timer"
+        let concedeTimer: TimerKey = "concede-timer"
 
         _ = _Behavior<GameMatch.Command>.receive { context, command in
             switch command {

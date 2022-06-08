@@ -207,12 +207,12 @@ public distributed actor OpLogDistributedReceptionist: DistributedReceptionist, 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Timers
 
-    static let slowACKReplicationTick: _TimerKey = "slow-ack-replication-tick"
-    static let fastACKReplicationTick: _TimerKey = "fast-ack-replication-tick"
+    static let slowACKReplicationTick: TimerKey = "slow-ack-replication-tick"
+    static let fastACKReplicationTick: TimerKey = "fast-ack-replication-tick"
 
-    static let localPublishLocalListingsTick: _TimerKey = "publish-local-listings-tick"
+    static let localPublishLocalListingsTick: TimerKey = "publish-local-listings-tick"
 
-    private lazy var timers = _ActorTimers<OpLogDistributedReceptionist>(self)
+    private lazy var timers = ActorTimers<OpLogDistributedReceptionist>(self)
 
     /// Important: This safeguards us from the following write amplification scenario:
     ///
@@ -455,7 +455,7 @@ extension OpLogDistributedReceptionist {
         }
     }
 
-    private func flushTimerKey(_ key: AnyDistributedReceptionKey) -> _TimerKey {
+    private func flushTimerKey(_ key: AnyDistributedReceptionKey) -> TimerKey {
         "flush-\(key.hashValue)"
     }
 }

@@ -20,7 +20,7 @@ import XCTest
 final class ShootTheOtherNodeClusteredTests: ClusteredActorSystemsXCTestCase {
     override func configureLogCapture(settings: inout LogCapture.Settings) {
         settings.excludeGrep = [
-            "_TimerKey",
+            "TimerKey",
         ]
         settings.excludeActorPaths = [
             "/system/cluster/swim",
