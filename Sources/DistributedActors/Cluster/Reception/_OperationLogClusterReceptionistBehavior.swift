@@ -26,10 +26,10 @@ public final class _OperationLogClusterReceptionist {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Timer Keys
 
-    static let slowACKReplicationTick: TimerKey = "slow-ack-replication-tick"
-    static let fastACKReplicationTick: TimerKey = "fast-ack-replication-tick"
+    static let slowACKReplicationTick: _TimerKey = "slow-ack-replication-tick"
+    static let fastACKReplicationTick: _TimerKey = "fast-ack-replication-tick"
 
-    static let localPublishLocalListingsTick: TimerKey = "publish-local-listings-tick"
+    static let localPublishLocalListingsTick: _TimerKey = "publish-local-listings-tick"
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: State
@@ -263,7 +263,7 @@ extension _OperationLogClusterReceptionist {
         }
     }
 
-    private func flushTimerKey(_ key: AnyReceptionKey) -> TimerKey {
+    private func flushTimerKey(_ key: AnyReceptionKey) -> _TimerKey {
         "flush-\(key.hashValue)"
     }
 }

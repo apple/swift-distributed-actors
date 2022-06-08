@@ -14,7 +14,7 @@
 
 import Logging
 
-private let gossipTickKey: TimerKey = "gossip-tick"
+private let gossipTickKey: _TimerKey = "gossip-tick"
 
 /// :nodoc:
 ///

@@ -35,8 +35,8 @@ public struct DowningStrategyDirective {
     internal enum Repr {
         case none
         case markAsDown(Set<Cluster.Member>)
-        case startTimer(key: TimerKey, member: Cluster.Member, delay: TimeAmount)
-        case cancelTimer(key: TimerKey)
+        case startTimer(key: _TimerKey, member: Cluster.Member, delay: TimeAmount)
+        case cancelTimer(key: _TimerKey)
     }
 
     internal init(_ underlying: Repr) {
@@ -47,11 +47,11 @@ public struct DowningStrategyDirective {
         .init(.none)
     }
 
-    public static func startTimer(key: TimerKey, member: Cluster.Member, delay: TimeAmount) -> Self {
+    public static func startTimer(key: _TimerKey, member: Cluster.Member, delay: TimeAmount) -> Self {
         .init(.startTimer(key: key, member: member, delay: delay))
     }
 
-    public static func cancelTimer(key: TimerKey) -> Self {
+    public static func cancelTimer(key: _TimerKey) -> Self {
         .init(.cancelTimer(key: key))
     }
 
@@ -87,7 +87,7 @@ internal distributed actor DowningStrategyShell {
     /// `Task` for subscribing to cluster events.
     private var eventsListeningTask: Task<Void, Error>?
 
-    private lazy var timers = ActorTimers<DowningStrategyShell>(self)
+    private lazy var timers = _ActorTimers<DowningStrategyShell>(self)
 
     init(_ strategy: DowningStrategy, system: ActorSystem) async {
         self.strategy = strategy
