@@ -104,7 +104,7 @@ private enum PingPongCommand: _NotActuallyCodableMessage {
         numActors: Int,
         // dispatcher: String,
         throughput: Int,
-        shutdownTimeout: TimeAmount,
+        shutdownTimeout: Duration,
         replyTo: _ActorRef<PingPongCommand>
     )
 
@@ -181,7 +181,7 @@ private func startPingPongActorPairs(
     }
     let doneSpawning = SwiftBenchmarkTools.Timer().getTimeAsInt()
 
-    print("    Spawning \(numPairs * 2) actors too: \(DistributedActors.TimeAmount.nanoseconds(Int(doneSpawning - startSpawning)).milliseconds) ms")
+    print("    Spawning \(numPairs * 2) actors too: \(Duration.nanoseconds(Int64(doneSpawning - startSpawning)).milliseconds) ms")
 
     return actors
 }

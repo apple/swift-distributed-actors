@@ -52,7 +52,7 @@ protocol ReceivesQuestions: Codable {
     ///            It may be executed concurrently with regards to the current context.
     func ask<Answer>(
         for type: Answer.Type,
-        timeout: TimeAmount,
+        timeout: Duration,
         file: String, function: String, line: UInt,
         _ makeQuestion: @escaping (_ActorRef<Answer>) -> Question
     ) -> AskResponse<Answer>
@@ -66,7 +66,7 @@ extension _ActorRef: ReceivesQuestions {
 
     func ask<Answer>(
         for answerType: Answer.Type = Answer.self,
-        timeout: TimeAmount,
+        timeout: Duration,
         file: String = #file, function: String = #function, line: UInt = #line,
         _ makeQuestion: @escaping (_ActorRef<Answer>) -> Question
     ) -> AskResponse<Answer> {
@@ -170,7 +170,7 @@ extension AskResponse: _AsyncResult {
         }
     }
 
-    func withTimeout(after timeout: TimeAmount) -> AskResponse<Value> {
+    func withTimeout(after timeout: Duration) -> AskResponse<Value> {
         if timeout.isEffectivelyInfinite {
             return self
         }
@@ -245,7 +245,7 @@ internal enum AskActor {
     static func behavior<Message, ResponseType>(
         _ completable: EventLoopPromise<ResponseType>,
         ref: _ActorRef<Message>,
-        timeout: TimeAmount,
+        timeout: Duration,
         file: String,
         function: String,
         line: UInt

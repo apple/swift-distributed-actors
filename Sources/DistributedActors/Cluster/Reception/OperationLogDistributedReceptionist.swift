@@ -540,7 +540,7 @@ extension OpLogDistributedReceptionist {
         //    We DO want to send the Ack directly here as potentially the peer still has some more
         //    ops it might want to send, so we want to allow it to get those over to us as quickly as possible,
         //    without waiting for our Ack ticks to trigger (which could be configured pretty slow).
-        let nextPeriodicAckAllowedIn: TimeAmount = actorSystem.settings.receptionist.ackPullReplicationIntervalSlow * 2
+        let nextPeriodicAckAllowedIn: Duration = actorSystem.settings.receptionist.ackPullReplicationIntervalSlow * 2
         self.nextPeriodicAckPermittedDeadline[peer.id] = Deadline.fromNow(nextPeriodicAckAllowedIn) // TODO: system.timeSource
     }
 

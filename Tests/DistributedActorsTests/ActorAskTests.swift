@@ -13,7 +13,6 @@
 //===----------------------------------------------------------------------===//
 
 @testable import DistributedActors
-import struct DistributedActors.TimeAmount
 import DistributedActorsTestKit
 import Foundation
 import XCTest
@@ -117,7 +116,7 @@ final class ActorAskTests: ClusterSystemXCTestCase {
         try p.expectMessage("Hello there")
     }
 
-    func shared_askResult_shouldBePossibleTo_contextOnResultAsyncOn(withTimeout timeout: TimeAmount) throws {
+    func shared_askResult_shouldBePossibleTo_contextOnResultAsyncOn(withTimeout timeout: Duration) throws {
         let p = testKit.makeTestProbe(expecting: String.self)
 
         let greeter: _ActorRef<AnswerMePlease> = try system._spawn(
@@ -182,7 +181,7 @@ final class ActorAskTests: ClusterSystemXCTestCase {
 
         var msg = "timedOut(DistributedActors.TimeoutError("
         msg += "message: \"AskResponse<String> timed out after 100ms\", "
-        msg += "timeout: TimeAmount(100ms, nanoseconds: 100000000)))"
+        msg += "timeout: 0.1 seconds))"
         try p.expectMessage(msg)
     }
 

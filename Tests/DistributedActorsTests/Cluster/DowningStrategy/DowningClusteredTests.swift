@@ -238,13 +238,13 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
         }
 
         pinfo("Joining \(nodes.count) nodes...")
-        let joiningStart = first.metrics.uptimeNanoseconds()
+        let joiningStart = Deadline.now()
 
         nodes.forEach { first.cluster.join(node: $0.cluster.uniqueNode.node) }
         try self.ensureNodes(.up, within: .seconds(30), nodes: nodes.map(\.cluster.uniqueNode))
 
-        let joiningStop = first.metrics.uptimeNanoseconds()
-        pinfo("Joined \(nodes.count) nodes, took: \(TimeAmount.nanoseconds(joiningStop - joiningStart).prettyDescription)")
+        let joiningStop = Deadline.now()
+        pinfo("Joined \(nodes.count) nodes, took: \((joiningStop - joiningStart).prettyDescription)")
 
         let nodesToDown = nodes.prefix(nodes.count / 2)
         var remainingNodes = nodes

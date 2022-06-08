@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -43,10 +43,10 @@ internal class BenchmarkLatchPersonality<Message: Codable>: _CellDelegate<Messag
         self.receptacle.wait(atMost: .seconds(10))!
     }
 
-    func timeSinceUnlocked() -> DistributedActors.TimeAmount? {
+    func timeSinceUnlocked() -> Duration? {
         let time = Int64(SwiftBenchmarkTools.Timer().getTimeAsInt()) - Int64(self.startTime.load(ordering: .relaxed))
         if time > 0 {
-            return DistributedActors.TimeAmount.nanoseconds(Int(time))
+            return Duration.nanoseconds(time)
         } else {
             return nil
         }

@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -23,7 +23,7 @@ extension ActorTestProbe where Message == _Reception.Listing<_ActorRef<String>> 
     ///
     /// Lack of listing emitted during the `within` period also yields a test-case failing error.
     public func eventuallyExpectListing(
-        expected: Set<_ActorRef<String>>, within timeout: TimeAmount,
+        expected: Set<_ActorRef<String>>, within timeout: Duration,
         verbose: Bool = false,
         file: StaticString = #file, line: UInt = #line, column: UInt = #column
     ) throws {

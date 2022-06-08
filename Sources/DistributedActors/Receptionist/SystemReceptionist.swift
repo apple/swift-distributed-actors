@@ -50,7 +50,7 @@ internal struct SystemReceptionist: _BaseReceptionistOperations {
     public func lookup<Guest>(
         _ key: _Reception.Key<Guest>,
         replyTo: _ActorRef<_Reception.Listing<Guest>>,
-        timeout: TimeAmount = .effectivelyInfinite
+        timeout: Duration = .effectivelyInfinite
     ) where Guest: _ReceptionistGuest {
         self.ref.tell(Receptionist.Lookup<Guest>(key: key, replyTo: replyTo))
     }

@@ -547,7 +547,7 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
         }
     }
 
-    private func scheduleNextRedeliveryTick(_ context: ChannelHandlerContext, in nextRedeliveryDelay: TimeAmount) {
+    private func scheduleNextRedeliveryTick(_ context: ChannelHandlerContext, in nextRedeliveryDelay: Duration) {
         guard self.redeliveryScheduled == nil else {
             return // already a tick scheduled, we'll ride on that one rather than kick off a new one
         }

@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2020-2021 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2020-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -18,12 +18,12 @@ import XCTest
 
 import Distributed
 
-private let defaultRunAndBlockTimeout: TimeAmount = .seconds(60)
+private let defaultRunAndBlockTimeout: Duration = .seconds(60)
 
 extension XCTestCase {
     // FIXME(distributed): remove once XCTest supports async functions on Linux
     func runAsyncAndBlock(
-        timeout: TimeAmount = defaultRunAndBlockTimeout,
+        timeout: Duration = defaultRunAndBlockTimeout,
         @_inheritActorContext @_implicitSelfCapture operation: __owned @Sendable @escaping () async throws -> Void
     ) throws {
         let finished = expectation(description: "finished")
@@ -53,7 +53,7 @@ extension XCTestCase {
     }
 
     func runAsyncAndBlock(
-        timeout: TimeAmount = defaultRunAndBlockTimeout,
+        timeout: Duration = defaultRunAndBlockTimeout,
         @_inheritActorContext @_implicitSelfCapture operation: __owned @Sendable @escaping () async -> Void
     ) throws {
         let finished = expectation(description: "finished")

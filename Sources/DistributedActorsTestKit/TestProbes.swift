@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -54,7 +54,7 @@ public final class ActorTestProbe<Message: Codable>: @unchecked Sendable {
     }
 
     private let settings: ActorTestKitSettings
-    private var expectationTimeout: TimeAmount {
+    private var expectationTimeout: Duration {
         self.settings.expectationTimeout
     }
 
@@ -147,8 +147,8 @@ public final class ActorTestProbe<Message: Codable>: @unchecked Sendable {
     enum ExpectationError: Error {
         case noMessagesInQueue
         case notEnoughMessagesInQueue(actualCount: Int, expectedCount: Int)
-        case withinDeadlineExceeded(timeout: TimeAmount)
-        case timeoutAwaitingMessage(expected: AnyObject, timeout: TimeAmount)
+        case withinDeadlineExceeded(timeout: Duration)
+        case timeoutAwaitingMessage(expected: AnyObject, timeout: Duration)
     }
 }
 
@@ -178,7 +178,7 @@ extension ActorTestProbe {
     /// - SeeAlso: `maybeExpectMessage(within:file:line:column:)` which does not fail upon encountering no message within the timeout.
     ///
     /// - Warning: Blocks the current thread until the `timeout` is exceeded or a message is received by the actor.
-    public func expectMessage(within timeout: TimeAmount, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws -> Message {
+    public func expectMessage(within timeout: Duration, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws -> Message {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
         do {
             return try self.receiveMessage(within: timeout)
@@ -188,7 +188,7 @@ extension ActorTestProbe {
         }
     }
 
-    internal func receiveMessage(within timeout: TimeAmount) throws -> Message {
+    internal func receiveMessage(within timeout: Duration) throws -> Message {
         let deadline = Deadline.fromNow(timeout)
         while deadline.hasTimeLeft() {
             guard let message = self.messagesQueue.poll(deadline.timeLeft) else {
@@ -210,7 +210,7 @@ extension ActorTestProbe {
     /// Once `MessageFishingDirective.catchComplete` or `MessageFishingDirective.complete` is returned,
     /// the function returns all so-far accumulated messages.
     public func fishFor<CaughtMessage>(
-        _ type: CaughtMessage.Type, within timeout: TimeAmount,
+        _ type: CaughtMessage.Type, within timeout: Duration,
         file: StaticString = #file, line: UInt = #line, column: UInt = #column,
         _ fisher: (Message) throws -> FishingDirective<CaughtMessage>
     ) throws -> [CaughtMessage] {
@@ -260,7 +260,7 @@ extension ActorTestProbe {
     /// Once `MessageFishingDirective.catchComplete` or `MessageFishingDirective.complete` is returned,
     /// the function returns all so-far accumulated messages.
     public func fishForMessages(
-        within timeout: TimeAmount,
+        within timeout: Duration,
         file: StaticString = #file, line: UInt = #line, column: UInt = #column,
         _ fisher: (Message) throws -> MessageFishingDirective
     ) throws -> [Message] {
@@ -309,7 +309,7 @@ extension ActorTestProbe {
     /// - SeeAlso: `expectMessage(within:file:line:column)` that throws and fails if no message is encountered during the timeout.
     ///
     /// - Warning: Blocks the current thread until the `timeout` is exceeded or a message is received by the actor.
-    public func maybeExpectMessage(within timeout: TimeAmount) throws -> Message? {
+    public func maybeExpectMessage(within timeout: Duration) throws -> Message? {
         do {
             return try self.maybeReceiveMessage(within: timeout)
         } catch {
@@ -317,7 +317,7 @@ extension ActorTestProbe {
         }
     }
 
-    internal func maybeReceiveMessage(within timeout: TimeAmount) throws -> Message? {
+    internal func maybeReceiveMessage(within timeout: Duration) throws -> Message? {
         let deadline = Deadline.fromNow(timeout)
         while deadline.hasTimeLeft() {
             guard let message = self.messagesQueue.poll(deadline.timeLeft) else {
@@ -348,7 +348,7 @@ extension ActorTestProbe where Message: Equatable {
         try self.expectMessage(message, within: self.expectationTimeout, file: file, line: line, column: column)
     }
 
-    public func expectMessage(_ message: Message, within timeout: TimeAmount, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
+    public func expectMessage(_ message: Message, within timeout: Duration, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
         do {
             let receivedMessage = try self.receiveMessage(within: timeout)
@@ -366,7 +366,7 @@ extension ActorTestProbe where Message: Equatable {
         try self.expectMessageType(type, within: self.expectationTimeout, file: file, line: line, column: column)
     }
 
-    public func expectMessageType<T>(_ type: T.Type, within timeout: TimeAmount, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
+    public func expectMessageType<T>(_ type: T.Type, within timeout: Duration, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
 
         let receivedMessage = try self.receiveMessage(within: timeout)
@@ -393,7 +393,7 @@ extension ActorTestProbe {
     /// See also the `expectMessagesInAnyOrder([Message])` overload which provides automatic equality checking.
     ///
     /// - Warning: Blocks the current thread until the `expectationTimeout` is exceeded or an message is received by the actor.
-    public func expectMessages(count: Int, within timeout: TimeAmount, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws -> [Message] {
+    public func expectMessages(count: Int, within timeout: Duration, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws -> [Message] {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
 
         let deadline = Deadline.fromNow(timeout)
@@ -432,7 +432,7 @@ extension ActorTestProbe where Message: Equatable {
         try self.expectMessagesInAnyOrder(_messages, within: self.expectationTimeout, file: file, line: line, column: column)
     }
 
-    public func expectMessagesInAnyOrder(_ _messages: [Message], within timeout: TimeAmount, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
+    public func expectMessagesInAnyOrder(_ _messages: [Message], within timeout: Duration, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
         var messages = _messages
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
         var received: [Message] = []
@@ -515,7 +515,7 @@ public final class ProbeInterceptor<Message: Codable>: _Interceptor<Message> {
 
 extension ActorTestProbe {
     @discardableResult
-    private func within<T>(_ timeout: TimeAmount, _ block: () throws -> T) throws -> T {
+    private func within<T>(_ timeout: Duration, _ block: () throws -> T) throws -> T {
         // FIXME: implement by scheduling checks rather than spinning
         let deadline = Deadline.fromNow(timeout)
         var lastObservedError: Error?
@@ -596,7 +596,7 @@ extension ActorTestProbe {
     /// Useful for making sure that after some "terminal" message no other messages are sent.
     ///
     /// Warning: The method will block the current thread for the specified timeout.
-    public func expectNoMessage(for timeout: TimeAmount, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
+    public func expectNoMessage(for timeout: Duration, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
         if let message = self.messagesQueue.poll(timeout) {
             let message = "Received unexpected message [\(message)]:\(type(of: message)). Did not expect to receive any messages for [\(timeout.prettyDescription)]."
@@ -607,7 +607,7 @@ extension ActorTestProbe {
     /// Asserts that no termination signals (specifically) are received by the probe during the specified timeout.
     ///
     /// Warning: The method will block the current thread for the specified timeout.
-    public func expectNoTerminationSignal(for timeout: TimeAmount, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
+    public func expectNoTerminationSignal(for timeout: Duration, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
         if let termination = self.terminationsQueue.poll(timeout) {
             let message = "Received unexpected termination [\(termination)]. Did not expect to receive any termination for [\(timeout.prettyDescription)]."
@@ -695,7 +695,7 @@ extension ActorTestProbe {
     /// - SeeAlso: `DeathWatch`
     @discardableResult
     // TODO: expectTermination(of: ...) maybe nicer wording?
-    public func expectTerminated<T>(_ ref: _ActorRef<T>, within timeout: TimeAmount? = nil, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws -> _Signals.Terminated {
+    public func expectTerminated<T>(_ ref: _ActorRef<T>, within timeout: Duration? = nil, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws -> _Signals.Terminated {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
         let timeout = timeout ?? self.expectationTimeout
 

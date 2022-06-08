@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -100,7 +100,7 @@ public final class _LinkedBlockingQueue<A>: @unchecked Sendable {
     ///                      in case the queue is empty.
     /// - Returns: The head of the queue or nil, when the timeout is exceeded.
     @inlinable
-    public func poll(_ timeout: TimeAmount) -> A? {
+    public func poll(_ timeout: Duration) -> A? {
         self.lock.synchronized { () -> A? in
             if let item = self.take() {
                 return item

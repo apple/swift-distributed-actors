@@ -149,7 +149,7 @@ extension _Props {
 /// **Restarting with Backoff**
 ///
 /// It is possible to `.restart` a backoff strategy before completing a restart. In this case the passed in `_SupervisionStrategy`
-/// is invoked and the returned `TimeAmount` is used to suspend the actor for this amount of time, before completing the restart,
+/// is invoked and the returned `Duration` is used to suspend the actor for this amount of time, before completing the restart,
 /// canonicalizing any `.setup` or similar top-level behaviors and continuing to process messages.
 ///
 /// The following diagram explains how backoff interplays with the lifecycle signals sent to the actor upon a restart,
@@ -188,7 +188,7 @@ public enum _SupervisionStrategy {
     ///   - `backoff` strategy to be used for suspending the failed actor for a given (backoff) amount of time before completing the restart.
     ///     The actor's mailbox remains untouched by default, and it would continue processing it from where it left off before the crash;
     ///     the message which caused a failure is NOT processed again. For retrying processing of such higher level mechanisms should be used.
-    case restart(atMost: Int, within: TimeAmount?, backoff: BackoffStrategy?) // TODO: would like to remove the `?` and model more properly
+    case restart(atMost: Int, within: Duration?, backoff: BackoffStrategy?) // TODO: would like to remove the `?` and model more properly
 
     /// WARNING: Purposefully ESCALATES the failure to the parent of the spawned actor, even if it has not watched the child.
     ///
@@ -234,7 +234,7 @@ extension _SupervisionStrategy {
     ///   - `within` amount of time within which the `atMost` failures are allowed to happen. This defines the so called "failure period",
     ///     which runs from the first failure encountered for `within` time, and if more than `atMost` failures happen in this time amount then
     ///     no restart is performed and the failure is escalated (and the actor terminates in the process).
-    public static func restart(atMost: Int, within: TimeAmount?) -> _SupervisionStrategy {
+    public static func restart(atMost: Int, within: Duration?) -> _SupervisionStrategy {
         .restart(atMost: atMost, within: within, backoff: nil)
     }
 }
@@ -689,7 +689,7 @@ internal enum SupervisionDirective<Message: Codable> {
     /// Directs mailbox to prepare AND complete a restart immediately.
     case restartImmediately(_Behavior<Message>)
     /// Directs mailbox to prepare a restart after a delay.
-    case restartDelayed(TimeAmount, _Behavior<Message>)
+    case restartDelayed(Duration, _Behavior<Message>)
     /// Directs the mailbox to immediately fail and stop processing.
     /// Failures should "bubble up".
     case escalate(_Supervision.Failure)
@@ -697,7 +697,7 @@ internal enum SupervisionDirective<Message: Codable> {
 
 internal enum SupervisionDecision {
     case restartImmediately
-    case restartBackoff(delay: TimeAmount) // could also configure "drop messages while restarting" etc
+    case restartBackoff(delay: Duration) // could also configure "drop messages while restarting" etc
     case escalate
     case stop
 }
@@ -705,14 +705,14 @@ internal enum SupervisionDecision {
 /// Encapsulates logic around when a restart is allowed, i.e. tracks the deadlines of failure periods.
 internal struct RestartDecisionLogic {
     let maxRestarts: Int
-    let within: TimeAmount?
+    let within: Duration?
     var backoffStrategy: BackoffStrategy?
 
     // counts how many times we failed during the "current" `within` period
     private var restartsWithinCurrentPeriod: Int = 0
     private var restartsPeriodDeadline: Deadline = .distantPast
 
-    init(maxRestarts: Int, within: TimeAmount?, backoffStrategy: BackoffStrategy?) {
+    init(maxRestarts: Int, within: Duration?, backoffStrategy: BackoffStrategy?) {
         precondition(maxRestarts > 0, "RestartStrategy.maxRestarts MUST be > 0")
         self.maxRestarts = maxRestarts
         if let failurePeriodTime = within {
@@ -734,8 +734,8 @@ internal struct RestartDecisionLogic {
             // thus the next period starts, and we will start counting the failures within that time window anew
 
             // ! safe, because we are guaranteed to never exceed the .distantFuture deadline that is set when within is nil
-            let failurePeriodTimeAmount = self.within!
-            self.restartsPeriodDeadline = .fromNow(failurePeriodTimeAmount)
+            let failurePeriodDuration = self.within!
+            self.restartsPeriodDeadline = .fromNow(failurePeriodDuration)
             self.restartsWithinCurrentPeriod = 0
         }
         self.restartsWithinCurrentPeriod += 1
@@ -847,7 +847,7 @@ internal enum SupervisionRestartDelayedBehavior<Message: Codable> {
     internal struct WakeUp {}
 
     @usableFromInline
-    static func after(delay: TimeAmount, with replacement: _Behavior<Message>) -> _Behavior<Message> {
+    static func after(delay: Duration, with replacement: _Behavior<Message>) -> _Behavior<Message> {
         .setup { context in
             context.timers._startResumeTimer(key: TimerKey("restartBackoff", isSystemTimer: true), delay: delay, resumeWith: WakeUp())
 

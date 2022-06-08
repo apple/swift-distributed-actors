@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -183,7 +183,7 @@ final class SupervisionTests: ClusterSystemXCTestCase {
         guard case .setupRunning(let faultyWorker) = try p.expectMessage() else { throw p.error() }
         p.watch(faultyWorker)
 
-        func boomExpectBackoffRestart(expectedBackoff: DistributedActors.TimeAmount) throws {
+        func boomExpectBackoffRestart(expectedBackoff: Duration) throws {
             // confirm it is alive and working
             faultyWorker.tell(.echo(message: "one", replyTo: p.ref))
             try p.expectMessage(WorkerMessages.echo(message: "echo:one"))
@@ -209,16 +209,16 @@ final class SupervisionTests: ClusterSystemXCTestCase {
             faultyWorkerRestarted.shouldEqual(faultyWorker)
         }
 
-        try boomExpectBackoffRestart(expectedBackoff: backoff.timeAmount)
-        try boomExpectBackoffRestart(expectedBackoff: backoff.timeAmount)
-        try boomExpectBackoffRestart(expectedBackoff: backoff.timeAmount)
+        try boomExpectBackoffRestart(expectedBackoff: backoff.duration)
+        try boomExpectBackoffRestart(expectedBackoff: backoff.duration)
+        try boomExpectBackoffRestart(expectedBackoff: backoff.duration)
     }
 
     func sharedTestLogic_restartSupervised_shouldRestartWithExponentialBackoff(
         runName: String,
         makeEvilMessage: @escaping (String) -> FaultyMessage
     ) throws {
-        let initialInterval: DistributedActors.TimeAmount = .milliseconds(100)
+        let initialInterval: Duration = .milliseconds(100)
         let multiplier = 2.0
         let backoff = Backoff.exponential(
             initialInterval: initialInterval,
@@ -246,7 +246,7 @@ final class SupervisionTests: ClusterSystemXCTestCase {
         guard case .setupRunning(let faultyWorker) = try p.expectMessage() else { throw p.error() }
         p.watch(faultyWorker)
 
-        func boomExpectBackoffRestart(expectedBackoff: DistributedActors.TimeAmount) throws {
+        func boomExpectBackoffRestart(expectedBackoff: Duration) throws {
             // confirm it is alive and working
             faultyWorker.tell(.echo(message: "one", replyTo: p.ref))
             try p.expectMessage(WorkerMessages.echo(message: "echo:one"))
@@ -281,7 +281,7 @@ final class SupervisionTests: ClusterSystemXCTestCase {
         let p = self.testKit.makeTestProbe(expecting: WorkerMessages.self)
         let pp = self.testKit.makeTestProbe(expecting: Never.self)
 
-        let failurePeriod: DistributedActors.TimeAmount = .seconds(1) // .milliseconds(300)
+        let failurePeriod: Duration = .seconds(1) // .milliseconds(300)
 
         let parentBehavior: _Behavior<Never> = .setup { context in
             let _: _ActorRef<FaultyMessage> = try context._spawn(

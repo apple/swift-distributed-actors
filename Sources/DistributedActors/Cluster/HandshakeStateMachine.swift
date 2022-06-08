@@ -55,7 +55,7 @@ internal struct HandshakeStateMachine {
     internal enum RetryDirective {
         /// Retry sending the returned handshake offer after the given `delay`
         /// Returned in reaction to timeouts or other recoverable failures during handshake negotiation.
-        case scheduleRetryHandshake(delay: TimeAmount)
+        case scheduleRetryHandshake(delay: Duration)
 
         /// Give up shaking hands with the remote peer.
         /// Any state the handshake was keeping on the initiating node should be cleared in response to this directive.

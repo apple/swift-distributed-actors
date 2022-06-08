@@ -84,7 +84,7 @@ public struct LeaderElectionResult: _AsyncResult {
         self.future.whenComplete(callback)
     }
 
-    public func withTimeout(after timeout: TimeAmount) -> LeaderElectionResult {
+    public func withTimeout(after timeout: Duration) -> LeaderElectionResult {
         LeaderElectionResult(self.future.withTimeout(after: timeout))
     }
 }

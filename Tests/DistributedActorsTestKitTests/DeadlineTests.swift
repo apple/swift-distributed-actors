@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -30,7 +30,7 @@ class DeadlineTests: XCTestCase {
         now.isBefore(Deadline.distantFuture).shouldBeTrue()
     }
 
-    func test_deadline_remainingShouldReturnExpectedTimeAmounts() {
+    func test_deadline_remainingShouldReturnExpectedDurations() {
         let now = Deadline.now()
 
         let t1Millis = 12000

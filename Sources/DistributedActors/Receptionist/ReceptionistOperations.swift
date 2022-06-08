@@ -58,7 +58,7 @@ internal protocol _BaseReceptionistOperations {
     func lookup<Guest>(
         _ key: _Reception.Key<Guest>,
         replyTo: _ActorRef<_Reception.Listing<Guest>>,
-        timeout: TimeAmount
+        timeout: Duration
     ) where Guest: _ReceptionistGuest
 }
 
@@ -99,7 +99,7 @@ extension _ReceptionistOperations {
     internal func lookup<Guest>(
         _ key: _Reception.Key<Guest>,
         replyTo: _ActorRef<_Reception.Listing<Guest>>,
-        timeout: TimeAmount = .effectivelyInfinite
+        timeout: Duration = .effectivelyInfinite
     ) where Guest: _ReceptionistGuest {
         self._system._receptionist.lookup(key, replyTo: replyTo, timeout: timeout)
     }

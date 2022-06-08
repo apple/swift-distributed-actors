@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -150,7 +150,7 @@ internal final class BlockingReceptacle<Value> {
     }
 
     /// Await the value to be set, or return `nil` if timeout passes and no value was set.
-    func wait(atMost timeout: TimeAmount) -> Value? {
+    func wait(atMost timeout: Duration) -> Value? {
         let deadline = Deadline.fromNow(timeout)
         return self.lock.synchronized { () -> Value? in
             while deadline.hasTimeLeft() {

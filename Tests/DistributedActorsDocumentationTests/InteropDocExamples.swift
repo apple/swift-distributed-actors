@@ -94,7 +94,7 @@ class InteropDocExamples: XCTestCase {
     func example_asyncOp_onResultAsync() throws {
         struct User {}
         struct Cache<Key, Value> {
-            init(cacheDuration: DistributedActors.TimeAmount) {}
+            init(cacheDuration: Duration) {}
 
             func lookup(_: Key) -> Value? {
                 nil

@@ -371,7 +371,7 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
 
     func awaitStatus(
         _ status: SWIM.Status, for peer: _ActorRef<SWIM.Message>,
-        on swimShell: _ActorRef<SWIM.Message>, within timeout: TimeAmount,
+        on swimShell: _ActorRef<SWIM.Message>, within timeout: Duration,
         file: StaticString = #file, line: UInt = #line, column: UInt = #column
     ) throws {
         let testKit = self._testKits.first!
@@ -392,7 +392,7 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
 
     func holdStatus(
         _ status: SWIM.Status, for peer: _ActorRef<SWIM.Message>,
-        on swimShell: _ActorRef<SWIM.Message>, within timeout: TimeAmount,
+        on swimShell: _ActorRef<SWIM.Message>, within timeout: Duration,
         file: StaticString = #file, line: UInt = #line, column: UInt = #column
     ) throws {
         let testKit = self._testKits.first!
