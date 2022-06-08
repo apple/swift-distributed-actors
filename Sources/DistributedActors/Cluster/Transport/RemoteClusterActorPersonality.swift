@@ -102,7 +102,6 @@ public final class _RemoteClusterActorPersonality<Message: Codable> {
         switch self.association {
         case .association(let association):
             association.sendInvocation(invocation, recipient: self.id)
-            self.instrumentation.actorTold(message: invocation, from: nil)
         case .tombstone:
             // TODO: metric for dead letter: self.instrumentation.deadLetter(message: message, from: nil)
             self.system.deadLetters.tell(DeadLetter(invocation, recipient: self.id), file: file, line: line)
