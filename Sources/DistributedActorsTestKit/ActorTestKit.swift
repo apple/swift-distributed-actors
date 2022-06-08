@@ -269,7 +269,7 @@ extension ActorTestKit {
     ///
     /// This is useful when the resolution might be racing against the startup of the actor we are trying to resolve.
     public func _eventuallyResolve<Message>(id: ActorID, of: Message.Type = Message.self, within: TimeAmount = .seconds(5)) throws -> _ActorRef<Message> {
-        let context = ResolveContext<Message>(id: id, system: self.system)
+        let context = _ResolveContext<Message>(id: id, system: self.system)
 
         return try self.eventually(within: .seconds(3)) {
             let resolved = self.system._resolve(context: context)

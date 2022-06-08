@@ -48,7 +48,7 @@ extension DistributedReception {
         }
 
         internal func resolve(system: ClusterSystem, id: ActorID) -> _AddressableActorRef {
-            let ref: _ActorRef<InvocationMessage> = system._resolve(context: ResolveContext(id: id, system: system))
+            let ref: _ActorRef<InvocationMessage> = system._resolve(context: _ResolveContext(id: id, system: system))
             return ref.asAddressable
         }
 

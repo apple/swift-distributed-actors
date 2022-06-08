@@ -223,8 +223,8 @@ extension LifecycleWatchContainer {
 
         // FIXME(distributed): we have to make this nicer, the ID itself must "be" the ref
         let system = watchee.actorSystem
-        let addressableWatchee = system._resolveUntyped(context: ResolveContext(id: watcheeID, system: system))
-        let addressableMyself = system._resolveUntyped(context: ResolveContext(id: watcherID, system: system))
+        let addressableWatchee = system._resolveUntyped(context: _ResolveContext(id: watcheeID, system: system))
+        let addressableMyself = system._resolveUntyped(context: _ResolveContext(id: watcherID, system: system))
 
         // we could short circuit "if watchee == myself return" but it's not really worth checking since no-op anyway
         if self.watching.removeValue(forKey: watchee.id) != nil {
