@@ -987,7 +987,7 @@ extension ClusterSystem {
         let recipient = _RemoteClusterActorPersonality<InvocationMessage>(shell: clusterShell, id: actor.id._asRemote, system: self)
         let arguments = invocation.arguments
 
-        let reply: RemoteCallReply<Res> = try await self.withCallID { callID in
+        let reply: RemoteCallReply<Res> = try await self.withCallID(on: actor.id, target: target) { callID in
             let invocation = InvocationMessage(
                 callID: callID,
                 targetIdentifier: target.identifier,
@@ -1022,7 +1022,7 @@ extension ClusterSystem {
         let recipient = _RemoteClusterActorPersonality<InvocationMessage>(shell: clusterShell, id: actor.id._asRemote, system: self)
         let arguments = invocation.arguments
 
-        let reply: RemoteCallReply<_Done> = try await self.withCallID { callID in
+        let reply: RemoteCallReply<_Done> = try await self.withCallID(on: actor.id, target: target) { callID in
             let invocation = InvocationMessage(
                 callID: callID,
                 targetIdentifier: target.identifier,
@@ -1037,6 +1037,8 @@ extension ClusterSystem {
     }
 
     private func withCallID<Reply>(
+        on actorID: ActorID,
+        target: RemoteCallTarget,
         body: (CallID) -> Void
     ) async throws -> Reply
         where Reply: AnyRemoteCallReply
@@ -1044,15 +1046,35 @@ extension ClusterSystem {
         let callID = UUID()
 
         let timeout = RemoteCall.timeout ?? self.settings.defaultRemoteCallTimeout
-        let timeoutTask: Task<Void, Error> = Task {
+        let timeoutTask: Task<Void, Error> = Task.detached {
             await Task.sleep(UInt64(timeout.nanoseconds))
             guard !Task.isCancelled else {
                 return
             }
+
             self.inFlightCallLock.withLockVoid {
-                if let continuation = self._inFlightCalls.removeValue(forKey: callID) {
-                    continuation.resume(throwing: RemoteCallError.timedOut(TimeoutError(message: "Remote call timed out", timeout: timeout)))
+                guard let continuation = self._inFlightCalls.removeValue(forKey: callID) else {
+                    // remoteCall was already completed successfully, nothing to do here
+                    return
                 }
+
+                let error: Error
+                if self.isShuttingDown {
+                    // If the system is shutting down, we should offer a more specific error;
+                    //
+                    // We may not be getting responses simply because we've shut down associations
+                    // and cannot receive them anymore.
+                    // Some subsystems may ignore those errors, since they are "expected".
+                    //
+                    // If we're shutting down, it is okay to not get acknowledgements to calls for example,
+                    // and we don't care about them missing -- we're shutting down anyway.
+                    error = RemoteCallError.clusterAlreadyShutDown
+                } else {
+                    error = RemoteCallError.timedOut(
+                        TimeoutError(message: "Remote call [\(callID)] to [\(target)](\(actorID)) timed out", timeout: timeout))
+                }
+
+                continuation.resume(throwing: error)
             }
         }
         defer {
