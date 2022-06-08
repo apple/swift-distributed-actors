@@ -622,7 +622,28 @@ private final class UserMessageHandler: ChannelInboundHandler {
 
     /// This ends the processing chain for incoming messages.
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
-        self.deserializeThenDeliver(context, wireEnvelope: self.unwrapInboundIn(data))
+        let wireEnvelope = self.unwrapInboundIn(data)
+        let manifestMessageType = try? self.serializationPool.serialization.summonType(from: wireEnvelope.manifest)
+
+        // FIXME(distributed): we should be able to assume we always get either a remote invocation or reply here
+        switch manifestMessageType {
+        case .some(is InvocationMessage.Type):
+            do {
+                let invocation = try self.serializationPool.serialization.deserialize(as: InvocationMessage.self, from: wireEnvelope.payload, using: wireEnvelope.manifest)
+                self.system.receiveInvocation(invocation, recipient: wireEnvelope.recipient, on: context.channel)
+            } catch {
+                self.system.log.error("Failed to deserialize [\(InvocationMessage.self)]: \(error)")
+            }
+        case .some(is any AnyRemoteCallReply.Type):
+            do {
+                let reply = try self.serializationPool.serialization.deserialize(as: (any AnyRemoteCallReply).self, from: wireEnvelope.payload, using: wireEnvelope.manifest)
+                self.system.receiveRemoteCallReply(reply)
+            } catch {
+                self.system.log.error("Failed to deserialize [\(String(describing: manifestMessageType))]: \(error)")
+            }
+        default:
+            self.deserializeThenDeliver(context, wireEnvelope: wireEnvelope)
+        }
     }
 
     private func deserializeThenDeliver(_ context: ChannelHandlerContext, wireEnvelope: Wire.Envelope) {
@@ -858,6 +879,7 @@ internal struct TransportEnvelope: CustomStringConvertible, CustomDebugStringCon
         /// Note: MAY contain SystemMessageEnvelope
         case message(Any)
         // ~~ outbound ~~
+        case invocation(InvocationMessage)
         case systemMessage(_SystemMessage)
         // ~~ inbound only ~~
         case systemMessageEnvelope(SystemMessageEnvelope)
@@ -895,6 +917,11 @@ internal struct TransportEnvelope: CustomStringConvertible, CustomDebugStringCon
         self.recipient = recipient
     }
 
+    init(invocation: InvocationMessage, recipient: ActorID) {
+        self.storage = .invocation(invocation)
+        self.recipient = recipient
+    }
+
     init(systemMessage: _SystemMessage, recipient: ActorID) {
         self.storage = .systemMessage(systemMessage)
         self.recipient = recipient
@@ -923,6 +950,8 @@ internal struct TransportEnvelope: CustomStringConvertible, CustomDebugStringCon
         switch self.storage {
         case .message(let message):
             return message
+        case .invocation(let invocation):
+            return invocation
         case .systemMessage(let message):
             return message
         case .systemMessageEnvelope(let systemEnvelope):
