@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-extension _Reception.Listing: ActorMessage {
+extension _Reception.Listing: Codable {
     enum CodingKeys: CodingKey {
         case listing
         case key

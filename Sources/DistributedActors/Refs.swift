@@ -23,7 +23,7 @@ import struct NIO.ByteBuffer
 
 /// Represents a reference to an actor.
 /// All communication between actors is handled _through_ actor refs, which guarantee their isolation remains intact.
-public struct _ActorRef<Message: ActorMessage>: @unchecked Sendable, _ReceivesMessages, _DeathWatchable, _ReceivesSystemMessages {
+public struct _ActorRef<Message: Codable>: @unchecked Sendable, _ReceivesMessages, _DeathWatchable, _ReceivesSystemMessages {
     /// INTERNAL API: May change without further notice.
     /// The actor ref is "aware" whether it represents a local, remote or otherwise special actor.
     ///
@@ -147,7 +147,7 @@ extension _ActorRef.Personality {
 // MARK: Internal top generic "capability" abstractions; we'll need those for other "refs"
 
 public protocol _ReceivesMessages: Sendable, Codable {
-    associatedtype Message: ActorMessage
+    associatedtype Message: Codable
     /// Send message to actor referred to by this `_ActorRef`.
     ///
     /// The symbolic version of "tell" is `!` and should also be pronounced as "tell".
@@ -186,7 +186,7 @@ public protocol _ReceivesSystemMessages: Codable {
     )
 
     /// INTERNAL API
-    func _unsafeGetRemotePersonality<M: ActorMessage>(_ type: M.Type) -> _RemoteClusterActorPersonality<M>
+    func _unsafeGetRemotePersonality<M: Codable>(_ type: M.Type) -> _RemoteClusterActorPersonality<M>
 }
 
 extension _ReceivesSystemMessages {
@@ -301,7 +301,7 @@ extension _ActorRef {
         )
     }
 
-    public func _unsafeGetRemotePersonality<M: ActorMessage>(_ type: M.Type = M.self) -> _RemoteClusterActorPersonality<M> {
+    public func _unsafeGetRemotePersonality<M: Codable>(_ type: M.Type = M.self) -> _RemoteClusterActorPersonality<M> {
         switch self.personality {
         case .remote(let personality):
             return personality._unsafeAssumeCast(to: type)
@@ -341,7 +341,7 @@ extension _ActorRef {
 /// and are such that a stopped actor can be released as soon as possible (shell), yet the cell remains
 /// active while anyone still holds references to it. The mailbox class on the other hand, is kept alive by
 /// by the cell, as it may result in message sends to dead letters which the mailbox handles
-public final class _ActorCell<Message: ActorMessage> {
+public final class _ActorCell<Message: Codable> {
     let mailbox: _Mailbox<Message>
 
     weak var actor: _ActorShell<Message>?
@@ -430,7 +430,7 @@ extension _ActorRef where Message == DeadLetter {
 /// Similar to an `ActorCell` but for some delegated actual "entity".
 /// This can be used to implement actor-like beings, which are backed by non-actor entities.
 // TODO: we could use this to make TestProbes more "real" rather than wrappers
-open class _CellDelegate<Message: ActorMessage> {
+open class _CellDelegate<Message: Codable> {
     public init() {
         // nothing
     }
@@ -515,7 +515,7 @@ internal struct TheOneWhoHasNoParent: _ReceivesSystemMessages { // FIXME: fix th
     }
 
     @usableFromInline
-    internal func _unsafeGetRemotePersonality<M: ActorMessage>(_ type: M.Type = M.self) -> _RemoteClusterActorPersonality<M> {
+    internal func _unsafeGetRemotePersonality<M: Codable>(_ type: M.Type = M.self) -> _RemoteClusterActorPersonality<M> {
         CDistributedActorsMailbox.sact_dump_backtrace()
         fatalError("The \(self.id) actor MUST NOT be interacted with directly!")
     }

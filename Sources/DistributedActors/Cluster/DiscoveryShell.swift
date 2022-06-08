@@ -16,7 +16,7 @@ import Logging
 import ServiceDiscovery
 
 final class DiscoveryShell {
-    enum Message: NonTransportableActorMessage {
+    enum Message: NotActuallyCodableMessage {
         case listing(Set<Node>)
         case stop(CompletionReason?)
     }

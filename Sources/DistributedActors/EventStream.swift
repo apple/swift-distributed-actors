@@ -20,7 +20,7 @@ import Atomics
 /// they terminate.
 ///
 /// `EventStream` is only meant to be used locally and does not buffer or redeliver messages.
-public struct EventStream<Event: ActorMessage>: AsyncSequence {
+public struct EventStream<Event: Codable>: AsyncSequence {
     public typealias Element = Event
 
     internal let ref: _ActorRef<EventStreamShell.Message<Event>>
@@ -100,7 +100,7 @@ public struct EventStream<Event: ActorMessage>: AsyncSequence {
 }
 
 internal enum EventStreamShell {
-    enum Message<Event: ActorMessage>: NonTransportableActorMessage { // TODO: make it codable, transportability depends on the Event really
+    enum Message<Event: Codable>: NotActuallyCodableMessage { // TODO: make it codable, transportability depends on the Event really
         /// Subscribe to receive events
         case subscribe(_ActorRef<Event>)
         /// Unsubscribe from receiving events

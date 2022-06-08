@@ -774,7 +774,7 @@ extension _OperationLogClusterReceptionist {
         }
     }
 
-    class PeriodicAckTick: Receptionist.Message, NonTransportableActorMessage, CustomStringConvertible {
+    class PeriodicAckTick: Receptionist.Message, NotActuallyCodableMessage, CustomStringConvertible {
         override init() {
             super.init()
         }
@@ -788,7 +788,7 @@ extension _OperationLogClusterReceptionist {
         }
     }
 
-    class PublishLocalListingsTrigger: Receptionist.Message, NonTransportableActorMessage, CustomStringConvertible {
+    class PublishLocalListingsTrigger: Receptionist.Message, NotActuallyCodableMessage, CustomStringConvertible {
         override init() {
             super.init()
         }

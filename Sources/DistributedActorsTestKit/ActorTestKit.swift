@@ -65,7 +65,7 @@ public struct ActorTestKitSettings {
 
 extension ActorTestKit {
     /// Spawn an `ActorTestProbe` which offers various assertion methods for actor messaging interactions.
-    public func makeTestProbe<Message: ActorMessage>(
+    public func makeTestProbe<Message: Codable>(
         _ naming: _ActorNaming? = nil,
         expecting type: Message.Type = Message.self,
         file: StaticString = #file, line: UInt = #line
@@ -99,7 +99,7 @@ extension ActorTestKit {
     /// Spawns an `ActorTestProbe` and immediately subscribes it to the passed in event stream.
     ///
     /// - Hint: Use `fishForMessages` and `fishFor` to filter expectations for specific events.
-    public func spawnEventStreamTestProbe<Event: ActorMessage>(
+    public func spawnEventStreamTestProbe<Event: Codable>(
         _ naming: _ActorNaming? = nil,
         subscribedTo eventStream: EventStream<Event>,
         file: String = #file, line: UInt = #line, column: UInt = #column
@@ -289,13 +289,13 @@ extension ActorTestKit {
 extension ActorTestKit {
     /// Creates a _fake_ `_ActorContext` which can be used to pass around to fulfil type argument requirements,
     /// however it DOES NOT have the ability to perform any of the typical actor context actions (such as spawning etc).
-    public func makeFakeContext<M: ActorMessage>(of: M.Type = M.self) -> _ActorContext<M> {
+    public func makeFakeContext<M: Codable>(of: M.Type = M.self) -> _ActorContext<M> {
         Mock_ActorContext(self.system)
     }
 
     /// Creates a _fake_ `_ActorContext` which can be used to pass around to fulfil type argument requirements,
     /// however it DOES NOT have the ability to perform any of the typical actor context actions (such as spawning etc).
-    public func makeFakeContext<M: ActorMessage>(for: _Behavior<M>) -> _ActorContext<M> {
+    public func makeFakeContext<M: Codable>(for: _Behavior<M>) -> _ActorContext<M> {
         self.makeFakeContext(of: M.self)
     }
 }
@@ -309,7 +309,7 @@ struct MockActorContextError: Error, CustomStringConvertible {
     }
 }
 
-public final class Mock_ActorContext<Message: ActorMessage>: _ActorContext<Message> {
+public final class Mock_ActorContext<Message: Codable>: _ActorContext<Message> {
     private let _system: ClusterSystem
 
     public init(_ system: ClusterSystem) {
@@ -369,7 +369,7 @@ public final class Mock_ActorContext<Message: ActorMessage>: _ActorContext<Messa
         file: String = #file, line: UInt = #line,
         _ behavior: _Behavior<M>
     ) throws -> _ActorRef<M>
-        where M: ActorMessage
+        where M: Codable
     {
         fatalError("Failed: \(MockActorContextError())")
     }
@@ -380,7 +380,7 @@ public final class Mock_ActorContext<Message: ActorMessage>: _ActorContext<Messa
         file: String = #file, line: UInt = #line,
         _ behavior: _Behavior<M>
     ) throws -> _ActorRef<M>
-        where M: ActorMessage
+        where M: Codable
     {
         fatalError("Failed: \(MockActorContextError())")
     }

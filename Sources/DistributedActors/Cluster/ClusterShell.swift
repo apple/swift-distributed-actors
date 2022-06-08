@@ -303,7 +303,7 @@ internal class ClusterShell {
     }
 
     // Due to lack of Union Types, we have to emulate them
-    enum Message: ActorMessage {
+    enum Message: Codable {
         // The external API, exposed to users of the ClusterShell
         case command(CommandMessage)
         // The external API, exposed to users of the ClusterShell to query for state
@@ -324,7 +324,7 @@ internal class ClusterShell {
     }
 
     // this is basically our API internally for this system
-    enum CommandMessage: NonTransportableActorMessage, SilentDeadLetter {
+    enum CommandMessage: NotActuallyCodableMessage, SilentDeadLetter {
         /// Connect and handshake with remote `Node`, obtaining an `UniqueNode` in the process.
         /// Once the handshake is completed, reply to `replyTo` with the handshake result, and also mark the unique node as `.joining`.
         ///
@@ -343,7 +343,7 @@ internal class ClusterShell {
         case cleanUpAssociationTombstones
     }
 
-    enum QueryMessage: NonTransportableActorMessage {
+    enum QueryMessage: NotActuallyCodableMessage {
         case associatedNodes(_ActorRef<Set<UniqueNode>>) // TODO: better type here
         case currentMembership(_ActorRef<Cluster.Membership>)
     }
@@ -362,7 +362,7 @@ internal class ClusterShell {
     }
 
     // TODO: reformulate as Wire.accept / reject?
-    internal enum HandshakeResult: Equatable, NonTransportableActorMessage {
+    internal enum HandshakeResult: Equatable, NotActuallyCodableMessage {
         case success(UniqueNode)
         case failure(HandshakeStateMachine.HandshakeConnectionError)
     }

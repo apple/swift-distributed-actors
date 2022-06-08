@@ -308,17 +308,17 @@ final class RemoteMessagingClusteredTests: ClusteredActorSystemsXCTestCase {
     }
 }
 
-struct WrappedString: ActorMessage {
+struct WrappedString: Codable {
     let string: String
 }
 
-private enum SerializationBehavior: String, ActorMessage {
+private enum SerializationBehavior: String, Codable {
     case succeed
     case failEncoding
     case failDecoding
 }
 
-private struct SerializationTestMessage: ActorMessage {
+private struct SerializationTestMessage: Codable {
     let serializationBehavior: SerializationBehavior
 }
 
@@ -345,7 +345,7 @@ extension SerializationTestMessage {
     }
 }
 
-private struct EchoTestMessage: ActorMessage {
+private struct EchoTestMessage: Codable {
     let string: String
     let respondTo: _ActorRef<String>
 }

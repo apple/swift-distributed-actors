@@ -21,7 +21,7 @@ import SwiftProtobuf
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Protobuf representations
 
-public protocol _AnyProtobufRepresentable: ActorMessage, SerializationRepresentable {}
+public protocol _AnyProtobufRepresentable: Codable, SerializationRepresentable {}
 
 extension _AnyProtobufRepresentable {
     public static var defaultSerializerID: Serialization.SerializerID? {
@@ -32,8 +32,6 @@ extension _AnyProtobufRepresentable {
 public protocol _AnyPublicProtobufRepresentable: _AnyProtobufRepresentable {}
 
 /// A protocol that facilitates conversion between Swift and protobuf messages.
-///
-/// - SeeAlso: `ActorMessage`
 public protocol _ProtobufRepresentable: _AnyPublicProtobufRepresentable {
     associatedtype ProtobufRepresentation: SwiftProtobuf.Message
 

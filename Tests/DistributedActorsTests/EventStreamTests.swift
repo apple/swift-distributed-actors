@@ -116,7 +116,7 @@ final class EventStreamTests: ClusterSystemXCTestCase {
     }
 }
 
-private final class EventStreamConsumer<Event: ActorMessage>: @unchecked Sendable {
+private final class EventStreamConsumer<Event: Codable>: @unchecked Sendable {
     let running: UnsafeAtomic<Bool> = .create(false)
     let counter: UnsafeAtomic<Int> = .create(0)
 

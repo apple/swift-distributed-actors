@@ -415,17 +415,17 @@ private class Mid: Top, Hashable {
     }
 }
 
-private struct HasStringRef: ActorMessage, Equatable {
+private struct HasStringRef: Codable, Equatable {
     let containedRef: _ActorRef<String>
 }
 
-private struct HasIntRef: ActorMessage, Equatable {
+private struct HasIntRef: Codable, Equatable {
     let containedRef: _ActorRef<Int>
 }
 
-private struct InterestingMessage: ActorMessage, Equatable {}
+private struct InterestingMessage: Codable, Equatable {}
 
-private struct HasInterestingMessageRef: ActorMessage, Equatable {
+private struct HasInterestingMessageRef: Codable, Equatable {
     let containedInterestingRef: _ActorRef<InterestingMessage>
 }
 

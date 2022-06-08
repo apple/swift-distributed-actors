@@ -28,7 +28,7 @@ import NIO
 ///
 /// The shell is mutable, and full of dangerous and carefully threaded/ordered code, be extra cautious.
 // TODO: remove this and replace by the infrastructure which is now Swift's `actor`
-public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, AbstractShellProtocol {
+public final class _ActorShell<Message: Codable>: _ActorContext<Message>, AbstractShellProtocol {
     // The phrase that "actor change their behavior" can be understood quite literally;
     // On each message interpretation the actor may return a new behavior that will be handling the next message.
     @usableFromInline
@@ -627,7 +627,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
         file: String = #file, line: UInt = #line,
         _ behavior: _Behavior<M>
     ) throws -> _ActorRef<M>
-        where M: ActorMessage
+        where M: Codable
     {
         try self.system.serialization._ensureSerializer(type, file: file, line: line)
         return try self._spawn(naming, props: props, behavior)
@@ -641,12 +641,12 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
         file: String = #file, line: UInt = #line,
         _ behavior: _Behavior<Message>
     ) throws -> _ActorRef<Message>
-        where Message: ActorMessage
+        where Message: Codable
     {
         self.watch(try self._spawn(naming, props: props, behavior))
     }
 
-    override public func stop<Message: ActorMessage>(child ref: _ActorRef<Message>) throws {
+    override public func stop<Message: Codable>(child ref: _ActorRef<Message>) throws {
         try self._stop(child: ref)
     }
 
@@ -683,7 +683,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
     }
 
     override public func subReceive<SubMessage>(_ id: _SubReceiveId<SubMessage>, _ subType: SubMessage.Type, _ closure: @escaping (SubMessage) throws -> Void) -> _ActorRef<SubMessage>
-        where SubMessage: ActorMessage
+        where SubMessage: Codable
     {
         do {
             let wrappedClosure: (SubMessageCarry) throws -> _Behavior<Message> = { carry in
@@ -736,7 +736,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
     }
 
     override public func messageAdapter<From>(from fromType: From.Type, adapt: @escaping (From) -> Message?) -> _ActorRef<From>
-        where From: ActorMessage
+        where From: Codable
     {
         do {
             let metaType = MetaType(fromType)
@@ -973,7 +973,7 @@ extension AbstractShellProtocol {
     }
 
     public func _resolve<Message>(context: ResolveContext<Message>) -> _ActorRef<Message>
-        where Message: ActorMessage
+        where Message: Codable
     {
         let myself: _ReceivesSystemMessages = self._myselfReceivesSystemMessages
 

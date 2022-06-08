@@ -60,7 +60,7 @@ extension Serialization {
         public func _resolveActorRef<Message>(
             _ messageType: Message.Type = Message.self, identifiedBy id: ActorID,
             userInfo: [CodingUserInfoKey: Any] = [:]
-        ) -> _ActorRef<Message> where Message: ActorMessage {
+        ) -> _ActorRef<Message> where Message: Codable {
             let context = ResolveContext<Message>(id: id, system: self.system, userInfo: userInfo)
             return self.system._resolve(context: context)
         }

@@ -25,27 +25,27 @@ import Glibc
 #endif
 
 final class SupervisionTests: ClusterSystemXCTestCase {
-    enum FaultyError: Error, NonTransportableActorMessage {
+    enum FaultyError: Error, NotActuallyCodableMessage {
         case boom(message: String)
     }
 
-    enum FaultyMessage: NonTransportableActorMessage {
+    enum FaultyMessage: NotActuallyCodableMessage {
         case pleaseThrow(error: Error)
         case echo(message: String, replyTo: _ActorRef<WorkerMessages>)
         case pleaseFailAwaiting(message: String)
     }
 
-    enum SimpleProbeMessages: Equatable, NonTransportableActorMessage {
+    enum SimpleProbeMessages: Equatable, NotActuallyCodableMessage {
         case spawned(child: _ActorRef<FaultyMessage>)
         case echoing(message: String)
     }
 
-    enum WorkerMessages: Equatable, NonTransportableActorMessage {
+    enum WorkerMessages: Equatable, NotActuallyCodableMessage {
         case setupRunning(ref: _ActorRef<FaultyMessage>)
         case echo(message: String)
     }
 
-    enum FailureMode: NonTransportableActorMessage {
+    enum FailureMode: NotActuallyCodableMessage {
         case throwing
         // case faulting // Not implemented
 
@@ -1078,7 +1078,7 @@ final class SupervisionTests: ClusterSystemXCTestCase {
         try p.expectMessage("starting")
     }
 
-    private struct PleaseReplyError: Error, ActorMessage, Equatable {}
+    private struct PleaseReplyError: Error, Codable, Equatable {}
     private struct EasilyCatchableError: Error, Equatable {}
     private struct CantTouchThisError: Error, Equatable {}
     private struct CatchMeError: Error, Equatable {}

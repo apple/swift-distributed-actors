@@ -16,7 +16,7 @@
 ///
 /// The most important behavior is `_Behavior.receive` since it allows handling incoming messages with a simple block.
 /// Various other predefined behaviors exist, such as "stopping" or "ignoring" a message.
-public struct _Behavior<Message: ActorMessage>: @unchecked Sendable {
+public struct _Behavior<Message: Codable>: @unchecked Sendable {
     @usableFromInline
     let underlying: __Behavior<Message>
 
@@ -459,7 +459,7 @@ extension _Behavior {
 }
 
 @usableFromInline
-internal enum __Behavior<Message: ActorMessage> {
+internal enum __Behavior<Message: Codable> {
     case setup(_ onStart: (_ActorContext<Message>) throws -> _Behavior<Message>)
 
     case receive(_ handle: (_ActorContext<Message>, Message) throws -> _Behavior<Message>)
@@ -501,7 +501,7 @@ internal enum StopReason {
     case failure(_Supervision.Failure)
 }
 
-public enum IllegalBehaviorError<Message: ActorMessage>: Error {
+public enum IllegalBehaviorError<Message: Codable>: Error {
     /// Some behaviors, like `.same` and `.unhandled` are not allowed to be used as initial behaviors.
     /// See their individual documentation for the rationale why that is so.
     case notAllowedAsInitial(_ behavior: _Behavior<Message>)
@@ -535,7 +535,7 @@ extension _Behavior {
 }
 
 /// Used in combination with `_Behavior.intercept` to intercept messages and signals delivered to a behavior.
-open class _Interceptor<Message: ActorMessage> {
+open class _Interceptor<Message: Codable> {
     public init() {}
 
     @inlinable

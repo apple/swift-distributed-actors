@@ -54,7 +54,7 @@ internal enum MailboxBitMasks {
     //                           = 0b0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0001_1101
 }
 
-internal final class _Mailbox<Message: ActorMessage> {
+internal final class _Mailbox<Message: Codable> {
     weak var shell: _ActorShell<Message>?
     let _status: ManagedAtomic<UInt64> = .init(0)
     let userMessages: MPSCLinkedQueue<Payload>
@@ -669,7 +669,7 @@ internal final class _Mailbox<Message: ActorMessage> {
 // that it added some runtime overhead when retrieving the messages from the
 // queue, because additional metatype information was retrieved, therefore
 // we removed it
-internal enum WrappedMessage: NonTransportableActorMessage {
+internal enum WrappedMessage: NotActuallyCodableMessage {
     case message(Any)
     case closure(ActorClosureCarry)
     case adaptedMessage(AdaptedMessageCarry)

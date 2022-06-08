@@ -30,7 +30,7 @@ public protocol _DeathWatchable: AddressableActor {}
 extension _ActorContext: _DeathWatchProtocol {}
 
 public protocol _DeathWatchProtocol {
-    associatedtype Message: ActorMessage
+    associatedtype Message: Codable
 
     /// Watches the given actor for termination, which means that this actor will receive a `.terminated` signal
     /// when the watched actor fails ("dies"), be it via throwing a Swift Error or performing some other kind of fault.
@@ -117,7 +117,7 @@ public protocol _DeathWatchProtocol {
 // Implementation notes:
 // Care was taken to keep this implementation separate from the ActorCell however not require more storage space.
 @usableFromInline
-internal struct DeathWatchImpl<Message: ActorMessage> {
+internal struct DeathWatchImpl<Message: Codable> {
     private var watching: [_AddressableActorRef: OnTerminationMessage] = [:]
     private var watchedBy: Set<_AddressableActorRef> = []
 

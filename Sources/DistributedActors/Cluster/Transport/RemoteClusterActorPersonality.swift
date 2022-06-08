@@ -23,7 +23,7 @@ import Atomics
 /// by being sent from a remote note, one can safely assume that the actor _existed_, however nothing
 /// is clear about its current lifecycle state (it may have already terminated the moment the message was sent,
 /// or even before then). To obtain lifecycle status of this actor the usual strategy of watching it needs to be employed.
-public final class _RemoteClusterActorPersonality<Message: ActorMessage> {
+public final class _RemoteClusterActorPersonality<Message: Codable> {
     let id: ActorID
 
     let clusterShell: ClusterShell
@@ -138,7 +138,7 @@ public final class _RemoteClusterActorPersonality<Message: ActorMessage> {
         }
     }
 
-    func _unsafeAssumeCast<NewMessage: ActorMessage>(to: NewMessage.Type) -> _RemoteClusterActorPersonality<NewMessage> {
+    func _unsafeAssumeCast<NewMessage: Codable>(to: NewMessage.Type) -> _RemoteClusterActorPersonality<NewMessage> {
         _RemoteClusterActorPersonality<NewMessage>(shell: self.clusterShell, id: self.id, system: self.system)
     }
 }

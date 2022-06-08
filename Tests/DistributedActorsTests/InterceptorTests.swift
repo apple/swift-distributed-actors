@@ -34,7 +34,7 @@ final class ShoutingInterceptor: _Interceptor<String> {
     }
 }
 
-final class TerminatedInterceptor<Message: ActorMessage>: _Interceptor<Message> {
+final class TerminatedInterceptor<Message: Codable>: _Interceptor<Message> {
     let probe: ActorTestProbe<_Signals.Terminated>
 
     init(probe: ActorTestProbe<_Signals.Terminated>) {
@@ -155,7 +155,7 @@ final class InterceptorTests: ClusterSystemXCTestCase {
         try p.expectNoMessage(for: .milliseconds(500))
     }
 
-    class SignalToStringInterceptor<Message: ActorMessage>: _Interceptor<Message> {
+    class SignalToStringInterceptor<Message: Codable>: _Interceptor<Message> {
         let probe: ActorTestProbe<String>
 
         init(_ probe: ActorTestProbe<String>) {

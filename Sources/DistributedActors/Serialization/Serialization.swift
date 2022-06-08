@@ -591,9 +591,9 @@ extension Serialization {
     /// Validates serialization round-trip is possible for given message.
     ///
     /// Messages marked with `SkipSerializationVerification` are except from this verification.
-    public func verifySerializable<Message: ActorMessage>(message: Message) throws {
+    public func verifySerializable<Message: Codable>(message: Message) throws {
         switch message {
-        case is NonTransportableActorMessage:
+        case is NotActuallyCodableMessage:
             return // skip
         default:
             let serialized = try self.serialize(message)
@@ -698,7 +698,7 @@ struct SerializerTypeKey: Hashable, CustomStringConvertible {
     }
 
     @usableFromInline
-    init<Message: ActorMessage>(_ type: Message.Type) {
+    init<Message: Codable>(_ type: Message.Type) {
         self.type = type
         self._ensure = { serialization in
             try serialization._ensureSerializer(type)

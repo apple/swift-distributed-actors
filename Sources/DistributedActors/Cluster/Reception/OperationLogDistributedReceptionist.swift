@@ -1028,7 +1028,7 @@ extension OpLogDistributedReceptionist {
         }
     }
 
-    final class PublishLocalListingsTrigger: Receptionist.Message, NonTransportableActorMessage, CustomStringConvertible {
+    final class PublishLocalListingsTrigger: Receptionist.Message, NotActuallyCodableMessage, CustomStringConvertible {
         override init() {
             super.init()
         }

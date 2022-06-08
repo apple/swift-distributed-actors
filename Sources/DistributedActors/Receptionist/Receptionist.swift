@@ -366,7 +366,7 @@ public class _ReceptionistMessage: Codable, @unchecked Sendable {}
 internal typealias FullyQualifiedTypeName = String
 
 /// INTERNAL API
-public class _AnyRegister: _ReceptionistMessage, NonTransportableActorMessage, CustomStringConvertible {
+public class _AnyRegister: _ReceptionistMessage, NotActuallyCodableMessage, CustomStringConvertible {
     var _addressableActorRef: _AddressableActorRef { _undefined() }
     var _key: AnyReceptionKey { _undefined() }
 
@@ -379,7 +379,7 @@ public class _AnyRegister: _ReceptionistMessage, NonTransportableActorMessage, C
     }
 }
 
-public class _Lookup: _ReceptionistMessage, NonTransportableActorMessage {
+public class _Lookup: _ReceptionistMessage, NotActuallyCodableMessage {
     let _key: AnyReceptionKey
 
     init(_key: AnyReceptionKey) {
@@ -485,7 +485,7 @@ public struct AnyReceptionKey: ReceptionKeyProtocol, Sendable, Codable, Hashable
     }
 }
 
-public class _Subscribe: _ReceptionistMessage, NonTransportableActorMessage {
+public class _Subscribe: _ReceptionistMessage, NotActuallyCodableMessage {
     var _key: AnyReceptionKey {
         fatalErrorBacktrace("failed \(#function)")
     }
@@ -545,7 +545,7 @@ internal protocol ListingRequest {
     func replyWith(_ refs: Set<_AddressableActorRef>)
 }
 
-internal final class _ReceptionistDelayedListingFlushTick: _ReceptionistMessage, NonTransportableActorMessage {
+internal final class _ReceptionistDelayedListingFlushTick: _ReceptionistMessage, NotActuallyCodableMessage {
     let key: AnyReceptionKey
 
     init(key: AnyReceptionKey) {

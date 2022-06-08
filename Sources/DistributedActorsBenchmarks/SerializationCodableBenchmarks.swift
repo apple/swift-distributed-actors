@@ -53,7 +53,7 @@ private func tearDown() {
 
 // -------
 
-struct SmallMessage: ActorMessage {
+struct SmallMessage: Codable {
     let number: Int
     let name: String
 }
@@ -67,7 +67,7 @@ func bench_codable_roundTrip_message_small(n: Int) {
 
 // -------
 
-struct MessageWithRef: ActorMessage {
+struct MessageWithRef: Codable {
     let number: Int
     let name: String
     let reference: _ActorRef<String>
@@ -87,7 +87,7 @@ func bench_codable_roundTrip_message_withRef(n: Int) {
 
 // -------
 
-struct MediumMessage: ActorMessage {
+struct MediumMessage: Codable {
     struct NestedMessage: Codable {
         let field1: String
         let field2: Int32

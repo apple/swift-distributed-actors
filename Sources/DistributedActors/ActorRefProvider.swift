@@ -36,7 +36,7 @@ internal protocol _ActorRefProvider: _ActorTreeTraversable {
         dispatcher: MessageDispatcher, props: _Props,
         startImmediately: Bool
     ) throws -> _ActorRef<Message>
-        where Message: ActorMessage
+        where Message: Codable
 
     /// Stops all actors created by this `_ActorRefProvider` and blocks until they have all stopped.
     func stopAll()
@@ -81,7 +81,7 @@ extension RemoteActorRefProvider {
         dispatcher: MessageDispatcher, props: _Props,
         startImmediately: Bool
     ) throws -> _ActorRef<Message>
-        where Message: ActorMessage
+        where Message: Codable
     {
         // spawn is always local, thus we delegate to the underlying provider
         return try self.localProvider._spawn(system: system, behavior: behavior, id: id, dispatcher: dispatcher, props: props, startImmediately: startImmediately)
@@ -146,7 +146,7 @@ internal struct LocalActorRefProvider: _ActorRefProvider {
         dispatcher: MessageDispatcher, props: _Props,
         startImmediately: Bool
     ) throws -> _ActorRef<Message>
-        where Message: ActorMessage
+        where Message: Codable
     {
         return try self.root.makeChild(path: id.path) {
             // the cell that holds the actual "actor", though one could say the cell *is* the actor...
@@ -203,7 +203,7 @@ public protocol _ActorTreeTraversable {
     /// Depending on the underlying implementation, the returned ref MAY be a remote one.
     ///
     /// - Returns: `deadLetters` if actor path resolves to no live actor, a valid `_ActorRef` otherwise.
-    func _resolve<Message>(context: ResolveContext<Message>) -> _ActorRef<Message> where Message: ActorMessage
+    func _resolve<Message>(context: ResolveContext<Message>) -> _ActorRef<Message> where Message: Codable
 
     /// Resolves the given actor path against the underlying actor tree.
     ///
@@ -326,7 +326,7 @@ public struct _TraversalContext<T> {
 }
 
 /// INTERNAL API: May change without any prior notice.
-public struct ResolveContext<Message: ActorMessage> {
+public struct ResolveContext<Message: Codable> {
     /// The "remaining path" of the resolve being performed
     public var selectorSegments: ArraySlice<ActorPathSegment>
 
