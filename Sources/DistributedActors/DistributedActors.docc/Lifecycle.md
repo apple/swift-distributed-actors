@@ -24,10 +24,12 @@ distributed actor Romeo: LifecycleWatch {
     }
 
     distributed func watch(_ romeo: Romeo) {
-        watchTermination(of: romeo) { terminatedID in
-            probe.tell("Oh no! \(terminatedID) is dead!")
-            // TODO: Drink poison
-        }
+        watchTermination(of: romeo)
+    }
+    
+    distributed func terminated(actor id: ActorID) async {
+        print("Oh no! \(id) is dead!")
+        // *Drinks poison*
     }
 }
 
@@ -37,19 +39,23 @@ distributed actor Juliet: LifecycleWatch {
     }
 
     distributed func watch(_ romeo: Romeo) {
-        watchTermination(of: romeo) { terminatedID in
-            probe.tell("Oh no! \(terminatedID) is dead!")
-            // TODO: Stab through heart
-        }
+        watchTermination(of: romeo)
+    }
+
+    distributed func terminated(actor id: ActorID) async {
+        print("Oh no! \(id) is dead!")
+        // *Stabs through heart*
     }
 }
 ```
 
-The ``LifecycleWatch/watchTermination(of:whenTerminated:file:line:)`` API purposefully does not use async/await because that would cause `romeo` to be retained as this function suspends. Instead, we allow it to complete and once the romeo actor is determined terminated, we get called back with its ``ActorID``.
+The ``LifecycleWatch/watchTermination(of:file:line:)`` API purposefully does not use async/await because that would cause `romeo` to be retained as this function suspends. Instead, we allow it, and the function calling it (which keeps a reference to `Romeo`), to complete and once the romeo actor is determined terminated, we get called back with its ``ActorID`` in the separate ``terminated(actor:file:line:)`` method.
 
 This API offers the same semantics, regardless where the actors are located, and always triggers the termination closure as the watched actor is considered to have terminated.
 
 In case the watched actor is _local_, it's termination is tied to Swift's ref-counting mechanisms, and an actor is terminated as soon as there are no more strong references to it in a system. It then is deinitialized, and the actor system's `resignID(actor.id)` is triggered, causing propagation to all the other actors which have been watching that actor.
+
+You can also ``unwatchTermination(of:file:line:)``
 
 In case the watched actor is _remote_, termination may happen because of two reasons: 
 - either its reference count _on the remote system_ dropped to zero and it followed the same deinitialization steps as just described in the local case;

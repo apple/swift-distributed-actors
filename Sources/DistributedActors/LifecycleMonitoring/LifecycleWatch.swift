@@ -20,14 +20,18 @@ import NIO
 ///
 /// - SeeAlso:
 ///     - <doc:Lifecycle>
-public protocol LifecycleWatch: DistributedActor where ActorSystem == ClusterSystem {}
+public protocol LifecycleWatch: DistributedActor where ActorSystem == ClusterSystem {
+    /// Called with an ``ActorID`` of a distributed actor that was previously watched using ``watchTermination(of:file:line:)``.
+    // distributed // TODO(distributed): if we allowed non-distributed funcs in DA constrained protocol, we can allow them to be witnessed
+    func terminated(actor id: ActorID) async throws
+}
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Lifecycle Watch API
 
 extension LifecycleWatch {
     /// Watch the `watchee` actor for termination, and trigger the `whenTerminated` callback when
-    @discardableResult
+    @available(*, deprecated, message: "Replaced with the much safer `watchTermination(of:)` paired with `actorTerminated(_:)`")
     public func watchTermination<Watchee>(
         of watchee: Watchee,
         @_inheritActorContext @_implicitSelfCapture whenTerminated: @escaping @Sendable (ID) async -> Void,
@@ -39,6 +43,22 @@ extension LifecycleWatch {
         }
 
         watch.termination(of: watchee, whenTerminated: whenTerminated, file: file, line: line)
+        return watchee
+    }
+
+    /// Watch the `watchee` actor for termination, and trigger the `whenTerminated` callback when
+    @discardableResult
+    public func watchTermination<Watchee>(
+        of watchee: Watchee,
+        file: String = #file, line: UInt = #line
+    ) -> Watchee where Watchee: DistributedActor, Watchee.ActorSystem == ClusterSystem {
+        // TODO(distributed): reimplement this as self.id as? _ActorContext which will have the watch things.
+        guard let watch = self.actorSystem._getLifecycleWatch(watcher: self) else {
+            return watchee
+        }
+
+        let wacheeID = watchee.id
+        watch.termination(of: watchee, whenTerminated: { _ in await try? self.terminated(actor: wacheeID) }, file: file, line: line)
         return watchee
     }
 
@@ -75,9 +95,18 @@ extension LifecycleWatch {
     ///  - MUST NOT be invoked concurrently to the actors execution, i.e. from the "outside" of the current actor.
     ///
     /// - Returns: the passed in watchee reference for easy chaining `e.g. return context.unwatch(ref)`
+    @available(*, deprecated, renamed: "unwatchTermination(of:file:line:)")
     @discardableResult
     public func unwatch<Watchee: DistributedActor>(
         _ watchee: Watchee,
+        file: String = #file, line: UInt = #line
+    ) -> Watchee where Watchee.ActorSystem == ClusterSystem {
+        self.unwatchTermination(of: watchee, file: file, line: line)
+    }
+
+    @discardableResult
+    public func unwatchTermination<Watchee: DistributedActor>(
+        of watchee: Watchee,
         file: String = #file, line: UInt = #line
     ) -> Watchee where Watchee.ActorSystem == ClusterSystem {
         // TODO(distributed): reimplement this as self.id as? _ActorContext which will have the watch things.

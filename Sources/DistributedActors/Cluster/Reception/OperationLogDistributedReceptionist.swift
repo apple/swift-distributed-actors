@@ -317,7 +317,7 @@ extension OpLogDistributedReceptionist: LifecycleWatch {
         if self.storage.addRegistration(sequenced: sequenced, key: key, guest: guest) {
             // self.instrumentation.actorRegistered(key: key, id: id) // TODO(distributed): make the instrumentation calls compatible with distributed actor based types
 
-            watchTermination(of: guest) { onActorTerminated(identity: $0) }
+            watchTermination(of: guest)
 
             self.log.debug(
                 "Registered [\(id)] for key [\(key)]",
@@ -562,9 +562,7 @@ extension OpLogDistributedReceptionist {
             // We resolve a stub that we cannot really ever send messages to, but we can "watch" it
             let resolved = try! actorSystem._resolveStub(identity: identity) // TODO(distributed): remove the throwing here?
 
-            watchTermination(of: resolved) {
-                onActorTerminated(identity: $0)
-            }
+            watchTermination(of: resolved)
             if self.storage.addRegistration(sequenced: sequenced, key: key, guest: resolved) {
                 // self.instrumentation.actorRegistered(key: key, id: id) // TODO(distributed): make the instrumentation calls compatible with distributed actor based types
             }
@@ -798,8 +796,7 @@ extension OpLogDistributedReceptionist {
 // MARK: Termination handling
 
 extension OpLogDistributedReceptionist {
-    // func onActorTerminated(terminated: Signals.Terminated) {
-    func onActorTerminated(identity id: ID) {
+    public distributed func terminated(actor id: ID) {
         if id == ActorID._receptionist(on: id.uniqueNode, for: .distributedActors) {
             self.log.debug("Watched receptionist terminated: \(id)")
             self.receptionistTerminated(identity: id)
