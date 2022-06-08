@@ -18,12 +18,12 @@ import Distributed
 // MARK: Reception
 
 /// Namespace for public messages related to the Receptionist.
-public enum _Reception{}
+public enum _Reception {}
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: _ReceptionKey
 
-extension _Reception{
+extension _Reception {
     /// Used to register and lookup actors in the receptionist.
     /// The key is a combination the Guest's type and an identifier to identify sub-groups of actors of that type.
     ///
@@ -77,7 +77,7 @@ extension _Reception{
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: _ReceptionListing
 
-extension _Reception{
+extension _Reception {
     /// Response to `Lookup` and `Subscribe` requests.
     /// A listing MAY be empty.
     public struct Listing<Guest: _ReceptionistGuest>: Equatable, CustomStringConvertible {
@@ -175,7 +175,7 @@ extension ReceptionistListing {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: _ReceptionRegistered
 
-extension _Reception{
+extension _Reception {
     /// Response to a `Register` message
     public final class Registered<Guest: _ReceptionistGuest>: NonTransportableActorMessage, CustomStringConvertible {
         internal let _guest: Guest

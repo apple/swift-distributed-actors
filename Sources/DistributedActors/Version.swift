@@ -13,7 +13,6 @@
 //===----------------------------------------------------------------------===//
 
 extension ClusterSystem {
-
     /// Version of the cluster system, as advertised to other nodes while joining the cluster.
     /// Can be used to determine wire of feature compatibility of nodes joining a cluster.
     public struct Version: Equatable, CustomStringConvertible {
