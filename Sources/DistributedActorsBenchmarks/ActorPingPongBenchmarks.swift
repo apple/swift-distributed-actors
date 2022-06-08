@@ -98,7 +98,7 @@ private func tearDown() {
 }
 
 // === -----------------------------------------------------------------------------------------------------------------
-private enum PingPongCommand: NotActuallyCodableMessage {
+private enum PingPongCommand: _NotActuallyCodableMessage {
     case startPingPong(
         messagesPerPair: Int,
         numActors: Int,

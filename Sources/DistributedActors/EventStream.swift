@@ -100,7 +100,7 @@ public struct EventStream<Event: Codable>: AsyncSequence {
 }
 
 internal enum EventStreamShell {
-    enum Message<Event: Codable>: NotActuallyCodableMessage { // TODO: make it codable, transportability depends on the Event really
+    enum Message<Event: Codable>: _NotActuallyCodableMessage { // TODO: make it codable, transportability depends on the Event really
         /// Subscribe to receive events
         case subscribe(_ActorRef<Event>)
         /// Unsubscribe from receiving events

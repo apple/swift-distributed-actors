@@ -115,7 +115,7 @@ extension Serialization {
             manifest = Manifest(serializerID: ._ProtobufRepresentable, hint: hint)
         } else if messageType is Codable.Type {
             manifest = Manifest(serializerID: self.settings.defaultSerializerID, hint: hint)
-        } else if messageType is NotActuallyCodableMessage.Type {
+        } else if messageType is _NotActuallyCodableMessage.Type {
             manifest = Manifest(serializerID: .doNotSerialize, hint: nil)
         } else {
             manifest = nil

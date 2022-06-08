@@ -593,7 +593,7 @@ extension Serialization {
     /// Messages marked with `SkipSerializationVerification` are except from this verification.
     public func verifySerializable<Message: Codable>(message: Message) throws {
         switch message {
-        case is NotActuallyCodableMessage:
+        case is _NotActuallyCodableMessage:
             return // skip
         default:
             let serialized = try self.serialize(message)

@@ -669,7 +669,7 @@ internal final class _Mailbox<Message: Codable> {
 // that it added some runtime overhead when retrieving the messages from the
 // queue, because additional metatype information was retrieved, therefore
 // we removed it
-internal enum WrappedMessage: NotActuallyCodableMessage {
+internal enum WrappedMessage: _NotActuallyCodableMessage {
     case message(Any)
     case closure(ActorClosureCarry)
     case adaptedMessage(AdaptedMessageCarry)

@@ -16,7 +16,7 @@ import struct Foundation.Data
 import NIO
 
 /// A `Never` can never be sent as message, even more so over the wire.
-extension Never: NotActuallyCodableMessage {}
+extension Never: _NotActuallyCodableMessage {}
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Common utility messages
@@ -128,7 +128,7 @@ public struct BestEffortStringError: Error, Codable, Equatable, CustomStringConv
 }
 
 /// Useful error wrapper which performs an best effort Error serialization as configured by the actor system.
-public struct NonTransportableAnyError: Error, NotActuallyCodableMessage {
+public struct NonTransportableAnyError: Error, _NotActuallyCodableMessage {
     public let failure: Error
 
     public init<Failure: Error>(_ failure: Failure) {
@@ -150,22 +150,22 @@ public struct NonTransportableAnyError: Error, NotActuallyCodableMessage {
 /// No serializer is expected to be registered for such types.
 ///
 /// - Warning: Attempting to send such message over the network will fail at runtime (and log an error or warning).
-public protocol NotActuallyCodableMessage: Codable {}
+public protocol _NotActuallyCodableMessage: Codable {}
 
-extension NotActuallyCodableMessage {
+extension _NotActuallyCodableMessage {
     public init(from decoder: Swift.Decoder) throws {
-        fatalError("Attempted to decode NotActuallyCodableMessage message: \(Self.self)! This should never happen.")
+        fatalError("Attempted to decode _NotActuallyCodableMessage message: \(Self.self)! This should never happen.")
     }
 
     public func encode(to encoder: Swift.Encoder) throws {
-        fatalError("Attempted to encode NotActuallyCodableMessage message: \(Self.self)! This should never happen.")
+        fatalError("Attempted to encode _NotActuallyCodableMessage message: \(Self.self)! This should never happen.")
     }
 
     public init(context: Serialization.Context, from buffer: inout ByteBuffer, using manifest: Serialization.Manifest) throws {
-        fatalError("Attempted to deserialize NotActuallyCodableMessage message: \(Self.self)! This should never happen.")
+        fatalError("Attempted to deserialize _NotActuallyCodableMessage message: \(Self.self)! This should never happen.")
     }
 
     public func serialize(context: Serialization.Context, to bytes: inout ByteBuffer) throws {
-        fatalError("Attempted to serialize NotActuallyCodableMessage message: \(Self.self)! This should never happen.")
+        fatalError("Attempted to serialize _NotActuallyCodableMessage message: \(Self.self)! This should never happen.")
     }
 }

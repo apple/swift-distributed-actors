@@ -324,7 +324,7 @@ internal class ClusterShell {
     }
 
     // this is basically our API internally for this system
-    enum CommandMessage: NotActuallyCodableMessage, SilentDeadLetter {
+    enum CommandMessage: _NotActuallyCodableMessage, SilentDeadLetter {
         /// Connect and handshake with remote `Node`, obtaining an `UniqueNode` in the process.
         /// Once the handshake is completed, reply to `replyTo` with the handshake result, and also mark the unique node as `.joining`.
         ///
@@ -343,7 +343,7 @@ internal class ClusterShell {
         case cleanUpAssociationTombstones
     }
 
-    enum QueryMessage: NotActuallyCodableMessage {
+    enum QueryMessage: _NotActuallyCodableMessage {
         case associatedNodes(_ActorRef<Set<UniqueNode>>) // TODO: better type here
         case currentMembership(_ActorRef<Cluster.Membership>)
     }
@@ -362,7 +362,7 @@ internal class ClusterShell {
     }
 
     // TODO: reformulate as Wire.accept / reject?
-    internal enum HandshakeResult: Equatable, NotActuallyCodableMessage {
+    internal enum HandshakeResult: Equatable, _NotActuallyCodableMessage {
         case success(UniqueNode)
         case failure(HandshakeStateMachine.HandshakeConnectionError)
     }

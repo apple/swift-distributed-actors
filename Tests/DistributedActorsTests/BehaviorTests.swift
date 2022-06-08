@@ -376,7 +376,7 @@ final class BehaviorTests: ClusterSystemXCTestCase {
         try capture.shouldContain(message: "*BehaviorTests.swift:\(mockLine)*")
     }
 
-    enum ContextClosureMessage: NotActuallyCodableMessage {
+    enum ContextClosureMessage: _NotActuallyCodableMessage {
         case context(() -> _ActorRef<String>)
     }
 

@@ -71,7 +71,7 @@ internal class ActorSingletonManager<Message: Codable> {
         try context.stop(child: singleton)
     }
 
-    internal enum Directive: NotActuallyCodableMessage {
+    internal enum Directive: _NotActuallyCodableMessage {
         case takeOver(from: UniqueNode?, replyTo: _ActorRef<_ActorRef<Message>?>)
         case handOver(to: UniqueNode?)
         case stop

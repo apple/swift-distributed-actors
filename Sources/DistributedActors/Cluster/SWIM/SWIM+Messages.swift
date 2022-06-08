@@ -31,7 +31,7 @@ extension SWIM {
         case pingResponse(SWIM.PingResponse)
     }
 
-    public enum LocalMessage: NotActuallyCodableMessage {
+    public enum LocalMessage: _NotActuallyCodableMessage {
         /// Periodic message used to wake up SWIM and perform a random ping probe among its members.
         case protocolPeriodTick
 
@@ -75,7 +75,7 @@ extension SWIM {
         case confirmDead(UniqueNode)
     }
 
-    public enum _TestingMessage: NotActuallyCodableMessage {
+    public enum _TestingMessage: _NotActuallyCodableMessage {
         /// FOR TESTING: Expose the entire membership state
         case _getMembershipState(replyTo: _ActorRef<[SWIM.Member]>)
     }
