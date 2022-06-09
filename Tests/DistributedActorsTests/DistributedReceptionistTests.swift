@@ -80,33 +80,32 @@ final class DistributedReceptionistTests: ClusterSystemXCTestCase {
         }
     }
 
-    // FIXME: some bug in receptionist preventing listing to yield both
     func test_receptionist_listing_shouldRespondWithRegisteredRefsForKey() async throws {
-        throw XCTSkip("Task locals are not supported on this platform.")
+        try runAsyncAndBlock {
+            let receptionist = system.receptionist
+            let probe: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
-        let receptionist = system.receptionist
-        let probe: ActorTestProbe<String> = self.testKit.makeTestProbe()
+            let forwarderA = Forwarder(probe: probe, name: "A", actorSystem: system)
+            let forwarderB = Forwarder(probe: probe, name: "B", actorSystem: system)
 
-        let forwarderA = Forwarder(probe: probe, name: "A", actorSystem: system)
-        let forwarderB = Forwarder(probe: probe, name: "B", actorSystem: system)
+            await receptionist.checkIn(forwarderA, with: .forwarders)
+            await receptionist.checkIn(forwarderB, with: .forwarders)
 
-        await receptionist.checkIn(forwarderA, with: .forwarders)
-        await receptionist.checkIn(forwarderB, with: .forwarders)
+            var i = 0
+            for await forwarder in await receptionist.listing(of: .forwarders) {
+                i += 1
+                try await forwarder.forward(message: "test")
 
-        var i = 0
-        for await forwarder in await receptionist.listing(of: .forwarders) {
-            i += 1
-            try await forwarder.forward(message: "test")
-
-            if i == 2 {
-                break
+                if i == 2 {
+                    break
+                }
             }
-        }
 
-        try probe.expectMessagesInAnyOrder([
-            "\(forwarderA.id) A forwarded: test",
-            "\(forwarderB.id) B forwarded: test",
-        ])
+            try probe.expectMessagesInAnyOrder([
+                "\(forwarderA.id) A forwarded: test",
+                "\(forwarderB.id) B forwarded: test",
+            ])
+        }
     }
 
     func test_receptionist_shouldRespondWithEmptyRefForUnknownKey() throws {
