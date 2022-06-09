@@ -34,9 +34,67 @@ distributed actor Forwarder {
     }
 }
 
+private distributed actor Boss: LifecycleWatch {
+    typealias ActorSystem = ClusterSystem
+    let probe: ActorTestProbe<String>?
+    let name: String
+
+    var workers: Set<ActorID> = []
+
+    var listingTask: Task<Void, Never>?
+
+    init(probe: ActorTestProbe<String>?, name: String, actorSystem: ActorSystem) {
+        self.probe = probe
+        self.actorSystem = actorSystem
+        self.name = name
+    }
+
+    distributed func findWorkers() {
+        guard self.listingTask == nil else {
+            self.actorSystem.log.info("\(self.id) \(self.name) already looking for workers")
+            return
+        }
+
+        self.listingTask = Task {
+            for await worker in await self.actorSystem.receptionist.listing(of: .workers) {
+                self.workers.insert(worker.id)
+                self.probe?.tell("\(self.id) \(self.name) found \(worker.id)")
+            }
+        }
+    }
+
+    distributed func done() {
+        self.listingTask?.cancel()
+        self.probe?.tell("\(self.name) done")
+    }
+
+    deinit {
+        self.listingTask?.cancel()
+        self.probe?.tell("\(self.name) deinit")
+    }
+}
+
+private distributed actor Worker: CustomStringConvertible {
+    typealias ActorSystem = ClusterSystem
+    let name: String
+
+    init(name: String, actorSystem: ActorSystem) {
+        self.actorSystem = actorSystem
+        self.name = name
+    }
+
+    nonisolated var description: String {
+        "\(Self.self) \(self.id)"
+    }
+}
+
 extension DistributedReception.Key {
     fileprivate static var forwarders: DistributedReception.Key<Forwarder> {
         "forwarder/*"
+    }
+
+    fileprivate static var workers: DistributedReception.Key<Worker> {
+        "worker/*"
     }
 
     /// A key that shall have NONE actors checked in
@@ -80,33 +138,71 @@ final class DistributedReceptionistTests: ClusterSystemXCTestCase {
         }
     }
 
-    // FIXME: some bug in receptionist preventing listing to yield both
-    func test_receptionist_listing_shouldRespondWithRegisteredRefsForKey() async throws {
-        throw XCTSkip("Task locals are not supported on this platform.")
+    func test_receptionist_listing_shouldRespondWithRegisteredRefsForKey() throws {
+        try runAsyncAndBlock {
+            let receptionist = system.receptionist
+            let probe: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
-        let receptionist = system.receptionist
-        let probe: ActorTestProbe<String> = self.testKit.makeTestProbe()
+            let forwarderA = Forwarder(probe: probe, name: "A", actorSystem: system)
+            let forwarderB = Forwarder(probe: probe, name: "B", actorSystem: system)
 
-        let forwarderA = Forwarder(probe: probe, name: "A", actorSystem: system)
-        let forwarderB = Forwarder(probe: probe, name: "B", actorSystem: system)
+            await receptionist.checkIn(forwarderA, with: .forwarders)
+            await receptionist.checkIn(forwarderB, with: .forwarders)
 
-        await receptionist.checkIn(forwarderA, with: .forwarders)
-        await receptionist.checkIn(forwarderB, with: .forwarders)
+            var i = 0
+            for await forwarder in await receptionist.listing(of: .forwarders) {
+                i += 1
+                try await forwarder.forward(message: "test")
 
-        var i = 0
-        for await forwarder in await receptionist.listing(of: .forwarders) {
-            i += 1
-            try await forwarder.forward(message: "test")
-
-            if i == 2 {
-                break
+                if i == 2 {
+                    break
+                }
             }
-        }
 
-        try probe.expectMessagesInAnyOrder([
-            "\(forwarderA.id) A forwarded: test",
-            "\(forwarderB.id) B forwarded: test",
-        ])
+            try probe.expectMessagesInAnyOrder([
+                "\(forwarderA.id) A forwarded: test",
+                "\(forwarderB.id) B forwarded: test",
+            ])
+        }
+    }
+
+    func test_receptionist_listing_shouldEndAfterTaskIsCancelled() throws {
+        try runAsyncAndBlock {
+            let receptionist = self.system.receptionist
+            let probeA: ActorTestProbe<String> = self.testKit.makeTestProbe()
+            let probeB: ActorTestProbe<String> = self.testKit.makeTestProbe()
+
+            let bossA = Boss(probe: probeA, name: "A", actorSystem: self.system)
+            let bossB = Boss(probe: probeB, name: "B", actorSystem: self.system)
+
+            let workerA = Worker(name: "A", actorSystem: self.system)
+            let workerB = Worker(name: "B", actorSystem: self.system)
+            let workerC = Worker(name: "C", actorSystem: self.system)
+
+            try await bossA.findWorkers()
+            try await bossB.findWorkers()
+
+            await receptionist.checkIn(workerA, with: .workers)
+
+            try probeA.expectMessage("\(bossA.id) A found \(workerA.id)")
+            try probeB.expectMessage("\(bossB.id) B found \(workerA.id)")
+
+            try await bossB.done()
+            try probeB.expectMessage("B done")
+
+            await receptionist.checkIn(workerB, with: .workers)
+
+            try probeA.expectMessage("\(bossA.id) A found \(workerB.id)")
+            try probeB.expectNoMessage(for: .milliseconds(500))
+
+            try await bossA.done()
+            try probeA.expectMessage("A done")
+
+            await receptionist.checkIn(workerC, with: .workers)
+
+            try probeA.expectNoMessage(for: .milliseconds(500))
+            try probeB.expectNoMessage(for: .milliseconds(500))
+        }
     }
 
     func test_receptionist_shouldRespondWithEmptyRefForUnknownKey() throws {

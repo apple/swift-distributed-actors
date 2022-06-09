@@ -119,8 +119,6 @@ public final class ActorTimers<Act: DistributedActor> where Act.ActorSystem == C
         interval: Duration,
         repeated: Bool
     ) {
-        self.cancel(for: key)
-
         let handle: Cancelable
         if repeated {
             handle = self.dispatchQueue.scheduleAsync(initialDelay: interval, interval: interval) {
@@ -149,6 +147,9 @@ public final class ActorTimers<Act: DistributedActor> where Act.ActorSystem == C
                 }
 
                 await call()
+
+                // The single timer is done. Remove it so it can be installed again if needed.
+                self.cancel(for: key)
             }
         }
 
