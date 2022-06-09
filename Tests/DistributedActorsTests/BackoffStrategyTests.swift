@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -20,7 +20,7 @@ class BackoffStrategyTests: XCTestCase {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Constant backoff
 
-    func test_constantBackoff_shouldAlwaysYieldSameTimeAmount() {
+    func test_constantBackoff_shouldAlwaysYieldSameDuration() {
         let backoff = Backoff.constant(.milliseconds(100))
         backoff.next()?.shouldEqual(.milliseconds(100))
         backoff.next()?.shouldEqual(.milliseconds(100))
@@ -41,13 +41,13 @@ class BackoffStrategyTests: XCTestCase {
 
     func test_exponentialBackoff_shouldIncreaseBackoffEachTime() {
         var backoff = Backoff.exponential(initialInterval: .milliseconds(100))
-        let b1: TimeAmount = backoff.next()!
-        b1.shouldBeGreaterThanOrEqual(TimeAmount.milliseconds(75))
-        b1.shouldBeLessThanOrEqual(TimeAmount.milliseconds(130))
+        let b1: Duration = backoff.next()!
+        b1.shouldBeGreaterThanOrEqual(Duration.milliseconds(75))
+        b1.shouldBeLessThanOrEqual(Duration.milliseconds(130))
 
-        let b2: TimeAmount = backoff.next()!
-        b2.shouldBeGreaterThanOrEqual(TimeAmount.milliseconds(100))
-        b2.shouldBeLessThanOrEqual(TimeAmount.milliseconds(260))
+        let b2: Duration = backoff.next()!
+        b2.shouldBeGreaterThanOrEqual(Duration.milliseconds(100))
+        b2.shouldBeLessThanOrEqual(Duration.milliseconds(260))
     }
 
     func test_exponentialBackoff_shouldAllowDisablingRandomFactor() {
@@ -70,7 +70,7 @@ class BackoffStrategyTests: XCTestCase {
     }
 
     func test_exponentialBackoff_shouldNotExceedMaximumBackoff() {
-        let max = TimeAmount.seconds(1)
+        let max = Duration.seconds(1)
         let maxRandomNoise = max * 1.25
         var backoff = Backoff.exponential(initialInterval: .milliseconds(500), capInterval: max)
         backoff.next()?.shouldBeLessThanOrEqual(max + maxRandomNoise)

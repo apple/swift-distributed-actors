@@ -124,7 +124,7 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
 
     public func joinNodes(
         node: ClusterSystem, with other: ClusterSystem,
-        ensureWithin: TimeAmount? = nil, ensureMembers maybeExpectedStatus: Cluster.MemberStatus? = nil,
+        ensureWithin: Duration? = nil, ensureMembers maybeExpectedStatus: Cluster.MemberStatus? = nil,
         file: StaticString = #file, line: UInt = #line
     ) throws {
         node.cluster.join(node: other.cluster.uniqueNode.node)
@@ -142,21 +142,21 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
     }
 
     public func ensureNodes(
-        _ status: Cluster.MemberStatus, on system: ClusterSystem? = nil, within: TimeAmount = .seconds(20), nodes: UniqueNode...,
+        _ status: Cluster.MemberStatus, on system: ClusterSystem? = nil, within: Duration = .seconds(20), nodes: UniqueNode...,
         file: StaticString = #file, line: UInt = #line
     ) throws {
         try self.ensureNodes(status, on: system, within: within, nodes: nodes, file: file, line: line)
     }
 
     public func ensureNodes(
-        atLeast status: Cluster.MemberStatus, on system: ClusterSystem? = nil, within: TimeAmount = .seconds(20), nodes: UniqueNode...,
+        atLeast status: Cluster.MemberStatus, on system: ClusterSystem? = nil, within: Duration = .seconds(20), nodes: UniqueNode...,
         file: StaticString = #file, line: UInt = #line
     ) throws {
         try self.ensureNodes(atLeast: status, on: system, within: within, nodes: nodes, file: file, line: line)
     }
 
     public func ensureNodes(
-        _ status: Cluster.MemberStatus, on system: ClusterSystem? = nil, within: TimeAmount = .seconds(20), nodes: [UniqueNode],
+        _ status: Cluster.MemberStatus, on system: ClusterSystem? = nil, within: Duration = .seconds(20), nodes: [UniqueNode],
         file: StaticString = #file, line: UInt = #line
     ) throws {
         guard let onSystem = system ?? self._nodes.first(where: { !$0.isShuttingDown }) else {
@@ -176,7 +176,7 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
     }
 
     public func ensureNodes(
-        atLeast status: Cluster.MemberStatus, on system: ClusterSystem? = nil, within: TimeAmount = .seconds(20), nodes: [UniqueNode],
+        atLeast status: Cluster.MemberStatus, on system: ClusterSystem? = nil, within: Duration = .seconds(20), nodes: [UniqueNode],
         file: StaticString = #file, line: UInt = #line
     ) throws {
         guard let onSystem = system ?? self._nodes.first(where: { !$0.isShuttingDown }) else {
@@ -254,7 +254,7 @@ extension ClusteredActorSystemsXCTestCase {
 extension ClusteredActorSystemsXCTestCase {
     public func assertAssociated(
         _ system: ClusterSystem, withAtLeast node: UniqueNode,
-        timeout: TimeAmount? = nil, interval: TimeAmount? = nil,
+        timeout: Duration? = nil, interval: Duration? = nil,
         verbose: Bool = false, file: StaticString = #file, line: UInt = #line, column: UInt = #column
     ) throws {
         try self.assertAssociated(
@@ -265,7 +265,7 @@ extension ClusteredActorSystemsXCTestCase {
 
     public func assertAssociated(
         _ system: ClusterSystem, withExactly node: UniqueNode,
-        timeout: TimeAmount? = nil, interval: TimeAmount? = nil,
+        timeout: Duration? = nil, interval: Duration? = nil,
         verbose: Bool = false, file: StaticString = #file, line: UInt = #line, column: UInt = #column
     ) throws {
         try self.assertAssociated(
@@ -283,7 +283,7 @@ extension ClusteredActorSystemsXCTestCase {
         _ system: ClusterSystem,
         withExactly exactlyNodes: [UniqueNode] = [],
         withAtLeast atLeastNodes: [UniqueNode] = [],
-        timeout: TimeAmount? = nil, interval: TimeAmount? = nil,
+        timeout: Duration? = nil, interval: Duration? = nil,
         verbose: Bool = false, file: StaticString = #file, line: UInt = #line, column: UInt = #column
     ) throws {
         // FIXME: this is a weak workaround around not having "extensions" (unique object per actor system)
@@ -332,7 +332,7 @@ extension ClusteredActorSystemsXCTestCase {
 
     public func assertNotAssociated(
         system: ClusterSystem, node: UniqueNode,
-        timeout: TimeAmount? = nil, interval: TimeAmount? = nil,
+        timeout: Duration? = nil, interval: Duration? = nil,
         verbose: Bool = false
     ) throws {
         let testKit: ActorTestKit = self.testKit(system)

@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2021 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -93,7 +93,7 @@ public final class ActorTimers<Act: DistributedActor> where Act.ActorSystem == C
     ///   - delay: the delay after which the message will be sent
     public func startSingle(
         key: TimerKey,
-        delay: TimeAmount,
+        delay: Duration,
         @_inheritActorContext @_implicitSelfCapture call: @Sendable @escaping () async -> Void
     ) {
         self.start(key: key, call: call, interval: delay, repeated: false)
@@ -107,7 +107,7 @@ public final class ActorTimers<Act: DistributedActor> where Act.ActorSystem == C
     ///   - interval: the interval with which the message will be sent
     public func startPeriodic(
         key: TimerKey,
-        interval: TimeAmount,
+        interval: Duration,
         @_inheritActorContext @_implicitSelfCapture call: @Sendable @escaping () async -> Void
     ) {
         self.start(key: key, call: call, interval: interval, repeated: true)
@@ -116,7 +116,7 @@ public final class ActorTimers<Act: DistributedActor> where Act.ActorSystem == C
     internal func start(
         key: TimerKey,
         @_inheritActorContext @_implicitSelfCapture call: @Sendable @escaping () async -> Void,
-        interval: TimeAmount,
+        interval: Duration,
         repeated: Bool
     ) {
         self.cancel(for: key)

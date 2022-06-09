@@ -50,7 +50,7 @@ public struct ReceptionistSettings {
     ///
     /// The simplest pattern to introduce two actors is to have one be the parent of the other, then the parent can
     /// _immediately_ send messages to the child, even as it's still being started.
-    public var listingFlushDelay: TimeAmount = .milliseconds(250)
+    public var listingFlushDelay: Duration = .milliseconds(250)
 
     /// In the op-log Receptionist, an ACK is scheduled and sent to other peers periodically.
     /// This ack includes the latest sequenceNrs of ops this receptionist has observed.
@@ -58,7 +58,7 @@ public struct ReceptionistSettings {
     /// This serves both as re-delivery of acknowledgements, as well as gossip of the observed versions.
     /// E.g. by gossiping these SeqNrs a receptionist may notice that it is "behind" on pulling data from
     /// another receptionist, and therefore issue a pull/ack from it.
-    public var ackPullReplicationIntervalSlow: TimeAmount = .milliseconds(1200)
+    public var ackPullReplicationIntervalSlow: Duration = .milliseconds(1200)
 
     /// Number of operations (register, remove) to be streamed in a single batch when syncing receptionists.
     /// A smaller number means updates being made more incrementally, and a larger number means them being more batched up.

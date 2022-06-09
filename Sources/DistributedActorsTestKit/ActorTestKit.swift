@@ -57,7 +57,7 @@ public struct TestError: Error, Hashable {
 
 public struct ActorTestKitSettings {
     /// Timeout used by default by all the `expect...` and `within` functions defined on the testkit and test probes.
-    var expectationTimeout: TimeAmount = .seconds(5)
+    var expectationTimeout: Duration = .seconds(5)
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -125,12 +125,12 @@ extension ActorTestKit {
     // TODO: should use default `within` from TestKit
     @discardableResult
     public func eventually<T>(
-        within timeAmount: TimeAmount, interval: TimeAmount = .milliseconds(100),
+        within duration: Duration, interval: Duration = .milliseconds(100),
         file: StaticString = #file, line: UInt = #line, column: UInt = #column,
         _ block: () throws -> T
     ) throws -> T {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
-        let deadline = Deadline.fromNow(timeAmount)
+        let deadline = ContinuousClock.Instant.fromNow(duration)
 
         var lastError: Error?
         var polledTimes = 0
@@ -148,7 +148,7 @@ extension ActorTestKit {
         }
         ActorTestKit.leaveRepeatableContext()
 
-        let error = EventuallyError(callSite, timeAmount, polledTimes, lastError: lastError)
+        let error = EventuallyError(callSite, duration, polledTimes, lastError: lastError)
         if !ActorTestKit.isInRepeatableContext() {
             XCTFail("\(error)", file: callSite.file, line: callSite.line)
         }
@@ -161,13 +161,13 @@ extension ActorTestKit {
 /// Intended to be pretty printed in command line test output.
 public struct EventuallyError: Error, CustomStringConvertible, CustomDebugStringConvertible {
     let callSite: CallSiteInfo
-    let timeAmount: TimeAmount
+    let duration: Duration
     let polledTimes: Int
     let lastError: Error?
 
-    init(_ callSite: CallSiteInfo, _ timeAmount: TimeAmount, _ polledTimes: Int, lastError: Error?) {
+    init(_ callSite: CallSiteInfo, _ duration: Duration, _ polledTimes: Int, lastError: Error?) {
         self.callSite = callSite
-        self.timeAmount = timeAmount
+        self.duration = duration
         self.polledTimes = polledTimes
         self.lastError = lastError
     }
@@ -185,8 +185,8 @@ public struct EventuallyError: Error, CustomStringConvertible, CustomDebugString
         }
 
         message += """
-        No result within \(self.timeAmount.prettyDescription) for block at \(self.callSite.file):\(self.callSite.line). \
-        Queried \(self.polledTimes) times, within \(self.timeAmount.prettyDescription). \
+        No result within \(self.duration.prettyDescription) for block at \(self.callSite.file):\(self.callSite.line). \
+        Queried \(self.polledTimes) times, within \(self.duration.prettyDescription). \
         \(lastErrorMessage)
         """
 
@@ -196,7 +196,7 @@ public struct EventuallyError: Error, CustomStringConvertible, CustomDebugString
     public var debugDescription: String {
         let error = self.callSite.error(
             """
-            Eventually block failed, after \(self.timeAmount) (polled \(self.polledTimes) times), last error: \(optional: self.lastError)
+            Eventually block failed, after \(self.duration) (polled \(self.polledTimes) times), last error: \(optional: self.lastError)
             """)
         return "\(error)"
     }
@@ -209,12 +209,12 @@ extension ActorTestKit {
     /// Executes passed in block numerous times, to check the assertion holds over time.
     /// Throws an error when the block fails within the specified time amount.
     public func assertHolds(
-        for timeAmount: TimeAmount, interval: TimeAmount = .milliseconds(100),
+        for duration: Duration, interval: Duration = .milliseconds(100),
         file: StaticString = #file, line: UInt = #line, column: UInt = #column,
         _ block: () throws -> Void
     ) throws {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
-        let deadline = Deadline.fromNow(timeAmount)
+        let deadline = ContinuousClock.Instant.fromNow(duration)
 
         var polledTimes = 0
 
@@ -226,8 +226,8 @@ extension ActorTestKit {
             } catch {
                 let error = callSite.error(
                     """
-                    Failed within \(timeAmount.prettyDescription) for block at \(file):\(line). \
-                    Queried \(polledTimes) times, within \(timeAmount.prettyDescription). \
+                    Failed within \(duration.prettyDescription) for block at \(file):\(line). \
+                    Queried \(polledTimes) times, within \(duration.prettyDescription). \
                     Error: \(error)
                     """
                 )
@@ -268,7 +268,7 @@ extension ActorTestKit {
     /// If unable to resolve a not-dead reference, this function throws, rather than returning the dead reference.
     ///
     /// This is useful when the resolution might be racing against the startup of the actor we are trying to resolve.
-    public func _eventuallyResolve<Message>(id: ActorID, of: Message.Type = Message.self, within: TimeAmount = .seconds(5)) throws -> _ActorRef<Message> {
+    public func _eventuallyResolve<Message>(id: ActorID, of: Message.Type = Message.self, within: Duration = .seconds(5)) throws -> _ActorRef<Message> {
         let context = _ResolveContext<Message>(id: id, system: self.system)
 
         return try self.eventually(within: .seconds(3)) {
@@ -488,7 +488,7 @@ extension ActorTestKit {
         key: _Reception.Key<_ActorRef<Message>>,
         expectedCount: Int = 1,
         expectedRefs: Set<_ActorRef<Message>>? = nil,
-        within: TimeAmount = .seconds(3)
+        within: Duration = .seconds(3)
     ) throws {
         let lookupProbe = self.makeTestProbe(expecting: _Reception.Listing<_ActorRef<Message>>.self)
 

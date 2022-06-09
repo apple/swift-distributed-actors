@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -139,7 +139,7 @@ public final class _BehaviorTimers<Message: Codable> {
     ///   - message: the message that will be sent to `myself`
     ///   - delay: the delay after which the message will be sent
     @inlinable
-    public func startSingle(key: TimerKey, message: Message, delay: TimeAmount) {
+    public func startSingle(key: TimerKey, message: Message, delay: Duration) {
         self.start(key: key, message: message, interval: delay, repeated: false)
     }
 
@@ -150,12 +150,12 @@ public final class _BehaviorTimers<Message: Codable> {
     ///   - message: the message that will be sent to `myself`
     ///   - interval: the interval with which the message will be sent
     @inlinable
-    public func startPeriodic(key: TimerKey, message: Message, interval: TimeAmount) {
+    public func startPeriodic(key: TimerKey, message: Message, interval: Duration) {
         self.start(key: key, message: message, interval: interval, repeated: true)
     }
 
     @usableFromInline
-    internal func start(key: TimerKey, message: Message, interval: TimeAmount, repeated: Bool) {
+    internal func start(key: TimerKey, message: Message, interval: Duration, repeated: Bool) {
         self.cancel(for: key)
 
         let generation = self.nextTimerGen()
@@ -229,7 +229,7 @@ extension _BehaviorTimers {
 
     /// Dangerous version of `_startTimer` which allows scheduling a `.resume` system message (directly!) with a token `T`, after a time `delay`.
     /// This can be used e.g. to implement restarting an actor after a backoff delay.
-    internal func _startResumeTimer<T>(key: TimerKey, delay: TimeAmount, resumeWith token: T) {
+    internal func _startResumeTimer<T>(key: TimerKey, delay: Duration, resumeWith token: T) {
         assert(key.isSystemTimer, "_startResumeTimer MUST ONLY be used by system internal tasks, and keys MUST be `_` prefixed. Key was: \(key)")
         self.cancel(for: key)
 

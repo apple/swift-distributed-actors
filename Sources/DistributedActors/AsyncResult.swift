@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -44,7 +44,7 @@ internal protocol _AsyncResult {
     /// value for the returned `_AsyncResult`.
     ///
     /// - parameter after: defines a timeout after which the result should be considered failed.
-    func withTimeout(after timeout: TimeAmount) -> Self
+    func withTimeout(after timeout: Duration) -> Self
 }
 
 extension EventLoopFuture: _AsyncResult {
@@ -52,7 +52,7 @@ extension EventLoopFuture: _AsyncResult {
         self.whenComplete(callback)
     }
 
-    func withTimeout(after timeout: TimeAmount) -> EventLoopFuture<Value> {
+    func withTimeout(after timeout: Duration) -> EventLoopFuture<Value> {
         if timeout == .effectivelyInfinite {
             return self
         }
@@ -73,9 +73,9 @@ extension EventLoopFuture: _AsyncResult {
 /// Error that signals that an operation timed out.
 internal struct TimeoutError: Error {
     let message: String
-    let timeout: TimeAmount
+    let timeout: Duration
 
-    init(message: String, timeout: TimeAmount) {
+    init(message: String, timeout: Duration) {
         self.message = message
         self.timeout = timeout
     }

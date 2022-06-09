@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -98,8 +98,8 @@ public class _Thread {
         }
     }
 
-    public static func sleep(_ amount: TimeAmount) {
-        var time = TimeSpec.from(timeAmount: amount)
+    public static func sleep(_ duration: Duration) {
+        var time = TimeSpec.from(duration: duration)
         let err = nanosleep(&time, nil)
         if err != 0 {
             switch errno {

@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2021 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -40,13 +40,13 @@ typealias DefaultDistributedActorSystem = ClusterSystem
 
         LoggingSystem.bootstrap(SamplePrettyLogHandler.init)
 
-        let time = TimeAmount.seconds(20)
+        let duration = Duration.seconds(20)
 
         switch CommandLine.arguments.dropFirst().first {
         case "dist", "distributed":
-            try! await DistributedDiningPhilosophers().run(for: time)
+            try! await DistributedDiningPhilosophers().run(for: duration)
         default:
-            try! await DiningPhilosophers().run(for: time)
+            try! await DiningPhilosophers().run(for: duration)
         }
     }
 }

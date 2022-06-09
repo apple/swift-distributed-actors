@@ -35,7 +35,7 @@ public struct DowningStrategyDirective {
     internal enum Repr {
         case none
         case markAsDown(Set<Cluster.Member>)
-        case startTimer(key: TimerKey, member: Cluster.Member, delay: TimeAmount)
+        case startTimer(key: TimerKey, member: Cluster.Member, delay: Duration)
         case cancelTimer(key: TimerKey)
     }
 
@@ -47,7 +47,7 @@ public struct DowningStrategyDirective {
         .init(.none)
     }
 
-    public static func startTimer(key: TimerKey, member: Cluster.Member, delay: TimeAmount) -> Self {
+    public static func startTimer(key: TimerKey, member: Cluster.Member, delay: Duration) -> Self {
         .init(.startTimer(key: key, member: member, delay: delay))
     }
 

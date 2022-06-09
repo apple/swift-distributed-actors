@@ -519,7 +519,7 @@ final class BehaviorTests: ClusterSystemXCTestCase {
         try p.expectMessage("resumed:something else")
     }
 
-    private func awaitResultBehavior(future: EventLoopFuture<Int>, timeout: DistributedActors.TimeAmount, probe: ActorTestProbe<String>? = nil, suspendProbe: ActorTestProbe<Result<Int, ErrorEnvelope>>? = nil) -> _Behavior<String> {
+    private func awaitResultBehavior(future: EventLoopFuture<Int>, timeout: Duration, probe: ActorTestProbe<String>? = nil, suspendProbe: ActorTestProbe<Result<Int, ErrorEnvelope>>? = nil) -> _Behavior<String> {
         .receive { context, message in
             switch message {
             case "suspend":
@@ -534,7 +534,7 @@ final class BehaviorTests: ClusterSystemXCTestCase {
         }
     }
 
-    private func awaitResultThrowingBehavior(future: EventLoopFuture<Int>, timeout: DistributedActors.TimeAmount, probe: ActorTestProbe<String>, suspendProbe: ActorTestProbe<Int>) -> _Behavior<String> {
+    private func awaitResultThrowingBehavior(future: EventLoopFuture<Int>, timeout: Duration, probe: ActorTestProbe<String>, suspendProbe: ActorTestProbe<Int>) -> _Behavior<String> {
         .receive { context, message in
             switch message {
             case "suspend":

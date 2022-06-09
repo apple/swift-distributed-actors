@@ -219,7 +219,7 @@ public distributed actor OpLogDistributedReceptionist: DistributedReceptionist, 
     /// Since:
     /// - `AckOps` serves both as an ACK and "poll", and
     /// - `AckOps` is used to periodically spread information
-    var nextPeriodicAckPermittedDeadline: [ID: Deadline]
+    var nextPeriodicAckPermittedDeadline: [ID: ContinuousClock.Instant]
 
     /// Sequence numbers of op-logs that we have observed, INCLUDING our own latest op's seqNr.
     /// In other words, each receptionist has their own op-log, and we observe and store the latest seqNr we have seen from them.
@@ -540,8 +540,8 @@ extension OpLogDistributedReceptionist {
         //    We DO want to send the Ack directly here as potentially the peer still has some more
         //    ops it might want to send, so we want to allow it to get those over to us as quickly as possible,
         //    without waiting for our Ack ticks to trigger (which could be configured pretty slow).
-        let nextPeriodicAckAllowedIn: TimeAmount = actorSystem.settings.receptionist.ackPullReplicationIntervalSlow * 2
-        self.nextPeriodicAckPermittedDeadline[peer.id] = Deadline.fromNow(nextPeriodicAckAllowedIn) // TODO: system.timeSource
+        let nextPeriodicAckAllowedIn: Duration = actorSystem.settings.receptionist.ackPullReplicationIntervalSlow * 2
+        self.nextPeriodicAckPermittedDeadline[peer.id] = .fromNow(nextPeriodicAckAllowedIn) // TODO: system.timeSource
     }
 
     /// Apply incoming operation from `peer` and update the associated applied sequenceNumber tracking

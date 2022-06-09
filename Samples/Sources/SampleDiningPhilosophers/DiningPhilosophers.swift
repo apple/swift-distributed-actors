@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2021 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -18,7 +18,7 @@ final class DiningPhilosophers {
     private var forks: [Fork] = []
     private var philosophers: [Philosopher] = []
 
-    func run(for time: TimeAmount) async throws {
+    func run(for duration: Duration) async throws {
         let system = await ClusterSystem("Philosophers")
 
         // prepare 5 forks, the resources, that the philosophers will compete for:
@@ -38,6 +38,6 @@ final class DiningPhilosophers {
             Philosopher(name: "Erik", leftFork: fork4, rightFork: fork5, actorSystem: system),
         ]
 
-        _Thread.sleep(time)
+        _Thread.sleep(duration)
     }
 }

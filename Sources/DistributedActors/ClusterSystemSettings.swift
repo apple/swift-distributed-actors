@@ -107,13 +107,13 @@ public struct ClusterSystemSettings {
     }
 
     /// Time after which a the binding of the server port should fail.
-    public var bindTimeout: TimeAmount = .seconds(3)
+    public var bindTimeout: Duration = .seconds(3)
 
     /// Timeout for unbinding the server port of this node (used when shutting down).
-    public var unbindTimeout: TimeAmount = .seconds(3)
+    public var unbindTimeout: Duration = .seconds(3)
 
     /// Time after which a connection attempt will fail if no connection could be established.
-    public var connectTimeout: TimeAmount = .milliseconds(500)
+    public var connectTimeout: Duration = .milliseconds(500)
 
     /// Backoff to be applied when attempting a new connection and handshake with a remote system.
     public var handshakeReconnectBackoff: BackoffStrategy = Backoff.exponential(
@@ -128,10 +128,10 @@ public struct ClusterSystemSettings {
     /// An association ("unique connection identifier between two nodes") is kept as tombstone when severing a connection between nodes,
     /// in order to avoid accidental re-connections to given node. Once a node has been downed, removed, and disassociated, it MUST NOT be
     /// communicated with again. Tombstones are used to ensure this, even if the downed ("zombie") node, attempts to reconnect.
-    public var associationTombstoneTTL: TimeAmount = .hours(24) * 1
+    public var associationTombstoneTTL: Duration = .hours(24) * 1
 
     /// Defines the interval with which the list of associated tombstones is freed from expired tombstones.
-    public var associationTombstoneCleanupInterval: TimeAmount = .minutes(10)
+    public var associationTombstoneCleanupInterval: Duration = .minutes(10)
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Cluster protocol versioning
@@ -147,13 +147,13 @@ public struct ClusterSystemSettings {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Cluster.Membership Gossip
 
-    public var membershipGossipInterval: TimeAmount = .seconds(1)
+    public var membershipGossipInterval: Duration = .seconds(1)
 
     // since we talk to many peers one by one; even as we proceed to the next round after `membershipGossipInterval`
     // it is fine if we get a reply from the previously gossiped to peer after same or similar timeout. No rush about it.
     //
     // A missing ACK is not terminal, may happen, and we'll then gossip with that peer again (e.g. if it had some form of network trouble for a moment).
-    public var membershipGossipAcknowledgementTimeout: TimeAmount = .seconds(1)
+    public var membershipGossipAcknowledgementTimeout: Duration = .seconds(1)
 
     public var membershipGossipIntervalRandomFactor: Double = 0.2
 
@@ -169,7 +169,7 @@ public struct ClusterSystemSettings {
     /// A "distributed call" is any function call of a distributed function on a 'remote' distributed actor.
     ///
     /// Set to `.effectivelyInfinite` to avoid setting a timeout, although this is not recommended.
-    public var defaultRemoteCallTimeout: TimeAmount = .seconds(5)
+    public var defaultRemoteCallTimeout: Duration = .seconds(5)
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: TLS & Security settings

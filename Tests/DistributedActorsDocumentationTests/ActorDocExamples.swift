@@ -264,7 +264,7 @@ class ActorDocExamples: XCTestCase {
         let greeter = try system._spawn("greeter", greeterBehavior)
 
         let caplinBehavior: _Behavior<Never> = .setup { context in
-            let timeout: TimeAmount = .seconds(1)
+            let timeout: Duration = .seconds(1)
 
             let response: AskResponse<String> = // <1>
                 greeter.ask(for: String.self, timeout: timeout) {

@@ -201,13 +201,6 @@ final class ClusterSystemMetrics {
     /// Rate of messages being delivered as "dead letters" (e.g. delivered at recipients which already died, or similar)
     // let messages_deadLetters: Counter
 
-    // ==== ----------------------------------------------------------------------------------------------------------------
-    // MARK: General
-
-    func uptimeNanoseconds() -> Int64 {
-        Deadline.now().uptimeNanoseconds
-    }
-
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Initialization
 

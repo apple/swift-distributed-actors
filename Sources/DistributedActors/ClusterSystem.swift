@@ -409,7 +409,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
     ///
     /// This call is also offered to underlying transports which may have to perform the blocking wait themselves.
     /// Please refer to your configured transports documentation, to learn about exact semantics of parking a system while using them.
-    public func park(atMost parkTimeout: TimeAmount? = nil) throws {
+    public func park(atMost parkTimeout: Duration? = nil) throws {
         let howLongParkingMsg = parkTimeout == nil ? "indefinitely" : "for \(parkTimeout!.prettyDescription)"
         self.log.info("Parking actor system \(howLongParkingMsg)...")
 
@@ -447,7 +447,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
             self.receptacle = receptacle
         }
 
-        public func wait(atMost timeout: TimeAmount) throws {
+        public func wait(atMost timeout: Duration) throws {
             if let error = self.receptacle.wait(atMost: timeout).flatMap({ $0 }) {
                 throw error
             }
@@ -1343,10 +1343,10 @@ enum RemoteCallError: DistributedActorSystemError {
 /// ```
 public enum RemoteCall {
     @TaskLocal
-    public static var timeout: TimeAmount?
+    public static var timeout: Duration?
 
     @discardableResult
-    public static func with<Response>(timeout: TimeAmount, remoteCall: () async throws -> Response) async rethrows -> Response {
+    public static func with<Response>(timeout: Duration, remoteCall: () async throws -> Response) async rethrows -> Response {
         try await Self.$timeout.withValue(timeout, operation: remoteCall)
     }
 }

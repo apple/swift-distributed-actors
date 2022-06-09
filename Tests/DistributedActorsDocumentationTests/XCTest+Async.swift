@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2020-2021 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2020-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -20,7 +20,7 @@ import Distributed
 extension XCTestCase {
     // FIXME(distributed): remove once XCTest supports async functions on Linux
     func runAsyncAndBlock(
-        timeout: TimeAmount = .seconds(10),
+        timeout: Duration = .seconds(10),
         @_inheritActorContext @_implicitSelfCapture operation: __owned @Sendable @escaping () async throws -> Void
     ) rethrows {
         let finished = expectation(description: "finished")

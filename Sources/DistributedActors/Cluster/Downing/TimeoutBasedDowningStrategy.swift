@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -141,7 +141,7 @@ public struct TimeoutBasedDowningStrategySettings {
     ///
     /// Generally with a distributed failure detector such delay may not be necessary, however it is available in case
     /// you want to allow noticing "tings are bad, but don't act on it" environments.
-    public var downUnreachableMembersAfter: TimeAmount = .seconds(1)
+    public var downUnreachableMembersAfter: Duration = .seconds(1)
 
     public static var `default`: TimeoutBasedDowningStrategySettings {
         .init()
