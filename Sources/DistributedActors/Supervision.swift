@@ -762,7 +762,7 @@ internal struct RestartDecisionLogic {
     }
 
     private var periodHasTimeLeft: Bool {
-        self.restartsPeriodDeadline.hasTimeLeft(until: .now())
+        self.restartsPeriodDeadline.hasTimeLeft(until: .now)
     }
 
     private var isWithinMaxRestarts: Bool {

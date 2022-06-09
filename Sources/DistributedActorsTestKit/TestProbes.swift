@@ -521,7 +521,7 @@ extension ActorTestProbe {
         var lastObservedError: Error?
 
         // TODO: make more async than seining like this, also with check interval rather than spin, or use the blocking queue properly
-        while !deadline.isBefore(.now()) {
+        while !deadline.isBefore(.now) {
             do {
                 let res: T = try block()
                 return res

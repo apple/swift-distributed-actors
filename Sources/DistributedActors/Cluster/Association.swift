@@ -260,7 +260,7 @@ extension Association {
 
         /// Used to create "any" tombstone, for being able to lookup in Set<TombstoneSet>
         init(_ node: UniqueNode) {
-            self.removalDeadline = Deadline.now() // ANY value here is ok, we do not use it in hash/equals
+            self.removalDeadline = Deadline.now // ANY value here is ok, we do not use it in hash/equals
             self.remoteNode = node
         }
 

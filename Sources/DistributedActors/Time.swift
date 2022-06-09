@@ -12,18 +12,16 @@
 //
 //===----------------------------------------------------------------------===//
 
-import struct Dispatch.DispatchTime
 import enum Dispatch.DispatchTimeInterval
-import struct Foundation.Date
 import struct NIO.TimeAmount
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Duration
 
 extension Duration {
-    public typealias Value = Int64
+    typealias Value = Int64
 
-    public var nanoseconds: Value {
+    var nanoseconds: Value {
         let (seconds, attoseconds) = self.components
         let sNanos = seconds * Value(1_000_000_000)
         let asNanos = attoseconds / Value(1_000_000_000)
@@ -32,21 +30,21 @@ extension Duration {
     }
 
     /// The microseconds representation of the `TimeAmount`.
-    public var microseconds: Int64 {
+    var microseconds: Value {
         self.nanoseconds / TimeUnit.microseconds.rawValue
     }
 
     /// The milliseconds representation of the `TimeAmount`.
-    public var milliseconds: Int64 {
+    var milliseconds: Value {
         self.nanoseconds / TimeUnit.milliseconds.rawValue
     }
 
     /// The seconds representation of the `TimeAmount`.
-    public var seconds: Int64 {
+    var seconds: Value {
         self.nanoseconds / TimeUnit.seconds.rawValue
     }
 
-    public var isEffectivelyInfinite: Bool {
+    var isEffectivelyInfinite: Bool {
         self.nanoseconds == .max
     }
 }
@@ -57,11 +55,11 @@ extension Duration {
     /// - parameters:
     ///     - amount: the amount of minutes this `Duration` represents.
     /// - returns: the `Duration` for the given amount.
-    public static func minutes(_ amount: Value) -> Duration {
+    static func minutes(_ amount: Value) -> Duration {
         .nanoseconds(amount * 1000 * 1000 * 1000 * 60)
     }
 
-    public static func minutes(_ amount: Int) -> Duration {
+    static func minutes(_ amount: Int) -> Duration {
         self.minutes(Value(amount))
     }
 
@@ -70,17 +68,17 @@ extension Duration {
     /// - parameters:
     ///     - amount: the amount of hours this `Duration` represents.
     /// - returns: the `Duration` for the given amount.
-    public static func hours(_ amount: Value) -> Duration {
+    static func hours(_ amount: Value) -> Duration {
         .nanoseconds(amount * 1000 * 1000 * 1000 * 60 * 60)
     }
 
-    public static func hours(_ amount: Int) -> Duration {
+    static func hours(_ amount: Int) -> Duration {
         self.hours(Value(amount))
     }
 
     /// Largest time amount expressible using this type.
     /// Roughly equivalent to 292 years, which for the intents and purposes of this type can serve as "infinite".
-    public static var effectivelyInfinite: Duration = .nanoseconds(Value.max)
+    static var effectivelyInfinite: Duration = .nanoseconds(Value.max)
 }
 
 extension Duration: CustomPrettyStringConvertible {
@@ -191,42 +189,38 @@ extension Duration {
 public typealias Deadline = ContinuousClock.Instant
 
 extension ContinuousClock.Instant {
-    public static var distantPast: ContinuousClock.Instant {
-        .now() - Duration.effectivelyInfinite
+    static var distantPast: ContinuousClock.Instant {
+        .now - Duration.effectivelyInfinite
     }
 
-    public static var distantFuture: ContinuousClock.Instant {
-        .now() + Duration.effectivelyInfinite
+    static var distantFuture: ContinuousClock.Instant {
+        .now + Duration.effectivelyInfinite
     }
 
-    public static func now() -> ContinuousClock.Instant {
-        .now
-    }
-
-    public static func fromNow(_ amount: Duration) -> ContinuousClock.Instant {
-        .now() + amount
+    static func fromNow(_ amount: Duration) -> ContinuousClock.Instant {
+        .now + amount
     }
 
     /// - Returns: true if the deadline is still pending with respect to the passed in `now` time instant
-    public func hasTimeLeft() -> Bool {
-        self.hasTimeLeft(until: .now())
+    func hasTimeLeft() -> Bool {
+        self.hasTimeLeft(until: .now)
     }
 
-    public func hasTimeLeft(until: ContinuousClock.Instant) -> Bool {
+    func hasTimeLeft(until: ContinuousClock.Instant) -> Bool {
         !self.isBefore(until)
     }
 
     /// - Returns: true if the deadline is overdue with respect to the passed in `now` time instant
-    public func isOverdue() -> Bool {
-        self.isBefore(.now())
+    func isOverdue() -> Bool {
+        self.isBefore(.now)
     }
 
-    public func isBefore(_ until: ContinuousClock.Instant) -> Bool {
+    func isBefore(_ until: ContinuousClock.Instant) -> Bool {
         self < until
     }
 
-    public var timeLeft: Duration {
-        self - .now()
+    var timeLeft: Duration {
+        self - .now
     }
 }
 

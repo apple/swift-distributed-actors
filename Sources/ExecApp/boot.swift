@@ -50,7 +50,7 @@ enum Main {
         let reply = try await remote.hi(name: "Remotely")
         print("Received reply from remote \(remote): \(reply)")
 
-        try await Task.sleep(until: .now() + .seconds(5), clock: .continuous)
+        try await Task.sleep(until: .now + .seconds(5), clock: .continuous)
         print("================ DONE ================")
     }
 }
