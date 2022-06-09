@@ -248,11 +248,6 @@ let products: [PackageDescription.Product] = [
 
 var package = Package(
     name: "swift-distributed-actors",
-//    platforms: [
-//        .macOS(.v13), // because of the 'distributed actor' feature
-//        .iOS(.v16),
-//        // ...
-//    ],
     products: products,
 
     dependencies: dependencies,
