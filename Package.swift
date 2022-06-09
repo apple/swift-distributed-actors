@@ -25,7 +25,7 @@ var globalConcurrencyFlags: [String] = [
 //    ]
 // } else {
 globalSwiftSettings = [
-    SwiftSetting.unsafeFlags(globalConcurrencyFlags),
+//    SwiftSetting.unsafeFlags(globalConcurrencyFlags),
 ]
 // }
 
