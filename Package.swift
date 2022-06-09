@@ -13,21 +13,9 @@ var globalConcurrencyFlags: [String] = [
     "-Xfrontend", "-disable-availability-checking", // TODO(distributed): remove this flag
 ]
 
-// TODO: currently disabled warnings as errors because of Sendable check noise and work in progress on different toolchains
-// if ProcessInfo.processInfo.environment["SACT_WARNINGS_AS_ERRORS"] != nil {
-//    print("SACT_WARNINGS_AS_ERRORS enabled, passing `-warnings-as-errors`")
-//    var allUnsafeFlags = globalConcurrencyFlags
-//    allUnsafeFlags.append(contentsOf: [
-//        "-warnings-as-errors",
-//    ])
-//    globalSwiftSettings = [
-//        SwiftSetting.unsafeFlags(allUnsafeFlags),
-//    ]
-// } else {
 globalSwiftSettings = [
     SwiftSetting.unsafeFlags(globalConcurrencyFlags),
 ]
-// }
 
 var targets: [PackageDescription.Target] = [
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -248,11 +236,6 @@ let products: [PackageDescription.Product] = [
 
 var package = Package(
     name: "swift-distributed-actors",
-//    platforms: [
-//        .macOS(.v13), // because of the 'distributed actor' feature
-//        .iOS(.v16),
-//        // ...
-//    ],
     products: products,
 
     dependencies: dependencies,
