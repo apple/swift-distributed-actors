@@ -138,6 +138,7 @@ final class DistributedReceptionistTests: ClusterSystemXCTestCase {
         }
     }
 
+    // FIXME: don't use runAsyncAndBlock [#953](https://github.com/apple/swift-distributed-actors/issues/953)
     func test_receptionist_listing_shouldRespondWithRegisteredRefsForKey() throws {
         try runAsyncAndBlock {
             let receptionist = system.receptionist
@@ -166,6 +167,7 @@ final class DistributedReceptionistTests: ClusterSystemXCTestCase {
         }
     }
 
+    // FIXME: don't use runAsyncAndBlock [#953](https://github.com/apple/swift-distributed-actors/issues/953)
     func test_receptionist_listing_shouldEndAfterTaskIsCancelled() throws {
         try runAsyncAndBlock {
             let receptionist = self.system.receptionist
