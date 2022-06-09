@@ -273,7 +273,6 @@ public final class _ActorShell<Message: Codable>: _ActorContext<Message>, Abstra
     ///
     /// Warning: Mutates the cell's behavior.
     /// Returns: `true` if the actor remains alive, and `false` if it now is becoming `.stop`
-    @inlinable
     func interpretMessage(message: Message) throws -> ActorRunResult {
         do {
             let next: _Behavior<Message> = try self.supervisor.interpretSupervised(target: self.behavior, context: self, message: message)
@@ -481,7 +480,7 @@ public final class _ActorShell<Message: Codable>: _ActorContext<Message>, Abstra
     /// MUST be preceded by an invocation of `restartPrepare`.
     /// The two steps MAY be performed in different point in time; reason being: backoff restarts,
     /// which need to suspend the actor, and NOT start it just yet, until the system message awakens it again.
-    @inlinable public func _restartComplete(with behavior: _Behavior<Message>) throws -> _Behavior<Message> {
+    public func _restartComplete(with behavior: _Behavior<Message>) throws -> _Behavior<Message> {
         try behavior.validateAsInitial()
         self.behavior = behavior
         try self.interpretStart()
@@ -492,13 +491,11 @@ public final class _ActorShell<Message: Codable>: _ActorContext<Message>, Abstra
     /// Always invoke `becomeNext` rather than assigning to `self.behavior` manually.
     ///
     /// Returns: `true` if next behavior is .stop and appropriate actions will be taken
-    @inlinable
     internal func becomeNext(behavior next: _Behavior<Message>) throws {
         // TODO: handling "unhandled" would be good here... though I think type wise this won't fly, since we care about signal too
         self.behavior = try self.behavior.canonicalize(self, next: next)
     }
 
-    @inlinable
     internal func interpretStart() throws {
         // start means we need to evaluate all `setup` blocks, since they need to be triggered eagerly
         traceLog_Cell("START with behavior: \(self.behavior)")
@@ -509,7 +506,6 @@ public final class _ActorShell<Message: Codable>: _ActorContext<Message>, Abstra
 
     /// Interpret a `resume` with the passed in result, potentially waking up the actor from `suspended` state.
     /// Interpreting a resume NOT in suspended state is an error and should never happen.
-    @inlinable
     internal func interpretResume(_ result: Result<Any, Error>) throws -> ActorRunResult {
         switch self.behavior.underlying {
         case .suspended(let previousBehavior, let handler):
@@ -796,7 +792,7 @@ extension _ActorShell {
     ///
     /// Mutates actor cell behavior.
     /// May cause actor to terminate upon error or returning .stop etc from `.signalHandling` user code.
-    @inlinable func interpretTerminatedSignal(who dead: ActorID, terminated: _Signals.Terminated) throws {
+    func interpretTerminatedSignal(who dead: ActorID, terminated: _Signals.Terminated) throws {
         #if SACT_TRACE_ACTOR_SHELL
         self.log.info("Received terminated: \(dead)")
         #endif
@@ -852,7 +848,6 @@ extension _ActorShell {
 
     /// Interpret a carried signal directly -- those are potentially delivered by plugins or custom transports.
     /// They MAY share semantics with `Signals.Terminated`, in which case they would be interpreted accordingly.
-    @inlinable
     func interpretCarrySignal(_ signal: _Signal) throws {
         #if SACT_TRACE_ACTOR_SHELL
         self.log.info("Received carried signal: \(signal)")
@@ -867,13 +862,11 @@ extension _ActorShell {
         }
     }
 
-    @inlinable
     func interpretStop() throws {
         self.children.stopAll()
         try self.becomeNext(behavior: .stop(reason: .stopByParent))
     }
 
-    @inlinable
     func interpretChildTerminatedSignal(who terminatedRef: _AddressableActorRef, terminated: _Signals._ChildTerminated) throws {
         #if SACT_TRACE_ACTOR_SHELL
         self.log.info("Received \(terminated)")

@@ -72,7 +72,6 @@ public final class _StashBuffer<Message: Codable> {
     ///              requires the context to be passed in.
     /// - Throws: When any of the behavior reductions throws
     /// - Returns: The last behavior returned from processing the unstashed messages
-    @inlinable
     public func unstashAll(context: _ActorContext<Message>, behavior: _Behavior<Message>) throws -> _Behavior<Message> {
         // TODO: can we make this honor the run length like `Mailbox` does?
         var iterator = self.buffer.iterator
