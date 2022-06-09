@@ -151,7 +151,7 @@ internal final class BlockingReceptacle<Value> {
 
     /// Await the value to be set, or return `nil` if timeout passes and no value was set.
     func wait(atMost timeout: Duration) -> Value? {
-        let deadline = Deadline.fromNow(timeout)
+        let deadline = ContinuousClock.Instant.fromNow(timeout)
         return self.lock.synchronized { () -> Value? in
             while deadline.hasTimeLeft() {
                 if let v = self._value {

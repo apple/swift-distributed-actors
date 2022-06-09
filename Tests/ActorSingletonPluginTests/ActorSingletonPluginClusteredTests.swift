@@ -193,7 +193,7 @@ final class ActorSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCase 
         // `fourth` will become the new leader and singleton
         pinfo("Node \(fourth.cluster.uniqueNode) joining cluster...")
         fourth.cluster.join(node: second.cluster.uniqueNode.node)
-        let start = Deadline.now()
+        let start = ContinuousClock.Instant.now()
 
         // No leader so singleton is not available, messages sent should be stashed
         _ = try second._spawn("teller", of: String.self, .setup { context in
@@ -244,7 +244,7 @@ final class ActorSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCase 
             pinfo("  Initial messages may have been lost, delivered message: \(got3)")
         }
 
-        let stop = Deadline.now()
+        let stop = ContinuousClock.Instant.now()
         pinfo("Singleton re-pointing took: \((stop - start).prettyDescription)")
 
         pinfo("Nodes communicated successfully with singleton on [fourth]")

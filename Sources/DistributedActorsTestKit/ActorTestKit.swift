@@ -130,7 +130,7 @@ extension ActorTestKit {
         _ block: () throws -> T
     ) throws -> T {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
-        let deadline = Deadline.fromNow(duration)
+        let deadline = ContinuousClock.Instant.fromNow(duration)
 
         var lastError: Error?
         var polledTimes = 0
@@ -214,7 +214,7 @@ extension ActorTestKit {
         _ block: () throws -> Void
     ) throws {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
-        let deadline = Deadline.fromNow(duration)
+        let deadline = ContinuousClock.Instant.fromNow(duration)
 
         var polledTimes = 0
 

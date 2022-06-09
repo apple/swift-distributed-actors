@@ -710,7 +710,7 @@ internal struct RestartDecisionLogic {
 
     // counts how many times we failed during the "current" `within` period
     private var restartsWithinCurrentPeriod: Int = 0
-    private var restartsPeriodDeadline: Deadline = .distantPast
+    private var restartsPeriodDeadline: ContinuousClock.Instant = .distantPast
 
     init(maxRestarts: Int, within: Duration?, backoffStrategy: BackoffStrategy?) {
         precondition(maxRestarts > 0, "RestartStrategy.maxRestarts MUST be > 0")
@@ -719,7 +719,7 @@ internal struct RestartDecisionLogic {
             precondition(failurePeriodTime.nanoseconds > 0, "RestartStrategy.within MUST be > 0. For supervision without time bounds (i.e. absolute count of restarts allowed) use `.restart(:atMost)` instead.")
             self.within = failurePeriodTime
         } else {
-            // if within was not set, we treat is as if "no time limit", which we mimic by a Deadline far far away in time
+            // if within was not set, we treat is as if "no time limit", which we mimic by a ContinuousClock.Instant far far away in time
             self.restartsPeriodDeadline = .distantFuture
             self.within = nil
         }

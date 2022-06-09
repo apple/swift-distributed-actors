@@ -184,9 +184,7 @@ extension Duration {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Deadline
-
-public typealias Deadline = ContinuousClock.Instant
+// MARK: Instant
 
 extension ContinuousClock.Instant {
     static var distantPast: ContinuousClock.Instant {

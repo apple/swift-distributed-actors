@@ -189,7 +189,7 @@ extension ActorTestProbe {
     }
 
     internal func receiveMessage(within timeout: Duration) throws -> Message {
-        let deadline = Deadline.fromNow(timeout)
+        let deadline = ContinuousClock.Instant.fromNow(timeout)
         while deadline.hasTimeLeft() {
             guard let message = self.messagesQueue.poll(deadline.timeLeft) else {
                 continue
@@ -214,7 +214,7 @@ extension ActorTestProbe {
         file: StaticString = #file, line: UInt = #line, column: UInt = #column,
         _ fisher: (Message) throws -> FishingDirective<CaughtMessage>
     ) throws -> [CaughtMessage] {
-        let deadline = Deadline.fromNow(timeout)
+        let deadline = ContinuousClock.Instant.fromNow(timeout)
 
         var caughtMessages: [CaughtMessage] = []
         while deadline.hasTimeLeft() {
@@ -318,7 +318,7 @@ extension ActorTestProbe {
     }
 
     internal func maybeReceiveMessage(within timeout: Duration) throws -> Message? {
-        let deadline = Deadline.fromNow(timeout)
+        let deadline = ContinuousClock.Instant.fromNow(timeout)
         while deadline.hasTimeLeft() {
             guard let message = self.messagesQueue.poll(deadline.timeLeft) else {
                 continue
@@ -396,7 +396,7 @@ extension ActorTestProbe {
     public func expectMessages(count: Int, within timeout: Duration, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws -> [Message] {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
 
-        let deadline = Deadline.fromNow(timeout)
+        let deadline = ContinuousClock.Instant.fromNow(timeout)
 
         var receivedMessages: [Message] = []
         do {
@@ -437,7 +437,7 @@ extension ActorTestProbe where Message: Equatable {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
         var received: [Message] = []
         do {
-            let deadline = Deadline.fromNow(timeout)
+            let deadline = ContinuousClock.Instant.fromNow(timeout)
 
             while !messages.isEmpty {
                 let receivedMessage = try self.receiveMessage(within: deadline.timeLeft)
@@ -517,7 +517,7 @@ extension ActorTestProbe {
     @discardableResult
     private func within<T>(_ timeout: Duration, _ block: () throws -> T) throws -> T {
         // FIXME: implement by scheduling checks rather than spinning
-        let deadline = Deadline.fromNow(timeout)
+        let deadline = ContinuousClock.Instant.fromNow(timeout)
         var lastObservedError: Error?
 
         // TODO: make more async than seining like this, also with check interval rather than spin, or use the blocking queue properly
@@ -719,7 +719,7 @@ extension ActorTestProbe {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
         var pathSet: Set<ActorID> = Set(refs.map(\.id))
 
-        let deadline = Deadline.fromNow(self.expectationTimeout)
+        let deadline = ContinuousClock.Instant.fromNow(self.expectationTimeout)
         while !pathSet.isEmpty, deadline.hasTimeLeft() {
             guard let terminated = self.terminationsQueue.poll(deadline.timeLeft) else {
                 throw callSite.error("Expected [\(refs)] to terminate within \(self.expectationTimeout.prettyDescription)")
