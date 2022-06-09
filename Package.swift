@@ -7,15 +7,7 @@ import PackageDescription
 // Workaround: Since we cannot include the flat just as command line options since then it applies to all targets,
 // and ONE of our dependencies currently produces one warning, we have to use this workaround to enable it in _our_
 // targets when the flag is set. We should remove the dependencies and then enable the flag globally though just by passing it.
-var globalSwiftSettings: [SwiftSetting]
-
-var globalConcurrencyFlags: [String] = [
-    "-Xfrontend", "-disable-availability-checking", // TODO(distributed): remove this flag
-]
-
-globalSwiftSettings = [
-    SwiftSetting.unsafeFlags(globalConcurrencyFlags),
-]
+var globalSwiftSettings: [SwiftSetting] = []
 
 var targets: [PackageDescription.Target] = [
     // ==== ------------------------------------------------------------------------------------------------------------
