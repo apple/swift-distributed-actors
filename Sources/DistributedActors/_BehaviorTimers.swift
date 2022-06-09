@@ -114,7 +114,6 @@ public final class _BehaviorTimers<Message: Codable> {
     /// Cancels timer associated with the given key.
     ///
     /// - Parameter key: key of the timer to cancel
-    @inlinable
     public func cancel(for key: TimerKey) {
         if let timer = self.installedTimers.removeValue(forKey: key) {
             if context.system.settings.logging.verboseTimers {

@@ -22,11 +22,11 @@ public struct ActorTags {
     // We still might re-think how we represent the storage.
     private var _storage: [String: Sendable & Codable] = [:] // FIXME: fix the key as AnyActorTagKey
 
-    init() {
+    public init() {
         // empty tags
     }
 
-    init(tags: [any ActorTag]) {
+    public init(tags: [any ActorTag]) {
         for tag in tags {
             self._storage[tag.id] = tag.value
         }

@@ -412,31 +412,26 @@ internal class Supervisor<Message: Codable> {
     @usableFromInline
     typealias Directive = SupervisionDirective<Message>
 
-    @inlinable
     internal final func interpretSupervised(target: _Behavior<Message>, context: _ActorContext<Message>, message: Message) throws -> _Behavior<Message> {
         traceLog_Supervision("CALL WITH \(target) @@@@ [\(message)]:\(type(of: message))")
         return try self.interpretSupervised0(target: target, context: context, processingAction: .message(message))
     }
 
-    @inlinable
     internal final func interpretSupervised(target: _Behavior<Message>, context: _ActorContext<Message>, signal: _Signal) throws -> _Behavior<Message> {
         traceLog_Supervision("INTERCEPT SIGNAL APPLY: \(target) @@@@ \(signal)")
         return try self.interpretSupervised0(target: target, context: context, processingAction: .signal(signal))
     }
 
-    @inlinable
     internal final func interpretSupervised(target: _Behavior<Message>, context: _ActorContext<Message>, closure: ActorClosureCarry) throws -> _Behavior<Message> {
         traceLog_Supervision("CALLING CLOSURE: \(target)")
         return try self.interpretSupervised0(target: target, context: context, processingAction: .closure(closure))
     }
 
-    @inlinable
     internal final func interpretSupervised(target: _Behavior<Message>, context: _ActorContext<Message>, subMessage: SubMessageCarry) throws -> _Behavior<Message> {
         traceLog_Supervision("INTERPRETING SUB MESSAGE: \(target)")
         return try self.interpretSupervised0(target: target, context: context, processingAction: .subMessage(subMessage))
     }
 
-    @inlinable
     internal final func interpretSupervised(target: _Behavior<Message>, context: _ActorContext<Message>, closure: @escaping () throws -> _Behavior<Message>) throws -> _Behavior<Message> {
         traceLog_Supervision("CALLING CLOSURE: \(target)")
         return try self.interpretSupervised0(
@@ -444,7 +439,6 @@ internal class Supervisor<Message: Codable> {
         )
     }
 
-    @inlinable
     internal final func startSupervised(target: _Behavior<Message>, context: _ActorContext<Message>) throws -> _Behavior<Message> {
         traceLog_Supervision("CALLING START")
         return try self.interpretSupervised0(
@@ -454,7 +448,6 @@ internal class Supervisor<Message: Codable> {
     }
 
     /// Implements all directives, which supervisor implementations may yield to instruct how we should (if at all) restart an actor.
-    @inlinable
     @inline(__always)
     final func interpretSupervised0(target: _Behavior<Message>, context: _ActorContext<Message>, processingAction: ProcessingAction<Message>) throws -> _Behavior<Message> {
         try self.interpretSupervised0(
@@ -463,7 +456,6 @@ internal class Supervisor<Message: Codable> {
         ) // 1 since we already have "one failure"
     }
 
-    @inlinable
     @inline(__always)
     final func interpretSupervised0(
         target: _Behavior<Message>,

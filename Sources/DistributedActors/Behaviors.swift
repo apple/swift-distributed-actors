@@ -557,14 +557,12 @@ open class _Interceptor<Message: Codable> {
 }
 
 extension _Interceptor {
-    @inlinable
     static func handleMessage(context: _ActorContext<Message>, behavior: _Behavior<Message>, interceptor: _Interceptor<Message>, message: Message) throws -> _Behavior<Message> {
         let next = try interceptor.interceptMessage(target: behavior, context: context, message: message)
 
         return try _Interceptor.deduplicate(context: context, behavior: next, interceptor: interceptor)
     }
 
-    @inlinable
     static func deduplicate(context: _ActorContext<Message>, behavior: _Behavior<Message>, interceptor: _Interceptor<Message>) throws -> _Behavior<Message> {
         func deduplicate0(_ behavior: _Behavior<Message>) -> _Behavior<Message> {
             let hasDuplicatedIntercept = behavior.existsInStack { b in
@@ -601,7 +599,6 @@ extension _Behavior {
     ///
     /// Note: The returned behavior MUST be `_Behavior.canonicalize`-ed in the vast majority of cases.
     // Implementation note: We don't do so here automatically in order to keep interpretations transparent and testable.
-    @inlinable
     public func interpretMessage(context: _ActorContext<Message>, message: Message, file: StaticString = #file, line: UInt = #line) throws -> _Behavior<Message> {
         switch self.underlying {
         case .receiveMessage(let recv): return try recv(message)
@@ -648,7 +645,6 @@ extension _Behavior {
     }
 
     /// Attempts interpreting signal using the current behavior, or returns `_Behavior.unhandled` if no `_Behavior.signalHandling` was found.
-    @inlinable
     public func interpretSignal(context: _ActorContext<Message>, signal: _Signal) throws -> _Behavior<Message> {
         // This switch does not use a `default:` clause on purpose!
         // This is to enforce having to consider consider how a signal should be interpreted if a new behavior case is added.
@@ -723,7 +719,6 @@ extension _Behavior {
     }
 
     /// Applies `interpretMessage` to an iterator of messages, while canonicalizing the behavior after every reduction.
-    @inlinable
     internal func interpretMessages<Iterator: IteratorProtocol>(context: _ActorContext<Message>, messages: inout Iterator) throws -> _Behavior<Message> where Iterator.Element == Message {
         var currentBehavior: _Behavior<Message> = self
         while currentBehavior.isStillAlive {
@@ -740,7 +735,6 @@ extension _Behavior {
 
     /// Validate if a _Behavior is legal to be used as "initial" behavior (when an Actor is spawned),
     /// since certain behaviors do not make sense as initial behavior.
-    @inlinable
     internal func validateAsInitial() throws {
         switch self.underlying {
         case .same: throw IllegalBehaviorError.notAllowedAsInitial(self)
@@ -750,7 +744,6 @@ extension _Behavior {
     }
 
     /// Same as `validateAsInitial`, however useful in chaining expressions as it returns itself when the validation has passed successfully.
-    @inlinable
     internal func validatedAsInitial() throws -> _Behavior<Message> {
         try self.validateAsInitial()
         return self
@@ -837,7 +830,6 @@ extension _Behavior {
     ///
     /// - Throws: `IllegalBehaviorError.tooDeeplyNestedBehavior` when a too deeply nested behavior is found,
     ///           in order to avoid attempting to start an possibly infinitely deferred behavior.
-    @inlinable
     internal func canonicalize(_ context: _ActorContext<Message>, next: _Behavior<Message>) throws -> _Behavior<Message> {
         guard self.isStillAlive else {
             return self // ignore, we're already dead and cannot become any other behavior
@@ -910,7 +902,6 @@ extension _Behavior {
     /// - Throws: `IllegalBehaviorError.tooDeeplyNestedBehavior` when a too deeply nested behavior is found,
     ///           in order to avoid attempting to start an possibly infinitely deferred behavior.
     // TODO: make not recursive perhaps since could blow up on large chain?
-    @inlinable
     internal func start(context: _ActorContext<Message>) throws -> _Behavior<Message> {
         let failAtDepth = context.system.settings.actor.maxBehaviorNestingDepth
 
