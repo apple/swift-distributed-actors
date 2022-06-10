@@ -445,7 +445,10 @@ extension OpLogDistributedReceptionist {
             return // ok, no-one to notify
         }
 
-        let registrations = self.storage.registrations(forKey: key) ?? []
+        // Sort registrations by version from oldest to newest so that they are processed in order.
+        // Otherwise, if we process a newer version (i.e., with bigger sequence number) first, older
+        // versions will be dropped because they are considered "seen".
+        let registrations = (self.storage.registrations(forKey: key) ?? []).sorted { l, r in l.version < r.version }
 
         // self.instrumentation.listingPublished(key: key, subscribers: subscriptions.count, registrations: registrations.count) // TODO(distributed): make the instrumentation calls compatible with distributed actor based types
         for subscription in subscriptions {
