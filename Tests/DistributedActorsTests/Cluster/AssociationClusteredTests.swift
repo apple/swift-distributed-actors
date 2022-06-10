@@ -159,7 +159,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
 
         let testKit = self.testKit(alone)
         try await testKit.eventually(within: .seconds(3)) {
-            let snapshot: Cluster.Membership = try await alone.cluster.membershipSnapshot
+            let snapshot: Cluster.Membership = await alone.cluster.membershipSnapshot
             if snapshot.count != 1 {
                 throw TestError("Expected membership to include self node, was: \(snapshot)")
             }
@@ -275,7 +275,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
 
         let testKit = self.testKit(first)
         try await testKit.eventually(within: .seconds(3)) {
-            let snapshot: Cluster.Membership = try await first.cluster.membershipSnapshot
+            let snapshot: Cluster.Membership = await first.cluster.membershipSnapshot
             if let selfMember = snapshot.uniqueMember(first.cluster.uniqueNode) {
                 if selfMember.status == .down {
                     () // good

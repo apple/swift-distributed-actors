@@ -43,61 +43,45 @@ public struct ClusterControl {
     /// of obtaining the information to act on rather than mixing the two. Use events if transitions state should trigger
     /// something, and use the snapshot for ad-hoc "one time" membership inspections.
     public var membershipSnapshot: Cluster.Membership {
-        get async throws {
-            try await self._membershipSnapshotHolder.get()
+        get async {
+            await self._membershipSnapshotHolder.membership
         }
     }
 
     internal func updateMembershipSnapshot(_ snapshot: Cluster.Membership) {
         Task {
-            try await self._membershipSnapshotHolder.update(snapshot)
+            await self._membershipSnapshotHolder.update(snapshot)
         }
     }
 
     private let _membershipSnapshotHolder: MembershipHolder
-    internal distributed actor MembershipHolder {
-        typealias ActorSystem = ClusterSystem
-
-        static let path: ActorPath = try! ActorPath._system.appending(segment: ActorPathSegment("clusterMembership"))
-
-        static var props: _Props {
-            var ps = _Props()
-            ps._knownActorName = Self.path.name
-            ps._systemActor = true
-            ps._wellKnown = true
-            return ps
-        }
-
+    internal actor MembershipHolder {
         var membership: Cluster.Membership
 
-        init(membership: Cluster.Membership, actorSystem: ActorSystem) {
-            self.actorSystem = actorSystem
+        init(membership: Cluster.Membership) {
             self.membership = membership
         }
 
-        distributed func get() -> Cluster.Membership {
-            self.membership
-        }
-
-        distributed func update(_ membership: Cluster.Membership) {
+        func update(_ membership: Cluster.Membership) {
             self.membership = membership
         }
 
-        distributed func join(_ node: UniqueNode) {
+        func join(_ node: UniqueNode) {
             _ = self.membership.join(node)
         }
     }
 
     internal let ref: ClusterShell.Ref
 
-    init(_ settings: ClusterSystemSettings, clusterRef: ClusterShell.Ref, membership: MembershipHolder, eventStream: EventStream<Cluster.Event>) {
+    init(_ settings: ClusterSystemSettings, clusterRef: ClusterShell.Ref, eventStream: EventStream<Cluster.Event>) {
         self.settings = settings
         self.ref = clusterRef
         self.events = eventStream
 
-        self._membershipSnapshotHolder = membership
+        let membershipHolder = ClusterControl.MembershipHolder(membership: .empty)
+        self._membershipSnapshotHolder = membershipHolder
         Task {
-            try await membership.join(settings.uniqueBindNode)
+            await membershipHolder.join(settings.uniqueBindNode)
         }
     }
 

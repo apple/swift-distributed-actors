@@ -17,10 +17,10 @@ import DistributedActorsTestKit
 import XCTest
 
 final class ClusterMembershipSnapshotTests: ClusteredActorSystemsXCTestCase {
-    func test_membershipSnapshot_initialShouldContainSelfNode() async throws {
+    func test_membershipSnapshot_initialShouldContainSelfNode() async {
         let system = await setUpNode("first")
 
-        try await system.cluster.membershipSnapshot.members(atLeast: .joining).shouldContain(
+        await system.cluster.membershipSnapshot.members(atLeast: .joining).shouldContain(
             Cluster.Member(node: system.cluster.uniqueNode, status: .joining)
         )
     }
@@ -34,7 +34,7 @@ final class ClusterMembershipSnapshotTests: ClusteredActorSystemsXCTestCase {
 
         let testKit: ActorTestKit = self.testKit(first)
         try await testKit.eventually(within: .seconds(5)) {
-            let snapshot: Cluster.Membership = try await first.cluster.membershipSnapshot
+            let snapshot: Cluster.Membership = await first.cluster.membershipSnapshot
 
             // either joining or up is fine, though we want to see that they're not in down or worse states
             guard (snapshot.count(withStatus: .joining) + snapshot.count(withStatus: .up)) == 3 else {
@@ -61,7 +61,7 @@ final class ClusterMembershipSnapshotTests: ClusteredActorSystemsXCTestCase {
 
         var membership: Cluster.Membership = .empty
         while let event = try events.maybeExpectMessage(within: .seconds(1)) {
-            let snapshot: Cluster.Membership = try await first.cluster.membershipSnapshot
+            let snapshot: Cluster.Membership = await first.cluster.membershipSnapshot
             try membership.apply(event: event)
 
             // snapshot MUST NOT be "behind" it may be HEAD though (e.g. 3 events are being emitted now, and we'll get them in order)

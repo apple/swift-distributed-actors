@@ -363,7 +363,7 @@ extension ClusteredActorSystemsXCTestCase {
         file: StaticString = #file, line: UInt = #line
     ) async throws {
         let testKit = self.testKit(system)
-        let membership = try await system.cluster.membershipSnapshot
+        let membership = await system.cluster.membershipSnapshot
         guard let foundMember = membership.uniqueMember(node) else {
             throw testKit.error("Expected [\(system.cluster.uniqueNode)] to know about [\(node)] member", file: file, line: line)
         }
@@ -386,7 +386,7 @@ extension ClusteredActorSystemsXCTestCase {
         file: StaticString = #file, line: UInt = #line
     ) async throws -> Cluster.MemberStatus? {
         let testKit = self.testKit(system)
-        let membership = try await system.cluster.membershipSnapshot
+        let membership = await system.cluster.membershipSnapshot
         guard let foundMember = membership.uniqueMember(node) else {
             if expectedAtLeastStatus == .down || expectedAtLeastStatus == .removed {
                 // so we're seeing an already removed member, this can indeed happen and is okey

@@ -86,7 +86,6 @@ final class TraversalTests: ClusterSystemXCTestCase {
                 // "downingStrategy", "swim", "nodeDeathWatcher", "gossip", "cluster", "leadership",
                 // end of cluster actors ---
                 "clusterEvents",
-                "clusterMembership",
                 "user",
                 "other",
                 "inner-1",
