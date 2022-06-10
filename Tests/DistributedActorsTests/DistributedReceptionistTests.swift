@@ -138,73 +138,67 @@ final class DistributedReceptionistTests: ClusterSystemXCTestCase {
         }
     }
 
-    // FIXME: don't use runAsyncAndBlock [#953](https://github.com/apple/swift-distributed-actors/issues/953)
-    func test_receptionist_listing_shouldRespondWithRegisteredRefsForKey() throws {
-        try runAsyncAndBlock {
-            let receptionist = system.receptionist
-            let probe: ActorTestProbe<String> = self.testKit.makeTestProbe()
+    func test_receptionist_listing_shouldRespondWithRegisteredRefsForKey() async throws {
+        let receptionist = system.receptionist
+        let probe: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
-            let forwarderA = Forwarder(probe: probe, name: "A", actorSystem: system)
-            let forwarderB = Forwarder(probe: probe, name: "B", actorSystem: system)
+        let forwarderA = Forwarder(probe: probe, name: "A", actorSystem: system)
+        let forwarderB = Forwarder(probe: probe, name: "B", actorSystem: system)
 
-            await receptionist.checkIn(forwarderA, with: .forwarders)
-            await receptionist.checkIn(forwarderB, with: .forwarders)
+        await receptionist.checkIn(forwarderA, with: .forwarders)
+        await receptionist.checkIn(forwarderB, with: .forwarders)
 
-            var i = 0
-            for await forwarder in await receptionist.listing(of: .forwarders) {
-                i += 1
-                try await forwarder.forward(message: "test")
+        var i = 0
+        for await forwarder in await receptionist.listing(of: .forwarders) {
+            i += 1
+            try await forwarder.forward(message: "test")
 
-                if i == 2 {
-                    break
-                }
+            if i == 2 {
+                break
             }
-
-            try probe.expectMessagesInAnyOrder([
-                "\(forwarderA.id) A forwarded: test",
-                "\(forwarderB.id) B forwarded: test",
-            ])
         }
+
+        try probe.expectMessagesInAnyOrder([
+            "\(forwarderA.id) A forwarded: test",
+            "\(forwarderB.id) B forwarded: test",
+        ])
     }
 
-    // FIXME: don't use runAsyncAndBlock [#953](https://github.com/apple/swift-distributed-actors/issues/953)
-    func test_receptionist_listing_shouldEndAfterTaskIsCancelled() throws {
-        try runAsyncAndBlock {
-            let receptionist = self.system.receptionist
-            let probeA: ActorTestProbe<String> = self.testKit.makeTestProbe()
-            let probeB: ActorTestProbe<String> = self.testKit.makeTestProbe()
+    func test_receptionist_listing_shouldEndAfterTaskIsCancelled() async throws {
+        let receptionist = self.system.receptionist
+        let probeA: ActorTestProbe<String> = self.testKit.makeTestProbe()
+        let probeB: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
-            let bossA = Boss(probe: probeA, name: "A", actorSystem: self.system)
-            let bossB = Boss(probe: probeB, name: "B", actorSystem: self.system)
+        let bossA = Boss(probe: probeA, name: "A", actorSystem: self.system)
+        let bossB = Boss(probe: probeB, name: "B", actorSystem: self.system)
 
-            let workerA = Worker(name: "A", actorSystem: self.system)
-            let workerB = Worker(name: "B", actorSystem: self.system)
-            let workerC = Worker(name: "C", actorSystem: self.system)
+        let workerA = Worker(name: "A", actorSystem: self.system)
+        let workerB = Worker(name: "B", actorSystem: self.system)
+        let workerC = Worker(name: "C", actorSystem: self.system)
 
-            try await bossA.findWorkers()
-            try await bossB.findWorkers()
+        try await bossA.findWorkers()
+        try await bossB.findWorkers()
 
-            await receptionist.checkIn(workerA, with: .workers)
+        await receptionist.checkIn(workerA, with: .workers)
 
-            try probeA.expectMessage("\(bossA.id) A found \(workerA.id)")
-            try probeB.expectMessage("\(bossB.id) B found \(workerA.id)")
+        try probeA.expectMessage("\(bossA.id) A found \(workerA.id)")
+        try probeB.expectMessage("\(bossB.id) B found \(workerA.id)")
 
-            try await bossB.done()
-            try probeB.expectMessage("B done")
+        try await bossB.done()
+        try probeB.expectMessage("B done")
 
-            await receptionist.checkIn(workerB, with: .workers)
+        await receptionist.checkIn(workerB, with: .workers)
 
-            try probeA.expectMessage("\(bossA.id) A found \(workerB.id)")
-            try probeB.expectNoMessage(for: .milliseconds(500))
+        try probeA.expectMessage("\(bossA.id) A found \(workerB.id)")
+        try probeB.expectNoMessage(for: .milliseconds(500))
 
-            try await bossA.done()
-            try probeA.expectMessage("A done")
+        try await bossA.done()
+        try probeA.expectMessage("A done")
 
-            await receptionist.checkIn(workerC, with: .workers)
+        await receptionist.checkIn(workerC, with: .workers)
 
-            try probeA.expectNoMessage(for: .milliseconds(500))
-            try probeB.expectNoMessage(for: .milliseconds(500))
-        }
+        try probeA.expectNoMessage(for: .milliseconds(500))
+        try probeB.expectNoMessage(for: .milliseconds(500))
     }
 
     func test_receptionist_shouldRespondWithEmptyRefForUnknownKey() throws {
