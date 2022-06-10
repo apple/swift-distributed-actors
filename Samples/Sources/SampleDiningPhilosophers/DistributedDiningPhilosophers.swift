@@ -40,7 +40,7 @@ final class DistributedDiningPhilosophers {
         systemC.cluster.join(node: systemB.settings.node)
 
         print("waiting for cluster to form...")
-        while !(try await isClusterFormed(systems)) {
+        while !(try await self.isClusterFormed(systems)) {
             let nanosInSecond: UInt64 = 1_000_000_000
             try await Task.sleep(nanoseconds: 1 * nanosInSecond)
         }
