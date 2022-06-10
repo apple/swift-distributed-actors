@@ -14,6 +14,7 @@
 
 import Dispatch
 import Distributed
+import DistributedActorsConcurrencyHelpers
 import struct NIO.TimeAmount
 
 struct DistributedActorTimer {
@@ -39,6 +40,8 @@ public final class ActorTimers<Act: DistributedActor> where Act.ActorSystem == C
     internal let ownerID: ActorID
 
     internal let dispatchQueue = DispatchQueue.global()
+
+    internal let installedTimersLock = Lock()
     internal var installedTimers: [TimerKey: DistributedActorTimer] = [:]
 
     // TODO: this is a workaround, we're removing ActorTimers since they can't participate in structured cancellation
@@ -63,9 +66,11 @@ public final class ActorTimers<Act: DistributedActor> where Act.ActorSystem == C
     }
 
     internal func _cancelAll(includeSystemTimers: Bool) {
-        for key in self.installedTimers.keys where includeSystemTimers || !key.isSystemTimer {
-            // TODO: the reason the `_` keys are not cancelled is because we want to cancel timers in _restartPrepare but we need "our restart timer" to remain
-            self.cancel(for: key)
+        self.installedTimersLock.withLockVoid {
+            for key in self.installedTimers.keys where includeSystemTimers || !key.isSystemTimer {
+                // TODO: the reason the `_` keys are not cancelled is because we want to cancel timers in _restartPrepare but we need "our restart timer" to remain
+                self.cancel(for: key)
+            }
         }
     }
 
@@ -73,7 +78,7 @@ public final class ActorTimers<Act: DistributedActor> where Act.ActorSystem == C
     ///
     /// - Parameter key: key of the timer to cancel
     public func cancel(for key: TimerKey) {
-        if let timer = self.installedTimers.removeValue(forKey: key) {
+        if let timer = self.installedTimersLock.withLock { self.installedTimers.removeValue(forKey: key) } {
             timer.handle.cancel()
         }
     }
@@ -82,7 +87,9 @@ public final class ActorTimers<Act: DistributedActor> where Act.ActorSystem == C
     ///
     /// - Returns: true if timer exists, false otherwise
     public func exists(key: TimerKey) -> Bool {
-        self.installedTimers[key] != nil
+        self.installedTimersLock.withLock {
+            self.installedTimers[key] != nil
+        }
     }
 
     /// Starts a timer that will invoke the provided `call` closure on the actor's context after the specified delay.
@@ -153,6 +160,8 @@ public final class ActorTimers<Act: DistributedActor> where Act.ActorSystem == C
             }
         }
 
-        self.installedTimers[key] = DistributedActorTimer(key: key, repeated: repeated, handle: handle)
+        self.installedTimersLock.withLockVoid {
+            self.installedTimers[key] = DistributedActorTimer(key: key, repeated: repeated, handle: handle)
+        }
     }
 }
