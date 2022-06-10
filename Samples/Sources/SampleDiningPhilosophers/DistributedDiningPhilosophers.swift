@@ -40,11 +40,7 @@ final class DistributedDiningPhilosophers {
         systemC.cluster.join(node: systemB.settings.node)
 
         print("waiting for cluster to form...")
-        // TODO: implement this using "await join cluster" API [#948](https://github.com/apple/swift-distributed-actors/issues/948)
-        while !(try await self.isClusterFormed(systems)) {
-            let nanosInSecond: UInt64 = 1_000_000_000
-            try await Task.sleep(nanoseconds: 1 * nanosInSecond)
-        }
+        try await self.ensureCluster(systems, within: .seconds(10))
 
         print("~~~~~~~ systems joined each other ~~~~~~~")
 
@@ -74,13 +70,16 @@ final class DistributedDiningPhilosophers {
         try systemA.park(atMost: duration)
     }
 
-    private func isClusterFormed(_ systems: [ClusterSystem]) async throws -> Bool {
-        for system in systems {
-            let upCount = try await system.cluster.membershipSnapshot.count(withStatus: .up)
-            if upCount != systems.count {
-                return false
+    private func ensureCluster(_ systems: [ClusterSystem], within: Duration) async throws {
+        let nodes = systems.map(\.settings.uniqueBindNode)
+
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            for system in systems {
+                group.addTask {
+                    try await system.cluster.ensureNodes(.up, within: within, nodes: nodes)
+                }
+                try await group.next() // this is required to propagate error and cancel all tasks
             }
         }
-        return true
     }
 }
