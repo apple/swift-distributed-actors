@@ -61,8 +61,8 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
         }
         let thirdNeverDownSystem = await self.setUpNode("third", modifySettings)
 
-        try self.joinNodes(node: first, with: second, ensureMembers: .up)
-        try self.joinNodes(node: thirdNeverDownSystem, with: second, ensureMembers: .up)
+        try await self.joinNodes(node: first, with: second, ensureMembers: .up)
+        try await self.joinNodes(node: thirdNeverDownSystem, with: second, ensureMembers: .up)
 
         let expectedDownSystem: ClusterSystem
         let otherNotDownPairSystem: ClusterSystem
@@ -241,7 +241,7 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
         let joiningStart = ContinuousClock.Instant.now
 
         nodes.forEach { first.cluster.join(node: $0.cluster.uniqueNode.node) }
-        try self.ensureNodes(.up, within: .seconds(30), nodes: nodes.map(\.cluster.uniqueNode))
+        try await self.ensureNodes(.up, within: .seconds(30), nodes: nodes.map(\.cluster.uniqueNode))
 
         let joiningStop = ContinuousClock.Instant.now
         pinfo("Joined \(nodes.count) nodes, took: \((joiningStop - joiningStart).prettyDescription)")

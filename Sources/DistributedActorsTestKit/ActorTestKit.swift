@@ -154,6 +154,47 @@ extension ActorTestKit {
         }
         throw error
     }
+
+    /// Executes passed in block numerous times, until a the expected value is obtained or the `within` time limit expires,
+    /// in which case an `EventuallyError` is thrown, along with the last encountered error thrown by block.
+    ///
+    /// `eventually` is designed to be used with the `expectX` functions on `ActorTestProbe`.
+    ///
+    /// **CAUTION**: Using `shouldX` matchers in an `eventually` block will fail the test on the first failure.
+    ///
+    // TODO: does not handle blocking longer than `within` well
+    // TODO: should use default `within` from TestKit
+    @discardableResult
+    public func eventually<T>(
+        within duration: Duration, interval: Duration = .milliseconds(100),
+        file: StaticString = #file, line: UInt = #line, column: UInt = #column,
+        _ block: () async throws -> T
+    ) async throws -> T {
+        let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
+        let deadline = ContinuousClock.Instant.fromNow(duration)
+
+        var lastError: Error?
+        var polledTimes = 0
+
+        ActorTestKit.enterRepeatableContext()
+        while deadline.hasTimeLeft() {
+            do {
+                polledTimes += 1
+                let res = try await block()
+                return res
+            } catch {
+                lastError = error
+                usleep(useconds_t(interval.microseconds))
+            }
+        }
+        ActorTestKit.leaveRepeatableContext()
+
+        let error = EventuallyError(callSite, duration, polledTimes, lastError: lastError)
+        if !ActorTestKit.isInRepeatableContext() {
+            XCTFail("\(error)", file: callSite.file, line: callSite.line)
+        }
+        throw error
+    }
 }
 
 /// Thrown by `ActorTestKit.eventually` when the encapsulated assertion fails enough times that the eventually rethrows it.

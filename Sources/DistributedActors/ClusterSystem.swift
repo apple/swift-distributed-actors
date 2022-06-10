@@ -314,7 +314,10 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
             )
 
             _ = self._clusterStore.storeIfNilThenLoad(Box(nil))
-            _ = self._clusterControlStore.storeIfNilThenLoad(Box(ClusterControl(settings, clusterRef: self.deadLetters.adapted(), eventStream: clusterEvents)))
+            await _Props.$forSpawn.withValue(ClusterControl.MembershipHolder.props) {
+                let membership = ClusterControl.MembershipHolder(membership: .empty, actorSystem: self)
+                _ = self._clusterControlStore.storeIfNilThenLoad(Box(ClusterControl(settings, clusterRef: self.deadLetters.adapted(), membership: membership, eventStream: clusterEvents)))
+            }
         }
 
         // node watcher MUST be prepared before receptionist (or any other actor) because it (and all actors) need it if we're running clustered
@@ -331,7 +334,10 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
                 customBehavior: ClusterEventStream.Shell.behavior
             )
             let clusterRef = try! cluster.start(system: self, clusterEvents: clusterEvents) // only spawns when cluster is initialized
-            _ = self._clusterControlStore.storeIfNilThenLoad(Box(ClusterControl(settings, clusterRef: clusterRef, eventStream: clusterEvents)))
+            await _Props.$forSpawn.withValue(ClusterControl.MembershipHolder.props) {
+                let membership = ClusterControl.MembershipHolder(membership: .empty, actorSystem: self)
+                _ = self._clusterControlStore.storeIfNilThenLoad(Box(ClusterControl(settings, clusterRef: clusterRef, membership: membership, eventStream: clusterEvents)))
+            }
 
             self._associationTombstoneCleanupTask = eventLoopGroup.next().scheduleRepeatedTask(
                 initialDelay: settings.associationTombstoneCleanupInterval.toNIO,
@@ -491,8 +497,10 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         self.shutdownSemaphore.wait()
 
         /// Down this member as part of shutting down; it may have enough time to notify other nodes on an best effort basis.
-        if let myselfMember = self.cluster.membershipSnapshot.uniqueMember(self.cluster.uniqueNode) {
-            self.cluster.down(member: myselfMember)
+        Task {
+            if let myselfMember = try await self.cluster.membershipSnapshot.uniqueMember(self.cluster.uniqueNode) {
+                self.cluster.down(member: myselfMember)
+            }
         }
 
         self.settings.plugins.stopAll(self)

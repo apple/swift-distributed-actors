@@ -87,7 +87,7 @@ final class OpLogDistributedReceptionistClusteredTests: ClusteredActorSystemsXCT
     func test_shouldReplicateRegistrations() async throws {
         let (local, remote) = await self.setUpPair()
         let testKit: ActorTestKit = self.testKit(local)
-        try self.joinNodes(node: local, with: remote)
+        try await self.joinNodes(node: local, with: remote)
 
         let probe = testKit.makeTestProbe(expecting: String.self)
 

@@ -23,7 +23,7 @@ final class ClusterOnDownActionTests: ClusteredActorSystemsXCTestCase {
             settings.onDownAction = .gracefulShutdown(delay: .milliseconds(300))
         }
 
-        try self.joinNodes(node: first, with: second)
+        try await self.joinNodes(node: first, with: second)
 
         second.cluster.down(node: first.cluster.uniqueNode.node)
 
@@ -41,7 +41,7 @@ final class ClusterOnDownActionTests: ClusteredActorSystemsXCTestCase {
             settings.onDownAction = .none
         }
 
-        try self.joinNodes(node: first, with: second)
+        try await self.joinNodes(node: first, with: second)
 
         second.cluster.down(node: first.cluster.uniqueNode.node)
 

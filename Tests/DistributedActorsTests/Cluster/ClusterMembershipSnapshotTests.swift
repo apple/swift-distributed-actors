@@ -17,24 +17,24 @@ import DistributedActorsTestKit
 import XCTest
 
 final class ClusterMembershipSnapshotTests: ClusteredActorSystemsXCTestCase {
-    func test_membershipSnapshot_initialShouldContainSelfNode() async {
+    func test_membershipSnapshot_initialShouldContainSelfNode() async throws {
         let system = await setUpNode("first")
 
-        system.cluster.membershipSnapshot.members(atLeast: .joining).shouldContain(
+        try await system.cluster.membershipSnapshot.members(atLeast: .joining).shouldContain(
             Cluster.Member(node: system.cluster.uniqueNode, status: .joining)
         )
     }
 
     func test_membershipSnapshot_shouldBeUpdated() async throws {
         let (first, second) = await self.setUpPair()
-        try self.joinNodes(node: first, with: second)
+        try await self.joinNodes(node: first, with: second)
 
         let third = await setUpNode("third")
-        try self.joinNodes(node: first, with: third)
+        try await self.joinNodes(node: first, with: third)
 
         let testKit: ActorTestKit = self.testKit(first)
-        try testKit.eventually(within: .seconds(5)) {
-            let snapshot: Cluster.Membership = first.cluster.membershipSnapshot
+        try await testKit.eventually(within: .seconds(5)) {
+            let snapshot: Cluster.Membership = try await first.cluster.membershipSnapshot
 
             // either joining or up is fine, though we want to see that they're not in down or worse states
             guard (snapshot.count(withStatus: .joining) + snapshot.count(withStatus: .up)) == 3 else {
@@ -55,13 +55,13 @@ final class ClusterMembershipSnapshotTests: ClusteredActorSystemsXCTestCase {
 
         let events = self.testKit(first).spawnEventStreamTestProbe(subscribedTo: first.cluster.events)
 
-        try self.joinNodes(node: first, with: second)
-        try self.joinNodes(node: first, with: third)
-        try self.joinNodes(node: second, with: third)
+        try await self.joinNodes(node: first, with: second)
+        try await self.joinNodes(node: first, with: third)
+        try await self.joinNodes(node: second, with: third)
 
         var membership: Cluster.Membership = .empty
         while let event = try events.maybeExpectMessage(within: .seconds(1)) {
-            let snapshot: Cluster.Membership = first.cluster.membershipSnapshot
+            let snapshot: Cluster.Membership = try await first.cluster.membershipSnapshot
             try membership.apply(event: event)
 
             // snapshot MUST NOT be "behind" it may be HEAD though (e.g. 3 events are being emitted now, and we'll get them in order)

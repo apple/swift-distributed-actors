@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Distributed
 import DistributedActorsConcurrencyHelpers
 import Logging
 import NIO
@@ -42,37 +43,62 @@ public struct ClusterControl {
     /// of obtaining the information to act on rather than mixing the two. Use events if transitions state should trigger
     /// something, and use the snapshot for ad-hoc "one time" membership inspections.
     public var membershipSnapshot: Cluster.Membership {
-        self.membershipSnapshotLock.lock()
-        defer { self.membershipSnapshotLock.unlock() }
-        return self._membershipSnapshotHolder.membership
+        get async throws {
+            try await self._membershipSnapshotHolder.get()
+        }
     }
 
     internal func updateMembershipSnapshot(_ snapshot: Cluster.Membership) {
-        self.membershipSnapshotLock.lock()
-        defer { self.membershipSnapshotLock.unlock() }
-        self._membershipSnapshotHolder.membership = snapshot
+        Task {
+            try await self._membershipSnapshotHolder.update(snapshot)
+        }
     }
 
-    private let membershipSnapshotLock: Lock
     private let _membershipSnapshotHolder: MembershipHolder
-    private class MembershipHolder {
+    internal distributed actor MembershipHolder {
+        typealias ActorSystem = ClusterSystem
+
+        static let path: ActorPath = try! ActorPath._system.appending(segment: ActorPathSegment("clusterMembership"))
+
+        static var props: _Props {
+            var ps = _Props()
+            ps._knownActorName = Self.path.name
+            ps._systemActor = true
+            ps._wellKnown = true
+            return ps
+        }
+
         var membership: Cluster.Membership
-        init(membership: Cluster.Membership) {
+
+        init(membership: Cluster.Membership, actorSystem: ActorSystem) {
+            self.actorSystem = actorSystem
             self.membership = membership
+        }
+
+        distributed func get() -> Cluster.Membership {
+            self.membership
+        }
+
+        distributed func update(_ membership: Cluster.Membership) {
+            self.membership = membership
+        }
+
+        distributed func join(_ node: UniqueNode) {
+            _ = self.membership.join(node)
         }
     }
 
     internal let ref: ClusterShell.Ref
 
-    init(_ settings: ClusterSystemSettings, clusterRef: ClusterShell.Ref, eventStream: EventStream<Cluster.Event>) {
+    init(_ settings: ClusterSystemSettings, clusterRef: ClusterShell.Ref, membership: MembershipHolder, eventStream: EventStream<Cluster.Event>) {
         self.settings = settings
         self.ref = clusterRef
         self.events = eventStream
 
-        let membershipSnapshotLock = Lock()
-        self.membershipSnapshotLock = membershipSnapshotLock
-        self._membershipSnapshotHolder = MembershipHolder(membership: .empty)
-        _ = self._membershipSnapshotHolder.membership.join(settings.uniqueBindNode)
+        self._membershipSnapshotHolder = membership
+        Task {
+            try await membership.join(settings.uniqueBindNode)
+        }
     }
 
     /// The node value representing _this_ node in the cluster.

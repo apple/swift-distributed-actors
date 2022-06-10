@@ -158,8 +158,8 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
         alone.cluster.join(node: alone.cluster.uniqueNode.node) // "self join", should simply be ignored
 
         let testKit = self.testKit(alone)
-        try testKit.eventually(within: .seconds(3)) {
-            let snapshot: Cluster.Membership = alone.cluster.membershipSnapshot
+        try await testKit.eventually(within: .seconds(3)) {
+            let snapshot: Cluster.Membership = try await alone.cluster.membershipSnapshot
             if snapshot.count != 1 {
                 throw TestError("Expected membership to include self node, was: \(snapshot)")
             }
@@ -274,8 +274,8 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
         first.cluster.down(node: first.cluster.uniqueNode.node)
 
         let testKit = self.testKit(first)
-        try testKit.eventually(within: .seconds(3)) {
-            let snapshot: Cluster.Membership = first.cluster.membershipSnapshot
+        try await testKit.eventually(within: .seconds(3)) {
+            let snapshot: Cluster.Membership = try await first.cluster.membershipSnapshot
             if let selfMember = snapshot.uniqueMember(first.cluster.uniqueNode) {
                 if selfMember.status == .down {
                     () // good
@@ -372,7 +372,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
         let secondProbe = self.testKit(second).makeTestProbe(expecting: Cluster.Membership.self)
 
         // we we down first on first, it should become down there:
-        try self.testKit(first).eventually(within: .seconds(3)) {
+        try await self.testKit(first).eventually(within: .seconds(3)) {
             first.cluster.ref.tell(.query(.currentMembership(firstProbe.ref)))
             let firstMembership = try firstProbe.expectMessage()
 
@@ -380,7 +380,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
                 throw self.testKit(second).error("No self member in membership! Wanted: \(first.cluster.uniqueNode)", line: #line - 1)
             }
 
-            try self.assertMemberStatus(on: first, node: first.cluster.uniqueNode, is: .down)
+            try await self.assertMemberStatus(on: first, node: first.cluster.uniqueNode, is: .down)
             guard selfMember.status == .down else {
                 throw self.testKit(first).error("Wanted self member to be DOWN, but was: \(selfMember)", line: #line - 1)
             }
