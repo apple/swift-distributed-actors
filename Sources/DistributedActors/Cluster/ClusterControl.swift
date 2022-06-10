@@ -55,7 +55,7 @@ public struct ClusterControl {
     }
 
     private let _membershipSnapshotHolder: MembershipHolder
-    internal actor MembershipHolder {
+    private actor MembershipHolder {
         var membership: Cluster.Membership
 
         init(membership: Cluster.Membership) {
