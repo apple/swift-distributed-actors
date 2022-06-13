@@ -166,8 +166,9 @@ public struct ClusterControl {
                 group.addTask {
                     _ = try await self.awaitMemberStatus(is: status, within: within, node: node)
                 }
-                try await group.next() // this is required to propagate error and cancel all tasks
             }
+            // loop explicitly to propagagte any error that might have been thrown
+            for try await _ in group { }
         }
     }
 
@@ -177,8 +178,9 @@ public struct ClusterControl {
                 group.addTask {
                     _ = try await self.awaitMemberStatus(atLeast: atLeastStatus, within: within, node: node)
                 }
-                try await group.next() // this is required to propagate error and cancel all tasks
             }
+            // loop explicitly to propagagte any error that might have been thrown
+            for try await _ in group { }
         }
     }
     
