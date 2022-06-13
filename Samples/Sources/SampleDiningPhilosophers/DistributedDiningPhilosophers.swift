@@ -71,15 +71,16 @@ final class DistributedDiningPhilosophers {
     }
 
     private func ensureCluster(_ systems: [ClusterSystem], within: Duration) async throws {
-        let nodes = systems.map(\.settings.uniqueBindNode)
+        let nodes = Set(systems.map(\.settings.uniqueBindNode))
 
         try await withThrowingTaskGroup(of: Void.self) { group in
             for system in systems {
                 group.addTask {
-                    try await system.cluster.ensureNodes(.up, within: within, nodes: nodes)
+                    try await system.cluster.waitFor(nodes, .up, within: within)
                 }
-                try await group.next() // this is required to propagate error and cancel all tasks
             }
+            // loop explicitly to propagagte any error that might have been thrown
+            for try await _ in group {}
         }
     }
 }

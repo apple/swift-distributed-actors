@@ -160,7 +160,7 @@ public struct ClusterControl {
         try await self.waitFor(node, .up, within: within)
     }
 
-    public func waitFor(nodes: Set<UniqueNode>, _ status: Cluster.MemberStatus, within: Duration) async throws {
+    public func waitFor(_ nodes: Set<UniqueNode>, _ status: Cluster.MemberStatus, within: Duration) async throws {
         try await withThrowingTaskGroup(of: Void.self) { group in
             for node in nodes {
                 group.addTask {
@@ -168,11 +168,11 @@ public struct ClusterControl {
                 }
             }
             // loop explicitly to propagagte any error that might have been thrown
-            for try await _ in group { }
+            for try await _ in group {}
         }
     }
 
-    public func waitFor(nodes: Set<UniqueNode>, atLeast atLeastStatus: Cluster.MemberStatus, within: Duration) async throws {
+    public func waitFor(_ nodes: Set<UniqueNode>, atLeast atLeastStatus: Cluster.MemberStatus, within: Duration) async throws {
         try await withThrowingTaskGroup(of: Void.self) { group in
             for node in nodes {
                 group.addTask {
@@ -180,10 +180,10 @@ public struct ClusterControl {
                 }
             }
             // loop explicitly to propagagte any error that might have been thrown
-            for try await _ in group { }
+            for try await _ in group {}
         }
     }
-    
+
     public func waitFor(_ node: UniqueNode, _ status: Cluster.MemberStatus, within: Duration) async throws -> Cluster.Member {
         try await self.waitForMembershipEventually(within: within) { membership in
             guard let foundMember = membership.uniqueMember(node) else {
