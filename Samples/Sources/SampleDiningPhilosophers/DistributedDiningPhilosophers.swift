@@ -40,11 +40,8 @@ final class DistributedDiningPhilosophers {
         systemC.cluster.join(node: systemB.settings.node)
 
         print("waiting for cluster to form...")
-        while !(
-            systemA.cluster.membershipSnapshot.count(withStatus: .up) == systems.count &&
-                systemB.cluster.membershipSnapshot.count(withStatus: .up) == systems.count &&
-                systemC.cluster.membershipSnapshot.count(withStatus: .up) == systems.count)
-        {
+        // TODO: implement this using "await join cluster" API [#948](https://github.com/apple/swift-distributed-actors/issues/948)
+        while !(try await self.isClusterFormed(systems)) {
             let nanosInSecond: UInt64 = 1_000_000_000
             try await Task.sleep(nanoseconds: 1 * nanosInSecond)
         }
@@ -75,5 +72,15 @@ final class DistributedDiningPhilosophers {
         ]
 
         try systemA.park(atMost: duration)
+    }
+
+    private func isClusterFormed(_ systems: [ClusterSystem]) async throws -> Bool {
+        for system in systems {
+            let upCount = try await system.cluster.membershipSnapshot.count(withStatus: .up)
+            if upCount != systems.count {
+                return false
+            }
+        }
+        return true
     }
 }

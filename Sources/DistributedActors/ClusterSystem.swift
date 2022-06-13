@@ -490,10 +490,8 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
 
         self.shutdownSemaphore.wait()
 
-        /// Down this member as part of shutting down; it may have enough time to notify other nodes on an best effort basis.
-        if let myselfMember = self.cluster.membershipSnapshot.uniqueMember(self.cluster.uniqueNode) {
-            self.cluster.down(member: myselfMember)
-        }
+        /// Down this node as part of shutting down; it may have enough time to notify other nodes on an best effort basis.
+        self.cluster.down(node: self.settings.node)
 
         self.settings.plugins.stopAll(self)
 

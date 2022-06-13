@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Distributed
 import DistributedActorsConcurrencyHelpers
 import Logging
 import NIO
@@ -42,23 +43,31 @@ public struct ClusterControl {
     /// of obtaining the information to act on rather than mixing the two. Use events if transitions state should trigger
     /// something, and use the snapshot for ad-hoc "one time" membership inspections.
     public var membershipSnapshot: Cluster.Membership {
-        self.membershipSnapshotLock.lock()
-        defer { self.membershipSnapshotLock.unlock() }
-        return self._membershipSnapshotHolder.membership
+        get async {
+            await self._membershipSnapshotHolder.membership
+        }
     }
 
     internal func updateMembershipSnapshot(_ snapshot: Cluster.Membership) {
-        self.membershipSnapshotLock.lock()
-        defer { self.membershipSnapshotLock.unlock() }
-        self._membershipSnapshotHolder.membership = snapshot
+        Task {
+            await self._membershipSnapshotHolder.update(snapshot)
+        }
     }
 
-    private let membershipSnapshotLock: Lock
     private let _membershipSnapshotHolder: MembershipHolder
-    private class MembershipHolder {
+    private actor MembershipHolder {
         var membership: Cluster.Membership
+
         init(membership: Cluster.Membership) {
             self.membership = membership
+        }
+
+        func update(_ membership: Cluster.Membership) {
+            self.membership = membership
+        }
+
+        func join(_ node: UniqueNode) {
+            _ = self.membership.join(node)
         }
     }
 
@@ -69,10 +78,11 @@ public struct ClusterControl {
         self.ref = clusterRef
         self.events = eventStream
 
-        let membershipSnapshotLock = Lock()
-        self.membershipSnapshotLock = membershipSnapshotLock
-        self._membershipSnapshotHolder = MembershipHolder(membership: .empty)
-        _ = self._membershipSnapshotHolder.membership.join(settings.uniqueBindNode)
+        let membershipHolder = ClusterControl.MembershipHolder(membership: .empty)
+        self._membershipSnapshotHolder = membershipHolder
+        Task {
+            await membershipHolder.join(settings.uniqueBindNode)
+        }
     }
 
     /// The node value representing _this_ node in the cluster.

@@ -46,7 +46,7 @@ final class _OpLogClusterReceptionistClusteredTests: ClusteredActorSystemsXCTest
     func test_shouldReplicateRegistrations() async throws {
         let (local, remote) = await setUpPair()
         let testKit: ActorTestKit = self.testKit(local)
-        try self.joinNodes(node: local, with: remote)
+        try await self.joinNodes(node: local, with: remote)
 
         let probe = testKit.makeTestProbe(expecting: String.self)
         let registeredProbe = testKit.makeTestProbe("registered", expecting: _Reception.Registered<_ActorRef<String>>.self)
@@ -370,9 +370,9 @@ final class _OpLogClusterReceptionistClusteredTests: ClusteredActorSystemsXCTest
         let third = await setUpNode("third")
         let fourth = await setUpNode("fourth")
 
-        try self.joinNodes(node: first, with: second)
-        try self.joinNodes(node: first, with: third)
-        try self.joinNodes(node: fourth, with: second)
+        try await self.joinNodes(node: first, with: second)
+        try await self.joinNodes(node: first, with: third)
+        try await self.joinNodes(node: fourth, with: second)
 
         let key = _Reception.Key(_ActorRef<String>.self, id: "key")
 
