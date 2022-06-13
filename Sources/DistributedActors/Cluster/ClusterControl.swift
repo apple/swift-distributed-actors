@@ -160,7 +160,7 @@ public struct ClusterControl {
         try await self.awaitMemberStatus(is: .up, within: within, node: node)
     }
 
-    public func ensureNodes(_ status: Cluster.MemberStatus, within: Duration, nodes: [UniqueNode]) async throws {
+    public func waitFor(nodes: Set<UniqueNode>, _ status: Cluster.MemberStatus, within: Duration) async throws {
         try await withThrowingTaskGroup(of: Void.self) { group in
             for node in nodes {
                 group.addTask {
@@ -171,7 +171,7 @@ public struct ClusterControl {
         }
     }
 
-    public func ensureNodes(atLeast atLeastStatus: Cluster.MemberStatus, within: Duration, nodes: [UniqueNode]) async throws {
+    public func waitFor(nodes: Set<UniqueNode>, atLeast atLeastStatus: Cluster.MemberStatus, within: Duration) async throws {
         try await withThrowingTaskGroup(of: Void.self) { group in
             for node in nodes {
                 group.addTask {
