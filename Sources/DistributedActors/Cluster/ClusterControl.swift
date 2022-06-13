@@ -156,7 +156,7 @@ public struct ClusterControl {
         self.ref.tell(.command(.downCommandMember(member)))
     }
 
-    public func joined(node: UniqueNode, within: Duration) async throws {
+    public func joined(node: UniqueNode, within: Duration) async throws -> Cluster.Member {
         try await self.awaitMemberStatus(is: .up, within: within, node: node)
     }
 
@@ -164,7 +164,7 @@ public struct ClusterControl {
         try await withThrowingTaskGroup(of: Void.self) { group in
             for node in nodes {
                 group.addTask {
-                    try await self.awaitMemberStatus(is: status, within: within, node: node)
+                    _ = try await self.awaitMemberStatus(is: status, within: within, node: node)
                 }
                 try await group.next() // this is required to propagate error and cancel all tasks
             }
@@ -175,31 +175,14 @@ public struct ClusterControl {
         try await withThrowingTaskGroup(of: Void.self) { group in
             for node in nodes {
                 group.addTask {
-                    try await self.awaitMemberStatus(atLeast: atLeastStatus, within: within, node: node)
+                    _ = try await self.awaitMemberStatus(atLeast: atLeastStatus, within: within, node: node)
                 }
                 try await group.next() // this is required to propagate error and cancel all tasks
             }
         }
     }
-
-    public func awaitMemberStatus(atLeast atLeastStatus: Cluster.MemberStatus, within: Duration, node: UniqueNode) async throws {
-        try await self.awaitMemberStatusEventually(within: within) { membership in
-            guard let foundMember = membership.uniqueMember(node) else {
-                if atLeastStatus == .down || atLeastStatus == .removed {
-                    // so we're seeing an already removed member, this can indeed happen and is okey
-                    return
-                } else {
-                    throw Cluster.MembershipError.notFound(node)
-                }
-            }
-
-            if atLeastStatus <= foundMember.status {
-                throw Cluster.MembershipError.atLeastStatusRequirementNotMet(expectedAtLeast: atLeastStatus, actual: foundMember.status)
-            }
-        }
-    }
-
-    public func awaitMemberStatus(is status: Cluster.MemberStatus, within: Duration, node: UniqueNode) async throws {
+    
+    public func awaitMemberStatus(is status: Cluster.MemberStatus, within: Duration, node: UniqueNode) async throws -> Cluster.Member {
         try await self.awaitMemberStatusEventually(within: within) { membership in
             guard let foundMember = membership.uniqueMember(node) else {
                 throw Cluster.MembershipError.notFound(node)
@@ -208,18 +191,37 @@ public struct ClusterControl {
             if status != foundMember.status {
                 throw Cluster.MembershipError.statusRequirementNotMet(expected: status, actual: foundMember.status)
             }
+            return foundMember
         }
     }
 
-    private func awaitMemberStatusEventually(within: Duration, interval: Duration = .milliseconds(100), _ block: (Cluster.Membership) async throws -> Void) async throws {
+    public func awaitMemberStatus(atLeast atLeastStatus: Cluster.MemberStatus, within: Duration, node: UniqueNode) async throws -> Cluster.Member? {
+        try await self.awaitMemberStatusEventually(within: within) { membership in
+            guard let foundMember = membership.uniqueMember(node) else {
+                if atLeastStatus == .down || atLeastStatus == .removed {
+                    // so we're seeing an already removed member, this can indeed happen and is okey
+                    return nil
+                } else {
+                    throw Cluster.MembershipError.notFound(node)
+                }
+            }
+
+            if atLeastStatus <= foundMember.status {
+                throw Cluster.MembershipError.atLeastStatusRequirementNotMet(expectedAtLeast: atLeastStatus, actual: foundMember.status)
+            }
+            return foundMember
+        }
+    }
+
+    private func awaitMemberStatusEventually<T>(within: Duration, interval: Duration = .milliseconds(100), _ block: (Cluster.Membership) async throws -> T) async throws -> T {
         let deadline = ContinuousClock.Instant.fromNow(within)
 
         var lastError: Error?
         while deadline.hasTimeLeft() {
             let membership = await self.membershipSnapshot
             do {
-                try await block(membership)
-                return
+                let result = try await block(membership)
+                return result
             } catch {
                 lastError = error
                 try await Task.sleep(nanoseconds: UInt64(interval.nanoseconds))
