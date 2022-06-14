@@ -131,10 +131,20 @@ internal final class NodeDeathWatcherInstance: NodeDeathWatcher {
 
     func handleAddressDown(_ change: Cluster.MembershipChange) {
         let terminatedNode = change.node
+
+        // ref
         if let watchers = self.remoteWatchers.removeValue(forKey: terminatedNode) {
             for ref in watchers {
                 // we notify each actor that was watching this remote address
                 ref._sendSystemMessage(.nodeTerminated(terminatedNode))
+            }
+        }
+
+        if let watchers = self.remoteWatchCallbacks.removeValue(forKey: terminatedNode) {
+            for watcher in watchers {
+                Task {
+                    await watcher.callback(terminatedNode)
+                }
             }
         }
 
@@ -186,8 +196,20 @@ enum NodeDeathWatcherShell {
 
             context.system.cluster.events.subscribe(context.subReceive(Cluster.Event.self) { event in
                 switch event {
+                case .snapshot(let membership):
+                    context.log.info("Membership snapshot: \(membership)")
+                    let diff = Cluster.Membership._diff(from: .empty, to: membership)
+                    for change in diff.changes {
+                        instance.onMembershipChanged(change)
+                    }
+
                 case .membershipChange(let change) where change.isAtLeast(.down):
+                    context.log.info("Node down: \(change)!")
                     instance.handleAddressDown(change)
+                case .membershipChange(let change):
+                    context.log.info("Node change: \(change)!")
+                    instance.onMembershipChanged(change)
+
                 default:
                     () // ignore other changes, we only need to react on nodes becoming DOWN
                 }

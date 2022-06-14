@@ -109,7 +109,7 @@ extension RemoteActorRefProvider {
 
             return self.localProvider._resolve(context: context)
         case .remote:
-            return self._resolveAsRemoteRef(context, remoteAddress: context.id)
+            return self._resolveAsRemoteRef(context, remoteAddress: context.id._asRemote)
         }
     }
 
@@ -117,7 +117,7 @@ extension RemoteActorRefProvider {
         if self.localNode == context.id.uniqueNode {
             return self.localProvider._resolveUntyped(context: context)
         } else {
-            return _AddressableActorRef(self._resolveAsRemoteRef(context, remoteAddress: context.id))
+            return _AddressableActorRef(self._resolveAsRemoteRef(context, remoteAddress: context.id._asRemote))
         }
     }
 

@@ -57,10 +57,15 @@ private distributed actor Boss: LifecycleWatch {
 
         self.listingTask = Task {
             for await worker in await self.actorSystem.receptionist.listing(of: .workers) {
-                self.workers.insert(worker.id)
+                self.workers.insert(watchTermination(of: worker).id)
                 self.probe?.tell("\(self.id) \(self.name) found \(worker.id)")
             }
         }
+    }
+
+    // FIXME(distributed): should not need to be distributed
+    distributed func terminated(actor id: ActorID) async throws {
+        self.workers.remove(id)
     }
 
     distributed func done() {

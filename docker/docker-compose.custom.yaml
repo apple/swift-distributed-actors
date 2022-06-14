@@ -14,7 +14,7 @@ services:
       dockerfile: Dockerfile.custom
       args:
         # to be overrided
-        - TOOLCHAIN_URL=https://ci.swift.org/job/swift-PR-toolchain-Linux/702//artifact/branch-main/swift-PR-39682-702-ubuntu16.04.tar.gz
+        - TOOLCHAIN_URL=https://ci.swift.org/job/swift-PR-toolchain-Linux/702/artifact/branch-main/swift-PR-39682-702-ubuntu16.04.tar.gz
 
   common: &common
     image: swift-distributed-actors:custom

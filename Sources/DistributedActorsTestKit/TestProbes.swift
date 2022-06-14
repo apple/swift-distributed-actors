@@ -377,6 +377,26 @@ extension ActorTestProbe where Message: Equatable {
     }
 }
 
+extension ActorTestProbe where Message: StringProtocol {
+    public func expectMessage(prefix: Message, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
+        try self.expectMessage(prefix: prefix, within: self.expectationTimeout, file: file, line: line, column: column)
+    }
+
+    public func expectMessage(prefix: Message, within timeout: Duration, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
+        let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
+        do {
+            let receivedMessage = try self.receiveMessage(within: timeout)
+            self.lastMessage = receivedMessage
+            guard receivedMessage.starts(with: prefix) else {
+                throw callSite.notMatchingPrefixError(got: receivedMessage, expected: prefix)
+            }
+        } catch {
+            let message = "Did not receive String message with prefix [\(prefix)] within [\(timeout.prettyDescription)], error: \(error)"
+            throw callSite.error(message)
+        }
+    }
+}
+
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Expecting multiple messages
 

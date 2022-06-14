@@ -105,7 +105,10 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
             self.printAllCapturedLogs()
         }
 
-        self._nodes.forEach { try! $0.shutdown().wait() }
+        self._nodes.forEach { node in
+            node.log.warning("======================== TEST TEAR DOWN: SHUTDOWN ========================")
+            try! node.shutdown().wait()
+        }
 
         self._nodes = []
         self._testKits = []

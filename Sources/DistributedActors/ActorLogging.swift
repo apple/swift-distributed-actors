@@ -76,7 +76,7 @@ internal final class LoggingContext {
 extension Logger {
     /// Create a logger specific to this actor.
     public init<Act: DistributedActor>(actor: Act) where Act.ActorSystem == ClusterSystem {
-        var log = Logger(label: "\(actor.id)")
+        var log = actor.actorSystem.settings.logging.baseLogger
         log[metadataKey: "actor/path"] = "\(actor.id.path)"
         log[metadataKey: "actor/id"] = "\(actor.id)"
         self = log

@@ -559,6 +559,18 @@ extension CallSiteInfo {
 
         return CallSiteError(callSite: self, explained: message)
     }
+
+    /// Prepares a detailed error, specialized for a prefix mismatch of a string
+    ///
+    /// - Warning: Performs file IO in order to read source location line where failure happened
+    func notMatchingPrefixError(got it: any StringProtocol, expected: any StringProtocol, failTest: Bool = true) -> CallSiteError {
+        let padding = String(repeating: " ", count: "[error]".count)
+        return self.error("""
+        [\(it)]
+        does start with expected prefix:
+        \(padding)[\(expected)]\n
+        """, failTest: failTest)
+    }
 }
 
 /// An error type with additional ``CallSiteInfo`` which is able to pretty print failures.

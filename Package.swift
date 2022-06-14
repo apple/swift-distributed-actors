@@ -226,15 +226,23 @@ let products: [PackageDescription.Product] = [
     ),
 ]
 
+// This is a workaround since current published nightly docker images don't have the latest Swift availabilities yet
+let platforms: [SupportedPlatform]?
+#if os(Linux)
+platforms = nil
+#else
+platforms = [
+    // we require the 'distributed actor' language and runtime feature:
+    .iOS(.v16),
+    .macOS(.v13),
+    .tvOS(.v16),
+    .watchOS(.v9),
+]
+#endif
+
 var package = Package(
     name: "swift-distributed-actors",
-    platforms: [
-        // we require the 'distributed actor' language and runtime feature:
-        .iOS(.v16),
-        .macOS(.v13),
-        .tvOS(.v16),
-        .watchOS(.v9),
-    ],
+    platforms: platforms,
     products: products,
 
     dependencies: dependencies,
