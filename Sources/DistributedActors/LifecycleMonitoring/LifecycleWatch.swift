@@ -66,16 +66,17 @@ extension LifecycleWatch {
         of watchee: Watchee,
         file: String = #file, line: UInt = #line
     ) -> Watchee where Watchee: DistributedActor, Watchee.ActorSystem == ClusterSystem {
-        // TODO(distributed): reimplement this as self.id as? _ActorContext which will have the watch things.
-        guard let watch = self.actorSystem._getLifecycleWatch(watcher: self) else {
-            return watchee
-        }
-
-        watch.termination(of: watchee, whenTerminated: { id in
-            try? await self.terminated(actor: id)
-        }, file: file, line: line)
-
-        return watchee
+//        // TODO(distributed): reimplement this as self.id as? _ActorContext which will have the watch things.
+//        guard let watch = self.actorSystem._getLifecycleWatch(watcher: self) else {
+//            return watchee
+//        }
+//
+//        watch.termination(of: watchee, whenTerminated: { id in
+//            try? await self.terminated(actor: id)
+//        }, file: file, line: line)
+//
+//        return watchee
+        fatalError("X")
     }
 
     /// Reverts the watching of an previously watched actor.
@@ -388,7 +389,7 @@ extension LifecycleWatchContainer {
             .remoteDistributedActorWatched(
                 remoteNode: watchedID.uniqueNode,
                 watcherID: self.watcherID,
-                nodeTerminated: { [weak self, system] uniqueNode in
+                nodeTerminated: { [weak self, weak system] uniqueNode in
                     guard let self else {
                         return
                     }
@@ -401,9 +402,7 @@ extension LifecycleWatchContainer {
                         return
                     }
 
-                    guard let myselfRef = system._resolveUntyped(context: .init(id: self.watcherID, system: system)) else {
-                        return
-                    }
+                    let myselfRef = system._resolveUntyped(context: .init(id: self.watcherID, system: system))
                     myselfRef._sendSystemMessage(.nodeTerminated(uniqueNode), file: file, line: line)
                 }
             )
