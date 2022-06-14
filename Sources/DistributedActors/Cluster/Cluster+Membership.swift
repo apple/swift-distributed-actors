@@ -663,14 +663,18 @@ extension MembershipDiff: CustomDebugStringConvertible {
 // MARK: Errors
 
 extension Cluster {
-    public enum MembershipError: Error, CustomStringConvertible {
+    public enum MembershipError: Error, CustomPrettyStringConvertible {
         case nonMemberLeaderSelected(Cluster.Membership, wannabeLeader: Cluster.Member)
         case notFound(UniqueNode, in: Cluster.Membership)
         case atLeastStatusRequirementNotMet(expectedAtLeast: Cluster.MemberStatus, found: Cluster.Member)
         case statusRequirementNotMet(expected: Cluster.MemberStatus, found: Cluster.Member)
         case awaitStatusTimedOut(Duration, Error?)
 
-        public var description: String {
+        public var prettyDescription: String {
+            "\(Self.self)(\(self), details: \(self.details))"
+        }
+
+        private var details: String {
             switch self {
             case .nonMemberLeaderSelected(let membership, let wannabeLeader):
                 return "[\(wannabeLeader)] selected leader but is not a member [\(membership)]"
@@ -688,10 +692,7 @@ extension Cluster {
                     lastErrorMessage = "Last error: <none>"
                 }
 
-                return """
-                No result within \(duration.prettyDescription).
-                \(lastErrorMessage)
-                """
+                return "No result within \(duration.prettyDescription). \(lastErrorMessage)"
             }
         }
     }
