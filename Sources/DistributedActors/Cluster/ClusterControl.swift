@@ -156,10 +156,23 @@ public struct ClusterControl {
         self.ref.tell(.command(.downCommandMember(member)))
     }
 
+    /// Wait, within the given duration, until this actor system has joined the node's cluster.
+    ///
+    /// - Parameters
+    ///   - node: The node to be joined by this system.
+    ///   - within: Duration to wait for.
+    ///
+    /// - Returns `Cluster.Member` for the joined node.
     public func joined(node: UniqueNode, within: Duration) async throws -> Cluster.Member {
         try await self.waitFor(node, .up, within: within)
     }
 
+    /// Wait, within the given duration, for this actor system to be a member of all the nodes' respective cluster and have the specified status.
+    ///
+    /// - Parameters
+    ///   - nodes: The nodes to be joined by this system.
+    ///   - status: The expected member status.
+    ///   - within: Duration to wait for.
     public func waitFor(_ nodes: Set<UniqueNode>, _ status: Cluster.MemberStatus, within: Duration) async throws {
         try await withThrowingTaskGroup(of: Void.self) { group in
             for node in nodes {
@@ -172,6 +185,12 @@ public struct ClusterControl {
         }
     }
 
+    /// Wait, within the given duration, for this actor system to be a member of all the nodes' respective cluster and have **at least** the specified status.
+    ///
+    /// - Parameters
+    ///   - nodes: The nodes to be joined by this system.
+    ///   - status: The minimum expected member status.
+    ///   - within: Duration to wait for.
     public func waitFor(_ nodes: Set<UniqueNode>, atLeast atLeastStatus: Cluster.MemberStatus, within: Duration) async throws {
         try await withThrowingTaskGroup(of: Void.self) { group in
             for node in nodes {
@@ -184,6 +203,14 @@ public struct ClusterControl {
         }
     }
 
+    /// Wait, within the given duration, for this actor system to be a member of the node's cluster and have the specified status.
+    ///
+    /// - Parameters
+    ///   - node: The node to be joined by this system.
+    ///   - status: The expected member status.
+    ///   - within: Duration to wait for.
+    ///
+    /// - Returns `Cluster.Member` for the joined node.
     public func waitFor(_ node: UniqueNode, _ status: Cluster.MemberStatus, within: Duration) async throws -> Cluster.Member {
         try await self.waitForMembershipEventually(within: within) { membership in
             guard let foundMember = membership.uniqueMember(node) else {
@@ -197,6 +224,14 @@ public struct ClusterControl {
         }
     }
 
+    /// Wait, within the given duration, for this actor system to be a member of the node's cluster and have **at least** the specified status.
+    ///
+    /// - Parameters
+    ///   - node: The node to be joined by this system.
+    ///   - atLeastStatus: The minimum expected member status.
+    ///   - within: Duration to wait for.
+    ///
+    /// - Returns `Cluster.Member` for the joined node or `nil` if member is expected to be down or removed.
     public func waitFor(_ node: UniqueNode, atLeast atLeastStatus: Cluster.MemberStatus, within: Duration) async throws -> Cluster.Member? {
         try await self.waitForMembershipEventually(within: within) { membership in
             guard let foundMember = membership.uniqueMember(node) else {
