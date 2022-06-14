@@ -666,8 +666,8 @@ extension Cluster {
     public enum MembershipError: Error {
         case nonMemberLeaderSelected(Cluster.Membership, wannabeLeader: Cluster.Member)
         case notFound(UniqueNode)
-        case atLeastStatusRequirementNotMet(expectedAtLeast: Cluster.MemberStatus, actual: Cluster.MemberStatus)
-        case statusRequirementNotMet(expected: Cluster.MemberStatus, actual: Cluster.MemberStatus)
+        case atLeastStatusRequirementNotMet(expectedAtLeast: Cluster.MemberStatus, found: Cluster.Member)
+        case statusRequirementNotMet(expected: Cluster.MemberStatus, found: Cluster.Member)
         case awaitStatusTimedOut(Duration, Error?)
     }
 }

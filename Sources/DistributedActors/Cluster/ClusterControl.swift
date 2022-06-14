@@ -218,7 +218,7 @@ public struct ClusterControl {
             }
 
             if status != foundMember.status {
-                throw Cluster.MembershipError.statusRequirementNotMet(expected: status, actual: foundMember.status)
+                throw Cluster.MembershipError.statusRequirementNotMet(expected: status, found: foundMember)
             }
             return foundMember
         }
@@ -244,7 +244,7 @@ public struct ClusterControl {
             }
 
             if atLeastStatus <= foundMember.status {
-                throw Cluster.MembershipError.atLeastStatusRequirementNotMet(expectedAtLeast: atLeastStatus, actual: foundMember.status)
+                throw Cluster.MembershipError.atLeastStatusRequirementNotMet(expectedAtLeast: atLeastStatus, found: foundMember)
             }
             return foundMember
         }

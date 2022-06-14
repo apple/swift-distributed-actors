@@ -59,11 +59,9 @@ final class MembershipGossipClusteredTests: ClusteredActorSystemsXCTestCase {
         try assertAssociated(second, withAtLeast: third.cluster.uniqueNode)
         try assertAssociated(first, withAtLeast: third.cluster.uniqueNode)
 
-        try await self.testKit(second).eventually(within: .seconds(10)) {
-            try await self.assertMemberStatus(on: second, node: first.cluster.uniqueNode, is: .up)
-            try await self.assertMemberStatus(on: second, node: second.cluster.uniqueNode, is: .up)
-            try await self.assertMemberStatus(on: second, node: third.cluster.uniqueNode, is: .up)
-        }
+        try await self.assertMemberStatus(on: second, node: first.cluster.uniqueNode, is: .up, within: .seconds(10))
+        try await self.assertMemberStatus(on: second, node: second.cluster.uniqueNode, is: .up, within: .seconds(10))
+        try await self.assertMemberStatus(on: second, node: third.cluster.uniqueNode, is: .up, within: .seconds(10))
 
         let firstEvents = testKit(first).spawnEventStreamTestProbe(subscribedTo: first.cluster.events)
         let secondEvents = testKit(second).spawnEventStreamTestProbe(subscribedTo: second.cluster.events)

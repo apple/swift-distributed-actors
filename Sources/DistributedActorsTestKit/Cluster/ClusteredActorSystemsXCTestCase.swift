@@ -163,16 +163,7 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
             fatalError("Must at least have 1 system present to use [\(#function)]")
         }
 
-        try await self.testKit(onSystem).eventually(within: within, file: file, line: line) {
-            do {
-                // all members on onMember should have reached this status (e.g. up)
-                for node in nodes {
-                    try await self.assertMemberStatus(on: onSystem, node: node, is: status, file: file, line: line)
-                }
-            } catch {
-                throw error
-            }
-        }
+        try await onSystem.cluster.waitFor(Set(nodes), status, within: within)
     }
 
     public func ensureNodes(
@@ -354,25 +345,40 @@ extension ClusteredActorSystemsXCTestCase {
         }
     }
 
-    /// Asserts the given member node has the expected `status`.
-    ///
-    /// An error is thrown but NOT failing the test; use in pair with `testKit.eventually` to achieve the expected behavior.
+    /// Asserts the given member node has the expected `status` within the duration.
     public func assertMemberStatus(
         on system: ClusterSystem, node: UniqueNode,
         is expectedStatus: Cluster.MemberStatus,
+        within: Duration,
         file: StaticString = #file, line: UInt = #line
     ) async throws {
         let testKit = self.testKit(system)
-        let membership = await system.cluster.membershipSnapshot
-        guard let foundMember = membership.uniqueMember(node) else {
-            throw testKit.error("Expected [\(system.cluster.uniqueNode)] to know about [\(node)] member", file: file, line: line)
-        }
 
-        if foundMember.status != expectedStatus {
+        do {
+            _ = try await system.cluster.waitFor(node, expectedStatus, within: within)
+        } catch Cluster.MembershipError.notFound {
+            throw testKit.error("Expected [\(system.cluster.uniqueNode)] to know about [\(node)] member", file: file, line: line)
+        } catch Cluster.MembershipError.statusRequirementNotMet(_, let foundMember) {
             throw testKit.error(
                 """
                 Expected \(reflecting: foundMember.uniqueNode) on \(reflecting: system.cluster.uniqueNode) \
                 to be seen as: [\(expectedStatus)], but was [\(foundMember.status)]
+                """,
+                file: file,
+                line: line
+            )
+        } catch Cluster.MembershipError.awaitStatusTimedOut(_, let lastError) {
+            let lastErrorMessage: String
+            if let error = lastError {
+                lastErrorMessage = "Last error: \(error)"
+            } else {
+                lastErrorMessage = "Last error: <none>"
+            }
+
+            throw testKit.error(
+                """
+                No result within \(within.prettyDescription).
+                \(lastErrorMessage)
                 """,
                 file: file,
                 line: line
