@@ -35,7 +35,6 @@ public protocol LifecycleWatch: DistributedActor where ActorSystem == ClusterSys
 // MARK: Lifecycle Watch API
 
 extension LifecycleWatch {
-
     /// Watch the `watchee` actor for termination, and trigger the `whenTerminated` callback when
     @available(*, deprecated, message: "Replaced with the much safer `watchTermination(of:)` paired with `actorTerminated(_:)`")
     public func watchTermination<Watchee>(
@@ -71,7 +70,7 @@ extension LifecycleWatch {
         guard let watch = self.actorSystem._getLifecycleWatch(watcher: self) else {
             return watchee
         }
-        
+
         watch.termination(of: watchee, whenTerminated: { id in
             try? await self.terminated(actor: id)
         }, file: file, line: line)
@@ -385,31 +384,27 @@ extension LifecycleWatchContainer {
         watchedID: ActorID,
         file: String = #file, line: UInt = #line
     ) {
-        pprint("[>>>>> /system/nodeDeathWatcher] subscribe...")
         self.nodeDeathWatcher?.tell( // different actor
             .remoteDistributedActorWatched(
                 remoteNode: watchedID.uniqueNode,
                 watcherID: self.watcherID,
                 nodeTerminated: { [weak self, system] uniqueNode in
-                    pprint("[>>>>> /system/nodeDeathWatcher] callback watched: \(watchedID)...")
-                    
                     guard let self else {
                         return
                     }
-                    
+
                     Task {
                         self.receiveNodeTerminated(uniqueNode)
                     }
-                    
+
                     guard let system = system else {
                         return
                     }
-                    
+
                     guard let myselfRef = system._resolveUntyped(context: .init(id: self.watcherID, system: system)) else {
                         return
                     }
                     myselfRef._sendSystemMessage(.nodeTerminated(uniqueNode), file: file, line: line)
-                    
                 }
             )
         )
