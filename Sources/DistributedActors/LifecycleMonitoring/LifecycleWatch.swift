@@ -39,7 +39,7 @@ extension LifecycleWatch {
     @available(*, deprecated, message: "Replaced with the much safer `watchTermination(of:)` paired with `actorTerminated(_:)`")
     public func watchTermination<Watchee>(
         of watchee: Watchee,
-        @_inheritActorContext @_implicitSelfCapture whenTerminated: @escaping @Sendable (ID) async -> Void,
+        @_inheritActorContext whenTerminated: @escaping @Sendable (ID) async -> Void,
         file: String = #file, line: UInt = #line
     ) -> Watchee where Watchee: DistributedActor, Watchee.ActorSystem == ClusterSystem {
         // TODO(distributed): reimplement this as self.id as? _ActorContext which will have the watch things.
@@ -47,7 +47,7 @@ extension LifecycleWatch {
             return watchee
         }
 
-        watch.termination(of: watchee, whenTerminated: whenTerminated, file: file, line: line)
+        watch.termination(of: watchee.id, whenTerminated: whenTerminated, file: file, line: line)
         return watchee
     }
 
@@ -66,17 +66,16 @@ extension LifecycleWatch {
         of watchee: Watchee,
         file: String = #file, line: UInt = #line
     ) -> Watchee where Watchee: DistributedActor, Watchee.ActorSystem == ClusterSystem {
-//        // TODO(distributed): reimplement this as self.id as? _ActorContext which will have the watch things.
-//        guard let watch = self.actorSystem._getLifecycleWatch(watcher: self) else {
-//            return watchee
-//        }
-//
-//        watch.termination(of: watchee, whenTerminated: { id in
-//            try? await self.terminated(actor: id)
-//        }, file: file, line: line)
-//
-//        return watchee
-        fatalError("X")
+        // TODO(distributed): reimplement this as self.id as? _ActorContext which will have the watch things.
+        guard let watch = self.actorSystem._getLifecycleWatch(watcher: self) else {
+            return watchee
+        }
+
+        watch.termination(of: watchee.id, whenTerminated: { id in
+            try? await self.terminated(actor: id)
+        }, file: file, line: line)
+
+        return watchee
     }
 
     /// Reverts the watching of an previously watched actor.
@@ -212,18 +211,14 @@ public final class LifecycleWatchContainer {
 
 extension LifecycleWatchContainer {
     /// Performed by the sending side of "watch", therefore the `watcher` should equal `context.myself`
-    public func termination<Watchee>(
-        of watchee: Watchee,
-        @_inheritActorContext @_implicitSelfCapture whenTerminated: @escaping @Sendable (ClusterSystem.ActorID) async -> Void,
+    public func termination(
+        of watcheeID: ActorID,
+        @_implicitSelfCapture whenTerminated: @escaping @Sendable (ClusterSystem.ActorID) async -> Void,
         file: String = #file, line: UInt = #line
-    ) where Watchee: DistributedActor, Watchee.ActorSystem == ClusterSystem {
-        traceLog_DeathWatch("issue watch: \(watchee) (from \(self.watcherID))")
+    ) {
+        traceLog_DeathWatch("issue watch: \(watcheeID) (from \(self.watcherID))")
 
         let watcherID: ActorID = self.watcherID
-        let watcheeID: ActorID = watchee.id
-        //        guard let watcherID = myself?.id else {
-        //            fatalError("Cannot watch from actor \(optional: self.myself), it is not managed by the cluster. Identity: \(watchee.id)")
-        //        }
 
         // watching ourselves is a no-op, since we would never be able to observe the Terminated message anyway:
         guard watcheeID != watcherID else {
@@ -233,14 +228,14 @@ extension LifecycleWatchContainer {
         let addressableWatchee = self.system._resolveUntyped(context: .init(id: watcheeID, system: self.system))
         let addressableWatcher = self.system._resolveUntyped(context: .init(id: watcherID, system: self.system))
 
-        if self.isWatching(watchee.id) {
+        if self.isWatching(watcheeID) {
             // While we bail out early here, we DO override whichever value was set as the customized termination message.
             // This is to enable being able to keep updating the context associated with a watched actor, e.g. if how
             // we should react to its termination has changed since the last time watch() was invoked.
-            self.watching[watchee.id] = whenTerminated
+            self.watching[watcheeID] = whenTerminated
         } else {
             // not yet watching, so let's add it:
-            self.watching[watchee.id] = whenTerminated
+            self.watching[watcheeID] = whenTerminated
 
             addressableWatchee._sendSystemMessage(.watch(watchee: addressableWatchee, watcher: addressableWatcher), file: file, line: line)
             self.subscribeNodeTerminatedEvents(watchedID: watcheeID, file: file, line: line)

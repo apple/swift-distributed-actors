@@ -142,7 +142,7 @@ final class LifecycleWatchTests: ClusterSystemXCTestCase, @unchecked Sendable {
             let (first, second) = await self.setUpPair() { settings in
                 settings.enabled = true
             }
-            try joinNodes(node: first, with: second, ensureMembers: .up)
+            try await joinNodes(node: first, with: second, ensureMembers: .up)
 
             let juliet = Juliet(probe: pj, actorSystem: first)
 
