@@ -6,7 +6,7 @@ services:
     image: swift-distributed-actors:20.04-main
     build:
       args:
-        base_image: "swiftlang/swift:nightly-main-focal"
+        base_image: "swiftlang/swift:nightly-5.7-focal"
 
   unit-tests:
     image: swift-distributed-actors:20.04-main
