@@ -386,12 +386,11 @@ extension ClusteredActorSystemsXCTestCase {
         atLeast expectedAtLeastStatus: Cluster.MemberStatus,
         within: Duration,
         file: StaticString = #file, line: UInt = #line
-    ) async throws -> Cluster.MemberStatus? {
+    ) async throws {
         let testKit = self.testKit(system)
 
         do {
-            let foundMember = try await system.cluster.waitFor(node, atLeast: expectedAtLeastStatus, within: within)
-            return foundMember == nil ? nil : expectedAtLeastStatus
+            _ = try await system.cluster.waitFor(node, atLeast: expectedAtLeastStatus, within: within)
         } catch let error as Cluster.MembershipError {
             switch error {
             case .notFound:

@@ -71,10 +71,12 @@ public struct ClusterControl {
         }
     }
 
+    private let cluster: ClusterShell?
     internal let ref: ClusterShell.Ref
 
-    init(_ settings: ClusterSystemSettings, clusterRef: ClusterShell.Ref, eventStream: EventStream<Cluster.Event>) {
+    init(_ settings: ClusterSystemSettings, cluster: ClusterShell?, clusterRef: ClusterShell.Ref, eventStream: EventStream<Cluster.Event>) {
         self.settings = settings
+        self.cluster = cluster
         self.ref = clusterRef
         self.events = eventStream
 
@@ -210,10 +212,22 @@ public struct ClusterControl {
     ///   - status: The expected member status.
     ///   - within: Duration to wait for.
     ///
-    /// - Returns `Cluster.Member` for the joined node.
+    /// - Returns `Cluster.Member` for the joined node with the expected status.
+    ///         If the expected status is `.down` or `.removed`, and either a tombstone exists for the node or the associated
+    ///         membership is not found, the `Cluster.Member` returned would have `.removed` status and *unreachable*.
     public func waitFor(_ node: UniqueNode, _ status: Cluster.MemberStatus, within: Duration) async throws -> Cluster.Member {
         try await self.waitForMembershipEventually(within: within) { membership in
+            if status == .down || status == .removed {
+                if let cluster = self.cluster, let tombstone = cluster.getExistingAssociationTombstone(with: node) {
+                    return Cluster.Member(node: node, status: .removed).asUnreachable
+                }
+            }
+
             guard let foundMember = membership.uniqueMember(node) else {
+                if status == .down || status == .removed {
+                    // so we're seeing an already removed member, this can indeed happen and is okey
+                    return Cluster.Member(node: node, status: .removed).asUnreachable
+                }
                 throw Cluster.MembershipError.notFound(node, in: membership)
             }
 
@@ -231,16 +245,23 @@ public struct ClusterControl {
     ///   - atLeastStatus: The minimum expected member status.
     ///   - within: Duration to wait for.
     ///
-    /// - Returns `Cluster.Member` for the joined node or `nil` if member is expected to be down or removed.
-    public func waitFor(_ node: UniqueNode, atLeast atLeastStatus: Cluster.MemberStatus, within: Duration) async throws -> Cluster.Member? {
+    /// - Returns `Cluster.Member` for the joined node with the minimum expected status.
+    ///         If the expected status is at least `.down` or `.removed`, and either a tombstone exists for the node or the associated
+    ///         membership is not found, the `Cluster.Member` returned would have `.removed` status and *unreachable*.
+    public func waitFor(_ node: UniqueNode, atLeast atLeastStatus: Cluster.MemberStatus, within: Duration) async throws -> Cluster.Member {
         try await self.waitForMembershipEventually(within: within) { membership in
+            if atLeastStatus == .down || atLeastStatus == .removed {
+                if let cluster = self.cluster, let tombstone = cluster.getExistingAssociationTombstone(with: node) {
+                    return Cluster.Member(node: node, status: .removed).asUnreachable
+                }
+            }
+
             guard let foundMember = membership.uniqueMember(node) else {
                 if atLeastStatus == .down || atLeastStatus == .removed {
                     // so we're seeing an already removed member, this can indeed happen and is okey
-                    return nil
-                } else {
-                    throw Cluster.MembershipError.notFound(node, in: membership)
+                    return Cluster.Member(node: node, status: .removed).asUnreachable
                 }
+                throw Cluster.MembershipError.notFound(node, in: membership)
             }
 
             if atLeastStatus <= foundMember.status {
