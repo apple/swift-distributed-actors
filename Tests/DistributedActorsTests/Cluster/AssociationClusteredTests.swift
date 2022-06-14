@@ -372,19 +372,18 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
         let secondProbe = self.testKit(second).makeTestProbe(expecting: Cluster.Membership.self)
 
         // we we down first on first, it should become down there:
-        try await self.testKit(first).eventually(within: .seconds(3)) {
+        try self.testKit(first).eventually(within: .seconds(3)) {
             first.cluster.ref.tell(.query(.currentMembership(firstProbe.ref)))
             let firstMembership = try firstProbe.expectMessage()
 
             guard let selfMember = firstMembership.uniqueMember(first.cluster.uniqueNode) else {
                 throw self.testKit(second).error("No self member in membership! Wanted: \(first.cluster.uniqueNode)", line: #line - 1)
             }
-
-            try await self.assertMemberStatus(on: first, node: first.cluster.uniqueNode, is: .down)
             guard selfMember.status == .down else {
                 throw self.testKit(first).error("Wanted self member to be DOWN, but was: \(selfMember)", line: #line - 1)
             }
         }
+        try await self.assertMemberStatus(on: first, node: first.cluster.uniqueNode, is: .down, within: .seconds(3))
 
         // and the second node should also notice
         try self.testKit(second).eventually(within: .seconds(3)) {

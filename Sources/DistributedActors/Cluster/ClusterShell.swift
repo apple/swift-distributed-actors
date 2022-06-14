@@ -64,6 +64,12 @@ internal class ClusterShell {
         }
     }
 
+    internal func getExistingAssociationTombstone(with node: UniqueNode) -> Association.Tombstone? {
+        self._associationsLock.withLock {
+            self._associationTombstones[node]
+        }
+    }
+
     /// Get an existing association or ensure that a new one shall be stored and joining kicked off if the target node was not known yet.
     /// Safe to concurrently access by privileged internals directly
     internal func getEnsureAssociation(with node: UniqueNode, file: String = #file, line: UInt = #line) -> StoredAssociationState {

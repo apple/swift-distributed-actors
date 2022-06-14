@@ -163,15 +163,13 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
             fatalError("Must at least have 1 system present to use [\(#function)]")
         }
 
-        try await self.testKit(onSystem).eventually(within: within, file: file, line: line) {
-            do {
-                // all members on onMember should have reached this status (e.g. up)
-                for node in nodes {
-                    try await self.assertMemberStatus(on: onSystem, node: node, is: status, file: file, line: line)
-                }
-            } catch {
-                throw error
-            }
+        let testKit = self.testKit(onSystem)
+        do {
+            try await onSystem.cluster.waitFor(Set(nodes), status, within: within)
+        } catch let error as Cluster.MembershipError {
+            throw testKit.error("\(error.prettyDescription)", file: file, line: line)
+        } catch {
+            throw testKit.error("\(error)", file: file, line: line)
         }
     }
 
@@ -183,15 +181,14 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
             fatalError("Must at least have 1 system present to use [\(#function)]")
         }
 
-        try await self.testKit(onSystem).eventually(within: within, file: file, line: line) {
-            do {
-                // all members on onMember should have reached this status (e.g. up)
-                for node in nodes {
-                    _ = try await self.assertMemberStatus(on: onSystem, node: node, atLeast: status, file: file, line: line)
-                }
-            } catch {
-                throw error
-            }
+        let testKit = self.testKit(onSystem)
+        do {
+            // all members on onMember should have reached this status (e.g. up)
+            try await onSystem.cluster.waitFor(Set(nodes), atLeast: status, within: within)
+        } catch let error as Cluster.MembershipError {
+            throw testKit.error("\(error.prettyDescription)", file: file, line: line)
+        } catch {
+            throw testKit.error("\(error)", file: file, line: line)
         }
     }
 }
@@ -354,60 +351,63 @@ extension ClusteredActorSystemsXCTestCase {
         }
     }
 
-    /// Asserts the given member node has the expected `status`.
-    ///
-    /// An error is thrown but NOT failing the test; use in pair with `testKit.eventually` to achieve the expected behavior.
+    /// Asserts the given member node has the expected `status` within the duration.
     public func assertMemberStatus(
         on system: ClusterSystem, node: UniqueNode,
         is expectedStatus: Cluster.MemberStatus,
+        within: Duration,
         file: StaticString = #file, line: UInt = #line
     ) async throws {
         let testKit = self.testKit(system)
-        let membership = await system.cluster.membershipSnapshot
-        guard let foundMember = membership.uniqueMember(node) else {
-            throw testKit.error("Expected [\(system.cluster.uniqueNode)] to know about [\(node)] member", file: file, line: line)
-        }
 
-        if foundMember.status != expectedStatus {
-            throw testKit.error(
-                """
-                Expected \(reflecting: foundMember.uniqueNode) on \(reflecting: system.cluster.uniqueNode) \
-                to be seen as: [\(expectedStatus)], but was [\(foundMember.status)]
-                """,
-                file: file,
-                line: line
-            )
+        do {
+            _ = try await system.cluster.waitFor(node, expectedStatus, within: within)
+        } catch let error as Cluster.MembershipError {
+            switch error {
+            case .notFound:
+                throw testKit.error("Expected [\(system.cluster.uniqueNode)] to know about [\(node)] member", file: file, line: line)
+            case .statusRequirementNotMet(_, let foundMember):
+                throw testKit.error(
+                    """
+                    Expected \(reflecting: foundMember.uniqueNode) on \(reflecting: system.cluster.uniqueNode) \
+                    to be seen as: [\(expectedStatus)], but was [\(foundMember.status)]
+                    """,
+                    file: file,
+                    line: line
+                )
+            default:
+                throw testKit.error(error.prettyDescription, file: file, line: line)
+            }
         }
     }
 
     public func assertMemberStatus(
         on system: ClusterSystem, node: UniqueNode,
         atLeast expectedAtLeastStatus: Cluster.MemberStatus,
+        within: Duration,
         file: StaticString = #file, line: UInt = #line
-    ) async throws -> Cluster.MemberStatus? {
+    ) async throws {
         let testKit = self.testKit(system)
-        let membership = await system.cluster.membershipSnapshot
-        guard let foundMember = membership.uniqueMember(node) else {
-            if expectedAtLeastStatus == .down || expectedAtLeastStatus == .removed {
-                // so we're seeing an already removed member, this can indeed happen and is okey
-                return nil
-            } else {
+
+        do {
+            _ = try await system.cluster.waitFor(node, atLeast: expectedAtLeastStatus, within: within)
+        } catch let error as Cluster.MembershipError {
+            switch error {
+            case .notFound:
                 throw testKit.error("Expected [\(system.cluster.uniqueNode)] to know about [\(node)] member", file: file, line: line)
+            case .atLeastStatusRequirementNotMet(_, let foundMember):
+                throw testKit.error(
+                    """
+                    Expected \(reflecting: foundMember.uniqueNode) on \(reflecting: system.cluster.uniqueNode) \
+                    to be seen as at-least: [\(expectedAtLeastStatus)], but was [\(foundMember.status)]
+                    """,
+                    file: file,
+                    line: line
+                )
+            default:
+                throw testKit.error(error.prettyDescription, file: file, line: line)
             }
         }
-
-        if expectedAtLeastStatus <= foundMember.status {
-            throw testKit.error(
-                """
-                Expected \(reflecting: foundMember.uniqueNode) on \(reflecting: system.cluster.uniqueNode) \
-                to be seen as at-least: [\(expectedAtLeastStatus)], but was [\(foundMember.status)]
-                """,
-                file: file,
-                line: line
-            )
-        }
-
-        return expectedAtLeastStatus
     }
 
     /// Assert based on the event stream of ``Cluster/Event`` that the given `node` was downed or removed.

@@ -314,7 +314,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
             )
 
             _ = self._clusterStore.storeIfNilThenLoad(Box(nil))
-            _ = self._clusterControlStore.storeIfNilThenLoad(Box(ClusterControl(settings, clusterRef: self.deadLetters.adapted(), eventStream: clusterEvents)))
+            _ = self._clusterControlStore.storeIfNilThenLoad(Box(ClusterControl(settings, cluster: nil, clusterRef: self.deadLetters.adapted(), eventStream: clusterEvents)))
         }
 
         // node watcher MUST be prepared before receptionist (or any other actor) because it (and all actors) need it if we're running clustered
@@ -331,7 +331,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
                 customBehavior: ClusterEventStream.Shell.behavior
             )
             let clusterRef = try! cluster.start(system: self, clusterEvents: clusterEvents) // only spawns when cluster is initialized
-            _ = self._clusterControlStore.storeIfNilThenLoad(Box(ClusterControl(settings, clusterRef: clusterRef, eventStream: clusterEvents)))
+            _ = self._clusterControlStore.storeIfNilThenLoad(Box(ClusterControl(settings, cluster: cluster, clusterRef: clusterRef, eventStream: clusterEvents)))
 
             self._associationTombstoneCleanupTask = eventLoopGroup.next().scheduleRepeatedTask(
                 initialDelay: settings.associationTombstoneCleanupInterval.toNIO,
