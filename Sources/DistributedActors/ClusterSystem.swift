@@ -392,11 +392,14 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         /// Starts plugins after the system is fully initialized
         await self.settings.plugins.startAll(self)
 
-        self.log.info("ClusterSystem [\(self.name)] initialized, listening on: \(self.settings.uniqueBindNode)")
         if settings.enabled {
+            self.log.info("ClusterSystem [\(self.name)] initialized, listening on: \(self.settings.uniqueBindNode): \(self.cluster.ref)")
+
             self.log.info("Setting in effect: .autoLeaderElection: \(self.settings.autoLeaderElection)")
             self.log.info("Setting in effect: .downingStrategy: \(self.settings.downingStrategy)")
             self.log.info("Setting in effect: .onDownAction: \(self.settings.onDownAction)")
+        } else {
+            self.log.info("ClusterSystem [\(self.name)] initialized; Cluster disabled, not listening for connections.")
         }
     }
 

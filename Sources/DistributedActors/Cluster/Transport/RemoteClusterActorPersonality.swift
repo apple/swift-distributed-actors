@@ -69,7 +69,9 @@ public final class _RemoteClusterActorPersonality<Message: Codable> {
     private var _cachedAssociation: ManagedAtomicLazyReference<Association>
 
     init(shell: ClusterShell, id: ActorID, system: ClusterSystem) {
-        precondition(id._isRemote, "RemoteActorRef MUST be remote. ActorID was: \(String(reflecting: id))")
+        if !id._isRemote {
+            let _: Void = fatalErrorBacktrace("RemoteActorRef MUST be remote. ActorID was: \(id.detailedDescription)")
+        }
 
         self._cachedAssociation = ManagedAtomicLazyReference()
 

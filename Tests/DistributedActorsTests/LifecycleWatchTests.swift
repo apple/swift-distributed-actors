@@ -23,7 +23,6 @@ import XCTest
 // MARK: Romeo
 
 distributed actor Romeo: LifecycleWatch, CustomStringConvertible {
-    typealias ActorSystem = ClusterSystem
 
     let probe: ActorTestProbe<String>
     lazy var log = Logger(actor: self)
@@ -35,13 +34,14 @@ distributed actor Romeo: LifecycleWatch, CustomStringConvertible {
     }
 
     deinit {
-        probe.tell("Romeo deinit")
+//         probe.tell("Romeo deinit")
     }
 
     distributed func greet(_ greeting: String) {
         // nothing important here
     }
 
+    // FIXME(distributed): Should not need to be distributed: https://github.com/apple/swift/pull/59397
     public distributed func terminated(actor id: ActorID) async throws {
         // ignore
     }
@@ -56,6 +56,7 @@ distributed actor Romeo: LifecycleWatch, CustomStringConvertible {
 
 distributed actor Juliet: LifecycleWatch, CustomStringConvertible {
     let probe: ActorTestProbe<String>
+    lazy var log = Logger(actor: self)
 
     init(probe: ActorTestProbe<String>, actorSystem: ActorSystem) {
         self.actorSystem = actorSystem
@@ -63,23 +64,17 @@ distributed actor Juliet: LifecycleWatch, CustomStringConvertible {
         probe.tell("Juliet init")
     }
 
-    distributed func meetWatchCallback(
-        _ romeo: Romeo,
-        unwatch doUnwatch: Bool
-    ) async throws {
+    distributed func meetWatch(_ romeo: Romeo, unwatch doUnwatch: Bool) async throws {
         watchTermination(of: romeo)
         if doUnwatch {
             unwatchTermination(of: romeo)
         }
+        self.log.info("Watched \(romeo)")
     }
 
-//    public nonisolated func terminated(actor id: ActorID) async {
-//        await self.whenLocal { __secretlyKnownToBeLocal in
-//            await __secretlyKnownToBeLocal.probe.tell("Received terminated: \(id)")
-//        }
-//    }
-
+    // FIXME(distributed): Should not need to be distributed: https://github.com/apple/swift/pull/59397
     public distributed func terminated(actor id: ActorID) async { // not REALLY distributed...
+        self.log.info("Got terminated: \(id)")
         self.probe.tell("Received terminated: \(id)")
     }
 
@@ -92,41 +87,79 @@ distributed actor Juliet: LifecycleWatch, CustomStringConvertible {
 // MARK: Tests
 
 final class LifecycleWatchTests: ClusterSystemXCTestCase, @unchecked Sendable {
-    func test_watch_shouldTriggerTerminatedWhenWatchedActorDeinits() async throws {
-        let pj = self.testKit.makeTestProbe(expecting: String.self)
-        let pr = self.testKit.makeTestProbe(expecting: String.self)
-        let juliet = Juliet(probe: pj, actorSystem: system)
-
-        func meet() async throws {
-            var romeo: Romeo? = Romeo(probe: pr, actorSystem: system)
-
-            try await juliet.meetWatchCallback(romeo!, unwatch: false)
-            romeo = nil
-        }
-        try await meet()
-
-        try pj.expectMessage("Juliet init")
-        try pr.expectMessage("Romeo init")
-        try pr.expectMessage("Romeo deinit")
-        try pj.expectMessage("Received terminated: /user/Romeo-b")
+    
+    override func configureLogCapture(settings: inout LogCapture.Settings) {
+        settings.excludeActorPaths = [
+            "/system/cluster",
+            "/system/gossip",
+            "/system/cluster/gossip",
+            "/system/receptionist",
+            "/system/receptionist-ref",
+            "/system/cluster/swim",
+            "/system/clusterEvents",
+        ]
     }
+    
+//    func test_watch_shouldTriggerTerminatedWhenWatchedActorDeinits() async throws {
+//        let pj = self.testKit.makeTestProbe(expecting: String.self)
+//        let pr = self.testKit.makeTestProbe(expecting: String.self)
+//        let juliet = Juliet(probe: pj, actorSystem: system)
+//
+//        func meet() async throws {
+//            var romeo: Romeo? = Romeo(probe: pr, actorSystem: system)
+//
+//            try await juliet.meetWatchCallback(romeo!, unwatch: false)
+//            romeo = nil
+//        }
+//        try await meet()
+//
+//        try pj.expectMessage("Juliet init")
+//        try pr.expectMessage("Romeo init")
+////        try pr.expectMessage("Romeo deinit")
+//        try pj.expectMessage("Received terminated: /user/Romeo-b")
+//    }
+//
+//    func test_watchThenUnwatch_shouldTriggerTerminatedWhenWatchedActorDeinits() async throws {
+//        let pj = self.testKit.makeTestProbe(expecting: String.self)
+//        let pr = self.testKit.makeTestProbe(expecting: String.self)
+//        let juliet = Juliet(probe: pj, actorSystem: system)
+//
+//        func meet() async throws {
+//            var romeo: Romeo? = Romeo(probe: pr, actorSystem: system)
+//
+//            try await juliet.meetWatchCallback(romeo!, unwatch: true)
+//            romeo = nil
+//        }
+//        try await meet()
+//
+//        try pj.expectMessage("Juliet init")
+//        try pr.expectMessage("Romeo init")
+////        try pr.expectMessage("Romeo deinit")
+//        try pj.expectNoMessage(for: .milliseconds(300))
+//    }
 
-    func test_watchThenUnwatch_shouldTriggerTerminatedWhenWatchedActorDeinits() async throws {
+    func test_watch_shouldTriggerTerminatedWhenNodeTerminates() async throws {
         let pj = self.testKit.makeTestProbe(expecting: String.self)
         let pr = self.testKit.makeTestProbe(expecting: String.self)
-        let juliet = Juliet(probe: pj, actorSystem: system)
 
-        func meet() async throws {
-            var romeo: Romeo? = Romeo(probe: pr, actorSystem: system)
-
-            try await juliet.meetWatchCallback(romeo!, unwatch: true)
-            romeo = nil
+        let (first, second) = await self.setUpPair() { settings in
+            settings.enabled = true
         }
-        try await meet()
+        try joinNodes(node: first, with: second, ensureMembers: .up)
 
+        let juliet = Juliet(probe: pj, actorSystem: first)
+
+        let romeo = Romeo(probe: pr, actorSystem: second)
+        let remoteRomeo = try! Romeo.resolve(id: romeo.id, using: first)
+        try assertRemoteActor(remoteRomeo)
+
+        try await juliet.meetWatch(remoteRomeo, unwatch: false)
+
+        first.cluster.down(node: second.cluster.uniqueNode.node)
+        
         try pj.expectMessage("Juliet init")
         try pr.expectMessage("Romeo init")
-        try pr.expectMessage("Romeo deinit")
-        try pj.expectNoMessage(for: .milliseconds(300))
+//        try pr.expectMessage("Romeo deinit")
+        try pj.expectMessage("Received terminated: /user/Romeo-b", within: .seconds(10))
     }
 }
