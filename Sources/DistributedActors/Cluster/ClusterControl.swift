@@ -214,7 +214,7 @@ public struct ClusterControl {
     ///
     /// - Returns `Cluster.Member` for the joined node with the expected status.
     ///         If the expected status is `.down` or `.removed`, and the node is already known to have been removed from the cluster
-    ///         a synthesized `Cluster/MemberStatus/removed` (and `.unreachable`) member is returned. 
+    ///         a synthesized `Cluster/MemberStatus/removed` (and `.unreachable`) member is returned.
     public func waitFor(_ node: UniqueNode, _ status: Cluster.MemberStatus, within: Duration) async throws -> Cluster.Member {
         try await self.waitForMembershipEventually(within: within) { membership in
             if status == .down || status == .removed {
