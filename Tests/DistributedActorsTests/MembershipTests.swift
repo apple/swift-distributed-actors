@@ -161,7 +161,7 @@ final class MembershipTests: XCTestCase {
         do {
             _ = try membership.applyLeadershipChange(to: self.memberD) // not part of membership (!)
         } catch {
-            "\(error)".shouldStartWith(prefix: "nonMemberLeaderSelected")
+            "\(error)".shouldContain("selected leader but is not a member")
         }
     }
 

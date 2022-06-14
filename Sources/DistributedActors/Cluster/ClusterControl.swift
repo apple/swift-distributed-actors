@@ -214,7 +214,7 @@ public struct ClusterControl {
     public func waitFor(_ node: UniqueNode, _ status: Cluster.MemberStatus, within: Duration) async throws -> Cluster.Member {
         try await self.waitForMembershipEventually(within: within) { membership in
             guard let foundMember = membership.uniqueMember(node) else {
-                throw Cluster.MembershipError.notFound(node)
+                throw Cluster.MembershipError.notFound(node, in: membership)
             }
 
             if status != foundMember.status {
@@ -239,7 +239,7 @@ public struct ClusterControl {
                     // so we're seeing an already removed member, this can indeed happen and is okey
                     return nil
                 } else {
-                    throw Cluster.MembershipError.notFound(node)
+                    throw Cluster.MembershipError.notFound(node, in: membership)
                 }
             }
 

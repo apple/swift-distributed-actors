@@ -663,11 +663,36 @@ extension MembershipDiff: CustomDebugStringConvertible {
 // MARK: Errors
 
 extension Cluster {
-    public enum MembershipError: Error {
+    public enum MembershipError: Error, CustomStringConvertible {
         case nonMemberLeaderSelected(Cluster.Membership, wannabeLeader: Cluster.Member)
-        case notFound(UniqueNode)
+        case notFound(UniqueNode, in: Cluster.Membership)
         case atLeastStatusRequirementNotMet(expectedAtLeast: Cluster.MemberStatus, found: Cluster.Member)
         case statusRequirementNotMet(expected: Cluster.MemberStatus, found: Cluster.Member)
         case awaitStatusTimedOut(Duration, Error?)
+
+        public var description: String {
+            switch self {
+            case .nonMemberLeaderSelected(let membership, let wannabeLeader):
+                return "[\(wannabeLeader)] selected leader but is not a member [\(membership)]"
+            case .notFound(let node, let membership):
+                return "[\(node)] is not a member [\(membership)]"
+            case .atLeastStatusRequirementNotMet(let expectedAtLeastStatus, let foundMember):
+                return "Expected \(reflecting: foundMember.uniqueNode) to be seen as at-least [\(expectedAtLeastStatus)] but was [\(foundMember.status)]"
+            case .statusRequirementNotMet(let expectedStatus, let foundMember):
+                return "Expected \(reflecting: foundMember.uniqueNode) to be seen as [\(expectedStatus)] but was [\(foundMember.status)]"
+            case .awaitStatusTimedOut(let duration, let lastError):
+                let lastErrorMessage: String
+                if let error = lastError {
+                    lastErrorMessage = "Last error: \(error)"
+                } else {
+                    lastErrorMessage = "Last error: <none>"
+                }
+
+                return """
+                No result within \(duration.prettyDescription).
+                \(lastErrorMessage)
+                """
+            }
+        }
     }
 }
