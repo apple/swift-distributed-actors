@@ -19,78 +19,6 @@ import SWIM
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Serialization
 
-extension SWIM.Message: _ProtobufRepresentable {
-    public typealias ProtobufRepresentation = _ProtoSWIMRemoteMessage
-
-    public func toProto(context: Serialization.Context) throws -> ProtobufRepresentation {
-        guard case SWIM.Message.remote(let message) = self else {
-            fatalError("Only local SWIM.Message may be sent sent remotely, was: \(self)")
-        }
-
-        return try message.toProto(context: context)
-    }
-
-    public init(fromProto proto: ProtobufRepresentation, context: Serialization.Context) throws {
-        self = try .remote(SWIM.RemoteMessage(fromProto: proto, context: context))
-    }
-}
-
-extension SWIM.RemoteMessage: _ProtobufRepresentable {
-    public typealias ProtobufRepresentation = _ProtoSWIMRemoteMessage
-
-    public func toProto(context: Serialization.Context) throws -> ProtobufRepresentation {
-        var proto = ProtobufRepresentation()
-        switch self {
-        case .ping(let origin, let payload, let sequenceNumber):
-            var ping = _ProtoSWIMPing()
-            ping.origin = try origin.toProto(context: context)
-            ping.payload = try payload.toProto(context: context)
-            ping.sequenceNumber = sequenceNumber
-            proto.ping = ping
-        case .pingRequest(let target, let origin, let payload, let sequenceNumber):
-            var pingRequest = _ProtoSWIMPingRequest()
-            pingRequest.target = try target.toProto(context: context)
-            pingRequest.origin = try origin.toProto(context: context)
-            pingRequest.payload = try payload.toProto(context: context)
-            pingRequest.sequenceNumber = sequenceNumber
-            proto.pingRequest = pingRequest
-        case .pingResponse(let response):
-            proto.pingResponse = try response.toProto(context: context)
-        }
-
-        return proto
-    }
-
-    public init(fromProto proto: ProtobufRepresentation, context: Serialization.Context) throws {
-        switch proto.message {
-        case .ping(let ping):
-            let pingOriginID = try ActorID(fromProto: ping.origin, context: context)
-            let pingOrigin: SWIM.PingOriginRef = context._resolveActorRef(identifiedBy: pingOriginID)
-
-            let payload = try SWIM.GossipPayload(fromProto: ping.payload, context: context)
-            let sequenceNumber = ping.sequenceNumber
-            self = .ping(pingOrigin: pingOrigin, payload: payload, sequenceNumber: sequenceNumber)
-
-        case .pingRequest(let pingRequest):
-            let targetID = try ActorID(fromProto: pingRequest.target, context: context)
-            let target: _ActorRef<SWIM.Message> = context._resolveActorRef(SWIM.Message.self, identifiedBy: targetID)
-
-            let pingRequestOriginAddress = try ActorID(fromProto: pingRequest.origin, context: context)
-            let pingRequestOrigin: SWIM.PingRequestOriginRef = context._resolveActorRef(identifiedBy: pingRequestOriginAddress)
-
-            let payload = try SWIM.GossipPayload(fromProto: pingRequest.payload, context: context)
-            let sequenceNumber = pingRequest.sequenceNumber
-            self = .pingRequest(target: target, pingRequestOrigin: pingRequestOrigin, payload: payload, sequenceNumber: sequenceNumber)
-
-        case .pingResponse(let pingResponse):
-            self = .pingResponse(try SWIM.PingResponse(fromProto: pingResponse, context: context))
-
-        case .none:
-            throw SerializationError(.missingField("request", type: String(describing: SWIM.Message.self)))
-        }
-    }
-}
-
 extension SWIM.Status: _ProtobufRepresentable {
     public typealias ProtobufRepresentation = _ProtoSWIMStatus
 
@@ -165,10 +93,10 @@ extension SWIM.Member: _ProtobufRepresentable {
 
     public func toProto(context: Serialization.Context) throws -> _ProtoSWIMMember {
         var proto = _ProtoSWIMMember()
-        guard let actorPeer = self.peer as? SWIM.Ref else {
-            throw SerializationError(.unableToSerialize(hint: "Expected peer to be \(SWIM.Ref.self) but was \(self.peer)!"))
+        guard let actorPeer = self.peer as? SWIM.Actor else {
+            throw SerializationError(.unableToSerialize(hint: "Expected peer to be \(SWIM.Actor.self) but was \(self.peer)!"))
         }
-        proto.id = try actorPeer.toProto(context: context)
+        proto.id = try actorPeer.id.toProto(context: context)
         proto.status = try self.status.toProto(context: context)
         proto.protocolPeriod = self.protocolPeriod
         return proto
@@ -176,7 +104,7 @@ extension SWIM.Member: _ProtobufRepresentable {
 
     public init(fromProto proto: _ProtoSWIMMember, context: Serialization.Context) throws {
         let id = try ActorID(fromProto: proto.id, context: context)
-        let peer = context._resolveActorRef(SWIM.Message.self, identifiedBy: id)
+        let peer = try SWIM.Actor.resolve(id: id, using: context.system)
         let status = try SWIM.Status(fromProto: proto.status, context: context)
         let protocolPeriod = proto.protocolPeriod
         self.init(peer: peer, status: status, protocolPeriod: protocolPeriod)
@@ -191,20 +119,20 @@ extension SWIM.PingResponse: _ProtobufRepresentable {
         switch self {
         case .ack(let target, let incarnation, let payload, let sequenceNumber):
             var ack = _ProtoSWIMPingResponse.Ack()
-            guard let targetRef = target as? SWIM.Ref else {
-                throw SerializationError(.unableToSerialize(hint: "Can't serialize SWIM target as \(SWIM.Ref.self), was: \(target)"))
+            guard let targetActor = target as? SWIM.Actor else {
+                throw SerializationError(.unableToSerialize(hint: "Can't serialize SWIM target as \(SWIM.Actor.self), was: \(target)"))
             }
-            ack.target = try targetRef.toProto(context: context)
+            ack.target = try targetActor.id.toProto(context: context)
             ack.incarnation = incarnation
             ack.payload = try payload.toProto(context: context)
             ack.sequenceNumber = sequenceNumber
             proto.ack = ack
         case .nack(let target, let sequenceNumber):
             var nack = _ProtoSWIMPingResponse.Nack()
-            guard let targetRef = target as? SWIM.Ref else {
-                throw SerializationError(.unableToSerialize(hint: "Can't serialize SWIM target as \(SWIM.Ref.self), was: \(target)"))
+            guard let targetActor = target as? SWIM.Actor else {
+                throw SerializationError(.unableToSerialize(hint: "Can't serialize SWIM target as \(SWIM.Actor.self), was: \(target)"))
             }
-            nack.target = try targetRef.toProto(context: context)
+            nack.target = try targetActor.id.toProto(context: context)
             nack.sequenceNumber = sequenceNumber
             proto.nack = nack
         case .timeout:
@@ -220,14 +148,14 @@ extension SWIM.PingResponse: _ProtobufRepresentable {
         switch pingResponse {
         case .ack(let ack):
             let targetID = try ActorID(fromProto: ack.target, context: context)
-            let target: SWIM.Ref = context._resolveActorRef(identifiedBy: targetID)
+            let target: SWIM.Actor = try SWIM.Actor.resolve(id: targetID, using: context.system)
             let payload = try SWIM.GossipPayload(fromProto: ack.payload, context: context)
             let sequenceNumber = ack.sequenceNumber
             self = .ack(target: target, incarnation: ack.incarnation, payload: payload, sequenceNumber: sequenceNumber)
 
         case .nack(let nack):
             let targetID = try ActorID(fromProto: nack.target, context: context)
-            let target: SWIM.Ref = context._resolveActorRef(identifiedBy: targetID)
+            let target: SWIM.Actor = try SWIM.Actor.resolve(id: targetID, using: context.system)
             let sequenceNumber = nack.sequenceNumber
             self = .nack(target: target, sequenceNumber: sequenceNumber)
         }

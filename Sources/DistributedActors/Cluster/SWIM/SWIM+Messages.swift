@@ -15,6 +15,7 @@
 import ClusterMembership
 import SWIM
 
+/*
 extension SWIM {
     public enum Message: Codable {
         case remote(SWIM.RemoteMessage)
@@ -85,3 +86,4 @@ extension SWIM {
         var numberOfTimesGossiped: Int
     }
 }
+*/

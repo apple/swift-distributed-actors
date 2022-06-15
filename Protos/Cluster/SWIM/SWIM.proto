@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -20,26 +20,26 @@ option swift_prefix = "_Proto";
 
 import "ActorID.proto";
 
-message SWIMRemoteMessage {
-    oneof message {
-        SWIMPing ping                 = 1;
-        SWIMPingRequest pingRequest   = 2;
-        SWIMPingResponse pingResponse = 3;
-    }
-}
-
-message SWIMPing {
-    ActorID origin            = 1;
-    SWIMGossipPayload payload = 2;
-    uint32 sequenceNumber     = 3;
-}
-
-message SWIMPingRequest {
-    ActorID target            = 1;
-    ActorID origin            = 2;
-    SWIMGossipPayload payload = 3;
-    uint32 sequenceNumber     = 4;
-}
+//message SWIMRemoteMessage {
+//    oneof message {
+//        SWIMPing ping                 = 1;
+//        SWIMPingRequest pingRequest   = 2;
+//        SWIMPingResponse pingResponse = 3;
+//    }
+//}
+//
+//message SWIMPing {
+//    ActorID origin            = 1;
+//    SWIMGossipPayload payload = 2;
+//    uint32 sequenceNumber     = 3;
+//}
+//
+//message SWIMPingRequest {
+//    ActorID target            = 1;
+//    ActorID origin            = 2;
+//    SWIMGossipPayload payload = 3;
+//    uint32 sequenceNumber     = 4;
+//}
 
 message SWIMPingResponse {
     message Ack {

@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -18,16 +18,116 @@ import struct Dispatch.DispatchTime
 import enum Dispatch.DispatchTimeInterval
 import SWIM
 
-extension SWIM {
-    public typealias PeerRef = _ActorRef<SWIM.Message>
+extension SWIMActorShell: SWIMAddressablePeer {
+    nonisolated var node: ClusterMembership.Node {
+        .init(protocol: self.id.uniqueNode.node.protocol, host: self.id.uniqueNode.host, port: self.id.uniqueNode.port, uid: self.id.uniqueNode.nid.value)
+    }
+}
 
-    public typealias Ref = _ActorRef<SWIM.Message>
-    public typealias PingOriginRef = _ActorRef<SWIM.Message> // same type, but actually an `ask` actor
-    public typealias PingRequestOriginRef = _ActorRef<SWIM.Message> // same type, but actually an `ask` actor
+extension SWIMPeer {
+    nonisolated func ping(
+        payload: SWIM.GossipPayload,
+        from pingOrigin: SWIMPingOriginPeer,
+        timeout: DispatchTimeInterval,
+        sequenceNumber: SWIM.SequenceNumber
+    ) async throws -> SWIM.PingResponse {
+        guard let pingOrigin = pingOrigin as? SWIMActorShell else {
+            throw SWIMActorError.illegalPeerType("Expected origin to be \(SWIMActorShell.self) but was: \(pingOrigin)")
+        }
+
+        return try await RemoteCall.with(timeout: .nanoseconds(timeout.nanoseconds)) {
+            // FIXME: remove type cast
+            let response = try await (self as! SWIMActorShell).ping(origin: pingOrigin, payload: payload, sequenceNumber: sequenceNumber)
+            if case .nack = response {
+                throw SWIMActorError.illegalMessageType("Unexpected .nack reply to .ping message! Was: \(response)")
+            }
+            return response
+        }
+    }
+    
+    nonisolated func pingRequest(
+        target: SWIMPeer,
+        payload: SWIM.GossipPayload,
+        from pingRequestOrigin: SWIMPingRequestOriginPeer,
+        timeout: DispatchTimeInterval,
+        sequenceNumber: SWIM.SequenceNumber
+    ) async throws -> SWIM.PingResponse {
+        guard let pingRequestOrigin = pingRequestOrigin as? SWIMActorShell else {
+            throw SWIMActorError.illegalPeerType("Expected origin to be \(SWIMActorShell.self) but was: \(pingRequestOrigin)")
+        }
+
+        guard let target = target as? SWIMActorShell else {
+            throw SWIMActorError.illegalPeerType("Expected target to get \(SWIMActorShell.self) but was: \(target)")
+        }
+        
+        return try await RemoteCall.with(timeout: .nanoseconds(timeout.nanoseconds)) {
+            // FIXME: remove type cast
+            try await (self as! SWIMActorShell).pingRequest(
+                target: target,
+                pingRequestOrigin: pingRequestOrigin,
+                payload: payload,
+                sequenceNumber: sequenceNumber
+            )
+        }
+    }
+}
+
+extension SWIMActorShell: SWIMPeer {
+    nonisolated func ping(
+        payload: SWIM.GossipPayload,
+        from pingOrigin: SWIMPingOriginPeer,
+        timeout: DispatchTimeInterval,
+        sequenceNumber: SWIM.SequenceNumber,
+        onResponse: @escaping (Result<SWIM.PingResponse, Error>) -> Void
+    ) {
+        fatalError("Use async version of this API")
+    }
+
+    nonisolated func pingRequest(
+        target: SWIMPeer,
+        payload: SWIM.GossipPayload,
+        from pingRequestOrigin: SWIMPingRequestOriginPeer,
+        timeout: DispatchTimeInterval,
+        sequenceNumber: SWIM.SequenceNumber,
+        onResponse: @escaping (Result<SWIM.PingResponse, Error>) -> Void
+    ) {
+        fatalError("Use async version of this API")
+    }
+}
+
+extension SWIMActorShell: SWIMPingOriginPeer {
+    nonisolated func ack(
+        acknowledging sequenceNumber: SWIM.SequenceNumber,
+        target: SWIMPeer,
+        incarnation: SWIM.Incarnation,
+        payload: SWIM.GossipPayload
+    ) {
+        fatalError("This implementation doesn't send ack directly")
+    }
+}
+
+extension SWIMActorShell: SWIMPingRequestOriginPeer {
+    nonisolated func nack(
+        acknowledging sequenceNumber: SWIM.SequenceNumber,
+        target: SWIMPeer
+    ) {
+        fatalError("This implementation doesn't send nack directly")
+    }
+}
+
+extension SWIM {
+    typealias Actor = SWIMActorShell
+
+//    public typealias PeerRef = _ActorRef<SWIM.Message>
+//
+//    public typealias Ref = _ActorRef<SWIM.Message>
+//    public typealias PingOriginRef = _ActorRef<SWIM.Message> // same type, but actually an `ask` actor
+//    public typealias PingRequestOriginRef = _ActorRef<SWIM.Message> // same type, but actually an `ask` actor
 
     internal typealias Shell = SWIMActorShell
 }
 
+/*
 public protocol _AnySWIMMessage {}
 
 extension SWIM.Message: _AnySWIMMessage {}
@@ -169,22 +269,28 @@ extension _ActorRef: SWIMPingRequestOriginPeer where Message == SWIM.Message {
         self.tell(.remote(.pingResponse(.nack(target: target, sequenceNumber: sequenceNumber))))
     }
 }
+ */
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Errors
 
-internal struct IllegalSWIMPeerTypeError: Error {
-    let message: String
+//internal struct IllegalSWIMPeerTypeError: Error {
+//    let message: String
+//
+//    init(_ message: String) {
+//        self.message = message
+//    }
+//}
+//
+//internal struct IllegalSWIMMessageTypeError: Error {
+//    let message: String
+//
+//    init(_ message: String) {
+//        self.message = message
+//    }
+//}
 
-    init(_ message: String) {
-        self.message = message
-    }
-}
-
-internal struct IllegalSWIMMessageTypeError: Error {
-    let message: String
-
-    init(_ message: String) {
-        self.message = message
-    }
+internal enum SWIMActorError: Error {
+    case illegalPeerType(String)
+    case illegalMessageType(String)
 }

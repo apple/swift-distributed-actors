@@ -119,7 +119,11 @@ internal class ClusterShell {
         }
 
         // 2) Ensure the failure detector knows about this node
-        self._swimRef?.tell(.local(SWIM.LocalMessage.monitor(associated.handshake.remoteNode)))
+        Task {
+            await self._swimShell?.whenLocal { swim in
+                swim.monitor(node: associated.handshake.remoteNode)
+            }
+        }
     }
 
     /// Performs all cleanups related to terminating an association:
@@ -149,9 +153,13 @@ internal class ClusterShell {
         // notify the failure detector, that we shall assume this node as dead from here on.
         // it's gossip will also propagate the information through the cluster
         traceLog_Remote(system.cluster.uniqueNode, "Finish terminate association [\(remoteNode)]: Notifying SWIM, .confirmDead")
-        if let swim = self._swimRef {
+        if let swim = self._swimShell {
             system.log.warning("Confirm .dead to underlying SWIM, node: \(reflecting: remoteNode)")
-            swim.tell(.local(SWIM.LocalMessage.confirmDead(remoteNode)))
+            Task {
+                await swim.whenLocal { swim in
+                    swim.confirmDead(node: remoteNode)
+                }
+            }
         }
 
         // it is important that we first check the contains; as otherwise we'd re-add a .down member for what was already removed (!)
@@ -242,7 +250,15 @@ internal class ClusterShell {
         return pool
     }
 
-    private var _swimRef: SWIM.Ref?
+    private let swimLock = Lock()
+    private var _swim: SWIM.Shell?
+    private var _swimShell: SWIM.Shell? {
+        self.swimLock.lock()
+        defer { swimLock.unlock() }
+
+        return self._swim
+    }
+
     private var clusterEvents: ClusterEventStream!
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -396,8 +412,13 @@ extension ClusterShell {
             let uniqueBindAddress = self.selfNode
 
             // 1) failure detector:
-            let swimBehavior = SWIMActorShell.behavior(settings: self.settings.swim, clusterRef: context.myself)
-            self._swimRef = try context._spawn(SWIMActorShell.naming, props: SWIMActorShell.props, swimBehavior)
+//            let swimBehavior = SWIMActorShell.behavior(settings: self.settings.swim, clusterRef: context.myself)
+//            self._swimRef = try context._spawn(SWIMActorShell.naming, props: SWIMActorShell.props, swimBehavior)
+            Task {
+                await _Props.$forSpawn.withValue(SWIMActorShell.props) {
+                    self._swim = await SWIMActorShell(settings: self.settings.swim, clusterRef: context.myself, system: context.system)
+                }
+            }
 
             // 2) discovering of new members:
             if let discoverySettings = self.settings.discovery {
@@ -681,7 +702,11 @@ extension ClusterShell {
 
     func tryConfirmDeadToSWIM(_ context: _ActorContext<Message>, _ state: ClusterShellState, change: Cluster.MembershipChange) {
         if change.status.isAtLeast(.down) {
-            self._swimRef?.tell(.local(SWIM.LocalMessage.confirmDead(change.member.uniqueNode)))
+            Task {
+                await self._swimShell?.whenLocal { swim in
+                    swim.confirmDead(node: change.member.uniqueNode)
+                }
+            }
         }
     }
 
@@ -1289,7 +1314,11 @@ extension ClusterShell {
         }
 
         // whenever we down a node we must ensure to confirm it to swim, so it won't keep monitoring it forever needlessly
-        self._swimRef?.tell(.local(SWIM.LocalMessage.confirmDead(memberToDown.uniqueNode)))
+        Task {
+            await self._swimShell?.whenLocal { swim in
+                swim.confirmDead(node: memberToDown.uniqueNode)
+            }
+        }
 
         if memberToDown.uniqueNode == state.selfNode {
             // ==== ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
