@@ -13,14 +13,17 @@
 //===----------------------------------------------------------------------===//
 
 import Distributed
+import Dispatch
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ActorTags
 
 /// Container of tags a concrete actor identity was tagged with.
-public struct ActorTags {
+public final class ActorTags: CustomStringConvertible, CustomDebugStringConvertible {
+    internal let lock: DispatchSemaphore = DispatchSemaphore(value: 1)
+    
     // We still might re-think how we represent the storage.
-    internal var _storage: [String: Sendable & Codable] = [:] // FIXME: fix the key as AnyActorTagKey
+    private var _storage: [String: Sendable & Codable] = [:] // FIXME: fix the key as AnyActorTagKey
 
     public init() {
         // empty tags
@@ -33,22 +36,52 @@ public struct ActorTags {
     }
 
     public var count: Int {
-        self._storage.count
+        lock.wait()
+        defer { lock.signal() }
+        
+        return self._storage.count
     }
 
     public var isEmpty: Bool {
-        self._storage.isEmpty
+        lock.wait()
+        defer { lock.signal() }
+        
+        return self._storage.isEmpty
     }
 
     subscript<Key: ActorTagKey>(_ key: Key.Type) -> Key.Value? {
         get {
-            guard let value = self._storage[key.id] else { return nil }
-            // safe to force-cast as this subscript is the only way to set a value.
-            return (value as! Key.Value)
+            lock.wait()
+            defer { lock.signal() }
+                
+            guard let v: Any = self._storage[key.id] else { return nil }
+            
+            // cast-safe, as this subscript is the only way to set a value.
+            let value = v as! Key.Value
+            return value
         }
         set {
+            lock.wait()
+            defer { lock.signal() }
+            if let existing = self._storage[key.id] {
+                fatalError("Existing ActorID [\(key)] metadata, cannot be replaced. Was: [\(existing)], newValue: [\(optional: newValue))]")
+            }
             self._storage[key.id] = newValue
         }
+    }
+
+    public var description: String {
+        lock.wait()
+        let copy = self._storage
+        lock.signal()
+        return "\(copy)"
+    }
+    
+    public var debugDescription: String {
+        lock.wait()
+        let copy = self._storage
+        lock.signal()
+        return "\(Self.self)(\(copy))"
     }
 }
 
@@ -75,9 +108,9 @@ extension ActorTag {
     public var keyType: Key.Type { Key.self }
 }
 
-public protocol ActorTagKey: Sendable {
-    static var id: String { get }
+public protocol ActorTagKey<Value>: Sendable {
     associatedtype Value: Sendable & Codable
+    static var id: String { get }
 }
 
 struct AnyActorTagKey: Hashable {

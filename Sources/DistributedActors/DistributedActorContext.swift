@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import Distributed
+import Dispatch
 
 /// Internal context object used by the actor system to support per-actor state, such as necessary to implement lifecycle watch etc.
 ///
@@ -21,18 +22,21 @@ import Distributed
 /// as at that point in time it can no longer be used–by the now deallocated–actor itself.
 public final class DistributedActorContext {
     let lifecycle: LifecycleWatchContainer?
+    let tags: ActorTags
 
-    init(lifecycle: LifecycleWatchContainer?) {
+    init(lifecycle: LifecycleWatchContainer?,
+         tags: ActorTags? = nil) {
         self.lifecycle = lifecycle
-        traceLog_DeathWatch("Create context; Lifecycle: \(optional: lifecycle)")
+        self.tags = tags ?? ActorTags(tags: [])
+
+        traceLog_DeathWatch("Create context; Lifecycle: \(lifecycle)")
     }
 
     /// Invoked by the actor system when the owning actor is terminating, so we can clean up all stored data
     func terminate() {
-        guard let lifecycle = self.lifecycle else {
-            return
+        if let lifecycle {
+            traceLog_DeathWatch("Terminate: \(lifecycle.watcherID)")
+            lifecycle.clear()
         }
-        traceLog_DeathWatch("Terminate: \(lifecycle.watcherID)")
-        lifecycle.clear()
     }
 }

@@ -20,6 +20,51 @@ import Distributed
 /// Convenience alias for ``ClusterSystem/ActorID``.
 public typealias ActorID = ClusterSystem.ActorID
 
+extension DistributedActor where ActorSystem == ClusterSystem {
+    public typealias Metadata = ClusterSystem.ActorID.Metadata
+
+    public nonisolated var metadata: ActorTags {
+        self.id.tags
+    }
+}
+
+extension ClusterSystem.ActorID {
+
+    @propertyWrapper
+    public struct Metadata<Value: Sendable & Codable, Key: ActorTagKey<Value>> {
+        private var stored: Value?
+
+        public init(_ key: Key.Type) {
+        }
+
+        public var wrappedValue: Value {
+            get { fatalError("called wrappedValue getter") }
+            set { fatalError("called wrappedValue setter") }
+        }
+
+        public var projectedValue: Value {
+            get { fatalError("called projectedValue getter") }
+            set { fatalError("called projectedValue setter") }
+        }
+
+        public static subscript<EnclosingSelf: DistributedActor, FinalValue>(
+            _enclosingInstance myself: EnclosingSelf,
+            wrapped wrappedKeyPath: ReferenceWritableKeyPath<EnclosingSelf, FinalValue>,
+            storage storageKeyPath: ReferenceWritableKeyPath<EnclosingSelf, Self>
+        ) -> Value where EnclosingSelf.ActorSystem == ClusterSystem, EnclosingSelf.ID == ClusterSystem.ActorID {
+            get {
+                return myself.id.tags[Key.self]!
+            }
+            set {
+                let tags = myself.id.tags
+                tags[Key.self] = newValue
+            }
+        }
+
+    }
+
+}
+
 extension ClusterSystem {
     /// Uniquely identifies a DistributedActor within the cluster.
     ///
@@ -97,7 +142,9 @@ extension ClusterSystem {
         /// Tags can carry additional information such as the type of the actor identified by this identity, or any other user defined "roles" or similar tags.
         ///
         /// - SeeAlso: `ActorTags` for a detailed discussion of some frequently used tags.
-        public var tags: ActorTags
+        public var tags: ActorTags {
+            context.tags
+        }
 
         /// Internal "actor context" which is used as storage for additional cluster actor features, such as watching.
         internal var context: DistributedActorContext
@@ -107,7 +154,8 @@ extension ClusterSystem {
         public var path: ActorPath {
             get {
                 guard let path = tags[ActorTags.path] else {
-                    fatalError("FIXME: ActorTags.path was not set on \(self)! NOTE THAT PATHS ARE TO BECOME OPTIONAL!!!") // FIXME(distributed): must be removed
+                    return ActorPath._undefined
+                    // fatalError("FIXME: ActorTags.path was not set on \(self.incarnation)! NOTE THAT PATHS ARE TO BECOME OPTIONAL!!!") // FIXME(distributed): must be removed
                 }
                 return path
             }
@@ -135,7 +183,6 @@ extension ClusterSystem {
         init(local node: UniqueNode, path: ActorPath?, incarnation: ActorIncarnation) {
             self.context = .init(lifecycle: nil)
             self._location = .local(node)
-            self.tags = ActorTags()
             self.incarnation = incarnation
             if let path {
                 self.tags[ActorTags.path] = path
@@ -153,9 +200,8 @@ extension ClusterSystem {
             self.context = .init(lifecycle: nil)
             self._location = .remote(node)
             self.incarnation = incarnation
-            self.tags = ActorTags()
             if let path {
-                self.tags[ActorTags.path] = path
+                context.tags[ActorTags.path] = path
             }
             traceLog_DeathWatch("Made ID: \(self)")
         }
@@ -166,10 +212,8 @@ extension ClusterSystem {
             self.context = .init(lifecycle: nil)
             self._location = .remote(node)
             self.incarnation = incarnation
-            self.tags = ActorTags()
-            // TODO: avoid mangling names on every spawn?
-            if let mangledName = _mangledTypeName(type) {
-                self.tags[ActorTags.type] = .init(mangledName: mangledName)
+            if let mangledName = _mangledTypeName(type) { // TODO: avoid mangling names on every spawn?
+                self.context.tags[ActorTags.type] = .init(mangledName: mangledName)
             }
             traceLog_DeathWatch("Made ID: \(self)")
         }
@@ -180,12 +224,9 @@ extension ClusterSystem {
         {
             self.context = context
             self._location = .local(node)
-            self.tags = ActorTags()
             self.incarnation = incarnation
-            self.tags = ActorTags()
-            // TODO: avoid mangling names on every spawn?
-            if let mangledName = _mangledTypeName(type) {
-                self.tags[ActorTags.type] = .init(mangledName: mangledName)
+            if let mangledName = _mangledTypeName(type) { // TODO: avoid mangling names on every spawn?
+                context.tags[ActorTags.type] = .init(mangledName: mangledName)
             }
             traceLog_DeathWatch("Made ID: \(self)")
         }
@@ -197,17 +238,25 @@ extension ClusterSystem {
             self.context = context
             self._location = .remote(node)
             self.incarnation = incarnation
-            self.tags = ActorTags()
-            // TODO: avoid mangling names on every spawn?
-            if let mangledName = _mangledTypeName(type) {
-                self.tags[ActorTags.type] = .init(mangledName: mangledName)
+            if let mangledName = _mangledTypeName(type) { // TODO: avoid mangling names on every spawn?
+                context.tags[ActorTags.type] = .init(mangledName: mangledName)
             }
             traceLog_DeathWatch("Made ID: \(self)")
         }
 
         internal var withoutContext: Self {
             var copy = self
-            copy.context = .init(lifecycle: nil)
+            copy.context = .init(
+                lifecycle: nil,
+                tags: self.tags)
+            return copy
+        }
+
+        public var withoutMetadata: Self {
+            var copy = self
+            copy.context = .init(
+                lifecycle: self.context.lifecycle,
+                tags: nil)
             return copy
         }
     }
@@ -464,6 +513,10 @@ extension ActorPath {
     public static let _root: ActorPath = .init() // also known as "/"
     public static let _user: ActorPath = try! ActorPath(root: "user")
     public static let _system: ActorPath = try! ActorPath(root: "system")
+
+    // Since in a pure DA world, we don't rely on paths, this path may sometimes be returned during migration period
+    // to indicate that an ActorID does not have a path defined.
+    public static let _undefined: ActorPath = try! ActorPath(root: "undefined")
 
     internal func makeLocalID(on node: UniqueNode, incarnation: ActorIncarnation) -> ActorID {
         .init(local: node, path: self, incarnation: incarnation)
@@ -895,9 +948,8 @@ extension ActorID: Codable {
         // Decode any tags:
         if let tagsContainer = try? container.nestedContainer(keyedBy: ActorCoding.TagKeys.self, forKey: ActorCoding.CodingKeys.tags) {
             // tags container found, try to decode all known tags:
-            if let path = try tagsContainer.decodeIfPresent(ActorPath.self, forKey: .path) {
-                self.tags[ActorTags.path] = path
-            }
+            
+            // FIXME: implement decoding tags/metadata in general
 
             if let context = decoder.actorSerializationContext {
                 let decodeCustomTags = context.system.settings.tags.decodeCustomTags

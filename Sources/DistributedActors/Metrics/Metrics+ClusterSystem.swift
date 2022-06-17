@@ -55,7 +55,8 @@ final class ClusterSystemMetrics {
         case ActorPathSegment._user:
             self._actors_lifecycle_user.increment()
         default:
-            fatalError("TODO other actor path roots not supported; Was: \(shell)")
+            break // ignore...
+            // fatalError("TODO other actor path roots not supported; Was: \(shell)")
         }
     }
 
@@ -71,7 +72,8 @@ final class ClusterSystemMetrics {
         case ActorPathSegment._user:
             self._actors_lifecycle_user.decrement()
         default:
-            fatalError("TODO other actor path roots not supported; Was: \(shell)")
+            break // ignore...
+            // fatalError("TODO other actor path roots not supported; Was: \(shell)")
         }
     }
 

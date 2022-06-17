@@ -693,7 +693,11 @@ extension ClusterSystem: _ActorRefFactory {
             if let knownName = props._knownActorName {
                 name = knownName
             } else {
-                let naming = _ActorNaming.prefixed(with: "\(Act.self)") // FIXME(distributed): strip generics from the name
+                var baseName = "\(Act.self)"
+                if let genericsAngleBracket = baseName.firstIndex(of: "<") {
+                    baseName = "\(baseName[..<genericsAngleBracket])"
+                }
+                let naming = _ActorNaming.prefixed(with: baseName)
                 name = naming.makeName(&namingContext)
             }
 
@@ -912,9 +916,13 @@ extension ClusterSystem {
         } else {
             lifecycleContainer = nil
         }
-        traceLog_DeathWatch("Make LifecycleWatchContainer for \(id):::: \(optional: lifecycleContainer)")
 
-        id.context = .init(lifecycle: lifecycleContainer)
+        // TODO: this dance only exists since the "reserve name" actually works on paths,
+        //       but we're removing paths and moving them into metadata; so the reserve name should be somewhat different really,
+        //       but we can only do this when we remove the dependence on paths and behaviors entirely from DA actors https://github.com/apple/swift-distributed-actors/issues/957
+        id.context = DistributedActorContext(
+            lifecycle: lifecycleContainer,
+            tags: id.context.tags)
 
         self.log.warning("Assign identity", metadata: [
             "actor/type": "\(actorType)",
