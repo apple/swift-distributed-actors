@@ -47,7 +47,6 @@ public enum ActorCoding {
             case .path: return 0
             case .type: return 1
             case .custom: return 2
-            @unknown default: return nil
             }
         }
 
@@ -142,27 +141,6 @@ internal enum ReceivesSystemMessagesDecoder {
         let id: ActorID = try container.decode(ActorID.self)
 
         return context._resolveAddressableActorRef(identifiedBy: id)
-    }
-}
-
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Codable ActorID
-
-extension ActorID: Codable {
-    public func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: ActorCoding.CodingKeys.self)
-        try container.encode(self.uniqueNode, forKey: ActorCoding.CodingKeys.node)
-        try container.encode(self.path, forKey: ActorCoding.CodingKeys.path)
-        try container.encode(self.incarnation, forKey: ActorCoding.CodingKeys.incarnation)
-    }
-
-    public init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: ActorCoding.CodingKeys.self)
-        let node = try container.decode(UniqueNode.self, forKey: ActorCoding.CodingKeys.node)
-        let path = try container.decode(ActorPath.self, forKey: ActorCoding.CodingKeys.path)
-        let incarnation = try container.decode(UInt32.self, forKey: ActorCoding.CodingKeys.incarnation)
-
-        self.init(remote: node, path: path, incarnation: ActorIncarnation(incarnation))
     }
 }
 

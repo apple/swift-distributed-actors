@@ -48,7 +48,7 @@ public struct ActorTagSettings {
     ]
 
     // TODO: expose this eventually
-    internal var encodeCustomTags: (ActorAddress, inout KeyedEncodingContainer<ActorCoding.TagKeys>) throws -> Void = { _, _ in () }
+    internal var encodeCustomTags: (ActorID, inout KeyedEncodingContainer<ActorCoding.TagKeys>) throws -> Void = { _, _ in () }
 
     // TODO: expose this eventually
     internal var decodeCustomTags: ((KeyedDecodingContainer<ActorCoding.TagKeys>) throws -> [any ActorTag]) = { _ in [] }

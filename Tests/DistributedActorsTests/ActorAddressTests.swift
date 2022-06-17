@@ -146,7 +146,7 @@ final class ActorIDTests: ClusteredActorSystemsXCTestCase {
 
     func test_encodeDecode_ActorAddress_withoutSerializationContext() async throws {
         let node = UniqueNode(systemName: "one", host: "127.0.0.1", port: 1234, nid: UniqueNodeID(11111))
-        var a = try ActorPath._user.appending("a").makeRemoteAddress(on: node, incarnation: 1)
+        var a = try ActorPath._user.appending("a").makeRemoteID(on: node, incarnation: 1)
         let addressWithoutTestTag = a
         a.tags[ActorTags.test] = "test-value"
 
@@ -158,13 +158,13 @@ final class ActorIDTests: ClusteredActorSystemsXCTestCase {
         serializedJson.shouldContain(#""tags":{"path":{"path":["user","a"]}}"#)
         serializedJson.shouldNotContain(#"$test":"test-value""#)
 
-        let back = try JSONDecoder().decode(ActorAddress.self, from: data)
+        let back = try JSONDecoder().decode(ActorID.self, from: data)
         back.shouldEqual(addressWithoutTestTag)
     }
 
     func test_serializing_ActorAddress_skipCustomTag() async throws {
         let node = UniqueNode(systemName: "one", host: "127.0.0.1", port: 1234, nid: UniqueNodeID(11111))
-        var a = try ActorPath._user.appending("a").makeRemoteAddress(on: node, incarnation: 1)
+        var a = try ActorPath._user.appending("a").makeRemoteID(on: node, incarnation: 1)
         a.tags[ActorTags.test] = "test-value"
 
         let system = await self.setUpNode("test_serializing_ActorAddress_skipCustomTag") { settings in
@@ -184,7 +184,7 @@ final class ActorIDTests: ClusteredActorSystemsXCTestCase {
 
     func test_serializing_ActorAddress_propagateCustomTag() async throws {
         let node = UniqueNode(systemName: "one", host: "127.0.0.1", port: 1234, nid: UniqueNodeID(11111))
-        var a = try ActorPath._user.appending("a").makeRemoteAddress(on: node, incarnation: 1)
+        var a = try ActorPath._user.appending("a").makeRemoteID(on: node, incarnation: 1)
         a.tags[ActorTags.test] = "test-value"
 
         let system = await self.setUpNode("test_serializing_ActorAddress_propagateCustomTag") { settings in

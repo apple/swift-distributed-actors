@@ -123,48 +123,49 @@ extension ClusterSystem {
         /// Uniquely identifies the specific "incarnation" of this actor.
         public let incarnation: ActorIncarnation
 
-    /// :nodoc:
-    public init(local node: UniqueNode, path: ActorPath?, incarnation: ActorIncarnation) {
-        self._location = .local(node)
-        self.tags = ActorTags()
-        self.incarnation = incarnation
-        if let path {
-            self.tags[ActorTags.path] = path
+        /// :nodoc:
+        public init(local node: UniqueNode, path: ActorPath?, incarnation: ActorIncarnation) {
+            self._location = .local(node)
+            self.tags = ActorTags()
+            self.incarnation = incarnation
+            if let path {
+                self.tags[ActorTags.path] = path
+            }
         }
-    }
 
-    /// :nodoc:
-    public init(remote node: UniqueNode, path: ActorPath?, incarnation: ActorIncarnation) {
-        self._location = .remote(node)
-        self.incarnation = incarnation
-        self.tags = ActorTags()
-        if let path {
-            self.tags[ActorTags.path] = path
+        /// :nodoc:
+        public init(remote node: UniqueNode, path: ActorPath?, incarnation: ActorIncarnation) {
+            self._location = .remote(node)
+            self.incarnation = incarnation
+            self.tags = ActorTags()
+            if let path {
+                self.tags[ActorTags.path] = path
+            }
         }
-    }
 
-    /// :nodoc:
-    public init<Act>(local node: UniqueNode, type: Act.Type, incarnation: ActorIncarnation)
-        where Act: DistributedActor, Act.ActorSystem == ClusterSystem
-    {
-        self._location = .local(node)
-        self.tags = ActorTags()
-        self.incarnation = incarnation
-        self.tags = ActorTags()
-        // TODO: avoid mangling names on every spawn?
-        if let mangledName = _mangledTypeName(type) {
-            self.tags[ActorTags.type] = .init(mangledName: mangledName)
+        /// :nodoc:
+        public init<Act>(local node: UniqueNode, type: Act.Type, incarnation: ActorIncarnation)
+            where Act: DistributedActor, Act.ActorSystem == ClusterSystem
+        {
+            self._location = .local(node)
+            self.tags = ActorTags()
+            self.incarnation = incarnation
+            self.tags = ActorTags()
+            // TODO: avoid mangling names on every spawn?
+            if let mangledName = _mangledTypeName(type) {
+                self.tags[ActorTags.type] = .init(mangledName: mangledName)
+            }
         }
-    }
 
-    /// :nodoc:
-    public init(remote node: UniqueNode, type: (some DistributedActor).Type, incarnation: ActorIncarnation) {
-        self._location = .remote(node)
-        self.incarnation = incarnation
-        self.tags = ActorTags()
-        // TODO: avoid mangling names on every spawn?
-        if let mangledName = _mangledTypeName(type) {
-            self.tags[ActorTags.type] = .init(mangledName: mangledName)
+        /// :nodoc:
+        public init(remote node: UniqueNode, type: (some DistributedActor).Type, incarnation: ActorIncarnation) {
+            self._location = .remote(node)
+            self.incarnation = incarnation
+            self.tags = ActorTags()
+            // TODO: avoid mangling names on every spawn?
+            if let mangledName = _mangledTypeName(type) {
+                self.tags[ActorTags.type] = .init(mangledName: mangledName)
+            }
         }
     }
 }
@@ -811,7 +812,7 @@ extension UniqueNodeID {
 extension ActorID: Codable {
     public func encode(to encoder: Encoder) throws {
         let tagSettings = encoder.actorSerializationContext?.system.settings.tags
-        let encodeCustomTags: (ActorAddress, inout KeyedEncodingContainer<ActorCoding.TagKeys>) throws -> Void =
+        let encodeCustomTags: (ActorID, inout KeyedEncodingContainer<ActorCoding.TagKeys>) throws -> Void =
             tagSettings?.encodeCustomTags ?? ({ _, _ in () })
 
         var container = encoder.container(keyedBy: ActorCoding.CodingKeys.self)
@@ -871,7 +872,7 @@ extension ActorID: Codable {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Path errors
 
-public enum ActorPathError: Error {
+enum ActorPathError: Error {
     case illegalEmptyActorPath
     case illegalLeadingSpecialCharacter(name: String, illegal: Character)
     case illegalActorPathElement(name: String, illegal: String, index: Int)
