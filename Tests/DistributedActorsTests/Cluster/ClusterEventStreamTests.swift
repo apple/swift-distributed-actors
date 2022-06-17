@@ -17,7 +17,7 @@ import DistributedActorsTestKit
 import NIO
 import XCTest
 
-final class ClusterEventStreamTests: ClusterSystemXCTestCase {
+final class ClusterEventStreamTests: ClusterSystemXCTestCase, @unchecked Sendable {
     let memberA = Cluster.Member(node: UniqueNode(node: Node(systemName: "System", host: "1.1.1.1", port: 7337), nid: .random()), status: .up)
     let memberB = Cluster.Member(node: UniqueNode(node: Node(systemName: "System", host: "2.2.2.2", port: 8228), nid: .random()), status: .up)
 

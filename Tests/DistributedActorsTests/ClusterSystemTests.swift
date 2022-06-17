@@ -134,7 +134,9 @@ final class ClusterSystemTests: ClusterSystemXCTestCase {
     }
 
     func test_shutdown_callbackShouldBeInvoked() async throws {
-        let system = await ClusterSystem("ShutMeDown")
+        let system = await ClusterSystem("ShutMeDown") { settings in
+            settings.bindPort = 9877
+        }
         let receptacle = BlockingReceptacle<Error?>()
 
         system.shutdown(afterShutdownCompleted: { error in

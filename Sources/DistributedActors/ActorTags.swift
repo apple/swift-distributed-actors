@@ -20,7 +20,7 @@ import Distributed
 /// Container of tags a concrete actor identity was tagged with.
 public struct ActorTags {
     // We still might re-think how we represent the storage.
-    private var _storage: [String: Sendable & Codable] = [:] // FIXME: fix the key as AnyActorTagKey
+    internal var _storage: [String: Sendable & Codable] = [:] // FIXME: fix the key as AnyActorTagKey
 
     public init() {
         // empty tags
@@ -102,14 +102,36 @@ struct AnyActorTagKey: Hashable {
 // MARK: Known keys
 
 extension ActorTags {
-    static let path = ActorPathTagKey.self
-    public struct ActorPathTagKey: ActorTagKey {
-        public static let id: String = "path"
-        public typealias Value = ActorPath
+    static let path = ActorPathTag.Key.self
+    struct ActorPathTag: ActorTag {
+        struct Key: ActorTagKey {
+            static let id: String = "path"
+            typealias Value = ActorPath
+        }
+
+        let value: Key.Value
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Known tag: type
+
+extension ActorTags {
+    static let type = ActorTypeTag.Key.self
+    struct ActorTypeTag: ActorTag {
+        struct Key: ActorTagKey {
+            static let id: String = "$type"
+            typealias Value = ActorTypeTagValue
+        }
+
+        let value: Key.Value
     }
 
-    public struct ActorPathTag: ActorTag {
-        public typealias Key = ActorPathTagKey
-        public let value: Key.Value
+    // FIXME: improve representation to be more efficient
+    struct ActorTypeTagValue: Codable {
+        let mangledName: String
+        var simpleName: String {
+            _typeByName(self.mangledName).map { "\($0)" } ?? self.mangledName
+        }
     }
 }

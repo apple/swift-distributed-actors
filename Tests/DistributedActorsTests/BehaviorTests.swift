@@ -344,38 +344,6 @@ final class BehaviorTests: ClusterSystemXCTestCase {
         try p.expectTerminated(ref)
     }
 
-    func test_makeAsynchronousCallback_shouldPrintNicelyIfThrewInsideClosure() async throws {
-        let capture = LogCapture(settings: .init())
-        let system = await ClusterSystem("CallbackCrash") { settings in
-            settings.logging.baseLogger = capture.logger(label: "mock")
-        }
-        defer {
-            try! system.shutdown().wait()
-        }
-
-        let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
-
-        let mockLine = 77777
-
-        let behavior: _Behavior<String> = .receive { context, _ in
-            let cb = context.makeAsynchronousCallback(line: UInt(mockLine)) {
-                throw Boom("Oh no, what a boom!")
-            }
-
-            cb.invoke(())
-            return .same
-        }
-
-        let ref = try system._spawn(.anonymous, behavior)
-        p.watch(ref)
-
-        ref.tell("test")
-        try p.expectTerminated(ref)
-
-        try capture.shouldContain(message: "*Boom while interpreting [closure defined at*")
-        try capture.shouldContain(message: "*BehaviorTests.swift:\(mockLine)*")
-    }
-
     enum ContextClosureMessage: _NotActuallyCodableMessage {
         case context(() -> _ActorRef<String>)
     }
