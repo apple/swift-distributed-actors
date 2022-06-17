@@ -20,7 +20,7 @@ import NIO
 import XCTest
 
 final class BehaviorTests: ClusterSystemXCTestCase {
-    public struct TestMessage: ActorMessage {
+    public struct TestMessage: Codable {
         let message: String
         let replyTo: _ActorRef<String>
     }
@@ -144,7 +144,7 @@ final class BehaviorTests: ClusterSystemXCTestCase {
         // receiveSignalType was invoked successfully
     }
 
-    enum OrElseMessage: String, ActorMessage {
+    enum OrElseMessage: String, Codable {
         case first
         case second
         case other
@@ -240,7 +240,7 @@ final class BehaviorTests: ClusterSystemXCTestCase {
             return .receiveSignal { _, signal in
                 switch signal {
                 case let terminated as _Signals.Terminated:
-                    p.tell("first:terminated-name:\(terminated.address.name)")
+                    p.tell("first:terminated-name:\(terminated.id.name)")
                 default:
                     ()
                 }
@@ -250,7 +250,7 @@ final class BehaviorTests: ClusterSystemXCTestCase {
         let second: _Behavior<Never> = .receiveSignal { _, signal in
             switch signal {
             case let terminated as _Signals.Terminated:
-                p.tell("second:terminated-name:\(terminated.address.name)")
+                p.tell("second:terminated-name:\(terminated.id.name)")
             default:
                 ()
             }
@@ -376,7 +376,7 @@ final class BehaviorTests: ClusterSystemXCTestCase {
         try capture.shouldContain(message: "*BehaviorTests.swift:\(mockLine)*")
     }
 
-    enum ContextClosureMessage: NonTransportableActorMessage {
+    enum ContextClosureMessage: _NotActuallyCodableMessage {
         case context(() -> _ActorRef<String>)
     }
 
@@ -519,7 +519,7 @@ final class BehaviorTests: ClusterSystemXCTestCase {
         try p.expectMessage("resumed:something else")
     }
 
-    private func awaitResultBehavior(future: EventLoopFuture<Int>, timeout: DistributedActors.TimeAmount, probe: ActorTestProbe<String>? = nil, suspendProbe: ActorTestProbe<Result<Int, ErrorEnvelope>>? = nil) -> _Behavior<String> {
+    private func awaitResultBehavior(future: EventLoopFuture<Int>, timeout: Duration, probe: ActorTestProbe<String>? = nil, suspendProbe: ActorTestProbe<Result<Int, ErrorEnvelope>>? = nil) -> _Behavior<String> {
         .receive { context, message in
             switch message {
             case "suspend":
@@ -534,7 +534,7 @@ final class BehaviorTests: ClusterSystemXCTestCase {
         }
     }
 
-    private func awaitResultThrowingBehavior(future: EventLoopFuture<Int>, timeout: DistributedActors.TimeAmount, probe: ActorTestProbe<String>, suspendProbe: ActorTestProbe<Int>) -> _Behavior<String> {
+    private func awaitResultThrowingBehavior(future: EventLoopFuture<Int>, timeout: Duration, probe: ActorTestProbe<String>, suspendProbe: ActorTestProbe<Int>) -> _Behavior<String> {
         .receive { context, message in
             switch message {
             case "suspend":
@@ -867,7 +867,7 @@ final class BehaviorTests: ClusterSystemXCTestCase {
             guard let s = signal as? _Signals.Terminated else {
                 return .same
             }
-            p.tell("signal:\(s.address.name)")
+            p.tell("signal:\(s.id.name)")
 
             // returning this behavior should not unsuspend the actor
             return _Behavior<String>.receiveMessage { msg in

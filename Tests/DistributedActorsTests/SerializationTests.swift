@@ -86,7 +86,7 @@ class SerializationTests: ClusterSystemXCTestCase {
 
     func test_serialize_actorAddress_usingContext() throws {
         let node = UniqueNode(systemName: "one", host: "127.0.0.1", port: 1234, nid: UniqueNodeID(11111))
-        let address = try ActorPath(root: "user").appending("hello").makeLocalAddress(on: node, incarnation: .random())
+        let id = try ActorPath(root: "user").appending("hello").makeLocalID(on: node, incarnation: .random())
 
         let encoder = JSONEncoder()
         let decoder = JSONDecoder()
@@ -100,14 +100,14 @@ class SerializationTests: ClusterSystemXCTestCase {
         encoder.userInfo[.actorSerializationContext] = context
         decoder.userInfo[.actorSerializationContext] = context
 
-        let encoded = try encoder.encode(address)
+        let encoded = try encoder.encode(id)
         pinfo("Serialized actor path: \(encoded.copyToNewByteBuffer().stringDebugDescription())")
 
-        let addressAgain = try decoder.decode(ActorAddress.self, from: encoded)
-        pinfo("Deserialized again: \(String(reflecting: addressAgain))")
+        let decodedID = try decoder.decode(ActorID.self, from: encoded)
+        pinfo("Deserialized again: \(String(reflecting: decodedID))")
 
-        "\(addressAgain)".shouldEqual("sact://one@127.0.0.1:1234/user/hello")
-        addressAgain.incarnation.shouldEqual(address.incarnation)
+        "\(decodedID)".shouldEqual("sact://one@127.0.0.1:1234/user/hello")
+        decodedID.incarnation.shouldEqual(id.incarnation)
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -206,8 +206,8 @@ class SerializationTests: ClusterSystemXCTestCase {
                 try system.serialization.deserialize(as: HasStringRef.self, from: serialized)
             }
 
-            guard "\(back.containedRef.address)" == "/dead/user/dead-on-arrival" else {
-                throw self.testKit.error("\(back.containedRef.address) is not equal to expected /dead/user/dead-on-arrival")
+            guard "\(back.containedRef.id)" == "/dead/user/dead-on-arrival" else {
+                throw self.testKit.error("\(back.containedRef.id) is not equal to expected /dead/user/dead-on-arrival")
             }
         }
     }
@@ -226,8 +226,8 @@ class SerializationTests: ClusterSystemXCTestCase {
             }
 
             back.containedInterestingRef.tell(InterestingMessage())
-            guard "\(back.containedInterestingRef.address)" == "/dead/user/dead-on-arrival" else {
-                throw self.testKit.error("\(back.containedInterestingRef.address) is not equal to expected /dead/user/dead-on-arrival")
+            guard "\(back.containedInterestingRef.id)" == "/dead/user/dead-on-arrival" else {
+                throw self.testKit.error("\(back.containedInterestingRef.id) is not equal to expected /dead/user/dead-on-arrival")
             }
         }
     }
@@ -250,7 +250,7 @@ class SerializationTests: ClusterSystemXCTestCase {
                 return .receiveSignal { _, signal in
                     switch signal {
                     case let terminated as _Signals.Terminated:
-                        p.tell("terminated:\(terminated.address.name)")
+                        p.tell("terminated:\(terminated.id.name)")
                     default:
                         ()
                     }
@@ -271,7 +271,7 @@ class SerializationTests: ClusterSystemXCTestCase {
             try system.serialization.deserialize(as: HasReceivesSystemMsgs.self, from: serialized)
         }
 
-        back.sysRef.address.shouldEqual(sysRef.address)
+        back.sysRef.id.shouldEqual(sysRef.id)
 
         // Only to see that the deserialized ref indeed works for sending system messages to it
         back.sysRef._sendSystemMessage(.terminated(ref: watchMe.asAddressable, existenceConfirmed: false), file: #file, line: #line)
@@ -415,17 +415,17 @@ private class Mid: Top, Hashable {
     }
 }
 
-private struct HasStringRef: ActorMessage, Equatable {
+private struct HasStringRef: Codable, Equatable {
     let containedRef: _ActorRef<String>
 }
 
-private struct HasIntRef: ActorMessage, Equatable {
+private struct HasIntRef: Codable, Equatable {
     let containedRef: _ActorRef<Int>
 }
 
-private struct InterestingMessage: ActorMessage, Equatable {}
+private struct InterestingMessage: Codable, Equatable {}
 
-private struct HasInterestingMessageRef: ActorMessage, Equatable {
+private struct HasInterestingMessageRef: Codable, Equatable {
     let containedInterestingRef: _ActorRef<InterestingMessage>
 }
 

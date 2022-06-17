@@ -141,7 +141,7 @@ internal final class OutboundSystemMessageRedelivery {
         self.redeliveryIntervalBackoff = settings.makeRedeliveryBackoff
     }
 
-    func offer(_ message: _SystemMessage, recipient: ActorAddress) -> OfferedDirective {
+    func offer(_ message: _SystemMessage, recipient: ActorID) -> OfferedDirective {
         // Are we able to buffer this message?
         let nrOfMessagesPendingAcknowledgement = self.messagesPendingAcknowledgement.count
         guard nrOfMessagesPendingAcknowledgement < self.settings.redeliveryBufferLimit else {
@@ -221,7 +221,7 @@ internal final class OutboundSystemMessageRedelivery {
         case nackWasForFutureSequenceNr(highestKnownSeqNr: SequenceNr)
         /// Ensure that we'll do a redelivery soon; we could also push messages here directly but choose not to:
         /// all redelivered are done on the redelivery tick based intervals.
-        case ensureRedeliveryTick(TimeAmount)
+        case ensureRedeliveryTick(Duration)
     }
 
     func onRedeliveryTick() -> RedeliveryTickDirective {
@@ -243,7 +243,7 @@ internal final class OutboundSystemMessageRedelivery {
     enum RedeliveryTickDirective {
         /// Redeliver the following redelivery batch and schedule another redelivery tick (if more
         /// Number of elements in the exposed buffer is guaranteed to be <= `settings.redeliveryBatchSize`.
-        case redeliver(CircularBuffer<TransportEnvelope>, nextTickIn: TimeAmount)
+        case redeliver(CircularBuffer<TransportEnvelope>, nextTickIn: Duration)
         /// This is BAD, if we give up on redelivers we HAVE TO sever the association with the remote node (!)
         case giveUpAndSeverTies(Error)
     }
@@ -358,7 +358,7 @@ public struct OutboundSystemMessageRedeliverySettings {
     /// is received for them within that timeout.
     ///
     /// A single redelivery "burst" is limited by `redeliveryBurstMax`.
-    var redeliveryInterval: TimeAmount = .seconds(1)
+    var redeliveryInterval: Duration = .seconds(1)
 
     internal var makeRedeliveryBackoff: ConstantBackoffStrategy {
         Backoff.constant(self.redeliveryInterval)

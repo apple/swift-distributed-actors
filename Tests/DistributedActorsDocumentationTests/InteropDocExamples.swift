@@ -21,7 +21,7 @@ import XCTest
 class InteropDocExamples: XCTestCase {
     func example_asyncOp_sendResult_dispatch() throws {
         // tag::message_greetings[]
-        enum Messages: NonTransportableActorMessage {
+        enum Messages: _NotActuallyCodableMessage {
             case string(String)
         }
         // end::message_greetings[]
@@ -51,7 +51,7 @@ class InteropDocExamples: XCTestCase {
 
     func example_asyncOp_sendResult_insideActor() throws {
         // tag::asyncOp_sendResult_insideActor_enum_Messages[]
-        enum Messages: NonTransportableActorMessage {
+        enum Messages: _NotActuallyCodableMessage {
             case fetchData
             case result(String)
         }
@@ -94,7 +94,7 @@ class InteropDocExamples: XCTestCase {
     func example_asyncOp_onResultAsync() throws {
         struct User {}
         struct Cache<Key, Value> {
-            init(cacheDuration: DistributedActors.TimeAmount) {}
+            init(cacheDuration: Duration) {}
 
             func lookup(_: Key) -> Value? {
                 nil
@@ -104,11 +104,11 @@ class InteropDocExamples: XCTestCase {
         }
 
         // tag::asyncOp_onResultAsync_enum_Messages[]
-        enum Messages: NonTransportableActorMessage {
+        enum Messages: _NotActuallyCodableMessage {
             case lookupUser(name: String, recipient: _ActorRef<LookupResponse>)
         }
 
-        enum LookupResponse: NonTransportableActorMessage {
+        enum LookupResponse: _NotActuallyCodableMessage {
             case user(User)
             case unknownUser(name: String)
             case lookupFailed(Error)
@@ -161,7 +161,7 @@ class InteropDocExamples: XCTestCase {
 
     func example_asyncOp_awaitResult() throws {
         // tag::asyncOp_awaitResult_enum_Messages[]
-        enum Message: NonTransportableActorMessage {
+        enum Message: _NotActuallyCodableMessage {
             case addPrefix(string: String, recipient: _ActorRef<String>)
         }
         // end::asyncOp_awaitResult_enum_Messages[]
@@ -201,7 +201,7 @@ class InteropDocExamples: XCTestCase {
     }
 
     func example_asyncOp_awaitResultThrowing() throws {
-        enum Message: NonTransportableActorMessage {
+        enum Message: _NotActuallyCodableMessage {
             case addPrefix(string: String, recipient: _ActorRef<String>)
         }
 

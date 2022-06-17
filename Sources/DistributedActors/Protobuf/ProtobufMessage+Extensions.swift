@@ -11,14 +11,12 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import Foundation
 import NIO
 import SwiftProtobuf
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Serialization with ByteBuf
-
 extension SwiftProtobuf.Message {
     /// Returns a `ByteBuffer` value containing the Protocol Buffer binary format serialization of the message.
     ///
@@ -34,7 +32,6 @@ extension SwiftProtobuf.Message {
     // FIXME: Avoid the copying, needs SwiftProtobuf changes
     func serializedByteBuffer(allocator allocate: ByteBufferAllocator, partial: Bool = false) throws -> ByteBuffer {
         // let data = try self.jsonString().data(using: .utf8)! // TODO allow a "debug mode with json payloads?"
-
         let data = try self.serializedData(partial: partial)
         var buffer = allocate.buffer(capacity: data.count)
         buffer.writeBytes(data)

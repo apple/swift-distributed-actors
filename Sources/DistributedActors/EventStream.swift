@@ -20,7 +20,7 @@ import Atomics
 /// they terminate.
 ///
 /// `EventStream` is only meant to be used locally and does not buffer or redeliver messages.
-public struct EventStream<Event: ActorMessage>: AsyncSequence {
+public struct EventStream<Event: Codable>: AsyncSequence {
     public typealias Element = Event
 
     internal let ref: _ActorRef<EventStreamShell.Message<Event>>
@@ -100,7 +100,7 @@ public struct EventStream<Event: ActorMessage>: AsyncSequence {
 }
 
 internal enum EventStreamShell {
-    enum Message<Event: ActorMessage>: NonTransportableActorMessage { // TODO: make it codable, transportability depends on the Event really
+    enum Message<Event: Codable>: _NotActuallyCodableMessage { // TODO: make it codable, transportability depends on the Event really
         /// Subscribe to receive events
         case subscribe(_ActorRef<Event>)
         /// Unsubscribe from receiving events
@@ -116,18 +116,18 @@ internal enum EventStreamShell {
 
     static func behavior<Event>(_: Event.Type) -> _Behavior<Message<Event>> {
         .setup { context in
-            var subscribers: [ActorAddress: _ActorRef<Event>] = [:]
+            var subscribers: [ActorID: _ActorRef<Event>] = [:]
             var asyncSubscribers: [ObjectIdentifier: (Event) -> Void] = [:]
 
             let behavior: _Behavior<Message<Event>> = .receiveMessage { message in
                 switch message {
                 case .subscribe(let ref):
-                    subscribers[ref.address] = ref
+                    subscribers[ref.id] = ref
                     context.watch(ref)
                     context.log.trace("Successfully subscribed [\(ref)]")
 
                 case .unsubscribe(let ref):
-                    if subscribers.removeValue(forKey: ref.address) != nil {
+                    if subscribers.removeValue(forKey: ref.id) != nil {
                         context.unwatch(ref)
                         context.log.trace("Successfully unsubscribed [\(ref)]")
                     } else {
@@ -161,10 +161,10 @@ internal enum EventStreamShell {
             }
 
             return behavior.receiveSpecificSignal(_Signals.Terminated.self) { context, signal in
-                if subscribers.removeValue(forKey: signal.address) != nil {
-                    context.log.trace("Removed subscriber [\(signal.address)], because it terminated")
+                if subscribers.removeValue(forKey: signal.id) != nil {
+                    context.log.trace("Removed subscriber [\(signal.id)], because it terminated")
                 } else {
-                    context.log.warning("Received unexpected termination signal for non-subscriber [\(signal.address)]")
+                    context.log.warning("Received unexpected termination signal for non-subscriber [\(signal.id)]")
                 }
 
                 return .same

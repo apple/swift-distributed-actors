@@ -52,7 +52,7 @@ protocol ReceivesQuestions: Codable {
     ///            It may be executed concurrently with regards to the current context.
     func ask<Answer>(
         for type: Answer.Type,
-        timeout: TimeAmount,
+        timeout: Duration,
         file: String, function: String, line: UInt,
         _ makeQuestion: @escaping (_ActorRef<Answer>) -> Question
     ) -> AskResponse<Answer>
@@ -66,7 +66,7 @@ extension _ActorRef: ReceivesQuestions {
 
     func ask<Answer>(
         for answerType: Answer.Type = Answer.self,
-        timeout: TimeAmount,
+        timeout: Duration,
         file: String = #file, function: String = #function, line: UInt = #line,
         _ makeQuestion: @escaping (_ActorRef<Answer>) -> Question
     ) -> AskResponse<Answer> {
@@ -86,12 +86,8 @@ extension _ActorRef: ReceivesQuestions {
 
         let promise = system._eventLoopGroup.next().makePromise(of: answerType)
 
-        // TODO: maybe a specialized one... for ask?
-        let instrumentation = system.settings.instrumentation.makeActorInstrumentation(promise.futureResult, self.address)
-
         do {
-            // TODO: implement special actor ref instead of using real actor
-            let askRef = try system._spawn(
+            let askRef = try system._spawn( // TODO: "ask" is going away in favor of raw "remoteCalls"
                 .ask,
                 AskActor.behavior(
                     promise,
@@ -105,18 +101,7 @@ extension _ActorRef: ReceivesQuestions {
 
             let message = makeQuestion(askRef)
             self.tell(message, file: file, line: line)
-
-            instrumentation.actorAsked(message: message, from: askRef.address)
-            promise.futureResult.whenComplete {
-                switch $0 {
-                case .success(let answer):
-                    instrumentation.actorAskReplied(reply: answer, error: nil)
-                case .failure(let error):
-                    instrumentation.actorAskReplied(reply: nil, error: error)
-                }
-            }
         } catch {
-            instrumentation.actorAskReplied(reply: nil, error: error)
             promise.fail(error)
         }
 
@@ -185,7 +170,7 @@ extension AskResponse: _AsyncResult {
         }
     }
 
-    func withTimeout(after timeout: TimeAmount) -> AskResponse<Value> {
+    func withTimeout(after timeout: Duration) -> AskResponse<Value> {
         if timeout.isEffectivelyInfinite {
             return self
         }
@@ -253,14 +238,14 @@ extension AskResponse {
 ///
 // TODO: replace with a special minimal `_ActorRef` that does not require spawning or scheduling.
 internal enum AskActor {
-    enum Event: NonTransportableActorMessage {
+    enum Event: _NotActuallyCodableMessage {
         case timeout
     }
 
     static func behavior<Message, ResponseType>(
         _ completable: EventLoopPromise<ResponseType>,
         ref: _ActorRef<Message>,
-        timeout: TimeAmount,
+        timeout: Duration,
         file: String,
         function: String,
         line: UInt
@@ -274,7 +259,7 @@ internal enum AskActor {
                     switch event {
                     case .timeout:
                         let errorMessage = """
-                        No response received for ask to [\(ref.address)] within timeout [\(timeout.prettyDescription)]. \
+                        No response received for ask to [\(ref.id)] within timeout [\(timeout.prettyDescription)]. \
                         Ask was initiated from function [\(function)] in [\(file):\(line)] and \
                         expected response of type [\(String(reflecting: ResponseType.self))].
                         """

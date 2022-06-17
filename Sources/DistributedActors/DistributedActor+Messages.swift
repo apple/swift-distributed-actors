@@ -18,13 +18,13 @@ import struct Foundation.Data
 // FIXME(distributed): we need to get rid of this all of this... probably means having to remove the entire Ref based infrastructure
 
 /// `Void` equivalent but `Codable`.
-public enum _Done: String, ActorMessage {
+public enum _Done: String, Codable {
     case done
 }
 
 //// TODO(distributed): remove this, actually system._spawn the underlying reference for the reserved address
 // public protocol __AnyDistributedClusterActor {
-//    static func _spawnAny(instance: Self, on system: ClusterSystem) throws -> AddressableActorRef
+//    static func _spawnAny(instance: Self, on system: ClusterSystem) throws -> _AddressableActorRef
 // }
 
 // FIXME: workaround (!)
@@ -38,7 +38,7 @@ extension DistributedActor where ActorSystem == ClusterSystem {
         }
     }
 
-    static func _spawnAny(instance: Self, on system: ActorSystem) throws -> AddressableActorRef {
+    static func _spawnAny(instance: Self, on system: ActorSystem) throws -> _AddressableActorRef {
         self._spawn(instance: instance, on: system).asAddressable
     }
 }
@@ -64,7 +64,7 @@ extension DistributedActor where ActorSystem == ClusterSystem {
 //    public typealias ProtobufRepresentation = _ProtoActorIdentity
 //
 //    public func toProto(context: Serialization.Context) throws -> _ProtoActorIdentity {
-//        let address = self._forceUnwrapActorAddress
+//        let address = self._forceUnwrapActorID
 //        let serialized = try context.serialization.serialize(address)
 //
 //        var proto = _ProtoActorIdentity()
@@ -78,8 +78,8 @@ extension DistributedActor where ActorSystem == ClusterSystem {
 //        let manifest = Serialization.Manifest(fromProto: proto.manifest)
 //        let ManifestedType = try context.summonType(from: manifest)
 //
-//        precondition(ManifestedType == ActorAddress.self)
-//        let address = try context.serialization.deserialize(as: ActorAddress.self, from: .data(proto.payload), using: manifest)
-//        self = address
+//        precondition(ManifestedType == ActorID.self)
+//        let address = try context.serialization.deserialize(as: ActorID.self, from: .data(proto.payload), using: manifest)
+//        self = id
 //    }
 // }

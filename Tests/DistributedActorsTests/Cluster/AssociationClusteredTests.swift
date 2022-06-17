@@ -142,9 +142,9 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
         try assertAssociated(first, withExactly: second.settings.uniqueBindNode)
 
         // first we manually construct the "right second path"; Don't do this in normal production code
-        let uniqueSecondAddress = ActorAddress(local: second.cluster.uniqueNode, path: refOnSecondSystem.path, incarnation: refOnSecondSystem.address.incarnation)
+        let uniqueSecondAddress = ActorID(local: second.cluster.uniqueNode, path: refOnSecondSystem.path, incarnation: refOnSecondSystem.id.incarnation)
         // to then obtain a second ref ON the `system`, meaning that the node within uniqueSecondAddress is a second one
-        let resolvedRef = self.resolveRef(first, type: String.self, address: uniqueSecondAddress, on: second)
+        let resolvedRef = self.resolveRef(first, type: String.self, id: uniqueSecondAddress, on: second)
         // the resolved ref is a first resource on the `system` and points via the right association to the second actor
         // inside system `second`. Sending messages to a ref constructed like this will make the messages go over remoting.
         resolvedRef.tell("HELLO")
@@ -158,8 +158,8 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
         alone.cluster.join(node: alone.cluster.uniqueNode.node) // "self join", should simply be ignored
 
         let testKit = self.testKit(alone)
-        try testKit.eventually(within: .seconds(3)) {
-            let snapshot: Cluster.Membership = alone.cluster.membershipSnapshot
+        try await testKit.eventually(within: .seconds(3)) {
+            let snapshot: Cluster.Membership = await alone.cluster.membershipSnapshot
             if snapshot.count != 1 {
                 throw TestError("Expected membership to include self node, was: \(snapshot)")
             }
@@ -274,8 +274,8 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
         first.cluster.down(node: first.cluster.uniqueNode.node)
 
         let testKit = self.testKit(first)
-        try testKit.eventually(within: .seconds(3)) {
-            let snapshot: Cluster.Membership = first.cluster.membershipSnapshot
+        try await testKit.eventually(within: .seconds(3)) {
+            let snapshot: Cluster.Membership = await first.cluster.membershipSnapshot
             if let selfMember = snapshot.uniqueMember(first.cluster.uniqueNode) {
                 if selfMember.status == .down {
                     () // good
@@ -330,12 +330,12 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
             p2.tell("Got:\(message)")
             return .same
         })
-        let secondFullAddress = ActorAddress(remote: second.cluster.uniqueNode, path: secondOne.path, incarnation: secondOne.address.incarnation)
+        let secondFullAddress = ActorID(remote: second.cluster.uniqueNode, path: secondOne.path, incarnation: secondOne.id.incarnation)
 
         // we somehow obtained a ref to secondOne (on second node) without associating second yet
         // e.g. another node sent us that ref; This must cause buffering of sends to second and an association to be created.
 
-        let resolveContext = ResolveContext<String>(address: secondFullAddress, system: first)
+        let resolveContext = _ResolveContext<String>(id: secondFullAddress, system: first)
         let ref = first._resolve(context: resolveContext)
 
         try assertNotAssociated(system: first, node: second.cluster.uniqueNode)
@@ -379,12 +379,11 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
             guard let selfMember = firstMembership.uniqueMember(first.cluster.uniqueNode) else {
                 throw self.testKit(second).error("No self member in membership! Wanted: \(first.cluster.uniqueNode)", line: #line - 1)
             }
-
-            try self.assertMemberStatus(on: first, node: first.cluster.uniqueNode, is: .down)
             guard selfMember.status == .down else {
                 throw self.testKit(first).error("Wanted self member to be DOWN, but was: \(selfMember)", line: #line - 1)
             }
         }
+        try await self.assertMemberStatus(on: first, node: first.cluster.uniqueNode, is: .down, within: .seconds(3))
 
         // and the second node should also notice
         try self.testKit(second).eventually(within: .seconds(3)) {

@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2020 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2020-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -20,7 +20,7 @@ extension Gossiper {
         /// Interval at which gossip rounds should proceed.
         ///
         /// - SeeAlso: `intervalRandomFactor`
-        var interval: TimeAmount
+        var interval: Duration
 
         /// Adds a random factor to the gossip interval, which is useful to avoid an entire cluster ticking "synchronously"
         /// at the same time, causing spikes in gossip traffic (as all nodes decide to gossip in the same second).
@@ -34,7 +34,7 @@ extension Gossiper {
             }
         }
 
-        var effectiveInterval: TimeAmount {
+        var effectiveInterval: Duration {
             let baseInterval = self.interval
             let randomizeMultiplier = Double.random(in: (1 - self.intervalRandomFactor) ... (1 + self.intervalRandomFactor))
             let randomizedInterval = baseInterval * randomizeMultiplier
@@ -50,7 +50,7 @@ extension Gossiper {
             case unidirectional
 
             /// Gossip DOES expect acknowledgements for spread messages, and messages will be spread using `ask` message sends.
-            case acknowledged(timeout: TimeAmount)
+            case acknowledged(timeout: Duration)
         }
 
         /// How the gossiper should discover peers to gossip with.
@@ -62,14 +62,14 @@ extension Gossiper {
             case manuallyIntroduced
 
             /// Automatically register this gossiper and subscribe for any others identifying under the same
-            /// `Reception.Key<GossipShell<Gossip, Acknowledgement>.Message>(id)`.
+            /// `_Reception.Key<GossipShell<Gossip, Acknowledgement>.Message>(id)`.
             case fromReceptionistListing(id: String)
 
             /// Automatically discover and add cluster members to the gossip group when they become reachable in `atLeast` status.
             ///
             /// Note that by default `.leaving`, `.down` and `.removed` members are NOT added to the gossip group,
             /// even if they were never contacted by this gossiper before.
-            case onClusterMember(atLeast: Cluster.MemberStatus, resolve: (Cluster.Member) -> AddressableActorRef)
+            case onClusterMember(atLeast: Cluster.MemberStatus, resolve: (Cluster.Member) -> _AddressableActorRef)
         }
     }
 }

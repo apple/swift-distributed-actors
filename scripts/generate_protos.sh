@@ -25,7 +25,7 @@ pushd $proto_path >> /dev/null
 declare -a public_protos
 public_protos=(
     -name 'Serialization.proto'
-    -or -name 'ActorAddress.proto'
+    -or -name 'ActorID.proto'
     -or -name 'SystemMessages.proto'
 
     -or -name 'Cluster.proto'

@@ -34,7 +34,7 @@ final class ShoutingInterceptor: _Interceptor<String> {
     }
 }
 
-final class TerminatedInterceptor<Message: ActorMessage>: _Interceptor<Message> {
+final class TerminatedInterceptor<Message: Codable>: _Interceptor<Message> {
     let probe: ActorTestProbe<_Signals.Terminated>
 
     init(probe: ActorTestProbe<_Signals.Terminated>) {
@@ -151,11 +151,11 @@ final class InterceptorTests: ClusterSystemXCTestCase {
         // so we have to check that the message we get is from one of them and afterwards we should not receive
         // any additional messages
         let terminated = try p.expectMessage()
-        (terminated.address.name == "stopperOne" || terminated.address.name == "stopperTwo").shouldBeTrue()
+        (terminated.id.name == "stopperOne" || terminated.id.name == "stopperTwo").shouldBeTrue()
         try p.expectNoMessage(for: .milliseconds(500))
     }
 
-    class SignalToStringInterceptor<Message: ActorMessage>: _Interceptor<Message> {
+    class SignalToStringInterceptor<Message: Codable>: _Interceptor<Message> {
         let probe: ActorTestProbe<String>
 
         init(_ probe: ActorTestProbe<String>) {

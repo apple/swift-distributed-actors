@@ -57,7 +57,7 @@ public struct TestError: Error, Hashable {
 
 public struct ActorTestKitSettings {
     /// Timeout used by default by all the `expect...` and `within` functions defined on the testkit and test probes.
-    var expectationTimeout: TimeAmount = .seconds(5)
+    var expectationTimeout: Duration = .seconds(5)
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -65,7 +65,7 @@ public struct ActorTestKitSettings {
 
 extension ActorTestKit {
     /// Spawn an `ActorTestProbe` which offers various assertion methods for actor messaging interactions.
-    public func makeTestProbe<Message: ActorMessage>(
+    public func makeTestProbe<Message: Codable>(
         _ naming: _ActorNaming? = nil,
         expecting type: Message.Type = Message.self,
         file: StaticString = #file, line: UInt = #line
@@ -99,7 +99,7 @@ extension ActorTestKit {
     /// Spawns an `ActorTestProbe` and immediately subscribes it to the passed in event stream.
     ///
     /// - Hint: Use `fishForMessages` and `fishFor` to filter expectations for specific events.
-    public func spawnEventStreamTestProbe<Event: ActorMessage>(
+    public func spawnEventStreamTestProbe<Event: Codable>(
         _ naming: _ActorNaming? = nil,
         subscribedTo eventStream: EventStream<Event>,
         file: String = #file, line: UInt = #line, column: UInt = #column
@@ -125,12 +125,12 @@ extension ActorTestKit {
     // TODO: should use default `within` from TestKit
     @discardableResult
     public func eventually<T>(
-        within timeAmount: TimeAmount, interval: TimeAmount = .milliseconds(100),
+        within duration: Duration, interval: Duration = .milliseconds(100),
         file: StaticString = #file, line: UInt = #line, column: UInt = #column,
         _ block: () throws -> T
     ) throws -> T {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
-        let deadline = Deadline.fromNow(timeAmount)
+        let deadline = ContinuousClock.Instant.fromNow(duration)
 
         var lastError: Error?
         var polledTimes = 0
@@ -148,7 +148,48 @@ extension ActorTestKit {
         }
         ActorTestKit.leaveRepeatableContext()
 
-        let error = EventuallyError(callSite, timeAmount, polledTimes, lastError: lastError)
+        let error = EventuallyError(callSite, duration, polledTimes, lastError: lastError)
+        if !ActorTestKit.isInRepeatableContext() {
+            XCTFail("\(error)", file: callSite.file, line: callSite.line)
+        }
+        throw error
+    }
+
+    /// Executes passed in block numerous times, until a the expected value is obtained or the `within` time limit expires,
+    /// in which case an `EventuallyError` is thrown, along with the last encountered error thrown by block.
+    ///
+    /// `eventually` is designed to be used with the `expectX` functions on `ActorTestProbe`.
+    ///
+    /// **CAUTION**: Using `shouldX` matchers in an `eventually` block will fail the test on the first failure.
+    ///
+    // TODO: does not handle blocking longer than `within` well
+    // TODO: should use default `within` from TestKit
+    @discardableResult
+    public func eventually<T>(
+        within duration: Duration, interval: Duration = .milliseconds(100),
+        file: StaticString = #file, line: UInt = #line, column: UInt = #column,
+        _ block: () async throws -> T
+    ) async throws -> T {
+        let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
+        let deadline = ContinuousClock.Instant.fromNow(duration)
+
+        var lastError: Error?
+        var polledTimes = 0
+
+        ActorTestKit.enterRepeatableContext()
+        while deadline.hasTimeLeft() {
+            do {
+                polledTimes += 1
+                let res = try await block()
+                return res
+            } catch {
+                lastError = error
+                usleep(useconds_t(interval.microseconds))
+            }
+        }
+        ActorTestKit.leaveRepeatableContext()
+
+        let error = EventuallyError(callSite, duration, polledTimes, lastError: lastError)
         if !ActorTestKit.isInRepeatableContext() {
             XCTFail("\(error)", file: callSite.file, line: callSite.line)
         }
@@ -161,13 +202,13 @@ extension ActorTestKit {
 /// Intended to be pretty printed in command line test output.
 public struct EventuallyError: Error, CustomStringConvertible, CustomDebugStringConvertible {
     let callSite: CallSiteInfo
-    let timeAmount: TimeAmount
+    let duration: Duration
     let polledTimes: Int
     let lastError: Error?
 
-    init(_ callSite: CallSiteInfo, _ timeAmount: TimeAmount, _ polledTimes: Int, lastError: Error?) {
+    init(_ callSite: CallSiteInfo, _ duration: Duration, _ polledTimes: Int, lastError: Error?) {
         self.callSite = callSite
-        self.timeAmount = timeAmount
+        self.duration = duration
         self.polledTimes = polledTimes
         self.lastError = lastError
     }
@@ -185,8 +226,8 @@ public struct EventuallyError: Error, CustomStringConvertible, CustomDebugString
         }
 
         message += """
-        No result within \(self.timeAmount.prettyDescription) for block at \(self.callSite.file):\(self.callSite.line). \
-        Queried \(self.polledTimes) times, within \(self.timeAmount.prettyDescription). \
+        No result within \(self.duration.prettyDescription) for block at \(self.callSite.file):\(self.callSite.line). \
+        Queried \(self.polledTimes) times, within \(self.duration.prettyDescription). \
         \(lastErrorMessage)
         """
 
@@ -196,7 +237,7 @@ public struct EventuallyError: Error, CustomStringConvertible, CustomDebugString
     public var debugDescription: String {
         let error = self.callSite.error(
             """
-            Eventually block failed, after \(self.timeAmount) (polled \(self.polledTimes) times), last error: \(optional: self.lastError)
+            Eventually block failed, after \(self.duration) (polled \(self.polledTimes) times), last error: \(optional: self.lastError)
             """)
         return "\(error)"
     }
@@ -209,12 +250,12 @@ extension ActorTestKit {
     /// Executes passed in block numerous times, to check the assertion holds over time.
     /// Throws an error when the block fails within the specified time amount.
     public func assertHolds(
-        for timeAmount: TimeAmount, interval: TimeAmount = .milliseconds(100),
+        for duration: Duration, interval: Duration = .milliseconds(100),
         file: StaticString = #file, line: UInt = #line, column: UInt = #column,
         _ block: () throws -> Void
     ) throws {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
-        let deadline = Deadline.fromNow(timeAmount)
+        let deadline = ContinuousClock.Instant.fromNow(duration)
 
         var polledTimes = 0
 
@@ -226,8 +267,8 @@ extension ActorTestKit {
             } catch {
                 let error = callSite.error(
                     """
-                    Failed within \(timeAmount.prettyDescription) for block at \(file):\(line). \
-                    Queried \(polledTimes) times, within \(timeAmount.prettyDescription). \
+                    Failed within \(duration.prettyDescription) for block at \(file):\(line). \
+                    Queried \(polledTimes) times, within \(duration.prettyDescription). \
                     Error: \(error)
                     """
                 )
@@ -248,8 +289,8 @@ extension ActorTestKit {
         precondition(!path.contains("#"), "assertion path MUST NOT contain # id section of an unique path.")
 
         let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
-        let res: _TraversalResult<AddressableActorRef> = self.system._traverseAll { _, ref in
-            if ref.address.path.description == path {
+        let res: _TraversalResult<_AddressableActorRef> = self.system._traverseAll { _, ref in
+            if ref.id.path.description == path {
                 return .accumulateSingle(ref)
             } else {
                 return .continue
@@ -268,14 +309,14 @@ extension ActorTestKit {
     /// If unable to resolve a not-dead reference, this function throws, rather than returning the dead reference.
     ///
     /// This is useful when the resolution might be racing against the startup of the actor we are trying to resolve.
-    public func _eventuallyResolve<Message>(address: ActorAddress, of: Message.Type = Message.self, within: TimeAmount = .seconds(5)) throws -> _ActorRef<Message> {
-        let context = ResolveContext<Message>(address: address, system: self.system)
+    public func _eventuallyResolve<Message>(id: ActorID, of: Message.Type = Message.self, within: Duration = .seconds(5)) throws -> _ActorRef<Message> {
+        let context = _ResolveContext<Message>(id: id, system: self.system)
 
         return try self.eventually(within: .seconds(3)) {
             let resolved = self.system._resolve(context: context)
 
-            if resolved.address.starts(with: ._dead) {
-                throw self.error("Attempting to resolve not-dead [\(address)] yet resolved: \(resolved)")
+            if resolved.id.starts(with: ._dead) {
+                throw self.error("Attempting to resolve not-dead [\(id)] yet resolved: \(resolved)")
             } else {
                 return resolved
             }
@@ -289,13 +330,13 @@ extension ActorTestKit {
 extension ActorTestKit {
     /// Creates a _fake_ `_ActorContext` which can be used to pass around to fulfil type argument requirements,
     /// however it DOES NOT have the ability to perform any of the typical actor context actions (such as spawning etc).
-    public func makeFakeContext<M: ActorMessage>(of: M.Type = M.self) -> _ActorContext<M> {
+    public func makeFakeContext<M: Codable>(of: M.Type = M.self) -> _ActorContext<M> {
         Mock_ActorContext(self.system)
     }
 
     /// Creates a _fake_ `_ActorContext` which can be used to pass around to fulfil type argument requirements,
     /// however it DOES NOT have the ability to perform any of the typical actor context actions (such as spawning etc).
-    public func makeFakeContext<M: ActorMessage>(for: _Behavior<M>) -> _ActorContext<M> {
+    public func makeFakeContext<M: Codable>(for: _Behavior<M>) -> _ActorContext<M> {
         self.makeFakeContext(of: M.self)
     }
 }
@@ -309,7 +350,7 @@ struct MockActorContextError: Error, CustomStringConvertible {
     }
 }
 
-public final class Mock_ActorContext<Message: ActorMessage>: _ActorContext<Message> {
+public final class Mock_ActorContext<Message: Codable>: _ActorContext<Message> {
     private let _system: ClusterSystem
 
     public init(_ system: ClusterSystem) {
@@ -369,7 +410,7 @@ public final class Mock_ActorContext<Message: ActorMessage>: _ActorContext<Messa
         file: String = #file, line: UInt = #line,
         _ behavior: _Behavior<M>
     ) throws -> _ActorRef<M>
-        where M: ActorMessage
+        where M: Codable
     {
         fatalError("Failed: \(MockActorContextError())")
     }
@@ -380,7 +421,7 @@ public final class Mock_ActorContext<Message: ActorMessage>: _ActorContext<Messa
         file: String = #file, line: UInt = #line,
         _ behavior: _Behavior<M>
     ) throws -> _ActorRef<M>
-        where M: ActorMessage
+        where M: Codable
     {
         fatalError("Failed: \(MockActorContextError())")
     }
@@ -485,23 +526,23 @@ extension ActorTestKit {
     /// If `expectedRefs` is specified, also compares it to the listing for `key` and requires an exact match.
     @available(*, deprecated, message: "Will be removed and replaced by API based on DistributedActor. Issue #824")
     public func ensureRegistered<Message>(
-        key: Reception.Key<_ActorRef<Message>>,
+        key: _Reception.Key<_ActorRef<Message>>,
         expectedCount: Int = 1,
         expectedRefs: Set<_ActorRef<Message>>? = nil,
-        within: TimeAmount = .seconds(3)
+        within: Duration = .seconds(3)
     ) throws {
-        let lookupProbe = self.makeTestProbe(expecting: Reception.Listing<_ActorRef<Message>>.self)
+        let lookupProbe = self.makeTestProbe(expecting: _Reception.Listing<_ActorRef<Message>>.self)
 
         try self.eventually(within: within) {
             self.system._receptionist.lookup(key, replyTo: lookupProbe.ref)
 
             let listing = try lookupProbe.expectMessage()
             guard listing.refs.count == expectedCount else {
-                throw self.error("Expected Reception.Listing for key [\(key)] to have count [\(expectedCount)], but got [\(listing.refs.count)]")
+                throw self.error("Expected _Reception.Listing for key [\(key)] to have count [\(expectedCount)], but got [\(listing.refs.count)]")
             }
             if let expectedRefs = expectedRefs {
                 guard Set(listing.refs) == expectedRefs else {
-                    throw self.error("Expected Reception.Listing for key [\(key)] to have refs \(expectedRefs), but got \(listing.refs)")
+                    throw self.error("Expected _Reception.Listing for key [\(key)] to have refs \(expectedRefs), but got \(listing.refs)")
                 }
             }
         }

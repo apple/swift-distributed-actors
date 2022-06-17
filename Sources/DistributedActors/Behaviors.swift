@@ -16,7 +16,7 @@
 ///
 /// The most important behavior is `_Behavior.receive` since it allows handling incoming messages with a simple block.
 /// Various other predefined behaviors exist, such as "stopping" or "ignoring" a message.
-public struct _Behavior<Message: ActorMessage>: @unchecked Sendable {
+public struct _Behavior<Message: Codable>: @unchecked Sendable {
     @usableFromInline
     let underlying: __Behavior<Message>
 
@@ -284,7 +284,7 @@ extension _Behavior {
     ///     guard let terminated = signal as? Signals.Terminated else {
     ///         return .unhandled
     ///     }
-    ///     if terminated.address.name == "Juliet" {
+    ///     if terminated.id.name == "Juliet" {
     ///         return .stop // if Juliet died, we end ourselves as well
     ///     } else {
     ///         return .same
@@ -325,7 +325,7 @@ extension _Behavior {
     ///     guard let terminated = signal as? Signals.Terminated else {
     ///         return .unhandled
     ///     }
-    ///     if terminated.address.name == "Juliet" {
+    ///     if terminated.id.name == "Juliet" {
     ///         return .stop // if Juliet died, we end ourselves as well
     ///     } else {
     ///         return .ignore
@@ -349,7 +349,7 @@ extension _Behavior {
     /// #### Example usage
     /// ```
     /// let withSignalHandling = behavior.receiveSpecificSignal(Signals.Terminated.self) { context, terminated in
-    ///     if terminated.address.name == "Juliet" {
+    ///     if terminated.id.name == "Juliet" {
     ///         return .stop // if Juliet died, we end ourselves as well
     ///     } else {
     ///         return .ignore
@@ -376,7 +376,7 @@ extension _Behavior {
     /// #### Example usage
     /// ```
     /// return .receiveSpecificSignal(Signals.Terminated.self) { context, terminated in
-    ///     if terminated.address.name == "Juliet" {
+    ///     if terminated.id.name == "Juliet" {
     ///         return .stop // if Juliet died, we end ourselves as well
     ///     } else {
     ///         return .ignore
@@ -459,7 +459,7 @@ extension _Behavior {
 }
 
 @usableFromInline
-internal enum __Behavior<Message: ActorMessage> {
+internal enum __Behavior<Message: Codable> {
     case setup(_ onStart: (_ActorContext<Message>) throws -> _Behavior<Message>)
 
     case receive(_ handle: (_ActorContext<Message>, Message) throws -> _Behavior<Message>)
@@ -501,7 +501,7 @@ internal enum StopReason {
     case failure(_Supervision.Failure)
 }
 
-public enum IllegalBehaviorError<Message: ActorMessage>: Error {
+enum IllegalBehaviorError<Message: Codable>: Error {
     /// Some behaviors, like `.same` and `.unhandled` are not allowed to be used as initial behaviors.
     /// See their individual documentation for the rationale why that is so.
     case notAllowedAsInitial(_ behavior: _Behavior<Message>)
@@ -535,7 +535,7 @@ extension _Behavior {
 }
 
 /// Used in combination with `_Behavior.intercept` to intercept messages and signals delivered to a behavior.
-open class _Interceptor<Message: ActorMessage> {
+open class _Interceptor<Message: Codable> {
     public init() {}
 
     @inlinable
@@ -557,14 +557,12 @@ open class _Interceptor<Message: ActorMessage> {
 }
 
 extension _Interceptor {
-    @inlinable
     static func handleMessage(context: _ActorContext<Message>, behavior: _Behavior<Message>, interceptor: _Interceptor<Message>, message: Message) throws -> _Behavior<Message> {
         let next = try interceptor.interceptMessage(target: behavior, context: context, message: message)
 
         return try _Interceptor.deduplicate(context: context, behavior: next, interceptor: interceptor)
     }
 
-    @inlinable
     static func deduplicate(context: _ActorContext<Message>, behavior: _Behavior<Message>, interceptor: _Interceptor<Message>) throws -> _Behavior<Message> {
         func deduplicate0(_ behavior: _Behavior<Message>) -> _Behavior<Message> {
             let hasDuplicatedIntercept = behavior.existsInStack { b in
@@ -601,7 +599,6 @@ extension _Behavior {
     ///
     /// Note: The returned behavior MUST be `_Behavior.canonicalize`-ed in the vast majority of cases.
     // Implementation note: We don't do so here automatically in order to keep interpretations transparent and testable.
-    @inlinable
     public func interpretMessage(context: _ActorContext<Message>, message: Message, file: StaticString = #file, line: UInt = #line) throws -> _Behavior<Message> {
         switch self.underlying {
         case .receiveMessage(let recv): return try recv(message)
@@ -625,7 +622,7 @@ extension _Behavior {
             return fatalErrorBacktrace("""
             Illegal attempt to interpret message with .setup behavior! Behaviors MUST be canonicalized before interpreting. This is a bug, please open a ticket. 
               System: \(context.system)
-              Address: \(context.address.detailedDescription)
+              Address: \(context.id.detailedDescription)
               Message: \(message): \(type(of: message))
               _Behavior: \(self)
             """, file: file, line: line)
@@ -648,7 +645,6 @@ extension _Behavior {
     }
 
     /// Attempts interpreting signal using the current behavior, or returns `_Behavior.unhandled` if no `_Behavior.signalHandling` was found.
-    @inlinable
     public func interpretSignal(context: _ActorContext<Message>, signal: _Signal) throws -> _Behavior<Message> {
         // This switch does not use a `default:` clause on purpose!
         // This is to enforce having to consider consider how a signal should be interpreted if a new behavior case is added.
@@ -723,7 +719,6 @@ extension _Behavior {
     }
 
     /// Applies `interpretMessage` to an iterator of messages, while canonicalizing the behavior after every reduction.
-    @inlinable
     internal func interpretMessages<Iterator: IteratorProtocol>(context: _ActorContext<Message>, messages: inout Iterator) throws -> _Behavior<Message> where Iterator.Element == Message {
         var currentBehavior: _Behavior<Message> = self
         while currentBehavior.isStillAlive {
@@ -740,7 +735,6 @@ extension _Behavior {
 
     /// Validate if a _Behavior is legal to be used as "initial" behavior (when an Actor is spawned),
     /// since certain behaviors do not make sense as initial behavior.
-    @inlinable
     internal func validateAsInitial() throws {
         switch self.underlying {
         case .same: throw IllegalBehaviorError.notAllowedAsInitial(self)
@@ -750,7 +744,6 @@ extension _Behavior {
     }
 
     /// Same as `validateAsInitial`, however useful in chaining expressions as it returns itself when the validation has passed successfully.
-    @inlinable
     internal func validatedAsInitial() throws -> _Behavior<Message> {
         try self.validateAsInitial()
         return self
@@ -837,7 +830,6 @@ extension _Behavior {
     ///
     /// - Throws: `IllegalBehaviorError.tooDeeplyNestedBehavior` when a too deeply nested behavior is found,
     ///           in order to avoid attempting to start an possibly infinitely deferred behavior.
-    @inlinable
     internal func canonicalize(_ context: _ActorContext<Message>, next: _Behavior<Message>) throws -> _Behavior<Message> {
         guard self.isStillAlive else {
             return self // ignore, we're already dead and cannot become any other behavior
@@ -910,7 +902,6 @@ extension _Behavior {
     /// - Throws: `IllegalBehaviorError.tooDeeplyNestedBehavior` when a too deeply nested behavior is found,
     ///           in order to avoid attempting to start an possibly infinitely deferred behavior.
     // TODO: make not recursive perhaps since could blow up on large chain?
-    @inlinable
     internal func start(context: _ActorContext<Message>) throws -> _Behavior<Message> {
         let failAtDepth = context.system.settings.actor.maxBehaviorNestingDepth
 

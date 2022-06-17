@@ -47,8 +47,8 @@ extension DistributedReception {
             self.id = value
         }
 
-        internal func resolve(system: ClusterSystem, address: ActorAddress) -> AddressableActorRef {
-            let ref: _ActorRef<InvocationMessage> = system._resolve(context: ResolveContext(address: address, system: system))
+        internal func resolve(system: ClusterSystem, id: ActorID) -> _AddressableActorRef {
+            let ref: _ActorRef<InvocationMessage> = system._resolve(context: _ResolveContext(id: id, system: system))
             return ref.asAddressable
         }
 
@@ -76,10 +76,10 @@ struct AnyDistributedReceptionKey: Sendable, Codable, Hashable, CustomStringConv
         self.guestType = Guest.self
     }
 
-    func resolve(system: ClusterSystem, address: ActorAddress) -> AddressableActorRef {
+    func resolve(system: ClusterSystem, id: ActorID) -> _AddressableActorRef {
         // Since we don't have the type information here, we can't properly resolve
         // and the only safe thing to do is to return `deadLetters`.
-        system.personalDeadLetters(type: Never.self, recipient: address).asAddressable
+        system.personalDeadLetters(type: Never.self, recipient: id).asAddressable
     }
 
     var asAnyKey: AnyDistributedReceptionKey {
@@ -141,10 +141,10 @@ struct AnyDistributedReceptionKey: Sendable, Codable, Hashable, CustomStringConv
 //    /// Response to `Lookup` and `Subscribe` requests.
 //    /// A listing MAY be empty.
 //    public struct Listing<Guest: _ReceptionistGuest>: Equatable, CustomStringConvertible {
-//        let underlying: Set<AddressableActorRef>
+//        let underlying: Set<_AddressableActorRef>
 //        let key: DistributedReception.Key<Guest>
 //
-//        init(refs: Set<AddressableActorRef>, key: DistributedReception.Key<Guest>) {
+//        init(refs: Set<_AddressableActorRef>, key: DistributedReception.Key<Guest>) {
 //            // TODO: assert the refs match type?
 //            self.underlying = refs
 //            self.key = key
@@ -161,7 +161,7 @@ struct AnyDistributedReceptionKey: Sendable, Codable, Hashable, CustomStringConv
 //        }
 //
 //        public var description: String {
-//            "DistributedReception.Listing<\(Guest.self)>(\(self.underlying.map { $0.address }))"
+//            "DistributedReception.Listing<\(Guest.self)>(\(self.underlying.map { $0.id }))"
 //        }
 //
 //        public static func == (lhs: Listing<Guest>, rhs: Listing<Guest>) -> Bool {
@@ -174,7 +174,7 @@ struct AnyDistributedReceptionKey: Sendable, Codable, Hashable, CustomStringConv
 //    /// Retrieve all listed actor references, mapping them to their appropriate type.
 //    /// Note that this operation is lazy and has to iterate over all the actors when performing the
 //    /// iteration.
-//    public var refs: LazyMapSequence<Set<AddressableActorRef>, _ActorRef<Guest.Message>> {
+//    public var refs: LazyMapSequence<Set<_AddressableActorRef>, _ActorRef<Guest.Message>> {
 //        self.underlying.lazy.map { self.key._unsafeAsActorRef($0) }
 //    }
 //
@@ -190,10 +190,10 @@ struct AnyDistributedReceptionKey: Sendable, Codable, Hashable, CustomStringConv
 //        }
 //    }
 //
-//    public func first(where matches: (ActorAddress) -> Bool) -> _ActorRef<Guest.Message>? {
+//    public func first(where matches: (ActorID) -> Bool) -> _ActorRef<Guest.Message>? {
 //        self.underlying.first {
 //            let ref: _ActorRef<Guest.Message> = self.key._unsafeAsActorRef($0)
-//            return matches(ref.address)
+//            return matches(ref.id)
 //        }.map {
 //            self.key._unsafeAsActorRef($0)
 //        }
@@ -212,7 +212,7 @@ struct AnyDistributedReceptionKey: Sendable, Codable, Hashable, CustomStringConv
 //    }
 // }
 //
-// protocol AnyReceptionistListing: ActorMessage {
+// protocol AnyReceptionistListing: Codable {
 //    // For comparing if two listings are equal
 //    var refsAsAnyHashable: AnyHashable { get }
 // }
@@ -227,7 +227,7 @@ struct AnyDistributedReceptionKey: Sendable, Codable, Hashable, CustomStringConv
 // }
 //
 // protocol ReceptionistListing: AnyReceptionistListing, Equatable {
-//    associatedtype Message: ActorMessage
+//    associatedtype Message: Codable
 //
 //    var refs: Set<_ActorRef<Message>> { get }
 // }
@@ -243,7 +243,7 @@ struct AnyDistributedReceptionKey: Sendable, Codable, Hashable, CustomStringConv
 //
 // extension DistributedReception {
 //    /// Response to a `Register` message
-//    public final class Registered<Guest: _ReceptionistGuest>: NonTransportableActorMessage, CustomStringConvertible {
+//    public final class Registered<Guest: _ReceptionistGuest>: _NotActuallyCodableMessage, CustomStringConvertible {
 //        internal let _guest: Guest
 //        public let key: DistributedReception.Key<Guest>
 //

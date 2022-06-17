@@ -18,7 +18,7 @@ syntax = "proto3";
 option optimize_for = SPEED;
 option swift_prefix = "_Proto";
 
-import "ActorAddress.proto";
+import "ActorID.proto";
 import "Cluster/Membership.proto";
 
 message ClusterEvent {

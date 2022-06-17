@@ -23,19 +23,18 @@ enum Main {
         let system = await ClusterSystem("FirstSystem") { settings in
             settings.node.host = "127.0.0.1"
             settings.node.port = 7337
-            settings.logging.useBuiltInFormatter = true
         }
         let second = await ClusterSystem("SecondSystem") { settings in
             settings.node.host = "127.0.0.1"
             settings.node.port = 8228
-            settings.logging.useBuiltInFormatter = true
         }
 
         system.cluster.join(node: second.cluster.uniqueNode)
 
         print("LOCAL:")
         let greeter = Greeter(actorSystem: system)
-        try await greeter.hi(name: "Caplin")
+        let localGreeting = try await greeter.hi(name: "Caplin")
+        print("Got local greeting: \(localGreeting)")
 
         print("RESOLVE:")
         let resolved = try Greeter.resolve(id: greeter.id, using: system)

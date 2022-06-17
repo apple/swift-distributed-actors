@@ -39,10 +39,11 @@ public struct ClusterSystemSettings {
     public var tags: ActorTagSettings = .default
 
     public var plugins: PluginsSettings = .default
+    public var plugins: _PluginsSettings = .default
 
     public var receptionist: ReceptionistSettings = .default
 
-    public var transports: [_InternalActorTransport] = []
+    internal var transports: [_InternalActorTransport] = []
     public var serialization: Serialization.Settings = .default
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -109,13 +110,13 @@ public struct ClusterSystemSettings {
     }
 
     /// Time after which a the binding of the server port should fail.
-    public var bindTimeout: TimeAmount = .seconds(3)
+    public var bindTimeout: Duration = .seconds(3)
 
     /// Timeout for unbinding the server port of this node (used when shutting down).
-    public var unbindTimeout: TimeAmount = .seconds(3)
+    public var unbindTimeout: Duration = .seconds(3)
 
     /// Time after which a connection attempt will fail if no connection could be established.
-    public var connectTimeout: TimeAmount = .milliseconds(500)
+    public var connectTimeout: Duration = .milliseconds(500)
 
     /// Backoff to be applied when attempting a new connection and handshake with a remote system.
     public var handshakeReconnectBackoff: BackoffStrategy = Backoff.exponential(
@@ -126,35 +127,36 @@ public struct ClusterSystemSettings {
     )
 
     /// Defines the Time-To-Live of an association, i.e. when it shall be completely dropped from the tombstones list.
+    ///
     /// An association ("unique connection identifier between two nodes") is kept as tombstone when severing a connection between nodes,
     /// in order to avoid accidental re-connections to given node. Once a node has been downed, removed, and disassociated, it MUST NOT be
     /// communicated with again. Tombstones are used to ensure this, even if the downed ("zombie") node, attempts to reconnect.
-    public var associationTombstoneTTL: TimeAmount = .hours(24) * 1
+    public var associationTombstoneTTL: Duration = .hours(24) * 1
 
     /// Defines the interval with which the list of associated tombstones is freed from expired tombstones.
-    public var associationTombstoneCleanupInterval: TimeAmount = .minutes(10)
+    public var associationTombstoneCleanupInterval: Duration = .minutes(10)
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Cluster protocol versioning
 
     /// `ProtocolVersion` to be used when exposing `UniqueNode` for node configured by using these settings.
-    public var protocolVersion: DistributedActors.Version {
+    public var protocolVersion: ClusterSystem.Version {
         self._protocolVersion
     }
 
     /// FOR TESTING ONLY: Exposed for testing handshake negotiation while joining nodes of different versions.
-    internal var _protocolVersion: DistributedActors.Version = DistributedActorsProtocolVersion
+    internal var _protocolVersion: ClusterSystem.Version = ClusterSystem.protocolVersion
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Cluster.Membership Gossip
 
-    public var membershipGossipInterval: TimeAmount = .seconds(1)
+    public var membershipGossipInterval: Duration = .seconds(1)
 
     // since we talk to many peers one by one; even as we proceed to the next round after `membershipGossipInterval`
     // it is fine if we get a reply from the previously gossiped to peer after same or similar timeout. No rush about it.
     //
     // A missing ACK is not terminal, may happen, and we'll then gossip with that peer again (e.g. if it had some form of network trouble for a moment).
-    public var membershipGossipAcknowledgementTimeout: TimeAmount = .seconds(1)
+    public var membershipGossipAcknowledgementTimeout: Duration = .seconds(1)
 
     public var membershipGossipIntervalRandomFactor: Double = 0.2
 
@@ -170,7 +172,7 @@ public struct ClusterSystemSettings {
     /// A "distributed call" is any function call of a distributed function on a 'remote' distributed actor.
     ///
     /// Set to `.effectivelyInfinite` to avoid setting a timeout, although this is not recommended.
-    public var defaultRemoteCallTimeout: TimeAmount = .seconds(5)
+    public var defaultRemoteCallTimeout: Duration = .seconds(5)
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: TLS & Security settings
@@ -232,10 +234,13 @@ public struct ClusterSystemSettings {
     }
 
     public var metrics: MetricsSettings = .default(rootName: nil)
-    public var instrumentation: InstrumentationSettings = .default
+
+    /// Internal only; Instrumentation configuration, allowing to set instrumentation objects to be called by actor system internals, for purpose of metrics collection etc.
+    internal var instrumentation: InstrumentationSettings = .default
 
     /// Installs a global backtrace (on fault) pretty-print facility upon actor system start.
-    public var installSwiftBacktrace: Bool = true
+    @available(*, deprecated, message: "Backtrace will not longer be offered by the actor system by default, and has to be depended on by end-users")
+    internal var installSwiftBacktrace: Bool = true
 
     // FIXME: should have more proper config section
     public var threadPoolSize: Int = ProcessInfo.processInfo.activeProcessorCount
@@ -269,9 +274,8 @@ extension Array where Element == _InternalActorTransport {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Logging Settings
 
-/// Note that some of these settings would be obsolete if we had a nice configurable LogHandler which could selectively
-/// log some labelled loggers and some not. Until we land such log handler we have to manually in-project opt-in/-out
-/// of logging some subsystems.
+/// Settings which allow customizing logging behavior by various sub-systems of the cluster system.
+///
 public struct LoggingSettings {
     public static var `default`: LoggingSettings {
         .init()
@@ -310,23 +314,18 @@ public struct LoggingSettings {
     }
 
     internal var customizedLogger: Bool = false
-    internal var _logger: Logger = LoggingSettings.makeDefaultLogger()
-    static func makeDefaultLogger() -> Logger {
-        Logger(label: "ClusterSystem-initializing") // replaced by specific system name during startup
-    }
+    internal var _logger = Logger(label: "ClusterSystem-initializing") // replaced by specific system name during startup
 
-    // TODO: hope to remove this once a StdOutLogHandler lands that has formatting support;
-    // logs are hard to follow with not consistent order of metadata etc (like system address etc).
-    public var useBuiltInFormatter: Bool = true
+    internal var useBuiltInFormatter: Bool = true
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Verbose logging of sub-systems (again, would not be needed with configurable appenders)
 
     /// Log all detailed timer start/cancel events
-    public var verboseTimers = false
+    internal var verboseTimers = false
 
     /// Log all actor `spawn` events
-    public var verboseSpawning = false
+    internal var verboseSpawning = false
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -347,24 +346,23 @@ extension ClusterSystemSettings {
 // MARK: Instrumentation Settings
 
 extension ClusterSystemSettings {
-    public struct InstrumentationSettings {
+    /// Prototype instrumentation mechanism settings.
+    ///
+    /// These can be used to inject implementations of instrumentation into the cluster system,
+    /// which are invoked at apropriate times and can be uset to emit metrics about a specific `ClusterSystem` sub-system.
+    struct InstrumentationSettings {
         /// Default set of enabled instrumentations, based on current operating system.
         ///
         /// On Apple platforms, this includes the `OSSignpostInstrumentationProvider` provided instrumentations,
         /// as they carry only minimal overhead in release builds when the signposts are not active.
         ///
         /// You may easily installing any kind of instrumentations, regardless of platform, by using `.none` instead of `.default`.
-        public static var `default`: InstrumentationSettings {
+        static var `default`: InstrumentationSettings {
             .init()
         }
 
-        public static var none: InstrumentationSettings {
+        static var none: InstrumentationSettings {
             InstrumentationSettings()
-        }
-
-        /// - SeeAlso: `ActorInstrumentation`
-        public var makeActorInstrumentation: (AnyObject, ActorAddress) -> ActorInstrumentation = { id, address in
-            NoopActorInstrumentation(id: id, address: address)
         }
 
         /// - SeeAlso: `_InternalActorTransportInstrumentation`
@@ -373,15 +371,11 @@ extension ClusterSystemSettings {
         }
 
         /// - SeeAlso: `ReceptionistInstrumentation`
-        public var makeReceptionistInstrumentation: () -> ReceptionistInstrumentation = { () in
+        var makeReceptionistInstrumentation: () -> _ReceptionistInstrumentation = { () in
             NoopReceptionistInstrumentation()
         }
 
-        public mutating func configure(with provider: ClusterSystemInstrumentationProvider) {
-            if let instrumentFactory = provider.actorInstrumentation {
-                self.makeActorInstrumentation = instrumentFactory
-            }
-
+        mutating func configure(with provider: ClusterSystemInstrumentationProvider) {
             if let instrumentFactory = provider.actorTransportInstrumentation {
                 self.makeInternalActorTransportInstrumentation = instrumentFactory
             }
@@ -393,16 +387,19 @@ extension ClusterSystemSettings {
     }
 }
 
-public protocol ClusterSystemInstrumentationProvider {
-    var actorInstrumentation: ((AnyObject, ActorAddress) -> ActorInstrumentation)? { get }
+protocol ClusterSystemInstrumentationProvider {
     var actorTransportInstrumentation: (() -> _InternalActorTransportInstrumentation)? { get }
-    var receptionistInstrumentation: (() -> ReceptionistInstrumentation)? { get }
+    var receptionistInstrumentation: (() -> _ReceptionistInstrumentation)? { get }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Cluster Service Discovery Settings
 
 /// Configure initial contact point discovery to use a `ServiceDiscovery` implementation.
+///
+/// By providing a service discovery implementation, the `ClusterSystem` will reach out to nodes discovered using this mechanism,
+/// in an attempt to form (or join) a cluster with those nodes. These typically should include a few initial contact points, but can also include
+/// all the nodes of an existing cluster.
 public struct ServiceDiscoverySettings {
     internal let implementation: AnyServiceDiscovery
     private let _subscribe: (@escaping (Result<[Node], Error>) -> Void, @escaping (CompletionReason) -> Void) -> CancellationToken

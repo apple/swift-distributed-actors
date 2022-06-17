@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2021 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -18,7 +18,7 @@ final class DistributedDiningPhilosophers {
     private var forks: [Fork] = []
     private var philosophers: [Philosopher] = []
 
-    func run(for time: TimeAmount) async throws {
+    func run(for duration: Duration) async throws {
         let systemA = await ClusterSystem("Node-A") { settings in
             settings.bindPort = 1111
         }
@@ -40,14 +40,7 @@ final class DistributedDiningPhilosophers {
         systemC.cluster.join(node: systemB.settings.node)
 
         print("waiting for cluster to form...")
-        while !(
-            systemA.cluster.membershipSnapshot.count(withStatus: .up) == systems.count &&
-                systemB.cluster.membershipSnapshot.count(withStatus: .up) == systems.count &&
-                systemC.cluster.membershipSnapshot.count(withStatus: .up) == systems.count)
-        {
-            let nanosInSecond: UInt64 = 1_000_000_000
-            try await Task.sleep(nanoseconds: 1 * nanosInSecond)
-        }
+        try await self.ensureCluster(systems, within: .seconds(10))
 
         print("~~~~~~~ systems joined each other ~~~~~~~")
 
@@ -74,6 +67,20 @@ final class DistributedDiningPhilosophers {
             Philosopher(name: "Erik", leftFork: fork4, rightFork: fork5, actorSystem: systemC),
         ]
 
-        try systemA.park(atMost: time)
+        try systemA.park(atMost: duration)
+    }
+
+    private func ensureCluster(_ systems: [ClusterSystem], within: Duration) async throws {
+        let nodes = Set(systems.map(\.settings.uniqueBindNode))
+
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            for system in systems {
+                group.addTask {
+                    try await system.cluster.waitFor(nodes, .up, within: within)
+                }
+            }
+            // loop explicitly to propagagte any error that might have been thrown
+            for try await _ in group {}
+        }
     }
 }

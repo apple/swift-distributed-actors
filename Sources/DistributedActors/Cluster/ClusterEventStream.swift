@@ -33,19 +33,19 @@ internal enum ClusterEventStream {
                 // event stream actor, all subscribers are guaranteed to see events in the right order,
                 // and not miss any information as long as they apply all events they receive.
                 var snapshot = Cluster.Membership.empty
-                var subscribers: [ActorAddress: _ActorRef<Cluster.Event>] = [:]
+                var subscribers: [ActorID: _ActorRef<Cluster.Event>] = [:]
                 var asyncSubscribers: [ObjectIdentifier: (Cluster.Event) -> Void] = [:]
 
                 let behavior: _Behavior<EventStreamShell.Message<Cluster.Event>> = .receiveMessage { message in
                     switch message {
                     case .subscribe(let ref):
-                        subscribers[ref.address] = ref
+                        subscribers[ref.id] = ref
                         context.watch(ref)
                         context.log.trace("Successfully subscribed [\(ref)], offering membership snapshot")
                         ref.tell(.snapshot(snapshot))
 
                     case .unsubscribe(let ref):
-                        if subscribers.removeValue(forKey: ref.address) != nil {
+                        if subscribers.removeValue(forKey: ref.id) != nil {
                             context.unwatch(ref)
                             context.log.trace("Successfully unsubscribed [\(ref)]")
                         } else {
@@ -94,10 +94,10 @@ internal enum ClusterEventStream {
                 }
 
                 return behavior.receiveSpecificSignal(_Signals.Terminated.self) { context, signal in
-                    if subscribers.removeValue(forKey: signal.address) != nil {
-                        context.log.trace("Removed subscriber [\(signal.address)], because it terminated")
+                    if subscribers.removeValue(forKey: signal.id) != nil {
+                        context.log.trace("Removed subscriber [\(signal.id)], because it terminated")
                     } else {
-                        context.log.warning("Received unexpected termination signal for non-subscriber [\(signal.address)]")
+                        context.log.warning("Received unexpected termination signal for non-subscriber [\(signal.id)]")
                     }
 
                     return .same

@@ -18,30 +18,32 @@ import struct Foundation.Data
 /// Representation of the distributed invocation in the Behavior APIs.
 /// This needs to be removed eventually as we remove behaviors.
 public struct InvocationMessage: Sendable, Codable, CustomStringConvertible {
+    let callID: ClusterSystem.CallID
     let targetIdentifier: String
     let arguments: [Data]
-    var replyToAddress: ActorAddress
 
     var target: RemoteCallTarget {
         RemoteCallTarget(targetIdentifier)
     }
 
     public var description: String {
-        "InvocationMessage(target: \(target), arguments: \(arguments.count))"
+        "InvocationMessage(callID: \(callID), target: \(target), arguments: \(arguments.count))"
     }
 }
 
+// FIXME(distributed): remove [#957](https://github.com/apple/swift-distributed-actors/issues/957)
 enum InvocationBehavior {
     static func behavior(instance weakInstance: Weak<some DistributedActor>) -> _Behavior<InvocationMessage> {
         return _Behavior.setup { context in
             return ._receiveMessageAsync { (message) async throws -> _Behavior<InvocationMessage> in
                 guard let instance = weakInstance.actor else {
                     context.log.warning("Received message \(message) while distributed actor instance was released! Stopping...")
-                    context.system.personalDeadLetters(type: InvocationMessage.self, recipient: context.address).tell(message)
+                    context.system.personalDeadLetters(type: InvocationMessage.self, recipient: context.id).tell(message)
                     return .stop
                 }
 
-                await context.system.receiveInvocation(actor: instance, message: message)
+                // `InvocationMessage`s are handled in `UserMessageHandler`
+//                 await context.system.receiveInvocation(actor: instance, message: message)
                 return .same
             }.receiveSignal { _, signal in
 

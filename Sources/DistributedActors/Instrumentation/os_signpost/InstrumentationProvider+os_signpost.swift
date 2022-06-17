@@ -14,19 +14,10 @@
 
 #if os(macOS) || os(tvOS) || os(iOS) || os(watchOS)
 /// Provider of Instrumentation instances which use `os_signpost`.
-public struct OSSignpostInstrumentationProvider: ClusterSystemInstrumentationProvider {
-    public init() {}
+internal struct OSSignpostInstrumentationProvider: ClusterSystemInstrumentationProvider {
+    init() {}
 
-    public var actorInstrumentation: ((AnyObject, ActorAddress) -> ActorInstrumentation)? {
-        if #available(OSX 10.14, iOS 12.0, *) {
-            // TODO: how to guard in iOS etc here?
-            return OSSignpostActorInstrumentation.init
-        } else {
-            return nil
-        }
-    }
-
-    public var actorTransportInstrumentation: (() -> _InternalActorTransportInstrumentation)? {
+    var actorTransportInstrumentation: (() -> _InternalActorTransportInstrumentation)? {
         if #available(OSX 10.14, iOS 12.0, *) {
             return OSSignpost_InternalActorTransportInstrumentation.init
         } else {
@@ -34,7 +25,7 @@ public struct OSSignpostInstrumentationProvider: ClusterSystemInstrumentationPro
         }
     }
 
-    public var receptionistInstrumentation: (() -> ReceptionistInstrumentation)? {
+    var receptionistInstrumentation: (() -> _ReceptionistInstrumentation)? {
         if #available(OSX 10.14, iOS 12.0, *) {
             return OSSignpostReceptionistInstrumentation.init
         } else {

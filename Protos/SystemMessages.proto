@@ -18,7 +18,7 @@ syntax = "proto3";
 option optimize_for = SPEED;
 option swift_prefix = "_Proto";
 
-import "ActorAddress.proto";
+import "ActorID.proto";
 
 // ==== System Message -------------------------------------------------------------------------------------------------
 
@@ -31,19 +31,19 @@ message SystemMessage {
 }
 
 message SystemMessage_Watch {
-    ActorAddress watchee = 1;
-    ActorAddress watcher = 2;
+    ActorID watchee = 1;
+    ActorID watcher = 2;
 }
 
 message SystemMessage_Unwatch {
-    ActorAddress watchee = 1;
-    ActorAddress watcher = 2;
+    ActorID watchee = 1;
+    ActorID watcher = 2;
 }
 
 message SystemMessage_Terminated {
-    ActorAddress ref        = 1;
+    ActorID ref             = 1;
     bool existenceConfirmed = 2;
-    bool addressTerminated  = 3;
+    bool idTerminated       = 3;
 }
 
 // ==== Redelivery -----------------------------------------------------------------------------------------------------

@@ -79,23 +79,17 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
         try assertAssociated(second, withAtLeast: third.cluster.uniqueNode)
         try assertAssociated(first, withAtLeast: third.cluster.uniqueNode)
 
-        try self.testKit(first).eventually(within: .seconds(10)) {
-            try self.assertMemberStatus(on: first, node: first.cluster.uniqueNode, is: .up)
-            try self.assertMemberStatus(on: first, node: second.cluster.uniqueNode, is: .up)
-            try self.assertMemberStatus(on: first, node: third.cluster.uniqueNode, is: .up)
-        }
+        try await self.assertMemberStatus(on: first, node: first.cluster.uniqueNode, is: .up, within: .seconds(10))
+        try await self.assertMemberStatus(on: first, node: second.cluster.uniqueNode, is: .up, within: .seconds(10))
+        try await self.assertMemberStatus(on: first, node: third.cluster.uniqueNode, is: .up, within: .seconds(10))
 
-        try self.testKit(second).eventually(within: .seconds(10)) {
-            try self.assertMemberStatus(on: second, node: first.cluster.uniqueNode, is: .up)
-            try self.assertMemberStatus(on: second, node: second.cluster.uniqueNode, is: .up)
-            try self.assertMemberStatus(on: second, node: third.cluster.uniqueNode, is: .up)
-        }
+        try await self.assertMemberStatus(on: second, node: first.cluster.uniqueNode, is: .up, within: .seconds(10))
+        try await self.assertMemberStatus(on: second, node: second.cluster.uniqueNode, is: .up, within: .seconds(10))
+        try await self.assertMemberStatus(on: second, node: third.cluster.uniqueNode, is: .up, within: .seconds(10))
 
-        try self.testKit(third).eventually(within: .seconds(10)) {
-            try self.assertMemberStatus(on: third, node: first.cluster.uniqueNode, is: .up)
-            try self.assertMemberStatus(on: third, node: second.cluster.uniqueNode, is: .up)
-            try self.assertMemberStatus(on: third, node: third.cluster.uniqueNode, is: .up)
-        }
+        try await self.assertMemberStatus(on: third, node: first.cluster.uniqueNode, is: .up, within: .seconds(10))
+        try await self.assertMemberStatus(on: third, node: second.cluster.uniqueNode, is: .up, within: .seconds(10))
+        try await self.assertMemberStatus(on: third, node: third.cluster.uniqueNode, is: .up, within: .seconds(10))
     }
 
     func test_joining_to_up_earlyYetStillLettingAllNodesKnowAboutLatestMembershipStatus() async throws {
@@ -129,7 +123,7 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
 
         first.cluster.join(node: second.cluster.uniqueNode.node)
         third.cluster.join(node: second.cluster.uniqueNode.node)
-        try self.ensureNodes(.up, within: .seconds(10), nodes: first.cluster.uniqueNode, second.cluster.uniqueNode, third.cluster.uniqueNode)
+        try await self.ensureNodes(.up, within: .seconds(10), nodes: first.cluster.uniqueNode, second.cluster.uniqueNode, third.cluster.uniqueNode)
 
         // Even the fourth node now could join and be notified about all the existing up members.
         // It does not even have to run any leadership election -- there are leaders in the cluster.
@@ -137,7 +131,7 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
         // We only join one arbitrary node, we will be notified about all nodes:
         fourth.cluster.join(node: third.cluster.uniqueNode.node)
 
-        try self.ensureNodes(.up, within: .seconds(10), nodes: first.cluster.uniqueNode, second.cluster.uniqueNode, third.cluster.uniqueNode, fourth.cluster.uniqueNode)
+        try await self.ensureNodes(.up, within: .seconds(10), nodes: first.cluster.uniqueNode, second.cluster.uniqueNode, third.cluster.uniqueNode, fourth.cluster.uniqueNode)
     }
 
     func test_up_ensureAllSubscribersGetMovingUpEvents() async throws {
@@ -163,7 +157,7 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
         first.cluster.join(node: second.cluster.uniqueNode.node)
 
         // this ensures that the membership, as seen in ClusterShell converged on all members being up
-        try self.ensureNodes(.up, nodes: first.cluster.uniqueNode, second.cluster.uniqueNode)
+        try await self.ensureNodes(.up, nodes: first.cluster.uniqueNode, second.cluster.uniqueNode)
 
         // the following tests confirm that the manually subscribed actors, got all the events they expected
         func assertExpectedClusterEvents(events: [Cluster.Event], probe: ActorTestProbe<Cluster.Event>) throws { // the specific type of snapshot we get is slightly racy: it could be .empty or contain already the node itself
@@ -239,18 +233,18 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
         let p3 = self.testKit(third).makeTestProbe(expecting: Cluster.Event.self)
         third.cluster.events.subscribe(p3.ref)
 
-        try self.joinNodes(node: first, with: second)
-        try self.joinNodes(node: second, with: third)
-        try self.joinNodes(node: first, with: third)
+        try await self.joinNodes(node: first, with: second)
+        try await self.joinNodes(node: second, with: third)
+        try await self.joinNodes(node: first, with: third)
 
         let secondNode = second.cluster.uniqueNode
-        try self.ensureNodes(.up, nodes: first.cluster.uniqueNode, secondNode, third.cluster.uniqueNode)
+        try await self.ensureNodes(.up, nodes: first.cluster.uniqueNode, secondNode, third.cluster.uniqueNode)
 
         first.cluster.down(node: secondNode.node)
 
         // other nodes have observed it down
-        try self.ensureNodes(atLeast: .down, on: first, nodes: secondNode)
-        try self.ensureNodes(atLeast: .down, on: third, nodes: secondNode)
+        try await self.ensureNodes(atLeast: .down, on: first, nodes: secondNode)
+        try await self.ensureNodes(atLeast: .down, on: third, nodes: secondNode)
 
         // on the leader node, the other node noticed as up:
         var eventsOnFirstSub: [Cluster.Event] = []
@@ -315,18 +309,18 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
         let p3 = self.testKit(third).makeTestProbe(expecting: Cluster.Event.self)
         third.cluster.events.subscribe(p3.ref)
 
-        try self.joinNodes(node: first, with: second)
-        try self.joinNodes(node: second, with: third)
-        try self.joinNodes(node: first, with: third)
+        try await self.joinNodes(node: first, with: second)
+        try await self.joinNodes(node: second, with: third)
+        try await self.joinNodes(node: first, with: third)
 
-        try self.ensureNodes(.up, nodes: first.cluster.uniqueNode, second.cluster.uniqueNode, third.cluster.uniqueNode)
+        try await self.ensureNodes(.up, nodes: first.cluster.uniqueNode, second.cluster.uniqueNode, third.cluster.uniqueNode)
 
         // crash the second node
         second.shutdown()
 
         // other nodes have observed it down
-        try self.ensureNodes(atLeast: .down, on: first, within: .seconds(15), nodes: second.cluster.uniqueNode)
-        try self.ensureNodes(atLeast: .down, on: third, within: .seconds(15), nodes: second.cluster.uniqueNode)
+        try await self.ensureNodes(atLeast: .down, on: first, within: .seconds(15), nodes: second.cluster.uniqueNode)
+        try await self.ensureNodes(atLeast: .down, on: third, within: .seconds(15), nodes: second.cluster.uniqueNode)
 
         // on the leader node, the other node noticed as up:
         let testKit = self.testKit(first)

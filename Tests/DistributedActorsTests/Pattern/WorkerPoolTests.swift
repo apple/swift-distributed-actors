@@ -21,8 +21,6 @@ import XCTest
 // TODO: "ActorGroup" perhaps could be better name?
 final class WorkerPoolTests: ClusterSystemXCTestCase {
     func test_workerPool_registerNewlyStartedActors() async throws {
-        throw XCTSkip("!!! Skipping test \(#function) !!!") // FIXME(distributed): #919
-
         let workerKey = DistributedReception.Key(Greeter.self, id: "request-workers")
 
         let workers = try await WorkerPool._spawn(self.system, select: .dynamic(workerKey))
@@ -254,7 +252,7 @@ private distributed actor Greeter: DistributedWorker {
     init(probe: ActorTestProbe<String>, actorSystem: ActorSystem, key: DistributedReception.Key<Greeter>) async {
         self.actorSystem = actorSystem
         self.probe = probe
-        await self.actorSystem.receptionist.register(self, with: key)
+        await self.actorSystem.receptionist.checkIn(self, with: key)
     }
 
     deinit {

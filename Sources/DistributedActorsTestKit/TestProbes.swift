@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -18,21 +18,21 @@ import Foundation
 import XCTest
 
 internal enum ActorTestProbeCommand<M> {
-    case watchCommand(who: AddressableActorRef, file: String, line: UInt)
-    case unwatchCommand(who: AddressableActorRef)
+    case watchCommand(who: _AddressableActorRef, file: String, line: UInt)
+    case unwatchCommand(who: _AddressableActorRef)
     case forwardCommand(send: () -> Void)
     case stopCommand
 
     case realMessage(message: M)
 }
 
-extension ActorTestProbeCommand: NonTransportableActorMessage {}
+extension ActorTestProbeCommand: _NotActuallyCodableMessage {}
 
 /// A special actor that can be used in place of real actors, yet in addition exposes useful assertion methods
 /// which make testing asynchronous actor interactions simpler.
 ///
 /// - SeeAlso: `ActorableTestProbe` which is the equivalent API for `Actorable`s.
-public final class ActorTestProbe<Message: ActorMessage>: @unchecked Sendable {
+public final class ActorTestProbe<Message: Codable>: @unchecked Sendable {
     /// Name of the test probe (and underlying actor).
     public let name: String
 
@@ -54,7 +54,7 @@ public final class ActorTestProbe<Message: ActorMessage>: @unchecked Sendable {
     }
 
     private let settings: ActorTestKitSettings
-    private var expectationTimeout: TimeAmount {
+    private var expectationTimeout: Duration {
         self.settings.expectationTimeout
     }
 
@@ -87,7 +87,7 @@ public final class ActorTestProbe<Message: ActorMessage>: @unchecked Sendable {
             let _: Never = fatalErrorBacktrace("Failed to make actor ref for \(ActorTestProbe<Message>.self): [\(error)]:\(String(reflecting: type(of: error)))", file: file, line: line)
         }
 
-        self.name = self.internalRef.address.name
+        self.name = self.internalRef.id.name
 
         let wrapRealMessages: (Message) -> ProbeCommands = { msg in
             ProbeCommands.realMessage(message: msg)
@@ -147,15 +147,15 @@ public final class ActorTestProbe<Message: ActorMessage>: @unchecked Sendable {
     enum ExpectationError: Error {
         case noMessagesInQueue
         case notEnoughMessagesInQueue(actualCount: Int, expectedCount: Int)
-        case withinDeadlineExceeded(timeout: TimeAmount)
-        case timeoutAwaitingMessage(expected: AnyObject, timeout: TimeAmount)
+        case withinDeadlineExceeded(timeout: Duration)
+        case timeoutAwaitingMessage(expected: AnyObject, timeout: Duration)
     }
 }
 
 extension ActorTestProbe: CustomStringConvertible {
     public var description: String {
         let prettyTypeName = String(reflecting: Message.self).split(separator: ".").dropFirst().joined(separator: ".")
-        return "ActorTestProbe<\(prettyTypeName)>(\(self.ref.address))"
+        return "ActorTestProbe<\(prettyTypeName)>(\(self.ref.id))"
     }
 }
 
@@ -178,7 +178,7 @@ extension ActorTestProbe {
     /// - SeeAlso: `maybeExpectMessage(within:file:line:column:)` which does not fail upon encountering no message within the timeout.
     ///
     /// - Warning: Blocks the current thread until the `timeout` is exceeded or a message is received by the actor.
-    public func expectMessage(within timeout: TimeAmount, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws -> Message {
+    public func expectMessage(within timeout: Duration, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws -> Message {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
         do {
             return try self.receiveMessage(within: timeout)
@@ -188,8 +188,8 @@ extension ActorTestProbe {
         }
     }
 
-    internal func receiveMessage(within timeout: TimeAmount) throws -> Message {
-        let deadline = Deadline.fromNow(timeout)
+    internal func receiveMessage(within timeout: Duration) throws -> Message {
+        let deadline = ContinuousClock.Instant.fromNow(timeout)
         while deadline.hasTimeLeft() {
             guard let message = self.messagesQueue.poll(deadline.timeLeft) else {
                 continue
@@ -210,11 +210,11 @@ extension ActorTestProbe {
     /// Once `MessageFishingDirective.catchComplete` or `MessageFishingDirective.complete` is returned,
     /// the function returns all so-far accumulated messages.
     public func fishFor<CaughtMessage>(
-        _ type: CaughtMessage.Type, within timeout: TimeAmount,
+        _ type: CaughtMessage.Type, within timeout: Duration,
         file: StaticString = #file, line: UInt = #line, column: UInt = #column,
         _ fisher: (Message) throws -> FishingDirective<CaughtMessage>
     ) throws -> [CaughtMessage] {
-        let deadline = Deadline.fromNow(timeout)
+        let deadline = ContinuousClock.Instant.fromNow(timeout)
 
         var caughtMessages: [CaughtMessage] = []
         while deadline.hasTimeLeft() {
@@ -260,7 +260,7 @@ extension ActorTestProbe {
     /// Once `MessageFishingDirective.catchComplete` or `MessageFishingDirective.complete` is returned,
     /// the function returns all so-far accumulated messages.
     public func fishForMessages(
-        within timeout: TimeAmount,
+        within timeout: Duration,
         file: StaticString = #file, line: UInt = #line, column: UInt = #column,
         _ fisher: (Message) throws -> MessageFishingDirective
     ) throws -> [Message] {
@@ -309,7 +309,7 @@ extension ActorTestProbe {
     /// - SeeAlso: `expectMessage(within:file:line:column)` that throws and fails if no message is encountered during the timeout.
     ///
     /// - Warning: Blocks the current thread until the `timeout` is exceeded or a message is received by the actor.
-    public func maybeExpectMessage(within timeout: TimeAmount) throws -> Message? {
+    public func maybeExpectMessage(within timeout: Duration) throws -> Message? {
         do {
             return try self.maybeReceiveMessage(within: timeout)
         } catch {
@@ -317,8 +317,8 @@ extension ActorTestProbe {
         }
     }
 
-    internal func maybeReceiveMessage(within timeout: TimeAmount) throws -> Message? {
-        let deadline = Deadline.fromNow(timeout)
+    internal func maybeReceiveMessage(within timeout: Duration) throws -> Message? {
+        let deadline = ContinuousClock.Instant.fromNow(timeout)
         while deadline.hasTimeLeft() {
             guard let message = self.messagesQueue.poll(deadline.timeLeft) else {
                 continue
@@ -348,7 +348,7 @@ extension ActorTestProbe where Message: Equatable {
         try self.expectMessage(message, within: self.expectationTimeout, file: file, line: line, column: column)
     }
 
-    public func expectMessage(_ message: Message, within timeout: TimeAmount, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
+    public func expectMessage(_ message: Message, within timeout: Duration, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
         do {
             let receivedMessage = try self.receiveMessage(within: timeout)
@@ -366,13 +366,33 @@ extension ActorTestProbe where Message: Equatable {
         try self.expectMessageType(type, within: self.expectationTimeout, file: file, line: line, column: column)
     }
 
-    public func expectMessageType<T>(_ type: T.Type, within timeout: TimeAmount, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
+    public func expectMessageType<T>(_ type: T.Type, within timeout: Duration, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
 
         let receivedMessage = try self.receiveMessage(within: timeout)
         self.lastMessage = receivedMessage
         guard receivedMessage is T else {
             throw callSite.notEqualError(got: receivedMessage, expected: type)
+        }
+    }
+}
+
+extension ActorTestProbe where Message: StringProtocol {
+    public func expectMessage(prefix: Message, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
+        try self.expectMessage(prefix: prefix, within: self.expectationTimeout, file: file, line: line, column: column)
+    }
+
+    public func expectMessage(prefix: Message, within timeout: Duration, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
+        let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
+        do {
+            let receivedMessage = try self.receiveMessage(within: timeout)
+            self.lastMessage = receivedMessage
+            guard receivedMessage.starts(with: prefix) else {
+                throw callSite.notMatchingPrefixError(got: receivedMessage, expected: prefix)
+            }
+        } catch {
+            let message = "Did not receive String message with prefix [\(prefix)] within [\(timeout.prettyDescription)], error: \(error)"
+            throw callSite.error(message)
         }
     }
 }
@@ -393,10 +413,10 @@ extension ActorTestProbe {
     /// See also the `expectMessagesInAnyOrder([Message])` overload which provides automatic equality checking.
     ///
     /// - Warning: Blocks the current thread until the `expectationTimeout` is exceeded or an message is received by the actor.
-    public func expectMessages(count: Int, within timeout: TimeAmount, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws -> [Message] {
+    public func expectMessages(count: Int, within timeout: Duration, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws -> [Message] {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
 
-        let deadline = Deadline.fromNow(timeout)
+        let deadline = ContinuousClock.Instant.fromNow(timeout)
 
         var receivedMessages: [Message] = []
         do {
@@ -432,12 +452,12 @@ extension ActorTestProbe where Message: Equatable {
         try self.expectMessagesInAnyOrder(_messages, within: self.expectationTimeout, file: file, line: line, column: column)
     }
 
-    public func expectMessagesInAnyOrder(_ _messages: [Message], within timeout: TimeAmount, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
+    public func expectMessagesInAnyOrder(_ _messages: [Message], within timeout: Duration, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
         var messages = _messages
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
         var received: [Message] = []
         do {
-            let deadline = Deadline.fromNow(timeout)
+            let deadline = ContinuousClock.Instant.fromNow(timeout)
 
             while !messages.isEmpty {
                 let receivedMessage = try self.receiveMessage(within: deadline.timeLeft)
@@ -478,8 +498,8 @@ extension ActorTestProbe {
 // MARK: TestProbes can _ReceivesMessages
 
 extension ActorTestProbe: _ReceivesMessages {
-    public var address: ActorAddress {
-        self.exposedRef.address
+    public var id: ActorID {
+        self.exposedRef.id
     }
 
     public func tell(_ message: Message, file: String = #file, line: UInt = #line) {
@@ -500,7 +520,7 @@ extension ActorTestProbe {
 }
 
 /// Allows intercepting messages
-public final class ProbeInterceptor<Message: ActorMessage>: _Interceptor<Message> {
+public final class ProbeInterceptor<Message: Codable>: _Interceptor<Message> {
     let probe: ActorTestProbe<Message>
 
     public init(probe: ActorTestProbe<Message>) {
@@ -515,13 +535,13 @@ public final class ProbeInterceptor<Message: ActorMessage>: _Interceptor<Message
 
 extension ActorTestProbe {
     @discardableResult
-    private func within<T>(_ timeout: TimeAmount, _ block: () throws -> T) throws -> T {
+    private func within<T>(_ timeout: Duration, _ block: () throws -> T) throws -> T {
         // FIXME: implement by scheduling checks rather than spinning
-        let deadline = Deadline.fromNow(timeout)
+        let deadline = ContinuousClock.Instant.fromNow(timeout)
         var lastObservedError: Error?
 
         // TODO: make more async than seining like this, also with check interval rather than spin, or use the blocking queue properly
-        while !deadline.isBefore(.now()) {
+        while !deadline.isBefore(.now) {
             do {
                 let res: T = try block()
                 return res
@@ -596,7 +616,7 @@ extension ActorTestProbe {
     /// Useful for making sure that after some "terminal" message no other messages are sent.
     ///
     /// Warning: The method will block the current thread for the specified timeout.
-    public func expectNoMessage(for timeout: TimeAmount, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
+    public func expectNoMessage(for timeout: Duration, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
         if let message = self.messagesQueue.poll(timeout) {
             let message = "Received unexpected message [\(message)]:\(type(of: message)). Did not expect to receive any messages for [\(timeout.prettyDescription)]."
@@ -607,7 +627,7 @@ extension ActorTestProbe {
     /// Asserts that no termination signals (specifically) are received by the probe during the specified timeout.
     ///
     /// Warning: The method will block the current thread for the specified timeout.
-    public func expectNoTerminationSignal(for timeout: TimeAmount, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
+    public func expectNoTerminationSignal(for timeout: Duration, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
         if let termination = self.terminationsQueue.poll(timeout) {
             let message = "Received unexpected termination [\(termination)]. Did not expect to receive any termination for [\(timeout.prettyDescription)]."
@@ -695,15 +715,15 @@ extension ActorTestProbe {
     /// - SeeAlso: `DeathWatch`
     @discardableResult
     // TODO: expectTermination(of: ...) maybe nicer wording?
-    public func expectTerminated<T>(_ ref: _ActorRef<T>, within timeout: TimeAmount? = nil, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws -> _Signals.Terminated {
+    public func expectTerminated<T>(_ ref: _ActorRef<T>, within timeout: Duration? = nil, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws -> _Signals.Terminated {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
         let timeout = timeout ?? self.expectationTimeout
 
         guard let terminated = self.terminationsQueue.poll(timeout) else {
-            throw callSite.error("Expected [\(ref.address)] to terminate within \(timeout.prettyDescription)")
+            throw callSite.error("Expected [\(ref.id)] to terminate within \(timeout.prettyDescription)")
         }
-        guard terminated.address == ref.address else {
-            throw callSite.error("Expected [\(ref.address)] to terminate, but received [\(terminated.address)] terminated signal first instead. " +
+        guard terminated.id == ref.id else {
+            throw callSite.error("Expected [\(ref.id)] to terminate, but received [\(terminated.id)] terminated signal first instead. " +
                 "This could be an ordering issue, inspect your signal order assumptions.")
         }
 
@@ -715,18 +735,18 @@ extension ActorTestProbe {
     /// - ***Warning**: Remember to first `watch` the actors you are expecting termination for,
     ///                 otherwise the termination signal will never be received.
     /// - SeeAlso: `DeathWatch`
-    public func expectTerminatedInAnyOrder(_ refs: [AddressableActorRef], file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
+    public func expectTerminatedInAnyOrder(_ refs: [_AddressableActorRef], file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
-        var pathSet: Set<ActorAddress> = Set(refs.map(\.address))
+        var pathSet: Set<ActorID> = Set(refs.map(\.id))
 
-        let deadline = Deadline.fromNow(self.expectationTimeout)
+        let deadline = ContinuousClock.Instant.fromNow(self.expectationTimeout)
         while !pathSet.isEmpty, deadline.hasTimeLeft() {
             guard let terminated = self.terminationsQueue.poll(deadline.timeLeft) else {
                 throw callSite.error("Expected [\(refs)] to terminate within \(self.expectationTimeout.prettyDescription)")
             }
 
-            guard pathSet.remove(terminated.address) != nil else {
-                throw callSite.error("Expected any of \(pathSet) to terminate, but received [\(terminated.address)] terminated signal first instead. " +
+            guard pathSet.remove(terminated.id) != nil else {
+                throw callSite.error("Expected any of \(pathSet) to terminate, but received [\(terminated.id)] terminated signal first instead. " +
                     "This could be an ordering issue, inspect your signal order assumptions.")
             }
         }

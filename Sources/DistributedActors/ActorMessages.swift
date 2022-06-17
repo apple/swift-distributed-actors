@@ -15,25 +15,14 @@
 import struct Foundation.Data
 import NIO
 
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Actor Message
-
-/// An Actor message is simply a Codable type.
-///
-/// Any Codable it able to be sent as an actor message.
-///
-/// You can customize which coder/decoder should be used by registering specialized manifests for the message type,
-/// or having the type conform to one of the special `...Representable` (e.g. `_ProtobufRepresentable`) protocols.
-public typealias ActorMessage = Codable // FIXME: MAKE THIS SENDABLE: & Sendable
-
 /// A `Never` can never be sent as message, even more so over the wire.
-extension Never: NonTransportableActorMessage {}
+extension Never: _NotActuallyCodableMessage {}
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Common utility messages
 
 // FIXME: we should not add Codable conformance onto a stdlib type, but rather fix this in stdlib
-extension Result: ActorMessage where Success: ActorMessage, Failure: ActorMessage {
+extension Result: Codable where Success: Codable, Failure: Codable {
     public enum DiscriminatorKeys: String, Codable {
         case success
         case failure
@@ -69,7 +58,7 @@ extension Result: ActorMessage where Success: ActorMessage, Failure: ActorMessag
 }
 
 /// Generic transportable Error type, can be used to wrap error types and represent them as best as possible for transporting.
-public struct ErrorEnvelope: Error, ActorMessage {
+public struct ErrorEnvelope: Error, Codable {
     public typealias CodableError = Error & Codable
 
     private let codableError: CodableError
@@ -139,7 +128,7 @@ public struct BestEffortStringError: Error, Codable, Equatable, CustomStringConv
 }
 
 /// Useful error wrapper which performs an best effort Error serialization as configured by the actor system.
-public struct NonTransportableAnyError: Error, NonTransportableActorMessage {
+public struct NonTransportableAnyError: Error, _NotActuallyCodableMessage {
     public let failure: Error
 
     public init<Failure: Error>(_ failure: Failure) {
@@ -150,8 +139,7 @@ public struct NonTransportableAnyError: Error, NonTransportableActorMessage {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Not Transportable Actor Message (i.e. "local only")
 
-/// Marks a type as `ActorMessage` however
-/// Attempting to send such message to a remote actor WILL FAIL and log an error.
+/// Marks a type as `Codable` however attempting to send such message to a remote actor WILL FAIL and log an error.
 ///
 /// Use this with great caution and only for messages which are specifically designed to utilize the local assumption.
 ///
@@ -162,22 +150,22 @@ public struct NonTransportableAnyError: Error, NonTransportableActorMessage {
 /// No serializer is expected to be registered for such types.
 ///
 /// - Warning: Attempting to send such message over the network will fail at runtime (and log an error or warning).
-public protocol NonTransportableActorMessage: ActorMessage {}
+public protocol _NotActuallyCodableMessage: Codable {}
 
-extension NonTransportableActorMessage {
+extension _NotActuallyCodableMessage {
     public init(from decoder: Swift.Decoder) throws {
-        fatalError("Attempted to decode NonTransportableActorMessage message: \(Self.self)! This should never happen.")
+        fatalError("Attempted to decode _NotActuallyCodableMessage message: \(Self.self)! This should never happen.")
     }
 
     public func encode(to encoder: Swift.Encoder) throws {
-        fatalError("Attempted to encode NonTransportableActorMessage message: \(Self.self)! This should never happen.")
+        fatalError("Attempted to encode _NotActuallyCodableMessage message: \(Self.self)! This should never happen.")
     }
 
     public init(context: Serialization.Context, from buffer: inout ByteBuffer, using manifest: Serialization.Manifest) throws {
-        fatalError("Attempted to deserialize NonTransportableActorMessage message: \(Self.self)! This should never happen.")
+        fatalError("Attempted to deserialize _NotActuallyCodableMessage message: \(Self.self)! This should never happen.")
     }
 
     public func serialize(context: Serialization.Context, to bytes: inout ByteBuffer) throws {
-        fatalError("Attempted to serialize NonTransportableActorMessage message: \(Self.self)! This should never happen.")
+        fatalError("Attempted to serialize _NotActuallyCodableMessage message: \(Self.self)! This should never happen.")
     }
 }

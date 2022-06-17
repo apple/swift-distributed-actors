@@ -31,7 +31,7 @@ import Logging
 /// singleton runs on. If the singleton falls on *this* node, the proxy will spawn a `ActorSingletonManager`,
 /// which manages the actual singleton actor, and obtain the ref from it. The proxy instructs the
 /// `ActorSingletonManager` to hand over the singleton whenever the node changes.
-internal class ActorSingletonProxy<Message: ActorMessage> {
+internal class ActorSingletonProxy<Message: Codable> {
     /// Settings for the `ActorSingleton`
     private let settings: ActorSingletonSettings
 
@@ -162,7 +162,7 @@ internal class ActorSingletonProxy<Message: ActorMessage> {
             // to have proxies ask the `targetNode` proxy to "send me the ref once you have taken over"
             // and before then the proxies can either set `ref` to `nil` (to stash messages) or to `targetNode`
             // proxy as we do today. The challenge lies in serialization, as ActorSingletonProxy and ActorSingletonManager are generic.
-            let resolveContext = ResolveContext<Message>(address: ._singletonProxy(name: self.settings.name, remote: node), system: context.system)
+            let resolveContext = _ResolveContext<Message>(id: ._singletonProxy(name: self.settings.name, remote: node), system: context.system)
             let ref = context.system._resolve(context: resolveContext)
             self.updateRef(context, ref)
         case .none:
@@ -188,7 +188,7 @@ internal class ActorSingletonProxy<Message: ActorMessage> {
     private func forwardOrStash(_ context: _ActorContext<Message>, message: Message) throws {
         // Forward the message if `singleton` is not `nil`, else stash it.
         if let singleton = self.ref {
-            context.log.trace("Forwarding message \(message), to: \(singleton.address)", metadata: self.metadata(context))
+            context.log.trace("Forwarding message \(message), to: \(singleton.id)", metadata: self.metadata(context))
             singleton.tell(message)
         } else {
             do {
@@ -201,7 +201,7 @@ internal class ActorSingletonProxy<Message: ActorMessage> {
                     context.log.warning("Buffer is full. Messages might start getting disposed.", metadata: self.metadata(context))
                     // Move the oldest message to dead letters to make room
                     if let oldestMessage = self.buffer.take() {
-                        context.system.deadLetters.tell(DeadLetter(oldestMessage, recipient: context.address))
+                        context.system.deadLetters.tell(DeadLetter(oldestMessage, recipient: context.id))
                     }
                 default:
                     context.log.warning("Unable to stash message, error: \(error)", metadata: self.metadata(context))
@@ -224,10 +224,10 @@ extension ActorSingletonProxy {
 
         metadata["targetNode"] = "\(optional: self.targetNode?.debugDescription)"
         if let ref = self.ref {
-            metadata["ref"] = "\(ref.address)"
+            metadata["ref"] = "\(ref.id)"
         }
         if let managerRef = self.managerRef {
-            metadata["managerRef"] = "\(managerRef.address)"
+            metadata["managerRef"] = "\(managerRef.id)"
         }
 
         return metadata
@@ -237,8 +237,8 @@ extension ActorSingletonProxy {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Singleton path / address
 
-extension ActorAddress {
-    static func _singletonProxy(name: String, remote node: UniqueNode) -> ActorAddress {
+extension ActorID {
+    static func _singletonProxy(name: String, remote node: UniqueNode) -> ActorID {
         .init(remote: node, path: ._singletonProxy(name: name), incarnation: .wellKnown)
     }
 }

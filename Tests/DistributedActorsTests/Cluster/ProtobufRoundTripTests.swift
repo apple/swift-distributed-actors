@@ -32,15 +32,15 @@ final class ProtobufRoundTripTests: ClusterSystemXCTestCase {
         self.system.cluster.uniqueNode
     }
 
-    var localActorAddress: ActorAddress {
+    var localActorAddress: ActorID {
         try! ActorPath._user.appending("hello")
-            .makeLocalAddress(on: self.system.cluster.uniqueNode, incarnation: .wellKnown)
+            .makeLocalID(on: self.system.cluster.uniqueNode, incarnation: .wellKnown)
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Core actor types
 
-    func test_roundTrip_ActorAddress() throws {
+    func test_roundTrip_ActorID() throws {
         try self.check(self.localActorAddress)
     }
 

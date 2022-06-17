@@ -128,7 +128,7 @@ extension ParkingGarageStatus {
 // MARK: Serialization example - custom messages
 
 // tag::serialization_custom_messages[]
-enum CustomlyEncodedMessage: Codable, NonTransportableActorMessage {
+enum CustomlyEncodedMessage: Codable, _NotActuallyCodableMessage {
     case available
     case taken
 }
@@ -295,11 +295,11 @@ class SerializationDocExamples {
         }
 
         override func deserialize(from buffer: Serialization.Buffer) throws -> ContainsActorRef {
-            let address: ActorAddress = _undefined(hint: "your favourite serialization")
+            let id: ActorID = _undefined(hint: "your favourite serialization")
             guard let context = self.context else {
                 throw CustomCodingError.serializationContextNotAvailable
             }
-            let resolved: _ActorRef<String> = context._resolveActorRef(identifiedBy: address) // <2>
+            let resolved: _ActorRef<String> = context._resolveActorRef(identifiedBy: id) // <2>
             return ContainsActorRef(ref: resolved)
         }
 

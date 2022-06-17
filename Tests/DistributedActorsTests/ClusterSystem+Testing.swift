@@ -23,11 +23,11 @@ extension ClusterSystem {
     ///
     /// In real code this would not be useful and replaced by the receptionist.
     func _resolve<Message>(ref: _ActorRef<Message>, onSystem remoteSystem: ClusterSystem) -> _ActorRef<Message> {
-        assertBacktrace(ref.address._isLocal, "Expecting passed in `ref` to not have an address defined (yet), as this is what we are going to do in this function.")
+        assertBacktrace(ref.id._isLocal, "Expecting passed in `ref` to not have an address defined (yet), as this is what we are going to do in this function.")
 
-        let remoteAddress = ActorAddress(remote: remoteSystem.settings.uniqueBindNode, path: ref.path, incarnation: ref.address.incarnation)
+        let remoteID = ActorID(remote: remoteSystem.settings.uniqueBindNode, path: ref.path, incarnation: ref.id.incarnation)
 
-        let resolveContext = ResolveContext<Message>(address: remoteAddress, system: self)
+        let resolveContext = _ResolveContext<Message>(id: remoteID, system: self)
         return self._resolve(context: resolveContext)
     }
 
@@ -41,7 +41,7 @@ extension ClusterSystem {
         guard let shell = self._cluster else {
             fatalError("Actor System must have clustering enabled to allow resolving remote actors")
         }
-        let remoteAddress = ActorAddress(remote: remoteNode, path: ref.path, incarnation: ref.address.incarnation)
-        return _ActorRef(.remote(_RemoteClusterActorPersonality(shell: shell, address: remoteAddress, system: self)))
+        let remoteID = ActorID(remote: remoteNode, path: ref.path, incarnation: ref.id.incarnation)
+        return _ActorRef(.remote(_RemoteClusterActorPersonality(shell: shell, id: remoteID, system: self)))
     }
 }

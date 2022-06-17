@@ -85,12 +85,12 @@ private func tearDown() {
 }
 
 // === -----------------------------------------------------------------------------------------------------------------
-private enum PingPongCommand: NonTransportableActorMessage {
+private enum PingPongCommand: _NotActuallyCodableMessage {
     case startPingPong(
         messagesPerPair: Int,
         numActors: Int,
         throughput: Int,
-        shutdownTimeout: TimeAmount,
+        shutdownTimeout: Duration,
         replyTo: _ActorRef<PingPongCommand>
     )
 
@@ -168,12 +168,12 @@ private func startRemotePingPongActorPairs(
     }
     let doneSpawning = SwiftBenchmarkTools.Timer().getTimeAsInt()
 
-    print("    Spawning \(numPairs * 2) actors took: \(DistributedActors.TimeAmount.nanoseconds(Int(doneSpawning - startSpawning)).milliseconds) ms")
+    print("    Spawning \(numPairs * 2) actors took: \(Duration.nanoseconds(Int64(doneSpawning - startSpawning)).milliseconds) ms")
 
     return actors
 }
 
-private struct EchoMessage: ActorMessage, CustomStringConvertible {
+private struct EchoMessage: Codable, CustomStringConvertible {
     var seqNr: Int
     let replyTo: _ActorRef<EchoMessage>
 
@@ -188,7 +188,7 @@ private struct EchoMessage: ActorMessage, CustomStringConvertible {
     }
 
     var description: String {
-        "EchoMessage(\(seqNr) replyTo: \(replyTo.address.name))"
+        "EchoMessage(\(seqNr) replyTo: \(replyTo.id.name))"
     }
 }
 

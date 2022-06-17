@@ -1,4 +1,4 @@
-// swift-tools-version:5.6
+// swift-tools-version:5.7
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import class Foundation.ProcessInfo
@@ -7,27 +7,7 @@ import PackageDescription
 // Workaround: Since we cannot include the flat just as command line options since then it applies to all targets,
 // and ONE of our dependencies currently produces one warning, we have to use this workaround to enable it in _our_
 // targets when the flag is set. We should remove the dependencies and then enable the flag globally though just by passing it.
-var globalSwiftSettings: [SwiftSetting]
-
-var globalConcurrencyFlags: [String] = [
-    "-Xfrontend", "-disable-availability-checking", // TODO(distributed): remove this flag
-]
-
-// TODO: currently disabled warnings as errors because of Sendable check noise and work in progress on different toolchains
-// if ProcessInfo.processInfo.environment["SACT_WARNINGS_AS_ERRORS"] != nil {
-//    print("SACT_WARNINGS_AS_ERRORS enabled, passing `-warnings-as-errors`")
-//    var allUnsafeFlags = globalConcurrencyFlags
-//    allUnsafeFlags.append(contentsOf: [
-//        "-warnings-as-errors",
-//    ])
-//    globalSwiftSettings = [
-//        SwiftSetting.unsafeFlags(allUnsafeFlags),
-//    ]
-// } else {
-globalSwiftSettings = [
-    SwiftSetting.unsafeFlags(globalConcurrencyFlags),
-]
-// }
+var globalSwiftSettings: [SwiftSetting] = []
 
 var targets: [PackageDescription.Target] = [
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -208,6 +188,7 @@ var dependencies: [Package.Dependency] = [
     .package(url: "https://github.com/apple/swift-protobuf.git", from: "1.7.0"),
 
     // ~~~ backtraces ~~~
+    // TODO: optimally, library should not pull swift-backtrace
     .package(url: "https://github.com/swift-server/swift-backtrace.git", from: "1.1.1"),
 
     // ~~~ Swift Collections  ~~~
@@ -245,13 +226,23 @@ let products: [PackageDescription.Product] = [
     ),
 ]
 
+// This is a workaround since current published nightly docker images don't have the latest Swift availabilities yet
+let platforms: [SupportedPlatform]?
+#if os(Linux)
+platforms = nil
+#else
+platforms = [
+    // we require the 'distributed actor' language and runtime feature:
+    .iOS(.v16),
+    .macOS(.v13),
+    .tvOS(.v16),
+    .watchOS(.v9),
+]
+#endif
+
 var package = Package(
     name: "swift-distributed-actors",
-//    platforms: [
-//        .macOS(.v13), // because of the 'distributed actor' feature
-//        .iOS(.v16),
-//        // ...
-//    ],
+    platforms: platforms,
     products: products,
 
     dependencies: dependencies,

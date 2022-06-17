@@ -71,7 +71,7 @@ extension Cluster.Member: _ProtobufRepresentable {
     }
 }
 
-// not conforming to Internal_ProtobufRepresentable since it is a raw `enum` not a Message
+// not conforming to _InternalProtobufRepresentable since it is a raw `enum` not a Message
 extension Cluster.MemberReachability {
     func toProto(context: Serialization.Context) throws -> _ProtoClusterMemberReachability {
         switch self {
@@ -96,7 +96,7 @@ extension Cluster.MemberReachability {
     }
 }
 
-// not conforming to Internal_ProtobufRepresentable since this is a raw `enum` not a Message
+// not conforming to _InternalProtobufRepresentable since this is a raw `enum` not a Message
 extension Cluster.MemberStatus {
     func toProto(context: Serialization.Context) -> _ProtoClusterMemberStatus {
         var proto = _ProtoClusterMemberStatus()

@@ -26,7 +26,7 @@ final class NodeDeathWatcherTests: ClusteredActorSystemsXCTestCase {
             settings.swim.probeInterval = .milliseconds(100)
         }
 
-        try self.joinNodes(node: first, with: second)
+        try await self.joinNodes(node: first, with: second)
 
         let refOnRemote1: _ActorRef<String> = try second._spawn("remote-1", .ignore)
         let refOnFirstToRemote1 = first._resolve(ref: refOnRemote1, onSystem: second)
@@ -56,7 +56,7 @@ final class NodeDeathWatcherTests: ClusteredActorSystemsXCTestCase {
             }
         )
 
-        try self.ensureNodes(.up, nodes: first.cluster.uniqueNode, second.cluster.uniqueNode)
+        try await self.ensureNodes(.up, nodes: first.cluster.uniqueNode, second.cluster.uniqueNode)
         first.cluster.down(node: second.cluster.uniqueNode.node)
 
         // should cause termination of all remote actors, observed by the local actors on [first]
@@ -64,10 +64,10 @@ final class NodeDeathWatcherTests: ClusteredActorSystemsXCTestCase {
         let termination2: _Signals.Terminated = try p.expectMessage()
         let terminations: [_Signals.Terminated] = [termination1, termination2]
         terminations.shouldContain(where: { terminated in
-            (!terminated.existenceConfirmed) && terminated.address.name == "remote-1"
+            (!terminated.existenceConfirmed) && terminated.id.name == "remote-1"
         })
         terminations.shouldContain(where: { terminated in
-            (!terminated.existenceConfirmed) && terminated.address.name == "remote-2"
+            (!terminated.existenceConfirmed) && terminated.id.name == "remote-2"
         })
 
         // should not trigger terminated again for any of the remote refs

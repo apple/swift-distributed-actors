@@ -23,7 +23,7 @@ import Distributed
 /// - Warning: Users MUST NOT implement new signals.
 ///            Instances of them are reserved to only be created and managed by the actor system itself.
 /// - SeeAlso: `Signals`, for a complete listing of pre-defined signals.
-public protocol _Signal: NonTransportableActorMessage, Sendable {} // FIXME: we could allow them as Codable, we never send them over the wire, but people might manually if they wanted to I suppose
+public protocol _Signal: _NotActuallyCodableMessage, Sendable {} // FIXME: we could allow them as Codable, we never send them over the wire, but people might manually if they wanted to I suppose
 
 /// Namespace for all pre-defined `Signal` types.
 ///
@@ -70,11 +70,11 @@ public enum _Signals {
     /// - SeeAlso: `_ChildTerminated` which is sent specifically to a parent-actor once its child has terminated.
     open class Terminated: @unchecked Sendable, _Signal, CustomStringConvertible {
         /// Address of the terminated actor.
-        public let address: ActorAddress
+        public let id: ActorID
 
         /// Identity of the terminated distributed actor.
-        public var identity: ActorAddress {
-            self.address
+        public var identity: ActorID {
+            self.id
         }
 
         /// The existence of this actor has been confirmed prior to its termination.
@@ -87,15 +87,15 @@ public enum _Signals {
         /// meaning that no communication with any actor on this node will be possible anymore, resulting in this `Terminated` signal.
         public let nodeTerminated: Bool // TODO: Making this a `Reason` could be nicer.
 
-        public init(address: ActorAddress, existenceConfirmed: Bool, nodeTerminated: Bool = false) {
-            self.address = address
+        public init(id: ActorID, existenceConfirmed: Bool, nodeTerminated: Bool = false) {
+            self.id = id
             self.existenceConfirmed = existenceConfirmed
             self.nodeTerminated = false
         }
 
         /// Adopters may adjust the specific description as they see fit.
         open var description: String {
-            "Terminated(\(self.address), existenceConfirmed: \(self.existenceConfirmed))"
+            "Terminated(\(self.id), existenceConfirmed: \(self.existenceConfirmed))"
         }
     }
 
@@ -147,9 +147,9 @@ public enum _Signals {
         /// targeting a different resource URI (e.g. if error indicates that the previously used resource is too busy).
         public let escalation: _Supervision.Failure?
 
-        public init(address: ActorAddress, escalation: _Supervision.Failure?) {
+        public init(id: ActorID, escalation: _Supervision.Failure?) {
             self.escalation = escalation
-            super.init(address: address, existenceConfirmed: true)
+            super.init(id: id, existenceConfirmed: true)
         }
 
         override public var description: String {
@@ -159,19 +159,19 @@ public enum _Signals {
             } else {
                 reason = ""
             }
-            return "_ChildTerminated(\(self.address)\(reason))"
+            return "_ChildTerminated(\(self.id)\(reason))"
         }
     }
 }
 
 extension _Signals.Terminated: Equatable, Hashable {
     public static func == (lhs: _Signals.Terminated, rhs: _Signals.Terminated) -> Bool {
-        lhs.address == rhs.address &&
+        lhs.id == rhs.id &&
             lhs.existenceConfirmed == rhs.existenceConfirmed
     }
 
     public func hash(into hasher: inout Hasher) {
-        self.address.hash(into: &hasher)
+        self.id.hash(into: &hasher)
         self.existenceConfirmed.hash(into: &hasher)
     }
 }

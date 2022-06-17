@@ -316,7 +316,7 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
         case .remote(.pingResponse(.ack(_, _, .membership(let members), _))):
             members.count.shouldEqual(2)
             members.shouldContain(SWIM.Member(peer: secondSwimProbe.ref, status: .alive(incarnation: 0), protocolPeriod: 0))
-            // the since we get this reply from the remote node, it will know "us" (swim) as a remote ref, and thus include its full address
+            // the since we get this reply from the remote node, it will know "us" (swim) as a remote ref, and thus include its full id
             // so we want to expect a full (with node) ref here:
             members.shouldContain(SWIM.Member(peer: swimRef, status: .alive(incarnation: 0), protocolPeriod: 0))
         case let reply:
@@ -330,8 +330,8 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
 
         local.cluster.join(node: remote.cluster.uniqueNode.node)
 
-        let localSwim: _ActorRef<SWIM.Message> = try self.testKit(local)._eventuallyResolve(address: ._swim(on: local.cluster.uniqueNode))
-        let remoteSwim: _ActorRef<SWIM.Message> = try self.testKit(remote)._eventuallyResolve(address: ._swim(on: remote.cluster.uniqueNode))
+        let localSwim: _ActorRef<SWIM.Message> = try self.testKit(local)._eventuallyResolve(id: ._swim(on: local.cluster.uniqueNode))
+        let remoteSwim: _ActorRef<SWIM.Message> = try self.testKit(remote)._eventuallyResolve(id: ._swim(on: remote.cluster.uniqueNode))
 
         let remoteSwimRef = local._resolveKnownRemote(remoteSwim, onRemoteSystem: remote)
         try self.awaitStatus(.alive(incarnation: 0), for: remoteSwimRef, on: localSwim, within: .seconds(1))
@@ -340,7 +340,7 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: utility functions
 
-    struct ForwardedSWIMMessage: ActorMessage {
+    struct ForwardedSWIMMessage: Codable {
         let message: SWIM.Message
         let recipient: _ActorRef<SWIM.Message>
     }
@@ -371,7 +371,7 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
 
     func awaitStatus(
         _ status: SWIM.Status, for peer: _ActorRef<SWIM.Message>,
-        on swimShell: _ActorRef<SWIM.Message>, within timeout: TimeAmount,
+        on swimShell: _ActorRef<SWIM.Message>, within timeout: Duration,
         file: StaticString = #file, line: UInt = #line, column: UInt = #column
     ) throws {
         let testKit = self._testKits.first!
@@ -392,7 +392,7 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
 
     func holdStatus(
         _ status: SWIM.Status, for peer: _ActorRef<SWIM.Message>,
-        on swimShell: _ActorRef<SWIM.Message>, within timeout: TimeAmount,
+        on swimShell: _ActorRef<SWIM.Message>, within timeout: Duration,
         file: StaticString = #file, line: UInt = #line, column: UInt = #column
     ) throws {
         let testKit = self._testKits.first!
@@ -412,16 +412,16 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
 }
 
 extension SWIMActorShell {
-    private static func makeSWIM(for address: ActorAddress, members: [SWIM.Ref], context: _ActorContext<SWIM.Message>, configuredWith configure: (inout SWIM.Settings) -> Void = { _ in
+    private static func makeSWIM(for id: ActorID, members: [SWIM.Ref], context: _ActorContext<SWIM.Message>, configuredWith configure: (inout SWIM.Settings) -> Void = { _ in
     }) -> SWIM.Instance {
         var memberStatus: [SWIM.Ref: SWIM.Status] = [:]
         for member in members {
             memberStatus[member] = .alive(incarnation: 0)
         }
-        return self.makeSWIM(for: address, members: memberStatus, context: context, configuredWith: configure)
+        return self.makeSWIM(for: id, members: memberStatus, context: context, configuredWith: configure)
     }
 
-    private static func makeSWIM(for address: ActorAddress, members: [SWIM.Ref: SWIM.Status], context: _ActorContext<SWIM.Message>, configuredWith configure: (inout SWIM.Settings) -> Void = { _ in
+    private static func makeSWIM(for id: ActorID, members: [SWIM.Ref: SWIM.Status], context: _ActorContext<SWIM.Message>, configuredWith configure: (inout SWIM.Settings) -> Void = { _ in
     }) -> SWIM.Instance {
         var settings = context.system.settings.swim
         configure(&settings)
@@ -435,7 +435,7 @@ extension SWIMActorShell {
     static func swimTestBehavior(members: [_ActorRef<SWIM.Message>], clusterRef: ClusterShell.Ref, configuredWith configure: @escaping (inout SWIM.Settings) -> Void = { _ in
     }) -> _Behavior<SWIM.Message> {
         .setup { context in
-            let swim = self.makeSWIM(for: context.address, members: members, context: context, configuredWith: configure)
+            let swim = self.makeSWIM(for: context.id, members: members, context: context, configuredWith: configure)
             return SWIM.Shell.ready(shell: SWIMActorShell(swim, clusterRef: clusterRef))
         }
     }
@@ -443,7 +443,7 @@ extension SWIMActorShell {
     static func swimBehavior(members: [_ActorRef<SWIM.Message>: SWIM.Status], clusterRef: ClusterShell.Ref, configuredWith configure: @escaping (inout SWIM.Settings) -> Void = { _ in
     }) -> _Behavior<SWIM.Message> {
         .setup { context in
-            let swim = self.makeSWIM(for: context.address, members: members, context: context, configuredWith: configure)
+            let swim = self.makeSWIM(for: context.id, members: members, context: context, configuredWith: configure)
             return SWIM.Shell.ready(shell: SWIMActorShell(swim, clusterRef: clusterRef))
         }
     }

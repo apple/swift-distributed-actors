@@ -140,7 +140,7 @@ class _ActorRefAdapterTests: ClusterSystemXCTestCase {
         try pAdapted.expectNoMessage(for: .milliseconds(10))
     }
 
-    enum LifecycleTestMessage: NonTransportableActorMessage {
+    enum LifecycleTestMessage: _NotActuallyCodableMessage {
         case createAdapter(replyTo: _ActorRef<_ActorRef<String>>)
         case crash
         case stop
@@ -233,7 +233,7 @@ class _ActorRefAdapterTests: ClusterSystemXCTestCase {
     }
 
     func test_adaptedRef_useSpecificEnoughAdapterMostRecentlySet() throws {
-        class TopExample: NonTransportableActorMessage {}
+        class TopExample: _NotActuallyCodableMessage {}
         class BottomExample: TopExample {}
 
         let probe = self.testKit.makeTestProbe(expecting: String.self)

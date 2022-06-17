@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -25,27 +25,27 @@ import Glibc
 #endif
 
 final class SupervisionTests: ClusterSystemXCTestCase {
-    enum FaultyError: Error, NonTransportableActorMessage {
+    enum FaultyError: Error, _NotActuallyCodableMessage {
         case boom(message: String)
     }
 
-    enum FaultyMessage: NonTransportableActorMessage {
+    enum FaultyMessage: _NotActuallyCodableMessage {
         case pleaseThrow(error: Error)
         case echo(message: String, replyTo: _ActorRef<WorkerMessages>)
         case pleaseFailAwaiting(message: String)
     }
 
-    enum SimpleProbeMessages: Equatable, NonTransportableActorMessage {
+    enum SimpleProbeMessages: Equatable, _NotActuallyCodableMessage {
         case spawned(child: _ActorRef<FaultyMessage>)
         case echoing(message: String)
     }
 
-    enum WorkerMessages: Equatable, NonTransportableActorMessage {
+    enum WorkerMessages: Equatable, _NotActuallyCodableMessage {
         case setupRunning(ref: _ActorRef<FaultyMessage>)
         case echo(message: String)
     }
 
-    enum FailureMode: NonTransportableActorMessage {
+    enum FailureMode: _NotActuallyCodableMessage {
         case throwing
         // case faulting // Not implemented
 
@@ -183,7 +183,7 @@ final class SupervisionTests: ClusterSystemXCTestCase {
         guard case .setupRunning(let faultyWorker) = try p.expectMessage() else { throw p.error() }
         p.watch(faultyWorker)
 
-        func boomExpectBackoffRestart(expectedBackoff: DistributedActors.TimeAmount) throws {
+        func boomExpectBackoffRestart(expectedBackoff: Duration) throws {
             // confirm it is alive and working
             faultyWorker.tell(.echo(message: "one", replyTo: p.ref))
             try p.expectMessage(WorkerMessages.echo(message: "echo:one"))
@@ -209,16 +209,16 @@ final class SupervisionTests: ClusterSystemXCTestCase {
             faultyWorkerRestarted.shouldEqual(faultyWorker)
         }
 
-        try boomExpectBackoffRestart(expectedBackoff: backoff.timeAmount)
-        try boomExpectBackoffRestart(expectedBackoff: backoff.timeAmount)
-        try boomExpectBackoffRestart(expectedBackoff: backoff.timeAmount)
+        try boomExpectBackoffRestart(expectedBackoff: backoff.duration)
+        try boomExpectBackoffRestart(expectedBackoff: backoff.duration)
+        try boomExpectBackoffRestart(expectedBackoff: backoff.duration)
     }
 
     func sharedTestLogic_restartSupervised_shouldRestartWithExponentialBackoff(
         runName: String,
         makeEvilMessage: @escaping (String) -> FaultyMessage
     ) throws {
-        let initialInterval: DistributedActors.TimeAmount = .milliseconds(100)
+        let initialInterval: Duration = .milliseconds(100)
         let multiplier = 2.0
         let backoff = Backoff.exponential(
             initialInterval: initialInterval,
@@ -246,7 +246,7 @@ final class SupervisionTests: ClusterSystemXCTestCase {
         guard case .setupRunning(let faultyWorker) = try p.expectMessage() else { throw p.error() }
         p.watch(faultyWorker)
 
-        func boomExpectBackoffRestart(expectedBackoff: DistributedActors.TimeAmount) throws {
+        func boomExpectBackoffRestart(expectedBackoff: Duration) throws {
             // confirm it is alive and working
             faultyWorker.tell(.echo(message: "one", replyTo: p.ref))
             try p.expectMessage(WorkerMessages.echo(message: "echo:one"))
@@ -281,7 +281,7 @@ final class SupervisionTests: ClusterSystemXCTestCase {
         let p = self.testKit.makeTestProbe(expecting: WorkerMessages.self)
         let pp = self.testKit.makeTestProbe(expecting: Never.self)
 
-        let failurePeriod: DistributedActors.TimeAmount = .seconds(1) // .milliseconds(300)
+        let failurePeriod: Duration = .seconds(1) // .milliseconds(300)
 
         let parentBehavior: _Behavior<Never> = .setup { context in
             let _: _ActorRef<FaultyMessage> = try context._spawn(
@@ -780,7 +780,7 @@ final class SupervisionTests: ClusterSystemXCTestCase {
             return .same
         }.receiveSignal { _, signal in
             if let terminated = signal as? _Signals.Terminated {
-                parentProbe.tell("terminated:\(terminated.address.name)")
+                parentProbe.tell("terminated:\(terminated.id.name)")
                 try failureMode.fail()
             }
             return .same
@@ -1078,7 +1078,7 @@ final class SupervisionTests: ClusterSystemXCTestCase {
         try p.expectMessage("starting")
     }
 
-    private struct PleaseReplyError: Error, ActorMessage, Equatable {}
+    private struct PleaseReplyError: Error, Codable, Equatable {}
     private struct EasilyCatchableError: Error, Equatable {}
     private struct CantTouchThisError: Error, Equatable {}
     private struct CatchMeError: Error, Equatable {}

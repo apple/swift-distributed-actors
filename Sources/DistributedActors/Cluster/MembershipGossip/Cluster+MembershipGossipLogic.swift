@@ -33,7 +33,7 @@ final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
 
     /// We store and use a shuffled yet stable order for gossiping peers.
     /// See `updateActivePeers` for details.
-    private var peers: [AddressableActorRef] = []
+    private var peers: [_AddressableActorRef] = []
     /// Constantly mutated by `nextPeerToGossipWith` in an effort to keep order in which we gossip with nodes evenly distributed.
     /// This follows our logic in SWIM, and has the benefit that we never get too chatty with one specific node (as in the worst case it may be unreachable or down already).
     private var _peerToGossipWithIndex: Int = 0
@@ -42,7 +42,7 @@ final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
     ///
     /// See `updateActivePeers` and `receiveGossip` for details.
     // TODO: This can be optimized and it's enough if we keep a digest of the gossips; this way ACKs can just send the digest as well saving space.
-    private var lastGossipFrom: [AddressableActorRef: Cluster.MembershipGossip] = [:]
+    private var lastGossipFrom: [_AddressableActorRef: Cluster.MembershipGossip] = [:]
 
     init(_ context: Context, notifyOnGossipRef: _ActorRef<Cluster.MembershipGossip>) {
         self.context = context
@@ -53,13 +53,13 @@ final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Spreading gossip
 
-    func selectPeers(_ peers: [AddressableActorRef]) -> [AddressableActorRef] {
+    func selectPeers(_ peers: [_AddressableActorRef]) -> [_AddressableActorRef] {
         // how many peers we select in each gossip round,
         // we could for example be dynamic and notice if we have 10+ nodes, we pick 2 members to speed up the dissemination etc.
         let n = 1
 
         self.updateActivePeers(peers)
-        var selectedPeers: [AddressableActorRef] = []
+        var selectedPeers: [_AddressableActorRef] = []
         selectedPeers.reserveCapacity(min(n, self.peers.count))
 
         /// Trust the order of peers in gossipPeers for the selection; see `updateActivePeers` for logic of the ordering.
@@ -72,7 +72,7 @@ final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
         return selectedPeers
     }
 
-    private func updateActivePeers(_ peers: [AddressableActorRef]) {
+    private func updateActivePeers(_ peers: [_AddressableActorRef]) {
         if let changed = Self.peersChanged(known: self.peers, current: peers) {
             // 1) remove any peers which are no longer active
             //    - from the peers list
@@ -99,7 +99,7 @@ final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
         }
     }
 
-    func makePayload(target: AddressableActorRef) -> Cluster.MembershipGossip? {
+    func makePayload(target: _AddressableActorRef) -> Cluster.MembershipGossip? {
         // today we don't trim payloads at all
         // TODO: trim some information?
         self.latestGossip
@@ -109,7 +109,7 @@ final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
     // TODO: Implement stricter-round robin, the same way as our SWIM impl does, see `nextMemberToPing`
     //       This hardens the implementation against gossiping with the same node multiple times in a row.
     //       Note that we do NOT need to worry about filtering out dead peers as this is automatically handled by the gossip shell.
-    private func shouldGossipWith(_ peer: AddressableActorRef) -> Bool {
+    private func shouldGossipWith(_ peer: _AddressableActorRef) -> Bool {
         guard let lastSeenGossipFromPeer = self.lastGossipFrom[peer] else {
             // it's a peer we have not gotten any gossip from yet
             return true
@@ -119,7 +119,7 @@ final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
     }
 
     // TODO: may also want to return "these were removed" if we need to make any internal cleanup
-    static func peersChanged(known: [AddressableActorRef], current: [AddressableActorRef]) -> PeersChanged? {
+    static func peersChanged(known: [_AddressableActorRef], current: [_AddressableActorRef]) -> PeersChanged? {
         // TODO: a bit lazy implementation
         let knownSet = Set(known)
         let currentSet = Set(current)
@@ -138,10 +138,10 @@ final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
     }
 
     struct PeersChanged {
-        let added: Set<AddressableActorRef>
-        let removed: Set<AddressableActorRef>
+        let added: Set<_AddressableActorRef>
+        let removed: Set<_AddressableActorRef>
 
-        init(added: Set<AddressableActorRef>, removed: Set<AddressableActorRef>) {
+        init(added: Set<_AddressableActorRef>, removed: Set<_AddressableActorRef>) {
             assert(!added.isEmpty || !removed.isEmpty, "PeersChanged yet both added/removed are empty!")
             self.added = added
             self.removed = removed
@@ -151,7 +151,7 @@ final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Receiving gossip
 
-    func receiveGossip(_ gossip: Gossip, from peer: AddressableActorRef) -> Acknowledgement? {
+    func receiveGossip(_ gossip: Gossip, from peer: _AddressableActorRef) -> Acknowledgement? {
         // 1) mark that from that specific peer, we know it observed at least that version
         self.lastGossipFrom[peer] = gossip
 
@@ -166,7 +166,7 @@ final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
         return self.latestGossip
     }
 
-    func receiveAcknowledgement(_ acknowledgement: Acknowledgement, from peer: AddressableActorRef, confirming gossip: Cluster.MembershipGossip) {
+    func receiveAcknowledgement(_ acknowledgement: Acknowledgement, from peer: _AddressableActorRef, confirming gossip: Cluster.MembershipGossip) {
         // 1) store the direct gossip we got from this peer; we can use this to know if there's no need to gossip to that peer by inspecting seen table equality
         self.lastGossipFrom[peer] = acknowledgement
 

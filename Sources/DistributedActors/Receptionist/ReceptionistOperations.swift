@@ -29,8 +29,8 @@ internal protocol _BaseReceptionistOperations {
     func register<Guest>(
         _ guest: Guest,
         as id: String,
-        replyTo: _ActorRef<Reception.Registered<Guest>>?
-    ) -> Reception.Key<Guest> where Guest: _ReceptionistGuest
+        replyTo: _ActorRef<_Reception.Registered<Guest>>?
+    ) -> _Reception.Key<Guest> where Guest: _ReceptionistGuest
 
     /// Registers passed in `actor` in the systems receptionist with given id.
     ///
@@ -39,16 +39,16 @@ internal protocol _BaseReceptionistOperations {
     @discardableResult
     func register<Guest>(
         _ guest: Guest,
-        with key: Reception.Key<Guest>,
-        replyTo: _ActorRef<Reception.Registered<Guest>>?
-    ) -> Reception.Key<Guest> where Guest: _ReceptionistGuest
+        with key: _Reception.Key<Guest>,
+        replyTo: _ActorRef<_Reception.Registered<Guest>>?
+    ) -> _Reception.Key<Guest> where Guest: _ReceptionistGuest
 
     /// Subscribe to changes in checked-in actors under given `key`.
     ///
-    /// The `subscriber` actor will be notified with `Reception.Listing<M>` messages when new actors register, leave or die, under the passed in key.
+    /// The `subscriber` actor will be notified with `_Reception.Listing<M>` messages when new actors register, leave or die, under the passed in key.
     func subscribe<Guest>(
-        _ subscriber: _ActorRef<Reception.Listing<Guest>>,
-        to key: Reception.Key<Guest>
+        _ subscriber: _ActorRef<_Reception.Listing<Guest>>,
+        to key: _Reception.Key<Guest>
     ) where Guest: _ReceptionistGuest
 
     /// Perform a *single* lookup for an actor identified by the passed in `key`.
@@ -56,9 +56,9 @@ internal protocol _BaseReceptionistOperations {
     /// - Parameters:
     ///   - key: selects which actors we are interested in.
     func lookup<Guest>(
-        _ key: Reception.Key<Guest>,
-        replyTo: _ActorRef<Reception.Listing<Guest>>,
-        timeout: TimeAmount
+        _ key: _Reception.Key<Guest>,
+        replyTo: _ActorRef<_Reception.Listing<Guest>>,
+        timeout: Duration
     ) where Guest: _ReceptionistGuest
 }
 
@@ -72,8 +72,8 @@ extension _ReceptionistOperations {
     internal func register<Guest>(
         _ guest: Guest,
         as id: String,
-        replyTo: _ActorRef<Reception.Registered<Guest>>? = nil
-    ) -> Reception.Key<Guest> where Guest: _ReceptionistGuest {
+        replyTo: _ActorRef<_Reception.Registered<Guest>>? = nil
+    ) -> _Reception.Key<Guest> where Guest: _ReceptionistGuest {
         self.register(guest, with: .init(Guest.self, id: id), replyTo: replyTo)
     }
 
@@ -81,25 +81,25 @@ extension _ReceptionistOperations {
     @discardableResult
     internal func register<Guest>(
         _ guest: Guest,
-        with key: Reception.Key<Guest>,
-        replyTo: _ActorRef<Reception.Registered<Guest>>? = nil
-    ) -> Reception.Key<Guest> where Guest: _ReceptionistGuest {
+        with key: _Reception.Key<Guest>,
+        replyTo: _ActorRef<_Reception.Registered<Guest>>? = nil
+    ) -> _Reception.Key<Guest> where Guest: _ReceptionistGuest {
         self._system._receptionist.register(guest, with: key, replyTo: replyTo)
     }
 
     @inlinable
     internal func subscribe<Guest>(
-        _ subscriber: _ActorRef<Reception.Listing<Guest>>,
-        to key: Reception.Key<Guest>
+        _ subscriber: _ActorRef<_Reception.Listing<Guest>>,
+        to key: _Reception.Key<Guest>
     ) where Guest: _ReceptionistGuest {
         self._system._receptionist.subscribe(subscriber, to: key)
     }
 
     @inlinable
     internal func lookup<Guest>(
-        _ key: Reception.Key<Guest>,
-        replyTo: _ActorRef<Reception.Listing<Guest>>,
-        timeout: TimeAmount = .effectivelyInfinite
+        _ key: _Reception.Key<Guest>,
+        replyTo: _ActorRef<_Reception.Listing<Guest>>,
+        timeout: Duration = .effectivelyInfinite
     ) where Guest: _ReceptionistGuest {
         self._system._receptionist.lookup(key, replyTo: replyTo, timeout: timeout)
     }
@@ -120,13 +120,13 @@ internal protocol _MyselfReceptionistOperations: _ReceptionistOperations {
     /// Registers `myself` in the systems receptionist with given key.
     @discardableResult
     func registerMyself(
-        with key: Reception.Key<Myself>,
-        replyTo: _ActorRef<Reception.Registered<Myself>>?
-    ) -> Reception.Key<Myself>
+        with key: _Reception.Key<Myself>,
+        replyTo: _ActorRef<_Reception.Registered<Myself>>?
+    ) -> _Reception.Key<Myself>
 
     /// Subscribe to actors registering under given `key`.
     ///
-    /// A new `Reception.Listing<Guest>` is emitted whenever new actors join (or leave) the reception, and the `onListingChange` is then
+    /// A new `_Reception.Listing<Guest>` is emitted whenever new actors join (or leave) the reception, and the `onListingChange` is then
     /// invoked on the actors context.
     ///
     /// Current Limitation: Only ONE (the most recently set using this API) `onListingChange` for a given `key` is going to be executed.
@@ -137,40 +137,40 @@ internal protocol _MyselfReceptionistOperations: _ReceptionistOperations {
     ///   - callback: invoked whenever actors join/leave the reception or when they terminate.
     ///               The invocation is made on the owning actor's context, meaning that it is safe to mutate actor state from the callback.
     func subscribeMyself<Guest>(
-        to key: Reception.Key<Guest>,
-        subReceive callback: @escaping (Reception.Listing<Guest>) -> Void
+        to key: _Reception.Key<Guest>,
+        subReceive callback: @escaping (_Reception.Listing<Guest>) -> Void
     ) where Guest: _ReceptionistGuest
 
     /// Subscribe this actor to actors registering under given `key`.
     ///
-    /// A new `Reception.Listing<Guest>` is emitted whenever new actors join (or leave) the reception.
+    /// A new `_Reception.Listing<Guest>` is emitted whenever new actors join (or leave) the reception.
     ///
     /// - SeeAlso: `subscribeMyself(to:subReceive:)`
     func subscribeMyself<Guest>(
-        to key: Reception.Key<Guest>
-    ) where Guest: _ReceptionistGuest, Myself.Message == Reception.Listing<Guest>
+        to key: _Reception.Key<Guest>
+    ) where Guest: _ReceptionistGuest, Myself.Message == _Reception.Listing<Guest>
 }
 
 extension _MyselfReceptionistOperations {
     @inlinable
     @discardableResult
     internal func registerMyself(
-        with key: Reception.Key<Myself>,
-        replyTo: _ActorRef<Reception.Registered<Myself>>? = nil
-    ) -> Reception.Key<Myself> {
+        with key: _Reception.Key<Myself>,
+        replyTo: _ActorRef<_Reception.Registered<Myself>>? = nil
+    ) -> _Reception.Key<Myself> {
         self.register(self._myself, with: key, replyTo: replyTo)
         return key
     }
 
     @inlinable
     internal func subscribeMyself<Guest>(
-        to key: Reception.Key<Guest>,
-        subReceive callback: @escaping (Reception.Listing<Guest>) -> Void
+        to key: _Reception.Key<Guest>,
+        subReceive callback: @escaping (_Reception.Listing<Guest>) -> Void
     ) where Guest: _ReceptionistGuest {
         let subReceiveStringID = "subscribe-\(Guest.self)"
-        let id = _SubReceiveId<Reception.Listing<Guest>>(id: subReceiveStringID)
+        let id = _SubReceiveId<_Reception.Listing<Guest>>(id: subReceiveStringID)
         let subRef = self._underlyingContext
-            .subReceive(id, Reception.Listing<Guest>.self) { listing in
+            .subReceive(id, _Reception.Listing<Guest>.self) { listing in
                 callback(listing)
             }
 
@@ -179,8 +179,8 @@ extension _MyselfReceptionistOperations {
 
     @inlinable
     internal func subscribeMyself<Guest>(
-        to key: Reception.Key<Guest>
-    ) where Guest: _ReceptionistGuest, Myself.Message == Reception.Listing<Guest> {
+        to key: _Reception.Key<Guest>
+    ) where Guest: _ReceptionistGuest, Myself.Message == _Reception.Listing<Guest> {
         self.subscribe(self._myself._ref, to: key)
     }
 }

@@ -68,12 +68,12 @@ public enum ActorCoding {
 extension _ActorRef {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
-        try container.encode(self.address)
+        try container.encode(self.id)
     }
 
     public init(from decoder: Decoder) throws {
         let container: SingleValueDecodingContainer = try decoder.singleValueContainer()
-        let address = try container.decode(ActorAddress.self)
+        let id = try container.decode(ActorID.self)
 
         guard let context = decoder.actorSerializationContext else {
             throw SerializationError.missingSerializationContext(decoder, _ActorRef<Message>.self)
@@ -81,7 +81,7 @@ extension _ActorRef {
 
         // Important: We need to carry the `userInfo` as it may contain information set by a Transport that it needs in
         // order to resolve a ref. This allows the transport to resolve any actor ref, even if they are contained in user-messages.
-        self = context._resolveActorRef(identifiedBy: address, userInfo: decoder.userInfo)
+        self = context._resolveActorRef(identifiedBy: id, userInfo: decoder.userInfo)
     }
 }
 
@@ -93,7 +93,7 @@ extension _ReceivesMessages {
         var container = encoder.singleValueContainer()
         switch self {
         case let ref as _ActorRef<Message>:
-            try container.encode(ref.address)
+            try container.encode(ref.id)
         default:
             fatalError("Can not serialize non-_ActorRef _ReceivesMessages! Was: \(self)")
         }
@@ -101,13 +101,13 @@ extension _ReceivesMessages {
 
     public init(from decoder: Decoder) throws {
         let container: SingleValueDecodingContainer = try decoder.singleValueContainer()
-        let address: ActorAddress = try container.decode(ActorAddress.self)
+        let id: ActorID = try container.decode(ActorID.self)
 
         guard let context = decoder.actorSerializationContext else {
             fatalError("Can not resolve actor refs without CodingUserInfoKey.actorSerializationContext set!") // TODO: better message
         }
 
-        let resolved: _ActorRef<Self.Message> = context._resolveActorRef(identifiedBy: address)
+        let resolved: _ActorRef<Self.Message> = context._resolveActorRef(identifiedBy: id)
         self = resolved as! Self // this is safe, we know Self IS-A _ActorRef
     }
 }
@@ -123,8 +123,8 @@ extension _ReceivesMessages {
 extension _ReceivesSystemMessages {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
-        traceLog_Serialization("encode \(self.address) WITH address")
-        try container.encode(self.address)
+        traceLog_Serialization("encode \(self.id) WITH address")
+        try container.encode(self.id)
     }
 
     public init(from decoder: Decoder) throws {
@@ -139,9 +139,30 @@ internal enum ReceivesSystemMessagesDecoder {
         }
 
         let container: SingleValueDecodingContainer = try decoder.singleValueContainer()
-        let address: ActorAddress = try container.decode(ActorAddress.self)
+        let id: ActorID = try container.decode(ActorID.self)
 
-        return context._resolveAddressableActorRef(identifiedBy: address)
+        return context._resolveAddressableActorRef(identifiedBy: id)
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Codable ActorID
+
+extension ActorID: Codable {
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: ActorCoding.CodingKeys.self)
+        try container.encode(self.uniqueNode, forKey: ActorCoding.CodingKeys.node)
+        try container.encode(self.path, forKey: ActorCoding.CodingKeys.path)
+        try container.encode(self.incarnation, forKey: ActorCoding.CodingKeys.incarnation)
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: ActorCoding.CodingKeys.self)
+        let node = try container.decode(UniqueNode.self, forKey: ActorCoding.CodingKeys.node)
+        let path = try container.decode(ActorPath.self, forKey: ActorCoding.CodingKeys.path)
+        let incarnation = try container.decode(UInt32.self, forKey: ActorCoding.CodingKeys.incarnation)
+
+        self.init(remote: node, path: path, incarnation: ActorIncarnation(incarnation))
     }
 }
 
@@ -292,7 +313,7 @@ extension _SystemMessage: Codable {
 
         case ref
         case existenceConfirmed
-        case addressTerminated
+        case idTerminated
     }
 
     enum Types {
@@ -305,19 +326,19 @@ extension _SystemMessage: Codable {
         switch try container.decode(Int.self, forKey: CodingKeys.type) {
         case Types.watch:
             let context = decoder.actorSerializationContext!
-            let watcheeAddress = try container.decode(ActorAddress.self, forKey: CodingKeys.watchee)
-            let watcherAddress = try container.decode(ActorAddress.self, forKey: CodingKeys.watcher)
-            let watchee = context._resolveAddressableActorRef(identifiedBy: watcheeAddress)
-            let watcher = context._resolveAddressableActorRef(identifiedBy: watcherAddress)
+            let watcheeID = try container.decode(ActorID.self, forKey: CodingKeys.watchee)
+            let watcherID = try container.decode(ActorID.self, forKey: CodingKeys.watcher)
+            let watchee = context._resolveAddressableActorRef(identifiedBy: watcheeID)
+            let watcher = context._resolveAddressableActorRef(identifiedBy: watcherID)
             self = .watch(watchee: watchee, watcher: watcher)
 
         case Types.terminated:
             let context = decoder.actorSerializationContext!
-            let address = try container.decode(ActorAddress.self, forKey: CodingKeys.ref)
-            let ref = context._resolveAddressableActorRef(identifiedBy: address)
+            let id = try container.decode(ActorID.self, forKey: CodingKeys.ref)
+            let ref = context._resolveAddressableActorRef(identifiedBy: id)
             let existenceConfirmed = try container.decode(Bool.self, forKey: CodingKeys.existenceConfirmed)
-            let addressTerminated = try container.decode(Bool.self, forKey: CodingKeys.addressTerminated)
-            self = .terminated(ref: ref, existenceConfirmed: existenceConfirmed, addressTerminated: addressTerminated)
+            let idTerminated = try container.decode(Bool.self, forKey: CodingKeys.idTerminated)
+            self = .terminated(ref: ref, existenceConfirmed: existenceConfirmed, idTerminated: idTerminated)
         case let type:
             self = FIXME("Can't decode type \(type)")
         }
@@ -330,16 +351,16 @@ extension _SystemMessage: Codable {
 
             try container.encode(Types.watch, forKey: CodingKeys.type)
 
-            try container.encode(watchee.address, forKey: CodingKeys.watchee)
-            try container.encode(watcher.address, forKey: CodingKeys.watcher)
+            try container.encode(watchee.id, forKey: CodingKeys.watchee)
+            try container.encode(watcher.id, forKey: CodingKeys.watcher)
 
-        case .terminated(let ref, let existenceConfirmed, let addressTerminated):
+        case .terminated(let ref, let existenceConfirmed, let idTerminated):
             var container = encoder.container(keyedBy: CodingKeys.self)
             try container.encode(Types.terminated, forKey: CodingKeys.type)
 
-            try container.encode(ref.address, forKey: CodingKeys.ref)
+            try container.encode(ref.id, forKey: CodingKeys.ref)
             try container.encode(existenceConfirmed, forKey: CodingKeys.existenceConfirmed)
-            try container.encode(addressTerminated, forKey: CodingKeys.addressTerminated)
+            try container.encode(idTerminated, forKey: CodingKeys.idTerminated)
 
         default:
             return FIXME("Not serializable: \(self)")

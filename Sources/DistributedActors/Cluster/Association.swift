@@ -167,13 +167,19 @@ final class Association: CustomStringConvertible, @unchecked Sendable {
 
 extension Association {
     /// Concurrency: safe to invoke from any thread.
-    func sendUserMessage(envelope: Payload, recipient: ActorAddress, promise: EventLoopPromise<Void>? = nil) {
+    func sendUserMessage(envelope: Payload, recipient: ActorID, promise: EventLoopPromise<Void>? = nil) {
         let transportEnvelope = TransportEnvelope(envelope: envelope, recipient: recipient)
         self._send(transportEnvelope, promise: promise)
     }
 
     /// Concurrency: safe to invoke from any thread.
-    func sendSystemMessage(_ message: _SystemMessage, recipient: ActorAddress, promise: EventLoopPromise<Void>? = nil) {
+    func sendInvocation(_ invocation: InvocationMessage, recipient: ActorID, promise: EventLoopPromise<Void>? = nil) {
+        let transportEnvelope = TransportEnvelope(invocation: invocation, recipient: recipient)
+        self._send(transportEnvelope, promise: promise)
+    }
+
+    /// Concurrency: safe to invoke from any thread.
+    func sendSystemMessage(_ message: _SystemMessage, recipient: ActorID, promise: EventLoopPromise<Void>? = nil) {
         let transportEnvelope = TransportEnvelope(systemMessage: message, recipient: recipient)
         self._send(transportEnvelope, promise: promise)
     }
@@ -244,17 +250,17 @@ extension Association {
 
         /// Determines when the Tombstone should be removed from kept tombstones in the ClusterShell.
         /// End of life of the tombstone is calculated as `now + settings.associationTombstoneTTL`.
-        let removalDeadline: Deadline
+        let removalDeadline: ContinuousClock.Instant
 
         init(_ node: UniqueNode, settings: ClusterSystemSettings) {
             // TODO: if we made system carry system.time we could always count from that point in time with a TimeAmount; require Clock and settings then
-            self.removalDeadline = Deadline.fromNow(settings.associationTombstoneTTL)
+            self.removalDeadline = .fromNow(settings.associationTombstoneTTL)
             self.remoteNode = node
         }
 
         /// Used to create "any" tombstone, for being able to lookup in Set<TombstoneSet>
         init(_ node: UniqueNode) {
-            self.removalDeadline = Deadline.uptimeNanoseconds(1) // ANY value here is ok, we do not use it in hash/equals
+            self.removalDeadline = .now // ANY value here is ok, we do not use it in hash/equals
             self.remoteNode = node
         }
 

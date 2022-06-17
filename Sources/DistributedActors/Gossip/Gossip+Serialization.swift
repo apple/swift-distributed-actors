@@ -44,7 +44,7 @@ extension GossipShell.Message: Codable {
                 fatalError("Cannot cast to GossipIdentifier, was: \(identifierAny)")
             }
 
-            let originAddress = try container.decode(ActorAddress.self, forKey: .origin)
+            let originAddress = try container.decode(ActorID.self, forKey: .origin)
             let origin = context._resolveActorRef(Self.self, identifiedBy: originAddress)
 
             // FIXME: sometimes we could encode raw and not via the Data -- think about it and fix it
@@ -52,7 +52,7 @@ extension GossipShell.Message: Codable {
             let payloadPayload = try container.decode(Data.self, forKey: .gossip_payload)
             let payload = try context.serialization.deserialize(as: Gossip.self, from: .data(payloadPayload), using: payloadManifest)
 
-            let ackRefAddress = try container.decodeIfPresent(ActorAddress.self, forKey: .ackRef)
+            let ackRefAddress = try container.decodeIfPresent(ActorID.self, forKey: .ackRef)
             let ackRef = ackRefAddress.map { context._resolveActorRef(Acknowledgement.self, identifiedBy: $0) }
 
             self = .gossip(identity: identifier, origin: origin, payload, ackRef: ackRef)
@@ -74,13 +74,13 @@ extension GossipShell.Message: Codable {
             try container.encode(serializedIdentifier.manifest, forKey: .gossip_identifier_manifest)
             try container.encode(serializedIdentifier.buffer.readData(), forKey: .gossip_identifier)
 
-            try container.encode(origin.address, forKey: .origin)
+            try container.encode(origin.id, forKey: .origin)
 
             let serializedPayload = try context.serialization.serialize(payload)
             try container.encode(serializedPayload.manifest, forKey: .gossip_payload_manifest)
             try container.encode(serializedPayload.buffer.readData(), forKey: .gossip_payload)
 
-            try container.encodeIfPresent(ackRef?.address, forKey: .ackRef)
+            try container.encodeIfPresent(ackRef?.id, forKey: .ackRef)
 
         default:
             throw SerializationError.unableToSerialize(hint: "\(reflecting: Self.self)")

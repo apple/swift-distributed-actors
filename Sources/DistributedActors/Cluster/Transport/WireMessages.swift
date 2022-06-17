@@ -22,14 +22,14 @@ internal enum Wire {
     typealias Message = WireMessage
 
     /// The wire protocol version is the DistributedActors version (at least now)
-    public typealias Version = DistributedActors.Version
+    public typealias Version = ClusterSystem.Version
 
     /// Envelope type carrying messages over the network.
     struct Envelope: Codable {
         /// This is a very blessed type hint, as it encapsulates all messages and is _assumed_ on the receiving end as the outer wrapper.
         static var typeHint: String = "_$Awe" // Swift Actors wire envelope
 
-        var recipient: ActorAddress
+        var recipient: ActorID
 
         // TODO: metadata
         // TODO: "flags" incl. isSystemMessage

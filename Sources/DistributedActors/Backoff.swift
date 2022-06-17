@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -22,7 +22,7 @@
 /// See also: `ConstantBackoffStrategy`, `ExponentialBackoffStrategy`
 public protocol BackoffStrategy {
     /// Returns next backoff interval to use OR `nil` if no further retries should be performed.
-    mutating func next() -> TimeAmount?
+    mutating func next() -> Duration?
 
     /// Reset the strategy to its initial backoff amount.
     mutating func reset()
@@ -46,8 +46,8 @@ public enum Backoff {
     /// Backoff each time using the same, constant, time amount.
     ///
     /// See `ConstantBackoffStrategy` for details
-    public static func constant(_ backoff: TimeAmount) -> ConstantBackoffStrategy {
-        .init(timeAmount: backoff)
+    public static func constant(_ backoff: Duration) -> ConstantBackoffStrategy {
+        .init(duration: backoff)
     }
 
     /// Creates a strategy implementing the exponential backoff pattern.
@@ -68,9 +68,9 @@ public enum Backoff {
     ///   - maxAttempts: An optional maximum number of times backoffs shall be attempted.
     ///         MUST be `> 0` if set (or `nil`).
     public static func exponential(
-        initialInterval: TimeAmount = ExponentialBackoffStrategy.Defaults.initialInterval,
+        initialInterval: Duration = ExponentialBackoffStrategy.Defaults.initialInterval,
         multiplier: Double = ExponentialBackoffStrategy.Defaults.multiplier,
-        capInterval: TimeAmount = ExponentialBackoffStrategy.Defaults.capInterval,
+        capInterval: Duration = ExponentialBackoffStrategy.Defaults.capInterval,
         randomFactor: Double = ExponentialBackoffStrategy.Defaults.randomFactor,
         maxAttempts: Int? = ExponentialBackoffStrategy.Defaults.maxAttempts
     ) -> ExponentialBackoffStrategy {
@@ -94,14 +94,14 @@ public enum Backoff {
 /// - SeeAlso: Also used to configure `_SupervisionStrategy`.
 public struct ConstantBackoffStrategy: BackoffStrategy {
     /// The constant time amount to back-off by each time.
-    internal let timeAmount: TimeAmount
+    internal let duration: Duration
 
-    public init(timeAmount: TimeAmount) {
-        self.timeAmount = timeAmount
+    public init(duration: Duration) {
+        self.duration = duration
     }
 
-    public func next() -> TimeAmount? {
-        self.timeAmount
+    public func next() -> Duration? {
+        self.duration
     }
 
     public func reset() {
@@ -150,28 +150,28 @@ public struct ExponentialBackoffStrategy: BackoffStrategy {
 
     /// Default values for the backoff parameters.
     public enum Defaults {
-        public static let initialInterval: TimeAmount = .milliseconds(200)
+        public static let initialInterval: Duration = .milliseconds(200)
         public static let multiplier: Double = 1.5
-        public static let capInterval: TimeAmount = .effectivelyInfinite
+        public static let capInterval: Duration = .effectivelyInfinite
         public static let randomFactor: Double = 0.25
 
         // TODO: We could also implement taking a Clock, and using it see if there's a total limit exceeded
-        // public static let maxElapsedTime: TimeAmount = .minutes(30)
+        // public static let maxElapsedTime: Duration = .minutes(30)
 
         public static let maxAttempts: Int? = nil
     }
 
-    let initialInterval: TimeAmount
+    let initialInterval: Duration
     let multiplier: Double
-    let capInterval: TimeAmount
+    let capInterval: Duration
     let randomFactor: Double
 
     var limitedRemainingAttempts: Int?
 
     // interval that will be used in the `next()` call, does NOT include the random noise component
-    private var currentBaseInterval: TimeAmount
+    private var currentBaseInterval: Duration
 
-    internal init(initialInterval: TimeAmount, multiplier: Double, capInterval: TimeAmount, randomFactor: Double, maxAttempts: Int?) {
+    internal init(initialInterval: Duration, multiplier: Double, capInterval: Duration, randomFactor: Double, maxAttempts: Int?) {
         precondition(initialInterval.nanoseconds > 0, "initialInterval MUST be > 0ns, was: [\(initialInterval.prettyDescription)]")
         precondition(multiplier >= 1.0, "multiplier MUST be >= 1.0, was: [\(multiplier)]")
         precondition(initialInterval <= capInterval, "capInterval MUST be >= initialInterval, was: [\(capInterval)]")
@@ -188,7 +188,7 @@ public struct ExponentialBackoffStrategy: BackoffStrategy {
         self.limitedRemainingAttempts = maxAttempts
     }
 
-    public mutating func next() -> TimeAmount? {
+    public mutating func next() -> Duration? {
         defer { self.limitedRemainingAttempts? -= 1 }
         if let remainingAttempts = self.limitedRemainingAttempts, remainingAttempts <= 0 {
             return nil
@@ -226,5 +226,5 @@ public struct ExponentialBackoffStrategy: BackoffStrategy {
 // MARK: Errors
 
 enum BackoffError {
-    case exceededNumberOfAttempts(limit: Int, period: TimeAmount)
+    case exceededNumberOfAttempts(limit: Int, period: Duration)
 }

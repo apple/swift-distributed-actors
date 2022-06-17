@@ -24,7 +24,7 @@ import os.signpost
 @available(iOS 12.0, *)
 @available(tvOS 12.0, *)
 @available(watchOS 3.0, *)
-public struct OSSignpost_InternalActorTransportInstrumentation: _InternalActorTransportInstrumentation {
+internal struct OSSignpost_InternalActorTransportInstrumentation: _InternalActorTransportInstrumentation {
     static let subsystem: StaticString = "com.apple.actors"
     static let category: StaticString = "Serialization"
 
@@ -35,7 +35,7 @@ public struct OSSignpost_InternalActorTransportInstrumentation: _InternalActorTr
 
     let signpostID: OSSignpostID
 
-    public init() {
+    init() {
         self.signpostID = OSSignpostID(
             log: OSSignpost_InternalActorTransportInstrumentation.logTransportSerialization
         )
@@ -78,7 +78,7 @@ extension OSSignpost_InternalActorTransportInstrumentation {
         message-type:%{public}s
         """
 
-    public func remoteActorMessageSerializeStart(id: AnyObject, recipient: ActorPath, message: Any) {
+    func remoteActorMessageSerializeStart(id: AnyObject, recipient: ActorPath, message: Any) {
         guard OSSignpost_InternalActorTransportInstrumentation.logTransportSerialization.signpostsEnabled else {
             return
         }
@@ -93,7 +93,7 @@ extension OSSignpost_InternalActorTransportInstrumentation {
         )
     }
 
-    public func remoteActorMessageSerializeEnd(id: AnyObject, bytes: Int) {
+    func remoteActorMessageSerializeEnd(id: AnyObject, bytes: Int) {
         guard OSSignpost_InternalActorTransportInstrumentation.logTransportSerialization.signpostsEnabled else {
             return
         }
@@ -108,7 +108,7 @@ extension OSSignpost_InternalActorTransportInstrumentation {
         )
     }
 
-    public func remoteActorMessageDeserializeStart(id: AnyObject, recipient: ActorPath, bytes: Int) {
+    func remoteActorMessageDeserializeStart(id: AnyObject, recipient: ActorPath, bytes: Int) {
         guard OSSignpost_InternalActorTransportInstrumentation.logTransportSerialization.signpostsEnabled else {
             return
         }
@@ -123,7 +123,7 @@ extension OSSignpost_InternalActorTransportInstrumentation {
         )
     }
 
-    public func remoteActorMessageDeserializeEnd(id: AnyObject, message: Any?) {
+    func remoteActorMessageDeserializeEnd(id: AnyObject, message: Any?) {
         guard OSSignpost_InternalActorTransportInstrumentation.logTransportSerialization.signpostsEnabled else {
             return
         }

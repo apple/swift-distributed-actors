@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -57,13 +57,13 @@ public final class _Condition {
     }
 
     @inlinable
-    public func wait(_ mutex: _Mutex, atMost amount: TimeAmount) -> Bool {
+    public func wait(_ mutex: _Mutex, atMost duration: Duration) -> Bool {
         #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
-        let time = TimeSpec.from(timeAmount: amount)
+        let time = TimeSpec.from(duration: duration)
         #else
         var now = timespec()
         clock_gettime(CLOCK_REALTIME, &now)
-        let time = now + TimeSpec.from(timeAmount: amount)
+        let time = now + TimeSpec.from(duration: duration)
         #endif
         let error = withUnsafePointer(to: time) { p -> Int32 in
             #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)

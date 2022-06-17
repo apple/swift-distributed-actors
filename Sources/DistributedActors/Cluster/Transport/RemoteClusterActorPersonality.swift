@@ -23,14 +23,14 @@ import Atomics
 /// by being sent from a remote note, one can safely assume that the actor _existed_, however nothing
 /// is clear about its current lifecycle state (it may have already terminated the moment the message was sent,
 /// or even before then). To obtain lifecycle status of this actor the usual strategy of watching it needs to be employed.
-public final class _RemoteClusterActorPersonality<Message: ActorMessage> {
-    let address: ActorAddress
+public final class _RemoteClusterActorPersonality<Message: Codable> {
+    let id: ActorID
 
     let clusterShell: ClusterShell
     let system: ClusterSystem // TODO: maybe don't need to store it and access via clusterShell?
 
     var deadLetters: _ActorRef<Message> {
-        self.system.personalDeadLetters(recipient: self.address)
+        self.system.personalDeadLetters(recipient: self.id)
     }
 
     // Implementation notes:
@@ -68,34 +68,29 @@ public final class _RemoteClusterActorPersonality<Message: ActorMessage> {
     //   we only pay the cost of this atomic read, rather than the expensive hashmap lookup and locking!
     private var _cachedAssociation: ManagedAtomicLazyReference<Association>
 
-    // TODO: move instrumentation into the transport?
-    @usableFromInline
-    internal var instrumentation: ActorInstrumentation!
-
-    init(shell: ClusterShell, address: ActorAddress, system: ClusterSystem) {
-        precondition(address._isRemote, "RemoteActorRef MUST be remote. ActorAddress was: \(String(reflecting: address))")
+    init(shell: ClusterShell, id: ActorID, system: ClusterSystem) {
+        if !id._isRemote {
+            let _: Void = fatalErrorBacktrace("RemoteActorRef MUST be remote. ActorID was: \(id.detailedDescription)")
+        }
 
         self._cachedAssociation = ManagedAtomicLazyReference()
 
         // Ensure we store as .remote, so printouts work as expected (and include the explicit address)
-        var address = address
-        address._location = .remote(address.uniqueNode)
-        self.address = address
+        var id = id
+        id._location = .remote(id.uniqueNode)
+        self.id = id
 
         self.clusterShell = shell
         self.system = system
-
-        self.instrumentation = system.settings.instrumentation.makeActorInstrumentation(self, address) // TODO: could be in association, per node
     }
 
     @usableFromInline
     func sendUserMessage(_ message: Message, file: String = #file, line: UInt = #line) {
-        traceLog_Cell("RemoteActorRef(\(self.address)) sendUserMessage: \(message)")
+        traceLog_Cell("RemoteActorRef(\(self.id)) sendUserMessage: \(message)")
 
         switch self.association {
         case .association(let association):
-            association.sendUserMessage(envelope: Payload(payload: .message(message)), recipient: self.address)
-            self.instrumentation.actorTold(message: message, from: nil)
+            association.sendUserMessage(envelope: Payload(payload: .message(message)), recipient: self.id)
         case .tombstone:
             // TODO: metric for dead letter: self.instrumentation.deadLetter(message: message, from: nil)
             self.deadLetters.tell(message, file: file, line: line)
@@ -103,18 +98,30 @@ public final class _RemoteClusterActorPersonality<Message: ActorMessage> {
     }
 
     @usableFromInline
+    func sendInvocation(_ invocation: InvocationMessage, file: String = #file, line: UInt = #line) {
+        traceLog_Cell("RemoteActorRef(\(self.id)) sendInvocation: \(invocation)")
+
+        switch self.association {
+        case .association(let association):
+            association.sendInvocation(invocation, recipient: self.id)
+        case .tombstone:
+            // TODO: metric for dead letter: self.instrumentation.deadLetter(message: message, from: nil)
+            self.system.deadLetters.tell(DeadLetter(invocation, recipient: self.id), file: file, line: line)
+        }
+    }
+
+    @usableFromInline
     func sendSystemMessage(_ message: _SystemMessage, file: String = #file, line: UInt = #line) {
-        traceLog_Cell("RemoteActorRef(\(self.address)) sendSystemMessage: \(message)")
+        traceLog_Cell("RemoteActorRef(\(self.id)) sendSystemMessage: \(message)")
 
         // TODO: in case we'd get a new connection the redeliveries must remain... so we always need to poll for the remotecontrol from association? the association would keep the buffers?
         // TODO: would this mean that we cannot implement re-delivery inside the NIO layer as we do today?
         switch self.association {
         case .association(let association):
-            association.sendSystemMessage(message, recipient: self.address)
-            self.instrumentation.actorTold(message: message, from: nil)
+            association.sendSystemMessage(message, recipient: self.id)
         case .tombstone:
             // TODO: metric for dead letter: self.instrumentation.deadLetter(message: message, from: nil)
-            self.system.personalDeadLetters(recipient: self.address).tell(message, file: file, line: line)
+            self.system.personalDeadLetters(recipient: self.id).tell(message, file: file, line: line)
         }
     }
 
@@ -123,7 +130,7 @@ public final class _RemoteClusterActorPersonality<Message: ActorMessage> {
             return .association(assoc)
         }
 
-        let associationState = self.clusterShell.getEnsureAssociation(with: self.address.uniqueNode)
+        let associationState = self.clusterShell.getEnsureAssociation(with: self.id.uniqueNode)
         switch associationState {
         case .association(let assoc):
             return .association(self._cachedAssociation.storeIfNilThenLoad(assoc))
@@ -132,7 +139,7 @@ public final class _RemoteClusterActorPersonality<Message: ActorMessage> {
         }
     }
 
-    func _unsafeAssumeCast<NewMessage: ActorMessage>(to: NewMessage.Type) -> _RemoteClusterActorPersonality<NewMessage> {
-        _RemoteClusterActorPersonality<NewMessage>(shell: self.clusterShell, address: self.address, system: self.system)
+    func _unsafeAssumeCast<NewMessage: Codable>(to: NewMessage.Type) -> _RemoteClusterActorPersonality<NewMessage> {
+        _RemoteClusterActorPersonality<NewMessage>(shell: self.clusterShell, id: self.id, system: self.system)
     }
 }

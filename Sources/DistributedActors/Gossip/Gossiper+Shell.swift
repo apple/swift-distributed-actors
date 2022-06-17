@@ -75,9 +75,9 @@ internal final class GossipShell<Gossip: Codable, Acknowledgement: Codable> {
                 }
                 return .same
             }.receiveSpecificSignal(_Signals.Terminated.self) { context, terminated in
-                context.log.trace("Peer terminated: \(terminated.address), will not gossip to it anymore")
+                context.log.trace("Peer terminated: \(terminated.id), will not gossip to it anymore")
                 self.peers = self.peers.filter {
-                    $0.address != terminated.address
+                    $0.id != terminated.id
                 }
                 if self.peers.isEmpty {
                     context.log.trace("No peers available, cancelling periodic gossip timer")
@@ -97,7 +97,7 @@ internal final class GossipShell<Gossip: Codable, Acknowledgement: Codable> {
     ) {
         context.log.trace("Received gossip [\(identifier.gossipIdentifier)]", metadata: [
             "gossip/identity": "\(identifier.gossipIdentifier)",
-            "gossip/origin": "\(origin.address)",
+            "gossip/origin": "\(origin.id)",
             "gossip/incoming": Logger.MetadataValue.pretty(payload),
         ])
 
@@ -119,7 +119,7 @@ internal final class GossipShell<Gossip: Codable, Acknowledgement: Codable> {
                     This is potentially a bug in the logic or the Gossiper's configuration. Dropping acknowledgement.
                     """, metadata: [
                         "gossip/identity": "\(identifier.gossipIdentifier)",
-                        "gossip/origin": "\(origin.address)",
+                        "gossip/origin": "\(origin.id)",
                         "gossip/ack": "\(unexpectedAck)",
                     ]
                 )
@@ -131,7 +131,7 @@ internal final class GossipShell<Gossip: Codable, Acknowledgement: Codable> {
                     This is potentially a bug in the logic or the Gossiper's configuration.
                     """, metadata: [
                         "gossip/identity": "\(identifier.gossipIdentifier)",
-                        "gossip/origin": "\(origin.address)",
+                        "gossip/origin": "\(origin.id)",
                         "gossip/ackRef": "\(unexpectedAckRef)",
                     ]
                 )
@@ -181,7 +181,7 @@ internal final class GossipShell<Gossip: Codable, Acknowledgement: Codable> {
             self.ensureNextGossipRound(context)
         }
 
-        let allPeers: [AddressableActorRef] = Array(self.peers).map(\.asAddressable) // TODO: some protocol Addressable so we can avoid this mapping?
+        let allPeers: [_AddressableActorRef] = Array(self.peers).map(\.asAddressable) // TODO: some protocol Addressable so we can avoid this mapping?
 
         guard !allPeers.isEmpty else {
             // no members to gossip with, skip this round
@@ -232,8 +232,8 @@ internal final class GossipShell<Gossip: Codable, Acknowledgement: Codable> {
         to target: PeerRef,
         onGossipAck: @escaping (Acknowledgement) -> Void
     ) {
-        context.log.trace("Sending gossip to \(target.address)", metadata: [
-            "gossip/target": "\(target.address)",
+        context.log.trace("Sending gossip to \(target.id)", metadata: [
+            "gossip/target": "\(target.id)",
             "gossip/peers/count": "\(self.peers.count)",
             "actor/message": Logger.MetadataValue.pretty(payload),
         ])
@@ -280,8 +280,8 @@ internal final class GossipShell<Gossip: Codable, Acknowledgement: Codable> {
 // MARK: ConvergentGossip: Peer Discovery
 
 extension GossipShell {
-    static func receptionKey(id: String) -> Reception.Key<_ActorRef<Message>> {
-        Reception.Key(id: id)
+    static func receptionKey(id: String) -> _Reception.Key<_ActorRef<Message>> {
+        _Reception.Key(id: id)
     }
 
     private func initPeerDiscovery(_ context: _ActorContext<Message>) {
@@ -299,7 +299,7 @@ extension GossipShell {
                     return // too "early" status of the member
                 }
 
-                let resolved: AddressableActorRef = resolvePeerOn(member)
+                let resolved: _AddressableActorRef = resolvePeerOn(member)
                 if let peer = resolved.ref as? PeerRef {
                     // We MUST always watch all peers we gossip with, as if they (or their nodes) were to terminate
                     // they MUST be removed from the peer list we offer to gossip logics. Otherwise a naive gossip logic
@@ -310,7 +310,7 @@ extension GossipShell {
                         context.log.debug("Automatically discovered peer", metadata: [
                             "gossip/peer": "\(peer)",
                             "gossip/peerCount": "\(self.peers.count)",
-                            "gossip/peers": "\(self.peers.map(\.address))",
+                            "gossip/peers": "\(self.peers.map(\.id))",
                         ])
                     }
                 } else {
@@ -333,7 +333,7 @@ extension GossipShell {
             context.system.cluster.events.subscribe(onClusterEventRef)
 
         case .fromReceptionistListing(let id):
-            let key = Reception.Key(_ActorRef<Message>.self, id: id)
+            let key = _Reception.Key(_ActorRef<Message>.self, id: id)
             context.receptionist.registerMyself(with: key)
             context.log.debug("Registered with receptionist key: \(key)")
 
@@ -358,7 +358,7 @@ extension GossipShell {
         if self.peers.insert(context.watch(peer)).inserted {
             context.log.trace("Got introduced to peer [\(peer)]", metadata: [
                 "gossip/peerCount": "\(self.peers.count)",
-                "gossip/peers": "\(self.peers.map(\.address))",
+                "gossip/peers": "\(self.peers.map(\.id))",
             ])
 
 //            // TODO: implement this rather as "high priority peer to gossip to"

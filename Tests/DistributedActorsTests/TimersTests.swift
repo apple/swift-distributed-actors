@@ -19,7 +19,7 @@ import XCTest
 @testable import DistributedActors
 
 final class TimersTests: ClusterSystemXCTestCase {
-    func test_timerKey_shouldPrintNicely() {
+    func testTimerKey_shouldPrintNicely() {
         TimerKey("Hello").description.shouldEqual("TimerKey(Hello)")
         TimerKey("Hello", isSystemTimer: true).description.shouldEqual("TimerKey(Hello, isSystemTimer: true)")
     }

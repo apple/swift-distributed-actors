@@ -111,11 +111,11 @@ extension Serialization {
         let hint: String = Self.getTypeHint(messageType)
 
         let manifest: Manifest?
-        if messageType is Any_ProtobufRepresentable.Type {
+        if messageType is _AnyProtobufRepresentable.Type {
             manifest = Manifest(serializerID: ._ProtobufRepresentable, hint: hint)
         } else if messageType is Codable.Type {
             manifest = Manifest(serializerID: self.settings.defaultSerializerID, hint: hint)
-        } else if messageType is NonTransportableActorMessage.Type {
+        } else if messageType is _NotActuallyCodableMessage.Type {
             manifest = Manifest(serializerID: .doNotSerialize, hint: nil)
         } else {
             manifest = nil

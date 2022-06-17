@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -35,7 +35,7 @@ struct Timer<Message> { // FIXME(distributed): deprecate and remove in favor of 
 struct TimerEvent {
     let key: TimerKey
     let generation: Int
-    let owner: ActorAddress
+    let owner: ActorID
 }
 
 /// A `TimerKey` is used to identify a timer. It can be stored and re-used.
@@ -47,6 +47,7 @@ struct TimerEvent {
 ///     // ...
 ///     timers.cancelTimer(forKey: timerKey)
 ///
+@available(*, deprecated, message: "Actor timers cannot participate in structured cancellation, and will be replaced with patterns using swift-async-algorithms (see Timer)")
 public struct TimerKey: Hashable {
     private let identifier: AnyHashable
 
@@ -79,7 +80,7 @@ extension TimerKey: ExpressibleByStringLiteral, ExpressibleByStringInterpolation
     }
 }
 
-public final class _BehaviorTimers<Message: ActorMessage> {
+public final class _BehaviorTimers<Message: Codable> {
     @usableFromInline
     internal var timerGen: Int = 0
 
@@ -113,7 +114,6 @@ public final class _BehaviorTimers<Message: ActorMessage> {
     /// Cancels timer associated with the given key.
     ///
     /// - Parameter key: key of the timer to cancel
-    @inlinable
     public func cancel(for key: TimerKey) {
         if let timer = self.installedTimers.removeValue(forKey: key) {
             if context.system.settings.logging.verboseTimers {
@@ -138,7 +138,7 @@ public final class _BehaviorTimers<Message: ActorMessage> {
     ///   - message: the message that will be sent to `myself`
     ///   - delay: the delay after which the message will be sent
     @inlinable
-    public func startSingle(key: TimerKey, message: Message, delay: TimeAmount) {
+    public func startSingle(key: TimerKey, message: Message, delay: Duration) {
         self.start(key: key, message: message, interval: delay, repeated: false)
     }
 
@@ -149,16 +149,16 @@ public final class _BehaviorTimers<Message: ActorMessage> {
     ///   - message: the message that will be sent to `myself`
     ///   - interval: the interval with which the message will be sent
     @inlinable
-    public func startPeriodic(key: TimerKey, message: Message, interval: TimeAmount) {
+    public func startPeriodic(key: TimerKey, message: Message, interval: Duration) {
         self.start(key: key, message: message, interval: interval, repeated: true)
     }
 
     @usableFromInline
-    internal func start(key: TimerKey, message: Message, interval: TimeAmount, repeated: Bool) {
+    internal func start(key: TimerKey, message: Message, interval: Duration, repeated: Bool) {
         self.cancel(for: key)
 
         let generation = self.nextTimerGen()
-        let event = TimerEvent(key: key, generation: generation, owner: self.context.myself.address)
+        let event = TimerEvent(key: key, generation: generation, owner: self.context.myself.id)
         let handle: Cancelable
         let cb = self.timerCallback
         if repeated {
@@ -228,7 +228,7 @@ extension _BehaviorTimers {
 
     /// Dangerous version of `_startTimer` which allows scheduling a `.resume` system message (directly!) with a token `T`, after a time `delay`.
     /// This can be used e.g. to implement restarting an actor after a backoff delay.
-    internal func _startResumeTimer<T>(key: TimerKey, delay: TimeAmount, resumeWith token: T) {
+    internal func _startResumeTimer<T>(key: TimerKey, delay: Duration, resumeWith token: T) {
         assert(key.isSystemTimer, "_startResumeTimer MUST ONLY be used by system internal tasks, and keys MUST be `_` prefixed. Key was: \(key)")
         self.cancel(for: key)
 

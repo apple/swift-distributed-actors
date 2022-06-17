@@ -20,7 +20,7 @@
 /// of actors, they can't be prevented from receiving messages while waiting for
 /// the external source to respond. In this case messages should be stashed and
 /// then unstashed once the external source has responded.
-public final class _StashBuffer<Message: ActorMessage> {
+public final class _StashBuffer<Message: Codable> {
     @usableFromInline
     let buffer: RingBuffer<Message>
 
@@ -72,7 +72,6 @@ public final class _StashBuffer<Message: ActorMessage> {
     ///              requires the context to be passed in.
     /// - Throws: When any of the behavior reductions throws
     /// - Returns: The last behavior returned from processing the unstashed messages
-    @inlinable
     public func unstashAll(context: _ActorContext<Message>, behavior: _Behavior<Message>) throws -> _Behavior<Message> {
         // TODO: can we make this honor the run length like `Mailbox` does?
         var iterator = self.buffer.iterator

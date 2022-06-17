@@ -17,14 +17,19 @@ import NIO
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Protocol version
 
-/// Wire Protocol version of this Swift Distributed Actors build.
-public let DistributedActorsProtocolVersion: DistributedActors.Version = Version(reserved: 0, major: 0, minor: 0, patch: 1)
+extension ClusterSystem {
+    /// Wire protocol version of this `ClusterSystem`.
+    ///
+    /// This version does not have to match the project version, i.e. a library version `1.5.0` may still be using the protocol version `1.0.0`,
+    /// as this version number is more about the _wire_ compatibility of the underlying protocol, rather than the library capabilities
+    public static let protocolVersion = ClusterSystem.Version(reserved: 0, major: 1, minor: 0, patch: 0)
+}
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Constants for Cluster
 
 /// Magic 2 byte value for use as initial bytes in connections (before handshake).
-/// Reads as: `5AC7 == SACT == S Act == Swift/Swift Distributed Actors Act == Swift/Swift Distributed Actors`
+/// Reads as: `5AC7 == SACT == S Act == Swift/ (Distributed) Actors
 internal let HandshakeMagicBytes: UInt16 = 0x5AC7
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -50,7 +55,7 @@ internal struct HandshakeStateMachine {
     internal enum RetryDirective {
         /// Retry sending the returned handshake offer after the given `delay`
         /// Returned in reaction to timeouts or other recoverable failures during handshake negotiation.
-        case scheduleRetryHandshake(delay: TimeAmount)
+        case scheduleRetryHandshake(delay: Duration)
 
         /// Give up shaking hands with the remote peer.
         /// Any state the handshake was keeping on the initiating node should be cleared in response to this directive.
@@ -63,7 +68,7 @@ internal struct HandshakeStateMachine {
     internal struct InitiatedState: Swift.CustomStringConvertible {
         let settings: ClusterSystemSettings
 
-        var protocolVersion: Version {
+        var protocolVersion: ClusterSystem.Version {
             self.settings.protocolVersion
         }
 
@@ -150,7 +155,7 @@ internal struct HandshakeStateMachine {
             self.state.selfNode
         }
 
-        var protocolVersion: DistributedActors.Version {
+        var protocolVersion: ClusterSystem.Version {
             self.state.settings.protocolVersion
         }
 
@@ -185,7 +190,7 @@ internal struct HandshakeStateMachine {
             return .acceptAndAssociate(completed)
         }
 
-        func negotiateVersion(local: DistributedActors.Version, remote: DistributedActors.Version) -> RejectedState? {
+        func negotiateVersion(local: ClusterSystem.Version, remote: ClusterSystem.Version) -> RejectedState? {
             guard local.major == remote.major else {
                 let error = HandshakeError.incompatibleProtocolVersion(
                     local: self.protocolVersion, remote: self.offer.version
@@ -203,7 +208,7 @@ internal struct HandshakeStateMachine {
     /// State reached once we have received a `HandshakeAccepted` and are ready to create an association.
     /// This state is used to unlock creating a completed Association.
     internal struct CompletedState {
-        let protocolVersion: Version
+        let protocolVersion: ClusterSystem.Version
         var remoteNode: UniqueNode
         var localNode: UniqueNode
 //        let whenCompleted: EventLoopPromise<Wire.HandshakeResponse>
@@ -241,7 +246,7 @@ internal struct HandshakeStateMachine {
     }
 
     internal struct RejectedState {
-        let protocolVersion: Version
+        let protocolVersion: ClusterSystem.Version
         let localNode: UniqueNode
         let remoteNode: UniqueNode
         let error: HandshakeError
@@ -298,7 +303,7 @@ enum HandshakeError: Error {
     case targetHandshakeAddressMismatch(Wire.HandshakeOffer, selfNode: UniqueNode)
 
     /// Returned when an incoming handshake protocol version does not match what this node can understand.
-    case incompatibleProtocolVersion(local: DistributedActors.Version, remote: DistributedActors.Version)
+    case incompatibleProtocolVersion(local: ClusterSystem.Version, remote: ClusterSystem.Version)
 
     case targetRejectedHandshake(selfNode: UniqueNode, remoteNode: UniqueNode, message: String)
 

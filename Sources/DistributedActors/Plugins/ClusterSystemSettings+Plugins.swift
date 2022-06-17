@@ -13,8 +13,8 @@
 //===----------------------------------------------------------------------===//
 
 /// Settings for `ClusterSystem` plugins.
-public struct PluginsSettings {
-    public static var `default`: PluginsSettings {
+public struct _PluginsSettings {
+    public static var `default`: _PluginsSettings {
         .init()
     }
 
@@ -59,22 +59,10 @@ public struct PluginsSettings {
             plugin.stop(system)
         }
     }
-
-//    /// Stops all plugins in the *reversed* order as they were added.
-//    internal func stopAll(_ transport: ActorClusterTransport) async {
-//        // Shut down in reversed order so plugins with the fewest dependencies are stopped first!
-//        for plugin in self.plugins.reversed() {
-//            do {
-//                try await plugin.stop(transport)
-//            } catch {
-//                fatalError("Failed to stop plugin \(plugin.key)! Error: \(error)")
-//            }
-//        }
-//    }
 }
 
-extension PluginsSettings {
-    public static func += <P: _Plugin>(plugins: inout PluginsSettings, plugin: P) {
+extension _PluginsSettings {
+    public static func += <P: _Plugin>(plugins: inout _PluginsSettings, plugin: P) {
         plugins.add(plugin)
     }
 }

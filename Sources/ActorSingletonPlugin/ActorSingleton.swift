@@ -18,7 +18,7 @@ import DistributedActorsConcurrencyHelpers
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Actor singleton
 
-internal final class ActorSingleton<Message: ActorMessage> {
+internal final class ActorSingleton<Message: Codable> {
     /// Settings for the `ActorSingleton`
     let settings: ActorSingletonSettings
 
@@ -89,7 +89,7 @@ internal struct BoxedActorSingleton: AnyActorSingleton {
 extension ActorSingleton: AnyActorSingleton {
     func stop(_ system: ClusterSystem) {
         // Hand over the singleton gracefully
-        let resolveContext = ResolveContext<ActorSingletonManager<Message>.Directive>(address: ._singletonManager(name: self.settings.name, on: system.cluster.uniqueNode), system: system)
+        let resolveContext = _ResolveContext<ActorSingletonManager<Message>.Directive>(id: ._singletonManager(name: self.settings.name, on: system.cluster.uniqueNode), system: system)
         let managerRef = system._resolve(context: resolveContext)
         // If the manager is not running this will end up in dead-letters but that's fine
         managerRef.tell(.stop)

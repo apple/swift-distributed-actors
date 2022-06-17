@@ -18,23 +18,25 @@ import Foundation
 // MARK: Cluster Membership
 
 extension Cluster {
-    /// `Membership` represents the set of members of this cluster.
+    /// Represents the set of members of this cluster.
     ///
     /// Membership changes are driven by nodes joining and leaving the cluster.
-    /// Leaving the cluster may be graceful or triggered by a `FailureDetector`.
+    /// Leaving the cluster may be graceful or triggered by a failure detector.
     ///
     /// ### Replacement (Unique)Nodes
-    /// A node (or member) is referred to as a "replacement" if it shares _the same_ protocol+host+address (i.e. `Node`),
-    /// with another member; It MAY join "over" an existing node and will immediately cause the previous node to be marked `MemberStatus.down`
+    /// A node (or member) is referred to as a "replacement" if it shares _the same_ protocol+host+address (i.e. ``Node``),
+    /// with another member; It MAY join "over" an existing node and will immediately cause the previous node to be marked ``Cluster/MemberStatus/down``
     /// upon such transition. Such situations can take place when an actor system node is killed and started on the same host+port immediately,
     /// and attempts to connect to the same cluster as its previous "incarnation". Such situation is called a replacement, and by the assumption
     /// of that it should not be possible to run many nodes on exact same host+port the previous node is immediately ejected and marked down.
     ///
     /// ### Member state transitions
-    /// Members can only move "forward" along their status lifecycle, refer to `Cluster.MemberStatus` docs for a diagram of legal transitions.
+    /// Members can only move "forward" along their status lifecycle, refer to ``Cluster/MemberStatus``
+    /// docs for a diagram of legal transitions.
     public struct Membership: ExpressibleByArrayLiteral {
         public typealias ArrayLiteralElement = Cluster.Member
 
+        /// Initialize an empty membership (with no members).
         public static var empty: Cluster.Membership {
             .init(members: [])
         }
@@ -45,6 +47,7 @@ extension Cluster {
         /// when operator issued moves are induced e.g. "> down 1.1.1.1:3333", since operators do not care about `NodeID` most of the time.
         internal var _members: [UniqueNode: Cluster.Member]
 
+        /// Initialize a membership with the given members.
         public init(members: [Cluster.Member]) {
             self._members = Dictionary(minimumCapacity: members.count)
             for member in members {
@@ -130,6 +133,13 @@ extension Cluster {
             }
         }
 
+        /// Returns all members that are part of this membership, and have the any ``Cluster/MemberStatus`` that is *at least*
+        /// the passed in `status` passed in and `reachability` status. See ``Cluster/MemberStatus`` to learn more about the meaning of "at least".
+        ///
+        /// - Parameters:
+        ///   - statuses: statuses for which to check the members for
+        ///   - reachability: optional reachability that is the members will be filtered by
+        /// - Returns: array of members matching those checks. Can be empty.
         public func members(atLeast status: Cluster.MemberStatus, reachability: Cluster.MemberReachability? = nil) -> [Cluster.Member] {
             if status == .joining, reachability == nil {
                 return Array(self._members.values)
@@ -165,9 +175,9 @@ extension Cluster {
         // ==== ------------------------------------------------------------------------------------------------------------
         // MARK: Leaders
 
-        /// ## Leaders
-        /// A leader is a specific `Member` which was selected to fulfil the leadership role for the time being.
-        /// A leader returning a non-nil value, guarantees that the same Member existing as part of this `Membership` as well (non-members cannot be leaders).
+        /// A leader is a specific ``Cluster/Member`` which was selected to fulfil the leadership role for the time being.
+        ///
+        /// A leader returning a non-nil value, guarantees that the same ``Cluster/Member`` existing as part of this ``Cluster/Membership`` as well (non-members cannot be leaders).
         ///
         /// Clustering offered by this project does not really designate any "special" nodes; yet sometimes a leader may be useful to make decisions more efficient or centralized.
         /// Leaders may be selected using various strategies, the most simple one being sorting members by their addresses and picking the "lowest".
@@ -214,6 +224,7 @@ extension Cluster {
 }
 
 // Implementation notes: Membership/Member equality
+//
 // Membership equality is special, as it manually DOES take into account the Member's states (status, reachability),
 // whilst the Member equality by itself does not. This is somewhat ugly, however it allows us to perform automatic
 // seen table owner version updates whenever "the membership has changed." We may want to move away from this and make
@@ -652,7 +663,37 @@ extension MembershipDiff: CustomDebugStringConvertible {
 // MARK: Errors
 
 extension Cluster {
-    public enum MembershipError: Error {
+    public enum MembershipError: Error, CustomPrettyStringConvertible {
         case nonMemberLeaderSelected(Cluster.Membership, wannabeLeader: Cluster.Member)
+        case notFound(UniqueNode, in: Cluster.Membership)
+        case atLeastStatusRequirementNotMet(expectedAtLeast: Cluster.MemberStatus, found: Cluster.Member)
+        case statusRequirementNotMet(expected: Cluster.MemberStatus, found: Cluster.Member)
+        case awaitStatusTimedOut(Duration, Error?)
+
+        public var prettyDescription: String {
+            "\(Self.self)(\(self), details: \(self.details))"
+        }
+
+        private var details: String {
+            switch self {
+            case .nonMemberLeaderSelected(let membership, let wannabeLeader):
+                return "[\(wannabeLeader)] selected leader but is not a member [\(membership)]"
+            case .notFound(let node, let membership):
+                return "[\(node)] is not a member [\(membership)]"
+            case .atLeastStatusRequirementNotMet(let expectedAtLeastStatus, let foundMember):
+                return "Expected \(reflecting: foundMember.uniqueNode) to be seen as at-least [\(expectedAtLeastStatus)] but was [\(foundMember.status)]"
+            case .statusRequirementNotMet(let expectedStatus, let foundMember):
+                return "Expected \(reflecting: foundMember.uniqueNode) to be seen as [\(expectedStatus)] but was [\(foundMember.status)]"
+            case .awaitStatusTimedOut(let duration, let lastError):
+                let lastErrorMessage: String
+                if let error = lastError {
+                    lastErrorMessage = "Last error: \(error)"
+                } else {
+                    lastErrorMessage = "Last error: <none>"
+                }
+
+                return "No result within \(duration.prettyDescription). \(lastErrorMessage)"
+            }
+        }
     }
 }

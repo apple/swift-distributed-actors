@@ -21,7 +21,7 @@ import os.signpost
 @available(iOS 12.0, *)
 @available(tvOS 12.0, *)
 @available(watchOS 3.0, *)
-public struct OSSignpostReceptionistInstrumentation: ReceptionistInstrumentation {
+internal struct OSSignpostReceptionistInstrumentation: _ReceptionistInstrumentation {
     static let subsystem: StaticString = "com.apple.actors"
 
     static let category: StaticString = "Receptionist"
@@ -33,7 +33,7 @@ public struct OSSignpostReceptionistInstrumentation: ReceptionistInstrumentation
 
     static let log = OSLog(subsystem: "\(Self.subsystem)", category: "\(Self.category)")
 
-    public init() {}
+    init() {}
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -51,7 +51,7 @@ extension OSSignpostReceptionistInstrumentation {
         type:%{public}s
         """
 
-    public func actorSubscribed(key: AnyReceptionKey, address: ActorAddress) {
+    func actorSubscribed(key: AnyReceptionKey, id: ActorID) {
         guard Self.log.signpostsEnabled else {
             return
         }
@@ -74,7 +74,7 @@ extension OSSignpostReceptionistInstrumentation {
         type:%{public}s
         """
 
-    public func actorRegistered(key: AnyReceptionKey, address: ActorAddress) {
+    func actorRegistered(key: AnyReceptionKey, id: ActorID) {
         guard Self.log.signpostsEnabled else {
             return
         }
@@ -97,7 +97,7 @@ extension OSSignpostReceptionistInstrumentation {
         type:%{public}s
         """
 
-    public func actorRemoved(key: AnyReceptionKey, address: ActorAddress) {
+    func actorRemoved(key: AnyReceptionKey, id: ActorID) {
         guard Self.log.signpostsEnabled else {
             return
         }
@@ -122,7 +122,7 @@ extension OSSignpostReceptionistInstrumentation {
         regs:%{public}ld
         """
 
-    public func listingPublished(key: AnyReceptionKey, subscribers: Int, registrations: Int) {
+    func listingPublished(key: AnyReceptionKey, subscribers: Int, registrations: Int) {
         guard Self.log.signpostsEnabled else {
             return
         }

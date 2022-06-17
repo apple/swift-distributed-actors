@@ -321,7 +321,6 @@ final class OutboundSerializationHandler: ChannelOutboundHandler {
         serializationPromise.futureResult.whenComplete {
             switch $0 {
             case .success(let serialized):
-                // force unwrapping here is safe because we read exactly the amount of readable bytes
                 let wireEnvelope = Wire.Envelope(
                     recipient: transportEnvelope.recipient,
                     payload: serialized.buffer,
@@ -477,7 +476,7 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
         switch self.inboundSystemMessages.onDelivery(systemEnvelope) {
         case .accept(let ack):
             // unwrap and immediately deliver the message; we do not need to forward it to the user-message handler
-            let ref = self.system._resolveUntyped(context: .init(address: wireEnvelope.recipient, system: self.system))
+            let ref = self.system._resolveUntyped(context: .init(id: wireEnvelope.recipient, system: self.system))
             ref._sendSystemMessage(systemEnvelope.message)
 
             // TODO: potential for coalescing some ACKs here; schedule "lets write back in 300ms"
@@ -548,7 +547,7 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
         }
     }
 
-    private func scheduleNextRedeliveryTick(_ context: ChannelHandlerContext, in nextRedeliveryDelay: TimeAmount) {
+    private func scheduleNextRedeliveryTick(_ context: ChannelHandlerContext, in nextRedeliveryDelay: Duration) {
         guard self.redeliveryScheduled == nil else {
             return // already a tick scheduled, we'll ride on that one rather than kick off a new one
         }
@@ -622,7 +621,28 @@ private final class UserMessageHandler: ChannelInboundHandler {
 
     /// This ends the processing chain for incoming messages.
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
-        self.deserializeThenDeliver(context, wireEnvelope: self.unwrapInboundIn(data))
+        let wireEnvelope = self.unwrapInboundIn(data)
+        let manifestMessageType = try? self.serializationPool.serialization.summonType(from: wireEnvelope.manifest)
+
+        // FIXME(distributed): we should be able to assume we always get either a remote invocation or reply here
+        switch manifestMessageType {
+        case .some(is InvocationMessage.Type):
+            do {
+                let invocation = try self.serializationPool.serialization.deserialize(as: InvocationMessage.self, from: wireEnvelope.payload, using: wireEnvelope.manifest)
+                self.system.receiveInvocation(invocation, recipient: wireEnvelope.recipient, on: context.channel)
+            } catch {
+                self.system.log.error("Failed to deserialize [\(InvocationMessage.self)]: \(error)")
+            }
+        case .some(is any AnyRemoteCallReply.Type):
+            do {
+                let reply = try self.serializationPool.serialization.deserialize(as: (any AnyRemoteCallReply).self, from: wireEnvelope.payload, using: wireEnvelope.manifest)
+                self.system.receiveRemoteCallReply(reply)
+            } catch {
+                self.system.log.error("Failed to deserialize [\(String(describing: manifestMessageType))]: \(error)")
+            }
+        default:
+            self.deserializeThenDeliver(context, wireEnvelope: wireEnvelope)
+        }
     }
 
     private func deserializeThenDeliver(_ context: ChannelHandlerContext, wireEnvelope: Wire.Envelope) {
@@ -637,7 +657,7 @@ private final class UserMessageHandler: ChannelInboundHandler {
 
         // 1. Resolve the actor, it MUST be local and MUST contain the actual Message type it expects
         let ref = self.system._resolveUntyped(
-            context: .init(address: wireEnvelope.recipient, system: self.system)
+            context: .init(id: wireEnvelope.recipient, system: self.system)
         )
         // We resolved "untyped" meaning that we did not take into account the Type of the actor when looking for it.
         // However, the actor ref "inside" has strict knowledge about what specific Message type it is about (!).
@@ -859,6 +879,7 @@ internal struct TransportEnvelope: CustomStringConvertible, CustomDebugStringCon
         /// Note: MAY contain SystemMessageEnvelope
         case message(Any)
         // ~~ outbound ~~
+        case invocation(InvocationMessage)
         case systemMessage(_SystemMessage)
         // ~~ inbound only ~~
         case systemMessageEnvelope(SystemMessageEnvelope)
@@ -871,11 +892,11 @@ internal struct TransportEnvelope: CustomStringConvertible, CustomDebugStringCon
         case nack(_SystemMessage.NACK)
     }
 
-    let recipient: ActorAddress
+    let recipient: ActorID
 
     // TODO: carry same data as Envelope -- baggage etc
 
-    init(envelope: Payload, recipient: ActorAddress) {
+    init(envelope: Payload, recipient: ActorID) {
         switch envelope.payload {
         case .message(let message):
             self.storage = .message(message)
@@ -890,28 +911,33 @@ internal struct TransportEnvelope: CustomStringConvertible, CustomDebugStringCon
         // TODO: carry metadata from Envelope
     }
 
-    init<Message>(message: Message, recipient: ActorAddress) {
+    init<Message>(message: Message, recipient: ActorID) {
         // assert(Message.self != Any.self)
         self.storage = .message(message)
         self.recipient = recipient
     }
 
-    init(systemMessage: _SystemMessage, recipient: ActorAddress) {
+    init(invocation: InvocationMessage, recipient: ActorID) {
+        self.storage = .invocation(invocation)
+        self.recipient = recipient
+    }
+
+    init(systemMessage: _SystemMessage, recipient: ActorID) {
         self.storage = .systemMessage(systemMessage)
         self.recipient = recipient
     }
 
-    init(systemMessageEnvelope: SystemMessageEnvelope, recipient: ActorAddress) {
+    init(systemMessageEnvelope: SystemMessageEnvelope, recipient: ActorID) {
         self.storage = .systemMessageEnvelope(systemMessageEnvelope)
         self.recipient = recipient
     }
 
-    init(ack: _SystemMessage.ACK, recipient: ActorAddress) {
+    init(ack: _SystemMessage.ACK, recipient: ActorID) {
         self.storage = .systemMessageDelivery(.ack(ack))
         self.recipient = recipient
     }
 
-    init(nack: _SystemMessage.NACK, recipient: ActorAddress) {
+    init(nack: _SystemMessage.NACK, recipient: ActorID) {
         self.storage = .systemMessageDelivery(.nack(nack))
         self.recipient = recipient
     }
@@ -924,6 +950,8 @@ internal struct TransportEnvelope: CustomStringConvertible, CustomDebugStringCon
         switch self.storage {
         case .message(let message):
             return message
+        case .invocation(let invocation):
+            return invocation
         case .systemMessage(let message):
             return message
         case .systemMessageEnvelope(let systemEnvelope):

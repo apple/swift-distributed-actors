@@ -149,7 +149,7 @@ extension _Props {
 /// **Restarting with Backoff**
 ///
 /// It is possible to `.restart` a backoff strategy before completing a restart. In this case the passed in `_SupervisionStrategy`
-/// is invoked and the returned `TimeAmount` is used to suspend the actor for this amount of time, before completing the restart,
+/// is invoked and the returned `Duration` is used to suspend the actor for this amount of time, before completing the restart,
 /// canonicalizing any `.setup` or similar top-level behaviors and continuing to process messages.
 ///
 /// The following diagram explains how backoff interplays with the lifecycle signals sent to the actor upon a restart,
@@ -188,7 +188,7 @@ public enum _SupervisionStrategy {
     ///   - `backoff` strategy to be used for suspending the failed actor for a given (backoff) amount of time before completing the restart.
     ///     The actor's mailbox remains untouched by default, and it would continue processing it from where it left off before the crash;
     ///     the message which caused a failure is NOT processed again. For retrying processing of such higher level mechanisms should be used.
-    case restart(atMost: Int, within: TimeAmount?, backoff: BackoffStrategy?) // TODO: would like to remove the `?` and model more properly
+    case restart(atMost: Int, within: Duration?, backoff: BackoffStrategy?) // TODO: would like to remove the `?` and model more properly
 
     /// WARNING: Purposefully ESCALATES the failure to the parent of the spawned actor, even if it has not watched the child.
     ///
@@ -234,7 +234,7 @@ extension _SupervisionStrategy {
     ///   - `within` amount of time within which the `atMost` failures are allowed to happen. This defines the so called "failure period",
     ///     which runs from the first failure encountered for `within` time, and if more than `atMost` failures happen in this time amount then
     ///     no restart is performed and the failure is escalated (and the actor terminates in the process).
-    public static func restart(atMost: Int, within: TimeAmount?) -> _SupervisionStrategy {
+    public static func restart(atMost: Int, within: Duration?) -> _SupervisionStrategy {
         .restart(atMost: atMost, within: within, backoff: nil)
     }
 }
@@ -381,7 +381,7 @@ internal enum ProcessingType {
 }
 
 @usableFromInline
-internal enum ProcessingAction<Message: ActorMessage> {
+internal enum ProcessingAction<Message: Codable> {
     case start
     case message(Message)
     case signal(_Signal)
@@ -408,35 +408,30 @@ extension ProcessingAction {
 ///
 /// Currently not for user extension.
 @usableFromInline
-internal class Supervisor<Message: ActorMessage> {
+internal class Supervisor<Message: Codable> {
     @usableFromInline
     typealias Directive = SupervisionDirective<Message>
 
-    @inlinable
     internal final func interpretSupervised(target: _Behavior<Message>, context: _ActorContext<Message>, message: Message) throws -> _Behavior<Message> {
         traceLog_Supervision("CALL WITH \(target) @@@@ [\(message)]:\(type(of: message))")
         return try self.interpretSupervised0(target: target, context: context, processingAction: .message(message))
     }
 
-    @inlinable
     internal final func interpretSupervised(target: _Behavior<Message>, context: _ActorContext<Message>, signal: _Signal) throws -> _Behavior<Message> {
         traceLog_Supervision("INTERCEPT SIGNAL APPLY: \(target) @@@@ \(signal)")
         return try self.interpretSupervised0(target: target, context: context, processingAction: .signal(signal))
     }
 
-    @inlinable
     internal final func interpretSupervised(target: _Behavior<Message>, context: _ActorContext<Message>, closure: ActorClosureCarry) throws -> _Behavior<Message> {
         traceLog_Supervision("CALLING CLOSURE: \(target)")
         return try self.interpretSupervised0(target: target, context: context, processingAction: .closure(closure))
     }
 
-    @inlinable
     internal final func interpretSupervised(target: _Behavior<Message>, context: _ActorContext<Message>, subMessage: SubMessageCarry) throws -> _Behavior<Message> {
         traceLog_Supervision("INTERPRETING SUB MESSAGE: \(target)")
         return try self.interpretSupervised0(target: target, context: context, processingAction: .subMessage(subMessage))
     }
 
-    @inlinable
     internal final func interpretSupervised(target: _Behavior<Message>, context: _ActorContext<Message>, closure: @escaping () throws -> _Behavior<Message>) throws -> _Behavior<Message> {
         traceLog_Supervision("CALLING CLOSURE: \(target)")
         return try self.interpretSupervised0(
@@ -444,7 +439,6 @@ internal class Supervisor<Message: ActorMessage> {
         )
     }
 
-    @inlinable
     internal final func startSupervised(target: _Behavior<Message>, context: _ActorContext<Message>) throws -> _Behavior<Message> {
         traceLog_Supervision("CALLING START")
         return try self.interpretSupervised0(
@@ -454,7 +448,6 @@ internal class Supervisor<Message: ActorMessage> {
     }
 
     /// Implements all directives, which supervisor implementations may yield to instruct how we should (if at all) restart an actor.
-    @inlinable
     @inline(__always)
     final func interpretSupervised0(target: _Behavior<Message>, context: _ActorContext<Message>, processingAction: ProcessingAction<Message>) throws -> _Behavior<Message> {
         try self.interpretSupervised0(
@@ -463,7 +456,6 @@ internal class Supervisor<Message: ActorMessage> {
         ) // 1 since we already have "one failure"
     }
 
-    @inlinable
     @inline(__always)
     final func interpretSupervised0(
         target: _Behavior<Message>,
@@ -583,7 +575,7 @@ internal class Supervisor<Message: ActorMessage> {
 /// Supervisor equivalent to not having supervision enabled, since stopping is the default behavior of failing actors.
 /// At the same time, it may be useful to sometimes explicitly specify that for some type of error we want to stop
 /// (e.g. when used with composite supervisors, which restart for all failures, yet should not do so for some specific type of error).
-final class StoppingSupervisor<Message: ActorMessage>: Supervisor<Message> {
+final class StoppingSupervisor<Message: Codable>: Supervisor<Message> {
     internal let failureType: Error.Type
 
     internal init(failureType: Error.Type) {
@@ -617,7 +609,7 @@ final class StoppingSupervisor<Message: ActorMessage>: Supervisor<Message> {
 }
 
 /// Escalates failure to parent, while failing the current actor.
-final class EscalatingSupervisor<Message: ActorMessage>: Supervisor<Message> {
+final class EscalatingSupervisor<Message: Codable>: Supervisor<Message> {
     internal let failureType: Error.Type
 
     internal init(failureType: Error.Type) {
@@ -654,7 +646,7 @@ final class EscalatingSupervisor<Message: ActorMessage>: Supervisor<Message> {
 //
 // The scan also makes implementing the "catch" all types `_Supervision.AllFailures` etc simpler rather than having to search
 // the underlying map for the catch all handlers as well as the specific error.
-final class CompositeSupervisor<Message: ActorMessage>: Supervisor<Message> {
+final class CompositeSupervisor<Message: Codable>: Supervisor<Message> {
     private let supervisors: [Supervisor<Message>]
 
     init(supervisors: [Supervisor<Message>]) {
@@ -683,13 +675,13 @@ final class CompositeSupervisor<Message: ActorMessage>: Supervisor<Message> {
 ///
 /// - SeeAlso: `Supervisor.handleFailure`
 @usableFromInline
-internal enum SupervisionDirective<Message: ActorMessage> {
+internal enum SupervisionDirective<Message: Codable> {
     /// Directs mailbox to directly stop processing.
     case stop
     /// Directs mailbox to prepare AND complete a restart immediately.
     case restartImmediately(_Behavior<Message>)
     /// Directs mailbox to prepare a restart after a delay.
-    case restartDelayed(TimeAmount, _Behavior<Message>)
+    case restartDelayed(Duration, _Behavior<Message>)
     /// Directs the mailbox to immediately fail and stop processing.
     /// Failures should "bubble up".
     case escalate(_Supervision.Failure)
@@ -697,7 +689,7 @@ internal enum SupervisionDirective<Message: ActorMessage> {
 
 internal enum SupervisionDecision {
     case restartImmediately
-    case restartBackoff(delay: TimeAmount) // could also configure "drop messages while restarting" etc
+    case restartBackoff(delay: Duration) // could also configure "drop messages while restarting" etc
     case escalate
     case stop
 }
@@ -705,21 +697,21 @@ internal enum SupervisionDecision {
 /// Encapsulates logic around when a restart is allowed, i.e. tracks the deadlines of failure periods.
 internal struct RestartDecisionLogic {
     let maxRestarts: Int
-    let within: TimeAmount?
+    let within: Duration?
     var backoffStrategy: BackoffStrategy?
 
     // counts how many times we failed during the "current" `within` period
     private var restartsWithinCurrentPeriod: Int = 0
-    private var restartsPeriodDeadline: Deadline = .distantPast
+    private var restartsPeriodDeadline: ContinuousClock.Instant = .distantPast
 
-    init(maxRestarts: Int, within: TimeAmount?, backoffStrategy: BackoffStrategy?) {
+    init(maxRestarts: Int, within: Duration?, backoffStrategy: BackoffStrategy?) {
         precondition(maxRestarts > 0, "RestartStrategy.maxRestarts MUST be > 0")
         self.maxRestarts = maxRestarts
         if let failurePeriodTime = within {
             precondition(failurePeriodTime.nanoseconds > 0, "RestartStrategy.within MUST be > 0. For supervision without time bounds (i.e. absolute count of restarts allowed) use `.restart(:atMost)` instead.")
             self.within = failurePeriodTime
         } else {
-            // if within was not set, we treat is as if "no time limit", which we mimic by a Deadline far far away in time
+            // if within was not set, we treat is as if "no time limit", which we mimic by a ContinuousClock.Instant far far away in time
             self.restartsPeriodDeadline = .distantFuture
             self.within = nil
         }
@@ -734,8 +726,8 @@ internal struct RestartDecisionLogic {
             // thus the next period starts, and we will start counting the failures within that time window anew
 
             // ! safe, because we are guaranteed to never exceed the .distantFuture deadline that is set when within is nil
-            let failurePeriodTimeAmount = self.within!
-            self.restartsPeriodDeadline = .fromNow(failurePeriodTimeAmount)
+            let failurePeriodDuration = self.within!
+            self.restartsPeriodDeadline = .fromNow(failurePeriodDuration)
             self.restartsWithinCurrentPeriod = 0
         }
         self.restartsWithinCurrentPeriod += 1
@@ -762,7 +754,7 @@ internal struct RestartDecisionLogic {
     }
 
     private var periodHasTimeLeft: Bool {
-        self.restartsPeriodDeadline.hasTimeLeft(until: .now())
+        self.restartsPeriodDeadline.hasTimeLeft(until: .now)
     }
 
     private var isWithinMaxRestarts: Bool {
@@ -779,7 +771,7 @@ internal struct RestartDecisionLogic {
     }
 }
 
-final class RestartingSupervisor<Message: ActorMessage>: Supervisor<Message> {
+final class RestartingSupervisor<Message: Codable>: Supervisor<Message> {
     internal let failureType: Error.Type
 
     internal let initialBehavior: _Behavior<Message>
@@ -842,12 +834,12 @@ final class RestartingSupervisor<Message: ActorMessage>: Supervisor<Message> {
 
 /// Behavior used to suspend after a `restartPrepare` has been issued by an `restartDelayed`.
 @usableFromInline
-internal enum SupervisionRestartDelayedBehavior<Message: ActorMessage> {
+internal enum SupervisionRestartDelayedBehavior<Message: Codable> {
     @usableFromInline
     internal struct WakeUp {}
 
     @usableFromInline
-    static func after(delay: TimeAmount, with replacement: _Behavior<Message>) -> _Behavior<Message> {
+    static func after(delay: Duration, with replacement: _Behavior<Message>) -> _Behavior<Message> {
         .setup { context in
             context.timers._startResumeTimer(key: TimerKey("restartBackoff", isSystemTimer: true), delay: delay, resumeWith: WakeUp())
 

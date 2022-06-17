@@ -21,14 +21,14 @@ final class VersionVectorSerializationTests: ClusterSystemXCTestCase {
         self.system.cluster.uniqueNode
     }
 
-    lazy var addressA = try! ActorAddress(local: node, path: ActorPath._user.appending("A"), incarnation: .wellKnown)
-    lazy var addressB = try! ActorAddress(local: node, path: ActorPath._user.appending("B"), incarnation: .wellKnown)
+    lazy var idA = try! ActorID(local: node, path: ActorPath._user.appending("A"), incarnation: .wellKnown)
+    lazy var idB = try! ActorID(local: node, path: ActorPath._user.appending("B"), incarnation: .wellKnown)
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: VersionVector
 
     func test_serializationOf_VersionVector() throws {
-        let vv = VersionVector([(.actorAddress(self.addressA), 2), (.actorAddress(self.addressB), 5)])
+        let vv = VersionVector([(.actorID(self.idA), 2), (.actorID(self.idB), 5)])
 
         let serialized = try system.serialization.serialize(vv)
         let deserialized = try system.serialization.deserialize(as: VersionVector.self, from: serialized)
@@ -51,7 +51,7 @@ final class VersionVectorSerializationTests: ClusterSystemXCTestCase {
     // MARK: VersionDot
 
     func test_serializationOf_VersionDot() throws {
-        let dot = VersionDot(.actorAddress(self.addressA), 2)
+        let dot = VersionDot(.actorID(self.idA), 2)
 
         let serialized = try system.serialization.serialize(dot)
         let deserialized = try system.serialization.deserialize(as: VersionDot.self, from: serialized)

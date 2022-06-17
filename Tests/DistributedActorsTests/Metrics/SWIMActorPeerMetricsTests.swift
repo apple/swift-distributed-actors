@@ -60,7 +60,7 @@ final class ActorMetricsSWIMActorPeerMetricsTests: ClusteredActorSystemsXCTestCa
         sleep(2) // FIXME: if we rework how throws work with eventually() we can avoid the sleep
 
         let timer = try self.metrics.expectTimer(instance.metrics.shell.pingResponseTime)
-        pinfo("Recorded \(timer): \(String(reflecting: timer.lastValue.map { TimeAmount.nanoseconds($0).prettyDescription }))")
+        pinfo("Recorded \(timer): \(String(reflecting: timer.lastValue.map { Duration.nanoseconds($0).prettyDescription }))")
         timer.label.shouldEqual("first.cluster.swim.roundTripTime.ping")
         timer.lastValue!.shouldBeGreaterThan(0)
 
@@ -101,12 +101,12 @@ final class ActorMetricsSWIMActorPeerMetricsTests: ClusteredActorSystemsXCTestCa
         sleep(2) // FIXME: if we rework how throws work with eventually() we can avoid the sleep
 
         let timerFirst = try self.metrics.expectTimer(instance.metrics.shell.pingRequestResponseTimeFirst)
-        pinfo("Recorded \(timerFirst): \(String(reflecting: timerFirst.lastValue.map { TimeAmount.nanoseconds($0).prettyDescription }))")
+        pinfo("Recorded \(timerFirst): \(String(reflecting: timerFirst.lastValue.map { Duration.nanoseconds($0).prettyDescription }))")
         timerFirst.label.shouldEqual("first.cluster.swim.roundTripTime.pingRequest")
         timerFirst.lastValue!.shouldBeGreaterThan(0)
 
         let timerAll = try self.metrics.expectTimer(instance.metrics.shell.pingRequestResponseTimeAll)
-        pinfo("Recorded \(timerAll): \(String(reflecting: timerAll.lastValue.map { TimeAmount.nanoseconds($0).prettyDescription }))")
+        pinfo("Recorded \(timerAll): \(String(reflecting: timerAll.lastValue.map { Duration.nanoseconds($0).prettyDescription }))")
         timerAll.label.shouldEqual("first.cluster.swim.roundTripTime.pingRequest")
         timerAll.lastValue!.shouldBeGreaterThan(0)
 

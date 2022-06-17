@@ -42,7 +42,7 @@ public enum OnDownActionStrategySettings {
     /// members MUST refuse communication with this down node.
     case none
     /// Upon noticing that this member is marked as [.down], initiate a shutdown.
-    case gracefulShutdown(delay: TimeAmount)
+    case gracefulShutdown(delay: Duration)
 
     func make() -> (ClusterSystem) throws -> Void {
         switch self {
@@ -57,7 +57,9 @@ public enum OnDownActionStrategySettings {
                     .setup { context in
                         guard .milliseconds(0) < shutdownDelay else {
                             context.log.warning("This node was marked as [.down], delay is immediate. Shutting down the system immediately!")
-                            system.shutdown()
+                            Task {
+                                system.shutdown()
+                            }
                             return .stop
                         }
 
@@ -66,7 +68,9 @@ public enum OnDownActionStrategySettings {
 
                         return .receiveMessage { _ in
                             system.log.warning("Shutting down...")
-                            system.shutdown()
+                            Task {
+                                system.shutdown()
+                            }
                             return .stop
                         }
                     }

@@ -11,14 +11,12 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
 import struct Foundation.Data // TODO: would refer to not go "through" Data as our target always is ByteBuffer
 import NIO
 import SwiftProtobuf
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: _ProtoEnvelope
-
 enum WireEnvelopeError: Error {
     case missingManifest
     case emptyRecipient
@@ -48,7 +46,7 @@ extension Wire.Envelope: _ProtobufRepresentable {
             throw WireEnvelopeError.missingManifest
         }
 
-        self.recipient = try ActorAddress(fromProto: proto.recipient, context: context)
+        self.recipient = try ActorID(fromProto: proto.recipient, context: context)
         self.payload = .data(proto.payload)
         self.manifest = .init(fromProto: proto.manifest)
     }
@@ -56,7 +54,6 @@ extension Wire.Envelope: _ProtobufRepresentable {
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: _ProtoProtocolVersion
-
 // TODO: conversions are naive here, we'd want to express this more nicely...
 extension Wire.Version {
     init(_ proto: _ProtoProtocolVersion) {
@@ -80,7 +77,6 @@ extension _ProtoProtocolVersion {
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: _ProtoHandshakeAccept
-
 extension Wire.HandshakeAccept {
     init(_ proto: _ProtoHandshakeAccept) throws {
         guard proto.hasVersion else {
@@ -109,7 +105,6 @@ extension _ProtoHandshakeAccept {
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: _ProtoHandshakeReject
-
 extension Wire.HandshakeReject {
     init(_ proto: _ProtoHandshakeReject) throws {
         guard proto.hasVersion else {
@@ -141,7 +136,6 @@ extension _ProtoHandshakeReject {
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: HandshakeOffer
-
 // TODO: worth making it Proto representable or not?
 extension Wire.HandshakeOffer {
     typealias ProtobufRepresentation = _ProtoHandshakeOffer

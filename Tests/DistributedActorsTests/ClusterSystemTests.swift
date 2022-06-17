@@ -125,12 +125,12 @@ final class ClusterSystemTests: ClusterSystemXCTestCase {
 
     func test_resolveUnknownActor_shouldReturnPersonalDeadLetters() throws {
         let path = try ActorPath._user.appending("test").appending("foo").appending("bar")
-        let address = ActorAddress(local: self.system.cluster.uniqueNode, path: path, incarnation: .random())
-        let context: ResolveContext<Never> = ResolveContext(address: address, system: self.system)
+        let id = ActorID(local: self.system.cluster.uniqueNode, path: path, incarnation: .random())
+        let context: _ResolveContext<Never> = _ResolveContext(id: id, system: self.system)
         let ref = self.system._resolve(context: context)
 
-        ref.address.path.shouldEqual(ActorPath._dead.appending(segments: path.segments))
-        ref.address.incarnation.shouldEqual(address.incarnation)
+        ref.id.path.shouldEqual(ActorPath._dead.appending(segments: path.segments))
+        ref.id.incarnation.shouldEqual(id.incarnation)
     }
 
     func test_shutdown_callbackShouldBeInvoked() async throws {
@@ -203,7 +203,7 @@ final class ClusterSystemTests: ClusterSystemXCTestCase {
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Remote call API tests
 
-    func test_remoteCall_success() async throws {
+    func test_remoteCall() async throws {
         let local = await setUpNode("local") { settings in
             settings.enabled = true
             settings.serialization.registerInbound(GreeterCodableError.self)

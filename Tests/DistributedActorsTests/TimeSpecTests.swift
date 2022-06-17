@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -19,28 +19,28 @@ import XCTest
 private let NANOS = 1_000_000_000
 
 class TimeSpecTests: XCTestCase {
-    let nanosAmount: TimeAmount = .nanoseconds(100)
-    let secondsAmount: TimeAmount = .seconds(2)
-    var totalAmount: TimeAmount {
-        self.secondsAmount + self.nanosAmount
+    let nanosDuration: Duration = .nanoseconds(100)
+    let secondsDuration: Duration = .seconds(2)
+    var totalDuration: Duration {
+        self.secondsDuration + self.nanosDuration
     }
 
     var nanos: TimeSpec {
-        .from(timeAmount: self.nanosAmount)
+        .from(duration: self.nanosDuration)
     }
 
     var seconds: TimeSpec {
-        .from(timeAmount: self.secondsAmount)
+        .from(duration: self.secondsDuration)
     }
 
     var total: TimeSpec {
-        .from(timeAmount: self.totalAmount)
+        .from(duration: self.totalDuration)
     }
 
-    func test_timeSpecShouldBeCreatedProperlyFromTimeAmount() {
-        self.total.toNanos().shouldEqual(Int(self.totalAmount.nanoseconds))
-        self.total.tv_sec.shouldEqual(Int(self.totalAmount.nanoseconds) / NANOS)
-        self.total.tv_nsec.shouldEqual(Int(self.totalAmount.nanoseconds) % NANOS)
+    func test_timeSpecShouldBeCreatedProperlyFromDuration() {
+        self.total.toNanos().shouldEqual(Int(self.totalDuration.nanoseconds))
+        self.total.tv_sec.shouldEqual(Int(self.totalDuration.nanoseconds) / NANOS)
+        self.total.tv_nsec.shouldEqual(Int(self.totalDuration.nanoseconds) % NANOS)
     }
 
     func test_timeSpecAdd() {

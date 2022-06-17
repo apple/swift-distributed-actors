@@ -37,7 +37,7 @@ public final class ActorSingletonPlugin {
     public init() {}
 
     // FIXME: document that may crash, it may right?
-    func ref<Message: ActorMessage>(of type: Message.Type, settings: ActorSingletonSettings, system: ClusterSystem, props: _Props? = nil, _ behavior: _Behavior<Message>? = nil) throws -> _ActorRef<Message> {
+    func ref<Message: Codable>(of type: Message.Type, settings: ActorSingletonSettings, system: ClusterSystem, props: _Props? = nil, _ behavior: _Behavior<Message>? = nil) throws -> _ActorRef<Message> {
         try self.singletonsLock.withLock {
             if let existing = self.singletons[settings.name] {
                 guard let proxy = existing.unsafeUnwrapAs(Message.self).proxy else {

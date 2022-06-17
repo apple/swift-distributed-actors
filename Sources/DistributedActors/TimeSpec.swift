@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -20,7 +20,7 @@ import Glibc
 
 import NIO
 
-// MARK: utilities to convert between TimeAmount and C timespec
+// MARK: utilities to convert between Duration and C timespec
 
 private let NANOS = 1_000_000_000
 
@@ -33,9 +33,9 @@ internal typealias TimeSpec = timespec
 /// Not intended for general use. TOD
 extension TimeSpec {
     @usableFromInline
-    internal static func from(timeAmount amount: TimeAmount) -> timespec {
-        let seconds = Int(amount.nanoseconds) / NANOS
-        let nanos = Int(amount.nanoseconds) % NANOS
+    internal static func from(duration: Duration) -> timespec {
+        let seconds = Int(duration.nanoseconds) / NANOS
+        let nanos = Int(duration.nanoseconds) % NANOS
         var time = timespec()
         time.tv_sec = seconds
         time.tv_nsec = nanos

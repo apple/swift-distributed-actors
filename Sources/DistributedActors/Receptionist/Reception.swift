@@ -18,12 +18,12 @@ import Distributed
 // MARK: Reception
 
 /// Namespace for public messages related to the Receptionist.
-public enum Reception {}
+public enum _Reception {}
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Reception Key
+// MARK: _ReceptionKey
 
-extension Reception {
+extension _Reception {
     /// Used to register and lookup actors in the receptionist.
     /// The key is a combination the Guest's type and an identifier to identify sub-groups of actors of that type.
     ///
@@ -46,7 +46,7 @@ extension Reception {
             self.id = value
         }
 
-        internal func _unsafeAsActorRef(_ addressable: AddressableActorRef) -> _ActorRef<Guest.Message> {
+        internal func _unsafeAsActorRef(_ addressable: _AddressableActorRef) -> _ActorRef<Guest.Message> {
             if addressable.isRemote() {
                 let remotePersonality: _RemoteClusterActorPersonality<Guest.Message> = addressable.ref._unsafeGetRemotePersonality(Guest.Message.self)
                 return _ActorRef(.remote(remotePersonality))
@@ -59,8 +59,8 @@ extension Reception {
             }
         }
 
-        internal func resolve(system: ClusterSystem, address: ActorAddress) -> AddressableActorRef {
-            let ref: _ActorRef<Guest.Message> = system._resolve(context: ResolveContext(address: address, system: system))
+        internal func resolve(system: ClusterSystem, id: ActorID) -> _AddressableActorRef {
+            let ref: _ActorRef<Guest.Message> = system._resolve(context: _ResolveContext(id: id, system: system))
             return ref.asAddressable
         }
 
@@ -69,22 +69,22 @@ extension Reception {
         }
 
         public var description: String {
-            "Reception.Key<\(Guest.self)>(id: \(self.id))"
+            "_Reception.Key<\(Guest.self)>(id: \(self.id))"
         }
     }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Reception Listing
+// MARK: _ReceptionListing
 
-extension Reception {
+extension _Reception {
     /// Response to `Lookup` and `Subscribe` requests.
     /// A listing MAY be empty.
     public struct Listing<Guest: _ReceptionistGuest>: Equatable, CustomStringConvertible {
-        let underlying: Set<AddressableActorRef>
-        let key: Reception.Key<Guest>
+        let underlying: Set<_AddressableActorRef>
+        let key: _Reception.Key<Guest>
 
-        init(refs: Set<AddressableActorRef>, key: Reception.Key<Guest>) {
+        init(refs: Set<_AddressableActorRef>, key: _Reception.Key<Guest>) {
             // TODO: assert the refs match type?
             self.underlying = refs
             self.key = key
@@ -101,7 +101,7 @@ extension Reception {
         }
 
         public var description: String {
-            "Reception.Listing<\(Guest.self)>(\(self.underlying.map(\.address)))"
+            "_Reception.Listing<\(Guest.self)>(\(self.underlying.map(\.id)))"
         }
 
         public static func == (lhs: Listing<Guest>, rhs: Listing<Guest>) -> Bool {
@@ -110,11 +110,11 @@ extension Reception {
     }
 }
 
-extension Reception.Listing where Guest: _ReceivesMessages {
+extension _Reception.Listing where Guest: _ReceivesMessages {
     /// Retrieve all listed actor references, mapping them to their appropriate type.
     /// Note that this operation is lazy and has to iterate over all the actors when performing the
     /// iteration.
-    public var refs: LazyMapSequence<Set<AddressableActorRef>, _ActorRef<Guest.Message>> {
+    public var refs: LazyMapSequence<Set<_AddressableActorRef>, _ActorRef<Guest.Message>> {
         self.underlying.lazy.map { self.key._unsafeAsActorRef($0) }
     }
 
@@ -124,10 +124,10 @@ extension Reception.Listing where Guest: _ReceivesMessages {
         }
     }
 
-    public func first(where matches: (ActorAddress) -> Bool) -> _ActorRef<Guest.Message>? {
+    public func first(where matches: (ActorID) -> Bool) -> _ActorRef<Guest.Message>? {
         self.underlying.first {
             let ref: _ActorRef<Guest.Message> = self.key._unsafeAsActorRef($0)
-            return matches(ref.address)
+            return matches(ref.id)
         }.map {
             self.key._unsafeAsActorRef($0)
         }
@@ -146,7 +146,7 @@ extension Reception.Listing where Guest: _ReceivesMessages {
     }
 }
 
-protocol AnyReceptionistListing: ActorMessage {
+protocol AnyReceptionistListing: Codable {
     // For comparing if two listings are equal
     var refsAsAnyHashable: AnyHashable { get }
 }
@@ -161,7 +161,7 @@ extension AnyReceptionistListing {
 }
 
 protocol ReceptionistListing: AnyReceptionistListing, Equatable {
-    associatedtype Message: ActorMessage
+    associatedtype Message: Codable
 
     var refs: Set<_ActorRef<Message>> { get }
 }
@@ -173,35 +173,35 @@ extension ReceptionistListing {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Reception Registered
+// MARK: _ReceptionRegistered
 
-extension Reception {
+extension _Reception {
     /// Response to a `Register` message
-    public final class Registered<Guest: _ReceptionistGuest>: NonTransportableActorMessage, CustomStringConvertible {
+    public final class Registered<Guest: _ReceptionistGuest>: _NotActuallyCodableMessage, CustomStringConvertible {
         internal let _guest: Guest
-        public let key: Reception.Key<Guest>
+        public let key: _Reception.Key<Guest>
 
-        public init(_ guest: Guest, key: Reception.Key<Guest>) {
+        public init(_ guest: Guest, key: _Reception.Key<Guest>) {
             self._guest = guest
             self.key = key
         }
 
         public var description: String {
-            "Reception.Registered(guest: \(self._guest), key: \(self.key))"
+            "_Reception.Registered(guest: \(self._guest), key: \(self.key))"
         }
     }
 }
 
-extension Reception.Registered where Guest: _ReceivesMessages {
+extension _Reception.Registered where Guest: _ReceivesMessages {
     var ref: _ActorRef<Guest.Message> {
         self._guest._ref
     }
 }
 
-extension Reception.Registered where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem {
+extension _Reception.Registered where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem {
     public var actor: Guest {
         let system = self._guest.actorSystem
 
-        return try! Guest.resolve(id: self._guest._ref.address, using: system) // FIXME: cleanup these APIs, should never need throws, resolve earlier
+        return try! Guest.resolve(id: self._guest._ref.id, using: system) // FIXME: cleanup these APIs, should never need throws, resolve earlier
     }
 }

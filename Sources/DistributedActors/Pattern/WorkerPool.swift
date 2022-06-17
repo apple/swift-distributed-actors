@@ -91,7 +91,7 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
         switch settings.selector {
         case .dynamic(let key):
             self.newWorkersSubscribeTask = Task {
-                for await worker in await self.actorSystem.receptionist.subscribe(to: key) {
+                for await worker in await self.actorSystem.receptionist.listing(of: key) {
                     self.actorSystem.log.log(level: self.logLevel, "Got listing member for \(key): \(worker)")
                     self.workers[worker.id] = Weak(worker)
                     // Notify those waiting for new worker
@@ -99,13 +99,13 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
                         continuation.resume()
                         self.newWorkerContinuations.remove(at: i)
                     }
-                    watchTermination(of: worker) { self.onWorkerTerminated(id: $0) }
+                    watchTermination(of: worker)
                 }
             }
         case .static(let workers):
             workers.forEach { worker in
                 self.workers[worker.id] = Weak(worker)
-                watchTermination(of: worker) { self.onWorkerTerminated(id: $0) }
+                watchTermination(of: worker)
             }
         }
     }
@@ -133,7 +133,7 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
             switch (self.hasTerminatedWorkers, self.whenAllWorkersTerminated) {
             case (false, _), (true, .awaitNewWorkers):
                 self.actorSystem.log.log(level: self.logLevel, "Worker pool is empty, waiting for new worker.")
-                try await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+                await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
                     self.newWorkerContinuations.append(continuation)
                 }
             case (true, .throw(let error)):
@@ -146,7 +146,7 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
             return worker
         } else {
             // Worker terminated; clean up and try again
-            self.onWorkerTerminated(id: selectedWorkerID)
+            self.terminated(actor: selectedWorkerID)
             return try await self.selectWorker()
         }
     }
@@ -160,7 +160,7 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
         return selected
     }
 
-    private func onWorkerTerminated(id: Worker.ID) {
+    public distributed func terminated(actor id: Worker.ID) {
         self.workers.removeValue(forKey: id)
         self.hasTerminatedWorkers = true
         self.roundRobinPos = 0

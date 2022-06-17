@@ -23,7 +23,7 @@ import XCTest
 
 class ActorDocExamples: XCTestCase {
     // tag::message_greetings[]
-    enum Greetings: NonTransportableActorMessage {
+    enum Greetings: _NotActuallyCodableMessage {
         case greet(name: String)
         case greeting(String)
     }
@@ -156,7 +156,7 @@ class ActorDocExamples: XCTestCase {
 
     func example_receptionist_register() {
         // tag::receptionist_register[]
-        let key = Reception.Key(_ActorRef<String>.self, id: "my-actor") // <1>
+        let key = _Reception.Key(_ActorRef<String>.self, id: "my-actor") // <1>
 
         let behavior: _Behavior<String> = .setup { context in
             context.receptionist.registerMyself(with: key) // <2>
@@ -172,7 +172,7 @@ class ActorDocExamples: XCTestCase {
     }
 
     func example_receptionist_lookup() {
-        let key = Reception.Key(_ActorRef<String>.self, id: "my-actor")
+        let key = _Reception.Key(_ActorRef<String>.self, id: "my-actor")
         let system = ClusterSystem("LookupExample")
         // tag::receptionist_lookup[]
         let response = system._receptionist.lookup(key, timeout: .seconds(1)) // <1>
@@ -189,9 +189,9 @@ class ActorDocExamples: XCTestCase {
     }
 
     func example_receptionist_subscribe() {
-        let key = Reception.Key(_ActorRef<String>.self, id: "my-actor")
+        let key = _Reception.Key(_ActorRef<String>.self, id: "my-actor")
         // tag::receptionist_subscribe[]
-        let behavior: _Behavior<Reception.Listing<_ActorRef<String>>> = .setup { context in
+        let behavior: _Behavior<_Reception.Listing<_ActorRef<String>>> = .setup { context in
             context.system._receptionist.subscribe(context.myself, to: key) // <1>
 
             return .receiveMessage {
@@ -207,9 +207,9 @@ class ActorDocExamples: XCTestCase {
     }
 
     func example_context_receptionist_subscribe() {
-        let key = Reception.Key(_ActorRef<String>.self, id: "my-actor")
+        let key = _Reception.Key(_ActorRef<String>.self, id: "my-actor")
         // tag::context_receptionist_subscribe[]
-        let behavior: _Behavior<Reception.Listing<_ActorRef<String>>> = .setup { context in
+        let behavior: _Behavior<_Reception.Listing<_ActorRef<String>>> = .setup { context in
             context.system._receptionist.subscribe(context.myself, to: key) // <1>
 
             return .receiveMessage {
@@ -264,7 +264,7 @@ class ActorDocExamples: XCTestCase {
         let greeter = try system._spawn("greeter", greeterBehavior)
 
         let caplinBehavior: _Behavior<Never> = .setup { context in
-            let timeout: TimeAmount = .seconds(1)
+            let timeout: Duration = .seconds(1)
 
             let response: AskResponse<String> = // <1>
                 greeter.ask(for: String.self, timeout: timeout) {

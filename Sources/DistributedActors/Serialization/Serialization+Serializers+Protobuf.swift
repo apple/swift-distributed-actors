@@ -69,7 +69,7 @@ internal final class _ProtobufSerializer<T: _ProtobufRepresentable>: _Base_Proto
 }
 
 /// Protobuf serializer for internal protobuf messages only.
-internal final class Internal_ProtobufSerializer<T: Internal_ProtobufRepresentable>: _Base_ProtobufSerializer<T, T.ProtobufRepresentation> {
+internal final class Internal_ProtobufSerializer<T: _InternalProtobufRepresentable>: _Base_ProtobufSerializer<T, T.ProtobufRepresentation> {
     override public func toProto(_ message: T, context: Serialization.Context) throws -> T.ProtobufRepresentation {
         try message.toProto(context: self.serializationContext)
     }

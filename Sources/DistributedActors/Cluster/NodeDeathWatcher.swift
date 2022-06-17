@@ -25,7 +25,7 @@ import NIO
 /// In order to avoid every actor having to subscribe to cluster events and individually handle the relationship between those
 /// and individually watched actors, the watcher handles subscribing for cluster events on behalf of actors which watch
 /// other actors on remote nodes, and messages them `SystemMessage.nodeTerminated(node)` upon node termination (down),
-/// which are in turn translated by the actors locally to `SystemMessage.terminated(ref:existenceConfirmed:addressTerminated:true)`
+/// which are in turn translated by the actors locally to `SystemMessage.terminated(ref:existenceConfirmed:idTerminated:true)`
 ///
 /// to any actor which watched at least one actor on a node that has been downed.
 ///
@@ -55,7 +55,7 @@ internal final class NodeDeathWatcherInstance: NodeDeathWatcher {
     }
 
     /// Mapping between remote node, and actors which have watched some actors on given remote node.
-    private var remoteWatchers: [UniqueNode: Set<AddressableActorRef>] = [:]
+    private var remoteWatchers: [UniqueNode: Set<_AddressableActorRef>] = [:]
     private var remoteWatchCallbacks: [UniqueNode: Set<WatcherAndCallback>] = [:]
 
     init(selfNode: UniqueNode) {
@@ -64,7 +64,7 @@ internal final class NodeDeathWatcherInstance: NodeDeathWatcher {
     }
 
     @available(*, deprecated, message: "will be replaced by distributed actor / closure version")
-    func onActorWatched(by watcher: AddressableActorRef, remoteNode: UniqueNode) {
+    func onActorWatched(by watcher: _AddressableActorRef, remoteNode: UniqueNode) {
         guard !self.nodeTombstones.contains(remoteNode) else {
             // the system the watcher is attempting to watch has terminated before the watch has been processed,
             // thus we have to immediately reply with a termination system message, as otherwise it would never receive one
@@ -72,11 +72,11 @@ internal final class NodeDeathWatcherInstance: NodeDeathWatcher {
             return
         }
 
-        guard watcher.address._isLocal else {
+        guard watcher.id._isLocal else {
             // a failure detector must never register non-local actors, it would not make much sense,
             // as they should have their own local failure detectors on their own systems.
             // If we reach this it is most likely a bug in the library itself.
-            let err = NodeDeathWatcherError.watcherActorWasNotLocal(watcherAddress: watcher.address, localNode: self.selfNode)
+            let err = NodeDeathWatcherError.watcherActorWasNotLocal(watcherID: watcher.id, localNode: self.selfNode)
             return fatalErrorBacktrace("Attempted registering non-local actor with node-death watcher: \(err)")
         }
 
@@ -131,10 +131,20 @@ internal final class NodeDeathWatcherInstance: NodeDeathWatcher {
 
     func handleAddressDown(_ change: Cluster.MembershipChange) {
         let terminatedNode = change.node
+
+        // ref
         if let watchers = self.remoteWatchers.removeValue(forKey: terminatedNode) {
             for ref in watchers {
                 // we notify each actor that was watching this remote address
                 ref._sendSystemMessage(.nodeTerminated(terminatedNode))
+            }
+        }
+
+        if let watchers = self.remoteWatchCallbacks.removeValue(forKey: terminatedNode) {
+            for watcher in watchers {
+                Task {
+                    await watcher.callback(terminatedNode)
+                }
             }
         }
 
@@ -149,7 +159,7 @@ internal protocol NodeDeathWatcher {
     /// Called when the `watcher` watches a remote actor which resides on the `remoteNode`.
     /// A failure detector may have to start monitoring this node using some internal mechanism,
     /// in order to be able to signal the watcher in case the node terminates (e.g. the node crashes).
-    func onActorWatched(by watcher: AddressableActorRef, remoteNode: UniqueNode)
+    func onActorWatched(by watcher: _AddressableActorRef, remoteNode: UniqueNode)
 
     /// Called when the cluster membership changes.
     ///
@@ -171,8 +181,8 @@ enum NodeDeathWatcherShell {
     /// Message protocol for interacting with the failure detector.
     /// By default, the `FailureDetectorShell` handles these messages by interpreting them with an underlying `FailureDetector`,
     /// it would be possible however to allow implementing the raw protocol by user actors if we ever see the need for it.
-    internal enum Message: NonTransportableActorMessage {
-        case remoteActorWatched(watcher: AddressableActorRef, remoteNode: UniqueNode)
+    internal enum Message: _NotActuallyCodableMessage {
+        case remoteActorWatched(watcher: _AddressableActorRef, remoteNode: UniqueNode)
         case remoteDistributedActorWatched(remoteNode: UniqueNode, watcherID: ClusterSystem.ActorID, nodeTerminated: @Sendable (UniqueNode) async -> Void)
         case removeWatcher(watcherID: ClusterSystem.ActorID)
         case membershipSnapshot(Cluster.Membership)
@@ -186,8 +196,20 @@ enum NodeDeathWatcherShell {
 
             context.system.cluster.events.subscribe(context.subReceive(Cluster.Event.self) { event in
                 switch event {
+                case .snapshot(let membership):
+                    context.log.info("Membership snapshot: \(membership)")
+                    let diff = Cluster.Membership._diff(from: .empty, to: membership)
+                    for change in diff.changes {
+                        instance.onMembershipChanged(change)
+                    }
+
                 case .membershipChange(let change) where change.isAtLeast(.down):
+                    context.log.info("Node down: \(change)!")
                     instance.handleAddressDown(change)
+                case .membershipChange(let change):
+                    context.log.info("Node change: \(change)!")
+                    instance.onMembershipChanged(change)
+
                 default:
                     () // ignore other changes, we only need to react on nodes becoming DOWN
                 }
@@ -230,5 +252,5 @@ enum NodeDeathWatcherShell {
 
 enum NodeDeathWatcherError: Error {
     case attemptedToFailUnknownAddress(Cluster.Membership, UniqueNode)
-    case watcherActorWasNotLocal(watcherAddress: ActorAddress, localNode: UniqueNode?)
+    case watcherActorWasNotLocal(watcherID: ActorID, localNode: UniqueNode?)
 }
