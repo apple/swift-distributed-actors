@@ -55,8 +55,8 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
     // TODO: collapse it with the other initialization lock; the other one is not needed now I think?
     private let initLock = Lock()
 
-    internal let lifecycleWatchLock = Lock()
-    internal var _lifecycleWatches: [ActorID: LifecycleWatchContainer] = [:]
+//    internal let lifecycleWatchLock = Lock()
+//    internal var _lifecycleWatches: [ActorID: LifecycleWatchContainer] = [:]
 
     private var _associationTombstoneCleanupTask: RepeatedTask?
 
@@ -953,11 +953,12 @@ extension ClusterSystem {
                 ref._sendSystemMessage(.stop, file: #file, line: #line)
             }
         }
-        self.lifecycleWatchLock.withLockVoid {
-            if let watch = self._lifecycleWatches.removeValue(forKey: id) {
-                watch.notifyWatchersWeDied()
-            }
-        }
+        id.context.terminate()
+//        self.lifecycleWatchLock.withLockVoid {
+//            if let watch = self._lifecycleWatches.removeValue(forKey: id) {
+//                watch.notifyWatchersWeDied()
+//            }
+//        }
         self.namingLock.withLockVoid {
             self._managedRefs.removeValue(forKey: id) // TODO: should not be necessary in the future
             _ = self._managedDistributedActors.removeActor(identifiedBy: id)

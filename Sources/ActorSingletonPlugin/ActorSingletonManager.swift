@@ -100,7 +100,7 @@ extension ActorSingletonManager {
 
 extension ActorID {
     static func _singletonManager(name: String, on node: UniqueNode) -> ActorID {
-        ActorID(local: node, path: ._singletonManager(name: name), incarnation: .wellKnown)
+        ._make(local: node, path: ._singletonManager(name: name), incarnation: .wellKnown)
     }
 }
 

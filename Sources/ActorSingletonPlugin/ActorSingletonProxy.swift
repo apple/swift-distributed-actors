@@ -239,7 +239,7 @@ extension ActorSingletonProxy {
 
 extension ActorID {
     static func _singletonProxy(name: String, remote node: UniqueNode) -> ActorID {
-        .init(remote: node, path: ._singletonProxy(name: name), incarnation: .wellKnown)
+        ._make(remote: node, path: ._singletonProxy(name: name), incarnation: .wellKnown)
     }
 }
 

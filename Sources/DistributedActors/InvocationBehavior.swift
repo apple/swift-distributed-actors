@@ -55,7 +55,7 @@ enum InvocationBehavior {
 
                 if let terminated = signal as? _Signals.Terminated {
                     if let watcher = instance as? (any LifecycleWatch) {
-                        let watch = watcher.actorSystem._getLifecycleWatch(watcher: watcher)
+                        let watch = watcher.id.context.lifecycle
                         watch?.receiveTerminated(terminated)
                         return .same
                     }

@@ -29,7 +29,6 @@ public struct _ActorRef<Message: Codable>: @unchecked Sendable, _ReceivesMessage
     ///
     /// Adj. self-conscious: feeling undue awareness of oneself, one's appearance, or one's actions.
     public enum Personality {
-        // TODO(distributed): introduce new 'distributed actor' personality that replaces all other ones
         case cell(_ActorCell<Message>)
         case remote(_RemoteClusterActorPersonality<Message>)
         case adapter(_AbstractAdapter)

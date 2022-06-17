@@ -99,6 +99,9 @@ extension ClusterSystem {
         /// - SeeAlso: `ActorTags` for a detailed discussion of some frequently used tags.
         public var tags: ActorTags
 
+        /// Internal "actor context" which is used as storage for additional cluster actor features, such as watching.
+        internal var context: DistributedActorContext
+
         /// Underlying path representation, not attached to a specific Actor instance.
         // FIXME(distributed): make optional
         public var path: ActorPath {
@@ -123,8 +126,15 @@ extension ClusterSystem {
         /// Uniquely identifies the specific "incarnation" of this actor.
         public let incarnation: ActorIncarnation
 
-        /// :nodoc:
-        public init(local node: UniqueNode, path: ActorPath?, incarnation: ActorIncarnation) {
+        // TODO(distributed): remove this workaround; only exists for old ActorSingletonManager
+        public static func _make(local node: UniqueNode, path: ActorPath?, incarnation: ActorIncarnation) -> Self {
+            .init(local: node, path: path, incarnation: incarnation)
+        }
+
+        
+        // TODO(distributed): remove this initializer, as it is only for Behavior actors
+        init(local node: UniqueNode, path: ActorPath?, incarnation: ActorIncarnation) {
+            self.context = .init(lifecycle: nil)
             self._location = .local(node)
             self.tags = ActorTags()
             self.incarnation = incarnation
@@ -132,9 +142,15 @@ extension ClusterSystem {
                 self.tags[ActorTags.path] = path
             }
         }
+        
+        // TODO(distributed): remove this workaround; only exists for old ActorSingletonManager
+        public static func _make(remote node: UniqueNode, path: ActorPath?, incarnation: ActorIncarnation) -> Self {
+            .init(remote: node, path: path, incarnation: incarnation)
+        }
 
-        /// :nodoc:
-        public init(remote node: UniqueNode, path: ActorPath?, incarnation: ActorIncarnation) {
+        // TODO(distributed): remove this initializer, as it is only for Behavior actors
+        init(remote node: UniqueNode, path: ActorPath?, incarnation: ActorIncarnation) {
+            self.context = .init(lifecycle: nil)
             self._location = .remote(node)
             self.incarnation = incarnation
             self.tags = ActorTags()
@@ -142,11 +158,23 @@ extension ClusterSystem {
                 self.tags[ActorTags.path] = path
             }
         }
+        
+        public init<Act>(remote node: UniqueNode, type: Act.Type, incarnation: ActorIncarnation)
+            where Act: DistributedActor, Act.ActorSystem == ClusterSystem {
+            self.context = .init(lifecycle: nil)
+            self._location = .remote(node)
+            self.incarnation = incarnation
+            self.tags = ActorTags()
+            // TODO: avoid mangling names on every spawn?
+            if let mangledName = _mangledTypeName(type) {
+                self.tags[ActorTags.type] = .init(mangledName: mangledName)
+            }
+        }
 
-        /// :nodoc:
-        public init<Act>(local node: UniqueNode, type: Act.Type, incarnation: ActorIncarnation)
-            where Act: DistributedActor, Act.ActorSystem == ClusterSystem
-        {
+        init<Act>(local node: UniqueNode, type: Act.Type, incarnation: ActorIncarnation,
+                 context: DistributedActorContext)
+            where Act: DistributedActor, Act.ActorSystem == ClusterSystem {
+            self.context = context
             self._location = .local(node)
             self.tags = ActorTags()
             self.incarnation = incarnation
@@ -157,8 +185,10 @@ extension ClusterSystem {
             }
         }
 
-        /// :nodoc:
-        public init(remote node: UniqueNode, type: (some DistributedActor).Type, incarnation: ActorIncarnation) {
+        init<Act>(remote node: UniqueNode, type: Act.Type, incarnation: ActorIncarnation,
+             context: DistributedActorContext)
+            where Act: DistributedActor, Act.ActorSystem == ClusterSystem {
+            self.context = context
             self._location = .remote(node)
             self.incarnation = incarnation
             self.tags = ActorTags()
@@ -167,6 +197,20 @@ extension ClusterSystem {
                 self.tags[ActorTags.type] = .init(mangledName: mangledName)
             }
         }
+        
+        internal var withoutContext: Self {
+            var copy = self
+            copy.context = .init(lifecycle: nil)
+            return copy
+        }
+    }
+}
+
+extension DistributedActor where ActorSystem == ClusterSystem {
+    
+    /// INTERNAL: Provides the actor context for use within this actor.
+    internal var context: DistributedActorContext {
+        self.id.context
     }
 }
 
@@ -237,7 +281,6 @@ extension ActorID {
 
 extension ActorID {
     /// :nodoc:
-    @inlinable
     public var _isLocal: Bool {
         switch self._location {
         case .local: return true
@@ -246,20 +289,17 @@ extension ActorID {
     }
 
     /// :nodoc:
-    @inlinable
     public var _isRemote: Bool {
         !self._isLocal
     }
 
     /// :nodoc:
-    @inlinable
     public var _asRemote: Self {
         let remote = Self(remote: self.uniqueNode, path: self.path, incarnation: self.incarnation)
         return remote
     }
 
     /// :nodoc:
-    @inlinable
     public var _asLocal: Self {
         let local = Self(local: self.uniqueNode, path: self.path, incarnation: self.incarnation)
         return local
