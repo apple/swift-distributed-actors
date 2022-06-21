@@ -291,4 +291,5 @@ extension _ActorRef: SWIMPingRequestOriginPeer where Message == SWIM.Message {
 internal enum SWIMActorError: Error {
     case illegalPeerType(String)
     case illegalMessageType(String)
+    case noResponse
 }

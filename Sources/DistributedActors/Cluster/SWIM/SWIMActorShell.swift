@@ -395,28 +395,30 @@ internal distributed actor SWIMActorShell {
         origin: SWIMActorShell,
         payload: SWIM.GossipPayload,
         sequenceNumber: SWIM.SequenceNumber
-    ) async -> SWIM.PingResponse {
-        await withCheckedContinuation { continuation in
-            self.log.trace("Received ping@\(sequenceNumber)", metadata: self.swim.metadata([
-                "swim/ping/origin": "\(origin.id)",
-                "swim/ping/payload": "\(payload)",
-                "swim/ping/seqNr": "\(sequenceNumber)",
-            ]))
+    ) async throws -> SWIM.PingResponse {
+        self.log.trace("Received ping@\(sequenceNumber)", metadata: self.swim.metadata([
+            "swim/ping/origin": "\(origin.id)",
+            "swim/ping/payload": "\(payload)",
+            "swim/ping/seqNr": "\(sequenceNumber)",
+        ]))
 
-            self.swim.onPing(
-                pingOrigin: origin,
-                payload: payload,
-                sequenceNumber: sequenceNumber
-            ).forEach { directive in
-                switch directive {
-                case .gossipProcessed(let gossipDirective):
-                    self.handleGossipPayloadProcessedDirective(gossipDirective)
+        for directive in self.swim.onPing(
+            pingOrigin: origin,
+            payload: payload,
+            sequenceNumber: sequenceNumber
+        ) {
+            switch directive {
+            case .gossipProcessed(let gossipDirective):
+                self.handleGossipPayloadProcessedDirective(gossipDirective)
 
-                case .sendAck(_, let pingedTarget, let incarnation, let payload, let sequenceNumber):
-                    continuation.resume(returning: .ack(target: pingedTarget, incarnation: incarnation, payload: payload, sequenceNumber: sequenceNumber))
-                }
+            case .sendAck(_, let pingedTarget, let incarnation, let payload, let sequenceNumber):
+                return .ack(target: pingedTarget, incarnation: incarnation, payload: payload, sequenceNumber: sequenceNumber)
             }
         }
+        
+        assertionFailure("ping should always return ack")
+        
+        throw SWIMActorError.noResponse
     }
     
     distributed func pingRequest(
@@ -424,39 +426,38 @@ internal distributed actor SWIMActorShell {
         pingRequestOrigin: SWIMActorShell,
         payload: SWIM.GossipPayload,
         sequenceNumber pingRequestSequenceNumber: SWIM.SequenceNumber
-    ) async -> SWIM.PingResponse {
-        await withCheckedContinuation { continuation in
-            self.log.trace("Received pingRequest@\(pingRequestSequenceNumber) [\(target)] from [\(pingRequestOrigin)]", metadata: self.swim.metadata([
-                "swim/pingRequest/origin": "\(pingRequestOrigin)",
-                "swim/pingRequest/payload": "\(payload)",
-                "swim/pingRequest/seqNr": "\(pingRequestSequenceNumber)",
-            ]))
+    ) async throws -> SWIM.PingResponse {
+        self.log.trace("Received pingRequest@\(pingRequestSequenceNumber) [\(target)] from [\(pingRequestOrigin)]", metadata: self.swim.metadata([
+            "swim/pingRequest/origin": "\(pingRequestOrigin)",
+            "swim/pingRequest/payload": "\(payload)",
+            "swim/pingRequest/seqNr": "\(pingRequestSequenceNumber)",
+        ]))
 
-            self.swim.onPingRequest(
-                target: target,
-                pingRequestOrigin: pingRequestOrigin,
-                payload: payload,
-                sequenceNumber: pingRequestSequenceNumber
-            ).forEach { directive in
-                switch directive {
-                case .gossipProcessed(let gossipDirective):
-                    self.handleGossipPayloadProcessedDirective(gossipDirective)
+        for directive in self.swim.onPingRequest(
+            target: target,
+            pingRequestOrigin: pingRequestOrigin,
+            payload: payload,
+            sequenceNumber: pingRequestSequenceNumber
+        ) {
+            switch directive {
+            case .gossipProcessed(let gossipDirective):
+                self.handleGossipPayloadProcessedDirective(gossipDirective)
 
-                case .sendPing(let target, let payload, let pingRequestOrigin, let pingRequestSequenceNumber, let timeout, let pingSequenceNumber):
-                    Task {
-                        let response = await self.sendPing(
-                            to: target,
-                            payload: payload,
-                            pingRequestOrigin: pingRequestOrigin,
-                            pingRequestSequenceNumber: pingRequestSequenceNumber,
-                            timeout: timeout,
-                            sequenceNumber: pingSequenceNumber
-                        )
-                        continuation.resume(returning: response)
-                    }
-                }
+            case .sendPing(let target, let payload, let pingRequestOrigin, let pingRequestSequenceNumber, let timeout, let pingSequenceNumber):
+                return await self.sendPing(
+                    to: target,
+                    payload: payload,
+                    pingRequestOrigin: pingRequestOrigin,
+                    pingRequestSequenceNumber: pingRequestSequenceNumber,
+                    timeout: timeout,
+                    sequenceNumber: pingSequenceNumber
+                )
             }
         }
+        
+        assertionFailure("pingRequest should always return ack/nack")
+        
+        throw SWIMActorError.noResponse
     }
     
     // ==== ------------------------------------------------------------------------------------------------------------
