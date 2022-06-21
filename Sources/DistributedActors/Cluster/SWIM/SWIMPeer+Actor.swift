@@ -116,8 +116,6 @@ extension SWIMActorShell: SWIMPingRequestOriginPeer {
 }
 
 extension SWIM {
-    typealias Actor = SWIMActorShell
-
 //    public typealias PeerRef = _ActorRef<SWIM.Message>
 //
 //    public typealias Ref = _ActorRef<SWIM.Message>

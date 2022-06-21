@@ -471,7 +471,7 @@ internal distributed actor SWIMActorShell {
     }
 
     func confirmDead(node: UniqueNode) {
-        let directive = self.swim.confirmDead(peer: node.asSWIMNode.swimActor(self.actorSystem))
+        let directive = self.swim.confirmDead(peer: node.asSWIMNode.swimShell(self.actorSystem))
         switch directive {
         case .applied(let change):
             self.log.warning("Confirmed node .dead: \(change)", metadata: self.swim.metadata(["swim/change": "\(change)"]))
@@ -483,7 +483,7 @@ internal distributed actor SWIMActorShell {
     /// This is effectively joining the SWIM membership of the other member.
     private func sendFirstRemotePing(on targetUniqueNode: UniqueNode) {
         let targetNode = ClusterMembership.Node(uniqueNode: targetUniqueNode)
-        let targetPeer = targetNode.swimActor(self.actorSystem)
+        let targetPeer = targetNode.swimShell(self.actorSystem)
 
         // FIXME: expose addMember after all
         let fakeGossip = SWIM.GossipPayload.membership([
