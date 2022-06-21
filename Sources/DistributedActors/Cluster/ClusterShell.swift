@@ -120,8 +120,8 @@ internal class ClusterShell {
 
         // 2) Ensure the failure detector knows about this node
         Task {
-            await self._swimShell?.whenLocal { swim in
-                swim.monitor(node: associated.handshake.remoteNode)
+            await self._swimShell?.whenLocal { __secretlyKnownToBeLocal in
+                __secretlyKnownToBeLocal.monitor(node: associated.handshake.remoteNode)
             }
         }
     }
@@ -156,8 +156,8 @@ internal class ClusterShell {
         if let swim = self._swimShell {
             system.log.warning("Confirm .dead to underlying SWIM, node: \(reflecting: remoteNode)")
             Task {
-                await swim.whenLocal { swim in
-                    swim.confirmDead(node: remoteNode)
+                await swim.whenLocal { __secretlyKnownToBeLocal in
+                    __secretlyKnownToBeLocal.confirmDead(node: remoteNode)
                 }
             }
         }
@@ -703,8 +703,8 @@ extension ClusterShell {
     func tryConfirmDeadToSWIM(_ context: _ActorContext<Message>, _ state: ClusterShellState, change: Cluster.MembershipChange) {
         if change.status.isAtLeast(.down) {
             Task {
-                await self._swimShell?.whenLocal { swim in
-                    swim.confirmDead(node: change.member.uniqueNode)
+                await self._swimShell?.whenLocal { __secretlyKnownToBeLocal in
+                    __secretlyKnownToBeLocal.confirmDead(node: change.member.uniqueNode)
                 }
             }
         }
@@ -1315,8 +1315,8 @@ extension ClusterShell {
 
         // whenever we down a node we must ensure to confirm it to swim, so it won't keep monitoring it forever needlessly
         Task {
-            await self._swimShell?.whenLocal { swim in
-                swim.confirmDead(node: memberToDown.uniqueNode)
+            await self._swimShell?.whenLocal { __secretlyKnownToBeLocal in
+                __secretlyKnownToBeLocal.confirmDead(node: memberToDown.uniqueNode)
             }
         }
 
