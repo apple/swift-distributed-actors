@@ -1058,7 +1058,6 @@ extension SWIMActorShell {
     static var props: _Props {
         var ps = _Props()
         ps._knownActorName = ActorPath._swim.name
-//        ps._systemActor = true
         ps._wellKnown = true
         return ps.metrics(group: "swim.shell", measure: [.serialization, .deserialization])
     }
