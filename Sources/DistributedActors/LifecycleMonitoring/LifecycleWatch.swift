@@ -155,9 +155,6 @@ extension LifecycleWatch {
 // MARK: System extensions to support watching // TODO: move those into context, and make the ActorIdentity the context
 
 extension ClusterSystem {
-    public func _makeLifecycleWatch<Watcher: LifecycleWatch>(watcher: Watcher) -> LifecycleWatchContainer {
-        return LifecycleWatchContainer(watcher)
-    }
 
     public func _getLifecycleWatch<Watcher: LifecycleWatch>(watcher: Watcher) -> LifecycleWatchContainer? {
         watcher.id.context.lifecycle

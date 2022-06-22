@@ -933,7 +933,7 @@ extension ClusterSystem {
 
         if let watcher = actor as? any LifecycleWatch {
             func doMakeLifecycleWatch<Watcher: LifecycleWatch & DistributedActor>(watcher: Watcher) {
-                _ = self._makeLifecycleWatch(watcher: watcher)
+                _ = LifecycleWatchContainer(watcher)
             }
             _openExistential(watcher, do: doMakeLifecycleWatch)
         }
