@@ -244,7 +244,7 @@ internal class ClusterShell {
         return pool
     }
 
-    private var _swimShell: SWIM.Shell!
+    internal private(set) var _swimShell: SWIM.Shell!
 
     private var clusterEvents: ClusterEventStream!
 
