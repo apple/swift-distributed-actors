@@ -18,14 +18,34 @@ import SWIM
 import XCTest
 
 final class SWIMSerializationTests: ClusterSystemXCTestCase {
-    func test_serializationOf_ping() throws {
-        let memberProbe = self.testKit.makeTestProbe(expecting: SWIM.Message.self)
-        let ackProbe = self.testKit.makeTestProbe(expecting: SWIM.Message.self)
-        let payload: SWIM.GossipPayload = .membership([.init(peer: memberProbe.ref, status: .alive(incarnation: 0), protocolPeriod: 0)])
-        let ping: SWIM.Message = .remote(.ping(pingOrigin: ackProbe.ref, payload: payload, sequenceNumber: 100))
-        try self.shared_serializationRoundtrip(ping)
-    }
+//    func test_serializationOf_ping() async throws {
+//        let local = await setUpNode("local") { settings in
+//            settings.enabled = true
+//        }
+//        let remote = await setUpNode("remote") { settings in
+//            settings.enabled = true
+//        }
+//        local.cluster.join(node: remote.cluster.uniqueNode)
+//
+//        guard let localSwim = local._cluster?._swimShell else {
+//            throw testKit.fail("Local SWIM shell should be non nil")
+//        }
+//        guard let remoteSwim = remote._cluster?._swimShell else {
+//            throw testKit.fail("Remote SWIM shell should be non nil")
+//        }
+//        
+//        let payload: SWIM.GossipPayload = .membership([.init(peer: localSwim, status: .alive(incarnation: 0), protocolPeriod: 0)])
+//
+//        let pingResponse = try await shouldNotThrow {
+//            try await remoteSwim.ping(origin: localSwim, payload: payload, sequenceNumber: 100)
+//        }
+//        
+//        guard case .ack = pingResponse else {
+//            throw testKit.fail("Expected .ack response for ping, but was [\(pingResponse)]")
+//        }
+//    }
 
+    /*
     func test_serializationOf_pingRequest() throws {
         let memberProbe = self.testKit.makeTestProbe(expecting: SWIM.Message.self)
         let ackProbe = self.testKit.makeTestProbe(expecting: SWIM.Message.self)
@@ -46,6 +66,7 @@ final class SWIMSerializationTests: ClusterSystemXCTestCase {
         let pingReq: SWIM.PingResponse = .nack(target: memberProbe.ref, sequenceNumber: 13)
         try self.shared_serializationRoundtrip(pingReq)
     }
+     */
 
     func shared_serializationRoundtrip<T: _ProtobufRepresentable>(_ obj: T) throws {
         let serialized = try system.serialization.serialize(obj)

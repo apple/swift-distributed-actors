@@ -22,6 +22,7 @@ import NIO
 import XCTest
 
 final class ActorMetricsSWIMActorPeerMetricsTests: ClusteredActorSystemsXCTestCase {
+    /*
     var metrics: TestMetrics! = TestMetrics()
 
     override func setUp() {
@@ -112,4 +113,5 @@ final class ActorMetricsSWIMActorPeerMetricsTests: ClusteredActorSystemsXCTestCa
 
         try self.metrics.expectCounter(instance.metrics.shell.messageOutboundCount).totalValue.shouldEqual(1)
     }
+     */
 }
