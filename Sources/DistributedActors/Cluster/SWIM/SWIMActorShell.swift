@@ -23,7 +23,7 @@ import SWIM
 /// The SWIM shell is responsible for driving all interactions of the `SWIM.Instance` with the outside world.
 ///
 /// - SeeAlso: `SWIM.Instance` for detailed documentation about the SWIM protocol implementation.
-internal distributed actor SWIMActorShell {
+internal distributed actor SWIMActorShell: CustomStringConvertible {
     typealias ActorSystem = ClusterSystem
 
     private let _settings: SWIM.Settings
@@ -527,6 +527,10 @@ internal distributed actor SWIMActorShell {
     func _getMembershipState() -> [SWIM.Member] {
         Array(self.swim.members)
     }
+    
+    nonisolated var description: String {
+        "\(Self.self)(\(self.id))"
+    }
 }
 
 extension SWIMActorShell {
@@ -549,5 +553,5 @@ extension ActorID {
 }
 
 extension ActorPath {
-    static let _swim: ActorPath = try! ActorPath._clusterShell.appending(SWIMActorShell.name)
+    static let _swim: ActorPath = try! ActorPath._user.appending(SWIMActorShell.name)
 }
