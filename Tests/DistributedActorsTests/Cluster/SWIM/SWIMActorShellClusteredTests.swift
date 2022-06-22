@@ -409,7 +409,7 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
      */
 }
 
-extension SWIMActorShell {
+//extension SWIMActorShell {
 //    func addMembers(_ members: [SWIM.Shell]) {
 //        var memberStatus: [SWIM.Shell: SWIM.Status] = [:]
 //        for member in members {
@@ -459,7 +459,7 @@ extension SWIMActorShell {
 //            return SWIM.Shell.ready(shell: SWIMActorShell(swim, clusterRef: clusterRef))
 //        }
 //    }
-}
+//}
 
 class TestTimeSource {
     let currentTime: UnsafeAtomic<UInt64>

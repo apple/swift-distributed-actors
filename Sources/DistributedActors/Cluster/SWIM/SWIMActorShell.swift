@@ -471,13 +471,17 @@ internal distributed actor SWIMActorShell {
         self.sendFirstRemotePing(on: node)
     }
 
-    func confirmDead(node: UniqueNode) {
-        let directive = self.swim.confirmDead(peer: node.asSWIMNode.swimShell(self.actorSystem))
-        switch directive {
-        case .applied(let change):
-            self.log.warning("Confirmed node .dead: \(change)", metadata: self.swim.metadata(["swim/change": "\(change)"]))
-        case .ignored:
-            return
+    nonisolated func confirmDead(node: UniqueNode) {
+        Task {
+            await self.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
+                let directive = __secretlyKnownToBeLocal.swim.confirmDead(peer: node.asSWIMNode.swimShell(__secretlyKnownToBeLocal.actorSystem))
+                switch directive {
+                case .applied(let change):
+                    __secretlyKnownToBeLocal.log.warning("Confirmed node .dead: \(change)", metadata: __secretlyKnownToBeLocal.swim.metadata(["swim/change": "\(change)"]))
+                case .ignored:
+                    return
+                }
+            }
         }
     }
 

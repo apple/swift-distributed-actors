@@ -154,11 +154,8 @@ internal class ClusterShell {
         // it's gossip will also propagate the information through the cluster
         traceLog_Remote(system.cluster.uniqueNode, "Finish terminate association [\(remoteNode)]: Notifying SWIM, .confirmDead")
         system.log.warning("Confirm .dead to underlying SWIM, node: \(reflecting: remoteNode)")
-        Task {
-            await self._swimShell.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
-                __secretlyKnownToBeLocal.confirmDead(node: remoteNode)
-            }
-        }
+
+        self._swimShell.confirmDead(node: remoteNode)
 
         // it is important that we first check the contains; as otherwise we'd re-add a .down member for what was already removed (!)
         if state.membership.contains(remoteNode) {
@@ -667,11 +664,7 @@ extension ClusterShell {
 
     func tryConfirmDeadToSWIM(_ context: _ActorContext<Message>, _ state: ClusterShellState, change: Cluster.MembershipChange) {
         if change.status.isAtLeast(.down) {
-            Task {
-                await self._swimShell?.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
-                    __secretlyKnownToBeLocal.confirmDead(node: change.member.uniqueNode)
-                }
-            }
+            self._swimShell.confirmDead(node: change.member.uniqueNode)
         }
     }
 
@@ -1279,11 +1272,7 @@ extension ClusterShell {
         }
 
         // whenever we down a node we must ensure to confirm it to swim, so it won't keep monitoring it forever needlessly
-        Task {
-            await self._swimShell.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
-                __secretlyKnownToBeLocal.confirmDead(node: memberToDown.uniqueNode)
-            }
-        }
+        self._swimShell.confirmDead(node: memberToDown.uniqueNode)
 
         if memberToDown.uniqueNode == state.selfNode {
             // ==== ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
