@@ -37,14 +37,14 @@ extension SWIMPeer {
 
         return try await RemoteCall.with(timeout: .nanoseconds(timeout.nanoseconds)) {
             // FIXME: remove type cast
-            let response = try await (self as! SWIMActorShell).ping(origin: pingOrigin, payload: payload, sequenceNumber: sequenceNumber)
+            let response = try await(self as! SWIMActorShell).ping(origin: pingOrigin, payload: payload, sequenceNumber: sequenceNumber)
             if case .nack = response {
                 throw SWIMActorError.illegalMessageType("Unexpected .nack reply to .ping message! Was: \(response)")
             }
             return response
         }
     }
-    
+
     nonisolated func pingRequest(
         target: SWIMPeer,
         payload: SWIM.GossipPayload,
@@ -59,10 +59,10 @@ extension SWIMPeer {
         guard let target = target as? SWIMActorShell else {
             throw SWIMActorError.illegalPeerType("Expected target to get \(SWIMActorShell.self) but was: \(target)")
         }
-        
+
         return try await RemoteCall.with(timeout: .nanoseconds(timeout.nanoseconds)) {
             // FIXME: remove type cast
-            try await (self as! SWIMActorShell).pingRequest(
+            try await(self as! SWIMActorShell).pingRequest(
                 target: target,
                 pingRequestOrigin: pingRequestOrigin,
                 payload: payload,
@@ -72,6 +72,7 @@ extension SWIMPeer {
     }
 }
 
+/// :nodoc:
 extension SWIMActorShell: SWIMPeer {
     nonisolated func ping(
         payload: SWIM.GossipPayload,
@@ -95,6 +96,7 @@ extension SWIMActorShell: SWIMPeer {
     }
 }
 
+/// :nodoc:
 extension SWIMActorShell: SWIMPingOriginPeer {
     nonisolated func ack(
         acknowledging sequenceNumber: SWIM.SequenceNumber,
@@ -106,6 +108,7 @@ extension SWIMActorShell: SWIMPingOriginPeer {
     }
 }
 
+/// :nodoc:
 extension SWIMActorShell: SWIMPingRequestOriginPeer {
     nonisolated func nack(
         acknowledging sequenceNumber: SWIM.SequenceNumber,

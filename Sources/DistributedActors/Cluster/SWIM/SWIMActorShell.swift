@@ -28,17 +28,17 @@ internal distributed actor SWIMActorShell: CustomStringConvertible {
 
     private let _settings: SWIM.Settings
     private let clusterRef: ClusterShell.Ref
-    
+
     private lazy var swim = SWIM.Instance(settings: self.customizeSWIMSettings(self._settings), myself: self)
 
     private lazy var timers = ActorTimers<SWIMActorShell>(self)
-    
+
     private lazy var log: Logger = {
         var log = Logger(actor: self)
         log.logLevel = self._settings.logger.logLevel
         return log
     }()
-    
+
     var settings: SWIM.Settings {
         self.swim.settings
     }
@@ -51,13 +51,13 @@ internal distributed actor SWIMActorShell: CustomStringConvertible {
         self._settings = settings
         self.clusterRef = clusterRef
         self.actorSystem = system
-        
+
         self.onStart()
     }
-    
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Initialization helpers
-    
+
     /// Applies some default changes to the SWIM settings.
     private func customizeSWIMSettings(_ settings: SWIM.Settings) -> SWIM.Settings {
         var settings = settings
@@ -65,7 +65,7 @@ internal distributed actor SWIMActorShell: CustomStringConvertible {
         settings.metrics.systemName = self.actorSystem.settings.metrics.systemName
         return settings
     }
-    
+
     /// Initialize timers and other after-initialized tasks
     private func onStart() {
         guard self.settings.initialContactPoints.isEmpty else {
@@ -77,7 +77,7 @@ internal distributed actor SWIMActorShell: CustomStringConvertible {
         }
         self.handlePeriodicProtocolPeriodTick()
     }
-    
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Periodic Protocol Ticks
 
@@ -102,13 +102,14 @@ internal distributed actor SWIMActorShell: CustomStringConvertible {
                 }
 
             case .scheduleNextTick(let delay):
+                // Keep scheduling the timer (cancelAfter = false) so that it fires for each tick
                 self.timers.startSingle(key: SWIM.Shell.protocolPeriodTimerKey, delay: .nanoseconds(delay.nanoseconds), cancelAfter: false) {
                     self.handlePeriodicProtocolPeriodTick()
                 }
             }
         }
     }
-    
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Sending ping, ping-req and friends
 
@@ -131,7 +132,7 @@ internal distributed actor SWIMActorShell: CustomStringConvertible {
 
         let pingSentAt = DispatchTime.now()
         self.metrics.shell.messageOutboundCount.increment()
-        
+
         do {
             let response = try await target.ping(payload: payload, from: self, timeout: timeout, sequenceNumber: sequenceNumber)
             self.metrics.shell.pingResponseTime.recordInterval(since: pingSentAt)
@@ -158,7 +159,7 @@ internal distributed actor SWIMActorShell: CustomStringConvertible {
             )
         }
     }
-    
+
     private func sendPingRequests(_ directive: SWIM.Instance.SendPingRequestDirective) async {
         // We are only interested in successful pings, as a single success tells us the node is
         // still alive. Therefore we propagate only the first success, but no failures.
@@ -186,7 +187,7 @@ internal distributed actor SWIMActorShell: CustomStringConvertible {
 
             let pingRequestSentAt: DispatchTime = .now()
             self.metrics.shell.messageOutboundCount.increment()
-            
+
             do {
                 let response = try await peerToPingRequestThrough.pingRequest(
                     target: peerToPing,
@@ -195,10 +196,10 @@ internal distributed actor SWIMActorShell: CustomStringConvertible {
                     timeout: pingTimeout,
                     sequenceNumber: sequenceNumber
                 )
-                
+
                 self.metrics.shell.pingRequestResponseTimeAll.recordInterval(since: pingRequestSentAt)
                 self.handleEveryPingRequestResponse(response: response, pinged: peerToPing)
-                
+
                 if case .ack = response {
                     // We only cascade successful ping responses (i.e. `ack`s);
                     //
@@ -232,7 +233,7 @@ internal distributed actor SWIMActorShell: CustomStringConvertible {
                 ])
             }
         }
-        
+
         do {
             let response = try await firstSuccessful.futureResult.get()
             self.handlePingRequestResponse(response: response, pinged: peerToPing)
@@ -246,10 +247,10 @@ internal distributed actor SWIMActorShell: CustomStringConvertible {
             ) // FIXME: that sequence number...
         }
     }
-    
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Message handlers and helpers
-    
+
     // If `sendPing` is invoked without `pingRequestOrigin`, the result of this response handler can be ignored.
     // Otherwise, we might need to send ack/nack response to `pingRequestOrigin`, so it is the result of this
     // method that should be propagated, not the original ping response.
@@ -281,10 +282,10 @@ internal distributed actor SWIMActorShell: CustomStringConvertible {
                 }
             }
         }
-        
+
         return pingRequestOriginResponse ?? response
     }
-    
+
     private func handlePingRequestResponse(response: SWIM.PingResponse, pinged: SWIMPeer) {
         // self.tracelog(context, .receive(pinged: pinged), message: response)
         self.swim.onPingRequestResponse(
@@ -313,7 +314,7 @@ internal distributed actor SWIMActorShell: CustomStringConvertible {
             }
         }
     }
-    
+
     /// Announce to the `ClusterShell` a change in reachability of a member.
     private func tryAnnounceMemberReachability(change: SWIM.MemberStatusChangedEvent?) {
         guard let change = change else {
@@ -365,14 +366,14 @@ internal distributed actor SWIMActorShell: CustomStringConvertible {
 
         self.clusterRef.tell(.command(.failureDetectorReachabilityChanged(uniqueNode, reachability)))
     }
-    
+
     private func handleGossipPayloadProcessedDirective(_ directive: SWIM.Instance.GossipProcessedDirective) {
         switch directive {
         case .applied(let change):
             self.tryAnnounceMemberReachability(change: change)
         }
     }
-    
+
     /// We have to handle *every* response, because they adjust the value of the timeouts we'll be using in future probes.
     private func handleEveryPingRequestResponse(response: SWIM.PingResponse, pinged: SWIMPeer) {
         // self.tracelog(.receive(pinged: pinged.node), message: "\(response)")
@@ -387,7 +388,7 @@ internal distributed actor SWIMActorShell: CustomStringConvertible {
             """)
         }
     }
-    
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Distributed functions
 
@@ -415,12 +416,12 @@ internal distributed actor SWIMActorShell: CustomStringConvertible {
                 return .ack(target: pingedTarget, incarnation: incarnation, payload: payload, sequenceNumber: sequenceNumber)
             }
         }
-        
+
         assertionFailure("ping should always return ack")
-        
+
         throw SWIMActorError.noResponse
     }
-    
+
     distributed func pingRequest(
         target: SWIMActorShell,
         pingRequestOrigin: SWIMActorShell,
@@ -454,12 +455,12 @@ internal distributed actor SWIMActorShell: CustomStringConvertible {
                 )
             }
         }
-        
+
         assertionFailure("pingRequest should always return ack/nack")
-        
+
         throw SWIMActorError.noResponse
     }
-    
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Local functions
 
@@ -520,14 +521,14 @@ internal distributed actor SWIMActorShell: CustomStringConvertible {
             )
         }
     }
-    
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: For testing only
-        
+
     func _getMembershipState() -> [SWIM.Member] {
         Array(self.swim.members)
     }
-    
+
     nonisolated var description: String {
         "\(Self.self)(\(self.id))"
     }

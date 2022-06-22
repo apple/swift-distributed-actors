@@ -154,7 +154,6 @@ internal class ClusterShell {
         // it's gossip will also propagate the information through the cluster
         traceLog_Remote(system.cluster.uniqueNode, "Finish terminate association [\(remoteNode)]: Notifying SWIM, .confirmDead")
         system.log.warning("Confirm .dead to underlying SWIM, node: \(reflecting: remoteNode)")
-
         self._swimShell.confirmDead(node: remoteNode)
 
         // it is important that we first check the contains; as otherwise we'd re-add a .down member for what was already removed (!)
@@ -246,7 +245,7 @@ internal class ClusterShell {
     }
 
     private var _swimShell: SWIM.Shell!
-    
+
     private var clusterEvents: ClusterEventStream!
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -288,7 +287,7 @@ internal class ClusterShell {
 
         let ref = try system._spawnSystemActor(ClusterShell.naming, self.bind(), props: self.props)
         self._ref = ref
-        
+
         await _Props.$forSpawn.withValue(SWIMActorShell.props) {
             self._swimShell = await SWIMActorShell(settings: self.settings.swim, clusterRef: ref, system: system)
         }

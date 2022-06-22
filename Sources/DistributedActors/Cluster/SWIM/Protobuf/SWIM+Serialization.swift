@@ -93,10 +93,10 @@ extension SWIM.Member: _ProtobufRepresentable {
 
     public func toProto(context: Serialization.Context) throws -> _ProtoSWIMMember {
         var proto = _ProtoSWIMMember()
-        guard let actorPeer = self.peer as? SWIM.Shell else {
+        guard let peer = self.peer as? SWIM.Shell else {
             throw SerializationError(.unableToSerialize(hint: "Expected peer to be \(SWIM.Shell.self) but was \(self.peer)!"))
         }
-        proto.id = try actorPeer.id.toProto(context: context)
+        proto.id = try peer.id.toProto(context: context)
         proto.status = try self.status.toProto(context: context)
         proto.protocolPeriod = self.protocolPeriod
         return proto
@@ -119,20 +119,20 @@ extension SWIM.PingResponse: _ProtobufRepresentable {
         switch self {
         case .ack(let target, let incarnation, let payload, let sequenceNumber):
             var ack = _ProtoSWIMPingResponse.Ack()
-            guard let targetActor = target as? SWIM.Shell else {
+            guard let target = target as? SWIM.Shell else {
                 throw SerializationError(.unableToSerialize(hint: "Can't serialize SWIM target as \(SWIM.Shell.self), was: \(target)"))
             }
-            ack.target = try targetActor.id.toProto(context: context)
+            ack.target = try target.id.toProto(context: context)
             ack.incarnation = incarnation
             ack.payload = try payload.toProto(context: context)
             ack.sequenceNumber = sequenceNumber
             proto.ack = ack
         case .nack(let target, let sequenceNumber):
             var nack = _ProtoSWIMPingResponse.Nack()
-            guard let targetActor = target as? SWIM.Shell else {
+            guard let target = target as? SWIM.Shell else {
                 throw SerializationError(.unableToSerialize(hint: "Can't serialize SWIM target as \(SWIM.Shell.self), was: \(target)"))
             }
-            nack.target = try targetActor.id.toProto(context: context)
+            nack.target = try target.id.toProto(context: context)
             nack.sequenceNumber = sequenceNumber
             proto.nack = nack
         case .timeout:
