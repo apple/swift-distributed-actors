@@ -102,7 +102,7 @@ internal distributed actor SWIMActorShell: CustomStringConvertible {
                 }
 
             case .scheduleNextTick(let delay):
-                self.timers.startSingle(key: SWIM.Shell.protocolPeriodTimerKey, delay: .nanoseconds(delay.nanoseconds)) {
+                self.timers.startSingle(key: SWIM.Shell.protocolPeriodTimerKey, delay: .nanoseconds(delay.nanoseconds), cancelAfter: false) {
                     self.handlePeriodicProtocolPeriodTick()
                 }
             }
