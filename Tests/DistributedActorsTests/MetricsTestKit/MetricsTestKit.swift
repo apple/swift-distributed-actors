@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Cluster Membership open source project
 //
-// Copyright (c) 2020 Apple Inc. and the Swift Cluster Membership project authors
+// Copyright (c) 2020-2022 Apple Inc. and the Swift Cluster Membership project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -376,6 +376,15 @@ public final class TestTimer: TestMetric, TimerHandler, Equatable, CustomStringC
         }
         if self.verbose {
             print("recording \(duration) in \(self.label)\(self.dimensions.map { "\($0):\($1)" })")
+        }
+    }
+
+    public func reset() {
+        self.lock.withLock {
+            self._values = []
+        }
+        if self.verbose {
+            print("resetting \(self.label)")
         }
     }
 

@@ -118,10 +118,6 @@ extension SWIMActorShell: SWIMPingRequestOriginPeer {
     }
 }
 
-extension SWIM {
-    internal typealias Shell = SWIMActorShell
-}
-
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Errors
 

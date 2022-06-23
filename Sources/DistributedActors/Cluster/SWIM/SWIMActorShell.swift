@@ -82,7 +82,7 @@ internal distributed actor SWIMActorShell: CustomStringConvertible {
     // MARK: Periodic Protocol Ticks
 
     /// Scheduling a new protocol period and performing the actions for the current protocol period
-    private func handlePeriodicProtocolPeriodTick() {
+    internal func handlePeriodicProtocolPeriodTick() {
         self.swim.onPeriodicPingTick().forEach { directive in
             switch directive {
             case .membershipChanged(let change):
@@ -103,7 +103,7 @@ internal distributed actor SWIMActorShell: CustomStringConvertible {
 
             case .scheduleNextTick(let delay):
                 // Keep scheduling the timer (cancelAfter = false) so that it fires for each tick
-                self.timers.startSingle(key: SWIM.Shell.protocolPeriodTimerKey, delay: .nanoseconds(delay.nanoseconds), cancelAfter: false) {
+                self.timers.startSingle(key: SWIMActorShell.protocolPeriodTimerKey, delay: .nanoseconds(delay.nanoseconds), cancelAfter: false) {
                     self.handlePeriodicProtocolPeriodTick()
                 }
             }
@@ -402,6 +402,7 @@ internal distributed actor SWIMActorShell: CustomStringConvertible {
             "swim/ping/payload": "\(payload)",
             "swim/ping/seqNr": "\(sequenceNumber)",
         ]))
+        self.metrics.shell.messageInboundCount.increment()
 
         for directive in self.swim.onPing(
             pingOrigin: origin,
@@ -433,6 +434,7 @@ internal distributed actor SWIMActorShell: CustomStringConvertible {
             "swim/pingRequest/payload": "\(payload)",
             "swim/pingRequest/seqNr": "\(pingRequestSequenceNumber)",
         ]))
+        self.metrics.shell.messageInboundCount.increment()
 
         for directive in self.swim.onPingRequest(
             target: target,
@@ -527,6 +529,10 @@ internal distributed actor SWIMActorShell: CustomStringConvertible {
 
     func _getMembershipState() -> [SWIM.Member] {
         Array(self.swim.members)
+    }
+
+    func _configureSWIM(_ configure: (SWIM.Instance) throws -> Void) rethrows {
+        try configure(self.swim)
     }
 
     nonisolated var description: String {
