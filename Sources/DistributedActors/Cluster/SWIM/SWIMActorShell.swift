@@ -114,7 +114,7 @@ internal distributed actor SWIMActorShell: CustomStringConvertible {
     // MARK: Sending ping, ping-req and friends
 
     @discardableResult
-    private func sendPing(
+    internal func sendPing(
         to target: SWIMPeer,
         payload: SWIM.GossipPayload,
         pingRequestOrigin: SWIMPingRequestOriginPeer?,
@@ -160,7 +160,7 @@ internal distributed actor SWIMActorShell: CustomStringConvertible {
         }
     }
 
-    private func sendPingRequests(_ directive: SWIM.Instance.SendPingRequestDirective) async {
+    internal func sendPingRequests(_ directive: SWIM.Instance.SendPingRequestDirective) async {
         // We are only interested in successful pings, as a single success tells us the node is
         // still alive. Therefore we propagate only the first success, but no failures.
         // The failure case is handled through the timeout of the whole operation.
