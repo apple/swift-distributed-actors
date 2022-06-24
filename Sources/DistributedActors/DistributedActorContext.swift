@@ -24,10 +24,15 @@ public final class DistributedActorContext {
 
     init(lifecycle: LifecycleWatchContainer?) {
         self.lifecycle = lifecycle
+        traceLog_DeathWatch("Create context; Lifecycle: \(lifecycle)")
     }
 
     /// Invoked by the actor system when the owning actor is terminating, so we can clean up all stored data
     func terminate() {
-        self.lifecycle?.clear()
+        guard let lifecycle = self.lifecycle else {
+            return
+        }
+        traceLog_DeathWatch("Terminate: \(lifecycle.watcherID)")
+        lifecycle.clear()
     }
 }

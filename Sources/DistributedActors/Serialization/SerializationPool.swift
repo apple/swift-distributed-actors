@@ -65,7 +65,6 @@ public final class _SerializationPool {
         self.serializationWorkerPool.shutdown()
     }
 
-    @inlinable
     internal func serialize(
         message: Any,
         recipientPath: ActorPath,

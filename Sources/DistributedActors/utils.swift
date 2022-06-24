@@ -139,7 +139,6 @@ internal func _hackyPThreadThreadId() -> String {
 // MARK: Functions used for debug tracing, eventually likely to be removed
 
 /// INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
-@inlinable
 internal func traceLog_DeathWatch(_ message: @autoclosure () -> String, file: String = #file, line: UInt = #line) {
     #if SACT_TRACE_DEATHWATCH
     pprint("SACT_TRACE_DEATHWATCH: \(message())", file: file, line: line)
@@ -147,7 +146,6 @@ internal func traceLog_DeathWatch(_ message: @autoclosure () -> String, file: St
 }
 
 /// INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
-@inlinable
 internal func traceLog_Mailbox(_ path: ActorPath?, _ message: @autoclosure () -> String, file: String = #file, line: UInt = #line) {
     #if SACT_TRACE_MAILBOX
     pprint("SACT_TRACE_MAILBOX(\(path.map { "\($0)" } ?? "<unknown>")): \(message())", file: file, line: line)
@@ -155,7 +153,6 @@ internal func traceLog_Mailbox(_ path: ActorPath?, _ message: @autoclosure () ->
 }
 
 /// INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
-@inlinable
 internal func traceLog_Cell(_ message: @autoclosure () -> String, file: String = #file, line: UInt = #line) {
     #if SACT_TRACE_ACTOR_CELL
     pprint("SACT_TRACE_ACTOR_CELL: \(message())", file: file, line: line)
@@ -163,7 +160,6 @@ internal func traceLog_Cell(_ message: @autoclosure () -> String, file: String =
 }
 
 /// INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
-@inlinable
 internal func traceLog_Probe(_ message: @autoclosure () -> String, file: String = #file, line: UInt = #line) {
     #if SACT_TRACE_PROBE
     pprint("SACT_TRACE_PROBE: \(message())", file: file, line: line)
@@ -171,8 +167,6 @@ internal func traceLog_Probe(_ message: @autoclosure () -> String, file: String 
 }
 
 /// INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
-@inlinable
-@inline(__always)
 internal func traceLog_Supervision(_ message: @autoclosure () -> String, file: String = #file, line: UInt = #line) {
     #if SACT_TRACE_SUPERVISION
     pprint("SACT_TRACE_SUPERVISION: \(message())", file: file, line: line)
@@ -180,8 +174,6 @@ internal func traceLog_Supervision(_ message: @autoclosure () -> String, file: S
 }
 
 /// INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
-@inlinable
-@inline(__always)
 func traceLog_Serialization(_ message: @autoclosure () -> String, file: String = #file, line: UInt = #line) {
     #if SACT_TRACE_SERIALIZATION
     pprint("SACT_TRACE_SERIALIZATION: \(message())", file: file, line: line)
@@ -189,8 +181,6 @@ func traceLog_Serialization(_ message: @autoclosure () -> String, file: String =
 }
 
 /// INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
-@inlinable
-@inline(__always)
 func traceLog_Remote(_ node: UniqueNode, _ message: @autoclosure () -> String, file: String = #file, line: UInt = #line) {
     #if SACT_TRACE_REMOTE
     pprint("SACT_TRACE_REMOTE [\(node)]: \(message())", file: file, line: line)

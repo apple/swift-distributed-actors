@@ -131,7 +131,6 @@ extension ClusterSystem {
             .init(local: node, path: path, incarnation: incarnation)
         }
 
-        
         // TODO(distributed): remove this initializer, as it is only for Behavior actors
         init(local node: UniqueNode, path: ActorPath?, incarnation: ActorIncarnation) {
             self.context = .init(lifecycle: nil)
@@ -141,6 +140,7 @@ extension ClusterSystem {
             if let path {
                 self.tags[ActorTags.path] = path
             }
+            traceLog_DeathWatch("Made ID: \(self)")
         }
         
         // TODO(distributed): remove this workaround; only exists for old ActorSingletonManager
@@ -157,6 +157,7 @@ extension ClusterSystem {
             if let path {
                 self.tags[ActorTags.path] = path
             }
+            traceLog_DeathWatch("Made ID: \(self)")
         }
         
         public init<Act>(remote node: UniqueNode, type: Act.Type, incarnation: ActorIncarnation)
@@ -169,6 +170,7 @@ extension ClusterSystem {
             if let mangledName = _mangledTypeName(type) {
                 self.tags[ActorTags.type] = .init(mangledName: mangledName)
             }
+            traceLog_DeathWatch("Made ID: \(self)")
         }
 
         init<Act>(local node: UniqueNode, type: Act.Type, incarnation: ActorIncarnation,
@@ -183,6 +185,7 @@ extension ClusterSystem {
             if let mangledName = _mangledTypeName(type) {
                 self.tags[ActorTags.type] = .init(mangledName: mangledName)
             }
+            traceLog_DeathWatch("Made ID: \(self)")
         }
 
         init<Act>(remote node: UniqueNode, type: Act.Type, incarnation: ActorIncarnation,
@@ -196,6 +199,7 @@ extension ClusterSystem {
             if let mangledName = _mangledTypeName(type) {
                 self.tags[ActorTags.type] = .init(mangledName: mangledName)
             }
+            traceLog_DeathWatch("Made ID: \(self)")
         }
         
         internal var withoutContext: Self {
