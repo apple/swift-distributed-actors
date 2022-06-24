@@ -14,6 +14,7 @@
 
 import Atomics
 @testable import CoreMetrics
+import Distributed
 @testable import DistributedActors
 import DistributedActorsConcurrencyHelpers // for TimeSource
 import DistributedActorsTestKit
@@ -48,6 +49,10 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
         await super.setUpNode("second", modifySettings)
     }
 
+    func setUpThird(_ modifySettings: ((inout ClusterSystemSettings) -> Void)? = nil) async -> ClusterSystem {
+        await super.setUpNode("third", modifySettings)
+    }
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: LHA probe modifications
 
@@ -64,10 +69,10 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
         try assertAssociated(firstNode, withExactly: secondNode.cluster.uniqueNode)
 
         guard let first = firstNode._cluster?._swimShell else {
-            throw testKit(firstNode).fail("SWIM shell of first [\(firstNode)] should not be nil")
+            throw testKit(firstNode).fail("SWIM shell of [\(firstNode)] should not be nil")
         }
         guard let second = secondNode._cluster?._swimShell else {
-            throw testKit(secondNode).fail("SWIM shell of second [\(secondNode)] should not be nil")
+            throw testKit(secondNode).fail("SWIM shell of [\(secondNode)] should not be nil")
         }
 
         try await self.configureSWIM(for: first, members: [second])
@@ -76,10 +81,7 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
             __secretlyKnownToBeLocal.handlePeriodicProtocolPeriodTick()
         }
 
-        guard let counter = try await self.metrics.getSWIMCounter(second, { $0.messageInboundCount }) else {
-            throw testKit(secondNode).fail("SWIM metrics messageInboundCount should not be nil")
-        }
-        counter.totalValue.shouldBeGreaterThanOrEqual(2)
+        try await self.assertMessageInboundCount(of: second, atLeast: 2, within: .milliseconds(300))
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -90,14 +92,124 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
         let secondNode = await self.setUpSecond()
 
         guard let first = firstNode._cluster?._swimShell else {
-            throw testKit(firstNode).fail("SWIM shell of first [\(firstNode)] should not be nil")
+            throw testKit(firstNode).fail("SWIM shell of [\(firstNode)] should not be nil")
         }
         guard let second = secondNode._cluster?._swimShell else {
-            throw testKit(secondNode).fail("SWIM shell of second [\(secondNode)] should not be nil")
+            throw testKit(secondNode).fail("SWIM shell of [\(secondNode)] should not be nil")
         }
     }
 
     func test_swim_shouldRespondWithNackToPingReq_whenNoResponseFromTarget() async throws {
+        let firstNode = await self.setUpFirst()
+        let secondNode = await self.setUpSecond()
+        let thirdNode = await self.setUpThird()
+
+        firstNode.cluster.join(node: secondNode.cluster.uniqueNode.node)
+        thirdNode.cluster.join(node: secondNode.cluster.uniqueNode.node)
+        try assertAssociated(firstNode, withExactly: secondNode.cluster.uniqueNode)
+
+        guard let first = firstNode._cluster?._swimShell else {
+            throw testKit(firstNode).fail("SWIM shell of [\(firstNode)] should not be nil")
+        }
+        guard let second = secondNode._cluster?._swimShell else {
+            throw testKit(secondNode).fail("SWIM shell of [\(secondNode)] should not be nil")
+        }
+        guard let third = thirdNode._cluster?._swimShell else {
+            throw testKit(thirdNode).fail("SWIM shell of [\(thirdNode)] should not be nil")
+        }
+
+        try await self.configureSWIM(for: first, members: [second, third])
+
+        // Down the node so it doesn't respond to ping request
+        thirdNode.shutdown()
+        try await self.ensureNodes(.removed, on: secondNode, nodes: thirdNode.cluster.uniqueNode)
+
+        let originPeer = try SWIMActorShell.resolve(id: first.id._asRemote, using: secondNode)
+        let targetPeer = try SWIMActorShell.resolve(id: third.id._asRemote, using: secondNode)
+        // `first` sends ping request to `third` through `second`
+        let response = try await second.pingRequest(target: targetPeer, pingRequestOrigin: originPeer, payload: .none, sequenceNumber: 13)
+
+        guard case .nack = response else {
+            throw testKit(firstNode).fail("Expected nack, but got \(response)")
+        }
+    }
+
+    func test_swim_shouldPingRandomMember() async throws {
+        let firstNode = await self.setUpFirst()
+        let secondNode = await self.setUpSecond()
+        let thirdNode = await self.setUpThird()
+
+        firstNode.cluster.join(node: secondNode.cluster.uniqueNode.node)
+        thirdNode.cluster.join(node: secondNode.cluster.uniqueNode.node)
+        try assertAssociated(firstNode, withExactly: secondNode.cluster.uniqueNode)
+
+        guard let first = firstNode._cluster?._swimShell else {
+            throw testKit(firstNode).fail("SWIM shell of [\(firstNode)] should not be nil")
+        }
+        guard let second = secondNode._cluster?._swimShell else {
+            throw testKit(secondNode).fail("SWIM shell of [\(secondNode)] should not be nil")
+        }
+        guard let third = thirdNode._cluster?._swimShell else {
+            throw testKit(thirdNode).fail("SWIM shell of [\(thirdNode)] should not be nil")
+        }
+
+        try await self.configureSWIM(for: first, members: [second, third])
+
+        // SWIMActorShell's sendFirstRemotePing might have been triggered when we associate
+        // the nodes, reset so we get metrics just for our handlePeriodicProtocolPeriodTick calls.
+        (try await self.metrics.getSWIMCounter(second) { $0.messageInboundCount })?.reset()
+        (try await self.metrics.getSWIMCounter(third) { $0.messageInboundCount })?.reset()
+
+        _ = await first.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
+            __secretlyKnownToBeLocal.handlePeriodicProtocolPeriodTick()
+            __secretlyKnownToBeLocal.handlePeriodicProtocolPeriodTick()
+        }
+
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            for swimShell in [second, third] {
+                group.addTask {
+                    try await self.assertMessageInboundCount(of: swimShell, atLeast: 1, within: .seconds(2))
+                }
+            }
+            // loop explicitly to propagagte any error that might have been thrown
+            for try await _ in group {}
+        }
+    }
+
+    func test_swim_shouldPingSpecificMemberWhenRequested() async throws {
+        let firstNode = await self.setUpFirst()
+        let secondNode = await self.setUpSecond()
+        let thirdNode = await self.setUpThird()
+
+        guard let first = firstNode._cluster?._swimShell else {
+            throw testKit(firstNode).fail("SWIM shell of [\(firstNode)] should not be nil")
+        }
+        guard let second = secondNode._cluster?._swimShell else {
+            throw testKit(secondNode).fail("SWIM shell of [\(secondNode)] should not be nil")
+        }
+        guard let third = thirdNode._cluster?._swimShell else {
+            throw testKit(thirdNode).fail("SWIM shell of [\(thirdNode)] should not be nil")
+        }
+
+        try await self.configureSWIM(for: first, members: [second, third])
+
+        let originPeer = try SWIMActorShell.resolve(id: first.id._asRemote, using: secondNode)
+        let targetPeer = try SWIMActorShell.resolve(id: third.id._asRemote, using: secondNode)
+        // `first` sends ping request to `third` through `second`
+        let response = try await second.pingRequest(target: targetPeer, pingRequestOrigin: originPeer, payload: .none, sequenceNumber: 13)
+
+        guard case .ack(let pinged, let incarnation, _, _) = response else {
+            throw testKit(firstNode).fail("Expected ack, but got \(response)")
+        }
+
+        (pinged as! SWIMActorShell).id.shouldEqual(third.id)
+        incarnation.shouldEqual(0)
+    }
+
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Marking suspect nodes
+
+    func test_swim_shouldMarkSuspects_whenPingFailsAndNoOtherNodesCanBeRequested() async throws {
         let firstNode = await self.setUpFirst()
         let secondNode = await self.setUpSecond()
 
@@ -105,122 +217,144 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
         try assertAssociated(firstNode, withExactly: secondNode.cluster.uniqueNode)
 
         guard let first = firstNode._cluster?._swimShell else {
-            throw testKit(firstNode).fail("SWIM shell of first [\(firstNode)] should not be nil")
+            throw testKit(firstNode).fail("SWIM shell of [\(firstNode)] should not be nil")
         }
         guard let second = secondNode._cluster?._swimShell else {
-            throw testKit(secondNode).fail("SWIM shell of second [\(secondNode)] should not be nil")
+            throw testKit(secondNode).fail("SWIM shell of [\(secondNode)] should not be nil")
         }
 
         try await self.configureSWIM(for: first, members: [second])
 
-        // Down the node so it doesn't respond to ping request
-        secondNode.shutdown()
-        try await self.ensureNodes(.removed, on: firstNode, nodes: secondNode.cluster.uniqueNode)
+        let targetPeer = try SWIMActorShell.resolve(id: second.id._asRemote, using: firstNode)
+
+        // Fake a failed ping
+        _ = await first.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
+            _ = __secretlyKnownToBeLocal.handlePingResponse(
+                response: .timeout(target: targetPeer, pingRequestOrigin: nil, timeout: .milliseconds(100), sequenceNumber: 13),
+                pingRequestOrigin: nil,
+                pingRequestSequenceNumber: nil
+            )
+        }
+
+        try await self.awaitStatus(.suspect(incarnation: 0, suspectedBy: [first.node]), for: targetPeer, on: first, within: .seconds(1))
+    }
+
+    func test_swim_shouldMarkSuspects_whenPingFailsAndRequestedNodesFailToPing() async throws {
+        let firstNode = await self.setUpFirst()
+        let secondNode = await self.setUpSecond()
+        let thirdNode = await self.setUpThird()
+
+        guard let first = firstNode._cluster?._swimShell else {
+            throw testKit(firstNode).fail("SWIM shell of [\(firstNode)] should not be nil")
+        }
+        guard let second = secondNode._cluster?._swimShell else {
+            throw testKit(secondNode).fail("SWIM shell of [\(secondNode)] should not be nil")
+        }
+        guard let third = thirdNode._cluster?._swimShell else {
+            throw testKit(thirdNode).fail("SWIM shell of [\(thirdNode)] should not be nil")
+        }
+
+        try await self.configureSWIM(for: first, members: [second, third])
 
         let targetPeer = try SWIMActorShell.resolve(id: second.id._asRemote, using: firstNode)
-        let response = try await first.pingRequest(target: targetPeer, pingRequestOrigin: first, payload: .none, sequenceNumber: 13)
+        let throughPeer = try SWIMActorShell.resolve(id: third.id._asRemote, using: firstNode)
 
-        guard case .nack = response else {
-            throw testKit(firstNode).fail("Expected nack, but got \(response)")
+        // Fake a failed ping and ping request
+        _ = await first.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
+            _ = __secretlyKnownToBeLocal.handlePingResponse(
+                response: .timeout(target: targetPeer, pingRequestOrigin: nil, timeout: .milliseconds(100), sequenceNumber: 13),
+                pingRequestOrigin: nil,
+                pingRequestSequenceNumber: nil
+            )
+
+            __secretlyKnownToBeLocal.handlePingRequestResponse(
+                response: .timeout(target: targetPeer, pingRequestOrigin: first, timeout: .milliseconds(100), sequenceNumber: 5),
+                pinged: throughPeer
+            )
         }
+
+        // eventually it will ping/pingRequest and as all the pings (supposedly) time out it should mark as suspect
+        try await self.awaitStatus(.suspect(incarnation: 0, suspectedBy: [first.node]), for: targetPeer, on: first, within: .seconds(1))
+    }
+
+    func test_swim_shouldSendGossipInAck() async throws {
+        let firstNode = await self.setUpFirst()
+        let secondNode = await self.setUpSecond()
+
+        firstNode.cluster.join(node: secondNode.cluster.uniqueNode.node)
+        try assertAssociated(firstNode, withExactly: secondNode.cluster.uniqueNode)
+        try assertAssociated(secondNode, withExactly: firstNode.cluster.uniqueNode)
+
+        guard let first = firstNode._cluster?._swimShell else {
+            throw testKit(firstNode).fail("SWIM shell of [\(firstNode)] should not be nil")
+        }
+        guard let second = secondNode._cluster?._swimShell else {
+            throw testKit(secondNode).fail("SWIM shell of [\(secondNode)] should not be nil")
+        }
+
+        try await self.configureSWIM(for: first, members: [second])
+
+        let secondPeer = try SWIMActorShell.resolve(id: second.id._asRemote, using: firstNode)
+        let response = try await first.ping(origin: secondPeer, payload: .none, sequenceNumber: 1)
+
+        guard case .ack(_, _, .membership(let members), _) = response else {
+            throw testKit(firstNode).fail("Expected gossip with membership, but got \(response)")
+        }
+
+        members.count.shouldEqual(2)
+        members.shouldContain(where: { ($0.peer as! SWIMActorShell) == secondPeer && $0.status == .alive(incarnation: 0) })
+        members.shouldContain(where: { ($0.peer as! SWIMActorShell) == first && $0.status == .alive(incarnation: 0) })
+
+//        let first = await self.setUpFirst()
+//        let second = await self.setUpSecond()
+//
+//        first.cluster.join(node: second.cluster.uniqueNode.node)
+//        try assertAssociated(first, withExactly: second.cluster.uniqueNode)
+//        try assertAssociated(second, withExactly: first.cluster.uniqueNode)
+//
+//        let probeOnSecond = self.testKit(second).makeTestProbe(expecting: SWIM.Message.self)
+//        let secondSwimProbe = self.testKit(second).makeTestProbe("RemoteSWIM", expecting: SWIM.Message.self)
+//
+//        let swimRef = try first._spawn("SWIM", SWIMActorShell.swimTestBehavior(members: [secondSwimProbe.ref], clusterRef: self.firstClusterProbe.ref))
+//        swimRef.tell(.remote(.ping(pingOrigin: probeOnSecond.ref, payload: .none, sequenceNumber: 1)))
+//
+//        let response = try probeOnSecond.expectMessage()
+//        switch response {
+//        case .remote(.pingResponse(.ack(_, _, .membership(let members), _))):
+//            members.count.shouldEqual(2)
+//            members.shouldContain(SWIM.Member(peer: secondSwimProbe.ref, status: .alive(incarnation: 0), protocolPeriod: 0))
+//            // the since we get this reply from the remote node, it will know "us" (swim) as a remote ref, and thus include its full id
+//            // so we want to expect a full (with node) ref here:
+//            members.shouldContain(SWIM.Member(peer: swimRef, status: .alive(incarnation: 0), protocolPeriod: 0))
+//        case let reply:
+//            throw probeOnSecond.error("Expected gossip with membership, but got \(reply)")
+//        }
+    }
+
+    func test_SWIMShell_shouldMonitorJoinedClusterMembers() async throws {
+        let localNode = await self.setUpFirst()
+        let remoteNode = await self.setUpSecond()
+
+        localNode.cluster.join(node: remoteNode.cluster.uniqueNode.node)
+
+        guard let local = localNode._cluster?._swimShell else {
+            throw testKit(localNode).fail("SWIM shell of [\(localNode)] should not be nil")
+        }
+        guard let remote = remoteNode._cluster?._swimShell else {
+            throw testKit(remoteNode).fail("SWIM shell of [\(remoteNode)] should not be nil")
+        }
+
+        let remotePeer = try SWIMActorShell.resolve(id: remote.id._asRemote, using: localNode)
+        try await self.awaitStatus(.alive(incarnation: 0), for: remotePeer, on: local, within: .seconds(1))
+
+//        let localSwim: _ActorRef<SWIM.Message> = try self.testKit(local)._eventuallyResolve(id: ._swim(on: local.cluster.uniqueNode))
+//        let remoteSwim: _ActorRef<SWIM.Message> = try self.testKit(remote)._eventuallyResolve(id: ._swim(on: remote.cluster.uniqueNode))
+//
+//        let remoteSwimRef = local._resolveKnownRemote(remoteSwim, onRemoteSystem: remote)
+//        try self.awaitStatus(.alive(incarnation: 0), for: remoteSwimRef, on: localSwim, within: .seconds(1))
     }
 
     /*
-     func test_swim_shouldPingRandomMember() async throws {
-         let first = await self.setUpFirst()
-         let second = await self.setUpSecond()
-         let third = await setUpNode("third")
-
-         first.cluster.join(node: second.cluster.uniqueNode.node)
-         third.cluster.join(node: second.cluster.uniqueNode.node)
-         try assertAssociated(first, withExactly: second.cluster.uniqueNode)
-
-         let p = self.testKit(second).makeTestProbe(expecting: String.self)
-
-         func behavior(postFix: String) -> _Behavior<SWIM.Message> {
-             .receive { context, message in
-                 switch message {
-                 case .remote(.ping(let replyTo, _, _)):
-                     replyTo.tell(.remote(.pingResponse(.ack(target: context.myself, incarnation: 0, payload: .none, sequenceNumber: 13))))
-                     p.tell("pinged:\(postFix)")
-                 default:
-                     ()
-                 }
-
-                 return .same
-             }
-         }
-
-         let refA = try second._spawn("SWIM-A", behavior(postFix: "A"))
-         let refB = try third._spawn("SWIM-B", behavior(postFix: "B"))
-         let ref = try first._spawn("SWIM", SWIMActorShell.swimTestBehavior(members: [refA, refB], clusterRef: self.firstClusterProbe.ref))
-
-         ref.tell(.local(.protocolPeriodTick))
-         ref.tell(.local(.protocolPeriodTick))
-
-         try p.expectMessagesInAnyOrder(["pinged:A", "pinged:B"], within: .seconds(2))
-     }
-
-     func test_swim_shouldPingSpecificMemberWhenRequested() async throws {
-         let first = await self.setUpFirst()
-         let second = await self.setUpFirst()
-
-         let secondProbe = self.testKit(second).makeTestProbe("SWIM-2", expecting: SWIM.Message.self)
-         let ackProbe = self.testKit(second).makeTestProbe(expecting: SWIM.PingOriginRef.Message.self)
-
-         let ref = try first._spawn("SWIM", SWIMActorShell.swimTestBehavior(members: [secondProbe.ref], clusterRef: self.firstClusterProbe.ref))
-         ref.tell(.remote(.pingRequest(target: secondProbe.ref, pingRequestOrigin: ackProbe.ref, payload: .none, sequenceNumber: 13)))
-
-         try self.expectPing(on: secondProbe, reply: true)
-         let response = try ackProbe.expectMessage()
-
-         switch response {
-         case .remote(.pingResponse(.ack(let pinged, let incarnation, _, _))):
-             (pinged as! SWIM.Ref).shouldEqual(secondProbe.ref)
-             incarnation.shouldEqual(0)
-         case let resp:
-             throw self.testKit(first).error("Expected gossip, but got \(resp)")
-         }
-     }
-
-     // ==== ----------------------------------------------------------------------------------------------------------------
-     // MARK: Marking suspect nodes
-
-     func test_swim_shouldMarkSuspects_whenPingFailsAndNoOtherNodesCanBeRequested() async throws {
-         let first = await self.setUpFirst()
-         let second = await self.setUpSecond()
-
-         first.cluster.join(node: second.cluster.uniqueNode.node)
-         try assertAssociated(first, withExactly: second.cluster.uniqueNode)
-
-         let probeOnSecond = self.testKit(second).makeTestProbe(expecting: SWIM.Message.self)
-         let firstSwim = try first._spawn("SWIM", SWIMActorShell.swimTestBehavior(members: [probeOnSecond.ref], clusterRef: self.firstClusterProbe.ref))
-         firstSwim.tell(.local(.protocolPeriodTick))
-
-         try self.expectPing(on: probeOnSecond, reply: false)
-
-         try self.awaitStatus(.suspect(incarnation: 0, suspectedBy: [firstSwim.node]), for: probeOnSecond.ref, on: firstSwim, within: .seconds(1))
-     }
-
-     func test_swim_shouldMarkSuspects_whenPingFailsAndRequestedNodesFailToPing() async throws {
-         let systemSWIM = await self.setUpFirst()
-         let systemA = await setUpNode("A")
-         let systemB = await setUpNode("B")
-
-         let probeA = self.testKit(systemA).makeTestProbe(expecting: ForwardedSWIMMessage.self)
-         let refA = try systemA._spawn("SWIM-A", self.forwardingSWIMBehavior(forwardTo: probeA.ref))
-         let probeB = self.testKit(systemB).makeTestProbe(expecting: ForwardedSWIMMessage.self)
-         let refB = try systemB._spawn("SWIM-B", self.forwardingSWIMBehavior(forwardTo: probeB.ref))
-
-         let swim = try systemSWIM._spawn("SWIM", SWIMActorShell.swimTestBehavior(members: [refA, refB], clusterRef: self.firstClusterProbe.ref) { settings in
-             settings.pingTimeout = .milliseconds(50)
-         })
-         swim.tell(.local(.protocolPeriodTick))
-
-         // eventually it will ping/pingRequest and as none of the swims reply it should mark as suspect
-         try self.awaitStatus(.suspect(incarnation: 0, suspectedBy: [swim.node]), for: refA, on: swim, within: .seconds(3))
-     }
-
      func test_swim_shouldNotMarkUnreachable_whenSuspectedByNotEnoughNodes_whenMinTimeoutReached() async throws {
          let first = await self.setUpFirst()
          let firstNode = first.cluster.uniqueNode
@@ -442,6 +576,45 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
                     let member = try SWIMActorShell.resolve(id: member.id._asRemote, using: swimShell.actorSystem)
                     _ = swim.addMember(member, status: status)
                 }
+            }
+        }
+    }
+
+    private func assertMessageInboundCount(of swimShell: SWIMActorShell, atLeast: Int, within: Duration) async throws {
+        // FIXME: with test probes we can control the exact number of messages (e.g., probe.expectMessage()),
+        // but that's not easy with do with real systems so we check for inbound message count and do at-least
+        // instead of exact comparisons.
+        let testKit = self.testKit(swimShell.actorSystem)
+
+        try await testKit.eventually(within: within) {
+            guard let counter = try await self.metrics.getSWIMCounter(swimShell, { $0.messageInboundCount }) else {
+                throw testKit.error("SWIM metrics \(swimShell.actorSystem).messageInboundCount should not be nil")
+            }
+
+            let total = counter.totalValue
+            if total < atLeast {
+                throw testKit.error("Expected \(swimShell.actorSystem).messageInboundCount to be at least \(atLeast), was: \(total)")
+            }
+        }
+    }
+
+    private func awaitStatus(
+        _ status: SWIM.Status, for peer: SWIMActorShell,
+        on swimShell: SWIMActorShell, within timeout: Duration,
+        file: StaticString = #file, line: UInt = #line, column: UInt = #column
+    ) async throws {
+        let testKit = self.testKit(swimShell.actorSystem)
+
+        try await testKit.eventually(within: timeout, file: file, line: line, column: column) {
+            let membership = await swimShell.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
+                __secretlyKnownToBeLocal._getMembershipState()
+            } ?? []
+
+            let otherStatus = membership
+                .first(where: { $0.peer as! SWIMActorShell == peer })
+                .map(\.status)
+            guard otherStatus == status else {
+                throw testKit.error("Expected status [\(status)] for [\(peer)], but found \(otherStatus.debugDescription); Membership: \(membership)", file: file, line: line)
             }
         }
     }

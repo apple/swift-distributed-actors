@@ -254,7 +254,7 @@ internal distributed actor SWIMActorShell: CustomStringConvertible {
     // If `sendPing` is invoked without `pingRequestOrigin`, the result of this response handler can be ignored.
     // Otherwise, we might need to send ack/nack response to `pingRequestOrigin`, so it is the result of this
     // method that should be propagated, not the original ping response.
-    private func handlePingResponse(
+    internal func handlePingResponse(
         response: SWIM.PingResponse,
         pingRequestOrigin: SWIMPingRequestOriginPeer?,
         pingRequestSequenceNumber: SWIM.SequenceNumber?
@@ -286,7 +286,7 @@ internal distributed actor SWIMActorShell: CustomStringConvertible {
         return pingRequestOriginResponse ?? response
     }
 
-    private func handlePingRequestResponse(response: SWIM.PingResponse, pinged: SWIMPeer) {
+    internal func handlePingRequestResponse(response: SWIM.PingResponse, pinged: SWIMPeer) {
         // self.tracelog(context, .receive(pinged: pinged), message: response)
         self.swim.onPingRequestResponse(
             response,
