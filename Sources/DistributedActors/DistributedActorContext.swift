@@ -20,7 +20,7 @@ import Distributed
 /// And also it is allowed to modify this state once the system receives it in the `resignID` (as the context is carried inside the ID),
 /// as at that point in time it can no longer be used–by the now deallocated–actor itself.
 public final class DistributedActorContext {
-    let lifecycle: Optional<LifecycleWatchContainer>
+    let lifecycle: LifecycleWatchContainer?
 
     init(lifecycle: LifecycleWatchContainer?) {
         self.lifecycle = lifecycle

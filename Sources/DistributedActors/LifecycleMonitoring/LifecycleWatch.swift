@@ -14,8 +14,8 @@
 
 import Dispatch
 import Distributed
-import NIO
 import DistributedActorsConcurrencyHelpers
+import NIO
 
 /// Provides a distributed actor with the ability to "watch" other actors lifecycles.
 ///
@@ -36,7 +36,6 @@ public protocol LifecycleWatch: DistributedActor where ActorSystem == ClusterSys
 // MARK: Lifecycle Watch API
 
 extension LifecycleWatch {
-
     /// Watch the `watchee` actor for termination, and trigger the `whenTerminated` callback when
     @available(*, deprecated, message: "Replaced with the much safer `watchTermination(of:)` paired with `actorTerminated(_:)`")
     public func watchTermination<Watchee>(
@@ -164,7 +163,7 @@ public final class LifecycleWatchContainer {
     internal let watcherID: ClusterSystem.ActorID
     private let system: ClusterSystem
     private var nodeDeathWatcher: NodeDeathWatcherShell.Ref? {
-        system._nodeDeathWatcher
+        self.system._nodeDeathWatcher
     }
 
     typealias OnTerminatedFn = @Sendable (ClusterSystem.ActorID) async -> Void
@@ -182,7 +181,7 @@ public final class LifecycleWatchContainer {
     deinit {
         self.clear()
     }
-    
+
     func clear() {
 //        _lock.wait()
 //        defer {
@@ -192,8 +191,8 @@ public final class LifecycleWatchContainer {
         traceLog_DeathWatch("Clear LifecycleWatchContainer owned by \(self.watcherID)")
         self.watching = [:]
         self.watchedBy = [:]
-        for watched in watching.values { // FIXME: something off
-            nodeDeathWatcher?.tell(.removeWatcher(watcherID: self.watcherID))
+        for watched in self.watching.values { // FIXME: something off
+            self.nodeDeathWatcher?.tell(.removeWatcher(watcherID: self.watcherID))
         }
     }
 }
@@ -238,7 +237,6 @@ extension LifecycleWatchContainer {
             addressableWatchee._sendSystemMessage(.watch(watchee: addressableWatchee, watcher: addressableWatcher), file: file, line: line)
             self.subscribeNodeTerminatedEvents(watchedID: watcheeID, file: file, line: line)
         }
-
     }
 
     /// Reverts the watching of an previously watched actor.
@@ -281,7 +279,6 @@ extension LifecycleWatchContainer {
         }
 
         return watchee
-
     }
 
     /// - Returns `true` if the passed in actor ref is being watched
@@ -295,7 +292,7 @@ extension LifecycleWatchContainer {
     // MARK: react to watch or unwatch signals
 
     public func becomeWatchedBy(watcher: _AddressableActorRef) {
-        _lock.wait()
+        self._lock.wait()
         defer {
             _lock.signal()
         }
@@ -311,7 +308,7 @@ extension LifecycleWatchContainer {
     }
 
     internal func removeWatchedBy(watcher: _AddressableActorRef) {
-        _lock.wait()
+        self._lock.wait()
         defer {
             _lock.signal()
         }
@@ -328,7 +325,7 @@ extension LifecycleWatchContainer {
 
     public func receiveTerminated(_ terminatedIdentity: ClusterSystem.ActorID) {
         pprint("ENTER: \(#function)")
-        _lock.wait()
+        self._lock.wait()
         defer {
             _lock.signal()
         }

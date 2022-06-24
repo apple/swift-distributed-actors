@@ -51,7 +51,7 @@ public final class Lock {
     /// `unlock`, to simplify lock handling.
     public func lock() {
         let err = pthread_mutex_lock(self.mutex)
-        if(err != 0) {
+        if (err != 0) {
             sact_dump_backtrace()
             fatalError("\(#function) failed in pthread_mutex with error \(err)")
         }

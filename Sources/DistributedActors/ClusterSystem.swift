@@ -907,9 +907,9 @@ extension ClusterSystem {
         var id = try! self._reserveName(type: Act.self, props: props)
 
         let lifecycleContainer: LifecycleWatchContainer?
-        if Act.self is (any (LifecycleWatch).Type) {
+        if Act.self is (any(LifecycleWatch).Type) {
             lifecycleContainer = LifecycleWatchContainer(watcherID: id.withoutContext, actorSystem: self)
-        } else  {
+        } else {
             lifecycleContainer = nil
         }
         traceLog_DeathWatch("Make LifecycleWatchContainer for \(id):::: \(lifecycleContainer)")

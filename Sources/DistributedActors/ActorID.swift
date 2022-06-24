@@ -142,7 +142,7 @@ extension ClusterSystem {
             }
             traceLog_DeathWatch("Made ID: \(self)")
         }
-        
+
         // TODO(distributed): remove this workaround; only exists for old ActorSingletonManager
         public static func _make(remote node: UniqueNode, path: ActorPath?, incarnation: ActorIncarnation) -> Self {
             .init(remote: node, path: path, incarnation: incarnation)
@@ -159,9 +159,10 @@ extension ClusterSystem {
             }
             traceLog_DeathWatch("Made ID: \(self)")
         }
-        
+
         public init<Act>(remote node: UniqueNode, type: Act.Type, incarnation: ActorIncarnation)
-            where Act: DistributedActor, Act.ActorSystem == ClusterSystem {
+            where Act: DistributedActor, Act.ActorSystem == ClusterSystem
+        {
             self.context = .init(lifecycle: nil)
             self._location = .remote(node)
             self.incarnation = incarnation
@@ -174,8 +175,9 @@ extension ClusterSystem {
         }
 
         init<Act>(local node: UniqueNode, type: Act.Type, incarnation: ActorIncarnation,
-                 context: DistributedActorContext)
-            where Act: DistributedActor, Act.ActorSystem == ClusterSystem {
+                  context: DistributedActorContext)
+            where Act: DistributedActor, Act.ActorSystem == ClusterSystem
+        {
             self.context = context
             self._location = .local(node)
             self.tags = ActorTags()
@@ -189,8 +191,9 @@ extension ClusterSystem {
         }
 
         init<Act>(remote node: UniqueNode, type: Act.Type, incarnation: ActorIncarnation,
-             context: DistributedActorContext)
-            where Act: DistributedActor, Act.ActorSystem == ClusterSystem {
+                  context: DistributedActorContext)
+            where Act: DistributedActor, Act.ActorSystem == ClusterSystem
+        {
             self.context = context
             self._location = .remote(node)
             self.incarnation = incarnation
@@ -201,7 +204,7 @@ extension ClusterSystem {
             }
             traceLog_DeathWatch("Made ID: \(self)")
         }
-        
+
         internal var withoutContext: Self {
             var copy = self
             copy.context = .init(lifecycle: nil)
@@ -211,7 +214,6 @@ extension ClusterSystem {
 }
 
 extension DistributedActor where ActorSystem == ClusterSystem {
-    
     /// INTERNAL: Provides the actor context for use within this actor.
     internal var context: DistributedActorContext {
         self.id.context
