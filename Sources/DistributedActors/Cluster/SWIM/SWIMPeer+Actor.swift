@@ -24,6 +24,7 @@ extension SWIMActorShell: SWIMAddressablePeer {
     }
 }
 
+// FIXME: move this to SWIMActorShell's conformance of SWIMPeer when SWIM APIs support async/await (https://github.com/apple/swift-cluster-membership/pull/84)
 extension SWIMPeer {
     nonisolated func ping(
         payload: SWIM.GossipPayload,

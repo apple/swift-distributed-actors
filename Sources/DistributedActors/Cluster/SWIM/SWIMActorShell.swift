@@ -111,7 +111,7 @@ internal distributed actor SWIMActorShell: CustomStringConvertible {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: Sending ping, ping-req and friends
+    // MARK: Send ping, ping-req
 
     @discardableResult
     internal func sendPing(
@@ -134,10 +134,10 @@ internal distributed actor SWIMActorShell: CustomStringConvertible {
         self.metrics.shell.messageOutboundCount.increment()
 
         do {
-            let response = try await target.ping(payload: payload, from: self, timeout: timeout, sequenceNumber: sequenceNumber)
+            let pingResponse = try await target.ping(payload: payload, from: self, timeout: timeout, sequenceNumber: sequenceNumber)
             self.metrics.shell.pingResponseTime.recordInterval(since: pingSentAt)
             return self.handlePingResponse(
-                response: response,
+                response: pingResponse,
                 pingRequestOrigin: pingRequestOrigin,
                 pingRequestSequenceNumber: pingRequestSequenceNumber
             )
@@ -235,8 +235,8 @@ internal distributed actor SWIMActorShell: CustomStringConvertible {
         }
 
         do {
-            let response = try await firstSuccessful.futureResult.get()
-            self.handlePingRequestResponse(response: response, pinged: peerToPing)
+            let pingRequestResponse = try await firstSuccessful.futureResult.get()
+            self.handlePingRequestResponse(response: pingRequestResponse, pinged: peerToPing)
         } catch {
             self.log.debug("Failed to sendPingRequests", metadata: [
                 "error": "\(error)",
@@ -458,7 +458,7 @@ internal distributed actor SWIMActorShell: CustomStringConvertible {
             }
         }
 
-        assertionFailure("pingRequest should always return ack/nack")
+        assertionFailure("pingRequest should always return ack/nack from sendPing")
 
         throw SWIMActorError.noResponse
     }
