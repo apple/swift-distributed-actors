@@ -34,7 +34,7 @@ final class ActorMetricsSWIMActorPeerMetricsTests: ClusteredActorSystemsXCTestCa
         self.metrics = nil
         MetricsSystem.bootstrapInternal(NOOPMetricsHandler.instance)
     }
-    
+
     override func configureLogCapture(settings: inout LogCapture.Settings) {
         settings.filterActorPaths = ["/user/swim"]
     }
@@ -42,7 +42,7 @@ final class ActorMetricsSWIMActorPeerMetricsTests: ClusteredActorSystemsXCTestCa
     func test_swimPeer_ping_shouldRemoteMetrics() async throws {
         let originNode = await setUpNode("origin")
         let targetNode = await setUpNode("target")
-        
+
         originNode.cluster.join(node: targetNode.cluster.uniqueNode)
         try assertAssociated(originNode, withExactly: targetNode.cluster.uniqueNode)
 
@@ -57,9 +57,9 @@ final class ActorMetricsSWIMActorPeerMetricsTests: ClusteredActorSystemsXCTestCa
         // origin and target nodes, reset so we get metrics just for our sendPing call.
         (try await self.metrics.getSWIMTimer(origin) { $0.pingResponseTime })?.reset()
         (try await self.metrics.getSWIMCounter(origin) { $0.messageOutboundCount })?.reset()
-        
+
         let targetPeer = try SWIMActorShell.resolve(id: target.id._asRemote, using: originNode)
-        
+
         _ = await origin.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
             await __secretlyKnownToBeLocal.sendPing(
                 to: targetPeer,
@@ -88,7 +88,7 @@ final class ActorMetricsSWIMActorPeerMetricsTests: ClusteredActorSystemsXCTestCa
         let originNode = await setUpNode("origin")
         let targetNode = await setUpNode("target")
         let throughNode = await setUpNode("through")
-        
+
         originNode.cluster.join(node: targetNode.cluster.uniqueNode)
         originNode.cluster.join(node: throughNode.cluster.uniqueNode)
         try assertAssociated(originNode, withExactly: [targetNode.cluster.uniqueNode, throughNode.cluster.uniqueNode])
@@ -102,11 +102,11 @@ final class ActorMetricsSWIMActorPeerMetricsTests: ClusteredActorSystemsXCTestCa
         guard let through = throughNode._cluster?._swimShell else {
             throw testKit(throughNode).fail("SWIM shell of through [\(throughNode)] should not be nil")
         }
-        
+
         // SWIMActorShell's sendFirstRemotePing might have been triggered when we associate
         // the nodes, reset so we get metrics just for our sendPingRequest call.
         (try await self.metrics.getSWIMCounter(origin) { $0.messageOutboundCount })?.reset()
-        
+
         let targetPeer = try SWIMActorShell.resolve(id: target.id._asRemote, using: originNode)
         let throughPeer = try SWIMActorShell.resolve(id: through.id._asRemote, using: originNode)
 
@@ -148,23 +148,23 @@ extension TestMetrics {
         let timer = await swimShell.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
             body(__secretlyKnownToBeLocal.metrics.shell)
         }
-        
+
         guard let timer = timer else {
             return nil
         }
-        
+
         return try self.expectTimer(timer)
     }
-    
+
     func getSWIMCounter(_ swimShell: SWIMActorShell, _ body: (SWIM.Metrics.ShellMetrics) -> Counter) async throws -> TestCounter? {
         let counter = await swimShell.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
             body(__secretlyKnownToBeLocal.metrics.shell)
         }
-        
+
         guard let counter = counter else {
             return nil
         }
-        
+
         return try self.expectCounter(counter)
     }
 }
