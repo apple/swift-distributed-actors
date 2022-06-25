@@ -24,7 +24,7 @@ final class SWIMSerializationTests: ClusterSystemXCTestCase {
         }
 
         guard let target = targetNode._cluster?._swimShell else {
-            throw testKit.fail("SWIM shell should not be nil")
+            throw testKit.fail("SWIM shell of [\(targetNode)] should not be nil")
         }
 
         let targetPeer = try SWIMActorShell.resolve(id: target.id._asRemote, using: self.system)
@@ -39,7 +39,7 @@ final class SWIMSerializationTests: ClusterSystemXCTestCase {
         }
 
         guard let target = targetNode._cluster?._swimShell else {
-            throw testKit.fail("SWIM shell should not be nil")
+            throw testKit.fail("SWIM shell of [\(targetNode)] should not be nil")
         }
 
         let targetPeer = try SWIMActorShell.resolve(id: target.id._asRemote, using: self.system)

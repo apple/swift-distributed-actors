@@ -40,21 +40,23 @@ final class ActorMetricsSWIMActorPeerMetricsTests: ClusteredActorSystemsXCTestCa
     }
 
     func test_swimPeer_ping_shouldRemoteMetrics() async throws {
-        let originNode = await setUpNode("origin")
+        let originNode = await setUpNode("origin") { settings in
+            settings.swim.probeInterval = .seconds(30) // Don't let gossip interfere with the test
+        }
         let targetNode = await setUpNode("target")
 
         originNode.cluster.join(node: targetNode.cluster.uniqueNode)
         try assertAssociated(originNode, withExactly: targetNode.cluster.uniqueNode)
 
         guard let origin = originNode._cluster?._swimShell else {
-            throw testKit(originNode).fail("SWIM shell of origin [\(originNode)] should not be nil")
+            throw testKit(originNode).fail("SWIM shell of [\(originNode)] should not be nil")
         }
         guard let target = targetNode._cluster?._swimShell else {
-            throw testKit(targetNode).fail("SWIM shell of target [\(targetNode)] should not be nil")
+            throw testKit(targetNode).fail("SWIM shell of [\(targetNode)] should not be nil")
         }
 
-        // SWIMActorShell's sendFirstRemotePing might have been triggered when we associate
-        // origin and target nodes, reset so we get metrics just for our sendPing call.
+        // SWIMActorShell's sendFirstRemotePing might have been triggered when the nodes
+        // are associated. Reset so we get metrics just for our sendPing call.
         (try await self.metrics.getSWIMTimer(origin) { $0.pingResponseTime })?.reset()
         (try await self.metrics.getSWIMCounter(origin) { $0.messageOutboundCount })?.reset()
 
@@ -66,7 +68,7 @@ final class ActorMetricsSWIMActorPeerMetricsTests: ClusteredActorSystemsXCTestCa
                 payload: .none,
                 pingRequestOrigin: nil,
                 pingRequestSequenceNumber: nil,
-                timeout: .seconds(2),
+                timeout: .milliseconds(200),
                 sequenceNumber: 1
             )
         }
@@ -85,26 +87,28 @@ final class ActorMetricsSWIMActorPeerMetricsTests: ClusteredActorSystemsXCTestCa
     }
 
     func test_swimPeer_pingRequest_shouldRemoteMetrics() async throws {
-        let originNode = await setUpNode("origin")
+        let originNode = await setUpNode("origin") { settings in
+            settings.swim.probeInterval = .seconds(30) // Don't let gossip interfere with the test
+        }
         let targetNode = await setUpNode("target")
         let throughNode = await setUpNode("through")
 
-        originNode.cluster.join(node: targetNode.cluster.uniqueNode)
         originNode.cluster.join(node: throughNode.cluster.uniqueNode)
+        targetNode.cluster.join(node: throughNode.cluster.uniqueNode)
         try assertAssociated(originNode, withExactly: [targetNode.cluster.uniqueNode, throughNode.cluster.uniqueNode])
 
         guard let origin = originNode._cluster?._swimShell else {
-            throw testKit(originNode).fail("SWIM shell of origin [\(originNode)] should not be nil")
+            throw testKit(originNode).fail("SWIM shell of [\(originNode)] should not be nil")
         }
         guard let target = targetNode._cluster?._swimShell else {
-            throw testKit(targetNode).fail("SWIM shell of target [\(targetNode)] should not be nil")
+            throw testKit(targetNode).fail("SWIM shell of [\(targetNode)] should not be nil")
         }
         guard let through = throughNode._cluster?._swimShell else {
-            throw testKit(throughNode).fail("SWIM shell of through [\(throughNode)] should not be nil")
+            throw testKit(throughNode).fail("SWIM shell of [\(throughNode)] should not be nil")
         }
 
-        // SWIMActorShell's sendFirstRemotePing might have been triggered when we associate
-        // the nodes, reset so we get metrics just for our sendPingRequest call.
+        // SWIMActorShell's sendFirstRemotePing might have been triggered when the nodes
+        // are associated. Reset so we get metrics just for our sendPingRequest call.
         (try await self.metrics.getSWIMCounter(origin) { $0.messageOutboundCount })?.reset()
 
         let targetPeer = try SWIMActorShell.resolve(id: target.id._asRemote, using: originNode)
