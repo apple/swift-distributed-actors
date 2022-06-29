@@ -380,50 +380,6 @@ final class ClusterSystemTests: ClusterSystemXCTestCase {
             throw testKit.fail("Expected timeout to be 200 milliseconds but was \(timeoutError.timeout)")
         }
     }
-
-    func test_remoteCall_interceptor() async throws {
-        let local = await setUpNode("local") { settings in
-            settings.enabled = true
-        }
-        let remote = await setUpNode("remote") { settings in
-            settings.enabled = true
-        }
-        local.cluster.join(node: remote.cluster.uniqueNode)
-
-        let otherGreeter = Greeter(actorSystem: local, greeting: "HI!!!")
-        let localGreeter: Greeter = try system.interceptCalls(
-                to: Greeter.self,
-                metadata: ActorMetadata(),
-                interceptor: GreeterRemoteCallInterceptor(system: local, greeter: otherGreeter))
-        
-        let value = try await shouldNotThrow {
-            try await localGreeter.greet()
-        }
-        value.shouldEqual("HI!!!")
-    }
-
-    func test_remoteCallVoid_interceptor() async throws {
-        let local = await setUpNode("local") { settings in
-            settings.enabled = true
-        }
-        let remote = await setUpNode("remote") { settings in
-            settings.enabled = true
-        }
-        local.cluster.join(node: remote.cluster.uniqueNode)
-
-        let otherGreeter = Greeter(actorSystem: local, greeting: "HI!!!")
-        let localGreeter: Greeter = try shouldNotThrow {
-            try system.interceptCalls(
-                to: Greeter.self,
-                metadata: ActorMetadata(),
-                interceptor: GreeterRemoteCallInterceptor(system: local, greeter: otherGreeter))
-        }
-
-        try await shouldNotThrow {
-            try await localGreeter.muted()
-        }
-        try self.capturedLogs(of: local).awaitLogContaining(self.testKit(local), text: "Muted greeting: HI!!!")
-    }
 }
 
 private distributed actor Greeter {
@@ -472,70 +428,5 @@ private distributed actor Greeter {
     }
 }
 
-private struct GreeterRemoteCallInterceptor: RemoteCallInterceptor {
-    let system: ClusterSystem
-    let greeter: Greeter
-    
-    init(system: ClusterSystem, greeter: Greeter) {
-        self.system = system
-        self.greeter = greeter
-    }
-
-    func interceptRemoteCall<Act, Err, Res>(
-        on actor: Act,
-        target: RemoteCallTarget,
-        invocation _invocation: inout ClusterSystem.InvocationEncoder,
-        throwing: Err.Type,
-        returning: Res.Type
-    ) async throws -> Res
-        where Act: DistributedActor,
-        Act.ID == ActorID,
-        Err: Error,
-        Res: Codable
-    {
-        guard let greeter = self.greeter as? Act else {
-            throw GreeterRemoteCallInterceptorError()
-        }
-        
-        let anyReturn = try await withCheckedThrowingContinuation { (cc: CheckedContinuation<Any, Error>) in
-            let invocation = _invocation
-            Task {
-                var directDecoder = ClusterInvocationDecoder(invocation: invocation)
-                let directReturnHandler = ClusterInvocationResultHandler(directReturnContinuation: cc)
-                    
-                try await self.greeter.actorSystem.executeDistributedTarget(
-                    on: greeter,
-                    target: target,
-                    invocationDecoder: &directDecoder, handler: directReturnHandler)
-            }
-        }
-        
-        return anyReturn as! Res
-    }
-
-    func interceptRemoteCallVoid<Act, Err>(
-        on actor: Act,
-        target: RemoteCallTarget,
-        invocation: inout ClusterSystem.InvocationEncoder,
-        throwing: Err.Type
-    ) async throws
-        where Act: DistributedActor,
-        Act.ID == ActorID,
-        Err: Error
-    {
-        guard let greeter = self.greeter as? Act else {
-            throw GreeterRemoteCallInterceptorError()
-        }
-
-        return try await self.greeter.actorSystem.remoteCallVoid(
-            on: greeter, // Change the receiver
-            target: target,
-            invocation: &invocation,
-            throwing: throwing
-        )
-    }
-}
-
 private struct GreeterCodableError: Error, Codable {}
 private struct GreeterNonCodableError: Error {}
-private struct GreeterRemoteCallInterceptorError: Error, Codable {}
