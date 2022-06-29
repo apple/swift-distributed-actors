@@ -18,11 +18,14 @@ import Darwin
 import Glibc
 #endif
 
+import CDistributedActorsMailbox // for backtrace
+
 /// A threading lock based on `libpthread` instead of `libdispatch`.
 ///
 /// This object provides a lock on top of a single `pthread_mutex_t`. This kind
 /// of lock is safe to use with `libpthread`-based threading models, such as the
 /// one used by NIO.
+@available(*, noasync, message: "Locks are bad in async code; If you truly must, use DispatchSemaphore")
 public final class Lock {
     fileprivate let mutex: UnsafeMutablePointer<pthread_mutex_t> = UnsafeMutablePointer.allocate(capacity: 1)
 
@@ -48,7 +51,10 @@ public final class Lock {
     /// `unlock`, to simplify lock handling.
     public func lock() {
         let err = pthread_mutex_lock(self.mutex)
-        precondition(err == 0, "\(#function) failed in pthread_mutex with error \(err)")
+        if (err != 0) {
+            sact_dump_backtrace()
+            fatalError("\(#function) failed in pthread_mutex with error \(err)")
+        }
     }
 
     /// Release the lock.

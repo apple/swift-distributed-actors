@@ -55,9 +55,6 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
     // TODO: collapse it with the other initialization lock; the other one is not needed now I think?
     private let initLock = Lock()
 
-    internal let lifecycleWatchLock = Lock()
-    internal var _lifecycleWatches: [ActorID: LifecycleWatchContainer] = [:]
-
     private var _associationTombstoneCleanupTask: RepeatedTask?
 
     private let dispatcher: InternalMessageDispatcher
@@ -907,17 +904,27 @@ extension ClusterSystem {
         where Act: DistributedActor
     {
         let props = _Props.forSpawn // task-local read for any properties this actor should have
-        let address = try! self._reserveName(type: Act.self, props: props)
+        var id = try! self._reserveName(type: Act.self, props: props)
+
+        let lifecycleContainer: LifecycleWatchContainer?
+        if Act.self is (any(LifecycleWatch).Type) {
+            lifecycleContainer = LifecycleWatchContainer(watcherID: id.withoutContext, actorSystem: self)
+        } else {
+            lifecycleContainer = nil
+        }
+        traceLog_DeathWatch("Make LifecycleWatchContainer for \(id):::: \(lifecycleContainer)")
+
+        id.context = .init(lifecycle: lifecycleContainer)
 
         self.log.warning("Assign identity", metadata: [
             "actor/type": "\(actorType)",
-            "actor/id": "\(address)",
-            "actor/id/uniqueNode": "\(address.uniqueNode)",
+            "actor/id": "\(id)",
+            "actor/id/uniqueNode": "\(id.uniqueNode)",
         ])
 
         return self.namingLock.withLock {
-            self._reservedNames.insert(address)
-            return address
+            self._reservedNames.insert(id)
+            return id
         }
     }
 
@@ -931,12 +938,12 @@ extension ClusterSystem {
         defer { self.namingLock.unlock() }
         precondition(self._reservedNames.remove(actor.id) != nil, "Attempted to ready an identity that was not reserved: \(actor.id)")
 
-        if let watcher = actor as? any LifecycleWatch {
-            func doMakeLifecycleWatch<Watcher: LifecycleWatch & DistributedActor>(watcher: Watcher) {
-                _ = self._makeLifecycleWatch(watcher: watcher)
-            }
-            _openExistential(watcher, do: doMakeLifecycleWatch)
-        }
+//        if let watcher = actor as? any LifecycleWatch {
+//            func doMakeLifecycleWatch<Watcher: LifecycleWatch & DistributedActor>(watcher: Watcher) {
+//                _ = LifecycleWatchContainer(watcher)
+//            }
+//            _openExistential(watcher, do: doMakeLifecycleWatch)
+//        }
 
         let behavior = InvocationBehavior.behavior(instance: Weak(actor))
         let ref = self._spawnDistributedActor(behavior, identifiedBy: actor.id)
@@ -953,11 +960,12 @@ extension ClusterSystem {
                 ref._sendSystemMessage(.stop, file: #file, line: #line)
             }
         }
-        self.lifecycleWatchLock.withLockVoid {
-            if let watch = self._lifecycleWatches.removeValue(forKey: id) {
-                watch.notifyWatchersWeDied()
-            }
-        }
+        id.context.terminate()
+//        self.lifecycleWatchLock.withLockVoid {
+//            if let watch = self._lifecycleWatches.removeValue(forKey: id) {
+//                watch.notifyWatchersWeDied()
+//            }
+//        }
         self.namingLock.withLockVoid {
             self._managedRefs.removeValue(forKey: id) // TODO: should not be necessary in the future
             _ = self._managedDistributedActors.removeActor(identifiedBy: id)

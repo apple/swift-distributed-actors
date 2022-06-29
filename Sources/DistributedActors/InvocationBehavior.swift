@@ -43,8 +43,8 @@ enum InvocationBehavior {
                 }
 
                 // `InvocationMessage`s are handled in `UserMessageHandler`
-//                 await context.system.receiveInvocation(actor: instance, message: message)
-                return .same
+                // old impl: await context.system.receiveInvocation(actor: instance, message: message)
+                return fatalErrorBacktrace("We don't invoke distributed actors via the behavior runtime anymore! ")
             }.receiveSignal { _, signal in
 
                 // We received a signal, but our target actor instance was already released;
@@ -55,8 +55,13 @@ enum InvocationBehavior {
 
                 if let terminated = signal as? _Signals.Terminated {
                     if let watcher = instance as? (any LifecycleWatch) {
-                        let watch = watcher.actorSystem._getLifecycleWatch(watcher: watcher)
-                        watch?.receiveTerminated(terminated)
+                        Task {
+                            await instance.whenLocal { __secretlyKnownToBeLocalK in
+                                let __secretlyKnownToBeLocal: any LifecycleWatch = __secretlyKnownToBeLocalK as! any LifecycleWatch
+                                await __secretlyKnownToBeLocal._receiveActorTerminated(id: terminated.id)
+                            }
+                        }
+
                         return .same
                     }
                 }
