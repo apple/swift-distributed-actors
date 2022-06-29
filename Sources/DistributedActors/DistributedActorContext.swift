@@ -22,7 +22,11 @@ import Distributed
 public final class DistributedActorContext {
     let lifecycle: LifecycleWatchContainer?
     let metadata: ActorMetadata
+<<<<<<< HEAD
     let remoteCallInterceptor: (any RemoteCallInterceptor)?
+=======
+    public let remoteCallInterceptor: RemoteCallInterceptor?
+>>>>>>> Implement ActorSingleton for DistributedActor
 
     init(lifecycle: LifecycleWatchContainer?,
          remoteCallInterceptor: RemoteCallInterceptor?,
@@ -44,7 +48,11 @@ public final class DistributedActorContext {
     }
 }
 
+<<<<<<< HEAD
 internal protocol RemoteCallInterceptor {
+=======
+public protocol RemoteCallInterceptor {
+>>>>>>> Implement ActorSingleton for DistributedActor
     func interceptRemoteCall<Act, Err, Res>(
         on actor: Act,
         target: RemoteCallTarget,

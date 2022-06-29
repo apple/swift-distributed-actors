@@ -782,6 +782,7 @@ public enum SerializationError: Error {
     case unableToMakeSerializer(hint: String)
     case unableToSerialize(hint: String)
     case unableToDeserialize(hint: String)
+    case unableToSummonType(hint: String)
 
     /// Thrown and to be handled internally by the Serialization system when a serializer should NOT be ensured.
     case noNeedToEnsureSerializer
