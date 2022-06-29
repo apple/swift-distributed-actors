@@ -31,7 +31,7 @@ public final class DistributedActorContext {
         self.lifecycle = lifecycle
         self.remoteCallInterceptor = remoteCallInterceptor
         self.metadata = metadata ?? ActorMetadata()
-        
+
         traceLog_DeathWatch("Create context; Lifecycle: \(lifecycle)")
     }
 

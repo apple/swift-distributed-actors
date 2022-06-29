@@ -29,7 +29,7 @@ public struct ClusterInvocationEncoder: DistributedTargetInvocationEncoder {
     init(system: ClusterSystem) {
         self.system = system
     }
-    
+
     public init(system: ClusterSystem, arguments: [Data]) {
         self.system = system
         self.arguments = arguments
@@ -62,16 +62,17 @@ public struct ClusterInvocationDecoder: DistributedTargetInvocationDecoder {
 
     let state: _State
     enum _State {
-        case remoteCall(system: ClusterSystem,message: InvocationMessage)
+        case remoteCall(system: ClusterSystem, message: InvocationMessage)
         // Potentially used by interceptors, when invoking a local target directly
         case localProxyCall(ClusterSystem.InvocationEncoder)
     }
+
     var argumentIdx = 0
 
     public init(system: ClusterSystem, message: InvocationMessage) {
         self.state = .remoteCall(system: system, message: message)
     }
-    
+
     internal init(invocation: ClusterSystem.InvocationEncoder) {
         self.state = .localProxyCall(invocation)
     }
@@ -99,12 +100,12 @@ public struct ClusterInvocationDecoder: DistributedTargetInvocationDecoder {
             )
             let argument = try system.serialization.deserialize(as: Argument.self, from: serialized)
             return argument
-            
+
         case .localProxyCall(let invocation):
             guard invocation.arguments.count > self.argumentIdx else {
                 throw SerializationError.notEnoughArgumentsEncoded(expected: self.argumentIdx + 1, have: invocation.arguments.count)
             }
-            
+
             self.argumentIdx += 1
             return invocation.arguments[self.argumentIdx] as! Argument
         }
