@@ -12,94 +12,12 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Distributed
 import DistributedActors
 import DistributedActorsConcurrencyHelpers
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Actor singleton
-
-internal final class ActorSingleton<Message: Codable> {
-    /// Settings for the `ActorSingleton`
-    let settings: ActorSingletonSettings
-
-    /// _Props of singleton behavior
-    let props: _Props?
-    /// The singleton behavior.
-    /// If `nil`, then this instance will be proxy-only and it will never run the actual actor.
-    let behavior: _Behavior<Message>?
-
-    /// The `ActorSingletonProxy` ref
-    private var _proxy: _ActorRef<Message>?
-    private let proxyLock = Lock()
-
-    internal var proxy: _ActorRef<Message>? {
-        self.proxyLock.withLock {
-            self._proxy
-        }
-    }
-
-    init(settings: ActorSingletonSettings, props: _Props?, _ behavior: _Behavior<Message>?) {
-        self.settings = settings
-        self.props = props
-        self.behavior = behavior
-    }
-
-    /// Spawns `ActorSingletonProxy` and associated actors (e.g., `ActorSingletonManager`).
-    func startAll(_ system: ClusterSystem) throws {
-        let allocationStrategy = self.settings.allocationStrategy.make(system.settings, self.settings)
-        try self.proxyLock.withLock {
-            self._proxy = try system._spawnSystemActor(
-                "singletonProxy-\(self.settings.name)",
-                ActorSingletonProxy(settings: self.settings, allocationStrategy: allocationStrategy, props: self.props, self.behavior).behavior,
-                props: ._wellKnown
-            )
-        }
-    }
-}
-
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Type-erased actor singleton
-
-internal protocol AnyActorSingleton {
-    /// Stops the `ActorSingletonProxy` running in the `system`.
-    /// If `ActorSingletonManager` is also running, which means the actual singleton is hosted
-    /// on this node, it will attempt to hand-over the singleton gracefully before stopping.
-    func stop(_ system: ClusterSystem)
-}
-
-internal struct BoxedActorSingleton: AnyActorSingleton {
-    private let underlying: AnyActorSingleton
-
-    init<Message>(_ actorSingleton: ActorSingleton<Message>) {
-        self.underlying = actorSingleton
-    }
-
-    func unsafeUnwrapAs<Message>(_ type: Message.Type) -> ActorSingleton<Message> {
-        guard let unwrapped = self.underlying as? ActorSingleton<Message> else {
-            fatalError("Type mismatch, expected: [\(String(reflecting: ActorSingleton<Message>.self))] got [\(self.underlying)]")
-        }
-        return unwrapped
-    }
-
-    func stop(_ system: ClusterSystem) {
-        self.underlying.stop(system)
-    }
-}
-
-extension ActorSingleton: AnyActorSingleton {
-    func stop(_ system: ClusterSystem) {
-        // Hand over the singleton gracefully
-        let resolveContext = _ResolveContext<ActorSingletonManager<Message>.Directive>(id: ._singletonManager(name: self.settings.name, on: system.cluster.uniqueNode), system: system)
-        let managerRef = system._resolve(context: resolveContext)
-        // If the manager is not running this will end up in dead-letters but that's fine
-        managerRef.tell(.stop)
-
-        // We don't control the proxy's directives so we can't tell it to stop
-    }
-}
-
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Actor singleton settings
+// MARK: Settings
 
 /// Settings for a `ActorSingleton`.
 public struct ActorSingletonSettings {
@@ -131,6 +49,60 @@ public enum AllocationStrategySettings {
         switch self {
         case .byLeadership:
             return ActorSingletonAllocationByLeadership()
+        }
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: ActorSingletonRemoteCallInterceptor
+
+struct ActorSingletonRemoteCallInterceptor<Singleton: DistributedActor>: RemoteCallInterceptor where Singleton.ActorSystem == ClusterSystem {
+    let system: ClusterSystem
+    let proxy: ActorSingletonProxy<Singleton>
+
+    func interceptRemoteCall<Act, Err, Res>(
+        on actor: Act,
+        target: RemoteCallTarget,
+        invocation: inout ClusterSystem.InvocationEncoder,
+        throwing: Err.Type,
+        returning: Res.Type
+    ) async throws -> Res
+        where Act: DistributedActor,
+        Act.ID == ActorID,
+        Err: Error,
+        Res: Codable
+    {
+        // FIXME: better error handling
+        guard actor is Singleton else {
+            fatalError("Wrong interceptor")
+        }
+
+        // FIXME: can't capture inout param
+        let invocation = invocation
+        return try await self.proxy.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
+            try await __secretlyKnownToBeLocal.forwardOrStashRemoteCall(target: target, invocation: invocation, throwing: throwing, returning: returning)
+        }! // FIXME: !-use
+    }
+
+    func interceptRemoteCallVoid<Act, Err>(
+        on actor: Act,
+        target: RemoteCallTarget,
+        invocation: inout ClusterSystem.InvocationEncoder,
+        throwing: Err.Type
+    ) async throws
+        where Act: DistributedActor,
+        Act.ID == ActorID,
+        Err: Error
+    {
+        // FIXME: better error handling
+        guard actor is Singleton else {
+            fatalError("Wrong interceptor")
+        }
+
+        // FIXME: can't capture inout param
+        let invocation = invocation
+        try await self.proxy.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
+            try await __secretlyKnownToBeLocal.forwardOrStashRemoteCallVoid(target: target, invocation: invocation, throwing: throwing)
         }
     }
 }

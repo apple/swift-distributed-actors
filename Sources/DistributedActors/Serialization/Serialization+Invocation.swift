@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2020 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -21,13 +21,19 @@ import SwiftProtobuf
 
 public struct ClusterInvocationEncoder: DistributedTargetInvocationEncoder {
     public typealias SerializationRequirement = any Codable
-    var arguments: [Data] = []
+    public internal(set) var arguments: [Data] = []
     var throwing: Bool = false
 
     let system: ClusterSystem
 
     init(system: ClusterSystem) {
         self.system = system
+    }
+    
+    public init(system: ClusterSystem, arguments: [Data]) {
+        self.system = system
+        self.arguments = arguments
+        self.throwing = true
     }
 
     public mutating func recordGenericSubstitution<T>(_ type: T.Type) throws {

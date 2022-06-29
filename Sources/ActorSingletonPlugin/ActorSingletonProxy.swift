@@ -12,222 +12,291 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Distributed
 import DistributedActors
+import struct Foundation.Data
+import struct Foundation.UUID
 import Logging
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ActorSingletonProxy
 
+internal protocol AnyActorSingletonProxy {
+    func stop()
+}
+
 /// Proxy for a singleton actor.
 ///
-/// The underlying `_ActorRef<Message>` for the singleton might change due to re-allocation, but all of that happens
-/// automatically and is transparent to the ref holder.
+/// The underlying distributed actor for the singleton might change due to re-allocation, but all of that happens
+/// automatically and is transparent to the actor holder.
 ///
-/// The proxy has a buffer to hold messages temporarily in case the singleton is not available. The buffer capacity
+/// The proxy has a buffer to hold remote calls temporarily in case the singleton is not available. The buffer capacity
 /// is configurable in `ActorSingletonSettings`. Note that if the buffer becomes full, the *oldest* message
 /// would be disposed to allow insertion of the latest message.
 ///
 /// The proxy subscribes to events and feeds them into `AllocationStrategy` to determine the node that the
 /// singleton runs on. If the singleton falls on *this* node, the proxy will spawn a `ActorSingletonManager`,
-/// which manages the actual singleton actor, and obtain the ref from it. The proxy instructs the
+/// which manages the actual singleton actor, and obtain the actor from it. The proxy instructs the
 /// `ActorSingletonManager` to hand over the singleton whenever the node changes.
-internal class ActorSingletonProxy<Message: Codable> {
+internal distributed actor ActorSingletonProxy<Act: DistributedActor>: AnyActorSingletonProxy where Act.ActorSystem == ClusterSystem {
+    typealias ActorSystem = ClusterSystem
+    typealias CallID = UUID
+
     /// Settings for the `ActorSingleton`
     private let settings: ActorSingletonSettings
 
     /// The strategy that determines which node the singleton will be allocated
     private let allocationStrategy: ActorSingletonAllocationStrategy
 
-    /// _Props of the singleton behavior
-    private let singletonProps: _Props?
-    /// The singleton behavior.
-    /// If `nil`, then this node is not a candidate for hosting the singleton. It would result
-    /// in a failure if `allocationStrategy` selects this node by mistake.
-    private let singletonBehavior: _Behavior<Message>?
+    let singletonProps: _Props?
+    /// If `nil`, then this instance will be proxy-only and it will never run the actual actor.
+    let singletonFactory: ((ClusterSystem) async throws -> Act)?
 
     /// The node that the singleton runs on
     private var targetNode: UniqueNode?
 
-    /// The singleton ref
-    private var ref: _ActorRef<Message>?
+    /// The singleton
+    private var singleton: Act?
 
-    /// The manager ref; non-nil if `targetNode` is this node
-    private var managerRef: _ActorRef<ActorSingletonManager<Message>.Directive>?
+    /// Manages the singleton; non-nil if `targetNode` is this node.
+    private var manager: ActorSingletonManager<Act>?
 
-    /// Message buffer in case singleton `ref` is `nil`
-    private let buffer: _StashBuffer<Message>
+    /// Remote call "buffer" in case `singleton` is `nil`
+    private var remoteCallContinuations: [(CallID, CheckedContinuation<Act, Never>)] = []
 
-    init(settings: ActorSingletonSettings, allocationStrategy: ActorSingletonAllocationStrategy, props: _Props? = nil, _ behavior: _Behavior<Message>? = nil) {
+    /// `Task` for subscribing to cluster events
+    private var clusterEventsSubscribeTask: Task<Void, Error>?
+
+    private lazy var log = Logger(actor: self)
+
+    init(
+        settings: ActorSingletonSettings,
+        system: ActorSystem,
+        singletonProps: _Props?,
+        _ singletonFactory: ((ClusterSystem) async throws -> Act)?
+    ) async throws {
+        self.actorSystem = system
         self.settings = settings
-        self.allocationStrategy = allocationStrategy
-        self.singletonProps = props
-        self.singletonBehavior = behavior
-        self.buffer = _StashBuffer(capacity: settings.bufferCapacity)
-    }
+        self.allocationStrategy = settings.allocationStrategy.make(system.settings, settings)
+        self.singletonProps = singletonProps
+        self.singletonFactory = singletonFactory
 
-    var behavior: _Behavior<Message> {
-        .setup { context in
-            if context.system.settings.enabled {
+        if system.settings.enabled {
+            self.clusterEventsSubscribeTask = Task {
                 // Subscribe to ``Cluster/Event`` in order to update `targetNode`
-                context.system.cluster.events.subscribe(
-                    context.subReceive(_SubReceiveId(id: "clusterEvent-\(context.name)"), Cluster.Event.self) { event in
-                        try self.receiveClusterEvent(context, event)
-                    }
-                )
-            } else {
-                // Run singleton on this node if clustering is not enabled
-                context.log.debug("Clustering not enabled. Taking over singleton.")
-                try self.takeOver(context, from: nil)
+                for await event in system.cluster.events {
+                    try await self.receiveClusterEvent(event)
+                }
             }
-
-            return _Behavior<Message>.receiveMessage { message in
-                try self.forwardOrStash(context, message: message)
-                return .same
-            }.receiveSpecificSignal(_Signals._PostStop.self) { context, _ in
-                // TODO: perhaps we can figure out where `to` is next and hand over gracefully?
-                try self.handOver(context, to: nil)
-                return .same
-            }
+        } else {
+            // Run singleton on this node if clustering is not enabled
+            self.log.debug("Clustering not enabled. Taking over singleton.")
+            try await self.takeOver(from: nil)
         }
     }
 
-    private func receiveClusterEvent(_ context: _ActorContext<Message>, _ event: Cluster.Event) throws {
+    deinit {
+        // FIXME: should hand over
+        // TODO: perhaps we can figure out where `to` is next and hand over gracefully?
+//        self.handOver(to: nil)
+        self.clusterEventsSubscribeTask?.cancel()
+    }
+
+    private func receiveClusterEvent(_ event: Cluster.Event) async throws {
         // Feed the event to `AllocationStrategy` then forward the result to `updateTargetNode`,
         // which will determine if `targetNode` has changed and react accordingly.
         let node = self.allocationStrategy.onClusterEvent(event)
-        try self.updateTargetNode(context, node: node)
+        try await self.updateTargetNode(node: node)
     }
 
-    private func updateTargetNode(_ context: _ActorContext<Message>, node: UniqueNode?) throws {
+    private func updateTargetNode(node: UniqueNode?) async throws {
         guard self.targetNode != node else {
-            context.log.debug("Skip updating target node; New node is already the same as current targetNode", metadata: self.metadata(context))
+            self.log.debug("Skip updating target node. New node is already the same as current targetNode.", metadata: self.metadata())
             return
         }
 
-        let selfNode = context.system.cluster.uniqueNode
+        let selfNode = self.actorSystem.cluster.uniqueNode
 
         let previousTargetNode = self.targetNode
         self.targetNode = node
 
         switch node {
         case selfNode:
-            context.log.debug("Node \(selfNode) taking over singleton \(self.settings.name)")
-            try self.takeOver(context, from: previousTargetNode)
+            self.log.debug("Node \(selfNode) taking over singleton \(self.settings.name)")
+            try await self.takeOver(from: previousTargetNode)
         default:
             if previousTargetNode == selfNode {
-                context.log.debug("Node \(selfNode) handing over singleton \(self.settings.name)")
-                try self.handOver(context, to: node)
+                self.log.debug("Node \(selfNode) handing over singleton \(self.settings.name)")
+                try await self.handOver(to: node)
             }
 
-            // Update `ref` regardless
-            self.updateRef(context, node: node)
+            // Update `singleton` regardless
+            try self.updateSingleton(node: node)
         }
     }
 
-    private func takeOver(_ context: _ActorContext<Message>, from: UniqueNode?) throws {
-        guard let singletonBehavior = self.singletonBehavior else {
+    private func takeOver(from: UniqueNode?) async throws {
+        guard let singletonFactory = self.singletonFactory else {
             preconditionFailure("The actor singleton \(self.settings.name) cannot run on this node. Please review AllocationStrategySettings and/or actor singleton usage.")
         }
 
-        // Spawn the manager then tell it to spawn the singleton actor
-        self.managerRef = try context.system._spawnSystemActor(
-            "singletonManager-\(self.settings.name)",
-            ActorSingletonManager(settings: self.settings, props: self.singletonProps ?? _Props(), singletonBehavior).behavior,
-            props: ._wellKnown
-        )
-        // Need the manager to tell us the ref because we can't resolve it due to random incarnation
-        let refSubReceive = context.subReceive(_SubReceiveId(id: "ref-\(context.name)"), _ActorRef<Message>?.self) {
-            self.updateRef(context, $0)
+        self.manager = _Props.$forSpawn.withValue(_Props._wellKnownActor(name: "singletonManager-\(self.settings.name)")) {
+            ActorSingletonManager(
+                settings: self.settings,
+                system: self.actorSystem,
+                singletonProps: self.singletonProps ?? .init(),
+                singletonFactory
+            )
         }
-        self.managerRef?.tell(.takeOver(from: from, replyTo: refSubReceive))
+
+        try await self.manager?.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
+            let singleton = try await __secretlyKnownToBeLocal.takeOver(from: from)
+            await self.updateSingleton(singleton)
+        }
     }
 
-    private func handOver(_ context: _ActorContext<Message>, to: UniqueNode?) throws {
-        // The manager stops after handing over the singleton
-        self.managerRef?.tell(.handOver(to: to))
-        self.managerRef = nil
+    private func handOver(to: UniqueNode?) async throws {
+        try await self.manager?.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
+            try __secretlyKnownToBeLocal.handOver(to: to)
+        }
+        self.manager = nil
     }
 
-    private func updateRef(_ context: _ActorContext<Message>, node: UniqueNode?) {
+    private func updateSingleton(node: UniqueNode?) throws {
         switch node {
-        case .some(let node) where node == context.system.cluster.uniqueNode:
-            self.ref = context.myself
+        case .some(let node) where node == self.actorSystem.cluster.uniqueNode:
+            ()
         case .some(let node):
-            // Since the singleton is spawned as a child of the manager, its incarnation is random and therefore we
-            // can't construct its address despite knowing the path and node. Only the manager running on `targetNode`
-            // (i.e., where the singleton runs) has the singleton `ref`, and only the proxy on `targetNode` has `ref`
-            // pointing directly to the actual singleton. Proxies on other nodes connect to the singleton via `targetNode`
-            // proxy (i.e., their `ref`s point to `targetNode` proxy, not the singleton).
-            // FIXME: connecting to the singleton through proxy incurs an extra hop. an optimization would be
-            // to have proxies ask the `targetNode` proxy to "send me the ref once you have taken over"
-            // and before then the proxies can either set `ref` to `nil` (to stash messages) or to `targetNode`
-            // proxy as we do today. The challenge lies in serialization, as ActorSingletonProxy and ActorSingletonManager are generic.
-            let resolveContext = _ResolveContext<Message>(id: ._singletonProxy(name: self.settings.name, remote: node), system: context.system)
-            let ref = context.system._resolve(context: resolveContext)
-            self.updateRef(context, ref)
+            self.singleton = try Act.resolve(id: ._singleton(name: self.settings.name, remote: node), using: self.actorSystem)
         case .none:
-            self.ref = nil
+            self.singleton = nil
         }
     }
 
-    private func updateRef(_ context: _ActorContext<Message>, _ newRef: _ActorRef<Message>?) {
-        context.log.debug("Updating ref from [\(String(describing: self.ref))] to [\(String(describing: newRef))], flushing \(self.buffer.count) messages")
-        self.ref = newRef
+    private func updateSingleton(_ newAct: Act?) {
+        self.log.debug("Updating singleton from [\(optional: self.singleton)] to [\(optional: newAct)], flushing \(self.remoteCallContinuations.count) remote calls")
+        self.singleton = newAct
 
         // Unstash messages if we have the singleton
-        guard let singleton = self.ref else {
+        guard let singleton = self.singleton else {
             return
         }
 
-        while let stashed = self.buffer.take() {
-            context.log.debug("Flushing \(stashed), to \(singleton)")
-            singleton.tell(stashed)
+        self.remoteCallContinuations.forEach { (callID, continuation) in
+            self.log.debug("Flushing remote call [\(callID)] to [\(singleton)]")
+            continuation.resume(returning: singleton)
         }
     }
 
-    private func forwardOrStash(_ context: _ActorContext<Message>, message: Message) throws {
-        // Forward the message if `singleton` is not `nil`, else stash it.
-        if let singleton = self.ref {
-            context.log.trace("Forwarding message \(message), to: \(singleton.id)", metadata: self.metadata(context))
-            singleton.tell(message)
-        } else {
-            do {
-                try self.buffer.stash(message: message)
-                context.log.trace("Stashed message: \(message)", metadata: self.metadata(context))
-            } catch {
-                switch error {
-                case _StashError.full:
-                    // TODO: log this warning only "once in while" after buffer becomes full
-                    context.log.warning("Buffer is full. Messages might start getting disposed.", metadata: self.metadata(context))
-                    // Move the oldest message to dead letters to make room
-                    if let oldestMessage = self.buffer.take() {
-                        context.system.deadLetters.tell(DeadLetter(oldestMessage, recipient: context.id))
-                    }
-                default:
-                    context.log.warning("Unable to stash message, error: \(error)", metadata: self.metadata(context))
-                }
+    func forwardOrStashRemoteCall<Err, Res>(
+        target: RemoteCallTarget,
+        invocation: ActorSystem.InvocationEncoder,
+        throwing: Err.Type,
+        returning: Res.Type
+    ) async throws -> Res
+        where Err: Error,
+        Res: Codable
+    {
+        let singleton = await self.findSingleton()
+        self.log.trace("Forwarding invocation [\(invocation)] to [\(singleton)]", metadata: self.metadata())
+
+        var invocation = invocation // FIXME: should be inout param
+        return try await singleton.actorSystem.remoteCall(
+            on: singleton,
+            target: target,
+            invocation: &invocation,
+            throwing: throwing,
+            returning: returning
+        )
+    }
+
+    func forwardOrStashRemoteCallVoid<Err>(
+        target: RemoteCallTarget,
+        invocation: ActorSystem.InvocationEncoder,
+        throwing: Err.Type
+    ) async throws where Err: Error {
+        let singleton = await self.findSingleton()
+        self.log.trace("Forwarding invocation [\(invocation)] to [\(singleton)]", metadata: self.metadata())
+
+        var invocation = invocation // FIXME: should be inout param
+        return try await singleton.actorSystem.remoteCallVoid(
+            on: singleton,
+            target: target,
+            invocation: &invocation,
+            throwing: throwing
+        )
+    }
+
+    private func findSingleton() async -> Act {
+        await withCheckedContinuation { continuation in
+            // If singleton is available, forward remote call to it.
+            if let singleton = self.singleton {
+                continuation.resume(returning: singleton)
+                return
+            }
+            // Otherwise, we "stash" the remote call until singleton becomes available.
+            Task {
+                let callID = UUID()
+                self.log.debug("Stashing remote call [\(callID)]")
+                self.remoteCallContinuations.append((callID, continuation))
+                // FIXME: honor settings.bufferCapacity
+            }
+        }
+    }
+
+//    private func forwardOrStash(_ context: _ActorContext<Message>, message: Message) throws {
+//        // Forward the message if `singleton` is not `nil`, else stash it.
+//        if let singleton = self.ref {
+//            context.log.trace("Forwarding message \(message), to: \(singleton.id)", metadata: self.metadata(context))
+//            singleton.tell(message)
+//        } else {
+//            do {
+//                try self.buffer.stash(message: message)
+//                context.log.trace("Stashed message: \(message)", metadata: self.metadata(context))
+//            } catch {
+//                switch error {
+//                case _StashError.full:
+//                    // TODO: log this warning only "once in while" after buffer becomes full
+//                    context.log.warning("Buffer is full. Messages might start getting disposed.", metadata: self.metadata(context))
+//                    // Move the oldest message to dead letters to make room
+//                    if let oldestMessage = self.buffer.take() {
+//                        context.system.deadLetters.tell(DeadLetter(oldestMessage, recipient: context.id))
+//                    }
+//                default:
+//                    context.log.warning("Unable to stash message, error: \(error)", metadata: self.metadata(context))
+//                }
+//            }
+//        }
+//    }
+
+    nonisolated func stop() {
+        Task {
+            try await self.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
+                // TODO: perhaps we can figure out where `to` is next and hand over gracefully?
+                try await __secretlyKnownToBeLocal.handOver(to: nil)
+                __secretlyKnownToBeLocal.manager = nil
             }
         }
     }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: ActorSingletonManager + logging
+// MARK: Logging
 
 extension ActorSingletonProxy {
-    func metadata<Message>(_: _ActorContext<Message>) -> Logger.Metadata {
+    func metadata() -> Logger.Metadata {
         var metadata: Logger.Metadata = [
             "tag": "singleton",
             "singleton/name": "\(self.settings.name)",
-            "singleton/buffer": "\(self.buffer.count)/\(self.settings.bufferCapacity)",
+            "singleton/buffer": "\(self.remoteCallContinuations.count)/\(self.settings.bufferCapacity)",
         ]
 
-        metadata["targetNode"] = "\(String(describing: self.targetNode?.debugDescription))"
-        if let ref = self.ref {
-            metadata["ref"] = "\(ref.id)"
+        metadata["targetNode"] = "\(optional: self.targetNode?.debugDescription)"
+        if let singleton = self.singleton {
+            metadata["singleton"] = "\(singleton.id)"
         }
-        if let managerRef = self.managerRef {
-            metadata["managerRef"] = "\(managerRef.id)"
+        if let manager = self.manager {
+            metadata["manager"] = "\(manager.id)"
         }
 
         return metadata
@@ -235,16 +304,95 @@ extension ActorSingletonProxy {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Singleton path / address
+// MARK: Actor ID and path
 
+// FIXME: remove _system in path?
 extension ActorID {
-    static func _singletonProxy(name: String, remote node: UniqueNode) -> ActorID {
-        ._make(remote: node, path: ._singletonProxy(name: name), incarnation: .wellKnown)
+    static func _singleton(name: String, remote node: UniqueNode) -> ActorID {
+        ._make(remote: node, path: ._singleton(name: name), incarnation: .wellKnown)
     }
 }
 
 extension ActorPath {
-    static func _singletonProxy(name: String) -> ActorPath {
-        try! ActorPath._system.appending("singletonProxy-\(name)")
+    static func _singleton(name: String) -> ActorPath {
+        try! ActorPath._system.appending("singleton-\(name)")
     }
 }
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Serialization
+
+// struct SingletonRemoteCallEnvelope: Codable {
+//    typealias ActorSystem = ClusterSystem
+//    typealias InvocationEncoder = ClusterSystem.InvocationEncoder
+//
+//    let actorTypeHint: String
+//    let actorID: ActorID
+//    let targetIdentifier: String
+//    let arguments: [Data]
+//
+//    let throwingTypeHint: String
+//    let returningTypeHint: String?
+//
+//    var target: RemoteCallTarget {
+//        RemoteCallTarget(self.targetIdentifier)
+//    }
+//
+//    init<Act, Err, Res>(
+//        actor: Act,
+//        target: RemoteCallTarget,
+//        invocation: InvocationEncoder,
+//        throwing: Err.Type,
+//        returning: Res.Type
+//    ) where Act: DistributedActor,
+//        Act.ID == ActorID,
+//        Err: Error,
+//        Res: Codable
+//    {
+//        self.actorTypeHint = Serialization.getTypeHint(Act.self)
+//        self.actorID = actor.id
+//        self.targetIdentifier = target.identifier
+//        self.arguments = invocation.arguments
+//        self.throwingTypeHint = Serialization.getTypeHint(Err.self)
+//        self.returningTypeHint = Serialization.getTypeHint(Res.self)
+//    }
+//
+//    init<Act, Err>(
+//        actor: Act,
+//        target: RemoteCallTarget,
+//        invocation: InvocationEncoder,
+//        throwing: Err.Type
+//    ) where Act: DistributedActor,
+//        Act.ID == ActorID,
+//        Err: Error
+//    {
+//        self.actorTypeHint = Serialization.getTypeHint(Act.self)
+//        self.actorID = actor.id
+//        self.targetIdentifier = target.identifier
+//        self.arguments = invocation.arguments
+//        self.throwingTypeHint = Serialization.getTypeHint(Err.self)
+//        self.returningTypeHint = nil
+//    }
+//
+//    func resolveActor(using system: ActorSystem) throws -> any DistributedActor {
+//        let type = try Serialization.summonType(from: self.actorTypeHint)
+//        guard let actorType = type as? any DistributedActor.Type,
+//              let actor = try system.resolve(id: self.actorID, as: actorType) as (any DistributedActor)? else {
+//            throw SerializationError.unableToDeserialize(hint: self.actorTypeHint)
+//        }
+//        return actor
+//    }
+//
+//    func invocation(system: ActorSystem) -> InvocationEncoder {
+//        InvocationEncoder(system: system, arguments: self.arguments)
+//    }
+// }
+//
+// extension Serialization {
+//    static func summonType(from hint: String) throws -> Any.Type {
+//        guard let type = _typeByName(hint) else {
+//            throw SerializationError.unableToSummonType(hint: hint)
+//        }
+//        return type
+//    }
+// }

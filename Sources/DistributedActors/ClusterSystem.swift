@@ -978,6 +978,10 @@ extension ClusterSystem {
         Err: Error,
         Res: Codable
     {
+        if let interceptor = actor.id.context.remoteCallInterceptor {
+            return try await interceptor.interceptRemoteCall(on: actor, target: target, invocation: &invocation, throwing: throwing, returning: returning)
+        }
+
         guard let clusterShell = _cluster else {
             throw RemoteCallError.clusterAlreadyShutDown
         }
@@ -1016,6 +1020,10 @@ extension ClusterSystem {
         Act.ID == ActorID,
         Err: Error
     {
+        if let interceptor = actor.id.context.remoteCallInterceptor {
+            return try await interceptor.interceptRemoteCallVoid(on: actor, target: target, invocation: &invocation, throwing: throwing)
+        }
+
         guard let clusterShell = self._cluster else {
             throw RemoteCallError.clusterAlreadyShutDown
         }

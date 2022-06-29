@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Distributed
 import DistributedActors
 import Logging
 
@@ -19,70 +20,64 @@ import Logging
 // MARK: ActorSingletonManager
 
 /// Spawned as a system actor on the node where the singleton is supposed to run, `ActorSingletonManager` manages
-/// the singleton's lifecycle and stops itself after handing over the singleton.
-internal class ActorSingletonManager<Message: Codable> {
+/// the singleton's lifecycle and hands over the singleton when it terminates.
+internal distributed actor ActorSingletonManager<Act: DistributedActor> where Act.ActorSystem == ClusterSystem {
+    typealias ActorSystem = ClusterSystem
+
     /// Settings for the `ActorSingleton`
     private let settings: ActorSingletonSettings
 
-    /// _Props of the singleton behavior
-    private let singletonProps: _Props
-    /// The singleton behavior
-    private let singletonBehavior: _Behavior<Message>
+    let singletonProps: _Props
+    /// If `nil`, then this instance will be proxy-only and it will never run the actual actor.
+    let singletonFactory: (ClusterSystem) async throws -> Act
 
-    /// The singleton ref
-    private var singleton: _ActorRef<Message>?
+    /// The singleton
+    private var singleton: Act?
 
-    init(settings: ActorSingletonSettings, props: _Props, _ behavior: _Behavior<Message>) {
+    private lazy var log = Logger(actor: self)
+
+    init(
+        settings: ActorSingletonSettings,
+        system: ActorSystem,
+        singletonProps: _Props,
+        _ singletonFactory: @escaping (ClusterSystem) async throws -> Act
+    ) {
+        self.actorSystem = system
         self.settings = settings
-        self.singletonProps = props
-        self.singletonBehavior = behavior
+        self.singletonProps = singletonProps
+        self.singletonFactory = singletonFactory
     }
 
-    var behavior: _Behavior<Directive> {
-        _Behavior<Directive>.receive { context, message in
-            switch message {
-            case .takeOver(let from, let replyTo):
-                // Spawn the singleton then send its ref
-                try self.takeOver(context, from: from)
-                replyTo.tell(self.singleton)
-                return .same
-            case .handOver(let to):
-                // Hand over the singleton then stop myself as a result of singleton node change
-                try self.handOver(context, to: to)
-                return .stop
-            case .stop:
-                // Hand over the singleton then stop myself as part of system shutdown
-                try self.handOver(context, to: nil)
-                return .stop
-            }
-        }
+    deinit {
+        // FIXME: should hand over
+        // TODO: perhaps we can figure out where `to` is next and hand over gracefully?
+//        try self.handOver(to: nil)
     }
 
-    private func takeOver(_ context: _ActorContext<Directive>, from: UniqueNode?) throws {
+    func takeOver(from: UniqueNode?) async throws -> Act {
+        self.log.debug("Take over singleton [\(self.settings.name)] from [\(optional: from)]", metadata: self.metadata())
+
         // TODO: (optimization) tell `ActorSingletonManager` on `from` node that this node is taking over (https://github.com/apple/swift-distributed-actors/issues/329)
-        self.singleton = try context._spawn(.unique(self.settings.name), props: self.singletonProps, self.singletonBehavior)
-    }
-
-    private func handOver(_ context: _ActorContext<Directive>, to: UniqueNode?) throws {
-        // TODO: (optimization) tell `ActorSingletonManager` on `to` node that this node is handing off (https://github.com/apple/swift-distributed-actors/issues/329)
-        guard let singleton = self.singleton else {
-            return
+        let singleton = try await _Props.$forSpawn.withValue(self.singletonProps._knownAs(name: self.settings.name)) {
+            try await self.singletonFactory(self.actorSystem)
         }
-        try context.stop(child: singleton)
+        self.singleton = singleton
+        return singleton
     }
 
-    internal enum Directive: _NotActuallyCodableMessage {
-        case takeOver(from: UniqueNode?, replyTo: _ActorRef<_ActorRef<Message>?>)
-        case handOver(to: UniqueNode?)
-        case stop
+    func handOver(to: UniqueNode?) throws {
+        self.log.debug("Hand over singleton [\(self.settings.name)] to [\(optional: to)]", metadata: self.metadata())
+
+        // TODO: (optimization) tell `ActorSingletonManager` on `to` node that this node is handing off (https://github.com/apple/swift-distributed-actors/issues/329)
+        self.singleton = nil
     }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: ActorSingletonManager + logging
+// MARK: Logging
 
 extension ActorSingletonManager {
-    func metadata<Directive>(_: _ActorContext<Directive>) -> Logger.Metadata {
+    func metadata() -> Logger.Metadata {
         var metadata: Logger.Metadata = [
             "name": "\(self.settings.name)",
         ]
@@ -92,20 +87,5 @@ extension ActorSingletonManager {
         }
 
         return metadata
-    }
-}
-
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: ActorSingletonManager path / address
-
-extension ActorID {
-    static func _singletonManager(name: String, on node: UniqueNode) -> ActorID {
-        ._make(local: node, path: ._singletonManager(name: name), incarnation: .wellKnown)
-    }
-}
-
-extension ActorPath {
-    static func _singletonManager(name: String) -> ActorPath {
-        try! ActorPath._system.appending("singletonManager-\(name)")
     }
 }
