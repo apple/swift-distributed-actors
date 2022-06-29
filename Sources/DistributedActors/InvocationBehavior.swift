@@ -56,8 +56,9 @@ enum InvocationBehavior {
                 if let terminated = signal as? _Signals.Terminated {
                     if let watcher = instance as? (any LifecycleWatch) {
                         Task {
-                            await instance.whenLocal { __secretlyKnownToBeLocal in
-                                await (__secretlyKnownToBeLocal as! any LifecycleWatch)._receiveActorTerminated(id: terminated.id)
+                            await instance.whenLocal { __secretlyKnownToBeLocalK in
+                                let __secretlyKnownToBeLocal: any LifecycleWatch = __secretlyKnownToBeLocalK as! any LifecycleWatch
+                                await __secretlyKnownToBeLocal._receiveActorTerminated(id: terminated.id)
                             }
                         }
 
