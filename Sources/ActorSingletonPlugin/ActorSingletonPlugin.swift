@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Distributed
 import DistributedActors
 import DistributedActorsConcurrencyHelpers
 
@@ -22,48 +23,70 @@ import DistributedActorsConcurrencyHelpers
 /// singleton running in the cluster.
 ///
 /// An actor singleton may run on any node in the cluster. Use `ActorSingletonSettings.allocationStrategy` to control
-/// its allocation. On candidate nodes where the singleton might run, use `ClusterSystem.singleton.ref(type:name:props:behavior)`
-/// to define actor behavior. Otherwise, call `ClusterSystem.singleton.ref(type:name:)` to obtain a ref. The returned
-/// `_ActorRef` is in reality a proxy which handle situations where the singleton is shifted to different nodes.
+/// its allocation. On candidate nodes where the singleton might run, use `ClusterSystem.singleton.proxy(type:name:system:props:factory)`
+/// to define the distributed actor. Otherwise, call `ClusterSystem.singleton.proxy(type:name:)` to obtain a distributed actor. The returned
+/// `DistributedActor` is in reality a proxy that handles situations where the singleton might get relocated to different nodes.
 ///
 /// - Warning: Refer to the configured `AllocationStrategy` for trade-offs between safety and recovery latency for
 ///            the singleton allocation.
 /// - SeeAlso: The `ActorSingleton` mechanism is conceptually similar to Erlang/OTP's <a href="http://erlang.org/doc/design_principles/distributed_applications.html">`DistributedApplication`</a>,
 ///            and <a href="https://doc.akka.io/docs/akka/current/cluster-singleton.html">`ClusterSingleton` in Akka</a>.
-public final class ActorSingletonPlugin {
-    private var singletons: [String: BoxedActorSingleton] = [:]
-    private let singletonsLock = Lock()
+public actor ActorSingletonPlugin {
+    private var singletons: [String: (proxied: ActorID, proxy: any AnyActorSingletonProxy)] = [:]
 
-    public init() {}
-
-    // FIXME: document that may crash, it may right?
-    func ref<Message: Codable>(of type: Message.Type, settings: ActorSingletonSettings, system: ClusterSystem, props: _Props? = nil, _ behavior: _Behavior<Message>? = nil) throws -> _ActorRef<Message> {
-        try self.singletonsLock.withLock {
-            if let existing = self.singletons[settings.name] {
-                guard let proxy = existing.unsafeUnwrapAs(Message.self).proxy else {
-                    fatalError("Singleton [\(settings.name)] not yet initialized")
-                }
-                return proxy
-            }
-
-            let singleton = ActorSingleton<Message>(settings: settings, props: props, behavior)
-            try singleton.startAll(system)
-            self.singletons[settings.name] = BoxedActorSingleton(singleton)
-
-            guard let proxy = singleton.proxy else {
-                fatalError("Singleton[\(settings.name)] not yet initialized")
-            }
-
-            return proxy
+    public func proxy<Act>(
+        of type: Act.Type,
+        settings: ActorSingletonSettings,
+        system: ClusterSystem,
+        props: _Props = _Props(),
+        _ factory: ((ClusterSystem) async throws -> Act)? = nil
+    ) async throws -> Act
+        where Act: DistributedActor,
+        Act.ActorSystem == ClusterSystem
+    {
+        if let existingID = self.singletons[settings.name]?.proxied {
+            return try Act.resolve(id: existingID, using: system)
         }
+
+        // Spawn the proxy for the singleton (one per singleton per node)
+        let proxy = try await _Props.$forSpawn.withValue(_Props._wellKnownActor(name: "singletonProxy-\(settings.name)")) {
+            try await ActorSingletonProxy(
+                settings: settings,
+                system: system,
+                singletonProps: props,
+                factory
+            )
+        }
+
+        // Assign the singleton actor a special id and set up the remote call interceptor
+        var id = _Props.$forSpawn.withValue(_Props._wellKnownActor(name: "singleton-\(settings.name)")) {
+            system.assignID(Act.self)
+        }
+        id.context.remoteCallInterceptor = ActorSingletonRemoteCallInterceptor(system: system, proxy: proxy)
+        // Make id remote so everything is remote call
+        id = id._asRemote
+
+        // Save the actor id and proxy
+        self.singletons[settings.name] = (id, proxy)
+
+        let proxiedAct = try Act.resolve(id: id, using: system)
+        return proxiedAct
     }
 }
 
 extension ActorSingletonPlugin {
-    @available(*, deprecated, message: "Will be removed and replaced by API based on DistributedActor. Issue #824")
-    func ref<Message>(of type: Message.Type, name: String, system: ClusterSystem, props: _Props? = nil, _ behavior: _Behavior<Message>? = nil) throws -> _ActorRef<Message> {
+    public func proxy<Act>(
+        of type: Act.Type,
+        name: String,
+        system: ClusterSystem,
+        props: _Props = _Props(),
+        _ factory: ((ClusterSystem) async throws -> Act)? = nil
+    ) async throws -> Act
+        where Act: DistributedActor,
+        Act.ActorSystem == ClusterSystem
+    {
         let settings = ActorSingletonSettings(name: name)
-        return try self.ref(of: type, settings: settings, system: system, props: props, behavior)
+        return try await self.proxy(of: type, settings: settings, system: system, props: props, factory)
     }
 }
 
@@ -73,16 +96,16 @@ extension ActorSingletonPlugin {
 extension ActorSingletonPlugin: _Plugin {
     static let pluginKey = _PluginKey<ActorSingletonPlugin>(plugin: "$actorSingleton")
 
-    public var key: Key {
+    public nonisolated var key: Key {
         Self.pluginKey
     }
 
     public func start(_ system: ClusterSystem) async throws {}
 
-    public func stop(_ system: ClusterSystem) {
-        self.singletonsLock.withLock {
-            for (_, singleton) in self.singletons {
-                singleton.stop(system)
+    public nonisolated func stop(_ system: ClusterSystem) {
+        Task {
+            for (_, (_, proxy)) in await self.singletons {
+                proxy.stop()
             }
         }
     }
@@ -97,7 +120,7 @@ extension ClusterSystem {
     }
 }
 
-/// Provides actor singleton controls such as obtaining a singleton ref and defining the singleton.
+/// Provides actor singleton controls such as obtaining a singleton and defining a singleton.
 public struct ActorSingletonControl {
     private let system: ClusterSystem
 
@@ -113,18 +136,39 @@ public struct ActorSingletonControl {
         return singletonPlugin
     }
 
-    /// Defines a singleton `behavior` and indicates that it can be hosted on this node.
-    public func host<Message>(_ type: Message.Type, name: String, props: _Props = _Props(), _ behavior: _Behavior<Message>) throws -> _ActorRef<Message> {
-        try self.singletonPlugin.ref(of: type, name: name, system: self.system, props: props, behavior)
+    /// Defines a singleton and indicates that it can be hosted on this node.
+    public func proxy<Act>(
+        _ type: Act.Type,
+        name: String,
+        props: _Props = _Props(),
+        _ factory: @escaping (ClusterSystem) async throws -> Act
+    ) async throws -> Act
+        where Act: DistributedActor,
+        Act.ActorSystem == ClusterSystem
+    {
+        try await self.singletonPlugin.proxy(of: type, name: name, system: self.system, props: props, factory)
     }
 
-    /// Defines a singleton `behavior` and indicates that it can be hosted on this node.
-    public func host<Message>(_ type: Message.Type, settings: ActorSingletonSettings, props: _Props = _Props(), _ behavior: _Behavior<Message>) throws -> _ActorRef<Message> {
-        try self.singletonPlugin.ref(of: type, settings: settings, system: self.system, props: props, behavior)
+    /// Defines a singleton and indicates that it can be hosted on this node.
+    public func proxy<Act>(
+        _ type: Act.Type,
+        settings: ActorSingletonSettings,
+        props: _Props = _Props(),
+        _ factory: @escaping (ClusterSystem) async throws -> Act
+    ) async throws -> Act
+        where Act: DistributedActor,
+        Act.ActorSystem == ClusterSystem
+    {
+        try await self.singletonPlugin.proxy(of: type, settings: settings, system: self.system, props: props, factory)
     }
 
-    /// Obtains a ref to the specified actor singleton.
-    public func ref<Message>(of type: Message.Type, name: String) throws -> _ActorRef<Message> {
-        try self.singletonPlugin.ref(of: type, name: name, system: self.system)
+    public func proxy<Act>(
+        _ type: Act.Type,
+        name: String
+    ) async throws -> Act
+        where Act: DistributedActor,
+        Act.ActorSystem == ClusterSystem
+    {
+        try await self.singletonPlugin.proxy(of: type, name: name, system: self.system)
     }
 }

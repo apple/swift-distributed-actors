@@ -23,6 +23,8 @@ public final class DistributedActorContext {
     let lifecycle: LifecycleWatchContainer?
     let metadata: ActorMetadata
 
+    public var remoteCallInterceptor: RemoteCallInterceptor?
+    
     init(lifecycle: LifecycleWatchContainer?,
          metadata: ActorMetadata? = nil)
     {
@@ -39,4 +41,28 @@ public final class DistributedActorContext {
             lifecycle.clear()
         }
     }
+}
+
+public protocol RemoteCallInterceptor {
+    func interceptRemoteCall<Act, Err, Res>(
+        on actor: Act,
+        target: RemoteCallTarget,
+        invocation: inout ClusterSystem.InvocationEncoder,
+        throwing: Err.Type,
+        returning: Res.Type
+    ) async throws -> Res
+        where Act: DistributedActor,
+        Act.ID == ActorID,
+        Err: Error,
+        Res: Codable
+
+    func interceptRemoteCallVoid<Act, Err>(
+        on actor: Act,
+        target: RemoteCallTarget,
+        invocation: inout ClusterSystem.InvocationEncoder,
+        throwing: Err.Type
+    ) async throws
+        where Act: DistributedActor,
+        Act.ID == ActorID,
+        Err: Error
 }

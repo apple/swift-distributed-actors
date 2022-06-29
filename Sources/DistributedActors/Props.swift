@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -74,7 +74,7 @@ public struct _Props: @unchecked Sendable {
 
     /// Allows for passing properties to creating a distributed actor.
     @TaskLocal
-    internal static var forSpawn: _Props = .init()
+    public static var forSpawn: _Props = .init()
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -169,6 +169,20 @@ extension _Props {
     public var _asNotSoWellKnown: Self {
         var p = self
         p._wellKnown = false
+        return p
+    }
+}
+
+extension _Props {
+    public static func _wellKnownActor(name: String) -> Self {
+        var props = Self._wellKnown
+        props._knownActorName = name
+        return props
+    }
+    
+    public func _knownAs(name: String) -> Self {
+        var p = self
+        p._knownActorName = name
         return p
     }
 }
