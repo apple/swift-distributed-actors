@@ -20,12 +20,12 @@ import DistributedActorsConcurrencyHelpers
 // MARK: Actor singleton plugin
 
 extension ActorMetadataKeys {
-    public var clusterSingletonID: Key<String> { "singleton-id" }
+    public var clusterSingletonID: Key<String> { "$singleton-id" }
 }
 
 public protocol ClusterSingletonProtocol: DistributedActor where ActorSystem == ClusterSystem {
     /// Must be implemented using a `@ActorID.Metadata(\.clusterSingletonID)` annotated property.
-    var singletonID: String { get }
+    var singletonName: String { get }
 }
 
 /// The actor singleton plugin ensures that there is no more than one instance of an actor that is defined to be
@@ -45,27 +45,25 @@ public actor ActorSingletonPlugin {
 
     public func proxy<Act>(
         of type: Act.Type,
-        name: String,
         system: ClusterSystem
     ) async throws -> Act
         where Act: ClusterSingletonProtocol
     {
-        let settings = ActorSingletonSettings(name: name)
+        let settings = ActorSingletonSettings(name: "FIXME-NAME")
         return try await self.proxy(of: type, settings: settings, system: system, makeInstance: nil)
     }
-    
+
     public func host<Act>(
-        of type: Act.Type,
-        name: String,
+        of type: Act.Type = Act.self,
         system: ClusterSystem,
         makeInstance factory: ((ClusterSystem) async throws -> Act)? = nil
     ) async throws -> Act
         where Act: ClusterSingletonProtocol
     {
-        let settings = ActorSingletonSettings(name: name)
+        let settings = ActorSingletonSettings(name: "FIXME-NAME")
         return try await self.proxy(of: type, settings: settings, system: system, makeInstance: factory)
     }
-    
+
     public func proxy<Act>(
         of type: Act.Type,
         settings: ActorSingletonSettings,
@@ -90,25 +88,9 @@ public actor ActorSingletonPlugin {
             )
         }
         let interceptor = ActorSingletonRemoteCallInterceptor(system: system, proxy: proxy)
-        
         let proxied = try system.interceptCalls(to: type, metadata: ActorMetadata(), interceptor: interceptor)
-        
-        assert(__isRemoteActor(proxied))
+
         return proxied
-        
-//        // Assign the singleton actor a special id and set up the remote call interceptor
-//        var id = _Props.$forSpawn.withValue(_Props._wellKnownActor(name: "singleton-\(settings.name)")) {
-//            system.assignID(Act.self)
-//        }
-//        id.context.remoteCallInterceptor = ActorSingletonRemoteCallInterceptor(system: system, proxy: proxy)
-//        // Make id remote so everything is remote call
-//        id = id._asRemote
-//
-//        // Save the actor id and proxy
-//        self.singletons[settings.name] = (id, proxy)
-//
-//        let proxied = try Act.resolve(id: id, using: system)
-//        return proxied
     }
 }
 
@@ -145,52 +127,3 @@ extension ClusterSystem {
         return singletonPlugin
     }
 }
-
-// NOTE: we don't need the control -- this was a pattern to expose "method-looking APIs" but now all APIs are method looking!
-///// Provides actor singleton controls such as obtaining a singleton and defining a singleton.
-//public struct ActorSingletonControl {
-//    private let system: ClusterSystem
-//
-//    internal init(_ system: ClusterSystem) {
-//        self.system = system
-//    }
-//
-//    private var singletonPlugin: ActorSingletonPlugin {
-//        let key = ActorSingletonPlugin.pluginKey
-//        guard let singletonPlugin = self.system.settings.plugins[key] else {
-//            fatalError("No plugin found for key: [\(key)], installed plugins: \(self.system.settings.plugins)")
-//        }
-//        return singletonPlugin
-//    }
-//
-//    /// Defines a singleton and indicates that it can be hosted on this node.
-//    public func proxy<Act>(
-//        _ type: Act.Type,
-//        name: String,
-//        _ factory: @escaping (ClusterSystem) async throws -> Act
-//    ) async throws -> Act
-//        where Act: ClusterSingletonProtocol
-//    {
-//        try await self.singletonPlugin.proxy(of: type, name: name, system: self.system, factory)
-//    }
-//
-//    /// Defines a singleton and indicates that it can be hosted on this node.
-//    public func proxy<Act>(
-//        _ type: Act.Type,
-//        settings: ActorSingletonSettings,
-//        _ factory: @escaping (ClusterSystem) async throws -> Act
-//    ) async throws -> Act
-//        where Act: ClusterSingletonProtocol
-//    {
-//        try await self.singletonPlugin.proxy(of: type, settings: settings, system: self.system, factory)
-//    }
-//
-//    public func proxy<Act>(
-//        _ type: Act.Type,
-//        name: String
-//    ) async throws -> Act
-//        where Act: ClusterSingletonProtocol
-//    {
-//        try await self.singletonPlugin.proxy(of: type, name: name, system: self.system)
-//    }
-//}

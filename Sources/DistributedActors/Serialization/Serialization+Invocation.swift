@@ -67,6 +67,7 @@ public struct ClusterInvocationDecoder: DistributedTargetInvocationDecoder {
     let state: _State
     enum _State {
 <<<<<<< HEAD
+<<<<<<< HEAD
         case remoteCall(system: ClusterSystem, message: InvocationMessage)
         // Potentially used by interceptors, when invoking a local target directly
         case localProxyCall(ClusterSystem.InvocationEncoder)
@@ -78,15 +79,26 @@ public struct ClusterInvocationDecoder: DistributedTargetInvocationDecoder {
         case localProxyCall(ClusterSystem.InvocationEncoder)
     }
 >>>>>>> rework how we get hold of intercepted actors
+=======
+        case remoteCall(system: ClusterSystem, message: InvocationMessage)
+        // Potentially used by interceptors, when invoking a local target directly
+        case localProxyCall(ClusterSystem.InvocationEncoder)
+    }
+
+>>>>>>> rework how we get hold of intercepted actors
     var argumentIdx = 0
 
     public init(system: ClusterSystem, message: InvocationMessage) {
         self.state = .remoteCall(system: system, message: message)
     }
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
     
+>>>>>>> rework how we get hold of intercepted actors
+=======
+
 >>>>>>> rework how we get hold of intercepted actors
     internal init(invocation: ClusterSystem.InvocationEncoder) {
         self.state = .localProxyCall(invocation)
@@ -129,18 +141,26 @@ public struct ClusterInvocationDecoder: DistributedTargetInvocationDecoder {
             let argument = try system.serialization.deserialize(as: Argument.self, from: serialized)
             return argument
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
             
+>>>>>>> rework how we get hold of intercepted actors
+=======
+
 >>>>>>> rework how we get hold of intercepted actors
         case .localProxyCall(let invocation):
             guard invocation.arguments.count > self.argumentIdx else {
                 throw SerializationError.notEnoughArgumentsEncoded(expected: self.argumentIdx + 1, have: invocation.arguments.count)
             }
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
             
+>>>>>>> rework how we get hold of intercepted actors
+=======
+
 >>>>>>> rework how we get hold of intercepted actors
             self.argumentIdx += 1
             return invocation.arguments[self.argumentIdx] as! Argument

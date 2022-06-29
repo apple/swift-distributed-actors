@@ -25,7 +25,7 @@ final class ActorSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCase 
             "/system/cluster/gossip",
         ]
     }
-    
+
     func test_da_singletonByClusterLeadership_happyPath() throws {
         var singletonSettings = ActorSingletonSettings(name: GreeterSingleton.name)
         singletonSettings.allocationStrategy = .byLeadership
@@ -345,11 +345,10 @@ struct GreeterSingleton {
 }
 
 distributed actor TheSingleton {
-    
     init(actorSystem: ActorSystem) {
         self.actorSystem = actorSystem
     }
-    
+
     distributed func greet(name: String) -> String {
         "\(self.greeting) \(name)! (from node: \(self.id.node)"
     }
