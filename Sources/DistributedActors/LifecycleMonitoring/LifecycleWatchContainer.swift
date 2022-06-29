@@ -17,7 +17,6 @@ import Distributed
 import DistributedActorsConcurrencyHelpers
 import NIO
 
-
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: LifecycleWatchContainer
 
@@ -226,7 +225,7 @@ extension LifecycleWatchContainer {
     ///
     /// Does NOT immediately handle these `Terminated` signals, they are treated as any other normal signal would,
     /// such that the user can have a chance to handle and react to them.
-    fileprivate func receiveNodeTerminated(_ terminatedNode: UniqueNode) {
+    private func receiveNodeTerminated(_ terminatedNode: UniqueNode) {
         // TODO: remove actors as we notify about them
         for (watched, _) in self.watching {
             guard watched.uniqueNode == terminatedNode else {
