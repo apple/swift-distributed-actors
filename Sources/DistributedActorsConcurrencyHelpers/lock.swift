@@ -18,8 +18,6 @@ import Darwin
 import Glibc
 #endif
 
-import CDistributedActorsMailbox // for backtrace
-
 /// A threading lock based on `libpthread` instead of `libdispatch`.
 ///
 /// This object provides a lock on top of a single `pthread_mutex_t`. This kind
@@ -52,7 +50,6 @@ public final class Lock {
     public func lock() {
         let err = pthread_mutex_lock(self.mutex)
         if (err != 0) {
-            sact_dump_backtrace()
             fatalError("\(#function) failed in pthread_mutex with error \(err)")
         }
     }
