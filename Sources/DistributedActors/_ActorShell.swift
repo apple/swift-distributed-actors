@@ -620,7 +620,7 @@ public final class _ActorShell<Message: Codable>: _ActorContext<Message>, Abstra
         _ naming: _ActorNaming,
         of type: M.Type = M.self,
         props: _Props = _Props(),
-        file: String = #file, line: UInt = #line,
+        file: String = #filePath, line: UInt = #line,
         _ behavior: _Behavior<M>
     ) throws -> _ActorRef<M>
         where M: Codable
@@ -634,7 +634,7 @@ public final class _ActorShell<Message: Codable>: _ActorContext<Message>, Abstra
         _ naming: _ActorNaming,
         of type: Message.Type = Message.self,
         props: _Props = _Props(),
-        file: String = #file, line: UInt = #line,
+        file: String = #filePath, line: UInt = #line,
         _ behavior: _Behavior<Message>
     ) throws -> _ActorRef<Message>
         where Message: Codable
@@ -653,7 +653,7 @@ public final class _ActorShell<Message: Codable>: _ActorContext<Message>, Abstra
     override public func watch<Watchee>(
         _ watchee: Watchee,
         with terminationMessage: Message? = nil,
-        file: String = #file, line: UInt = #line
+        file: String = #filePath, line: UInt = #line
     ) -> Watchee where Watchee: _DeathWatchable {
         self.deathWatch.watch(watchee: watchee, with: terminationMessage, myself: self, file: file, line: line)
         return watchee
@@ -662,7 +662,7 @@ public final class _ActorShell<Message: Codable>: _ActorContext<Message>, Abstra
     @discardableResult
     override public func unwatch<Watchee>(
         _ watchee: Watchee,
-        file: String = #file, line: UInt = #line
+        file: String = #filePath, line: UInt = #line
     ) -> Watchee where Watchee: _DeathWatchable {
         self.deathWatch.unwatch(watchee: watchee, myself: self.myself, file: file, line: line)
         return watchee

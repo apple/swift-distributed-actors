@@ -174,7 +174,7 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
     public static func _spawn(
         _ system: ActorSystem,
         select selector: WorkerPool<Worker>.Selector,
-        file: String = #file, line: UInt = #line
+        file: String = #filePath, line: UInt = #line
     ) async throws -> WorkerPool<Worker> {
         // TODO: pass in settings rather than create them here
         let settings = try WorkerPoolSettings<Worker>(selector: selector).validate()

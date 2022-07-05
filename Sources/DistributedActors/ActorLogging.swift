@@ -357,7 +357,7 @@ extension Logger {
         level: Logger.Level?,
         _ message: @autoclosure () -> Logger.Message,
         metadata: @autoclosure () -> Logger.Metadata? = nil,
-        file: String = #file, function: String = #function, line: UInt = #line
+        file: String = #filePath, function: String = #function, line: UInt = #line
     ) {
         if let level = level {
             self.log(level: level, message(), metadata: metadata(), file: file, function: function, line: line)

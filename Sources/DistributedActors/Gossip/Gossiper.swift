@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2020 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2020-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -43,7 +43,7 @@ enum Gossiper {
             naming,
             of: GossipShell<Envelope, Acknowledgement>.Message.self,
             props: props,
-            file: #file, line: #line,
+            file: #filePath, line: #line,
             GossipShell<Envelope, Acknowledgement>(settings: settings, makeLogic: makeLogic).behavior
         )
         return GossiperControl(ref)

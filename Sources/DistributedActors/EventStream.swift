@@ -48,15 +48,15 @@ public struct EventStream<Event: Codable>: AsyncSequence {
         self.ref = ref
     }
 
-    public func subscribe(_ ref: _ActorRef<Event>, file: String = #file, line: UInt = #line) {
+    public func subscribe(_ ref: _ActorRef<Event>, file: String = #filePath, line: UInt = #line) {
         self.ref.tell(.subscribe(ref), file: file, line: line)
     }
 
-    public func unsubscribe(_ ref: _ActorRef<Event>, file: String = #file, line: UInt = #line) {
+    public func unsubscribe(_ ref: _ActorRef<Event>, file: String = #filePath, line: UInt = #line) {
         self.ref.tell(.unsubscribe(ref), file: file, line: line)
     }
 
-    public func publish(_ event: Event, file: String = #file, line: UInt = #line) {
+    public func publish(_ event: Event, file: String = #filePath, line: UInt = #line) {
         self.ref.tell(.publish(event), file: file, line: line)
     }
 

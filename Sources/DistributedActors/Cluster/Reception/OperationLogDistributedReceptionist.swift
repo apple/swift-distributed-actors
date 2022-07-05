@@ -1052,7 +1052,7 @@ extension OpLogDistributedReceptionist {
 //    /// Enabled by `Settings.traceLogLevel` or `-DSACT_TRACELOG_RECEPTIONIST`
 //    func tracelog(
 //            _ type: TraceLogType, message: Any,
-//            file: String = #file, function: String = #function, line: UInt = #line
+//            file: String = #filePath, function: String = #function, line: UInt = #line
 //    ) {
 //        if let level = system.settings.receptionist.traceLogLevel {
 //            log.log(

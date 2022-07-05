@@ -812,7 +812,7 @@ extension _OperationLogClusterReceptionist {
     /// Enabled by `Settings.traceLogLevel` or `-DSACT_TRACELOG_RECEPTIONIST`
     func tracelog(
         _ context: _ActorContext<Message>, _ type: TraceLogType, message: Any,
-        file: String = #file, function: String = #function, line: UInt = #line
+        file: String = #filePath, function: String = #function, line: UInt = #line
     ) {
         if let level = context.system.settings.receptionist.traceLogLevel {
             context.log.log(

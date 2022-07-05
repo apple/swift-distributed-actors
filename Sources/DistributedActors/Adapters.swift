@@ -68,7 +68,7 @@ internal final class _ActorRefAdapter<To: Codable>: _AbstractAdapter {
         self.target._system
     }
 
-    func sendSystemMessage(_ message: _SystemMessage, file: String = #file, line: UInt = #line) {
+    func sendSystemMessage(_ message: _SystemMessage, file: String = #filePath, line: UInt = #line) {
         switch message {
         case .watch(let watchee, let watcher):
             self.addWatcher(watchee: watchee, watcher: watcher)
@@ -82,7 +82,7 @@ internal final class _ActorRefAdapter<To: Codable>: _AbstractAdapter {
     }
 
     @usableFromInline
-    func trySendUserMessage(_ message: Any, file: String = #file, line: UInt = #line) {
+    func trySendUserMessage(_ message: Any, file: String = #filePath, line: UInt = #line) {
         self.target._unsafeUnwrapCell.sendAdaptedMessage(message, file: file, line: line)
     }
 
@@ -207,11 +207,11 @@ internal final class _DeadLetterAdapterPersonality: _AbstractAdapter {
         self.deadLetters._system
     }
 
-    func trySendUserMessage(_ message: Any, file: String = #file, line: UInt = #line) {
+    func trySendUserMessage(_ message: Any, file: String = #filePath, line: UInt = #line) {
         self.deadLetters.tell(DeadLetter(message, recipient: self.deadRecipient, sentAtFile: file, sentAtLine: line), file: file, line: line)
     }
 
-    func sendSystemMessage(_ message: _SystemMessage, file: String = #file, line: UInt = #line) {
+    func sendSystemMessage(_ message: _SystemMessage, file: String = #filePath, line: UInt = #line) {
         self.deadLetters._sendSystemMessage(message, file: file, line: line)
     }
 
@@ -270,7 +270,7 @@ internal final class SubReceiveAdapter<Message: Codable, OwnerMessage: Codable>:
         self.target._system
     }
 
-    func sendSystemMessage(_ message: _SystemMessage, file: String = #file, line: UInt = #line) {
+    func sendSystemMessage(_ message: _SystemMessage, file: String = #filePath, line: UInt = #line) {
         switch message {
         case .watch(let watchee, let watcher):
             self.addWatcher(watchee: watchee, watcher: watcher)
@@ -284,12 +284,12 @@ internal final class SubReceiveAdapter<Message: Codable, OwnerMessage: Codable>:
     }
 
     @usableFromInline
-    func _sendUserMessage(_ message: Message, file: String = #file, line: UInt = #line) {
+    func _sendUserMessage(_ message: Message, file: String = #filePath, line: UInt = #line) {
         self.target._unsafeUnwrapCell.sendSubMessage(message, identifier: self.identifier, subReceiveAddress: self.adapterAddress)
     }
 
     @usableFromInline
-    func trySendUserMessage(_ message: Any, file: String = #file, line: UInt = #line) {
+    func trySendUserMessage(_ message: Any, file: String = #filePath, line: UInt = #line) {
         if let message = message as? Message {
             self._sendUserMessage(message, file: file, line: line)
         } else {

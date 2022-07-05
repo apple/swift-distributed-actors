@@ -98,7 +98,7 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
 
         func expectedDownMemberEventsFishing(
             on: ClusterSystem,
-            file: StaticString = #file, line: UInt = #line
+            file: StaticString = #filePath, line: UInt = #line
         ) -> (Cluster.Event) -> ActorTestProbe<Cluster.Event>.FishingDirective<Cluster.MembershipChange> {
             pinfo("Expecting [\(expectedDownSystem)] to become [.down] on [\(on.cluster.uniqueNode.node)], method to stop the node [\(stopMethod)]")
 
@@ -257,7 +257,7 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
 
         func expectedDownMemberEventsFishing(
             on: ClusterSystem,
-            file: StaticString = #file, line: UInt = #line
+            file: StaticString = #filePath, line: UInt = #line
         ) -> (Cluster.Event) -> ActorTestProbe<Cluster.Event>.FishingDirective<Cluster.MembershipChange> {
             pinfo("Expecting \(nodesToDown.map(\.cluster.uniqueNode.node)) to become [.down] on [\(on.cluster.uniqueNode.node)]")
             var removalsFound = 0

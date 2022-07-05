@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -599,7 +599,7 @@ extension _Behavior {
     ///
     /// Note: The returned behavior MUST be `_Behavior.canonicalize`-ed in the vast majority of cases.
     // Implementation note: We don't do so here automatically in order to keep interpretations transparent and testable.
-    public func interpretMessage(context: _ActorContext<Message>, message: Message, file: StaticString = #file, line: UInt = #line) throws -> _Behavior<Message> {
+    public func interpretMessage(context: _ActorContext<Message>, message: Message, file: StaticString = #filePath, line: UInt = #line) throws -> _Behavior<Message> {
         switch self.underlying {
         case .receiveMessage(let recv): return try recv(message)
         case .receiveMessageAsync(let recv): return self.receiveMessageAsync(recv, message)
@@ -709,7 +709,7 @@ extension _Behavior {
     internal func interpretOrElse(
         context: _ActorContext<Message>,
         first: _Behavior<Message>, orElse second: _Behavior<Message>, message: Message,
-        file: StaticString = #file, line: UInt = #line
+        file: StaticString = #filePath, line: UInt = #line
     ) throws -> _Behavior<Message> {
         var nextBehavior = try first.interpretMessage(context: context, message: message, file: file, line: line)
         if nextBehavior.isUnhandled {
@@ -749,7 +749,7 @@ extension _Behavior {
         return self
     }
 
-    internal func validateAsInitialFatal(file: String = #file, line: UInt = #line) {
+    internal func validateAsInitialFatal(file: String = #filePath, line: UInt = #line) {
         switch self.underlying {
         case .same, .unhandled: fatalError("Illegal initial behavior! Attempted to spawn(\(self)) at \(file):\(line)")
         default: return

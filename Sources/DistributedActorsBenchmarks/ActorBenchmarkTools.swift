@@ -26,7 +26,7 @@ internal class BenchmarkLatchPersonality<Message: Codable>: _CellDelegate<Messag
 //        startTime.destroy()
     }
 
-    override func sendMessage(_ message: Message, file: String = #file, line: UInt = #line) {
+    override func sendMessage(_ message: Message, file: String = #filePath, line: UInt = #line) {
         self.receptacle.offerOnce(message)
         self.startTime.store(SwiftBenchmarkTools.Timer().getTimeAsInt(), ordering: .relaxed)
     }

@@ -128,7 +128,7 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
     public func joinNodes(
         node: ClusterSystem, with other: ClusterSystem,
         ensureWithin: Duration? = nil, ensureMembers maybeExpectedStatus: Cluster.MemberStatus? = nil,
-        file: StaticString = #file, line: UInt = #line
+        file: StaticString = #filePath, line: UInt = #line
     ) async throws {
         node.cluster.join(node: other.cluster.uniqueNode.node)
 
@@ -146,21 +146,21 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
 
     public func ensureNodes(
         _ status: Cluster.MemberStatus, on system: ClusterSystem? = nil, within: Duration = .seconds(20), nodes: UniqueNode...,
-        file: StaticString = #file, line: UInt = #line
+        file: StaticString = #filePath, line: UInt = #line
     ) async throws {
         try await self.ensureNodes(status, on: system, within: within, nodes: nodes, file: file, line: line)
     }
 
     public func ensureNodes(
         atLeast status: Cluster.MemberStatus, on system: ClusterSystem? = nil, within: Duration = .seconds(20), nodes: UniqueNode...,
-        file: StaticString = #file, line: UInt = #line
+        file: StaticString = #filePath, line: UInt = #line
     ) async throws {
         try await self.ensureNodes(atLeast: status, on: system, within: within, nodes: nodes, file: file, line: line)
     }
 
     public func ensureNodes(
         _ status: Cluster.MemberStatus, on system: ClusterSystem? = nil, within: Duration = .seconds(20), nodes: [UniqueNode],
-        file: StaticString = #file, line: UInt = #line
+        file: StaticString = #filePath, line: UInt = #line
     ) async throws {
         guard let onSystem = system ?? self._nodes.first(where: { !$0.isShuttingDown }) else {
             fatalError("Must at least have 1 system present to use [\(#function)]")
@@ -178,7 +178,7 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
 
     public func ensureNodes(
         atLeast status: Cluster.MemberStatus, on system: ClusterSystem? = nil, within: Duration = .seconds(20), nodes: [UniqueNode],
-        file: StaticString = #file, line: UInt = #line
+        file: StaticString = #filePath, line: UInt = #line
     ) async throws {
         guard let onSystem = system ?? self._nodes.first(where: { !$0.isShuttingDown }) else {
             fatalError("Must at least have 1 system present to use [\(#function)]")
@@ -200,7 +200,7 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
 // MARK: Printing information
 
 extension ClusteredActorSystemsXCTestCase {
-    public func pinfoMembership(_ system: ClusterSystem, file: StaticString = #file, line: UInt = #line) {
+    public func pinfoMembership(_ system: ClusterSystem, file: StaticString = #filePath, line: UInt = #line) {
         let testKit = self.testKit(system)
         let p = testKit.makeTestProbe(expecting: Cluster.Membership.self)
 
@@ -255,7 +255,7 @@ extension ClusteredActorSystemsXCTestCase {
     public func assertAssociated(
         _ system: ClusterSystem, withAtLeast node: UniqueNode,
         timeout: Duration? = nil, interval: Duration? = nil,
-        verbose: Bool = false, file: StaticString = #file, line: UInt = #line, column: UInt = #column
+        verbose: Bool = false, file: StaticString = #filePath, line: UInt = #line, column: UInt = #column
     ) throws {
         try self.assertAssociated(
             system, withAtLeast: [node], timeout: timeout, interval: interval,
@@ -266,7 +266,7 @@ extension ClusteredActorSystemsXCTestCase {
     public func assertAssociated(
         _ system: ClusterSystem, withExactly node: UniqueNode,
         timeout: Duration? = nil, interval: Duration? = nil,
-        verbose: Bool = false, file: StaticString = #file, line: UInt = #line, column: UInt = #column
+        verbose: Bool = false, file: StaticString = #filePath, line: UInt = #line, column: UInt = #column
     ) throws {
         try self.assertAssociated(
             system, withExactly: [node], timeout: timeout, interval: interval,
@@ -284,7 +284,7 @@ extension ClusteredActorSystemsXCTestCase {
         withExactly exactlyNodes: [UniqueNode] = [],
         withAtLeast atLeastNodes: [UniqueNode] = [],
         timeout: Duration? = nil, interval: Duration? = nil,
-        verbose: Bool = false, file: StaticString = #file, line: UInt = #line, column: UInt = #column
+        verbose: Bool = false, file: StaticString = #filePath, line: UInt = #line, column: UInt = #column
     ) throws {
         // FIXME: this is a weak workaround around not having "extensions" (unique object per actor system)
         // FIXME: this can be removed once issue #458 lands
@@ -359,7 +359,7 @@ extension ClusteredActorSystemsXCTestCase {
         on system: ClusterSystem, node: UniqueNode,
         is expectedStatus: Cluster.MemberStatus,
         within: Duration,
-        file: StaticString = #file, line: UInt = #line
+        file: StaticString = #filePath, line: UInt = #line
     ) async throws {
         let testKit = self.testKit(system)
 
@@ -388,7 +388,7 @@ extension ClusteredActorSystemsXCTestCase {
         on system: ClusterSystem, node: UniqueNode,
         atLeast expectedAtLeastStatus: Cluster.MemberStatus,
         within: Duration,
-        file: StaticString = #file, line: UInt = #line
+        file: StaticString = #filePath, line: UInt = #line
     ) async throws {
         let testKit = self.testKit(system)
 
@@ -435,7 +435,7 @@ extension ClusteredActorSystemsXCTestCase {
     /// An error is thrown but NOT failing the test; use in pair with `testKit.eventually` to achieve the expected behavior.
     public func assertLeaderNode(
         on system: ClusterSystem, is expectedNode: UniqueNode?,
-        file: StaticString = #file, line: UInt = #line
+        file: StaticString = #filePath, line: UInt = #line
     ) throws {
         let testKit = self.testKit(system)
         let p = testKit.makeTestProbe(expecting: Cluster.Membership.self)

@@ -68,7 +68,7 @@ extension ActorTestKit {
     public func makeTestProbe<Message: Codable>(
         _ naming: _ActorNaming? = nil,
         expecting type: Message.Type = Message.self,
-        file: StaticString = #file, line: UInt = #line
+        file: StaticString = #filePath, line: UInt = #line
     ) -> ActorTestProbe<Message> {
         self.makeProbesLock.lock()
         defer { self.makeProbesLock.unlock() }
@@ -102,7 +102,7 @@ extension ActorTestKit {
     public func spawnEventStreamTestProbe<Event: Codable>(
         _ naming: _ActorNaming? = nil,
         subscribedTo eventStream: EventStream<Event>,
-        file: String = #file, line: UInt = #line, column: UInt = #column
+        file: String = #filePath, line: UInt = #line, column: UInt = #column
     ) -> ActorTestProbe<Event> {
         let p = self.makeTestProbe(naming ?? _ActorNaming.prefixed(with: "\(eventStream.ref.path.name)-subscriberProbe"), expecting: Event.self)
         eventStream.subscribe(p.ref)
@@ -126,7 +126,7 @@ extension ActorTestKit {
     @discardableResult
     public func eventually<T>(
         within duration: Duration, interval: Duration = .milliseconds(100),
-        file: StaticString = #file, line: UInt = #line, column: UInt = #column,
+        file: StaticString = #filePath, line: UInt = #line, column: UInt = #column,
         _ block: () throws -> T
     ) throws -> T {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
@@ -167,7 +167,7 @@ extension ActorTestKit {
     @discardableResult
     public func eventually<T>(
         within duration: Duration, interval: Duration = .milliseconds(100),
-        file: StaticString = #file, line: UInt = #line, column: UInt = #column,
+        file: StaticString = #filePath, line: UInt = #line, column: UInt = #column,
         _ block: () async throws -> T
     ) async throws -> T {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
@@ -251,7 +251,7 @@ extension ActorTestKit {
     /// Throws an error when the block fails within the specified time amount.
     public func assertHolds(
         for duration: Duration, interval: Duration = .milliseconds(100),
-        file: StaticString = #file, line: UInt = #line, column: UInt = #column,
+        file: StaticString = #filePath, line: UInt = #line, column: UInt = #column,
         _ block: () throws -> Void
     ) throws {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
@@ -285,7 +285,7 @@ extension ActorTestKit {
 extension ActorTestKit {
     // TODO: how to better hide such more nasty assertions?
     // TODO: Not optimal since we always do traverseAll rather than follow the Path of the context
-    public func _assertActorPathOccupied(_ path: String, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
+    public func _assertActorPathOccupied(_ path: String, file: StaticString = #filePath, line: UInt = #line, column: UInt = #column) throws {
         precondition(!path.contains("#"), "assertion path MUST NOT contain # id section of an unique path.")
 
         let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
@@ -391,7 +391,7 @@ public final class Mock_ActorContext<Message: Codable>: _ActorContext<Message> {
     override public func watch<Watchee>(
         _ watchee: Watchee,
         with terminationMessage: Message? = nil,
-        file: String = #file, line: UInt = #line
+        file: String = #filePath, line: UInt = #line
     ) -> Watchee where Watchee: _DeathWatchable {
         fatalError("Failed: \(MockActorContextError())")
     }
@@ -399,7 +399,7 @@ public final class Mock_ActorContext<Message: Codable>: _ActorContext<Message> {
     @discardableResult
     override public func unwatch<Watchee>(
         _ watchee: Watchee,
-        file: String = #file, line: UInt = #line
+        file: String = #filePath, line: UInt = #line
     ) -> Watchee where Watchee: _DeathWatchable {
         fatalError("Failed: \(MockActorContextError())")
     }
@@ -407,7 +407,7 @@ public final class Mock_ActorContext<Message: Codable>: _ActorContext<Message> {
     @discardableResult
     override public func _spawn<M>(
         _ naming: _ActorNaming, of type: M.Type = M.self, props: _Props = _Props(),
-        file: String = #file, line: UInt = #line,
+        file: String = #filePath, line: UInt = #line,
         _ behavior: _Behavior<M>
     ) throws -> _ActorRef<M>
         where M: Codable
@@ -418,7 +418,7 @@ public final class Mock_ActorContext<Message: Codable>: _ActorContext<Message> {
     @discardableResult
     override public func _spawnWatch<M>(
         _ naming: _ActorNaming, of type: M.Type = M.self, props: _Props = _Props(),
-        file: String = #file, line: UInt = #line,
+        file: String = #filePath, line: UInt = #line,
         _ behavior: _Behavior<M>
     ) throws -> _ActorRef<M>
         where M: Codable
@@ -453,7 +453,7 @@ extension ActorTestKit {
     ///     testKit.eventually(within: .seconds(3)) {
     ///         guard ... else { throw testKit.error("failed to extract expected information") }
     ///     }
-    public func error(_ message: String? = nil, file: StaticString = #file, line: UInt = #line, column: UInt = #column) -> Error {
+    public func error(_ message: String? = nil, file: StaticString = #filePath, line: UInt = #line, column: UInt = #column) -> Error {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
         let fullMessage: String = message ?? "<no message>"
         return callSite.error(fullMessage, failTest: false)
@@ -464,7 +464,7 @@ extension ActorTestKit {
     /// Examples:
     ///
     ///     guard ... else { throw testKit.fail("failed to extract expected information") }
-    public func fail(_ message: String? = nil, file: StaticString = #file, line: UInt = #line, column: UInt = #column) -> Error {
+    public func fail(_ message: String? = nil, file: StaticString = #filePath, line: UInt = #line, column: UInt = #column) -> Error {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
         let fullMessage: String = message ?? "<no message>"
         return callSite.error(fullMessage, failTest: true)

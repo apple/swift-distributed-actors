@@ -75,7 +75,7 @@ extension LifecycleWatchContainer {
     public func termination(
         of watcheeID: ActorID,
         @_implicitSelfCapture whenTerminated: @escaping @Sendable (ClusterSystem.ActorID) async -> Void,
-        file: String = #file, line: UInt = #line
+        file: String = #filePath, line: UInt = #line
     ) {
         pprint("ENTER: \(#function) ...")
 
@@ -126,7 +126,7 @@ extension LifecycleWatchContainer {
     /// - Returns: the passed in watchee reference for easy chaining `e.g. return context.unwatch(ref)`
     public func unwatch<Watchee>(
         watchee: Watchee,
-        file: String = #file, line: UInt = #line
+        file: String = #filePath, line: UInt = #line
     ) -> Watchee where Watchee: DistributedActor, Watchee.ActorSystem == ClusterSystem {
         pprint("ENTER: \(#function)")
 
@@ -240,7 +240,7 @@ extension LifecycleWatchContainer {
 //            let address = watcherID
 //
 //            let ref = system._resolveUntyped(context: .init(id: id, system: system))
-//            ref._sendSystemMessage(.terminated(ref: watched, existenceConfirmed: existenceConfirmed, idTerminated: true), file: #file, line: #line)
+//            ref._sendSystemMessage(.terminated(ref: watched, existenceConfirmed: existenceConfirmed, idTerminated: true), file: #filePath, line: #line)
             // fn(watched)
             self.receiveTerminated(watched)
         }
@@ -264,7 +264,7 @@ extension LifecycleWatchContainer {
 
     private func subscribeNodeTerminatedEvents(
         watchedID: ActorID,
-        file: String = #file, line: UInt = #line
+        file: String = #filePath, line: UInt = #line
     ) {
         self.nodeDeathWatcher?.tell( // different actor
             .remoteDistributedActorWatched(

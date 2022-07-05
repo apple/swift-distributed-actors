@@ -354,7 +354,7 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
 
     func expectPing(
         on probe: ActorTestProbe<SWIM.Message>, reply: Bool, incarnation: SWIM.Incarnation = 0,
-        file: StaticString = #file, line: UInt = #line, column: UInt = #column,
+        file: StaticString = #filePath, line: UInt = #line, column: UInt = #column,
         assertPayload: (SWIM.GossipPayload) throws -> Void = { _ in
         }
     ) throws {
@@ -372,7 +372,7 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
     func awaitStatus(
         _ status: SWIM.Status, for peer: _ActorRef<SWIM.Message>,
         on swimShell: _ActorRef<SWIM.Message>, within timeout: Duration,
-        file: StaticString = #file, line: UInt = #line, column: UInt = #column
+        file: StaticString = #filePath, line: UInt = #line, column: UInt = #column
     ) throws {
         let testKit = self._testKits.first!
         let stateProbe = testKit.makeTestProbe(expecting: [SWIM.Member].self)
@@ -393,7 +393,7 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
     func holdStatus(
         _ status: SWIM.Status, for peer: _ActorRef<SWIM.Message>,
         on swimShell: _ActorRef<SWIM.Message>, within timeout: Duration,
-        file: StaticString = #file, line: UInt = #line, column: UInt = #column
+        file: StaticString = #filePath, line: UInt = #line, column: UInt = #column
     ) throws {
         let testKit = self._testKits.first!
         let stateProbe = testKit.makeTestProbe(expecting: [SWIM.Member].self)

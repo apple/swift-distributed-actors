@@ -67,7 +67,7 @@ extension _ActorRef: ReceivesQuestions {
     func ask<Answer>(
         for answerType: Answer.Type = Answer.self,
         timeout: Duration,
-        file: String = #file, function: String = #function, line: UInt = #line,
+        file: String = #filePath, function: String = #function, line: UInt = #line,
         _ makeQuestion: @escaping (_ActorRef<Answer>) -> Question
     ) -> AskResponse<Answer> {
         guard let system = self._system else {

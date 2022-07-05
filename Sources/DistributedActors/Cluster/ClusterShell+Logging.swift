@@ -25,7 +25,7 @@ extension ClusterShellState {
     /// Enabled with `-DSACT_TRACELOG_CLUSTER`
     func tracelog(
         _ type: TraceLogType, message: Any,
-        file: String = #file, function: String = #function, line: UInt = #line
+        file: String = #filePath, function: String = #function, line: UInt = #line
     ) {
         let level: Logger.Level?
         #if SACT_TRACELOG_CLUSTER
@@ -70,7 +70,7 @@ extension ClusterShell {
     /// Optional "dump all messages" logging.
     func tracelog(
         _ context: _ActorContext<ClusterShell.Message>, _ type: TraceLogType, message: Any,
-        file: String = #file, function: String = #function, line: UInt = #line
+        file: String = #filePath, function: String = #function, line: UInt = #line
     ) {
         if let level = context.system.settings.traceLogLevel {
             context.log.log(
