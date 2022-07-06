@@ -922,7 +922,8 @@ extension ClusterSystem {
         //       but we can only do this when we remove the dependence on paths and behaviors entirely from DA actors https://github.com/apple/swift-distributed-actors/issues/957
         id.context = DistributedActorContext(
             lifecycle: lifecycleContainer,
-            tags: id.context.tags)
+            tags: id.context.tags
+        )
 
         self.log.warning("Assign identity", metadata: [
             "actor/type": "\(actorType)",

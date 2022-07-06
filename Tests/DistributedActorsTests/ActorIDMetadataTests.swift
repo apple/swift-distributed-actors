@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-@testable import DistributedActors
 import Distributed
+@testable import DistributedActors
 import DistributedActorsTestKit
 import XCTest
 
@@ -30,37 +30,35 @@ extension ActorTags {
 }
 
 final class ActorIDMetadataTests: ClusteredActorSystemsXCTestCase {
-    
     distributed actor Example: CustomStringConvertible {
         typealias ActorSystem = ClusterSystem
-        
-        @Metadata(ActorTags.exampleUserID)
+
+        @ActorID.Metadata(ActorTags.exampleUserID)
         var userID: String
-        
+
         init(userID: String, actorSystem: ActorSystem) async {
             self.actorSystem = actorSystem
             self.userID = userID
         }
-        
+
         nonisolated var description: String {
             "\(Self.self)(\(self.metadata))" // TODO: rename to metadata
         }
-        
     }
-    
+
     func test_metadata_shouldBeStoredInID() async throws {
         let system = await setUpNode("first")
         let userID = "user-1234"
         let example = await Example(userID: userID, actorSystem: system)
-        
+
         example.id.tags[ActorTags.exampleUserID]!.shouldEqual(userID)
     }
-    
+
     func test_metadata_beUsableInDescription() async throws {
         let system = await setUpNode("first")
         let userID = "user-1234"
         let example = await Example(userID: userID, actorSystem: system)
-        
+
         "\(example)".shouldContain("\"user-id\": \"user-1234\"")
     }
 }

@@ -12,16 +12,16 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Distributed
 import Dispatch
+import Distributed
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ActorTags
 
 /// Container of tags a concrete actor identity was tagged with.
 public final class ActorTags: CustomStringConvertible, CustomDebugStringConvertible {
-    internal let lock: DispatchSemaphore = DispatchSemaphore(value: 1)
-    
+    internal let lock = DispatchSemaphore(value: 1)
+
     // We still might re-think how we represent the storage.
     private var _storage: [String: Sendable & Codable] = [:] // FIXME: fix the key as AnyActorTagKey
 
@@ -36,32 +36,32 @@ public final class ActorTags: CustomStringConvertible, CustomDebugStringConverti
     }
 
     public var count: Int {
-        lock.wait()
+        self.lock.wait()
         defer { lock.signal() }
-        
+
         return self._storage.count
     }
 
     public var isEmpty: Bool {
-        lock.wait()
+        self.lock.wait()
         defer { lock.signal() }
-        
+
         return self._storage.isEmpty
     }
 
     subscript<Key: ActorTagKey>(_ key: Key.Type) -> Key.Value? {
         get {
-            lock.wait()
+            self.lock.wait()
             defer { lock.signal() }
-                
+
             guard let v: Any = self._storage[key.id] else { return nil }
-            
+
             // cast-safe, as this subscript is the only way to set a value.
             let value = v as! Key.Value
             return value
         }
         set {
-            lock.wait()
+            self.lock.wait()
             defer { lock.signal() }
             if let existing = self._storage[key.id] {
                 fatalError("Existing ActorID [\(key)] metadata, cannot be replaced. Was: [\(existing)], newValue: [\(optional: newValue))]")
@@ -71,16 +71,16 @@ public final class ActorTags: CustomStringConvertible, CustomDebugStringConverti
     }
 
     public var description: String {
-        lock.wait()
+        self.lock.wait()
         let copy = self._storage
-        lock.signal()
+        self.lock.signal()
         return "\(copy)"
     }
-    
+
     public var debugDescription: String {
-        lock.wait()
+        self.lock.wait()
         let copy = self._storage
-        lock.signal()
+        self.lock.signal()
         return "\(Self.self)(\(copy))"
     }
 }

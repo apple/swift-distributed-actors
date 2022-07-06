@@ -21,21 +21,17 @@ import Distributed
 public typealias ActorID = ClusterSystem.ActorID
 
 extension DistributedActor where ActorSystem == ClusterSystem {
-    public typealias Metadata = ClusterSystem.ActorID.Metadata
-
     public nonisolated var metadata: ActorTags {
         self.id.tags
     }
 }
 
 extension ClusterSystem.ActorID {
-
     @propertyWrapper
     public struct Metadata<Value: Sendable & Codable, Key: ActorTagKey<Value>> {
         private var stored: Value?
 
-        public init(_ key: Key.Type) {
-        }
+        public init(_ key: Key.Type) {}
 
         public var wrappedValue: Value {
             get { fatalError("called wrappedValue getter") }
@@ -60,9 +56,7 @@ extension ClusterSystem.ActorID {
                 tags[Key.self] = newValue
             }
         }
-
     }
-
 }
 
 extension ClusterSystem {
@@ -143,7 +137,7 @@ extension ClusterSystem {
         ///
         /// - SeeAlso: `ActorTags` for a detailed discussion of some frequently used tags.
         public var tags: ActorTags {
-            context.tags
+            self.context.tags
         }
 
         /// Internal "actor context" which is used as storage for additional cluster actor features, such as watching.
@@ -154,7 +148,7 @@ extension ClusterSystem {
         public var path: ActorPath {
             get {
                 guard let path = tags[ActorTags.path] else {
-                     fatalError("FIXME: ActorTags.path was not set on \(self.incarnation)! NOTE THAT PATHS ARE TO BECOME OPTIONAL!!!") // FIXME(distributed): must be removed
+                    fatalError("FIXME: ActorTags.path was not set on \(self.incarnation)! NOTE THAT PATHS ARE TO BECOME OPTIONAL!!!") // FIXME(distributed): must be removed
                 }
                 return path
             }
@@ -200,7 +194,7 @@ extension ClusterSystem {
             self._location = .remote(node)
             self.incarnation = incarnation
             if let path {
-                context.tags[ActorTags.path] = path
+                self.context.tags[ActorTags.path] = path
             }
             traceLog_DeathWatch("Made ID: \(self)")
         }
@@ -247,7 +241,8 @@ extension ClusterSystem {
             var copy = self
             copy.context = .init(
                 lifecycle: nil,
-                tags: self.tags)
+                tags: self.tags
+            )
             return copy
         }
 
@@ -255,7 +250,8 @@ extension ClusterSystem {
             var copy = self
             copy.context = .init(
                 lifecycle: self.context.lifecycle,
-                tags: nil)
+                tags: nil
+            )
             return copy
         }
     }
@@ -947,7 +943,7 @@ extension ActorID: Codable {
         // Decode any tags:
         if let tagsContainer = try? container.nestedContainer(keyedBy: ActorCoding.TagKeys.self, forKey: ActorCoding.CodingKeys.tags) {
             // tags container found, try to decode all known tags:
-            
+
             // FIXME: implement decoding tags/metadata in general
 
             if let context = decoder.actorSerializationContext {

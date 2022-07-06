@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Distributed
 import Dispatch
+import Distributed
 
 /// Internal context object used by the actor system to support per-actor state, such as necessary to implement lifecycle watch etc.
 ///
@@ -25,7 +25,8 @@ public final class DistributedActorContext {
     let tags: ActorTags
 
     init(lifecycle: LifecycleWatchContainer?,
-         tags: ActorTags? = nil) {
+         tags: ActorTags? = nil)
+    {
         self.lifecycle = lifecycle
         self.tags = tags ?? ActorTags(tags: [])
 
