@@ -19,7 +19,6 @@ import struct NIO.TimeAmount
 
 @usableFromInline
 struct Timer<Message> { // FIXME(distributed): deprecate and remove in favor of DistributedActorTimers
-    @usableFromInline
     let key: _TimerKey
     @usableFromInline
     let message: Message?
@@ -48,7 +47,7 @@ struct TimerEvent {
 ///     timers.cancelTimer(forKey: timerKey)
 ///
 // TODO: replace timers with AsyncTimerSequence from swift-async-algorithms
-public struct _TimerKey: Hashable {
+internal struct _TimerKey: Hashable {
     private let identifier: AnyHashable
 
     @usableFromInline
@@ -87,7 +86,6 @@ public final class _BehaviorTimers<Message: Codable> {
     // TODO: eventually replace with our own scheduler implementation
     @usableFromInline
     internal let dispatchQueue = DispatchQueue.global()
-    @usableFromInline
     internal var installedTimers: [_TimerKey: Timer<Message>] = [:]
     @usableFromInline
     internal unowned var context: _ActorContext<Message>
@@ -114,7 +112,7 @@ public final class _BehaviorTimers<Message: Codable> {
     /// Cancels timer associated with the given key.
     ///
     /// - Parameter key: key of the timer to cancel
-    public func cancel(for key: _TimerKey) {
+    internal func cancel(for key: _TimerKey) {
         if let timer = self.installedTimers.removeValue(forKey: key) {
             if context.system.settings.logging.verboseTimers {
                 self.context.log.trace("Cancel timer [\(key)] with generation [\(timer.generation)]", metadata: self.metadata)
@@ -126,8 +124,7 @@ public final class _BehaviorTimers<Message: Codable> {
     /// Checks for the existence of a scheduler timer for given key (single or periodic).
     ///
     /// - Returns: true if timer exists, false otherwise
-    @inlinable
-    public func exists(key: _TimerKey) -> Bool {
+    internal func exists(key: _TimerKey) -> Bool {
         self.installedTimers[key] != nil
     }
 
@@ -137,8 +134,7 @@ public final class _BehaviorTimers<Message: Codable> {
     ///   - key: the key associated with the timer
     ///   - message: the message that will be sent to `myself`
     ///   - delay: the delay after which the message will be sent
-    @inlinable
-    public func startSingle(key: _TimerKey, message: Message, delay: Duration) {
+    internal func startSingle(key: _TimerKey, message: Message, delay: Duration) {
         self.start(key: key, message: message, interval: delay, repeated: false)
     }
 
@@ -148,12 +144,10 @@ public final class _BehaviorTimers<Message: Codable> {
     ///   - key: the key associated with the timer
     ///   - message: the message that will be sent to `myself`
     ///   - interval: the interval with which the message will be sent
-    @inlinable
-    public func startPeriodic(key: _TimerKey, message: Message, interval: Duration) {
+    internal func startPeriodic(key: _TimerKey, message: Message, interval: Duration) {
         self.start(key: key, message: message, interval: interval, repeated: true)
     }
 
-    @usableFromInline
     internal func start(key: _TimerKey, message: Message, interval: Duration, repeated: Bool) {
         self.cancel(for: key)
 
