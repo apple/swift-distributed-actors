@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2020 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2020-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -34,6 +34,7 @@ internal class OpLog<Op: OpLogStreamOp> {
         self.maxSeqNr = 0
     }
 
+    @discardableResult
     func add(_ op: Op) -> SequencedOp {
         self.maxSeqNr += 1
         let sequencedOp = SequencedOp(sequenceRange: .single(self.maxSeqNr), op: op)

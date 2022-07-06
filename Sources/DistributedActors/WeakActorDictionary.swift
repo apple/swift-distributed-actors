@@ -45,7 +45,7 @@ struct WeakActorDictionary {
 
         guard let knownActor = container.actor else {
             // the actor was released -- let's remove the container while we're here
-            self.removeActor(identifiedBy: id)
+            _ = self.removeActor(identifiedBy: id)
             return nil
         }
 

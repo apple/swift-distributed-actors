@@ -218,7 +218,7 @@ public struct ClusterControl {
     public func waitFor(_ node: UniqueNode, _ status: Cluster.MemberStatus, within: Duration) async throws -> Cluster.Member {
         try await self.waitForMembershipEventually(within: within) { membership in
             if status == .down || status == .removed {
-                if let cluster = self.cluster, let tombstone = cluster.getExistingAssociationTombstone(with: node) {
+                if let cluster = self.cluster, cluster.getExistingAssociationTombstone(with: node) != nil {
                     return Cluster.Member(node: node, status: .removed).asUnreachable
                 }
             }
@@ -251,7 +251,7 @@ public struct ClusterControl {
     public func waitFor(_ node: UniqueNode, atLeast atLeastStatus: Cluster.MemberStatus, within: Duration) async throws -> Cluster.Member {
         try await self.waitForMembershipEventually(within: within) { membership in
             if atLeastStatus == .down || atLeastStatus == .removed {
-                if let cluster = self.cluster, let tombstone = cluster.getExistingAssociationTombstone(with: node) {
+                if let cluster = self.cluster, cluster.getExistingAssociationTombstone(with: node) != nil {
                     return Cluster.Member(node: node, status: .removed).asUnreachable
                 }
             }

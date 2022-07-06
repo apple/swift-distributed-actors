@@ -808,7 +808,7 @@ extension OpLogDistributedReceptionist {
         let wasRegisteredWithKeys = self.storage.removeFromKeyMappings(equalityHackRef.asAnyDistributedActor)
 
         for key in wasRegisteredWithKeys.registeredUnderKeys {
-            self.addOperation(.remove(key: key, identity: id))
+            _ = self.addOperation(.remove(key: key, identity: id))
             self.publishListings(forKey: key)
         }
 
