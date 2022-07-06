@@ -85,7 +85,7 @@ public final class _RemoteClusterActorPersonality<Message: Codable> {
     }
 
     @usableFromInline
-    func sendUserMessage(_ message: Message, file: String = #file, line: UInt = #line) {
+    func sendUserMessage(_ message: Message, file: String = #filePath, line: UInt = #line) {
         traceLog_Cell("RemoteActorRef(\(self.id)) sendUserMessage: \(message)")
 
         switch self.association {
@@ -98,7 +98,7 @@ public final class _RemoteClusterActorPersonality<Message: Codable> {
     }
 
     @usableFromInline
-    func sendInvocation(_ invocation: InvocationMessage, file: String = #file, line: UInt = #line) {
+    func sendInvocation(_ invocation: InvocationMessage, file: String = #filePath, line: UInt = #line) {
         traceLog_Cell("RemoteActorRef(\(self.id)) sendInvocation: \(invocation)")
 
         switch self.association {
@@ -111,7 +111,7 @@ public final class _RemoteClusterActorPersonality<Message: Codable> {
     }
 
     @usableFromInline
-    func sendSystemMessage(_ message: _SystemMessage, file: String = #file, line: UInt = #line) {
+    func sendSystemMessage(_ message: _SystemMessage, file: String = #filePath, line: UInt = #line) {
         traceLog_Cell("RemoteActorRef(\(self.id)) sendSystemMessage: \(message)")
 
         // TODO: in case we'd get a new connection the redeliveries must remain... so we always need to poll for the remotecontrol from association? the association would keep the buffers?

@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -293,7 +293,7 @@ extension _Children {
         let childOpt = self.container[name]
         switch childOpt {
         case .some(.cell(let cell)) where self._markAsStoppingChild(identifiedBy: cell.receivesSystemMessages.id):
-            cell.receivesSystemMessages._sendSystemMessage(.stop, file: #file, line: #line)
+            cell.receivesSystemMessages._sendSystemMessage(.stop, file: #filePath, line: #line)
             return true
         case .some(.adapter(let ref)) where includeAdapters:
             ref.stop()

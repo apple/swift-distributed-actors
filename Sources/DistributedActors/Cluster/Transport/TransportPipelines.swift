@@ -566,7 +566,7 @@ extension SystemMessageRedeliveryHandler {
     /// Optional "dump all messages" logging.
     private func tracelog(
         _ type: TraceLogType, message: Any,
-        file: String = #file, function: String = #function, line: UInt = #line
+        file: String = #filePath, function: String = #function, line: UInt = #line
     ) {
         let level: Logger.Level?
         switch type {

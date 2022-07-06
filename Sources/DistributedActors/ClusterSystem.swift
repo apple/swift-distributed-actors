@@ -495,7 +495,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
 
         self.settings.plugins.stopAll(self)
 
-        self.log.log(level: .debug, "Shutting down actor system [\(self.name)]. All actors will be stopped.", file: #file, function: #function, line: #line)
+        self.log.log(level: .debug, "Shutting down actor system [\(self.name)]. All actors will be stopped.", file: #filePath, function: #function, line: #line)
         defer {
             self.shutdownSemaphore.signal()
         }
@@ -562,7 +562,7 @@ extension ClusterSystem: _ActorRefFactory {
     @discardableResult
     public func _spawn<Message>(
         _ naming: _ActorNaming, of type: Message.Type = Message.self, props: _Props = _Props(),
-        file: String = #file, line: UInt = #line,
+        file: String = #filePath, line: UInt = #line,
         _ behavior: _Behavior<Message>
     ) throws -> _ActorRef<Message> where Message: Codable {
         try self.serialization._ensureSerializer(type, file: file, line: line)
@@ -957,7 +957,7 @@ extension ClusterSystem {
         self.namingLock.withLockVoid {
             self._reservedNames.remove(id)
             if let ref = self._managedRefs.removeValue(forKey: id) {
-                ref._sendSystemMessage(.stop, file: #file, line: #line)
+                ref._sendSystemMessage(.stop, file: #filePath, line: #line)
             }
         }
         id.context.terminate()

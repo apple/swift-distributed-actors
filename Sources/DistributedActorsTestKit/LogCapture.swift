@@ -66,7 +66,7 @@ public final class LogCapture {
     public func awaitLogContaining(
         _ testKit: ActorTestKit, text: String,
         within: Duration = .seconds(3),
-        file: StaticString = #file, line: UInt = #line
+        file: StaticString = #filePath, line: UInt = #line
     ) throws -> CapturedLogMessage {
         try testKit.eventually(within: within, file: file, line: line) {
             let logs = self.logs
@@ -262,7 +262,7 @@ extension LogCapture {
         expectedFile: String? = nil,
         expectedLine: Int = -1,
         failTest: Bool = true,
-        file: StaticString = #file, line: UInt = #line, column: UInt = #column
+        file: StaticString = #filePath, line: UInt = #line, column: UInt = #column
     ) throws -> CapturedLogMessage {
         precondition(prefix != nil || message != nil || grep != nil || level != nil || level != nil || expectedFile != nil, "At least one query parameter must be not `nil`!")
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)

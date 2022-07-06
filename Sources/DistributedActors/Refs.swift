@@ -63,7 +63,7 @@ public struct _ActorRef<Message: Codable>: @unchecked Sendable, _ReceivesMessage
     /// This method is thread-safe, and may be used by multiple threads to send messages concurrently.
     /// No ordering guarantees are made about the order of the messages written by those multiple threads,
     /// in respect to each other however.
-    public func tell(_ message: Message, file: String = #file, line: UInt = #line) {
+    public func tell(_ message: Message, file: String = #filePath, line: UInt = #line) {
         switch self.personality {
         case .cell(let cell):
 //            if ("\(message)".contains("handshakeWith(")) {
@@ -198,7 +198,7 @@ extension _ReceivesSystemMessages {
 // MARK: Actor Ref Internals and Internal Capabilities
 
 extension _ActorRef {
-    public func _sendSystemMessage(_ message: _SystemMessage, file: String = #file, line: UInt = #line) {
+    public func _sendSystemMessage(_ message: _SystemMessage, file: String = #filePath, line: UInt = #line) {
         switch self.personality {
         case .cell(let cell):
             cell.sendSystemMessage(message, file: file, line: line)
@@ -234,7 +234,7 @@ extension _ActorRef {
     }
 
     // FIXME: can this be removed?
-    public func _tellOrDeadLetter(_ message: Any, file: String = #file, line: UInt = #line) {
+    public func _tellOrDeadLetter(_ message: Any, file: String = #filePath, line: UInt = #line) {
         guard let _message = message as? Message else {
             traceLog_Mailbox(self.path, "_tellOrDeadLetter: [\(message)] failed because of invalid message type, to: \(self); Sent at \(file):\(line)")
             self._dropAsDeadLetter(message, file: file, line: line)
@@ -244,14 +244,14 @@ extension _ActorRef {
         self.tell(_message, file: file, line: line)
     }
 
-    public func _dropAsDeadLetter(_ message: Any, file: String = #file, line: UInt = #line) {
+    public func _dropAsDeadLetter(_ message: Any, file: String = #filePath, line: UInt = #line) {
         self._deadLetters.tell(DeadLetter(message, recipient: self.id, sentAtFile: file, sentAtLine: line), file: file, line: line)
     }
 
     public func _deserializeDeliver(
         _ messageBytes: Serialization.Buffer, using manifest: Serialization.Manifest,
         on pool: _SerializationPool,
-        file: String = #file, line: UInt = #line
+        file: String = #filePath, line: UInt = #line
     ) {
         let deserializationStartTime: DispatchTime?
         if self._unwrapActorMetrics.active.contains(.deserialization) {
@@ -365,33 +365,33 @@ public final class _ActorCell<Message: Codable> {
     }
 
     @usableFromInline
-    func sendMessage(_ message: Message, file: String = #file, line: UInt = #line) {
+    func sendMessage(_ message: Message, file: String = #filePath, line: UInt = #line) {
         traceLog_Mailbox(self.id.path, "sendMessage: [\(message)], to: \(self)")
         self.mailbox.sendMessage(envelope: Payload(payload: .message(message)), file: file, line: line)
     }
 
     @usableFromInline
-    func sendSystemMessage(_ message: _SystemMessage, file: String = #file, line: UInt = #line) {
+    func sendSystemMessage(_ message: _SystemMessage, file: String = #filePath, line: UInt = #line) {
         traceLog_Mailbox(self.id.path, "sendSystemMessage: [\(message)], to: \(String(describing: self))")
         self.mailbox.sendSystemMessage(message, file: file, line: line)
     }
 
     @usableFromInline
-    func sendClosure(file: String = #file, line: UInt = #line, _ f: @escaping () throws -> Void) {
+    func sendClosure(file: String = #filePath, line: UInt = #line, _ f: @escaping () throws -> Void) {
         traceLog_Mailbox(self.id.path, "sendClosure from \(file):\(line) to: \(self)")
         let carry = ActorClosureCarry(function: f, file: file, line: line)
         self.mailbox.sendMessage(envelope: Payload(payload: .closure(carry)), file: file, line: line)
     }
 
     @usableFromInline
-    func sendSubMessage<SubMessage>(_ message: SubMessage, identifier: _AnySubReceiveId, subReceiveAddress: ActorID, file: String = #file, line: UInt = #line) {
+    func sendSubMessage<SubMessage>(_ message: SubMessage, identifier: _AnySubReceiveId, subReceiveAddress: ActorID, file: String = #filePath, line: UInt = #line) {
         traceLog_Mailbox(self.id.path, "sendSubMessage from \(file):\(line) to: \(self)")
         let carry = SubMessageCarry(identifier: identifier, message: message, subReceiveAddress: subReceiveAddress)
         self.mailbox.sendMessage(envelope: Payload(payload: .subMessage(carry)), file: file, line: line)
     }
 
     @usableFromInline
-    func sendAdaptedMessage(_ message: Any, file: String = #file, line: UInt = #line) {
+    func sendAdaptedMessage(_ message: Any, file: String = #filePath, line: UInt = #line) {
         traceLog_Mailbox(self.id.path, "sendAdaptedMessage from \(file):\(line) to: \(self)")
         let carry = AdaptedMessageCarry(message: message)
         self.mailbox.sendMessage(envelope: Payload(payload: .adaptedMessage(carry)), file: file, line: line)
@@ -442,23 +442,23 @@ open class _CellDelegate<Message: Codable> {
         fatalError("Not implemented: \(#function)")
     }
 
-    open func sendMessage(_ message: Message, file: String = #file, line: UInt = #line) {
+    open func sendMessage(_ message: Message, file: String = #filePath, line: UInt = #line) {
         fatalError("Not implemented: \(#function), called from \(file):\(line)")
     }
 
-    open func sendSystemMessage(_ message: _SystemMessage, file: String = #file, line: UInt = #line) {
+    open func sendSystemMessage(_ message: _SystemMessage, file: String = #filePath, line: UInt = #line) {
         fatalError("Not implemented: \(#function), called from \(file):\(line)")
     }
 
-    open func sendClosure(file: String = #file, line: UInt = #line, _ f: @escaping () throws -> Void) {
+    open func sendClosure(file: String = #filePath, line: UInt = #line, _ f: @escaping () throws -> Void) {
         fatalError("Not implemented: \(#function), called from \(file):\(line)")
     }
 
-    open func sendSubMessage<SubMessage>(_ message: SubMessage, identifier: _AnySubReceiveId, subReceiveAddress: ActorID, file: String = #file, line: UInt = #line) {
+    open func sendSubMessage<SubMessage>(_ message: SubMessage, identifier: _AnySubReceiveId, subReceiveAddress: ActorID, file: String = #filePath, line: UInt = #line) {
         fatalError("Not implemented: \(#function), called from \(file):\(line)")
     }
 
-    open func sendAdaptedMessage(_ message: Any, file: String = #file, line: UInt = #line) {
+    open func sendAdaptedMessage(_ message: Any, file: String = #filePath, line: UInt = #line) {
         fatalError("Not implemented: \(#function), called from \(file):\(line)")
     }
 }
@@ -481,19 +481,19 @@ internal struct TheOneWhoHasNoParent: _ReceivesSystemMessages { // FIXME: fix th
     }
 
     @usableFromInline
-    internal func _sendSystemMessage(_ message: _SystemMessage, file: String = #file, line: UInt = #line) {
+    internal func _sendSystemMessage(_ message: _SystemMessage, file: String = #filePath, line: UInt = #line) {
         CDistributedActorsMailbox.sact_dump_backtrace()
         fatalError("The \(self.id) actor MUST NOT receive any messages. Yet received \(message); Sent at \(file):\(line)")
     }
 
     @usableFromInline
-    internal func _tellOrDeadLetter(_ message: Any, file: String = #file, line: UInt = #line) {
+    internal func _tellOrDeadLetter(_ message: Any, file: String = #filePath, line: UInt = #line) {
         CDistributedActorsMailbox.sact_dump_backtrace()
         fatalError("The \(self.id) actor MUST NOT receive any messages. Yet received \(message); Sent at \(file):\(line)")
     }
 
     @usableFromInline
-    internal func _dropAsDeadLetter(_ message: Any, file: String = #file, line: UInt = #line) {
+    internal func _dropAsDeadLetter(_ message: Any, file: String = #filePath, line: UInt = #line) {
         CDistributedActorsMailbox.sact_dump_backtrace()
         fatalError("The \(self.id) actor MUST NOT receive any messages. Yet received \(message); Sent at \(file):\(line)")
     }
@@ -502,7 +502,7 @@ internal struct TheOneWhoHasNoParent: _ReceivesSystemMessages { // FIXME: fix th
     internal func _deserializeDeliver(
         _ messageBytes: Serialization.Buffer, using manifest: Serialization.Manifest,
         on pool: _SerializationPool,
-        file: String = #file, line: UInt = #line
+        file: String = #filePath, line: UInt = #line
     ) {
         CDistributedActorsMailbox.sact_dump_backtrace()
         fatalError("The \(self.id) actor MUST NOT receive any messages, yet attempted \(#function); Sent at \(file):\(line)")
@@ -578,12 +578,12 @@ public class _Guardian {
     }
 
     @usableFromInline
-    func trySendUserMessage(_ message: Any, file: String = #file, line: UInt = #line) {
+    func trySendUserMessage(_ message: Any, file: String = #filePath, line: UInt = #line) {
         self.deadLetters.tell(DeadLetter(message, recipient: self.id), file: file, line: line)
     }
 
     @usableFromInline
-    func sendSystemMessage(_ message: _SystemMessage, file: String = #file, line: UInt = #line) {
+    func sendSystemMessage(_ message: _SystemMessage, file: String = #filePath, line: UInt = #line) {
         switch message {
         case .childTerminated(let ref, let circumstances):
             self._childrenLock.synchronized {

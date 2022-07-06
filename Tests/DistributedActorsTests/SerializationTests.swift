@@ -274,7 +274,7 @@ class SerializationTests: ClusterSystemXCTestCase {
         back.sysRef.id.shouldEqual(sysRef.id)
 
         // Only to see that the deserialized ref indeed works for sending system messages to it
-        back.sysRef._sendSystemMessage(.terminated(ref: watchMe.asAddressable, existenceConfirmed: false), file: #file, line: #line)
+        back.sysRef._sendSystemMessage(.terminated(ref: watchMe.asAddressable, existenceConfirmed: false), file: #filePath, line: #line)
         try p.expectMessage("terminated:watchMe")
     }
 

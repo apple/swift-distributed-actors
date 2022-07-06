@@ -383,7 +383,7 @@ extension ClusterShellState {
     /// Does NOT by itself move the member to joining, but via the directive asks the outer to do this.
     mutating func completeHandshakeAssociate(
         _ clusterShell: ClusterShell, _ handshake: HandshakeStateMachine.CompletedState, channel: Channel,
-        file: String = #file, line: UInt = #line
+        file: String = #filePath, line: UInt = #line
     ) -> AssociatedDirective {
         guard self._handshakes.removeValue(forKey: handshake.remoteNode.node) != nil else {
             fatalError("Can not complete a handshake which was not in progress!")

@@ -215,7 +215,7 @@ extension Serialization {
     ///
     /// By default, if in `insecureSerializeNotRegisteredMessages` mode, this logs warnings and allows all messages
     /// to be serialized. If the setting `insecureSerializeNotRegisteredMessages` is `false`, then
-    public func _ensureSerializer<Message: Codable>(_ type: Message.Type, file: String = #file, line: UInt = #line) throws {
+    public func _ensureSerializer<Message: Codable>(_ type: Message.Type, file: String = #filePath, line: UInt = #line) throws {
         let oid = ObjectIdentifier(type)
 
         // 1. check if this type already has a serializer registered, bail out quickly if so
@@ -375,7 +375,7 @@ extension Serialization {
     ///   a serializer (by ID) that is not registered with the system, or the serializer failing to serialize the message.
     public func serialize<Message>(
         _ message: Message,
-        file: String = #file, line: UInt = #line
+        file: String = #filePath, line: UInt = #line
     ) throws -> Serialized {
         do {
             // Implementation notes: It is tremendously important to use the `messageType` for all type identification
@@ -469,7 +469,7 @@ extension Serialization {
     ///   - from: `Serialized` containing the manifest used to identify which serializer should be used to deserialize the bytes and the serialized bytes of the message
     public func deserialize<T>(
         as messageType: T.Type, from serialized: Serialized,
-        file: String = #file, line: UInt = #line
+        file: String = #filePath, line: UInt = #line
     ) throws -> T {
         try self.deserialize(as: messageType, from: serialized.buffer, using: serialized.manifest, file: file, line: line)
     }
@@ -482,7 +482,7 @@ extension Serialization {
     ///   - using: `Manifest` used to identify which serializer should be used to deserialize the bytes (json? protobuf? other?)
     public func deserialize<T>(
         as messageType: T.Type, from buffer: Serialization.Buffer, using manifest: Serialization.Manifest,
-        file: String = #file, line: UInt = #line
+        file: String = #filePath, line: UInt = #line
     ) throws -> T {
         guard messageType != Any.self else {
             // most likely deadLetters is trying to deserialize (!), and it only has an `Any` in hand.
@@ -518,7 +518,7 @@ extension Serialization {
     ///   - using: `Manifest` used identify the decoder as well as summon the Type of the message. The resulting message is NOT cast to the summoned type.
     public func deserializeAny(
         from buffer: Serialization.Buffer, using manifest: Serialization.Manifest,
-        file: String = #file, line: UInt = #line
+        file: String = #filePath, line: UInt = #line
     ) throws -> Any {
         do {
             // Manifest type may be used to summon specific instances of types from the manifest
@@ -787,7 +787,7 @@ public enum SerializationError: Error {
     case noNeedToEnsureSerializer
     case notEnoughArgumentsEncoded(expected: Int, have: Int)
 
-    public static func missingSerializationContext(_ coder: Swift.Decoder, _ _type: Any.Type, file: String = #file, line: UInt = #line) -> SerializationError {
+    public static func missingSerializationContext(_ coder: Swift.Decoder, _ _type: Any.Type, file: String = #filePath, line: UInt = #line) -> SerializationError {
         SerializationError.missingSerializationContext(
             _type,
             details:
@@ -800,7 +800,7 @@ public enum SerializationError: Error {
         )
     }
 
-    public static func missingSerializationContext(_ coder: Swift.Encoder, _ message: Any, file: String = #file, line: UInt = #line) -> SerializationError {
+    public static func missingSerializationContext(_ coder: Swift.Encoder, _ message: Any, file: String = #filePath, line: UInt = #line) -> SerializationError {
         SerializationError.missingSerializationContext(
             type(of: message),
             details:

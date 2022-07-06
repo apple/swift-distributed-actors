@@ -102,7 +102,7 @@ public class _ActorContext<Message: Codable> /* TODO(sendable): NOTSendable*/ {
     public func watch<Watchee>(
         _ watchee: Watchee,
         with terminationMessage: Message? = nil,
-        file: String = #file, line: UInt = #line
+        file: String = #filePath, line: UInt = #line
     ) -> Watchee where Watchee: _DeathWatchable {
         _undefined()
     }
@@ -110,7 +110,7 @@ public class _ActorContext<Message: Codable> /* TODO(sendable): NOTSendable*/ {
     @discardableResult
     public func unwatch<Watchee>(
         _ watchee: Watchee,
-        file: String = #file, line: UInt = #line
+        file: String = #filePath, line: UInt = #line
     ) -> Watchee where Watchee: _DeathWatchable {
         _undefined()
     }
@@ -123,7 +123,7 @@ public class _ActorContext<Message: Codable> /* TODO(sendable): NOTSendable*/ {
         _ naming: _ActorNaming,
         of type: M.Type = M.self,
         props: _Props = _Props(),
-        file: String = #file, line: UInt = #line,
+        file: String = #filePath, line: UInt = #line,
         _ behavior: _Behavior<M>
     ) throws -> _ActorRef<M>
         where M: Codable
@@ -142,7 +142,7 @@ public class _ActorContext<Message: Codable> /* TODO(sendable): NOTSendable*/ {
         _ naming: _ActorNaming,
         of type: M.Type = M.self,
         props: _Props = _Props(),
-        file: String = #file, line: UInt = #line,
+        file: String = #filePath, line: UInt = #line,
         _ behavior: _Behavior<M>
     ) throws -> _ActorRef<M>
         where M: Codable
@@ -192,7 +192,7 @@ public class _ActorContext<Message: Codable> /* TODO(sendable): NOTSendable*/ {
     /// - Parameter callback: the closure that should be executed in this actor's context
     /// - Returns: an `AsynchronousCallback` that is safe to call from outside of this actor
     @usableFromInline
-    internal func makeAsynchronousCallback<T>(file: String = #file, line: UInt = #line, _ callback: @escaping (T) throws -> Void) -> AsynchronousCallback<T> {
+    internal func makeAsynchronousCallback<T>(file: String = #filePath, line: UInt = #line, _ callback: @escaping (T) throws -> Void) -> AsynchronousCallback<T> {
         AsynchronousCallback(callback: callback) { [weak selfRef = self.myself._unsafeUnwrapCell] in
             selfRef?.sendClosure(file: file, line: line, $0)
         }
@@ -209,7 +209,7 @@ public class _ActorContext<Message: Codable> /* TODO(sendable): NOTSendable*/ {
     /// - Parameter callback: the closure that should be executed in this actor's context
     /// - Returns: an `AsynchronousCallback` that is safe to call from outside of this actor
     @usableFromInline
-    internal func makeAsynchronousCallback<T>(for type: T.Type, file: String = #file, line: UInt = #line, callback: @escaping (T) throws -> Void) -> AsynchronousCallback<T> {
+    internal func makeAsynchronousCallback<T>(for type: T.Type, file: String = #filePath, line: UInt = #line, callback: @escaping (T) throws -> Void) -> AsynchronousCallback<T> {
         AsynchronousCallback(callback: callback) { [weak selfRef = self.myself._unsafeUnwrapCell] in
             selfRef?.sendClosure(file: file, line: line, $0)
         }
@@ -280,7 +280,7 @@ public class _ActorContext<Message: Codable> /* TODO(sendable): NOTSendable*/ {
     ///   - timeout: time after which the _AsyncResult will be failed if it does not complete
     ///   - continuation: continuation to run after `_AsyncResult` completes.
     ///     It is safe to access and modify actor state from here.
-    internal func onResultAsync<AR: _AsyncResult>(of _AsyncResult: AR, timeout: Duration, file: String = #file, line: UInt = #line, _ continuation: @escaping (Result<AR.Value, Error>) throws -> _Behavior<Message>) {
+    internal func onResultAsync<AR: _AsyncResult>(of _AsyncResult: AR, timeout: Duration, file: String = #filePath, line: UInt = #line, _ continuation: @escaping (Result<AR.Value, Error>) throws -> _Behavior<Message>) {
         let asyncCallback = self.makeAsynchronousCallback(for: Result<AR.Value, Error>.self, file: file, line: line) {
             let nextBehavior = try continuation($0)
             let shell = self._downcastUnsafe

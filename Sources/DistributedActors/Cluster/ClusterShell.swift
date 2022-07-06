@@ -72,7 +72,7 @@ internal class ClusterShell {
 
     /// Get an existing association or ensure that a new one shall be stored and joining kicked off if the target node was not known yet.
     /// Safe to concurrently access by privileged internals directly
-    internal func getEnsureAssociation(with node: UniqueNode, file: String = #file, line: UInt = #line) -> StoredAssociationState {
+    internal func getEnsureAssociation(with node: UniqueNode, file: String = #filePath, line: UInt = #line) -> StoredAssociationState {
         self._associationsLock.withLock {
             if let tombstone = self._associationTombstones[node] {
                 return .tombstone(tombstone)
@@ -106,7 +106,7 @@ internal class ClusterShell {
 
     /// To be invoked by cluster shell whenever handshake is accepted, creating a completed association.
     /// Causes messages to be flushed onto the new associated channel.
-    private func completeAssociation(_ associated: ClusterShellState.AssociatedDirective, file: String = #file, line: UInt = #line) throws {
+    private func completeAssociation(_ associated: ClusterShellState.AssociatedDirective, file: String = #filePath, line: UInt = #line) throws {
         // 1) Complete and store the association
         try self._associationsLock.withLockVoid {
             let node: UniqueNode = associated.handshake.remoteNode

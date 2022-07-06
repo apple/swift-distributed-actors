@@ -188,7 +188,7 @@ internal struct DeathWatchImpl<Message: Codable> {
     public mutating func unwatch<Watchee>(
         watchee: Watchee,
         myself watcher: _ActorRef<Message>,
-        file: String = #file, line: UInt = #line
+        file: String = #filePath, line: UInt = #line
     ) where Watchee: _DeathWatchable {
         traceLog_DeathWatch("issue unwatch: watchee: \(watchee) (from \(watcher) myself)")
         let addressableWatchee = watchee.asAddressable
@@ -278,7 +278,7 @@ internal struct DeathWatchImpl<Message: Codable> {
             // we KNOW an actor existed if it is local and not resolved as /dead; otherwise it may have existed
             // for a remote ref we don't know for sure if it existed
             let existenceConfirmed = watched.refType.isLocal && !watched.id.path.starts(with: ._dead)
-            myself._sendSystemMessage(.terminated(ref: watched, existenceConfirmed: existenceConfirmed, idTerminated: true), file: #file, line: #line)
+            myself._sendSystemMessage(.terminated(ref: watched, existenceConfirmed: existenceConfirmed, idTerminated: true), file: #filePath, line: #line)
         }
     }
 
@@ -291,14 +291,14 @@ internal struct DeathWatchImpl<Message: Codable> {
 
         for watcher in self.watchedBy {
             traceLog_DeathWatch("[\(myself)] Notify \(watcher) that we died")
-            watcher._sendSystemMessage(.terminated(ref: _AddressableActorRef(myself), existenceConfirmed: true), file: #file, line: #line)
+            watcher._sendSystemMessage(.terminated(ref: _AddressableActorRef(myself), existenceConfirmed: true), file: #filePath, line: #line)
         }
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Node termination
 
-    private func subscribeNodeTerminatedEvents(myself: _ActorRef<Message>, watchedID: ActorID, file: String = #file, line: UInt = #line) {
+    private func subscribeNodeTerminatedEvents(myself: _ActorRef<Message>, watchedID: ActorID, file: String = #filePath, line: UInt = #line) {
         guard watchedID._isRemote else {
             return
         }
