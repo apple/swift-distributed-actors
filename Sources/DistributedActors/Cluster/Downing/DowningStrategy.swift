@@ -35,8 +35,8 @@ public struct DowningStrategyDirective {
     internal enum Repr {
         case none
         case markAsDown(Set<Cluster.Member>)
-        case startTimer(key: TimerKey, member: Cluster.Member, delay: Duration)
-        case cancelTimer(key: TimerKey)
+        case startTimer(member: Cluster.Member, delay: Duration)
+        case cancelTimer(member: Cluster.Member)
     }
 
     internal init(_ underlying: Repr) {
@@ -47,12 +47,12 @@ public struct DowningStrategyDirective {
         .init(.none)
     }
 
-    public static func startTimer(key: TimerKey, member: Cluster.Member, delay: Duration) -> Self {
-        .init(.startTimer(key: key, member: member, delay: delay))
+    public static func startTimer(member: Cluster.Member, delay: Duration) -> Self {
+        .init(.startTimer(member: member, delay: delay))
     }
 
-    public static func cancelTimer(key: TimerKey) -> Self {
-        .init(.cancelTimer(key: key))
+    public static func cancelTimer(member: Cluster.Member) -> Self {
+        .init(.cancelTimer(member: member))
     }
 
     public static func markAsDown(members: Set<Cluster.Member>) -> Self {
@@ -86,8 +86,8 @@ internal distributed actor DowningStrategyShell {
 
     /// `Task` for subscribing to cluster events.
     private var eventsListeningTask: Task<Void, Error>?
-
-    private lazy var timers = ActorTimers<DowningStrategyShell>(self)
+    /// Timer `Task`s
+    private var memberTimerTasks: [Cluster.Member: Task<Void, Error>] = [:]
 
     init(_ strategy: DowningStrategy, system: ActorSystem) async {
         self.strategy = strategy
@@ -113,14 +113,23 @@ internal distributed actor DowningStrategyShell {
         case .markAsDown(let members):
             self.markAsDown(members: members)
 
-        case .startTimer(let key, let member, let delay):
-            self.log.trace("Start timer \(key), member: \(member), delay: \(delay)")
-            self.timers.startSingle(key: key, delay: delay) {
+        case .startTimer(let member, let delay):
+            self.log.trace("Start timer for member: \(member), delay: \(delay)")
+            self.memberTimerTasks[member] = Task {
+                defer { self.memberTimerTasks.removeValue(forKey: member) }
+
+                guard !Task.isCancelled else {
+                    return
+                }
+
+                try await Task.sleep(until: .now + delay, clock: .continuous)
                 self.onTimeout(member: member)
             }
-        case .cancelTimer(let key):
-            self.log.trace("Cancel timer \(key)")
-            self.timers.cancel(for: key)
+        case .cancelTimer(let member):
+            self.log.trace("Cancel timer for member: \(member)")
+            if let timerTask = self.memberTimerTasks.removeValue(forKey: member) {
+                timerTask.cancel()
+            }
 
         case .none:
             () // nothing to be done

@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2021 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -23,8 +23,6 @@ distributed actor Philosopher: CustomStringConvertible {
     private let leftFork: Fork
     private let rightFork: Fork
     private var state: State = .thinking
-
-    private lazy var timers = DistributedActors.ActorTimers<Philosopher>(self)
 
     init(name: String, leftFork: Fork, rightFork: Fork, actorSystem: ActorSystem) {
         self.actorSystem = actorSystem
@@ -58,15 +56,16 @@ distributed actor Philosopher: CustomStringConvertible {
         }
 
         self.state = .thinking
-        self.timers.startSingle(key: .becomeHungry, delay: .seconds(1)) {
+        Task {
+            try await Task.sleep(until: .now + .seconds(1), clock: .continuous)
             await self.attemptToTakeForks()
         }
-        self.log.info("\(self.self.name) is thinking...")
+        self.log.info("\(self.name) is thinking...")
     }
 
     distributed func attemptToTakeForks() async {
         guard self.state == .thinking else {
-            self.log.error("\(self.self.name) tried to take a fork but was not in the thinking state!")
+            self.log.error("\(self.name) tried to take a fork but was not in the thinking state!")
             return
         }
 
@@ -89,14 +88,14 @@ distributed actor Philosopher: CustomStringConvertible {
             }
             self.forkTaken(self.rightFork)
         } catch {
-            self.log.info("\(self.self.name) wasn't able to take both forks!")
+            self.log.info("\(self.name) wasn't able to take both forks!")
             self.think()
         }
     }
 
     /// Message sent to oneself after a timer exceeds and we're done `eating` and can become `thinking` again.
     distributed func stopEating() {
-        self.log.info("\(self.self.name) is done eating and replaced both forks!")
+        self.log.info("\(self.name) is done eating and replaced both forks!")
         Task {
             do {
                 try await self.leftFork.putBack()
@@ -128,10 +127,10 @@ distributed actor Philosopher: CustomStringConvertible {
 
         switch fork {
         case self.leftFork:
-            self.log.info("\(self.self.name) received their left fork!")
+            self.log.info("\(self.name) received their left fork!")
             self.state = .takingForks(leftTaken: true, rightTaken: rightForkIsTaken)
         case self.rightFork:
-            self.log.info("\(self.self.name) received their right fork!")
+            self.log.info("\(self.name) received their right fork!")
             self.state = .takingForks(leftTaken: leftForkIsTaken, rightTaken: true)
         default:
             self.log.error("Received unknown fork! Got: \(fork). Known forks: \(self.leftFork), \(self.rightFork)")
@@ -144,16 +143,12 @@ distributed actor Philosopher: CustomStringConvertible {
 
     private func becomeEating() {
         self.state = .eating
-        self.log.notice("\(self.self.name) began eating!")
-        self.timers.startSingle(key: .becomeHungry, delay: .seconds(3)) {
-            await self.stopEating()
+        self.log.notice("\(self.name) began eating!")
+        Task {
+            try await Task.sleep(until: .now + .seconds(3), clock: .continuous)
+            self.stopEating()
         }
     }
-}
-
-extension TimerKey {
-    static let becomeHungry: Self = "become-hungry"
-    static let finishEating: Self = "finish-eating"
 }
 
 extension Philosopher {
