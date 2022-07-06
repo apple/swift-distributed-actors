@@ -858,11 +858,11 @@ extension ClusterSystem {
     }
 
     /// Allows creating a distributed actor with additional configuration applied during its initialization.
-    internal func actorWith<Act: DistributedActor>(_ tags: (any ActorTag)...,
+    internal func actorWith<Act: DistributedActor>(_ metadata: (any ActorTag)...,
                                                    makeActor: () throws -> Act) rethrows -> Act
     {
         var props = _Props.forSpawn
-        props.tags = .init(tags: tags)
+        props.tags = .init(metadata)
 
         return try _Props.$forSpawn.withValue(props) {
             try makeActor()
@@ -922,7 +922,7 @@ extension ClusterSystem {
         //       but we can only do this when we remove the dependence on paths and behaviors entirely from DA actors https://github.com/apple/swift-distributed-actors/issues/957
         id.context = DistributedActorContext(
             lifecycle: lifecycleContainer,
-            tags: id.context.tags
+            metadata: id.context.metadata
         )
 
         self.log.warning("Assign identity", metadata: [
@@ -947,13 +947,6 @@ extension ClusterSystem {
         defer { self.namingLock.unlock() }
         precondition(self._reservedNames.remove(actor.id) != nil, "Attempted to ready an identity that was not reserved: \(actor.id)")
 
-//        if let watcher = actor as? any LifecycleWatch {
-//            func doMakeLifecycleWatch<Watcher: LifecycleWatch & DistributedActor>(watcher: Watcher) {
-//                _ = LifecycleWatchContainer(watcher)
-//            }
-//            _openExistential(watcher, do: doMakeLifecycleWatch)
-//        }
-
         let behavior = InvocationBehavior.behavior(instance: Weak(actor))
         let ref = self._spawnDistributedActor(behavior, identifiedBy: actor.id)
         self._managedRefs[actor.id] = ref
@@ -970,11 +963,7 @@ extension ClusterSystem {
             }
         }
         id.context.terminate()
-//        self.lifecycleWatchLock.withLockVoid {
-//            if let watch = self._lifecycleWatches.removeValue(forKey: id) {
-//                watch.notifyWatchersWeDied()
-//            }
-//        }
+
         self.namingLock.withLockVoid {
             self._managedRefs.removeValue(forKey: id) // TODO: should not be necessary in the future
             _ = self._managedDistributedActors.removeActor(identifiedBy: id)

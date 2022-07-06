@@ -16,10 +16,10 @@ import Dispatch
 import Distributed
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: ActorTags
+// MARK: ActorMetadata
 
 /// Container of tags a concrete actor identity was tagged with.
-public final class ActorTags: CustomStringConvertible, CustomDebugStringConvertible {
+public final class ActorMetadata: CustomStringConvertible, CustomDebugStringConvertible {
     internal let lock = DispatchSemaphore(value: 1)
 
     // We still might re-think how we represent the storage.
@@ -29,9 +29,9 @@ public final class ActorTags: CustomStringConvertible, CustomDebugStringConverti
         // empty tags
     }
 
-    public init(tags: [any ActorTag]) {
-        for tag in tags {
-            self._storage[tag.id] = tag.value
+    public init(_ metadata: [any ActorTag]) {
+        for m in metadata {
+            self._storage[m.id] = m.value
         }
     }
 
@@ -132,9 +132,9 @@ struct AnyActorTagKey: Hashable {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Known keys
+// MARK: Known keys: path
 
-extension ActorTags {
+extension ActorMetadata {
     static let path = ActorPathTag.Key.self
     struct ActorPathTag: ActorTag {
         struct Key: ActorTagKey {
@@ -149,7 +149,7 @@ extension ActorTags {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Known tag: type
 
-extension ActorTags {
+extension ActorMetadata {
     static let type = ActorTypeTag.Key.self
     struct ActorTypeTag: ActorTag {
         struct Key: ActorTagKey {

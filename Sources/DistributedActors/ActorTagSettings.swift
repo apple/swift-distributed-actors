@@ -43,8 +43,8 @@ public struct ActorTagSettings {
     /// What type of tags, known and defined by the cluster system itself, should be automatically propagated.
     /// Other types of tags, such as user-defined tags, must be propagated by declaring apropriate functions for `encodeCustomTags` and `decodeCustomTags`.
     internal var propagateTags: Set<AnyActorTagKey> = [
-        .init(ActorTags.path),
-        .init(ActorTags.type),
+        .init(ActorMetadata.path),
+        .init(ActorMetadata.type),
     ]
 
     // TODO: expose this eventually

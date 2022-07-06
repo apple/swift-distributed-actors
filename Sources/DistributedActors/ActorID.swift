@@ -20,18 +20,12 @@ import Distributed
 /// Convenience alias for ``ClusterSystem/ActorID``.
 public typealias ActorID = ClusterSystem.ActorID
 
-extension DistributedActor where ActorSystem == ClusterSystem {
-    public nonisolated var metadata: ActorTags {
-        self.id.tags
-    }
-}
-
 extension ClusterSystem.ActorID {
     @propertyWrapper
     public struct Metadata<Value: Sendable & Codable, Key: ActorTagKey<Value>> {
-        private var stored: Value?
-
-        public init(_ key: Key.Type) {}
+        public init(_: Key.Type) {
+            // no initial value; it must be set during initialization
+        }
 
         public var wrappedValue: Value {
             get { fatalError("called wrappedValue getter") }
@@ -49,11 +43,17 @@ extension ClusterSystem.ActorID {
             storage storageKeyPath: ReferenceWritableKeyPath<EnclosingSelf, Self>
         ) -> Value where EnclosingSelf.ActorSystem == ClusterSystem, EnclosingSelf.ID == ClusterSystem.ActorID {
             get {
-                return myself.id.tags[Key.self]!
+                guard let value = myself.id.metadata[Key.self] else {
+                    fatalError("ActorID Metadata for key \(Key.self) was not assigned initial value, assign one in the distributed actor's initializer.")
+                }
+                return value
             }
             set {
-                let tags = myself.id.tags
-                tags[Key.self] = newValue
+                let metadata = myself.id.metadata
+                if let value = metadata[Key.self] {
+                    fatalError("Attempted to override ActorID Metadata for key \(Key.self) which already had value: \(value); with new value: \(String(describing: newValue))")
+                }
+                metadata[Key.self] = newValue
             }
         }
     }
@@ -79,7 +79,7 @@ extension ClusterSystem {
     /// The location of the distributed actor (i.e. it being "remote" or "local") is not taken into account
     /// during comparison of IDs, however does matter that it is on the same actual unique node.
     ///
-    /// Additional information can be attached to them using ``ActorTags`` however those do not impact
+    /// Additional information can be attached to them using ``ActorMetadata`` however those do not impact
     /// the identity or equality of the ID, or distributed actors identified by those IDs.
     ///
     /// ## Lifecycle
@@ -103,7 +103,7 @@ extension ClusterSystem {
     /// Some tags may be carried to remote peers, while others are intended only for local use,
     /// e.g. to inform the actor system to resolve the actor identity using some special treatment etc.
     ///
-    /// Please refer to ``ActorTags`` for an in depth discussion about tagging.
+    /// Please refer to ``ActorMetadata`` for an in depth discussion about tagging.
     ///
     /// ## Serialization
     ///
@@ -135,9 +135,9 @@ extension ClusterSystem {
         /// Tags MAY be transferred to other peers as the identity is replicated, however they are not necessary to uniquely identify the actor.
         /// Tags can carry additional information such as the type of the actor identified by this identity, or any other user defined "roles" or similar tags.
         ///
-        /// - SeeAlso: `ActorTags` for a detailed discussion of some frequently used tags.
-        public var tags: ActorTags {
-            self.context.tags
+        /// - SeeAlso: ``ActorMetadata`` for a detailed discussion of some frequently used tags.
+        public var metadata: ActorMetadata {
+            self.context.metadata
         }
 
         /// Internal "actor context" which is used as storage for additional cluster actor features, such as watching.
@@ -147,13 +147,13 @@ extension ClusterSystem {
         // FIXME(distributed): make optional
         public var path: ActorPath {
             get {
-                guard let path = tags[ActorTags.path] else {
+                guard let path = metadata[ActorMetadata.path] else {
                     fatalError("FIXME: ActorTags.path was not set on \(self.incarnation)! NOTE THAT PATHS ARE TO BECOME OPTIONAL!!!") // FIXME(distributed): must be removed
                 }
                 return path
             }
             set {
-                self.tags[ActorTags.path] = newValue
+                self.metadata[ActorMetadata.path] = newValue
             }
         }
 
@@ -178,7 +178,7 @@ extension ClusterSystem {
             self._location = .local(node)
             self.incarnation = incarnation
             if let path {
-                self.tags[ActorTags.path] = path
+                self.context.metadata[ActorMetadata.path] = path
             }
             traceLog_DeathWatch("Made ID: \(self)")
         }
@@ -194,7 +194,7 @@ extension ClusterSystem {
             self._location = .remote(node)
             self.incarnation = incarnation
             if let path {
-                self.context.tags[ActorTags.path] = path
+                self.context.metadata[ActorMetadata.path] = path
             }
             traceLog_DeathWatch("Made ID: \(self)")
         }
@@ -206,7 +206,7 @@ extension ClusterSystem {
             self._location = .remote(node)
             self.incarnation = incarnation
             if let mangledName = _mangledTypeName(type) { // TODO: avoid mangling names on every spawn?
-                self.context.tags[ActorTags.type] = .init(mangledName: mangledName)
+                self.context.metadata[ActorMetadata.type] = .init(mangledName: mangledName)
             }
             traceLog_DeathWatch("Made ID: \(self)")
         }
@@ -219,7 +219,7 @@ extension ClusterSystem {
             self._location = .local(node)
             self.incarnation = incarnation
             if let mangledName = _mangledTypeName(type) { // TODO: avoid mangling names on every spawn?
-                context.tags[ActorTags.type] = .init(mangledName: mangledName)
+                self.context.metadata[ActorMetadata.type] = .init(mangledName: mangledName)
             }
             traceLog_DeathWatch("Made ID: \(self)")
         }
@@ -232,7 +232,7 @@ extension ClusterSystem {
             self._location = .remote(node)
             self.incarnation = incarnation
             if let mangledName = _mangledTypeName(type) { // TODO: avoid mangling names on every spawn?
-                context.tags[ActorTags.type] = .init(mangledName: mangledName)
+                self.context.metadata[ActorMetadata.type] = .init(mangledName: mangledName)
             }
             traceLog_DeathWatch("Made ID: \(self)")
         }
@@ -241,7 +241,7 @@ extension ClusterSystem {
             var copy = self
             copy.context = .init(
                 lifecycle: nil,
-                tags: self.tags
+                metadata: self.metadata
             )
             return copy
         }
@@ -250,7 +250,7 @@ extension ClusterSystem {
             var copy = self
             copy.context = .init(
                 lifecycle: self.context.lifecycle,
-                tags: nil
+                metadata: nil
             )
             return copy
         }
@@ -914,16 +914,16 @@ extension ActorID: Codable {
         try container.encode(self.path, forKey: ActorCoding.CodingKeys.path) // TODO: remove as we remove the tree
         try container.encode(self.incarnation, forKey: ActorCoding.CodingKeys.incarnation)
 
-        if !self.tags.isEmpty {
+        if !self.metadata.isEmpty {
             var tagsContainer = container.nestedContainer(keyedBy: ActorCoding.TagKeys.self, forKey: ActorCoding.CodingKeys.tags)
 
-            if (tagSettings == nil || tagSettings!.propagateTags.contains(AnyActorTagKey(ActorTags.path))),
-               let value = self.tags[ActorTags.path]
+            if (tagSettings == nil || tagSettings!.propagateTags.contains(AnyActorTagKey(ActorMetadata.path))),
+               let value = self.metadata[ActorMetadata.path]
             {
                 try tagsContainer.encode(value, forKey: ActorCoding.TagKeys.path)
             }
-            if (tagSettings == nil || tagSettings!.propagateTags.contains(AnyActorTagKey(ActorTags.type))),
-               let value = self.tags[ActorTags.type]
+            if (tagSettings == nil || tagSettings!.propagateTags.contains(AnyActorTagKey(ActorMetadata.type))),
+               let value = self.metadata[ActorMetadata.type]
             {
                 try tagsContainer.encode(value, forKey: ActorCoding.TagKeys.type)
             }
@@ -952,7 +952,7 @@ extension ActorID: Codable {
                 for tag in try decodeCustomTags(tagsContainer) {
                     func store<K: ActorTagKey>(_: K.Type) {
                         if let value = tag.value as? K.Value {
-                            self.tags[K.self] = value
+                            self.metadata[K.self] = value
                         }
                     }
                     _openExistential(tag.keyType as any ActorTagKey.Type, do: store) // the `as` here is required, because: inferred result type 'any ActorTagKey.Type' requires explicit coercion due to loss of generic requirements

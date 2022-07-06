@@ -38,7 +38,7 @@ public struct _Props: @unchecked Sendable {
     internal var supervision: _SupervisionProps
 
     /// Tags to be passed to the actor's identity.
-    internal var tags: ActorTags
+    internal var tags: ActorMetadata
 
     public var metrics: MetricsProps
 
@@ -61,7 +61,7 @@ public struct _Props: @unchecked Sendable {
     internal var _distributedActor: Bool = false
 
     public init(
-        tags: ActorTags = ActorTags(),
+        tags: ActorMetadata = ActorMetadata(),
         dispatcher: _DispatcherProps = .default,
         supervision: _SupervisionProps = .default,
         metrics: MetricsProps = .disabled

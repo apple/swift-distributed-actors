@@ -22,13 +22,13 @@ import Distributed
 /// as at that point in time it can no longer be used–by the now deallocated–actor itself.
 public final class DistributedActorContext {
     let lifecycle: LifecycleWatchContainer?
-    let tags: ActorTags
+    let metadata: ActorMetadata
 
     init(lifecycle: LifecycleWatchContainer?,
-         tags: ActorTags? = nil)
+         metadata: ActorMetadata? = nil)
     {
         self.lifecycle = lifecycle
-        self.tags = tags ?? ActorTags(tags: [])
+        self.metadata = metadata ?? ActorMetadata()
 
         traceLog_DeathWatch("Create context; Lifecycle: \(lifecycle)")
     }
