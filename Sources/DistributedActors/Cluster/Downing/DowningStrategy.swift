@@ -12,7 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-import AsyncAlgorithms
 import Distributed
 import Logging
 
@@ -87,7 +86,7 @@ internal distributed actor DowningStrategyShell {
 
     /// `Task` for subscribing to cluster events.
     private var eventsListeningTask: Task<Void, Error>?
-    /// `Task` for timers
+    /// Timer `Task`s
     private var memberTimerTasks: [Cluster.Member: Task<Void, Error>] = [:]
 
     init(_ strategy: DowningStrategy, system: ActorSystem) async {
@@ -102,9 +101,6 @@ internal distributed actor DowningStrategyShell {
 
     deinit {
         self.eventsListeningTask?.cancel()
-        self.memberTimerTasks.values.forEach { timerTask in
-            timerTask.cancel()
-        }
     }
 
     func receiveClusterEvent(_ event: Cluster.Event) throws {
@@ -120,25 +116,23 @@ internal distributed actor DowningStrategyShell {
         case .startTimer(let member, let delay):
             self.log.trace("Start timer for member: \(member), delay: \(delay)")
             self.memberTimerTasks[member] = Task {
-                for await _ in AsyncTimerSequence(interval: delay, clock: ContinuousClock()) {
-                    self.onTimeout(member: member)
-                    // Single-shot; cancel task immediately after it has been fired
-                    self.cancelTimer(for: member)
-                    break
+                defer { self.memberTimerTasks.removeValue(forKey: member) }
+
+                guard !Task.isCancelled else {
+                    return
                 }
+
+                try await Task.sleep(until: .now + delay, clock: .continuous)
+                self.onTimeout(member: member)
             }
         case .cancelTimer(let member):
             self.log.trace("Cancel timer for member: \(member)")
-            self.cancelTimer(for: member)
+            if let timerTask = self.memberTimerTasks.removeValue(forKey: member) {
+                timerTask.cancel()
+            }
 
         case .none:
             () // nothing to be done
-        }
-    }
-
-    private func cancelTimer(for member: Cluster.Member) {
-        if let timerTask = self.memberTimerTasks.removeValue(forKey: member) {
-            timerTask.cancel()
         }
     }
 
