@@ -33,7 +33,7 @@ extension Cluster.MembershipGossip {
 extension Cluster.MembershipGossip.SeenTable {
     /// Express seen tables using a DSL
     /// Syntax: each line: `<owner>: <node>@<version>*`
-    static func parse(_ dslString: String, nodes: [UniqueNode], file: StaticString = #filePath, line: UInt = #line) -> Cluster.MembershipGossip.SeenTable {
+    static func parse(_ dslString: String, nodes: [UniqueNode], file: StaticString = #file, line: UInt = #line) -> Cluster.MembershipGossip.SeenTable {
         let lines = dslString.split(separator: "\n")
         func nodeById(id: String.SubSequence) -> UniqueNode {
             if let found = nodes.first(where: { $0.node.systemName.contains(id) }) {
@@ -71,7 +71,7 @@ extension Cluster.MembershipGossip.SeenTable {
 }
 
 extension VersionVector {
-    static func parse(_ dslString: String, nodes: [UniqueNode], file: StaticString = #filePath, line: UInt = #line) -> VersionVector {
+    static func parse(_ dslString: String, nodes: [UniqueNode], file: StaticString = #file, line: UInt = #line) -> VersionVector {
         func nodeById(id: String.SubSequence) -> UniqueNode {
             if let found = nodes.first(where: { $0.node.systemName.contains(id) }) {
                 return found
@@ -96,7 +96,7 @@ extension Cluster.Membership {
     /// ```
     /// <node identifier>[.:]<node status> || [leader:<node identifier>]
     /// ```
-    static func parse(_ dslString: String, nodes: [UniqueNode], file: StaticString = #filePath, line: UInt = #line) -> Cluster.Membership {
+    static func parse(_ dslString: String, nodes: [UniqueNode], file: StaticString = #file, line: UInt = #line) -> Cluster.Membership {
         func nodeById(id: String.SubSequence) -> UniqueNode {
             if let found = nodes.first(where: { $0.node.systemName.contains(id) }) {
                 return found

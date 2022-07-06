@@ -48,7 +48,7 @@ internal actor DistributedNodeDeathWatcher {
     private var eventListenerTask: Task<Void, Error>?
 
     init(actorSystem: ActorSystem) async {
-        var log = actorSystem.log
+        let log = actorSystem.log
         self.log = log
         self.selfNode = actorSystem.cluster.uniqueNode
         // initialized

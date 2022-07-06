@@ -24,7 +24,7 @@ public final class DistributedActorContext {
 
     init(lifecycle: LifecycleWatchContainer?) {
         self.lifecycle = lifecycle
-        traceLog_DeathWatch("Create context; Lifecycle: \(lifecycle)")
+        traceLog_DeathWatch("Create context; Lifecycle: \(optional: lifecycle)")
     }
 
     /// Invoked by the actor system when the owning actor is terminating, so we can clean up all stored data
