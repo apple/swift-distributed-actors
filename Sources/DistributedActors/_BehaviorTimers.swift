@@ -20,7 +20,7 @@ import struct NIO.TimeAmount
 @usableFromInline
 struct Timer<Message> { // FIXME(distributed): deprecate and remove in favor of DistributedActorTimers
     @usableFromInline
-    let key: TimerKey
+    let key: _TimerKey
     @usableFromInline
     let message: Message?
     @usableFromInline
@@ -33,22 +33,22 @@ struct Timer<Message> { // FIXME(distributed): deprecate and remove in favor of 
 
 @usableFromInline
 struct TimerEvent {
-    let key: TimerKey
+    let key: _TimerKey
     let generation: Int
     let owner: ActorID
 }
 
-/// A `TimerKey` is used to identify a timer. It can be stored and re-used.
+/// A `_TimerKey` is used to identify a timer. It can be stored and re-used.
 ///
 /// Example:
 ///
-///     let timerKey = TimerKey("my-key")
+///     let timerKey = _TimerKey("my-key")
 ///     timers.startPeriodicTimer(key: timerKey, message: "ping", interval: .seconds(1))
 ///     // ...
 ///     timers.cancelTimer(forKey: timerKey)
 ///
-@available(*, deprecated, message: "Actor timers cannot participate in structured cancellation, and will be replaced with patterns using swift-async-algorithms (see Timer)")
-public struct TimerKey: Hashable {
+// TODO: replace timers with AsyncTimerSequence from swift-async-algorithms
+public struct _TimerKey: Hashable {
     private let identifier: AnyHashable
 
     @usableFromInline
@@ -64,17 +64,17 @@ public struct TimerKey: Hashable {
     }
 }
 
-extension TimerKey: CustomStringConvertible {
+extension _TimerKey: CustomStringConvertible {
     public var description: String {
         if self.isSystemTimer {
-            return "TimerKey(\(self.identifier), isSystemTimer: \(self.isSystemTimer))"
+            return "_TimerKey(\(self.identifier), isSystemTimer: \(self.isSystemTimer))"
         } else {
-            return "TimerKey(\(self.identifier.base))"
+            return "_TimerKey(\(self.identifier.base))"
         }
     }
 }
 
-extension TimerKey: ExpressibleByStringLiteral, ExpressibleByStringInterpolation {
+extension _TimerKey: ExpressibleByStringLiteral, ExpressibleByStringInterpolation {
     public init(stringLiteral value: StringLiteralType) {
         self.init(value)
     }
@@ -88,7 +88,7 @@ public final class _BehaviorTimers<Message: Codable> {
     @usableFromInline
     internal let dispatchQueue = DispatchQueue.global()
     @usableFromInline
-    internal var installedTimers: [TimerKey: Timer<Message>] = [:]
+    internal var installedTimers: [_TimerKey: Timer<Message>] = [:]
     @usableFromInline
     internal unowned var context: _ActorContext<Message>
 
@@ -114,7 +114,7 @@ public final class _BehaviorTimers<Message: Codable> {
     /// Cancels timer associated with the given key.
     ///
     /// - Parameter key: key of the timer to cancel
-    public func cancel(for key: TimerKey) {
+    public func cancel(for key: _TimerKey) {
         if let timer = self.installedTimers.removeValue(forKey: key) {
             if context.system.settings.logging.verboseTimers {
                 self.context.log.trace("Cancel timer [\(key)] with generation [\(timer.generation)]", metadata: self.metadata)
@@ -127,7 +127,7 @@ public final class _BehaviorTimers<Message: Codable> {
     ///
     /// - Returns: true if timer exists, false otherwise
     @inlinable
-    public func exists(key: TimerKey) -> Bool {
+    public func exists(key: _TimerKey) -> Bool {
         self.installedTimers[key] != nil
     }
 
@@ -138,7 +138,7 @@ public final class _BehaviorTimers<Message: Codable> {
     ///   - message: the message that will be sent to `myself`
     ///   - delay: the delay after which the message will be sent
     @inlinable
-    public func startSingle(key: TimerKey, message: Message, delay: Duration) {
+    public func startSingle(key: _TimerKey, message: Message, delay: Duration) {
         self.start(key: key, message: message, interval: delay, repeated: false)
     }
 
@@ -149,12 +149,12 @@ public final class _BehaviorTimers<Message: Codable> {
     ///   - message: the message that will be sent to `myself`
     ///   - interval: the interval with which the message will be sent
     @inlinable
-    public func startPeriodic(key: TimerKey, message: Message, interval: Duration) {
+    public func startPeriodic(key: _TimerKey, message: Message, interval: Duration) {
         self.start(key: key, message: message, interval: interval, repeated: true)
     }
 
     @usableFromInline
-    internal func start(key: TimerKey, message: Message, interval: Duration, repeated: Bool) {
+    internal func start(key: _TimerKey, message: Message, interval: Duration, repeated: Bool) {
         self.cancel(for: key)
 
         let generation = self.nextTimerGen()
@@ -228,7 +228,7 @@ extension _BehaviorTimers {
 
     /// Dangerous version of `_startTimer` which allows scheduling a `.resume` system message (directly!) with a token `T`, after a time `delay`.
     /// This can be used e.g. to implement restarting an actor after a backoff delay.
-    internal func _startResumeTimer<T>(key: TimerKey, delay: Duration, resumeWith token: T) {
+    internal func _startResumeTimer<T>(key: _TimerKey, delay: Duration, resumeWith token: T) {
         assert(key.isSystemTimer, "_startResumeTimer MUST ONLY be used by system internal tasks, and keys MUST be `_` prefixed. Key was: \(key)")
         self.cancel(for: key)
 

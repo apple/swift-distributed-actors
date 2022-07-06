@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -20,15 +20,15 @@ import XCTest
 
 final class TimersTests: ClusterSystemXCTestCase {
     func testTimerKey_shouldPrintNicely() {
-        TimerKey("Hello").description.shouldEqual("TimerKey(Hello)")
-        TimerKey("Hello", isSystemTimer: true).description.shouldEqual("TimerKey(Hello, isSystemTimer: true)")
+        _TimerKey("Hello").description.shouldEqual("_TimerKey(Hello)")
+        _TimerKey("Hello", isSystemTimer: true).description.shouldEqual("_TimerKey(Hello, isSystemTimer: true)")
     }
 
     func test_startSingleTimer_shouldSendSingleMessage() throws {
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
         let behavior: _Behavior<String> = .setup { context in
-            context.timers.startSingle(key: TimerKey("message"), message: "fromTimer", delay: .microseconds(100))
+            context.timers.startSingle(key: _TimerKey("message"), message: "fromTimer", delay: .microseconds(100))
             return .receiveMessage { message in
                 p.tell(message)
                 return .same
@@ -45,7 +45,7 @@ final class TimersTests: ClusterSystemXCTestCase {
 
         let behavior: _Behavior<String> = .setup { context in
             var i = 0
-            context.timers.startPeriodic(key: TimerKey("message"), message: "fromTimer", interval: .milliseconds(10))
+            context.timers.startPeriodic(key: _TimerKey("message"), message: "fromTimer", interval: .milliseconds(10))
             return .receiveMessage { message in
                 i += 1
                 p.tell(message)
@@ -70,13 +70,13 @@ final class TimersTests: ClusterSystemXCTestCase {
 
         let behavior: _Behavior<String> = .setup { context in
             var i = 0
-            context.timers.startPeriodic(key: TimerKey("message"), message: "fromTimer", interval: .milliseconds(10))
+            context.timers.startPeriodic(key: _TimerKey("message"), message: "fromTimer", interval: .milliseconds(10))
             return .receiveMessage { message in
                 i += 1
                 p.tell(message)
 
                 if i >= 5 {
-                    context.timers.cancel(for: TimerKey("message"))
+                    context.timers.cancel(for: _TimerKey("message"))
                 }
                 return .same
             }
@@ -97,9 +97,9 @@ final class TimersTests: ClusterSystemXCTestCase {
             // amount of time, so the timer is triggered and sends the message.
             // Because we cancel the timer in the same run, the message should
             // not be processed and the probe should not receive a message.
-            context.timers.startSingle(key: TimerKey("message"), message: "fromTimer", delay: .nanoseconds(0))
+            context.timers.startSingle(key: _TimerKey("message"), message: "fromTimer", delay: .nanoseconds(0))
             DistributedActors._Thread.sleep(.milliseconds(10)) // FIXME(swift): replace with Task.sleep
-            context.timers.cancel(for: TimerKey("message"))
+            context.timers.cancel(for: _TimerKey("message"))
             return .receiveMessage { message in
                 p.tell(message)
                 return .same
@@ -114,9 +114,9 @@ final class TimersTests: ClusterSystemXCTestCase {
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
         let behavior: _Behavior<String> = .setup { context in
-            context.timers.startPeriodic(key: TimerKey("message"), message: "fromTimer", interval: .milliseconds(10))
-            context.timers.startPeriodic(key: TimerKey("message2"), message: "fromTimer2", interval: .milliseconds(50))
-            context.timers.startPeriodic(key: TimerKey("message3"), message: "fromTimer3", interval: .milliseconds(50))
+            context.timers.startPeriodic(key: _TimerKey("message"), message: "fromTimer", interval: .milliseconds(10))
+            context.timers.startPeriodic(key: _TimerKey("message2"), message: "fromTimer2", interval: .milliseconds(50))
+            context.timers.startPeriodic(key: _TimerKey("message3"), message: "fromTimer3", interval: .milliseconds(50))
             return .receiveMessage { message in
                 p.tell(message)
                 context.timers.cancelAll()
@@ -133,7 +133,7 @@ final class TimersTests: ClusterSystemXCTestCase {
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
         let behavior: _Behavior<String> = .setup { context in
-            context.timers.startPeriodic(key: TimerKey("message", isSystemTimer: true), message: "fromSystemTimer", interval: .milliseconds(10))
+            context.timers.startPeriodic(key: _TimerKey("message", isSystemTimer: true), message: "fromSystemTimer", interval: .milliseconds(10))
             return .receiveMessage { message in
                 p.tell(message)
                 context.timers.cancelAll()
