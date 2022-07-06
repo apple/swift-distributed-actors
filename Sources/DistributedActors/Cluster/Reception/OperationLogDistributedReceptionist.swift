@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import AsyncAlgorithms
 import Distributed
 import Logging
 
@@ -207,12 +208,8 @@ public distributed actor OpLogDistributedReceptionist: DistributedReceptionist, 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Timers
 
-    static let slowACKReplicationTick: TimerKey = "slow-ack-replication-tick"
-    static let fastACKReplicationTick: TimerKey = "fast-ack-replication-tick"
-
-    static let localPublishLocalListingsTick: TimerKey = "publish-local-listings-tick"
-
-    private lazy var timers = ActorTimers<OpLogDistributedReceptionist>(self)
+    private var slowACKReplicationTimerTask: Task<Void, Error>?
+    private var flushTimerTasks: [Int: Task<Void, Error>] = [:]
 
     /// Important: This safeguards us from the following write amplification scenario:
     ///
@@ -264,18 +261,22 @@ public distributed actor OpLogDistributedReceptionist: DistributedReceptionist, 
         // === timers ------------------
         // periodically gossip to other receptionists with the last seqNr we've seen,
         // and if it happens to be outdated by then this will cause a push from that node.
-        self.timers.startPeriodic(
-            key: Self.slowACKReplicationTick,
-            interval: actorSystem.settings.receptionist.ackPullReplicationIntervalSlow
-        ) {
-            await self.periodicAckTick()
+        self.slowACKReplicationTimerTask = Task {
+            for await _ in AsyncTimerSequence.repeating(every: self.actorSystem.settings.receptionist.ackPullReplicationIntervalSlow, clock: ContinuousClock()) {
+                self.periodicAckTick()
+            }
         }
 
         self.log.debug("Initialized receptionist")
     }
 
     deinit {
-        eventsListeningTask?.cancel()
+        self.eventsListeningTask?.cancel()
+        self.slowACKReplicationTimerTask?.cancel()
+        // FIXME: this crashes tests (ClusterAssociationTests.test_association_sameAddressNodeJoin_shouldOverrideExistingNode)
+//        self.flushTimerTasks.values.forEach { timerTask in
+//            timerTask.cancel()
+//        }
     }
 }
 
@@ -301,7 +302,6 @@ extension OpLogDistributedReceptionist: LifecycleWatch {
         let key = key.asAnyKey
 
         let id = guest.id
-        let ref = actorSystem._resolveUntyped(id: guest.id)
 
         guard id._isLocal || (id.uniqueNode == actorSystem.cluster.uniqueNode) else {
             self.log.warning("""
@@ -410,25 +410,30 @@ extension OpLogDistributedReceptionist: LifecycleWatch {
 
 extension OpLogDistributedReceptionist {
     func ensureDelayedListingFlush(of key: AnyDistributedReceptionKey) {
-        let timerKey = self.flushTimerKey(key)
-
         if self.storage.registrations(forKey: key)?.isEmpty ?? true {
             self.log.debug("notify now, no need to schedule delayed flush")
             self.notifySubscribers(of: key)
             return // no need to schedule, there are no registered actors at all, we eagerly emit this info
         }
 
-        guard !self.timers.exists(key: timerKey) else {
+        let timerTaskKey = key.hashValue
+        guard self.flushTimerTasks[timerTaskKey] == nil else {
             self.log.debug("timer exists")
             return // timer exists nothing to do
         }
 
         // TODO: also flush when a key has seen e.g. 100 changes?
         let flushDelay = actorSystem.settings.receptionist.listingFlushDelay
-        // timers.startSingle(key: timerKey, message: _ReceptionistDelayedListingFlushTick(key: key), delay: flushDelay)
         self.log.debug("schedule delayed flush")
-        self.timers.startSingle(key: timerKey, delay: flushDelay) {
-            self.onDelayedListingFlushTick(key: key)
+        self.flushTimerTasks[timerTaskKey] = Task {
+            for await _ in AsyncTimerSequence(interval: flushDelay, clock: ContinuousClock()) {
+                self.onDelayedListingFlushTick(key: key)
+                // Single-shot; cancel task immediately after it has been fired
+                if let timerTask = self.flushTimerTasks.removeValue(forKey: timerTaskKey) {
+                    timerTask.cancel()
+                }
+                break
+            }
         }
     }
 
@@ -456,10 +461,6 @@ extension OpLogDistributedReceptionist {
                 subscription.tryOffer(registration: registration)
             }
         }
-    }
-
-    private func flushTimerKey(_ key: AnyDistributedReceptionKey) -> TimerKey {
-        "flush-\(key.hashValue)"
     }
 }
 

@@ -27,9 +27,6 @@ public final class _OperationLogClusterReceptionist {
     // MARK: Timer Keys
 
     static let slowACKReplicationTick: TimerKey = "slow-ack-replication-tick"
-    static let fastACKReplicationTick: TimerKey = "fast-ack-replication-tick"
-
-    static let localPublishLocalListingsTick: TimerKey = "publish-local-listings-tick"
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: State

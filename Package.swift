@@ -30,6 +30,7 @@ var targets: [PackageDescription.Target] = [
             .product(name: "Metrics", package: "swift-metrics"),
             .product(name: "ServiceDiscovery", package: "swift-service-discovery"),
             .product(name: "Backtrace", package: "swift-backtrace"),
+            .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
         ]
     ),
 
@@ -179,26 +180,27 @@ var targets: [PackageDescription.Target] = [
 var dependencies: [Package.Dependency] = [
     .package(url: "https://github.com/apple/swift-atomics", from: "1.0.2"),
 
-    .package(url: "https://github.com/apple/swift-cluster-membership.git", from: "0.3.0"),
+    .package(url: "https://github.com/apple/swift-cluster-membership", from: "0.3.0"),
 
-    .package(url: "https://github.com/apple/swift-nio.git", from: "2.40.0"),
-    .package(url: "https://github.com/apple/swift-nio-extras.git", from: "1.2.0"),
-    .package(url: "https://github.com/apple/swift-nio-ssl.git", from: "2.16.1"),
+    .package(url: "https://github.com/apple/swift-nio", from: "2.40.0"),
+    .package(url: "https://github.com/apple/swift-nio-extras", from: "1.2.0"),
+    .package(url: "https://github.com/apple/swift-nio-ssl", from: "2.16.1"),
 
-    .package(url: "https://github.com/apple/swift-protobuf.git", from: "1.7.0"),
+    .package(url: "https://github.com/apple/swift-protobuf", from: "1.7.0"),
 
     // ~~~ backtraces ~~~
     // TODO: optimally, library should not pull swift-backtrace
-    .package(url: "https://github.com/swift-server/swift-backtrace.git", from: "1.1.1"),
+    .package(url: "https://github.com/swift-server/swift-backtrace", from: "1.1.1"),
 
-    // ~~~ Swift Collections  ~~~
-    .package(url: "https://github.com/apple/swift-collections.git", from: "1.0.1"),
+    // ~~~ Swift libraries ~~~
+    .package(url: "https://github.com/apple/swift-async-algorithms", from: "0.0.3"),
+    .package(url: "https://github.com/apple/swift-collections", from: "1.0.1"),
 
     // ~~~ Observability ~~~
-    .package(url: "https://github.com/apple/swift-log.git", from: "1.0.0"),
+    .package(url: "https://github.com/apple/swift-log", from: "1.0.0"),
     // swift-metrics 1.x and 2.x are almost API compatible, so most clients should use
-    .package(url: "https://github.com/apple/swift-metrics.git", "1.0.0" ..< "3.0.0"),
-    .package(url: "https://github.com/apple/swift-service-discovery.git", from: "1.0.0"),
+    .package(url: "https://github.com/apple/swift-metrics", "1.0.0" ..< "3.0.0"),
+    .package(url: "https://github.com/apple/swift-service-discovery", from: "1.0.0"),
 
     // ~~~ SwiftPM Plugins ~~~
     .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.0.0"),
