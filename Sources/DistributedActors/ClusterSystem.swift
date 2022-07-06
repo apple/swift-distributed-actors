@@ -912,7 +912,7 @@ extension ClusterSystem {
         } else {
             lifecycleContainer = nil
         }
-        traceLog_DeathWatch("Make LifecycleWatchContainer for \(id):::: \(lifecycleContainer)")
+        traceLog_DeathWatch("Make LifecycleWatchContainer for \(id):::: \(optional: lifecycleContainer)")
 
         id.context = .init(lifecycle: lifecycleContainer)
 
@@ -1066,7 +1066,7 @@ extension ClusterSystem {
 
         let timeout = RemoteCall.timeout ?? self.settings.defaultRemoteCallTimeout
         let timeoutTask: Task<Void, Error> = Task.detached {
-            await Task.sleep(UInt64(timeout.nanoseconds))
+            try await Task.sleep(nanoseconds: UInt64(timeout.nanoseconds))
             guard !Task.isCancelled else {
                 return
             }

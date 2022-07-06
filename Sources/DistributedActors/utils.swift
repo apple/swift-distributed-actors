@@ -41,32 +41,32 @@ import Foundation
  *
  * Originally from: Johannes Weiss (MIT licensed) https://github.com/weissi/swift-undefined
  */
-public func _undefined<T>(hint: String = "", function: StaticString = #function, file: StaticString = #filePath, line: UInt = #line) -> T {
+public func _undefined<T>(hint: String = "", function: StaticString = #function, file: StaticString = #file, line: UInt = #line) -> T {
     let message = hint == "" ? "" : ": \(hint)"
     fatalError("undefined \(function) -> \(T.self)\(message)", file: file, line: line)
 }
 
-public func _undefined(hint: String = "", function: StaticString = #function, file: StaticString = #filePath, line: UInt = #line) -> Never {
+public func _undefined(hint: String = "", function: StaticString = #function, file: StaticString = #file, line: UInt = #line) -> Never {
     let message = hint == "" ? "" : ": \(hint)"
     fatalError("undefined \(function) -> Never \(message)", file: file, line: line)
 }
 
-func TODO<T>(_ hint: String, function: StaticString = #function, file: StaticString = #filePath, line: UInt = #line) -> T {
+func TODO<T>(_ hint: String, function: StaticString = #function, file: StaticString = #file, line: UInt = #line) -> T {
     fatalError("TODO(\(function)): \(hint)", file: file, line: line)
 }
 
-func FIXME<T>(_ hint: String, function: StaticString = #function, file: StaticString = #filePath, line: UInt = #line) -> T {
+func FIXME<T>(_ hint: String, function: StaticString = #function, file: StaticString = #file, line: UInt = #line) -> T {
     fatalError("TODO(\(function)): \(hint)", file: file, line: line)
 }
 
 // TODO: Remove this once we're happy with swift-backtrace always printing backtrace (also on macos)
 @usableFromInline
-internal func fatalErrorBacktrace<T>(_ hint: String, file: StaticString = #filePath, line: UInt = #line) -> T {
+internal func fatalErrorBacktrace<T>(_ hint: String, file: StaticString = #file, line: UInt = #line) -> T {
     sact_dump_backtrace()
     fatalError(hint, file: file, line: line)
 }
 
-internal func assertBacktrace(_ condition: @autoclosure () -> Bool, _ message: @autoclosure () -> String = String(), file: StaticString = #filePath, line: UInt = #line) {
+internal func assertBacktrace(_ condition: @autoclosure () -> Bool, _ message: @autoclosure () -> String = String(), file: StaticString = #file, line: UInt = #line) {
     assert(condition(), { () in sact_dump_backtrace(); return message() }(), file: file, line: line)
 }
 

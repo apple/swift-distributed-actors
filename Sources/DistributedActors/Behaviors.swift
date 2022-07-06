@@ -599,7 +599,7 @@ extension _Behavior {
     ///
     /// Note: The returned behavior MUST be `_Behavior.canonicalize`-ed in the vast majority of cases.
     // Implementation note: We don't do so here automatically in order to keep interpretations transparent and testable.
-    public func interpretMessage(context: _ActorContext<Message>, message: Message, file: StaticString = #filePath, line: UInt = #line) throws -> _Behavior<Message> {
+    public func interpretMessage(context: _ActorContext<Message>, message: Message, file: StaticString = #file, line: UInt = #line) throws -> _Behavior<Message> {
         switch self.underlying {
         case .receiveMessage(let recv): return try recv(message)
         case .receiveMessageAsync(let recv): return self.receiveMessageAsync(recv, message)
