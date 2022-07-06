@@ -262,7 +262,7 @@ public distributed actor OpLogDistributedReceptionist: DistributedReceptionist, 
         // periodically gossip to other receptionists with the last seqNr we've seen,
         // and if it happens to be outdated by then this will cause a push from that node.
         self.slowACKReplicationTimerTask = Task {
-            for await _ in AsyncTimerSequence.repeating(every: self.actorSystem.settings.receptionist.ackPullReplicationIntervalSlow, clock: ContinuousClock()) {
+            for await _ in AsyncTimerSequence.repeating(every: self.actorSystem.settings.receptionist.ackPullReplicationIntervalSlow, clock: .continuous) {
                 self.periodicAckTick()
             }
         }
@@ -273,10 +273,6 @@ public distributed actor OpLogDistributedReceptionist: DistributedReceptionist, 
     deinit {
         self.eventsListeningTask?.cancel()
         self.slowACKReplicationTimerTask?.cancel()
-        // FIXME: this crashes tests (ClusterAssociationTests.test_association_sameAddressNodeJoin_shouldOverrideExistingNode)
-//        self.flushTimerTasks.values.forEach { timerTask in
-//            timerTask.cancel()
-//        }
     }
 }
 
@@ -426,14 +422,10 @@ extension OpLogDistributedReceptionist {
         let flushDelay = actorSystem.settings.receptionist.listingFlushDelay
         self.log.debug("schedule delayed flush")
         self.flushTimerTasks[timerTaskKey] = Task {
-            for await _ in AsyncTimerSequence(interval: flushDelay, clock: ContinuousClock()) {
-                self.onDelayedListingFlushTick(key: key)
-                // Single-shot; cancel task immediately after it has been fired
-                if let timerTask = self.flushTimerTasks.removeValue(forKey: timerTaskKey) {
-                    timerTask.cancel()
-                }
-                break
-            }
+            defer { self.flushTimerTasks.removeValue(forKey: timerTaskKey) }
+
+            try await Task.sleep(until: .now + flushDelay, clock: .continuous)
+            self.onDelayedListingFlushTick(key: key)
         }
     }
 
