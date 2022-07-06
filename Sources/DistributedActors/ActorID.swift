@@ -154,8 +154,7 @@ extension ClusterSystem {
         public var path: ActorPath {
             get {
                 guard let path = tags[ActorTags.path] else {
-                    return ActorPath._undefined
-                    // fatalError("FIXME: ActorTags.path was not set on \(self.incarnation)! NOTE THAT PATHS ARE TO BECOME OPTIONAL!!!") // FIXME(distributed): must be removed
+                     fatalError("FIXME: ActorTags.path was not set on \(self.incarnation)! NOTE THAT PATHS ARE TO BECOME OPTIONAL!!!") // FIXME(distributed): must be removed
                 }
                 return path
             }
