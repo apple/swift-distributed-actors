@@ -12,7 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-import AsyncAlgorithms
 import Distributed
 import DistributedActors
 import Logging
@@ -24,9 +23,6 @@ distributed actor Philosopher: CustomStringConvertible {
     private let leftFork: Fork
     private let rightFork: Fork
     private var state: State = .thinking
-
-    private var becomeHungryTimerTask: Task<Void, Error>?
-    private var finishEatingTimerTask: Task<Void, Error>?
 
     init(name: String, leftFork: Fork, rightFork: Fork, actorSystem: ActorSystem) {
         self.actorSystem = actorSystem
@@ -60,12 +56,9 @@ distributed actor Philosopher: CustomStringConvertible {
         }
 
         self.state = .thinking
-        self.becomeHungryTimerTask = Task {
-            for await _ in AsyncTimerSequence(interval: .seconds(1), clock: ContinuousClock()) {
-                await self.attemptToTakeForks()
-                self.becomeHungryTimerTask?.cancel()
-                break
-            }
+        Task {
+            try await Task.sleep(until: .now + .seconds(1), clock: .continuous)
+            await self.attemptToTakeForks()
         }
         self.log.info("\(self.name) is thinking...")
     }
@@ -151,19 +144,10 @@ distributed actor Philosopher: CustomStringConvertible {
     private func becomeEating() {
         self.state = .eating
         self.log.notice("\(self.name) began eating!")
-        self.finishEatingTimerTask = Task {
-            for await _ in AsyncTimerSequence(interval: .seconds(3), clock: ContinuousClock()) {
-                self.stopEating()
-                self.finishEatingTimerTask?.cancel()
-                break
-            }
+        Task {
+            try await Task.sleep(until: .now + .seconds(3), clock: .continuous)
+            self.stopEating()
         }
-    }
-
-    deinit {
-        // FIXME: these are async
-//        self.becomeHungryTimerTask?.cancel()
-//        self.finishEatingTimerTask?.cancel()
     }
 }
 
