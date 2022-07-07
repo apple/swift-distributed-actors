@@ -876,13 +876,12 @@ extension ClusterSystem {
             return nil
         }
 
-        return self.namingLock.withLock {
+        return try self.namingLock.withLock {
             guard let managed = self._managedDistributedActors.get(identifiedBy: id) else {
                 log.trace("Resolved as remote reference", metadata: [
                     "actor/id": "\(id)",
                 ])
-                // TODO(distributed): throw here, this should be a dead letter
-                return nil
+                throw DeadLetterError(recipient: id)
             }
 
             if let resolved = managed as? Act {
@@ -1130,11 +1129,6 @@ extension ClusterSystem {
             return
         }
 
-        guard let actor = self.resolve(id: recipient) else {
-            self.log.error("Unable to resolve recipient \(recipient). Message will be dropped: \(invocation)")
-            return
-        }
-
         Task {
             var decoder = ClusterInvocationDecoder(system: self, message: invocation)
 
@@ -1148,6 +1142,12 @@ extension ClusterSystem {
             )
 
             do {
+                guard let actor = self.resolve(id: recipient) else {
+                    self.log.error("Unable to resolve recipient \(recipient). Message will be dropped: \(invocation)")
+                    self.deadLetters.tell(DeadLetter(invocation, recipient: recipient))
+                    throw DeadLetterError(recipient: recipient)
+                }
+
                 try await executeDistributedTarget(
                     on: actor,
                     target: target,

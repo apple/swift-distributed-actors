@@ -12,6 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Distributed
+import Foundation
 import Logging
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -254,4 +256,11 @@ protocol SilentDeadLetter {}
 extension ActorPath {
     static let _dead: ActorPath = try! ActorPath(root: "dead")
     static let _deadLetters: ActorPath = try! ActorPath._dead.appending("letters")
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Errors
+
+public struct DeadLetterError: DistributedActorSystemError, Codable {
+    public let recipient: ClusterSystem.ActorID
 }
