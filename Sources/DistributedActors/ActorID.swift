@@ -40,7 +40,7 @@ extension ClusterSystem.ActorID {
             self.id = key.id
             self.keyType = type(of: key)
         }
-        
+
         public var wrappedValue: Value {
             get { fatalError("called wrappedValue getter") }
             set { fatalError("called wrappedValue setter") }
@@ -931,11 +931,13 @@ extension ActorID: Codable {
 
             let keys = ActorMetadataKeys()
             if (metadataSettings == nil || metadataSettings!.propagateMetadata.contains(keys.path.id)),
-               let value = self.metadata.path {
+               let value = self.metadata.path
+            {
                 try metadataContainer.encode(value, forKey: ActorCoding.MetadataKeys.path)
             }
             if (metadataSettings == nil || metadataSettings!.propagateMetadata.contains(keys.type.id)),
-               let value = self.metadata.type {
+               let value = self.metadata.type
+            {
                 try metadataContainer.encode(value, forKey: ActorCoding.MetadataKeys.type)
             }
 
@@ -960,7 +962,7 @@ extension ActorID: Codable {
             if let context = decoder.actorSerializationContext {
                 let decodeCustomMetadata = context.system.settings.actorMetadata.decodeCustomMetadata
                 try decodeCustomMetadata(metadataContainer, self.metadata)
-                
+
 //                for (key, value) in try decodeCustomMetadata(metadataContainer) {
 //                    func store(_: K.Type) {
 //                        if let value = tag.value as? K.Value {

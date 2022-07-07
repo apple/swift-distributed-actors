@@ -52,6 +52,6 @@ internal struct ActorIDMetadataSettings {
     internal var encodeCustomMetadata: (ActorMetadata, inout KeyedEncodingContainer<ActorCoding.MetadataKeys>) throws -> Void =
         { _, _ in () }
 
-    internal var decodeCustomMetadata: ((KeyedDecodingContainer<ActorCoding.MetadataKeys>, ActorMetadata) throws -> ()) =
+    internal var decodeCustomMetadata: ((KeyedDecodingContainer<ActorCoding.MetadataKeys>, ActorMetadata) throws -> Void) =
         { _, _ in () }
 }

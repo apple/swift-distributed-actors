@@ -24,7 +24,7 @@ public struct ActorMetadataKeys {
 
 extension ActorMetadataKeys {
     var path: Key<ActorPath> { "$path" }
-    
+
     var type: Key<ActorTypeTagValue> { "$type" }
     struct ActorTypeTagValue: Codable { // FIXME: improve representation to be more efficient
         let mangledName: String
@@ -82,7 +82,7 @@ public final class ActorMetadata: CustomStringConvertible, CustomDebugStringConv
             self._storage[id] = newValue
         }
     }
-    
+
     subscript(_ id: String) -> (any Sendable & Codable)? {
         get {
             self.lock.wait()
@@ -122,9 +122,7 @@ public final class ActorMetadata: CustomStringConvertible, CustomDebugStringConv
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ActorTagKey
 
-public protocol AnyActorMetadataKey {
-    
-}
+public protocol AnyActorMetadataKey {}
 
 /// Declares a key to be used with ``ActorMetadata``, which allows attaching various metadata to an ``ActorID``.
 public struct ActorMetadataKey<Value: Codable & Sendable>: Hashable, ExpressibleByStringLiteral {
@@ -140,7 +138,7 @@ public struct ActorMetadataKey<Value: Codable & Sendable>: Hashable, Expressible
 }
 
 ///// Used to tag actor identities with additional information.
-//public protocol ActorMetadataProtocol: Sendable where Value == Key.Value {
+// public protocol ActorMetadataProtocol: Sendable where Value == Key.Value {
 //    /// Type of the actor tag key, used to obtain an actor tag instance.
 //    associatedtype Key: ActorTagKey<Value>
 //
@@ -148,20 +146,20 @@ public struct ActorMetadataKey<Value: Codable & Sendable>: Hashable, Expressible
 //    associatedtype Value
 //
 //    var value: Value { get }
-//}
+// }
 //
-//@available(*, deprecated, message: "remove this")
-//public protocol ActorTagKey<Value>: Sendable {
+// @available(*, deprecated, message: "remove this")
+// public protocol ActorTagKey<Value>: Sendable {
 //    associatedtype Value: Sendable & Codable
 //    static var id: String { get }
-//}
+// }
 //
 //// ==== ----------------------------------------------------------------------------------------------------------------
 //
-//extension ActorMetadataProtocol {
+// extension ActorMetadataProtocol {
 //    /// String representation of the unique key tag identity, equal to `Key.id`.
 //    ///
 //    /// Tag keys should be unique, and must not start with $ unless they are declared by the ClusterSystem itself.
 //    public var id: String { Key.id }
 //    public var keyType: Key.Type { Key.self }
-//}
+// }
