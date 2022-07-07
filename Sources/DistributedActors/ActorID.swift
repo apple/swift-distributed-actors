@@ -20,13 +20,27 @@ import Distributed
 /// Convenience alias for ``ClusterSystem/ActorID``.
 public typealias ActorID = ClusterSystem.ActorID
 
+extension DistributedActor where ActorSystem == ClusterSystem {
+    public nonisolated var metadata: ActorMetadata {
+        self.id.metadata
+    }
+}
+
 extension ClusterSystem.ActorID {
     @propertyWrapper
-    public struct Metadata<Value: Sendable & Codable, Key: ActorTagKey<Value>> {
-        public init(_: Key.Type) {
-            // no initial value; it must be set during initialization
-        }
+    public struct Metadata<Value: Sendable & Codable> {
+        let keyType: Any.Type
+        let id: String
+//        public init(_: Key.Type) {
+//            // no initial value; it must be set during initialization
+//        }
 
+        public init(_ keyPath: KeyPath<ActorMetadataKeys, ActorMetadataKey<Value>>) {
+            let key = ActorMetadataKeys()[keyPath: keyPath]
+            self.id = key.id
+            self.keyType = type(of: key)
+        }
+        
         public var wrappedValue: Value {
             get { fatalError("called wrappedValue getter") }
             set { fatalError("called wrappedValue setter") }
@@ -43,17 +57,19 @@ extension ClusterSystem.ActorID {
             storage storageKeyPath: ReferenceWritableKeyPath<EnclosingSelf, Self>
         ) -> Value where EnclosingSelf.ActorSystem == ClusterSystem, EnclosingSelf.ID == ClusterSystem.ActorID {
             get {
-                guard let value = myself.id.metadata[Key.self] else {
-                    fatalError("ActorID Metadata for key \(Key.self) was not assigned initial value, assign one in the distributed actor's initializer.")
+                let key = myself[keyPath: storageKeyPath]
+                guard let value = myself.id.metadata[key.id] else {
+                    fatalError("ActorID Metadata for key \(key.id):\(key.keyType) was not assigned initial value, assign one in the distributed actor's initializer.")
                 }
-                return value
+                return value as! Value
             }
             set {
                 let metadata = myself.id.metadata
-                if let value = metadata[Key.self] {
-                    fatalError("Attempted to override ActorID Metadata for key \(Key.self) which already had value: \(value); with new value: \(String(describing: newValue))")
+                let key = myself[keyPath: storageKeyPath]
+                if let value = metadata[key.id] {
+                    fatalError("Attempted to override ActorID Metadata for key \(key.id):\(key.keyType) which already had value: \(value); with new value: \(String(describing: newValue))")
                 }
-                metadata[Key.self] = newValue
+                metadata[key.id] = newValue
             }
         }
     }
@@ -147,13 +163,13 @@ extension ClusterSystem {
         // FIXME(distributed): make optional
         public var path: ActorPath {
             get {
-                guard let path = metadata[ActorMetadata.path] else {
+                guard let path = metadata.path else {
                     fatalError("FIXME: ActorTags.path was not set on \(self.incarnation)! NOTE THAT PATHS ARE TO BECOME OPTIONAL!!!") // FIXME(distributed): must be removed
                 }
                 return path
             }
             set {
-                self.metadata[ActorMetadata.path] = newValue
+                self.metadata[ActorMetadataKeys().path.id] = newValue
             }
         }
 
@@ -178,7 +194,7 @@ extension ClusterSystem {
             self._location = .local(node)
             self.incarnation = incarnation
             if let path {
-                self.context.metadata[ActorMetadata.path] = path
+                self.context.metadata[ActorMetadataKeys().path.id] = path
             }
             traceLog_DeathWatch("Made ID: \(self)")
         }
@@ -194,7 +210,7 @@ extension ClusterSystem {
             self._location = .remote(node)
             self.incarnation = incarnation
             if let path {
-                self.context.metadata[ActorMetadata.path] = path
+                self.context.metadata[ActorMetadataKeys().path.id] = path
             }
             traceLog_DeathWatch("Made ID: \(self)")
         }
@@ -206,7 +222,7 @@ extension ClusterSystem {
             self._location = .remote(node)
             self.incarnation = incarnation
             if let mangledName = _mangledTypeName(type) { // TODO: avoid mangling names on every spawn?
-                self.context.metadata[ActorMetadata.type] = .init(mangledName: mangledName)
+                self.context.metadata.type = .init(mangledName: mangledName)
             }
             traceLog_DeathWatch("Made ID: \(self)")
         }
@@ -219,7 +235,7 @@ extension ClusterSystem {
             self._location = .local(node)
             self.incarnation = incarnation
             if let mangledName = _mangledTypeName(type) { // TODO: avoid mangling names on every spawn?
-                self.context.metadata[ActorMetadata.type] = .init(mangledName: mangledName)
+                self.context.metadata.type = .init(mangledName: mangledName)
             }
             traceLog_DeathWatch("Made ID: \(self)")
         }
@@ -232,12 +248,12 @@ extension ClusterSystem {
             self._location = .remote(node)
             self.incarnation = incarnation
             if let mangledName = _mangledTypeName(type) { // TODO: avoid mangling names on every spawn?
-                self.context.metadata[ActorMetadata.type] = .init(mangledName: mangledName)
+                self.context.metadata.type = .init(mangledName: mangledName)
             }
             traceLog_DeathWatch("Made ID: \(self)")
         }
 
-        internal var withoutContext: Self {
+        internal var withoutLifecycle: Self {
             var copy = self
             copy.context = .init(
                 lifecycle: nil,
@@ -902,7 +918,7 @@ extension UniqueNodeID {
 extension ActorID: Codable {
     public func encode(to encoder: Encoder) throws {
         let metadataSettings = encoder.actorSerializationContext?.system.settings.actorMetadata
-        let encodeCustomMetadata: (ActorID, inout KeyedEncodingContainer<ActorCoding.MetadataKeys>) throws -> Void =
+        let encodeCustomMetadata =
             metadataSettings?.encodeCustomMetadata ?? ({ _, _ in () })
 
         var container = encoder.container(keyedBy: ActorCoding.CodingKeys.self)
@@ -913,16 +929,17 @@ extension ActorID: Codable {
         if !self.metadata.isEmpty {
             var metadataContainer = container.nestedContainer(keyedBy: ActorCoding.MetadataKeys.self, forKey: ActorCoding.CodingKeys.metadata)
 
-            if (metadataSettings == nil || metadataSettings!.propagateMetadata.contains(AnyActorTagKey(ActorMetadata.path))),
-               let value = self.metadata[ActorMetadata.path] {
+            let keys = ActorMetadataKeys()
+            if (metadataSettings == nil || metadataSettings!.propagateMetadata.contains(keys.path.id)),
+               let value = self.metadata.path {
                 try metadataContainer.encode(value, forKey: ActorCoding.MetadataKeys.path)
             }
-            if (metadataSettings == nil || metadataSettings!.propagateMetadata.contains(AnyActorTagKey(ActorMetadata.type))),
-               let value = self.metadata[ActorMetadata.type] {
+            if (metadataSettings == nil || metadataSettings!.propagateMetadata.contains(keys.type.id)),
+               let value = self.metadata.type {
                 try metadataContainer.encode(value, forKey: ActorCoding.MetadataKeys.type)
             }
 
-            try encodeCustomMetadata(self, &metadataContainer)
+            try encodeCustomMetadata(self.metadata, &metadataContainer)
         }
     }
 
@@ -942,15 +959,16 @@ extension ActorID: Codable {
 
             if let context = decoder.actorSerializationContext {
                 let decodeCustomMetadata = context.system.settings.actorMetadata.decodeCustomMetadata
-
-                for tag in try decodeCustomMetadata(metadataContainer) {
-                    func store<K: ActorTagKey>(_: K.Type) {
-                        if let value = tag.value as? K.Value {
-                            self.metadata[K.self] = value
-                        }
-                    }
-                    _openExistential(tag.keyType as any ActorTagKey.Type, do: store) // the `as` here is required, because: inferred result type 'any ActorTagKey.Type' requires explicit coercion due to loss of generic requirements
-                }
+                try decodeCustomMetadata(metadataContainer, self.metadata)
+                
+//                for (key, value) in try decodeCustomMetadata(metadataContainer) {
+//                    func store(_: K.Type) {
+//                        if let value = tag.value as? K.Value {
+//                            self.metadata[K.self] = value
+//                        }
+//                    }
+//                    _openExistential(key, do: store) // the `as` here is required, because: inferred result type 'any ActorTagKey.Type' requires explicit coercion due to loss of generic requirements
+//                }
             }
         }
     }

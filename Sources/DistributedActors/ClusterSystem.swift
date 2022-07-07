@@ -857,17 +857,6 @@ extension ClusterSystem {
         }
     }
 
-    /// Allows creating a distributed actor with additional configuration applied during its initialization.
-    internal func actorWith<Act: DistributedActor>(_ metadata: (any ActorMetadataProtocol)...,
-                                                   makeActor: () throws -> Act) rethrows -> Act
-    {
-        var props = _Props.forSpawn
-        props.metadata = .init(metadata)
-
-        return try _Props.$forSpawn.withValue(props) {
-            try makeActor()
-        }
-    }
 }
 
 extension ClusterSystem {
@@ -912,7 +901,7 @@ extension ClusterSystem {
 
         let lifecycleContainer: LifecycleWatchContainer?
         if Act.self is (any(LifecycleWatch).Type) {
-            lifecycleContainer = LifecycleWatchContainer(watcherID: id.withoutContext, actorSystem: self)
+            lifecycleContainer = LifecycleWatchContainer(watcherID: id.withoutLifecycle, actorSystem: self)
         } else {
             lifecycleContainer = nil
         }

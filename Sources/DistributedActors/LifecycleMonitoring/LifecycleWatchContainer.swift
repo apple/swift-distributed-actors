@@ -42,8 +42,7 @@ final class LifecycleWatchContainer {
     /// Warning: DO NOT RETAIN THE WATCHER.
     init(watcherID: ActorID, actorSystem: ClusterSystem) {
         traceLog_DeathWatch("Make LifecycleWatchContainer owned by \(watcherID)")
-//        self._lock = .init()
-        self.watcherID = watcherID.withoutContext // make sure we don't retain the context
+        self.watcherID = watcherID.withoutLifecycle // make sure we don't retain the context
         self.system = actorSystem
     }
 

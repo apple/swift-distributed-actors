@@ -12,7 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Dispatch
 import Distributed
 
 /// Internal context object used by the actor system to support per-actor state, such as necessary to implement lifecycle watch etc.

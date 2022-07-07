@@ -13,30 +13,13 @@
 //===----------------------------------------------------------------------===//
 
 import Distributed
-@testable import DistributedActors
+import DistributedActors
 import DistributedActorsTestKit
 import XCTest
 
-extension ActorMetadata {
-    static let exampleUserID = ExampleUserIDTag.Key.self
-    struct ExampleUserIDTag: ActorMetadataProtocol {
-        struct Key: ActorTagKey {
-            static let id: String = "user-id"
-            typealias Value = String
-        }
-
-        let value: Key.Value
-    }
-
-    public static let exampleClusterSingletonID = ExampleClusterSingletonIDTag.Key.self
-    public struct ExampleClusterSingletonIDTag: ActorMetadataProtocol {
-        public struct Key: ActorTagKey {
-            public static let id: String = "singleton-id"
-            public typealias Value = String
-        }
-
-        public let value: Key.Value
-    }
+extension ActorMetadataKeys {
+    var exampleUserID: Key<String> { "user-id" }
+    var exampleClusterSingletonID: Key<String> { "singleton-id" }
 }
 
 public protocol ClusterSingletonProtocol: DistributedActor {
@@ -49,7 +32,7 @@ public protocol ClusterSingletonProtocol: DistributedActor {
 distributed actor ThereCanBeOnlyOneClusterSingleton: ClusterSingletonProtocol {
     typealias ActorSystem = ClusterSystem
 
-    @ActorID.Metadata(.exampleClusterSingletonID)
+    @ActorID.Metadata(\.exampleClusterSingletonID)
     public var singletonID: String
     // TODO(swift): impossible to assign initial value here, as _enclosingInstance is not available yet "the-one"
 
@@ -63,7 +46,7 @@ final class ActorIDMetadataTests: ClusteredActorSystemsXCTestCase {
     distributed actor Example: CustomStringConvertible {
         typealias ActorSystem = ClusterSystem
 
-        @ActorID.Metadata(ActorMetadata.exampleUserID)
+        @ActorID.Metadata(\.exampleUserID)
         var userID: String
 
         init(userID: String, actorSystem: ActorSystem) async {
@@ -76,7 +59,7 @@ final class ActorIDMetadataTests: ClusteredActorSystemsXCTestCase {
         }
 
         nonisolated var description: String {
-            "\(Self.self)(\(self.id.metadata))"
+            "\(Self.self)(\(self.metadata))"
         }
     }
 
@@ -85,7 +68,7 @@ final class ActorIDMetadataTests: ClusteredActorSystemsXCTestCase {
         let userID = "user-1234"
         let example = await Example(userID: userID, actorSystem: system)
 
-        example.id.metadata[ActorMetadata.exampleUserID]!.shouldEqual(userID)
+        example.metadata.exampleUserID.shouldEqual(userID)
     }
 
     func test_metadata_beUsableInDescription() async throws {
@@ -101,6 +84,6 @@ final class ActorIDMetadataTests: ClusteredActorSystemsXCTestCase {
         let system = await setUpNode("first")
         let singleton = await ThereCanBeOnlyOneClusterSingleton(actorSystem: system)
 
-        singleton.id.metadata[ActorMetadata.exampleClusterSingletonID].shouldEqual("the-boss")
+        singleton.metadata.exampleClusterSingletonID.shouldEqual("the-boss")
     }
 }
