@@ -24,6 +24,12 @@
 --disable redundantGet
 --disable redundantReturn
 
+# enum namespaces does not understand some instances of code where an instance
+# IS necessary because of how dynamic member lookup is used; or we even create
+# instances manually, since we must have *member methods* for dynamic lookup
+# to work.
+--disable enumNamespaces
+
 # we want to have fine grained control over extensions by marking each function
 # explicitly, rather than it being forced onto the extension entirely.
 --extensionacl on-declarations
