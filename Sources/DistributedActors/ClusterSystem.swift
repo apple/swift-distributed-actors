@@ -1143,7 +1143,6 @@ extension ClusterSystem {
 
             do {
                 guard let actor = self.resolve(id: recipient) else {
-                    self.log.error("Unable to resolve recipient \(recipient). Message will be dropped: \(invocation)")
                     self.deadLetters.tell(DeadLetter(invocation, recipient: recipient))
                     throw DeadLetterError(recipient: recipient)
                 }
