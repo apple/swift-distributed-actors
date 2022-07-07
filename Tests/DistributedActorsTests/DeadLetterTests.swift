@@ -92,7 +92,7 @@ final class DeadLetterTests: ClusterSystemXCTestCase {
         local.cluster.join(node: remote.cluster.uniqueNode)
 
         var greeter: Greeter? = Greeter(actorSystem: local)
-        let localGreeter = try Greeter.resolve(id: greeter!.id, using: remote)
+        let remoteGreeterRef = try Greeter.resolve(id: greeter!.id, using: remote)
 
         let p = self.testKit.makeTestProbe(expecting: String.self)
         let watcher = GreeterWatcher(probe: p, actorSystem: local)
@@ -102,7 +102,7 @@ final class DeadLetterTests: ClusterSystemXCTestCase {
         try p.expectMessage(prefix: "Received terminated: /user/Greeter")
 
         let error = try await shouldThrow {
-            _ = try await localGreeter.greet(name: "world")
+            _ = try await remoteGreeterRef.greet(name: "world")
         }
 
         guard error is DeadLetterError else {
