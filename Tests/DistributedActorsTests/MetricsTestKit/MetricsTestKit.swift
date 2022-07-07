@@ -398,7 +398,7 @@ public final class TestTimer: TestMetric, TimerHandler, Equatable, CustomStringC
     }
 
     public var description: String {
-        "TestTimer(label: \(self.label), displayUnit: \(self.displayUnit, orElse: ""), dimensions: \(self.dimensions))"
+        "TestTimer(label: \(self.label), displayUnit: \(self.displayUnit.map { String(describing: $0) } ?? ""), dimensions: \(self.dimensions))"
     }
 
     public static func == (lhs: TestTimer, rhs: TestTimer) -> Bool {

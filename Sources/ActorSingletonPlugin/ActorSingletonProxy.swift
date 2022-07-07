@@ -171,7 +171,7 @@ internal class ActorSingletonProxy<Message: Codable> {
     }
 
     private func updateRef(_ context: _ActorContext<Message>, _ newRef: _ActorRef<Message>?) {
-        context.log.debug("Updating ref from [\(optional: self.ref)] to [\(optional: newRef)], flushing \(self.buffer.count) messages")
+        context.log.debug("Updating ref from [\(String(describing: self.ref))] to [\(String(describing: newRef))], flushing \(self.buffer.count) messages")
         self.ref = newRef
 
         // Unstash messages if we have the singleton
@@ -222,7 +222,7 @@ extension ActorSingletonProxy {
             "singleton/buffer": "\(self.buffer.count)/\(self.settings.bufferCapacity)",
         ]
 
-        metadata["targetNode"] = "\(optional: self.targetNode?.debugDescription)"
+        metadata["targetNode"] = "\(String(describing: self.targetNode?.debugDescription))"
         if let ref = self.ref {
             metadata["ref"] = "\(ref.id)"
         }

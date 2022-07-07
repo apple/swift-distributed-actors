@@ -25,11 +25,11 @@ public enum ActorCoding {
         case node
         case path
         case type
-        case tags
+        case metadata
         case incarnation
     }
 
-    public enum TagKeys: CodingKey {
+    public enum MetadataKeys: CodingKey {
         case path
         case type
         case custom(String)

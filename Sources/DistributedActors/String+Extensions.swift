@@ -183,11 +183,11 @@ extension String.StringInterpolation {
 // MARK: String Interpolation: _:orElse:
 
 extension String.StringInterpolation {
-    public mutating func appendInterpolation<T>(_ value: T?, orElse defaultValue: String) {
+    internal mutating func appendInterpolation<T>(_ value: T?, orElse defaultValue: String) {
         self.appendLiteral("\(value.map { "\($0)" } ?? defaultValue)")
     }
 
-    public mutating func appendInterpolation<T>(optional value: T?) {
+    internal mutating func appendInterpolation<T>(optional value: T?) {
         self.appendLiteral("\(value.map { "\($0)" } ?? "nil")")
     }
 }
@@ -196,15 +196,15 @@ extension String.StringInterpolation {
 // MARK: Actor Ref custom interpolations
 
 extension String.StringInterpolation {
-    public mutating func appendInterpolation<Message>(name ref: _ActorRef<Message>) {
+    internal mutating func appendInterpolation<Message>(name ref: _ActorRef<Message>) {
         self.appendLiteral("[\(ref.id.name)]")
     }
 
-    public mutating func appendInterpolation<Message>(uniquePath ref: _ActorRef<Message>) {
+    internal mutating func appendInterpolation<Message>(uniquePath ref: _ActorRef<Message>) {
         self.appendLiteral("[\(ref.id)]") // TODO: make those address
     }
 
-    public mutating func appendInterpolation<Message>(path ref: _ActorRef<Message>) {
+    internal mutating func appendInterpolation<Message>(path ref: _ActorRef<Message>) {
         self.appendLiteral("[\(ref.id.path)]")
     }
 }

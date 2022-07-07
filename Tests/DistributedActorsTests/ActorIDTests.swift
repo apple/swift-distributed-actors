@@ -146,16 +146,16 @@ final class ActorIDTests: ClusteredActorSystemsXCTestCase {
 
     func test_encodeDecode_ActorAddress_withoutSerializationContext() async throws {
         let node = UniqueNode(systemName: "one", host: "127.0.0.1", port: 1234, nid: UniqueNodeID(11111))
-        var a = try ActorPath._user.appending("a").makeRemoteID(on: node, incarnation: 1)
+        let a = try ActorPath._user.appending("a").makeRemoteID(on: node, incarnation: 1)
         let addressWithoutTestTag = a
-        a.tags[ActorTags.test] = "test-value"
+        a.metadata.test = "test-value"
 
         let data = try JSONEncoder().encode(a) // should skip the test tag, it does not know how to encode it
         let serializedJson = String(data: data, encoding: .utf8)!
 
         serializedJson.shouldContain(#""incarnation":1"#)
         serializedJson.shouldContain(#""node":["sact","one","127.0.0.1",1234,11111]"#)
-        serializedJson.shouldContain(#""tags":{"path":{"path":["user","a"]}}"#)
+        serializedJson.shouldContain(#""metadata":{"path":{"path":["user","a"]}}"#)
         serializedJson.shouldNotContain(#"$test":"test-value""#)
 
         let back = try JSONDecoder().decode(ActorID.self, from: data)
@@ -164,8 +164,8 @@ final class ActorIDTests: ClusteredActorSystemsXCTestCase {
 
     func test_serializing_ActorAddress_skipCustomTag() async throws {
         let node = UniqueNode(systemName: "one", host: "127.0.0.1", port: 1234, nid: UniqueNodeID(11111))
-        var a = try ActorPath._user.appending("a").makeRemoteID(on: node, incarnation: 1)
-        a.tags[ActorTags.test] = "test-value"
+        let a = try ActorPath._user.appending("a").makeRemoteID(on: node, incarnation: 1)
+        a.metadata.test = "test-value"
 
         let system = await self.setUpNode("test_serializing_ActorAddress_skipCustomTag") { settings in
             settings.bindPort = 1234
@@ -178,28 +178,25 @@ final class ActorIDTests: ClusteredActorSystemsXCTestCase {
         // TODO: improve serialization format of identities to be more compact
         serializedJson.shouldContain(#""incarnation":1"#)
         serializedJson.shouldContain(#""node":["sact","one","127.0.0.1",1234,11111]"#)
-        serializedJson.shouldContain(#""tags":{"path":{"path":["user","a"]}}"#)
+        serializedJson.shouldContain(#""metadata":{"path":{"path":["user","a"]}}"#)
         serializedJson.shouldNotContain(#"$test":"test-value""#)
     }
 
     func test_serializing_ActorAddress_propagateCustomTag() async throws {
         let node = UniqueNode(systemName: "one", host: "127.0.0.1", port: 1234, nid: UniqueNodeID(11111))
-        var a = try ActorPath._user.appending("a").makeRemoteID(on: node, incarnation: 1)
-        a.tags[ActorTags.test] = "test-value"
+        let a = try ActorPath._user.appending("a").makeRemoteID(on: node, incarnation: 1)
+        a.metadata.test = "test-value"
 
         let system = await self.setUpNode("test_serializing_ActorAddress_propagateCustomTag") { settings in
             settings.bindPort = 1234
-            settings.tags.encodeCustomTags = { identity, container in
-                try container.encodeIfPresent(identity.tags[ActorTags.test], forKey: ActorCoding.TagKeys.custom(ActorTags.TestTag.Key.id))
+            settings.actorMetadata.encodeCustomMetadata = { metadata, container in
+                try container.encodeIfPresent(metadata.test, forKey: ActorCoding.MetadataKeys.custom(ActorMetadataKeys().test.id))
             }
 
-            settings.tags.decodeCustomTags = { container in
-                var tags: [any ActorTag] = []
-                if let value = try container.decodeIfPresent(String.self, forKey: .custom(ActorTags.TestTag.Key.id)) {
-                    tags.append(ActorTags.TestTag(value: value))
+            settings.actorMetadata.decodeCustomMetadata = { container, metadata in
+                if let value = try container.decodeIfPresent(String.self, forKey: .custom(ActorMetadataKeys().test.id)) {
+                    metadata.test = value
                 }
-
-                return tags
             }
         }
 
@@ -210,19 +207,10 @@ final class ActorIDTests: ClusteredActorSystemsXCTestCase {
         serializedJson.shouldContain(#""incarnation":1"#)
         serializedJson.shouldContain(#""node":["sact","one","127.0.0.1",1234,11111]"#)
         serializedJson.shouldContain(#""path":{"path":["user","a"]}"#)
-        serializedJson.shouldContain("\"\(ActorTags.test.id)\":\"\(a.tags[ActorTags.test]!)\"")
+        serializedJson.shouldContain("\"\(ActorMetadataKeys().test.id)\":\"\(a.metadata.test!)\"")
     }
 }
 
-extension ActorTags {
-    static let test = TestTag.Key.self
-
-    public struct TestTag: ActorTag {
-        public struct Key: ActorTagKey {
-            public static let id: String = "$test"
-            public typealias Value = String
-        }
-
-        public let value: Key.Value
-    }
+extension ActorMetadataKeys {
+    var test: Key<String> { "$test" }
 }
