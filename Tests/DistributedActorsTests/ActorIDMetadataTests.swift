@@ -19,7 +19,7 @@ import XCTest
 
 extension ActorMetadata {
     static let exampleUserID = ExampleUserIDTag.Key.self
-    struct ExampleUserIDTag: ActorTag {
+    struct ExampleUserIDTag: ActorMetadataProtocol {
         struct Key: ActorTagKey {
             static let id: String = "user-id"
             typealias Value = String
@@ -29,7 +29,7 @@ extension ActorMetadata {
     }
 
     public static let exampleClusterSingletonID = ExampleClusterSingletonIDTag.Key.self
-    public struct ExampleClusterSingletonIDTag: ActorTag {
+    public struct ExampleClusterSingletonIDTag: ActorMetadataProtocol {
         public struct Key: ActorTagKey {
             public static let id: String = "singleton-id"
             public typealias Value = String
@@ -49,7 +49,7 @@ public protocol ClusterSingletonProtocol: DistributedActor {
 distributed actor ThereCanBeOnlyOneClusterSingleton: ClusterSingletonProtocol {
     typealias ActorSystem = ClusterSystem
 
-    @ActorID.Metadata(ActorMetadata.exampleClusterSingletonID)
+    @ActorID.Metadata(.exampleClusterSingletonID)
     public var singletonID: String
     // TODO(swift): impossible to assign initial value here, as _enclosingInstance is not available yet "the-one"
 

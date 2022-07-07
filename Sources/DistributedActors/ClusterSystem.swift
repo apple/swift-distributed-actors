@@ -858,11 +858,11 @@ extension ClusterSystem {
     }
 
     /// Allows creating a distributed actor with additional configuration applied during its initialization.
-    internal func actorWith<Act: DistributedActor>(_ metadata: (any ActorTag)...,
+    internal func actorWith<Act: DistributedActor>(_ metadata: (any ActorMetadataProtocol)...,
                                                    makeActor: () throws -> Act) rethrows -> Act
     {
         var props = _Props.forSpawn
-        props.tags = .init(metadata)
+        props.metadata = .init(metadata)
 
         return try _Props.$forSpawn.withValue(props) {
             try makeActor()

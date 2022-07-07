@@ -19,18 +19,19 @@ import NIOSSL
 import ServiceDiscovery
 import SWIM
 
-/// Configures default actor tagging behavior, as well as handling of tags on actors.
-public struct ActorTagSettings {
-    public static var `default`: ActorTagSettings {
+/// Configures default actor id metadta behavior, like which metadata should be propagated cross process and which not.
+internal struct ActorIDMetadataSettings {
+    public static var `default`: ActorIDMetadataSettings {
         return .init()
     }
 
-    public struct TagOnInit {
-        internal enum _TagOnInit {
+    /// Configures metadata which should be
+    public struct AutoIDMetadata {
+        internal enum _AutoIDMetadata: Hashable {
             case typeName
         }
 
-        internal var underlying: _TagOnInit
+        internal var underlying: _AutoIDMetadata
 
         /// Tag every actor with an additional human-readable type name
         // TODO: expose this eventually
@@ -38,18 +39,19 @@ public struct ActorTagSettings {
     }
 
     // TODO: expose this eventually
-    internal var tagOnInit: [TagOnInit] = []
+    /// List of metadata which the system should automatically include in an `ActorID` for types it manages.
+    internal var autoIncludedMetadata: [AutoIDMetadata] = []
 
     /// What type of tags, known and defined by the cluster system itself, should be automatically propagated.
-    /// Other types of tags, such as user-defined tags, must be propagated by declaring apropriate functions for `encodeCustomTags` and `decodeCustomTags`.
-    internal var propagateTags: Set<AnyActorTagKey> = [
+    /// Other types of tags, such as user-defined tags, must be propagated by declaring apropriate functions for ``encodeCustomMetadata`` and ``decodeCustomMetadata``.
+    internal var propagateMetadata: Set<AnyActorTagKey> = [
         .init(ActorMetadata.path),
         .init(ActorMetadata.type),
     ]
 
-    // TODO: expose this eventually
-    internal var encodeCustomTags: (ActorID, inout KeyedEncodingContainer<ActorCoding.TagKeys>) throws -> Void = { _, _ in () }
+    internal var encodeCustomMetadata: (ActorID, inout KeyedEncodingContainer<ActorCoding.MetadataKeys>) throws -> Void =
+        { _, _ in () }
 
-    // TODO: expose this eventually
-    internal var decodeCustomTags: ((KeyedDecodingContainer<ActorCoding.TagKeys>) throws -> [any ActorTag]) = { _ in [] }
+    internal var decodeCustomMetadata: ((KeyedDecodingContainer<ActorCoding.MetadataKeys>) throws -> [any ActorMetadataProtocol]) =
+        { _ in [] }
 }

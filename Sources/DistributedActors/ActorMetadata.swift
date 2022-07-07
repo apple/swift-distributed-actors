@@ -26,10 +26,10 @@ public final class ActorMetadata: CustomStringConvertible, CustomDebugStringConv
     private var _storage: [String: Sendable & Codable] = [:] // FIXME: fix the key as AnyActorTagKey
 
     public init() {
-        // empty tags
+        // empty metadata
     }
 
-    public init(_ metadata: [any ActorTag]) {
+    public init(_ metadata: [any ActorMetadataProtocol]) {
         for m in metadata {
             self._storage[m.id] = m.value
         }
@@ -89,28 +89,29 @@ public final class ActorMetadata: CustomStringConvertible, CustomDebugStringConv
 // MARK: ActorTagKey
 
 /// Used to tag actor identities with additional information.
-public protocol ActorTag: Sendable where Value == Key.Value {
+public protocol ActorMetadataProtocol: Sendable where Value == Key.Value {
     /// Type of the actor tag key, used to obtain an actor tag instance.
-    associatedtype Key: ActorTagKey
+    associatedtype Key: ActorTagKey<Value>
 
     /// Type of the value stored by this tag.
     associatedtype Value
 
-    var keyType: Key.Type { get }
     var value: Value { get }
-}
-
-extension ActorTag {
-    /// String representation of the unique key tag identity, equal to `Key.id`.
-    ///
-    /// Tag keys should be unique, and must not start with $ unless they are declared by the ClusterSystem itself.
-    public var id: String { Key.id }
-    public var keyType: Key.Type { Key.self }
 }
 
 public protocol ActorTagKey<Value>: Sendable {
     associatedtype Value: Sendable & Codable
     static var id: String { get }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+
+extension ActorMetadataProtocol {
+    /// String representation of the unique key tag identity, equal to `Key.id`.
+    ///
+    /// Tag keys should be unique, and must not start with $ unless they are declared by the ClusterSystem itself.
+    public var id: String { Key.id }
+    public var keyType: Key.Type { Key.self }
 }
 
 struct AnyActorTagKey: Hashable {
@@ -136,7 +137,7 @@ struct AnyActorTagKey: Hashable {
 
 extension ActorMetadata {
     static let path = ActorPathTag.Key.self
-    struct ActorPathTag: ActorTag {
+    struct ActorPathTag: ActorMetadataProtocol {
         struct Key: ActorTagKey {
             static let id: String = "path"
             typealias Value = ActorPath
@@ -151,7 +152,7 @@ extension ActorMetadata {
 
 extension ActorMetadata {
     static let type = ActorTypeTag.Key.self
-    struct ActorTypeTag: ActorTag {
+    struct ActorTypeTag: ActorMetadataProtocol {
         struct Key: ActorTagKey {
             static let id: String = "$type"
             typealias Value = ActorTypeTagValue

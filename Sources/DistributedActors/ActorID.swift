@@ -509,10 +509,6 @@ extension ActorPath {
     public static let _user: ActorPath = try! ActorPath(root: "user")
     public static let _system: ActorPath = try! ActorPath(root: "system")
 
-    // Since in a pure DA world, we don't rely on paths, this path may sometimes be returned during migration period
-    // to indicate that an ActorID does not have a path defined.
-    public static let _undefined: ActorPath = try! ActorPath(root: "undefined")
-
     internal func makeLocalID(on node: UniqueNode, incarnation: ActorIncarnation) -> ActorID {
         .init(local: node, path: self, incarnation: incarnation)
     }
@@ -905,9 +901,9 @@ extension UniqueNodeID {
 
 extension ActorID: Codable {
     public func encode(to encoder: Encoder) throws {
-        let tagSettings = encoder.actorSerializationContext?.system.settings.tags
-        let encodeCustomTags: (ActorID, inout KeyedEncodingContainer<ActorCoding.TagKeys>) throws -> Void =
-            tagSettings?.encodeCustomTags ?? ({ _, _ in () })
+        let metadataSettings = encoder.actorSerializationContext?.system.settings.actorMetadata
+        let encodeCustomMetadata: (ActorID, inout KeyedEncodingContainer<ActorCoding.MetadataKeys>) throws -> Void =
+            metadataSettings?.encodeCustomMetadata ?? ({ _, _ in () })
 
         var container = encoder.container(keyedBy: ActorCoding.CodingKeys.self)
         try container.encode(self.uniqueNode, forKey: ActorCoding.CodingKeys.node)
@@ -915,20 +911,18 @@ extension ActorID: Codable {
         try container.encode(self.incarnation, forKey: ActorCoding.CodingKeys.incarnation)
 
         if !self.metadata.isEmpty {
-            var tagsContainer = container.nestedContainer(keyedBy: ActorCoding.TagKeys.self, forKey: ActorCoding.CodingKeys.tags)
+            var metadataContainer = container.nestedContainer(keyedBy: ActorCoding.MetadataKeys.self, forKey: ActorCoding.CodingKeys.metadata)
 
-            if (tagSettings == nil || tagSettings!.propagateTags.contains(AnyActorTagKey(ActorMetadata.path))),
-               let value = self.metadata[ActorMetadata.path]
-            {
-                try tagsContainer.encode(value, forKey: ActorCoding.TagKeys.path)
+            if (metadataSettings == nil || metadataSettings!.propagateMetadata.contains(AnyActorTagKey(ActorMetadata.path))),
+               let value = self.metadata[ActorMetadata.path] {
+                try metadataContainer.encode(value, forKey: ActorCoding.MetadataKeys.path)
             }
-            if (tagSettings == nil || tagSettings!.propagateTags.contains(AnyActorTagKey(ActorMetadata.type))),
-               let value = self.metadata[ActorMetadata.type]
-            {
-                try tagsContainer.encode(value, forKey: ActorCoding.TagKeys.type)
+            if (metadataSettings == nil || metadataSettings!.propagateMetadata.contains(AnyActorTagKey(ActorMetadata.type))),
+               let value = self.metadata[ActorMetadata.type] {
+                try metadataContainer.encode(value, forKey: ActorCoding.MetadataKeys.type)
             }
 
-            try encodeCustomTags(self, &tagsContainer)
+            try encodeCustomMetadata(self, &metadataContainer)
         }
     }
 
@@ -941,15 +935,15 @@ extension ActorID: Codable {
         self.init(remote: node, path: path, incarnation: ActorIncarnation(incarnation))
 
         // Decode any tags:
-        if let tagsContainer = try? container.nestedContainer(keyedBy: ActorCoding.TagKeys.self, forKey: ActorCoding.CodingKeys.tags) {
+        if let metadataContainer = try? container.nestedContainer(keyedBy: ActorCoding.MetadataKeys.self, forKey: ActorCoding.CodingKeys.metadata) {
             // tags container found, try to decode all known tags:
 
             // FIXME: implement decoding tags/metadata in general
 
             if let context = decoder.actorSerializationContext {
-                let decodeCustomTags = context.system.settings.tags.decodeCustomTags
+                let decodeCustomMetadata = context.system.settings.actorMetadata.decodeCustomMetadata
 
-                for tag in try decodeCustomTags(tagsContainer) {
+                for tag in try decodeCustomMetadata(metadataContainer) {
                     func store<K: ActorTagKey>(_: K.Type) {
                         if let value = tag.value as? K.Value {
                             self.metadata[K.self] = value
