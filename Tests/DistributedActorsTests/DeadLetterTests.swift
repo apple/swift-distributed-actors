@@ -100,7 +100,7 @@ final class DeadLetterTests: ClusterSystemXCTestCase {
         await p.watch(greeter!)
 
         greeter = nil
-        try await p.expectTerminated(greeterID)
+        try await p.expectTermination(of: greeterID)
 
         let error = try await shouldThrow {
             _ = try await remoteGreeterRef.greet(name: "world")
@@ -121,7 +121,7 @@ final class DeadLetterTests: ClusterSystemXCTestCase {
         await p.watch(greeter!)
 
         greeter = nil
-        try await p.expectTerminated(greeterID)
+        try await p.expectTermination(of: greeterID)
 
         let error = try shouldThrow {
             _ = try self.system.resolve(id: greeterID, as: Greeter.self)

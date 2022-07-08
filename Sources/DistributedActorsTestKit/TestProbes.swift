@@ -810,9 +810,8 @@ extension ActorTestProbe {
     ///            otherwise the termination signal will never be received.
     ///
     /// - SeeAlso: `DeathWatch`
-    // TODO: expectTermination(of: ...) maybe nicer wording?
-    public func expectTerminated(
-        _ actor: ActorID,
+    public func expectTermination(
+        of actor: ActorID,
         within timeout: Duration? = nil,
         file: StaticString = #filePath, line: UInt = #line, column: UInt = #column
     ) async throws {
