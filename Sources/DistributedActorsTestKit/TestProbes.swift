@@ -818,32 +818,23 @@ extension ActorTestProbe {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
         let timeout = timeout ?? self.expectationTimeout
 
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            let timeoutTask = Task {
-                try await Task.sleep(until: .now + timeout, clock: .continuous)
-
-                guard !Task.isCancelled else {
-                    return
-                }
-                continuation.resume(throwing: callSite.error("Expected [\(actor)] to terminate within \(timeout.prettyDescription)"))
-            }
-
-            Task {
-                defer { timeoutTask.cancel() }
-
-                _ = try await self._internal.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
-                    for await terminated in __secretlyKnownToBeLocal.terminatedQueue.items {
-                        guard terminated == actor else {
-                            throw callSite.error("Expected [\(actor)] to terminate, but received [\(terminated)] terminated signal first instead. " +
-                                "This could be an ordering issue, inspect your signal order assumptions.")
-                        }
-                        // Only expecting one, so we are done
-                        break
+        let task = await Task<Void, Error>.withTimeout(
+            timeout: timeout,
+            timeoutError: callSite.error("Expected [\(actor)] to terminate within \(timeout.prettyDescription)")
+        ) {
+            _ = try await self._internal.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
+                for await terminated in __secretlyKnownToBeLocal.terminatedQueue.items {
+                    guard terminated == actor else {
+                        throw callSite.error("Expected [\(actor)] to terminate, but received [\(terminated)] terminated signal first instead. " +
+                            "This could be an ordering issue, inspect your signal order assumptions.")
                     }
-                    continuation.resume(returning: ())
+                    // Only expecting one, so we are done
+                    break
                 }
             }
         }
+
+        return try await task.value
     }
 }
 
