@@ -55,7 +55,7 @@ final class DeadLetterTests: ClusterSystemXCTestCase {
         try self.logCapture.awaitLogContaining(self.testKit, text: "/user/ludwig")
     }
 
-    func test_askingTerminatedActor_shouldResultInDeadLetter() throws {
+    func test_askingTerminatedActor_shouldResultInDeadLetter() async throws {
         let ref: _ActorRef<String> = try self.system._spawn(
             "ludwig",
             .receiveMessage { _ in
@@ -74,8 +74,8 @@ final class DeadLetterTests: ClusterSystemXCTestCase {
             "This is a question, reply to \(replyTo)"
         }
 
-        _ = try shouldThrow {
-            try answer.wait()
+        _ = try await shouldThrow {
+            try await answer.value
         }
 
         try self.logCapture.awaitLogContaining(self.testKit, text: "This is a question")
@@ -92,21 +92,22 @@ final class DeadLetterTests: ClusterSystemXCTestCase {
         local.cluster.join(node: remote.cluster.uniqueNode)
 
         var greeter: Greeter? = Greeter(actorSystem: local)
-        let remoteGreeterRef = try Greeter.resolve(id: greeter!.id, using: remote)
+        let greeterID = greeter!.id
+        let remoteGreeterRef = try Greeter.resolve(id: greeterID, using: remote)
 
-        let p = self.testKit.makeTestProbe(expecting: String.self)
-        let watcher = GreeterWatcher(probe: p, actorSystem: local)
-        try await watcher.watch(greeter!)
+        let testKit = self.testKit(local)
+        let p = testKit.makeTestProbe(expecting: String.self)
+        await p.watch(greeter!)
 
         greeter = nil
-        try p.expectMessage(prefix: "Received terminated: /user/Greeter")
+        try await p.expectTermination(of: greeterID)
 
         let error = try await shouldThrow {
             _ = try await remoteGreeterRef.greet(name: "world")
         }
 
         guard error is DeadLetterError else {
-            throw self.testKit.fail("Expected DeadLetterError, got \(error)")
+            throw testKit.fail("Expected DeadLetterError, got \(error)")
         }
 
         try self.capturedLogs(of: local).awaitLogContaining(self.testKit, text: "was not delivered to")
@@ -117,11 +118,10 @@ final class DeadLetterTests: ClusterSystemXCTestCase {
         let greeterID = greeter!.id
 
         let p = self.testKit.makeTestProbe(expecting: String.self)
-        let watcher = GreeterWatcher(probe: p, actorSystem: self.system)
-        try await watcher.watch(greeter!)
+        await p.watch(greeter!)
 
         greeter = nil
-        try p.expectMessage(prefix: "Received terminated: /user/Greeter")
+        try await p.expectTermination(of: greeterID)
 
         let error = try shouldThrow {
             _ = try self.system.resolve(id: greeterID, as: Greeter.self)
@@ -138,25 +138,5 @@ private distributed actor Greeter {
 
     distributed func greet(name: String) -> String {
         "hello \(name)!"
-    }
-}
-
-private distributed actor GreeterWatcher: LifecycleWatch {
-    typealias ActorSystem = ClusterSystem
-
-    let probe: ActorTestProbe<String>
-
-    init(probe: ActorTestProbe<String>, actorSystem: ActorSystem) {
-        self.actorSystem = actorSystem
-        self.probe = probe
-    }
-
-    distributed func watch(_ greeter: Greeter) {
-        watchTermination(of: greeter)
-    }
-
-    // FIXME(distributed): Should not need to be distributed: https://github.com/apple/swift/pull/59397
-    public distributed func terminated(actor id: ActorID) async { // not REALLY distributed...
-        self.probe.tell("Received terminated: \(id)")
     }
 }

@@ -43,7 +43,6 @@ extension LifecycleWatch {
         @_inheritActorContext whenTerminated: @escaping @Sendable (ID) async -> Void,
         file: String = #filePath, line: UInt = #line
     ) -> Watchee where Watchee: DistributedActor, Watchee.ActorSystem == ClusterSystem {
-        pprint("ENTER (via actor): \(#function)")
         guard let watch = self.context.lifecycle else {
             return watchee
         }
@@ -67,7 +66,6 @@ extension LifecycleWatch {
         of watchee: Watchee,
         file: String = #filePath, line: UInt = #line
     ) -> Watchee where Watchee: DistributedActor, Watchee.ActorSystem == ClusterSystem {
-        pprint("ENTER (via actor): \(#function)")
         guard let watch = self.context.lifecycle else {
             return watchee
         }
@@ -91,7 +89,6 @@ extension LifecycleWatch {
     ///
     /// - Returns: the passed in watchee reference for easy chaining `e.g. return context.unwatch(ref)`
     public func isWatching<Watchee>(_ watchee: Watchee) -> Bool where Watchee: DistributedActor, Watchee.ActorSystem == ClusterSystem {
-        pprint("ENTER (via actor): \(#function)")
         guard let watch = self.context.lifecycle else {
             return false
         }
@@ -116,7 +113,6 @@ extension LifecycleWatch {
         _ watchee: Watchee,
         file: String = #filePath, line: UInt = #line
     ) -> Watchee where Watchee.ActorSystem == ClusterSystem {
-        pprint("ENTER (via actor): \(#function)")
         return self.unwatchTermination(of: watchee, file: file, line: line)
     }
 
@@ -125,7 +121,6 @@ extension LifecycleWatch {
         of watchee: Watchee,
         file: String = #filePath, line: UInt = #line
     ) -> Watchee where Watchee.ActorSystem == ClusterSystem {
-        pprint("ENTER (via actor): \(#function)")
         guard let watch = self.context.lifecycle else {
             return watchee
         }

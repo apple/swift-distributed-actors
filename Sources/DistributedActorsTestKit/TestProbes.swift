@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Distributed
 @testable import DistributedActors
 import DistributedActorsConcurrencyHelpers
 import Foundation
@@ -47,6 +48,8 @@ public final class ActorTestProbe<Message: Codable>: @unchecked Sendable {
     internal let internalRef: _ActorRef<ProbeCommands>
     internal let exposedRef: _ActorRef<Message>
 
+    private let _internal: _TestProbeInternal
+
     /// The reference to the underlying "mock" actor.
     /// Sending messages to this reference allows the probe to inspect them using the `expect...` family of functions.
     public var ref: _ActorRef<Message> {
@@ -70,7 +73,9 @@ public final class ActorTestProbe<Message: Codable>: @unchecked Sendable {
 
     /// Prepares and spawns a new test probe. Users should use `testKit.makeTestProbe(...)` instead.
     internal init(
-        _ makeRef: (_Behavior<ProbeCommands>) throws -> _ActorRef<ProbeCommands>, settings: ActorTestKitSettings,
+        _ makeRef: (_Behavior<ProbeCommands>) throws -> _ActorRef<ProbeCommands>,
+        settings: ActorTestKitSettings,
+        system: ClusterSystem,
         file: StaticString = #filePath, line: UInt = #line
     ) {
         self.settings = settings
@@ -93,6 +98,8 @@ public final class ActorTestProbe<Message: Codable>: @unchecked Sendable {
             ProbeCommands.realMessage(message: msg)
         }
         self.exposedRef = self.internalRef._unsafeUnwrapCell.actor!.messageAdapter(wrapRealMessages)
+
+        self._internal = _TestProbeInternal(actorSystem: system)
     }
 
     private static func behavior(
@@ -664,6 +671,7 @@ extension ActorTestProbe {
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Death watch methods
+
 extension ActorTestProbe {
     /// Instructs this probe to watch the passed in actor.
     /// The `watchee` actor is from now on being watched and we will receive `.terminated` signals about it.
@@ -765,5 +773,96 @@ extension ActorTestProbe {
         // we send the stop command as normal message in order to not "overtake" other commands that were sent to it
         // not strictly required, but can yield more predictable results when used from tests after all
         self.internalRef.tell(.stopCommand)
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Distributed actor lifecycle watch
+
+extension ActorTestProbe {
+    /// Instructs this probe to watch the passed in actor.
+    /// The `watchee` actor is from now on being watched and we will be notified when it terminates.
+    ///
+    /// There is no difference between keeping the passed in reference or using the returned ref from this method.
+    /// The actor is the being watched subject, not a specific reference to it.
+    ///
+    /// This enables it to use `expectTerminated` to await for the watched actors termination.
+    ///
+    /// - Returns: reference to the passed in `watchee` actor.
+    /// - SeeAlso: `DeathWatch`
+    @discardableResult
+    public func watch<Act>(
+        _ watchee: Act,
+        file: String = #filePath, line: UInt = #line
+    ) async -> Act
+        where Act: DistributedActor,
+        Act.ActorSystem == ClusterSystem
+    {
+        _ = await self._internal.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
+            __secretlyKnownToBeLocal.watchTermination(of: watchee, file: file, line: line)
+        }
+        return watchee
+    }
+
+    /// Suspends waiting for the actor to become terminated.
+    ///
+    /// - Warning: Remember to first `watch` the actor you are expecting termination for,
+    ///            otherwise the termination signal will never be received.
+    ///
+    /// - SeeAlso: `DeathWatch`
+    public func expectTermination(
+        of actor: ActorID,
+        within timeout: Duration? = nil,
+        file: StaticString = #filePath, line: UInt = #line, column: UInt = #column
+    ) async throws {
+        let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
+        let timeout = timeout ?? self.expectationTimeout
+
+        let task = await Task<Void, Error>.withTimeout(
+            timeout: timeout,
+            timeoutError: callSite.error("Expected [\(actor)] to terminate within \(timeout.prettyDescription)")
+        ) {
+            _ = try await self._internal.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
+                for await terminated in __secretlyKnownToBeLocal.terminatedQueue.items {
+                    guard terminated == actor else {
+                        throw callSite.error("Expected [\(actor)] to terminate, but received [\(terminated)] terminated signal first instead. " +
+                            "This could be an ordering issue, inspect your signal order assumptions.")
+                    }
+                    // Only expecting one, so we are done
+                    break
+                }
+            }
+        }
+
+        return try await task.value
+    }
+}
+
+private distributed actor _TestProbeInternal: LifecycleWatch {
+    typealias ActorSystem = ClusterSystem
+
+    let terminatedQueue = _Queue<ActorID>()
+
+    // FIXME(distributed): Should not need to be distributed: https://github.com/apple/swift/pull/59397
+    public distributed func terminated(actor id: ActorID) async { // not REALLY distributed...
+        self.terminatedQueue.enqueue(id)
+    }
+
+    final class _Queue<Item> {
+        var items: AsyncStream<Item>!
+
+        private var onEnqueue: ((Item) -> Void)?
+
+        init() {
+            self.items = AsyncStream { continuation in
+                self.onEnqueue = { item in
+                    continuation.yield(item)
+                }
+            }
+        }
+
+        func enqueue(_ item: Item) {
+            self.onEnqueue?(item)
+        }
     }
 }

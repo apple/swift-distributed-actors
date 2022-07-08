@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -65,36 +65,6 @@ final class TraversalTests: ClusterSystemXCTestCase {
 
     func test_printTree_shouldPrintActorTree() throws {
         self.system._printTree()
-    }
-
-    func test_traverse_shouldTraverseAllActors() throws {
-        var seen: Set<String> = []
-
-        self.system._traverseAllVoid { _, ref in
-            if ref.id.name != "traversalProbe", !ref.id.name.starts(with: "$") { // skip subReceive, etc.
-                seen.insert(ref.id.name)
-            }
-            return .continue
-        }
-
-        seen.shouldEqual(
-            [
-                "system",
-                "receptionist",
-                "receptionist-ref",
-                // cluster actors ---
-                // "downingStrategy", "swim", "nodeDeathWatcher", "gossip", "cluster", "leadership",
-                // end of cluster actors ---
-                "clusterEvents",
-                "user",
-                "other",
-                "inner-1",
-                "inner-2",
-                "inner-3",
-                "hello",
-                "world",
-            ]
-        )
     }
 
     func test_traverse_shouldAllowImplementingCollect() {

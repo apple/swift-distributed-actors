@@ -76,13 +76,6 @@ extension LifecycleWatchContainer {
         @_implicitSelfCapture whenTerminated: @escaping @Sendable (ClusterSystem.ActorID) async -> Void,
         file: String = #filePath, line: UInt = #line
     ) {
-        pprint("ENTER: \(#function) ...")
-
-//        _lock.wait()
-//        defer {
-//            _lock.signal()
-//        }
-
         traceLog_DeathWatch("issue watch: \(watcheeID) (from \(self.watcherID))")
 
         let watcherID: ActorID = self.watcherID
@@ -127,8 +120,6 @@ extension LifecycleWatchContainer {
         watchee: Watchee,
         file: String = #filePath, line: UInt = #line
     ) -> Watchee where Watchee: DistributedActor, Watchee.ActorSystem == ClusterSystem {
-        pprint("ENTER: \(#function)")
-
         traceLog_DeathWatch("issue unwatch: watchee: \(watchee) (from \(self.watcherID)")
         let watcheeID = watchee.id
         let watcherID = self.watcherID
@@ -154,7 +145,6 @@ extension LifecycleWatchContainer {
     /// - Returns `true` if the passed in actor ref is being watched
     @usableFromInline
     internal func isWatching(_ identity: ClusterSystem.ActorID) -> Bool {
-        pprint("ENTER: \(#function)")
         return self.watching[identity] != nil
     }
 
@@ -189,12 +179,10 @@ extension LifecycleWatchContainer {
 
     /// Performs cleanup of references to the dead actor.
     internal func receiveTerminated(_ terminated: _Signals.Terminated) {
-        pprint("ENTER: \(#function)")
         self.receiveTerminated(terminated.id)
     }
 
     internal func receiveTerminated(_ terminatedIdentity: ClusterSystem.ActorID) {
-        pprint("ENTER: \(#function)")
         self._lock.wait()
         defer {
             _lock.signal()
