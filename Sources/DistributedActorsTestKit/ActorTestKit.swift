@@ -92,7 +92,8 @@ extension ActorTestKit {
 
                 return try system._spawn(.init(unchecked: .unique(name)), props: testProbeProps, probeBehavior)
             },
-            settings: self.settings
+            settings: self.settings,
+            system: self.system
         )
     }
 
