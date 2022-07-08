@@ -55,7 +55,7 @@ final class DeadLetterTests: ClusterSystemXCTestCase {
         try self.logCapture.awaitLogContaining(self.testKit, text: "/user/ludwig")
     }
 
-    func test_askingTerminatedActor_shouldResultInDeadLetter() throws {
+    func test_askingTerminatedActor_shouldResultInDeadLetter() async throws {
         let ref: _ActorRef<String> = try self.system._spawn(
             "ludwig",
             .receiveMessage { _ in
@@ -74,8 +74,8 @@ final class DeadLetterTests: ClusterSystemXCTestCase {
             "This is a question, reply to \(replyTo)"
         }
 
-        _ = try shouldThrow {
-            try answer.wait()
+        _ = try await shouldThrow {
+            try await answer.value
         }
 
         try self.logCapture.awaitLogContaining(self.testKit, text: "This is a question")
