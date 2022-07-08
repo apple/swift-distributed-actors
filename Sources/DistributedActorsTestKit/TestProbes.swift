@@ -48,7 +48,7 @@ public final class ActorTestProbe<Message: Codable>: @unchecked Sendable {
     internal let internalRef: _ActorRef<ProbeCommands>
     internal let exposedRef: _ActorRef<Message>
 
-    private lazy var _internal = _TestProbeInternal(actorSystem: self.system)
+    private let _internal: _TestProbeInternal
 
     /// The reference to the underlying "mock" actor.
     /// Sending messages to this reference allows the probe to inspect them using the `expect...` family of functions.
@@ -60,8 +60,6 @@ public final class ActorTestProbe<Message: Codable>: @unchecked Sendable {
     private var expectationTimeout: Duration {
         self.settings.expectationTimeout
     }
-
-    private let system: ClusterSystem
 
     /// Blocking linked queue, available to run assertions on
     private let messagesQueue = _LinkedBlockingQueue<Message>()
@@ -81,7 +79,6 @@ public final class ActorTestProbe<Message: Codable>: @unchecked Sendable {
         file: StaticString = #filePath, line: UInt = #line
     ) {
         self.settings = settings
-        self.system = system
 
         let behavior: _Behavior<ProbeCommands> = ActorTestProbe.behavior(
             messageQueue: self.messagesQueue,
@@ -101,6 +98,8 @@ public final class ActorTestProbe<Message: Codable>: @unchecked Sendable {
             ProbeCommands.realMessage(message: msg)
         }
         self.exposedRef = self.internalRef._unsafeUnwrapCell.actor!.messageAdapter(wrapRealMessages)
+
+        self._internal = _TestProbeInternal(actorSystem: system)
     }
 
     private static func behavior(
