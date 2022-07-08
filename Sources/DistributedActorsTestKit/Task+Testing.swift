@@ -23,6 +23,7 @@ extension Task {
         }
 
         let valueTask = Task<Success, any Error> {
+            defer { timeoutTask.cancel() }
             return try await body()
         }
 
