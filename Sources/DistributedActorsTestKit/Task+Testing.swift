@@ -13,20 +13,23 @@
 //===----------------------------------------------------------------------===//
 
 extension Task {
-    internal static func withTimeout<Success: Sendable>(timeout: Duration,
-                                                        timeoutError: @escaping @Sendable @autoclosure () -> Error,
-                                                        body: @escaping @Sendable () async throws -> Success) async -> Task<Success, any Error>
-    {
+    /// Use only for testing, creates a timeout task and a task to execute the `body` which it then races against each other.
+    /// If the body never returns, the created task is leaked.
+    internal static func withTimeout(
+        timeout: Duration,
+        timeoutError: @escaping @Sendable @autoclosure () -> Error,
+        body: @escaping @Sendable () async throws -> Success
+    ) async -> Task<Success, any Error> {
         let timeoutTask = Task<Success, any Error> {
             try await Task<Never, Never>.sleep(until: .now + timeout, clock: .continuous)
             throw timeoutError()
         }
 
         let valueTask = Task<Success, any Error> {
-            defer { timeoutTask.cancel() }
             return try await body()
         }
 
+        defer { timeoutTask.cancel() }
         return await .select(valueTask, timeoutTask)
     }
 }
