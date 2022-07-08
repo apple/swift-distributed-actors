@@ -805,7 +805,7 @@ extension ActorTestProbe {
         return watchee
     }
 
-    /// Checks that the actor has been terminated.
+    /// Suspends waiting for the actor to become terminated.
     ///
     /// - Warning: Remember to first `watch` the actor you are expecting termination for,
     ///            otherwise the termination signal will never be received.
