@@ -25,19 +25,20 @@ internal protocol ClusterSingletonProtocol {
     func stop()
 }
 
-/// Proxy for a singleton actor.
-///
-/// The underlying distributed actor for the singleton might change due to re-allocation, but all of that happens
+/// Singleton wrapper of a distributed actor. The underlying singleton might run on this node, in which
+/// case `ClusterSingleton` will manage its lifecycle. Otherwise, `ClusterSingleton` will act as a
+/// proxy and forward calls to the remote node where the singleton is actually running. All this happens
 /// automatically and is transparent to the actor holder.
 ///
-/// The proxy has a buffer to hold remote calls temporarily in case the singleton is not available. The buffer capacity
-/// is configurable in `ActorSingletonSettings`. Note that if the buffer becomes full, the *oldest* message
-/// would be disposed to allow insertion of the latest message.
+/// `ClusterSingleton` has a buffer to hold remote calls temporarily in case the singleton is not available.
+/// The buffer capacity is configurable in `ClusterSingletonSettings`. Note that if the buffer becomes
+/// full, the *oldest* message would be disposed to allow insertion of the latest message.
 ///
-/// The proxy subscribes to events and feeds them into `AllocationStrategy` to determine the node that the
-/// singleton runs on. If the singleton falls on *this* node, the proxy will spawn a `ActorSingletonManager`,
-/// which manages the actual singleton actor, and obtain the actor from it. The proxy instructs the
-/// `ActorSingletonManager` to hand over the singleton whenever the node changes.
+/// `ClusterSingleton` subscribes to cluster events and feeds them into `AllocationStrategy` to
+/// determine the node that the singleton runs on. If the singleton falls on *this* node, `ClusterSingleton`
+/// will spawn a `ClusterSingletonBoss`, which manages the actual singleton actor, and obtain the actor
+/// from it. `ClusterSingleton` instructs the `ClusterSingletonBoss` to hand over the singleton
+/// whenever the node changes.
 internal distributed actor ClusterSingleton<Act: DistributedActor>: ClusterSingletonProtocol where Act.ActorSystem == ClusterSystem {
     typealias ActorSystem = ClusterSystem
     typealias CallID = UUID
