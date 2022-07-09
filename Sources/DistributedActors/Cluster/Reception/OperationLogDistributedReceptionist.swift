@@ -631,7 +631,7 @@ extension OpLogDistributedReceptionist {
                 switch error {
                 case RemoteCallError.clusterAlreadyShutDown, RemoteCallError.timedOut:
                     // ignore silently; clusterAlreadyShutDown often happens during tests when we terminate systems
-                    // while interacting with them. TimeoutErrors are also expected to happen sometimes.
+                    // while interacting with them. timedOut are also expected to happen sometimes.
                     ()
                 default:
                     log.error("Error: \(error)")
