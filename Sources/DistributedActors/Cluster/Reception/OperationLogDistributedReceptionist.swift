@@ -632,6 +632,8 @@ extension OpLogDistributedReceptionist {
                 case RemoteCallError.clusterAlreadyShutDown:
                     // ignore silently; this often happens during tests when we terminate systems while interacting with them
                     ()
+                case is TimeoutError:
+                    break
                 default:
                     log.error("Error: \(error)")
                 }
