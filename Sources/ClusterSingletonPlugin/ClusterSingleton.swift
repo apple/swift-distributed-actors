@@ -315,7 +315,7 @@ extension ActorID {
 
 extension ActorPath {
     static func _singleton(name: String) -> ActorPath {
-        try! ActorPath._system.appending("singleton-\(name)")
+        try! ActorPath._system.appending(name)
     }
 }
 

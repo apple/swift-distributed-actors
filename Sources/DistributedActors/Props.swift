@@ -179,7 +179,7 @@ extension _Props {
         props._knownActorName = name
         return props
     }
-    
+
     public func _knownAs(name: String) -> Self {
         var p = self
         p._knownActorName = name

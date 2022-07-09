@@ -131,7 +131,7 @@ extension Serialization {
     /// Tries to use getMangledTypeName if available.
     @inlinable
     @inline(__always)
-    public static func getTypeHint(_ messageType: Any.Type) -> String {
+    internal static func getTypeHint(_ messageType: Any.Type) -> String {
         _mangledTypeName(messageType) ?? _typeName(messageType)
     }
 

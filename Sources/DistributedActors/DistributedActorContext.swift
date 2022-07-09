@@ -24,14 +24,14 @@ public final class DistributedActorContext {
     let metadata: ActorMetadata
 
     public var remoteCallInterceptor: RemoteCallInterceptor?
-    
+
     init(lifecycle: LifecycleWatchContainer?,
          metadata: ActorMetadata? = nil)
     {
         self.lifecycle = lifecycle
         self.metadata = metadata ?? ActorMetadata()
 
-        traceLog_DeathWatch("Create context; Lifecycle: \(lifecycle)")
+        traceLog_DeathWatch("Create context; Lifecycle: \(String(describing: lifecycle))")
     }
 
     /// Invoked by the actor system when the owning actor is terminating, so we can clean up all stored data

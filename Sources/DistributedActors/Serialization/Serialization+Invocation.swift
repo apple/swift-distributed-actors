@@ -29,7 +29,7 @@ public struct ClusterInvocationEncoder: DistributedTargetInvocationEncoder {
     init(system: ClusterSystem) {
         self.system = system
     }
-    
+
     public init(system: ClusterSystem, arguments: [Data]) {
         self.system = system
         self.arguments = arguments
