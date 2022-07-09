@@ -38,7 +38,7 @@ var targets: [PackageDescription.Target] = [
     // MARK: Plugins // TODO: rename since may be confused with package plugins?
 
     .target(
-        name: "ActorSingletonPlugin",
+        name: "ClusterSingletonPlugin",
         dependencies: [
             "DistributedActors",
         ]
@@ -106,11 +106,11 @@ var targets: [PackageDescription.Target] = [
 //            "DistributedActorsTestKit"
 //        ]
 //    ),
-//
+
 //    .testTarget(
-//        name: "ActorSingletonPluginTests",
+//        name: "ClusterSingletonPluginTests",
 //        dependencies: [
-//            "ActorSingletonPlugin",
+//            "ClusterSingletonPlugin",
 //            "DistributedActorsTestKit"
 //        ]
 //    ),
@@ -223,8 +223,8 @@ let products: [PackageDescription.Product] = [
     /* --- Functional Plugins --- */
 
     .library(
-        name: "ActorSingletonPlugin",
-        targets: ["ActorSingletonPlugin"]
+        name: "ClusterSingletonPlugin",
+        targets: ["ClusterSingletonPlugin"]
     ),
 ]
 

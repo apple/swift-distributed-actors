@@ -12,12 +12,12 @@
 //
 //===----------------------------------------------------------------------===//
 
-@testable import ActorSingletonPlugin
+@testable import ClusterSingletonPlugin
 @testable import DistributedActors
 import DistributedActorsTestKit
 import XCTest
 
-final class ActorSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCase {
+final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCase {
     override func configureLogCapture(settings: inout LogCapture.Settings) {
         settings.excludeActorPaths = [
             "/system/cluster/swim",

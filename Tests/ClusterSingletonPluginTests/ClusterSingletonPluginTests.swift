@@ -12,12 +12,12 @@
 //
 //===----------------------------------------------------------------------===//
 
-@testable import ActorSingletonPlugin
+@testable import ClusterSingletonPlugin
 import DistributedActors
 import DistributedActorsTestKit
 import XCTest
 
-final class ActorSingletonPluginTests: ClusterSystemXCTestCase {
+final class ClusterSingletonPluginTests: ClusterSystemXCTestCase {
     func test_noCluster_ref() async throws {
         // Singleton should work just fine without clustering
         let system = await setUpNode("test") { settings in

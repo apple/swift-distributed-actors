@@ -17,18 +17,16 @@ import DistributedActors
 import Logging
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: ActorSingletonManager
+// MARK: Cluster singleton "boss"
 
-/// Spawned as a system actor on the node where the singleton is supposed to run, `ActorSingletonManager` manages
+/// Spawned on the node where the singleton is supposed to run, `ClusterSingletonBoss` manages
 /// the singleton's lifecycle and hands over the singleton when it terminates.
-internal distributed actor ActorSingletonManager<Act: DistributedActor> where Act.ActorSystem == ClusterSystem {
+internal distributed actor ClusterSingletonBoss<Act: DistributedActor> where Act.ActorSystem == ClusterSystem {
     typealias ActorSystem = ClusterSystem
 
-    /// Settings for the `ActorSingleton`
-    private let settings: ActorSingletonSettings
+    private let settings: ClusterSingletonSettings
 
     let singletonProps: _Props
-    /// If `nil`, then this instance will be proxy-only and it will never run the actual actor.
     let singletonFactory: (ClusterSystem) async throws -> Act
 
     /// The singleton
@@ -37,7 +35,7 @@ internal distributed actor ActorSingletonManager<Act: DistributedActor> where Ac
     private lazy var log = Logger(actor: self)
 
     init(
-        settings: ActorSingletonSettings,
+        settings: ClusterSingletonSettings,
         system: ActorSystem,
         singletonProps: _Props,
         _ singletonFactory: @escaping (ClusterSystem) async throws -> Act
@@ -49,7 +47,7 @@ internal distributed actor ActorSingletonManager<Act: DistributedActor> where Ac
     }
 
     deinit {
-        // FIXME: should hand over
+        // FIXME: should hand over but it's async call
         // TODO: perhaps we can figure out where `to` is next and hand over gracefully?
 //        try self.handOver(to: nil)
     }
@@ -57,7 +55,7 @@ internal distributed actor ActorSingletonManager<Act: DistributedActor> where Ac
     func takeOver(from: UniqueNode?) async throws -> Act {
         self.log.debug("Take over singleton [\(self.settings.name)] from [\(String(describing: from))]", metadata: self.metadata())
 
-        // TODO: (optimization) tell `ActorSingletonManager` on `from` node that this node is taking over (https://github.com/apple/swift-distributed-actors/issues/329)
+        // TODO: (optimization) tell `ClusterSingletonBoss` on `from` node that this node is taking over (https://github.com/apple/swift-distributed-actors/issues/329)
         let singleton = try await _Props.$forSpawn.withValue(self.singletonProps._knownAs(name: self.settings.name)) {
             try await self.singletonFactory(self.actorSystem)
         }
@@ -76,7 +74,7 @@ internal distributed actor ActorSingletonManager<Act: DistributedActor> where Ac
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Logging
 
-extension ActorSingletonManager {
+extension ClusterSingletonBoss {
     func metadata() -> Logger.Metadata {
         var metadata: Logger.Metadata = [
             "name": "\(self.settings.name)",

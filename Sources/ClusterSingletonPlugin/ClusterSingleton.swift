@@ -19,9 +19,9 @@ import struct Foundation.UUID
 import Logging
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: ActorSingletonProxy
+// MARK: Cluster singleton
 
-internal protocol AnyActorSingletonProxy {
+internal protocol ClusterSingletonProtocol {
     func stop()
 }
 
@@ -38,15 +38,14 @@ internal protocol AnyActorSingletonProxy {
 /// singleton runs on. If the singleton falls on *this* node, the proxy will spawn a `ActorSingletonManager`,
 /// which manages the actual singleton actor, and obtain the actor from it. The proxy instructs the
 /// `ActorSingletonManager` to hand over the singleton whenever the node changes.
-internal distributed actor ActorSingletonProxy<Act: DistributedActor>: AnyActorSingletonProxy where Act.ActorSystem == ClusterSystem {
+internal distributed actor ClusterSingleton<Act: DistributedActor>: ClusterSingletonProtocol where Act.ActorSystem == ClusterSystem {
     typealias ActorSystem = ClusterSystem
     typealias CallID = UUID
 
-    /// Settings for the `ActorSingleton`
-    private let settings: ActorSingletonSettings
+    private let settings: ClusterSingletonSettings
 
-    /// The strategy that determines which node the singleton will be allocated
-    private let allocationStrategy: ActorSingletonAllocationStrategy
+    /// The strategy that determines which node the singleton will be allocated.
+    private let allocationStrategy: ClusterSingletonAllocationStrategy
 
     let singletonProps: _Props?
     /// If `nil`, then this instance will be proxy-only and it will never run the actual actor.
@@ -59,7 +58,7 @@ internal distributed actor ActorSingletonProxy<Act: DistributedActor>: AnyActorS
     private var singleton: Act?
 
     /// Manages the singleton; non-nil if `targetNode` is this node.
-    private var manager: ActorSingletonManager<Act>?
+    private var boss: ClusterSingletonBoss<Act>?
 
     /// Remote call "buffer" in case `singleton` is `nil`
     private var remoteCallContinuations: [(CallID, CheckedContinuation<Act, Never>)] = []
@@ -70,7 +69,7 @@ internal distributed actor ActorSingletonProxy<Act: DistributedActor>: AnyActorS
     private lazy var log = Logger(actor: self)
 
     init(
-        settings: ActorSingletonSettings,
+        settings: ClusterSingletonSettings,
         system: ActorSystem,
         singletonProps: _Props?,
         _ singletonFactory: ((ClusterSystem) async throws -> Act)?
@@ -96,7 +95,7 @@ internal distributed actor ActorSingletonProxy<Act: DistributedActor>: AnyActorS
     }
 
     deinit {
-        // FIXME: should hand over
+        // FIXME: should hand over but it's async call
         // TODO: perhaps we can figure out where `to` is next and hand over gracefully?
 //        self.handOver(to: nil)
         self.clusterEventsSubscribeTask?.cancel()
@@ -137,11 +136,11 @@ internal distributed actor ActorSingletonProxy<Act: DistributedActor>: AnyActorS
 
     private func takeOver(from: UniqueNode?) async throws {
         guard let singletonFactory = self.singletonFactory else {
-            preconditionFailure("The actor singleton \(self.settings.name) cannot run on this node. Please review AllocationStrategySettings and/or actor singleton usage.")
+            preconditionFailure("Cluster singleton [\(self.settings.name)] cannot run on this node. Please review AllocationStrategySettings and/or cluster singleton usage.")
         }
 
-        self.manager = _Props.$forSpawn.withValue(_Props._wellKnownActor(name: "singletonManager-\(self.settings.name)")) {
-            ActorSingletonManager(
+        self.boss = _Props.$forSpawn.withValue(_Props._wellKnownActor(name: "singletonBoss-\(self.settings.name)")) {
+            ClusterSingletonBoss(
                 settings: self.settings,
                 system: self.actorSystem,
                 singletonProps: self.singletonProps ?? .init(),
@@ -149,17 +148,17 @@ internal distributed actor ActorSingletonProxy<Act: DistributedActor>: AnyActorS
             )
         }
 
-        try await self.manager?.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
+        try await self.boss?.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
             let singleton = try await __secretlyKnownToBeLocal.takeOver(from: from)
             await self.updateSingleton(singleton)
         }
     }
 
     private func handOver(to: UniqueNode?) async throws {
-        try await self.manager?.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
+        try await self.boss?.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
             try __secretlyKnownToBeLocal.handOver(to: to)
         }
-        self.manager = nil
+        self.boss = nil
     }
 
     private func updateSingleton(node: UniqueNode?) throws {
@@ -174,7 +173,7 @@ internal distributed actor ActorSingletonProxy<Act: DistributedActor>: AnyActorS
     }
 
     private func updateSingleton(_ newAct: Act?) {
-        self.log.debug("Updating singleton from [\(String(describing: self.singleton))] to [\(String(describing: newAct))], flushing \(self.remoteCallContinuations.count) remote calls")
+        self.log.debug("Update singleton from [\(String(describing: self.singleton))] to [\(String(describing: newAct))], flushing \(self.remoteCallContinuations.count) remote calls")
         self.singleton = newAct
 
         // Unstash messages if we have the singleton
@@ -274,7 +273,7 @@ internal distributed actor ActorSingletonProxy<Act: DistributedActor>: AnyActorS
             try await self.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
                 // TODO: perhaps we can figure out where `to` is next and hand over gracefully?
                 try await __secretlyKnownToBeLocal.handOver(to: nil)
-                __secretlyKnownToBeLocal.manager = nil
+                __secretlyKnownToBeLocal.boss = nil
             }
         }
     }
@@ -283,7 +282,7 @@ internal distributed actor ActorSingletonProxy<Act: DistributedActor>: AnyActorS
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Logging
 
-extension ActorSingletonProxy {
+extension ClusterSingleton {
     func metadata() -> Logger.Metadata {
         var metadata: Logger.Metadata = [
             "tag": "singleton",
@@ -295,8 +294,8 @@ extension ActorSingletonProxy {
         if let singleton = self.singleton {
             metadata["singleton"] = "\(singleton.id)"
         }
-        if let manager = self.manager {
-            metadata["manager"] = "\(manager.id)"
+        if let boss = self.boss {
+            metadata["boss"] = "\(boss.id)"
         }
 
         return metadata
@@ -320,79 +319,55 @@ extension ActorPath {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Serialization
+// MARK: Remote call interceptor
 
-// struct SingletonRemoteCallEnvelope: Codable {
-//    typealias ActorSystem = ClusterSystem
-//    typealias InvocationEncoder = ClusterSystem.InvocationEncoder
-//
-//    let actorTypeHint: String
-//    let actorID: ActorID
-//    let targetIdentifier: String
-//    let arguments: [Data]
-//
-//    let throwingTypeHint: String
-//    let returningTypeHint: String?
-//
-//    var target: RemoteCallTarget {
-//        RemoteCallTarget(self.targetIdentifier)
-//    }
-//
-//    init<Act, Err, Res>(
-//        actor: Act,
-//        target: RemoteCallTarget,
-//        invocation: InvocationEncoder,
-//        throwing: Err.Type,
-//        returning: Res.Type
-//    ) where Act: DistributedActor,
-//        Act.ID == ActorID,
-//        Err: Error,
-//        Res: Codable
-//    {
-//        self.actorTypeHint = Serialization.getTypeHint(Act.self)
-//        self.actorID = actor.id
-//        self.targetIdentifier = target.identifier
-//        self.arguments = invocation.arguments
-//        self.throwingTypeHint = Serialization.getTypeHint(Err.self)
-//        self.returningTypeHint = Serialization.getTypeHint(Res.self)
-//    }
-//
-//    init<Act, Err>(
-//        actor: Act,
-//        target: RemoteCallTarget,
-//        invocation: InvocationEncoder,
-//        throwing: Err.Type
-//    ) where Act: DistributedActor,
-//        Act.ID == ActorID,
-//        Err: Error
-//    {
-//        self.actorTypeHint = Serialization.getTypeHint(Act.self)
-//        self.actorID = actor.id
-//        self.targetIdentifier = target.identifier
-//        self.arguments = invocation.arguments
-//        self.throwingTypeHint = Serialization.getTypeHint(Err.self)
-//        self.returningTypeHint = nil
-//    }
-//
-//    func resolveActor(using system: ActorSystem) throws -> any DistributedActor {
-//        let type = try Serialization.summonType(from: self.actorTypeHint)
-//        guard let actorType = type as? any DistributedActor.Type,
-//              let actor = try system.resolve(id: self.actorID, as: actorType) as (any DistributedActor)? else {
-//            throw SerializationError.unableToDeserialize(hint: self.actorTypeHint)
-//        }
-//        return actor
-//    }
-//
-//    func invocation(system: ActorSystem) -> InvocationEncoder {
-//        InvocationEncoder(system: system, arguments: self.arguments)
-//    }
-// }
-//
-// extension Serialization {
-//    static func summonType(from hint: String) throws -> Any.Type {
-//        guard let type = _typeByName(hint) else {
-//            throw SerializationError.unableToSummonType(hint: hint)
-//        }
-//        return type
-//    }
-// }
+struct ClusterSingletonRemoteCallInterceptor<A: DistributedActor>: RemoteCallInterceptor where A.ActorSystem == ClusterSystem {
+    let system: ClusterSystem
+    let singleton: ClusterSingleton<A>
+
+    func interceptRemoteCall<Act, Err, Res>(
+        on actor: Act,
+        target: RemoteCallTarget,
+        invocation: inout ClusterSystem.InvocationEncoder,
+        throwing: Err.Type,
+        returning: Res.Type
+    ) async throws -> Res
+        where Act: DistributedActor,
+        Act.ID == ActorID,
+        Err: Error,
+        Res: Codable
+    {
+        // FIXME: better error handling
+        guard actor is A else {
+            fatalError("Wrong interceptor")
+        }
+
+        // FIXME: can't capture inout param
+        let invocation = invocation
+        return try await self.singleton.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
+            try await __secretlyKnownToBeLocal.forwardOrStashRemoteCall(target: target, invocation: invocation, throwing: throwing, returning: returning)
+        }! // FIXME: !-use
+    }
+
+    func interceptRemoteCallVoid<Act, Err>(
+        on actor: Act,
+        target: RemoteCallTarget,
+        invocation: inout ClusterSystem.InvocationEncoder,
+        throwing: Err.Type
+    ) async throws
+        where Act: DistributedActor,
+        Act.ID == ActorID,
+        Err: Error
+    {
+        // FIXME: better error handling
+        guard actor is A else {
+            fatalError("Wrong interceptor")
+        }
+
+        // FIXME: can't capture inout param
+        let invocation = invocation
+        try await self.singleton.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
+            try await __secretlyKnownToBeLocal.forwardOrStashRemoteCallVoid(target: target, invocation: invocation, throwing: throwing)
+        }
+    }
+}
