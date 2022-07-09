@@ -174,12 +174,6 @@ extension _Props {
 }
 
 extension _Props {
-    public static func _wellKnownActor(name: String) -> Self {
-        var props = Self._wellKnown
-        props._knownActorName = name
-        return props
-    }
-
     public func _knownAs(name: String) -> Self {
         var p = self
         p._knownActorName = name

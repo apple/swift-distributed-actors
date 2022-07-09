@@ -47,17 +47,15 @@ public actor ClusterSingletonPlugin {
         }
 
         // Spawn the proxy for the singleton (one per singleton per node)
-        let singleton = try await _Props.$forSpawn.withValue(_Props._wellKnownActor(name: "singleton-\(settings.name)")) {
-            try await ClusterSingleton(
-                settings: settings,
-                system: system,
-                singletonProps: props,
-                factory
-            )
-        }
+        let singleton = try await ClusterSingleton(
+            settings: settings,
+            system: system,
+            singletonProps: props,
+            factory
+        )
 
         // Assign the singleton actor a special id and set up the remote call interceptor
-        var id = _Props.$forSpawn.withValue(_Props._wellKnownActor(name: settings.name)) {
+        var id = _Props.$forSpawn.withValue(_Props.singleton(settings: settings)) {
             system.assignID(Act.self)
         }
         id.context.remoteCallInterceptor = ClusterSingletonRemoteCallInterceptor(system: system, singleton: singleton)

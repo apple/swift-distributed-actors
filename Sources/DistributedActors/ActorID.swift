@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2021 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -183,11 +183,6 @@ extension ClusterSystem {
         /// Uniquely identifies the specific "incarnation" of this actor.
         public let incarnation: ActorIncarnation
 
-        // TODO(distributed): remove this workaround; only exists for old ActorSingletonManager
-        public static func _make(local node: UniqueNode, path: ActorPath?, incarnation: ActorIncarnation) -> Self {
-            .init(local: node, path: path, incarnation: incarnation)
-        }
-
         // TODO(distributed): remove this initializer, as it is only for Behavior actors
         init(local node: UniqueNode, path: ActorPath?, incarnation: ActorIncarnation) {
             self.context = .init(lifecycle: nil)
@@ -197,11 +192,6 @@ extension ClusterSystem {
                 self.context.metadata[ActorMetadataKeys().path.id] = path
             }
             traceLog_DeathWatch("Made ID: \(self)")
-        }
-
-        // TODO(distributed): remove this workaround; only exists for old ActorSingletonManager
-        public static func _make(remote node: UniqueNode, path: ActorPath?, incarnation: ActorIncarnation) -> Self {
-            .init(remote: node, path: path, incarnation: incarnation)
         }
 
         // TODO(distributed): remove this initializer, as it is only for Behavior actors

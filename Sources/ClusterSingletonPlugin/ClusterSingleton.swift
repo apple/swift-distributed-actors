@@ -140,14 +140,12 @@ internal distributed actor ClusterSingleton<Act: DistributedActor>: ClusterSingl
             preconditionFailure("Cluster singleton [\(self.settings.name)] cannot run on this node. Please review AllocationStrategySettings and/or cluster singleton usage.")
         }
 
-        self.boss = _Props.$forSpawn.withValue(_Props._wellKnownActor(name: "singletonBoss-\(self.settings.name)")) {
-            ClusterSingletonBoss(
-                settings: self.settings,
-                system: self.actorSystem,
-                singletonProps: self.singletonProps ?? .init(),
-                singletonFactory
-            )
-        }
+        self.boss = ClusterSingletonBoss(
+            settings: self.settings,
+            system: self.actorSystem,
+            singletonProps: self.singletonProps ?? .init(),
+            singletonFactory
+        )
 
         try await self.boss?.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
             let singleton = try await __secretlyKnownToBeLocal.takeOver(from: from)
@@ -167,7 +165,7 @@ internal distributed actor ClusterSingleton<Act: DistributedActor>: ClusterSingl
         case .some(let node) where node == self.actorSystem.cluster.uniqueNode:
             ()
         case .some(let node):
-            self.singleton = try Act.resolve(id: ._singleton(name: self.settings.name, remote: node), using: self.actorSystem)
+            self.singleton = try Act.resolve(id: .singleton(Act.self, settings: self.settings, remote: node), using: self.actorSystem)
         case .none:
             self.singleton = nil
         }
@@ -304,18 +302,37 @@ extension ClusterSingleton {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Actor ID and path
+// MARK: Singleton ID and props
 
-// FIXME: remove _system in path?
 extension ActorID {
-    static func _singleton(name: String, remote node: UniqueNode) -> ActorID {
-        ._make(remote: node, path: ._singleton(name: name), incarnation: .wellKnown)
+    static func singleton<Act>(
+        _ type: Act.Type,
+        settings: ClusterSingletonSettings,
+        remote node: UniqueNode
+    ) throws -> ActorID
+        where Act: DistributedActor,
+        Act.ActorSystem == ClusterSystem
+    {
+        var id = ActorID(remote: node, type: type, incarnation: .wellKnown)
+        id.path = try ActorPath._user.appending(settings.clusterSingletonID)
+        return id
     }
 }
 
-extension ActorPath {
-    static func _singleton(name: String) -> ActorPath {
-        try! ActorPath._system.appending(name)
+extension _Props {
+    static func singleton(settings: ClusterSingletonSettings) -> _Props {
+        _Props().singleton(settings: settings)
+    }
+
+    func singleton(settings: ClusterSingletonSettings) -> _Props {
+        self._asWellKnown
+            ._knownAs(name: settings.clusterSingletonID)
+    }
+}
+
+extension ClusterSingletonSettings {
+    var clusterSingletonID: String {
+        "singleton-\(self.name)"
     }
 }
 
