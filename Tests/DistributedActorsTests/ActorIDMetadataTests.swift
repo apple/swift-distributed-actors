@@ -22,14 +22,14 @@ extension ActorMetadataKeys {
     var exampleClusterSingletonID: Key<String> { "singleton-id" }
 }
 
-public protocol ClusterSingletonProtocol: DistributedActor {
+public protocol ExampleClusterSingletonProtocol: DistributedActor {
     var singletonID: String { get }
 
     /// Must be implemented by providing a metadata property wrapper.
     // var _singletonID: ActorID.Metadata<String, ActorMetadata.ExampleClusterSingletonIDTag.Key> { get } // FIXME: property wrapper bug? Property '_singletonID' must be as accessible as its enclosing type because it matches a requirement in protocol 'ClusterSingletonProtocol'
 }
 
-distributed actor ThereCanBeOnlyOneClusterSingleton: ClusterSingletonProtocol {
+distributed actor ThereCanBeOnlyOneClusterSingleton: ExampleClusterSingletonProtocol {
     typealias ActorSystem = ClusterSystem
 
     @ActorID.Metadata(\.exampleClusterSingletonID)

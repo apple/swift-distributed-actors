@@ -31,7 +31,8 @@ internal distributed actor ActorSingletonManager<Act: DistributedActor> where Ac
     /// If `nil`, then this instance will be proxy-only and it will never run the actual actor.
     let singletonFactory: (ClusterSystem) async throws -> Act
 
-    /// The singleton
+    /// The concrete distributed actor instance (the "singleton") if this node is indeed hosting it,
+    /// or nil otherwise - meaning that the singleton instance is actually located on another member.
     private var singleton: Act?
 
     private lazy var log = Logger(actor: self)
@@ -55,7 +56,7 @@ internal distributed actor ActorSingletonManager<Act: DistributedActor> where Ac
     }
 
     func takeOver(from: UniqueNode?) async throws -> Act {
-        self.log.debug("Take over singleton [\(self.settings.name)] from [\(optional: from)]", metadata: self.metadata())
+        self.log.debug("Take over singleton [\(self.settings.name)] from [\(String(describing: from))]", metadata: self.metadata())
 
         // TODO: (optimization) tell `ActorSingletonManager` on `from` node that this node is taking over (https://github.com/apple/swift-distributed-actors/issues/329)
         let singleton = try await _Props.$forSpawn.withValue(self.singletonProps._knownAs(name: self.settings.name)) {
@@ -66,7 +67,7 @@ internal distributed actor ActorSingletonManager<Act: DistributedActor> where Ac
     }
 
     func handOver(to: UniqueNode?) throws {
-        self.log.debug("Hand over singleton [\(self.settings.name)] to [\(optional: to)]", metadata: self.metadata())
+        self.log.debug("Hand over singleton [\(self.settings.name)] to [\(String(describing: to))]", metadata: self.metadata())
 
         // TODO: (optimization) tell `ActorSingletonManager` on `to` node that this node is handing off (https://github.com/apple/swift-distributed-actors/issues/329)
         self.singleton = nil

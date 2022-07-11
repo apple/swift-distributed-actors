@@ -54,12 +54,16 @@ public struct _Props: @unchecked Sendable {
     /// Used only with 'distributed actor' as a way to pass path to the `assignIdentity` call.
     /// // TODO(distributed): We should instead allow for an explicit way to pass params to the transport.
     internal var _knownActorName: String?
+    
+    /// Makes `DistributedActor.resolve` use the designated ID, rather than assigning one.
+    internal var _designatedActorID: ActorID?
 
     /// INTERNAL API: Marks that this ref is spawned in service of a 'distributed actor'.
     /// This is a temporary solution until we move all the infrastructure onto distributed actors.
     @usableFromInline
     internal var _distributedActor: Bool = false
 
+    // FIXME(distributed): remove this init
     public init(
         metadata: ActorMetadata = ActorMetadata(),
         dispatcher: _DispatcherProps = .default,
