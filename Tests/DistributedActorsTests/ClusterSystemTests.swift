@@ -455,10 +455,15 @@ private struct GreeterRemoteCallInterceptor: RemoteCallInterceptor {
     let system: ClusterSystem
     let greeter: Greeter
 
+    init(system: ClusterSystem, greeter: Greeter) {
+        self.system = system
+        self.greeter = greeter
+    }
+
     func interceptRemoteCall<Act, Err, Res>(
         on actor: Act,
         target: RemoteCallTarget,
-        invocation: inout ClusterSystem.InvocationEncoder,
+        invocation _invocation: inout ClusterSystem.InvocationEncoder,
         throwing: Err.Type,
         returning: Res.Type
     ) async throws -> Res
@@ -471,13 +476,20 @@ private struct GreeterRemoteCallInterceptor: RemoteCallInterceptor {
             throw GreeterRemoteCallInterceptorError()
         }
 
-        return try await self.system.remoteCall(
-            on: greeter, // Change the receiver
-            target: target,
-            invocation: &invocation,
-            throwing: throwing,
-            returning: returning
-        )
+        let anyReturn = try await withCheckedThrowingContinuation { (cc: CheckedContinuation<Any, Error>) in
+            let invocation = _invocation
+            Task {
+                var directDecoder = ClusterInvocationDecoder(invocation: invocation)
+                let directReturnHandler = ClusterInvocationResultHandler(directReturnContinuation: cc)
+
+                try await self.greeter.actorSystem.executeDistributedTarget(
+                    on: greeter,
+                    target: target,
+                    invocationDecoder: &directDecoder, handler: directReturnHandler)
+            }
+        }
+
+        return anyReturn as! Res
     }
 
     func interceptRemoteCallVoid<Act, Err>(
@@ -494,7 +506,7 @@ private struct GreeterRemoteCallInterceptor: RemoteCallInterceptor {
             throw GreeterRemoteCallInterceptorError()
         }
 
-        return try await self.system.remoteCallVoid(
+        return try await self.greeter.actorSystem.remoteCallVoid(
             on: greeter, // Change the receiver
             target: target,
             invocation: &invocation,

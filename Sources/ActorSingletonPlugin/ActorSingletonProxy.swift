@@ -174,7 +174,7 @@ internal distributed actor ActorSingletonProxy<Act: DistributedActor>: AnyActorS
     }
 
     private func updateSingleton(_ newAct: Act?) {
-        self.log.debug("Updating singleton from [\(optional: self.singleton)] to [\(optional: newAct)], flushing \(self.remoteCallContinuations.count) remote calls")
+        self.log.debug("Updating singleton from [\(String(describing: self.singleton))] to [\(String(describing: newAct))], flushing \(self.remoteCallContinuations.count) remote calls")
         self.singleton = newAct
 
         // Unstash messages if we have the singleton
@@ -291,7 +291,7 @@ extension ActorSingletonProxy {
             "singleton/buffer": "\(self.remoteCallContinuations.count)/\(self.settings.bufferCapacity)",
         ]
 
-        metadata["targetNode"] = "\(optional: self.targetNode?.debugDescription)"
+        metadata["targetNode"] = "\(String(describing: self.targetNode?.debugDescription))"
         if let singleton = self.singleton {
             metadata["singleton"] = "\(singleton.id)"
         }

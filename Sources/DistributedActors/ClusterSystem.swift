@@ -859,12 +859,20 @@ extension ClusterSystem {
         where Act: DistributedActor
     {
         self.log.trace("Resolve: \(id)")
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> rework how we get hold of intercepted actors
         if let interceptor = id.context.remoteCallInterceptor {
             self.log.trace("Resolved \(id) as intercepted", metadata: ["interceptor": "\(interceptor)"])
             return nil
         }
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> rework how we get hold of intercepted actors
         guard self.cluster.uniqueNode == id.uniqueNode else {
             self.log.trace("Resolved \(id) as remote, on node: \(id.uniqueNode)")
             return nil
@@ -898,6 +906,7 @@ extension ClusterSystem {
     {
         return self._assignID(actorType, baseContext: nil)
     }
+<<<<<<< HEAD
 
     internal func _assignID<Act>(_ actorType: Act.Type, baseContext: DistributedActorContext?) -> ClusterSystem.ActorID
         where Act: DistributedActor
@@ -908,6 +917,18 @@ extension ClusterSystem {
             return designatedActorID
         }
 
+=======
+    
+    public func _assignID<Act>(_ actorType: Act.Type, baseContext: DistributedActorContext?) -> ClusterSystem.ActorID
+        where Act: DistributedActor
+    {
+        let props = _Props.forSpawn // task-local read for any properties this actor should have
+        
+        if let designatedActorID = props._designatedActorID {
+            return designatedActorID
+        }
+        
+>>>>>>> rework how we get hold of intercepted actors
         var id = try! self._reserveName(type: Act.self, props: props)
 
         let lifecycleContainer: LifecycleWatchContainer?
@@ -982,6 +1003,7 @@ extension ClusterSystem {
 // MARK: Intercepting calls
 
 extension ClusterSystem {
+<<<<<<< HEAD
     internal func interceptCalls<Act, Interceptor>(
         to actorType: Act.Type,
         metadata: ActorMetadata,
@@ -989,16 +1011,32 @@ extension ClusterSystem {
     ) throws -> Act
         where Act: DistributedActor, Act.ActorSystem == ClusterSystem,
         Interceptor: RemoteCallInterceptor
+=======
+    
+    public func interceptCalls<Act, Interceptor>(
+        to actorType: Act.Type,
+        metadata: ActorMetadata,
+        interceptor: Interceptor) throws -> Act
+    where Act: DistributedActor, Act.ActorSystem == ClusterSystem,
+          Interceptor: RemoteCallInterceptor
+>>>>>>> rework how we get hold of intercepted actors
     {
         /// Prepare a distributed actor context base, such that the reserved ID will contain the interceptor in the context.
         let baseContext = DistributedActorContext(lifecycle: nil, remoteCallInterceptor: interceptor)
         var id = self._assignID(Act.self, baseContext: baseContext)
         assert(id.context.remoteCallInterceptor != nil)
         id = id._asRemote // FIXME(distributed): not strictly necessary ???
+<<<<<<< HEAD
 
         var props = _Props()
         props._designatedActorID = id
 
+=======
+        
+        var props = _Props()
+        props._designatedActorID = id
+        
+>>>>>>> rework how we get hold of intercepted actors
         return try Act.resolve(id: id, using: self)
     }
 }
@@ -1048,6 +1086,7 @@ extension ClusterSystem {
         }
 
         if let error = reply.thrownError {
+            print("error: \(error)")
             throw error
         }
         guard let value = reply.value else {
@@ -1234,6 +1273,7 @@ public struct ClusterInvocationResultHandler: DistributedTargetInvocationResultH
         )
         case localDirectReturn(CheckedContinuation<Any, Error>)
     }
+<<<<<<< HEAD
 
     init(system: ClusterSystem, callID: ClusterSystem.CallID, channel: Channel, recipient: ClusterSystem.ActorID) {
         self.state = .remoteCall(system: system, callID: callID, channel: channel, recipient: recipient)
@@ -1241,13 +1281,28 @@ public struct ClusterInvocationResultHandler: DistributedTargetInvocationResultH
 
     init(directReturnContinuation: CheckedContinuation<Any, Error>) {
         self.state = .localDirectReturn(directReturnContinuation)
+=======
+    
+    
+    init(system: ClusterSystem, callID: ClusterSystem.CallID, channel: Channel, recipient: ClusterSystem.ActorID) {
+        self.state = .remoteCall(system: system, callID: callID, channel: channel, recipient: recipient)
+>>>>>>> rework how we get hold of intercepted actors
     }
+    
+    init(directReturnContinuation: CheckedContinuation<Any, Error>) {
+        self.state = .localDirectReturn(directReturnContinuation)
+    }
+    
 
     public func onReturn<Success: Codable>(value: Success) async throws {
         switch self.state {
         case .localDirectReturn(let directReturnContinuation):
             directReturnContinuation.resume(returning: value)
+<<<<<<< HEAD
 
+=======
+            
+>>>>>>> rework how we get hold of intercepted actors
         case .remoteCall(_, let callID, let channel, let recipient):
             let reply = RemoteCallReply<Success>(callID: callID, value: value)
             try await channel.writeAndFlush(TransportEnvelope(envelope: Payload(payload: .message(reply)), recipient: recipient))
@@ -1258,7 +1313,11 @@ public struct ClusterInvocationResultHandler: DistributedTargetInvocationResultH
         switch self.state {
         case .localDirectReturn(let directReturnContinuation):
             directReturnContinuation.resume(returning: ())
+<<<<<<< HEAD
 
+=======
+            
+>>>>>>> rework how we get hold of intercepted actors
         case .remoteCall(_, let callID, let channel, let recipient):
             let reply = RemoteCallReply<_Done>(callID: callID, value: .done)
             try await channel.writeAndFlush(TransportEnvelope(envelope: Payload(payload: .message(reply)), recipient: recipient))
@@ -1269,7 +1328,11 @@ public struct ClusterInvocationResultHandler: DistributedTargetInvocationResultH
         switch self.state {
         case .localDirectReturn(let directReturnContinuation):
             directReturnContinuation.resume(throwing: error)
+<<<<<<< HEAD
 
+=======
+            
+>>>>>>> rework how we get hold of intercepted actors
         case .remoteCall(let system, let callID, let channel, let recipient):
             system.log.warning("Result handler, onThrow: \(error)")
             let reply: RemoteCallReply<_Done>

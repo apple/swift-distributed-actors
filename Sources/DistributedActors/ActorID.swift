@@ -154,7 +154,7 @@ extension ClusterSystem {
         }
 
         /// Internal "actor context" which is used as storage for additional cluster actor features, such as watching.
-        public var context: DistributedActorContext
+        public internal(set) var context: DistributedActorContext
 
         /// Underlying path representation, not attached to a specific Actor instance.
         // FIXME(distributed): make optional
