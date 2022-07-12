@@ -164,30 +164,3 @@ public struct ActorMetadataKey<Value: Codable & Sendable>: Hashable, Expressible
         self.id = value
     }
 }
-
-///// Used to tag actor identities with additional information.
-// public protocol ActorMetadataProtocol: Sendable where Value == Key.Value {
-//    /// Type of the actor tag key, used to obtain an actor tag instance.
-//    associatedtype Key: ActorTagKey<Value>
-//
-//    /// Type of the value stored by this tag.
-//    associatedtype Value
-//
-//    var value: Value { get }
-// }
-//
-// @available(*, deprecated, message: "remove this")
-// public protocol ActorTagKey<Value>: Sendable {
-//    associatedtype Value: Sendable & Codable
-//    static var id: String { get }
-// }
-//
-//// ==== ----------------------------------------------------------------------------------------------------------------
-//
-// extension ActorMetadataProtocol {
-//    /// String representation of the unique key tag identity, equal to `Key.id`.
-//    ///
-//    /// Tag keys should be unique, and must not start with $ unless they are declared by the ClusterSystem itself.
-//    public var id: String { Key.id }
-//    public var keyType: Key.Type { Key.self }
-// }
