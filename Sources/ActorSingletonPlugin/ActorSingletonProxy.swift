@@ -38,7 +38,7 @@ internal protocol AnyActorSingletonProxy {
 /// singleton runs on. If the singleton falls on *this* node, the proxy will spawn a `ActorSingletonManager`,
 /// which manages the actual singleton actor, and obtain the actor from it. The proxy instructs the
 /// `ActorSingletonManager` to hand over the singleton whenever the node changes.
-internal distributed actor ActorSingletonProxy<Act: DistributedActor>: AnyActorSingletonProxy where Act.ActorSystem == ClusterSystem {
+internal distributed actor ActorSingletonProxy<Act: ClusterSingletonProtocol>: AnyActorSingletonProxy {
     typealias ActorSystem = ClusterSystem
     typealias CallID = UUID
 
@@ -122,11 +122,11 @@ internal distributed actor ActorSingletonProxy<Act: DistributedActor>: AnyActorS
 
         switch node {
         case selfNode:
-            self.log.debug("Node \(selfNode) taking over singleton \(self.settings.name)")
+            self.log.debug("Taking over singleton \(self.settings.name)")
             try await self.takeOver(from: previousTargetNode)
         default:
             if previousTargetNode == selfNode {
-                self.log.debug("Node \(selfNode) handing over singleton \(self.settings.name)")
+                self.log.debug("Handing over singleton \(self.settings.name)")
                 try await self.handOver(to: node)
             }
 
@@ -198,8 +198,11 @@ internal distributed actor ActorSingletonProxy<Act: DistributedActor>: AnyActorS
         Res: Codable
     {
         let singleton = await self.findSingleton()
-        self.log.trace("Forwarding invocation [\(invocation)] to [\(singleton)]", metadata: self.metadata())
+        self.log.trace("Forwarding invocation [\(invocation)] to [\(singleton) @ \(singleton.id.detailedDescription)]", metadata: self.metadata())
+        self.log.trace("remote call on: singleton.actorSystem \(singleton.actorSystem)")
 
+        guard targetNode != self.actorSystem.cluster.uniqueNode
+        
         var invocation = invocation // FIXME: should be inout param
         return try await singleton.actorSystem.remoteCall(
             on: singleton,

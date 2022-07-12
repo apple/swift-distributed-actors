@@ -21,8 +21,12 @@ import DistributedActorsConcurrencyHelpers
 
 /// Settings for a `ActorSingleton`.
 public struct ActorSingletonSettings {
-    /// Unique name for the singleton
-    public let name: String
+    
+    /// Unique name for the singleton, used to identify the conceptual singleton in the cluster.
+    /// E.g. there is always one "boss" instance in the cluster, regardless where it is incarnated.
+    ///
+    /// The name property is set on a settings object while creating a singleton reference (e.g. using `host` or `proxy`).
+    public internal(set) var name: String = ""
 
     /// Capacity of temporary message buffer in case singleton is unavailable.
     /// If the buffer becomes full, the *oldest* messages would be disposed to make room for the newer messages.
@@ -35,8 +39,7 @@ public struct ActorSingletonSettings {
     /// Controls allocation of the node on which the singleton runs.
     public var allocationStrategy: AllocationStrategySettings = .byLeadership
 
-    public init(name: String) {
-        self.name = name
+    public init() {
     }
 }
 
@@ -56,7 +59,7 @@ public enum AllocationStrategySettings {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ActorSingletonRemoteCallInterceptor
 
-struct ActorSingletonRemoteCallInterceptor<Singleton: DistributedActor>: RemoteCallInterceptor where Singleton.ActorSystem == ClusterSystem {
+struct ActorSingletonRemoteCallInterceptor<Singleton: ClusterSingletonProtocol>: RemoteCallInterceptor {
     let system: ClusterSystem
     let proxy: ActorSingletonProxy<Singleton>
 
@@ -77,9 +80,7 @@ struct ActorSingletonRemoteCallInterceptor<Singleton: DistributedActor>: RemoteC
             fatalError("Wrong interceptor")
         }
 
-        // FIXME: can't capture inout param
-        let invocation = invocation
-        return try await self.proxy.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
+        return try await self.proxy.whenLocal { [invocation] __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
             try await __secretlyKnownToBeLocal.forwardOrStashRemoteCall(target: target, invocation: invocation, throwing: throwing, returning: returning)
         }! // FIXME: !-use
     }
@@ -99,9 +100,7 @@ struct ActorSingletonRemoteCallInterceptor<Singleton: DistributedActor>: RemoteC
             fatalError("Wrong interceptor")
         }
 
-        // FIXME: can't capture inout param
-        let invocation = invocation
-        try await self.proxy.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
+        try await self.proxy.whenLocal { [invocation] __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
             try await __secretlyKnownToBeLocal.forwardOrStashRemoteCallVoid(target: target, invocation: invocation, throwing: throwing)
         }
     }

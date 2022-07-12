@@ -21,7 +21,7 @@ import Logging
 
 /// Spawned as a system actor on the node where the singleton is supposed to run, `ActorSingletonManager` manages
 /// the singleton's lifecycle and hands over the singleton when it terminates.
-internal distributed actor ActorSingletonManager<Act: DistributedActor> where Act.ActorSystem == ClusterSystem {
+internal distributed actor ActorSingletonManager<Act: ClusterSingletonProtocol> where Act.ActorSystem == ClusterSystem {
     typealias ActorSystem = ClusterSystem
 
     /// Settings for the `ActorSingleton`
@@ -58,6 +58,11 @@ internal distributed actor ActorSingletonManager<Act: DistributedActor> where Ac
     func takeOver(from: UniqueNode?) async throws -> Act {
         self.log.debug("Take over singleton [\(self.settings.name)] from [\(String(describing: from))]", metadata: self.metadata())
 
+        if let existing = self.singleton {
+            self.log.warning("Singleton taking over from \(String(describing: from)), however local active instance already available: \(existing) (\(existing.id)). This is suspicious, we should have only activated the instance once we became active.")
+            return existing
+        }
+        
         // TODO: (optimization) tell `ActorSingletonManager` on `from` node that this node is taking over (https://github.com/apple/swift-distributed-actors/issues/329)
         let singleton = try await _Props.$forSpawn.withValue(self.singletonProps._knownAs(name: self.settings.name)) {
             try await self.singletonFactory(self.actorSystem)
@@ -69,8 +74,22 @@ internal distributed actor ActorSingletonManager<Act: DistributedActor> where Ac
     func handOver(to: UniqueNode?) throws {
         self.log.debug("Hand over singleton [\(self.settings.name)] to [\(String(describing: to))]", metadata: self.metadata())
 
-        // TODO: (optimization) tell `ActorSingletonManager` on `to` node that this node is handing off (https://github.com/apple/swift-distributed-actors/issues/329)
-        self.singleton = nil
+        guard let instance = self.singleton else {
+            return // we're done, we never activated it at all
+        }
+        
+        Task {
+            // we ask the singleton to passivate, it may want to flush some writes or similar.
+            // TODO: potentially do some timeout on this?
+            await instance.whenLocal { __secretlyKnownToBeLocal in
+                await __secretlyKnownToBeLocal.passivateSingleton()
+            }
+            
+            // TODO: (optimization) tell `ActorSingletonManager` on `to` node that this node is handing off (https://github.com/apple/swift-distributed-actors/issues/329)
+            // Finally, release the singleton -- it should not have been refered to strongly by anyone else,
+            // causing the instance to be released. TODO: we could assert that we have released it soon after here (it's ID must be resigned).
+            self.singleton = nil
+        }
     }
 }
 
@@ -79,9 +98,7 @@ internal distributed actor ActorSingletonManager<Act: DistributedActor> where Ac
 
 extension ActorSingletonManager {
     func metadata() -> Logger.Metadata {
-        var metadata: Logger.Metadata = [
-            "name": "\(self.settings.name)",
-        ]
+        var metadata: Logger.Metadata = [:]
 
         if let singleton = self.singleton {
             metadata["singleton"] = "\(singleton)"

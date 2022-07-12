@@ -16,7 +16,7 @@ import Atomics
 import Backtrace
 import CDistributedActorsMailbox
 import Dispatch
-import Distributed
+@_exported import Distributed
 import DistributedActorsConcurrencyHelpers
 import Foundation // for UUID
 import Logging
@@ -869,6 +869,7 @@ extension ClusterSystem {
     public func resolve<Act>(id: ActorID, as actorType: Act.Type) throws -> Act?
         where Act: DistributedActor
     {
+<<<<<<< HEAD
         self.log.trace("Resolve: \(id)")
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -877,10 +878,17 @@ extension ClusterSystem {
         
 >>>>>>> rework how we get hold of intercepted actors
 =======
+=======
+        if settings.logging.verboseResolve {
+            self.log.trace("Resolve: \(id)")
+        }
+>>>>>>> progress-ktoso
 
 >>>>>>> rework how we get hold of intercepted actors
         if let interceptor = id.context.remoteCallInterceptor {
-            self.log.trace("Resolved \(id) as intercepted", metadata: ["interceptor": "\(interceptor)"])
+            if settings.logging.verboseResolve {
+                self.log.trace("Resolved \(id) as intercepted", metadata: ["interceptor": "\(interceptor)"])
+            }
             return nil
         }
 <<<<<<< HEAD
@@ -893,7 +901,9 @@ extension ClusterSystem {
 
 >>>>>>> rework how we get hold of intercepted actors
         guard self.cluster.uniqueNode == id.uniqueNode else {
-            self.log.trace("Resolved \(id) as remote, on node: \(id.uniqueNode)")
+            if settings.logging.verboseResolve {
+                self.log.trace("Resolved \(id) as remote, on node: \(id.uniqueNode)")
+            }
             return nil
         }
 
@@ -980,7 +990,7 @@ extension ClusterSystem {
             )
         }
 
-        self.log.warning("Assign identity", metadata: [
+        self.log.trace("Assign identity", metadata: [
             "actor/type": "\(actorType)",
             "actor/id": "\(id)",
             "actor/id/uniqueNode": "\(id.uniqueNode)",

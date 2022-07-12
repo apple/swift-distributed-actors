@@ -296,7 +296,7 @@ private struct GreeterRemoteCallInterceptor: RemoteCallInterceptor {
     func interceptRemoteCall<Act, Err, Res>(
         on actor: Act,
         target: RemoteCallTarget,
-        invocation _invocation: inout ClusterSystem.InvocationEncoder,
+        invocation: inout ClusterSystem.InvocationEncoder,
         throwing: Err.Type,
         returning: Res.Type
     ) async throws -> Res
@@ -310,8 +310,7 @@ private struct GreeterRemoteCallInterceptor: RemoteCallInterceptor {
         }
 
         let anyReturn = try await withCheckedThrowingContinuation { (cc: CheckedContinuation<Any, Error>) in
-            let invocation = _invocation
-            Task {
+            Task { [invocation] in
                 var directDecoder = ClusterInvocationDecoder(invocation: invocation)
                 let directReturnHandler = ClusterInvocationResultHandler(directReturnContinuation: cc)
 
@@ -329,7 +328,7 @@ private struct GreeterRemoteCallInterceptor: RemoteCallInterceptor {
     func interceptRemoteCallVoid<Act, Err>(
         on actor: Act,
         target: RemoteCallTarget,
-        invocation _invocation: inout ClusterSystem.InvocationEncoder,
+        invocation: inout ClusterSystem.InvocationEncoder,
         throwing: Err.Type
     ) async throws
         where Act: DistributedActor,
@@ -341,8 +340,7 @@ private struct GreeterRemoteCallInterceptor: RemoteCallInterceptor {
         }
 
         _ = try await withCheckedThrowingContinuation { (cc: CheckedContinuation<Any, Error>) in
-            let invocation = _invocation
-            Task {
+            Task { [invocation] in 
                 var directDecoder = ClusterInvocationDecoder(invocation: invocation)
                 let directReturnHandler = ClusterInvocationResultHandler(directReturnContinuation: cc)
 
