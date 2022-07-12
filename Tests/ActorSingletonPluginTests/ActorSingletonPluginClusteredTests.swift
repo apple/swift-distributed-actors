@@ -72,12 +72,12 @@ final class ActorSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCase 
         second.log.error("--------------------- START CHECKING ------------------------")
         third.log.error("--------------------- START CHECKING ------------------------")
 
-        try await self.assertSingletonRequestReply(first, singletonRef: ref1, message: "Alice", expect: "Hello-1 Alice!")
-//        try await self.assertSingletonRequestReply(second, singletonRef: ref2, message: "Bob", expect: "Hello-1 Bob!")
-//        try await self.assertSingletonRequestReply(third, singletonRef: ref3, message: "Charlie", expect: "Hello-1 Charlie!")
+        try await self.assertSingletonRequestReply(first, singletonRef: ref1, message: "Alice", expectedPrefix: "Hello-1 Alice!")
+        try await self.assertSingletonRequestReply(second, singletonRef: ref2, message: "Bob", expectedPrefix: "Hello-1 Bob!")
+        try await self.assertSingletonRequestReply(third, singletonRef: ref3, message: "Charlie", expectedPrefix: "Hello-1 Charlie!")
     }
     
-    func assertSingletonRequestReply(_ system: ClusterSystem, singletonRef: TheSingleton, message: String, expect: String) async throws {
+    func assertSingletonRequestReply(_ system: ClusterSystem, singletonRef: TheSingleton, message: String, expectedPrefix: String) async throws {
         let testKit: ActorTestKit = self.testKit(system)
         
         var attempts = 0
@@ -89,14 +89,14 @@ final class ActorSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCase 
                 let reply = try await RemoteCall.with(timeout: .seconds(1)) {
                     try await singletonRef.greet(name: message)
                 }
-                reply.shouldEqual(expect)
+                reply.shouldStartWith(prefix: expectedPrefix)
                 print("call: SUCCESS: \(reply)")
             } catch {
                 print("call: ERROR: \(error)")
                 throw TestError(
                     """
                     Received no reply from singleton [\(singletonRef)] while sending from [\(system.cluster.uniqueNode.node)], \
-                    perhaps request was lost. Sent [\(message)] and expected: [\(expect)] (attempts: \(attempts))
+                    perhaps request was lost. Sent [\(message)] and expected prefix: [\(expectedPrefix)] (attempts: \(attempts))
                     """)
             }
         }

@@ -200,11 +200,9 @@ internal distributed actor ActorSingletonProxy<Act: ClusterSingletonProtocol>: A
         let singleton = await self.findSingleton()
         self.log.trace("Forwarding invocation [\(invocation)] to [\(singleton) @ \(singleton.id.detailedDescription)]", metadata: self.metadata())
         self.log.trace("remote call on: singleton.actorSystem \(singleton.actorSystem)")
-
-        guard targetNode != self.actorSystem.cluster.uniqueNode
         
         var invocation = invocation // FIXME: should be inout param
-        return try await singleton.actorSystem.remoteCall(
+        return try await self.actorSystem.remoteCall(
             on: singleton,
             target: target,
             invocation: &invocation,
