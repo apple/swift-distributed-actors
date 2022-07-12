@@ -14,14 +14,7 @@
 
 import Distributed
 
-extension ActorMetadataKeys {
-    public var clusterSingletonID: Key<String> { "$singleton-id" }
-}
-
-public protocol ClusterSingletonProtocol: DistributedActor where ActorSystem == ClusterSystem {
-    /// Must be implemented using a `@ActorID.Metadata(\.clusterSingletonID)` annotated property.
-    var singletonName: String { get }
-}
+public protocol ClusterSingletonProtocol: DistributedActor where ActorSystem == ClusterSystem {}
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Cluster singleton plugin
@@ -29,8 +22,8 @@ public protocol ClusterSingletonProtocol: DistributedActor where ActorSystem == 
 /// `ClusterSingletonPlugin` ensures that there is no more than one instance of a distributed actor running in the cluster.
 ///
 /// A singleton may run on any node in the cluster. Use `ClusterSingletonSettings.allocationStrategy` to control
-/// its allocation. On candidate nodes where the singleton might run, use `ClusterSystem.singleton.host(type:name:system:factory:)`
-/// to define the cluster singleton. Otherwise, call `ClusterSystem.singleton.proxy(type:name:system)` to obtain the singleton. The returned
+/// its allocation. On candidate nodes where the singleton might run, use `ClusterSystem.singleton.host(type:name:factory:)`
+/// to define the cluster singleton. Otherwise, call `ClusterSystem.singleton.proxy(type:name)` to obtain the singleton. The returned
 /// `DistributedActor` is a proxy that can handle situations where the singleton might get relocated to different nodes.
 ///
 /// - Warning: Refer to the configured `AllocationStrategy` for trade-offs between safety and recovery latency for
@@ -40,21 +33,21 @@ public protocol ClusterSingletonProtocol: DistributedActor where ActorSystem == 
 public actor ClusterSingletonPlugin {
     private var singletons: [String: (proxyID: ActorID, boss: any _ClusterSingletonBoss)] = [:]
 
+    private var system: ClusterSystem!
+
     public func proxy<Act>(
         of type: Act.Type,
-        name: String,
-        system: ClusterSystem
+        name: String
     ) async throws -> Act
         where Act: ClusterSingletonProtocol
     {
         let settings = ClusterSingletonSettings(name: name)
-        return try await self.proxy(of: type, settings: settings, system: system, makeInstance: nil)
+        return try await self.proxy(of: type, settings: settings, makeInstance: nil)
     }
 
     public func proxy<Act>(
         of type: Act.Type,
         settings: ClusterSingletonSettings,
-        system: ClusterSystem,
         makeInstance factory: ((ClusterSystem) async throws -> Act)? = nil
     ) async throws -> Act
         where Act: DistributedActor,
@@ -62,19 +55,19 @@ public actor ClusterSingletonPlugin {
     {
         let known = self.singletons[settings.name]
         if let existingID = known?.proxyID {
-            return try Act.resolve(id: existingID, using: system)
+            return try Act.resolve(id: existingID, using: self.system)
         }
 
         // Spawn the singleton boss (one per singleton per node)
         let boss = try await ClusterSingletonBoss(
             settings: settings,
-            system: system,
+            system: self.system,
             singletonProps: .init(),
             factory
         )
 
-        let interceptor = ClusterSingletonRemoteCallInterceptor(system: system, singletonBoss: boss)
-        let proxied = try system.interceptCalls(to: type, metadata: ActorMetadata(), interceptor: interceptor)
+        let interceptor = ClusterSingletonRemoteCallInterceptor(system: self.system, singletonBoss: boss)
+        let proxied = try self.system.interceptCalls(to: type, metadata: ActorMetadata(), interceptor: interceptor)
 
         self.singletons[settings.name] = (proxied.id, boss)
 
@@ -84,24 +77,22 @@ public actor ClusterSingletonPlugin {
     public func host<Act>(
         of type: Act.Type = Act.self,
         name: String,
-        system: ClusterSystem,
         makeInstance factory: @escaping (ClusterSystem) async throws -> Act
     ) async throws -> Act
         where Act: ClusterSingletonProtocol
     {
         let settings = ClusterSingletonSettings(name: name)
-        return try await self.host(of: type, settings: settings, system: system, makeInstance: factory)
+        return try await self.host(of: type, settings: settings, makeInstance: factory)
     }
 
     public func host<Act>(
         of type: Act.Type = Act.self,
         settings: ClusterSingletonSettings,
-        system: ClusterSystem,
         makeInstance factory: @escaping (ClusterSystem) async throws -> Act
     ) async throws -> Act
         where Act: ClusterSingletonProtocol
     {
-        try await self.proxy(of: type, settings: settings, system: system, makeInstance: factory)
+        try await self.proxy(of: type, settings: settings, makeInstance: factory)
     }
 }
 
@@ -115,7 +106,9 @@ extension ClusterSingletonPlugin: _Plugin {
         Self.pluginKey
     }
 
-    public func start(_ system: ClusterSystem) async throws {}
+    public func start(_ system: ClusterSystem) async throws {
+        self.system = system
+    }
 
     public nonisolated func stop(_ system: ClusterSystem) {
         Task {
