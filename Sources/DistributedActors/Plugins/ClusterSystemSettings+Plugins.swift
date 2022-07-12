@@ -22,7 +22,7 @@ public struct _PluginsSettings {
 
     public init() {}
 
-    /// Adds a `Plugin`.
+    /// Adds a `_Plugin`.
     ///
     /// - Note: A plugin that depends on others should be added *after* its dependencies.
     /// - Faults, when plugin of the exact same `PluginKey` is already included in the settings.
@@ -44,6 +44,7 @@ public struct _PluginsSettings {
     internal func startAll(_ system: ClusterSystem) async {
         for plugin in self.plugins {
             do {
+                system.log.info("Starting cluster system plugin: \(plugin.key)")
                 try await plugin.start(system)
             } catch {
                 fatalError("Failed to start plugin \(plugin.key)! Error: \(error)")

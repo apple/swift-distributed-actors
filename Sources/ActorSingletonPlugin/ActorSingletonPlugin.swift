@@ -19,13 +19,19 @@ import DistributedActorsConcurrencyHelpers
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Actor singleton plugin
 
-extension ActorMetadataKeys {
-    public var clusterSingletonID: Key<String> { "$singleton-id" }
+public protocol ClusterSingletonProtocol: DistributedActor where ActorSystem == ClusterSystem {
+    /// The singleton should no longer be active on this cluster member.
+    ///
+    /// Invoked by the cluster singleton manager when it is determined that this member should no longer
+    /// be hosting this singleton instance. The singleton upon receiving this call, should either cease activity,
+    /// or take steps to terminate itself entirely.
+    func passivateSingleton() async
 }
 
-public protocol ClusterSingletonProtocol: DistributedActor where ActorSystem == ClusterSystem {
-    /// Must be implemented using a `@ActorID.Metadata(\.clusterSingletonID)` annotated property.
-    var singletonName: String { get }
+extension ClusterSingletonProtocol {
+    public func passivateSingleton() async {
+        // nothing by default
+    }
 }
 
 /// The actor singleton plugin ensures that there is no more than one instance of an actor that is defined to be
@@ -43,50 +49,53 @@ public protocol ClusterSingletonProtocol: DistributedActor where ActorSystem == 
 public actor ActorSingletonPlugin {
     private var singletons: [String: (proxyID: ActorID, proxy: any AnyActorSingletonProxy)] = [:]
 
+    private var actorSystem: ClusterSystem!
+    
     public func proxy<Act>(
-        of type: Act.Type,
-        system: ClusterSystem
-    ) async throws -> Act
-        where Act: ClusterSingletonProtocol
+        _ type: Act.Type,
+        name: String,
+        settings: ActorSingletonSettings
+    ) async throws -> Act where Act: ClusterSingletonProtocol
     {
-        let settings = ActorSingletonSettings(name: "FIXME-NAME")
-        return try await self.proxy(of: type, settings: settings, system: system, makeInstance: nil)
+        var settings = settings
+        settings.name = name
+        return try await self.proxy(type, settings: settings, system: self.actorSystem, makeInstance: nil)
     }
 
+    /// Configures the singleton plugin to host instances of this actor.
     public func host<Act>(
-        of type: Act.Type = Act.self,
-        system: ClusterSystem,
+        _ type: Act.Type = Act.self,
+        name: String,
+        settings: ActorSingletonSettings,
         makeInstance factory: ((ClusterSystem) async throws -> Act)? = nil
-    ) async throws -> Act
-        where Act: ClusterSingletonProtocol
+    ) async throws -> Act where Act: ClusterSingletonProtocol
     {
-        let settings = ActorSingletonSettings(name: "FIXME-NAME")
-        return try await self.proxy(of: type, settings: settings, system: system, makeInstance: factory)
+        var settings = settings
+        settings.name = name
+        return try await self.proxy(type, settings: settings, system: self.actorSystem, makeInstance: factory)
     }
 
-    public func proxy<Act>(
-        of type: Act.Type,
+    internal func proxy<Act>(
+        _ type: Act.Type,
         settings: ActorSingletonSettings,
         system: ClusterSystem,
-        makeInstance factory: ((ClusterSystem) async throws -> Act)? = nil
-    ) async throws -> Act
-        where Act: DistributedActor,
-        Act.ActorSystem == ClusterSystem
+        makeInstance factory: ((ClusterSystem) async throws -> Act)?
+    ) async throws -> Act where Act: ClusterSingletonProtocol
     {
-        let known = self.singletons[settings.name]
+        let known = self.singletons["\(type)"]
         if let existingID = known?.proxyID {
             return try Act.resolve(id: existingID, using: system)
         }
 
         // Spawn the proxy for the singleton (one per singleton per node)
-        let proxy = try await _Props.$forSpawn.withValue(_Props._wellKnownActor(name: "singletonProxy-\(settings.name)")) {
+        let proxy = // try await _Props.$forSpawn.withValue(_Props._wellKnownActor(name: "singletonProxy-\(settings.name)")) {
             try await ActorSingletonProxy(
                 settings: settings,
                 system: system,
                 singletonProps: .init(),
                 factory
             )
-        }
+        // }
         let interceptor = ActorSingletonRemoteCallInterceptor(system: system, proxy: proxy)
         let proxied = try system.interceptCalls(to: type, metadata: ActorMetadata(), interceptor: interceptor)
 
@@ -98,19 +107,26 @@ public actor ActorSingletonPlugin {
 // MARK: Plugin protocol conformance
 
 extension ActorSingletonPlugin: _Plugin {
-    static let pluginKey = _PluginKey<ActorSingletonPlugin>(plugin: "$actorSingleton")
+    static let pluginKey = _PluginKey<ActorSingletonPlugin>(plugin: "$clusterSingleton")
 
     public nonisolated var key: Key {
         Self.pluginKey
     }
 
-    public func start(_ system: ClusterSystem) async throws {}
+    public func start(_ system: ClusterSystem) async throws {
+        self.actorSystem = system
+    }
 
     public nonisolated func stop(_ system: ClusterSystem) {
         Task {
-            for (_, (_, proxy)) in await self.singletons {
-                proxy.stop()
-            }
+            await self.doStop()
+        }
+    }
+    
+    internal func doStop() {
+        self.actorSystem = nil
+        for (_, (_, proxy)) in self.singletons {
+            proxy.stop()
         }
     }
 }

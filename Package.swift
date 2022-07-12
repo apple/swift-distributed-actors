@@ -106,14 +106,14 @@ var targets: [PackageDescription.Target] = [
 //            "DistributedActorsTestKit"
 //        ]
 //    ),
-//
-//    .testTarget(
-//        name: "ActorSingletonPluginTests",
-//        dependencies: [
-//            "ActorSingletonPlugin",
-//            "DistributedActorsTestKit"
-//        ]
-//    ),
+
+    .testTarget(
+        name: "ActorSingletonPluginTests",
+        dependencies: [
+            "ActorSingletonPlugin",
+            "DistributedActorsTestKit"
+        ]
+    ),
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Integration Tests - `it_` prefixed

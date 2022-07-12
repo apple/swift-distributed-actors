@@ -190,11 +190,11 @@ final class ActorIDTests: ClusteredActorSystemsXCTestCase {
         let system = await self.setUpNode("test_serializing_ActorAddress_propagateCustomTag") { settings in
             settings.bindPort = 1234
             settings.actorMetadata.encodeCustomMetadata = { metadata, container in
-                try container.encodeIfPresent(metadata.test, forKey: ActorCoding.MetadataKeys.custom(ActorMetadataKeys().test.id))
+                try container.encodeIfPresent(metadata.test, forKey: ActorCoding.MetadataKeys.custom(ActorMetadataKeys.__instance.test.id))
             }
 
             settings.actorMetadata.decodeCustomMetadata = { container, metadata in
-                if let value = try container.decodeIfPresent(String.self, forKey: .custom(ActorMetadataKeys().test.id)) {
+                if let value = try container.decodeIfPresent(String.self, forKey: .custom(ActorMetadataKeys.__instance.test.id)) {
                     metadata.test = value
                 }
             }
@@ -207,7 +207,7 @@ final class ActorIDTests: ClusteredActorSystemsXCTestCase {
         serializedJson.shouldContain(#""incarnation":1"#)
         serializedJson.shouldContain(#""node":["sact","one","127.0.0.1",1234,11111]"#)
         serializedJson.shouldContain(#""path":{"path":["user","a"]}"#)
-        serializedJson.shouldContain("\"\(ActorMetadataKeys().test.id)\":\"\(a.metadata.test!)\"")
+        serializedJson.shouldContain("\"\(ActorMetadataKeys.__instance.test.id)\":\"\(a.metadata.test!)\"")
     }
 }
 
