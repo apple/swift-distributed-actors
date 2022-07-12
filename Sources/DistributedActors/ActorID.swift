@@ -61,6 +61,10 @@ extension ClusterSystem.ActorID {
                     fatalError("Attempted to override ActorID Metadata for key \(key.id):\(key.keyType) which already had value: \(value); with new value: \(String(describing: newValue))")
                 }
                 metadata[key.id] = newValue
+                
+                if key.id == ActorMetadataKeys.__instance.wellKnown.id {
+                    myself.actorSystem._wellKnownActorReady(myself)
+                }
             }
         }
     }
