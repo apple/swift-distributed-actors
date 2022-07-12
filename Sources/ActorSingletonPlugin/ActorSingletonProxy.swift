@@ -42,6 +42,9 @@ internal distributed actor ActorSingletonProxy<Act: ClusterSingletonProtocol>: A
     typealias ActorSystem = ClusterSystem
     typealias CallID = UUID
 
+    @ActorID.Metadata(\.wellKnown)
+    var wellKnownName: String
+    
     /// Settings for the `ActorSingleton`
     private let settings: ActorSingletonSettings
 
@@ -80,6 +83,8 @@ internal distributed actor ActorSingletonProxy<Act: ClusterSingletonProtocol>: A
         self.allocationStrategy = settings.allocationStrategy.make(system.settings, settings)
         self.singletonProps = singletonProps
         self.singletonFactory = singletonFactory
+        
+        self.wellKnownName = "$singleton-proxy-\(settings.name)"
 
         if system.settings.enabled {
             self.clusterEventsSubscribeTask = Task {
@@ -188,6 +193,46 @@ internal distributed actor ActorSingletonProxy<Act: ClusterSingletonProtocol>: A
         }
     }
 
+    private func findSingleton() async -> Act {
+        await withCheckedContinuation { continuation in
+            // If singleton is available, forward remote call to it.
+            if let singleton = self.singleton {
+                continuation.resume(returning: singleton)
+                return
+            }
+            // Otherwise, we "stash" the remote call until singleton becomes available.
+            Task {
+                let callID = UUID()
+                self.log.debug("Stashing remote call [\(callID)]")
+                self.remoteCallContinuations.append((callID, continuation))
+                // FIXME: honor settings.bufferCapacity
+            }
+        }
+    }
+
+    nonisolated func stop() {
+        Task {
+            try await self.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
+                // TODO: perhaps we can figure out where `to` is next and hand over gracefully?
+                try await __secretlyKnownToBeLocal.handOver(to: nil)
+                __secretlyKnownToBeLocal.manager = nil
+            }
+        }
+    }
+}
+
+// ==== ---------------------------------------------------------------------------------------------------------------
+// MARK: Incoming calls
+
+extension ActorSingletonProxy {
+    
+    func receiveInboundInvocation(message: InvocationMessage) async throws {
+        
+    }
+    
+    // ==== -----------------------------------------------------------------------------------------------------------
+    
+    /// Will handle the incoming message by either stashing
     func forwardOrStashRemoteCall<Err, Res>(
         target: RemoteCallTarget,
         invocation: ActorSystem.InvocationEncoder,
@@ -226,58 +271,6 @@ internal distributed actor ActorSingletonProxy<Act: ClusterSingletonProtocol>: A
             invocation: &invocation,
             throwing: throwing
         )
-    }
-
-    private func findSingleton() async -> Act {
-        await withCheckedContinuation { continuation in
-            // If singleton is available, forward remote call to it.
-            if let singleton = self.singleton {
-                continuation.resume(returning: singleton)
-                return
-            }
-            // Otherwise, we "stash" the remote call until singleton becomes available.
-            Task {
-                let callID = UUID()
-                self.log.debug("Stashing remote call [\(callID)]")
-                self.remoteCallContinuations.append((callID, continuation))
-                // FIXME: honor settings.bufferCapacity
-            }
-        }
-    }
-
-//    private func forwardOrStash(_ context: _ActorContext<Message>, message: Message) throws {
-//        // Forward the message if `singleton` is not `nil`, else stash it.
-//        if let singleton = self.ref {
-//            context.log.trace("Forwarding message \(message), to: \(singleton.id)", metadata: self.metadata(context))
-//            singleton.tell(message)
-//        } else {
-//            do {
-//                try self.buffer.stash(message: message)
-//                context.log.trace("Stashed message: \(message)", metadata: self.metadata(context))
-//            } catch {
-//                switch error {
-//                case _StashError.full:
-//                    // TODO: log this warning only "once in while" after buffer becomes full
-//                    context.log.warning("Buffer is full. Messages might start getting disposed.", metadata: self.metadata(context))
-//                    // Move the oldest message to dead letters to make room
-//                    if let oldestMessage = self.buffer.take() {
-//                        context.system.deadLetters.tell(DeadLetter(oldestMessage, recipient: context.id))
-//                    }
-//                default:
-//                    context.log.warning("Unable to stash message, error: \(error)", metadata: self.metadata(context))
-//                }
-//            }
-//        }
-//    }
-
-    nonisolated func stop() {
-        Task {
-            try await self.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
-                // TODO: perhaps we can figure out where `to` is next and hand over gracefully?
-                try await __secretlyKnownToBeLocal.handOver(to: nil)
-                __secretlyKnownToBeLocal.manager = nil
-            }
-        }
     }
 }
 
