@@ -45,8 +45,8 @@ internal struct ActorIDMetadataSettings {
     /// What type of tags, known and defined by the cluster system itself, should be automatically propagated.
     /// Other types of tags, such as user-defined tags, must be propagated by declaring apropriate functions for ``encodeCustomMetadata`` and ``decodeCustomMetadata``.
     internal var propagateMetadata: Set<String> = [
-        ActorMetadataKeys().path.id,
-        ActorMetadataKeys().type.id,
+        ActorMetadataKeys.__instance.path.id,
+        ActorMetadataKeys.__instance.type.id,
     ]
 
     internal var encodeCustomMetadata: (ActorMetadata, inout KeyedEncodingContainer<ActorCoding.MetadataKeys>) throws -> Void =

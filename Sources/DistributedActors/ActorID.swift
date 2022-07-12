@@ -20,12 +20,6 @@ import Distributed
 /// Convenience alias for ``ClusterSystem/ActorID``.
 public typealias ActorID = ClusterSystem.ActorID
 
-extension DistributedActor where ActorSystem == ClusterSystem {
-    public nonisolated var metadata: ActorMetadata {
-        self.id.metadata
-    }
-}
-
 extension ClusterSystem.ActorID {
     @propertyWrapper
     public struct Metadata<Value: Sendable & Codable> {
@@ -33,7 +27,7 @@ extension ClusterSystem.ActorID {
         let id: String
 
         public init(_ keyPath: KeyPath<ActorMetadataKeys, ActorMetadataKey<Value>>) {
-            let key = ActorMetadataKeys()[keyPath: keyPath]
+            let key = ActorMetadataKeys.__instance[keyPath: keyPath]
             self.id = key.id
             self.keyType = type(of: key)
         }
@@ -157,8 +151,7 @@ extension ClusterSystem {
         public internal(set) var context: DistributedActorContext
 
         /// Underlying path representation, not attached to a specific Actor instance.
-        // FIXME(distributed): make optional
-        public var path: ActorPath {
+        public var path: ActorPath { // FIXME(distributed): make optional
             get {
                 guard let path = metadata.path else {
                     fatalError("FIXME: ActorTags.path was not set on \(self.incarnation)! NOTE THAT PATHS ARE TO BECOME OPTIONAL!!!") // FIXME(distributed): must be removed
@@ -166,14 +159,13 @@ extension ClusterSystem {
                 return path
             }
             set {
-                self.metadata[ActorMetadataKeys().path.id] = newValue
+                self.metadata[ActorMetadataKeys.__instance.path.id] = newValue
             }
         }
 
         /// Returns the name of the actor represented by this path.
         /// This is equal to the last path segments string representation.
-        // FIXME(distributed): make optional
-        public var name: String {
+        public var name: String { // FIXME(distributed): make optional
             self.path.name
         }
 
@@ -186,7 +178,7 @@ extension ClusterSystem {
             self._location = .local(node)
             self.incarnation = incarnation
             if let path {
-                self.context.metadata[ActorMetadataKeys().path.id] = path
+                self.context.metadata.path = path
             }
             traceLog_DeathWatch("Made ID: \(self)")
         }
@@ -197,7 +189,7 @@ extension ClusterSystem {
             self._location = .remote(node)
             self.incarnation = incarnation
             if let path {
-                self.context.metadata[ActorMetadataKeys().path.id] = path
+                self.context.metadata.path = path
             }
             traceLog_DeathWatch("Made ID: \(self)")
         }
@@ -263,7 +255,14 @@ extension ClusterSystem {
 }
 
 extension DistributedActor where ActorSystem == ClusterSystem {
-    /// INTERNAL: Provides the actor context for use within this actor.
+    public nonisolated var metadata: ActorMetadata {
+        self.id.metadata
+    }
+}
+
+extension DistributedActor where ActorSystem == ClusterSystem {
+    /// Provides the actor context for use within this actor.
+    /// The context must not be mutated concurrently with the owning actor, however the things it stores may provide additional synchronization to make this safe.
     internal var context: DistributedActorContext {
         self.id.context
     }
@@ -271,10 +270,24 @@ extension DistributedActor where ActorSystem == ClusterSystem {
 
 extension ActorID: Hashable {
     public static func == (lhs: ActorID, rhs: ActorID) -> Bool {
-        lhs.incarnation == rhs.incarnation && // quickest to check if the incarnations are the same
-            // if they happen to be equal, we don't know yet for sure if it's the same actor or not, as incarnation is just a random ID
-            // thus we need to compare the node and path as well
-            lhs.uniqueNode == rhs.uniqueNode && lhs.path == rhs.path
+        
+        let incarnationMatches: Bool
+        if let lhsWellKnownName = lhs.metadata.wellKnown,
+           let rhsWellKnownName = rhs.metadata.wellKnown {
+            // If we're comparing "well known" actors, we ignore the concrete incarnation,
+            // and compare the well known name instead. This works for example for "$receptionist"
+            // and other well known names, that can be resolved using them, without an incarnation number.
+            incarnationMatches = lhsWellKnownName == rhsWellKnownName
+        } else {
+            // quickest to check if the incarnations are the same
+            // if they happen to be equal, we don't know yet for sure if it's the same actor or not,
+            // as incarnation is just a random ID thus we need to compare the node and path as well
+            incarnationMatches = lhs.incarnation == rhs.incarnation &&
+                lhs.metadata.wellKnown == nil &&
+                rhs.metadata.wellKnown == nil
+        }
+        
+        return incarnationMatches && lhs.uniqueNode == rhs.uniqueNode && lhs.path == rhs.path
     }
 
     public func hash(into hasher: inout Hasher) {
@@ -291,6 +304,11 @@ extension ActorID: CustomStringConvertible {
             res += "\(self.uniqueNode)"
         }
         res += "\(self.path)"
+        
+        if !self.metadata.isEmpty {
+            res += self.metadata.description
+        }
+        
         return res
     }
 
@@ -301,11 +319,15 @@ extension ActorID: CustomStringConvertible {
         }
         res += "\(self.path)"
 
-        if self.incarnation == ActorIncarnation.wellKnown {
-            return res
-        } else {
-            return "\(res)#\(self.incarnation.value)"
+        if self.incarnation != ActorIncarnation.wellKnown {
+            res += "#\(self.incarnation.value)"
         }
+        
+        if !self.metadata.isEmpty {
+            res += self.metadata.description
+        }
+        
+        return res
     }
 
     public var fullDescription: String {
@@ -313,11 +335,15 @@ extension ActorID: CustomStringConvertible {
         res += "\(reflecting: self.uniqueNode)"
         res += "\(self.path)"
 
-        if self.incarnation == ActorIncarnation.wellKnown {
-            return res
-        } else {
-            return "\(res)#\(self.incarnation.value)"
+        if self.incarnation != ActorIncarnation.wellKnown {
+            res += "#\(self.incarnation.value)"
         }
+        
+        if !self.metadata.isEmpty {
+            res += self.metadata.description
+        }
+        
+        return res
     }
 }
 
@@ -704,6 +730,7 @@ public struct ActorIncarnation: Equatable, Hashable, ExpressibleByIntegerLiteral
 extension ActorIncarnation {
     /// To be used ONLY by special actors whose existence is wellKnown and identity never-changing.
     /// Examples: `/system/deadLetters` or `/system/cluster`.
+    @available(*, deprecated, message: "Useful only with behavior actors, to be removed entirely")
     public static let wellKnown: ActorIncarnation = .init(0)
 
     public static func random() -> ActorIncarnation {
@@ -904,7 +931,7 @@ extension UniqueNodeID {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Codable ActorAddress
+// MARK: Codable ActorID
 
 extension ActorID: Codable {
     public func encode(to encoder: Encoder) throws {
@@ -920,7 +947,7 @@ extension ActorID: Codable {
         if !self.metadata.isEmpty {
             var metadataContainer = container.nestedContainer(keyedBy: ActorCoding.MetadataKeys.self, forKey: ActorCoding.CodingKeys.metadata)
 
-            let keys = ActorMetadataKeys()
+            let keys = ActorMetadataKeys.__instance
             if (metadataSettings == nil || metadataSettings!.propagateMetadata.contains(keys.path.id)),
                let value = self.metadata.path
             {

@@ -322,9 +322,11 @@ public struct LoggingSettings {
 
     /// Log all detailed timer start/cancel events
     internal var verboseTimers = false
-
-    /// Log all actor `spawn` events
+    
+    /// Log all actor creation events (`assignID`, `actorReady`)
     internal var verboseSpawning = false
+    
+    internal var verboseResolve = false
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
