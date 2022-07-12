@@ -347,7 +347,7 @@ final class ClusterSystemTests: ClusterSystemXCTestCase {
             }
         }
 
-        guard case RemoteCallError.timedOut(let timeoutError) = error else {
+        guard case RemoteCallError.timedOut(_, let timeoutError) = error else {
             throw testKit.fail("Expected RemoteCallError.timedOut, got \(error)")
         }
         guard timeoutError.timeout == .milliseconds(200) else {
@@ -373,7 +373,7 @@ final class ClusterSystemTests: ClusterSystemXCTestCase {
             }
         }
 
-        guard case RemoteCallError.timedOut(let timeoutError) = error else {
+        guard case RemoteCallError.timedOut(_, let timeoutError) = error else {
             throw testKit.fail("Expected RemoteCallError.timedOut, got \(error)")
         }
         guard timeoutError.timeout == .milliseconds(200) else {

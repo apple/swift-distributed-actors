@@ -32,11 +32,10 @@ public struct ClusterInvocationEncoder: DistributedTargetInvocationEncoder {
         self.system = system
     }
 
-    public init(system: ClusterSystem, arguments: [Data]) {
+    init(system: ClusterSystem, arguments: [Data]) {
         self.system = system
         self.arguments = arguments
-        self.genericSubstitutions = []
-        self.throwing = true
+        self.throwing = false
     }
 
     public mutating func recordGenericSubstitution<T>(_ type: T.Type) throws {
@@ -64,43 +63,22 @@ public struct ClusterInvocationEncoder: DistributedTargetInvocationEncoder {
 public struct ClusterInvocationDecoder: DistributedTargetInvocationDecoder {
     public typealias SerializationRequirement = any Codable
 
+    let system: ClusterSystem
     let state: _State
     enum _State {
-<<<<<<< HEAD
-<<<<<<< HEAD
-        case remoteCall(system: ClusterSystem, message: InvocationMessage)
+        case remoteCall(message: InvocationMessage)
         // Potentially used by interceptors, when invoking a local target directly
         case localProxyCall(ClusterSystem.InvocationEncoder)
     }
-
-=======
-        case remoteCall(system: ClusterSystem,message: InvocationMessage)
-        // Potentially used by interceptors, when invoking a local target directly
-        case localProxyCall(ClusterSystem.InvocationEncoder)
-    }
->>>>>>> rework how we get hold of intercepted actors
-=======
-        case remoteCall(system: ClusterSystem, message: InvocationMessage)
-        // Potentially used by interceptors, when invoking a local target directly
-        case localProxyCall(ClusterSystem.InvocationEncoder)
-    }
-
->>>>>>> rework how we get hold of intercepted actors
     var argumentIdx = 0
 
     public init(system: ClusterSystem, message: InvocationMessage) {
-        self.state = .remoteCall(system: system, message: message)
+        self.system = system
+        self.state = .remoteCall(message: message)
     }
-<<<<<<< HEAD
-<<<<<<< HEAD
 
-=======
-    
->>>>>>> rework how we get hold of intercepted actors
-=======
-
->>>>>>> rework how we get hold of intercepted actors
-    internal init(invocation: ClusterSystem.InvocationEncoder) {
+    init(system: ClusterSystem, invocation: ClusterSystem.InvocationEncoder) {
+        self.system = system
         self.state = .localProxyCall(invocation)
     }
 
@@ -122,13 +100,15 @@ public struct ClusterInvocationDecoder: DistributedTargetInvocationDecoder {
     }
 
     public mutating func decodeNextArgument<Argument: Codable>() throws -> Argument {
+        let argumentData: Data
+
         switch self.state {
-        case .remoteCall(let system, let message):
-            guard message.arguments.count > self.argumentIdx else {
+        case .remoteCall(let message):
+            guard self.argumentIdx < message.arguments.count else {
                 throw SerializationError.notEnoughArgumentsEncoded(expected: self.argumentIdx + 1, have: message.arguments.count)
             }
 
-            let argumentData = message.arguments[self.argumentIdx]
+            argumentData = message.arguments[self.argumentIdx]
             self.argumentIdx += 1
 
             // FIXME: make incoming manifest
@@ -140,31 +120,25 @@ public struct ClusterInvocationDecoder: DistributedTargetInvocationDecoder {
             )
             let argument = try system.serialization.deserialize(as: Argument.self, from: serialized)
             return argument
-<<<<<<< HEAD
-<<<<<<< HEAD
 
-=======
-            
->>>>>>> rework how we get hold of intercepted actors
-=======
-
->>>>>>> rework how we get hold of intercepted actors
         case .localProxyCall(let invocation):
-            guard invocation.arguments.count > self.argumentIdx else {
+            // TODO: potentially able to optimize and avoid serialization round trip for such calls
+            guard self.argumentIdx < invocation.arguments.count else {
                 throw SerializationError.notEnoughArgumentsEncoded(expected: self.argumentIdx + 1, have: invocation.arguments.count)
             }
-<<<<<<< HEAD
-<<<<<<< HEAD
 
-=======
-            
->>>>>>> rework how we get hold of intercepted actors
-=======
-
->>>>>>> rework how we get hold of intercepted actors
             self.argumentIdx += 1
-            return invocation.arguments[self.argumentIdx] as! Argument
         }
+
+        // FIXME: make incoming manifest
+        let manifest = try self.system.serialization.outboundManifest(Argument.self)
+
+        let serialized = Serialization.Serialized(
+            manifest: manifest,
+            buffer: Serialization.Buffer.data(argumentData)
+        )
+        let argument = try self.system.serialization.deserialize(as: Argument.self, from: serialized)
+        return argument
     }
 
     public mutating func decodeErrorType() throws -> Any.Type? {
