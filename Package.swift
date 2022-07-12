@@ -34,16 +34,6 @@ var targets: [PackageDescription.Target] = [
         ]
     ),
 
-    // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: Plugins // TODO: rename since may be confused with package plugins?
-
-    .target(
-        name: "ClusterSingletonPlugin",
-        dependencies: [
-            "DistributedActors",
-        ]
-    ),
-
     .executableTarget(
         name: "ExecApp",
         dependencies: [
@@ -71,7 +61,6 @@ var targets: [PackageDescription.Target] = [
 //        name: "DistributedActorsDocumentationTests",
 //        dependencies: [
 //            "DistributedActors",
-//            "ActorSingletonPlugin",
 //            "DistributedActorsTestKit",
 //        ],
 //        exclude: [
@@ -103,14 +92,6 @@ var targets: [PackageDescription.Target] = [
 //        name: "CDistributedActorsMailboxTests",
 //        dependencies: [
 //            "CDistributedActorsMailbox",
-//            "DistributedActorsTestKit"
-//        ]
-//    ),
-
-//    .testTarget(
-//        name: "ClusterSingletonPluginTests",
-//        dependencies: [
-//            "ClusterSingletonPlugin",
 //            "DistributedActorsTestKit"
 //        ]
 //    ),
@@ -218,13 +199,6 @@ let products: [PackageDescription.Product] = [
         targets: [
             "ExecApp",
         ]
-    ),
-
-    /* --- Functional Plugins --- */
-
-    .library(
-        name: "ClusterSingletonPlugin",
-        targets: ["ClusterSingletonPlugin"]
     ),
 ]
 

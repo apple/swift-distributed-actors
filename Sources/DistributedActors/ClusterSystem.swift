@@ -903,7 +903,7 @@ extension ClusterSystem {
         return self._assignID(actorType, baseContext: nil)
     }
 
-    public func _assignID<Act>(_ actorType: Act.Type, baseContext: DistributedActorContext?) -> ClusterSystem.ActorID
+    internal func _assignID<Act>(_ actorType: Act.Type, baseContext: DistributedActorContext?) -> ClusterSystem.ActorID
         where Act: DistributedActor
     {
         let props = _Props.forSpawn // task-local read for any properties this actor should have
@@ -986,7 +986,7 @@ extension ClusterSystem {
 // MARK: Intercepting calls
 
 extension ClusterSystem {
-    public func interceptCalls<Act, Interceptor>(
+    internal func interceptCalls<Act, Interceptor>(
         to actorType: Act.Type,
         metadata: ActorMetadata,
         interceptor: Interceptor
@@ -1051,7 +1051,6 @@ extension ClusterSystem {
         }
 
         if let error = reply.thrownError {
-            print("error: \(error)")
             throw error
         }
         guard let value = reply.value else {

@@ -21,19 +21,13 @@ import SwiftProtobuf
 
 public struct ClusterInvocationEncoder: DistributedTargetInvocationEncoder {
     public typealias SerializationRequirement = any Codable
-    public internal(set) var arguments: [Data] = []
+    var arguments: [Data] = []
     var throwing: Bool = false
 
     let system: ClusterSystem
 
     init(system: ClusterSystem) {
         self.system = system
-    }
-
-    public init(system: ClusterSystem, arguments: [Data]) {
-        self.system = system
-        self.arguments = arguments
-        self.throwing = true
     }
 
     public mutating func recordGenericSubstitution<T>(_ type: T.Type) throws {

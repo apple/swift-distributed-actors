@@ -12,8 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-import DistributedActors
-
 /// Settings for a singleton.
 public struct ClusterSingletonSettings {
     /// Unique name for the singleton.
@@ -36,14 +34,24 @@ public struct ClusterSingletonSettings {
 }
 
 /// Singleton node allocation strategies.
-public enum AllocationStrategySettings {
-    /// Singletons will run on the cluster leader. *All* nodes are potential candidates.
-    case byLeadership
+public struct AllocationStrategySettings {
+    private enum AllocationStrategy {
+        /// Singletons will run on the cluster leader. *All* nodes are potential candidates.
+        case byLeadership
+    }
 
-    func make(_: ClusterSystemSettings, _: ClusterSingletonSettings) -> ClusterSingletonAllocationStrategy {
-        switch self {
+    private var allocationStrategy: AllocationStrategy
+
+    private init(allocationStrategy: AllocationStrategy) {
+        self.allocationStrategy = allocationStrategy
+    }
+
+    func makeAllocationStrategy(_: ClusterSystemSettings, _: ClusterSingletonSettings) -> ClusterSingletonAllocationStrategy {
+        switch self.allocationStrategy {
         case .byLeadership:
             return ClusterSingletonAllocationByLeadership()
         }
     }
+
+    public static let byLeadership: AllocationStrategySettings = .init(allocationStrategy: .byLeadership)
 }

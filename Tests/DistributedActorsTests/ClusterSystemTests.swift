@@ -212,21 +212,13 @@ final class ClusterSystemTests: ClusterSystemXCTestCase {
         }
         local.cluster.join(node: remote.cluster.uniqueNode)
 
-        let greeting = "hello"
-        let greeter = Greeter(actorSystem: local, greeting: greeting)
-<<<<<<< HEAD
+        let greeter = Greeter(actorSystem: local)
         let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
 
         let value = try await shouldNotThrow {
-            try await remoteGreeterRef.greet()
-=======
-        let localGreeter = try Greeter.resolve(id: greeter.id, using: remote)
-
-        let value = try await shouldNotThrow {
-            try await localGreeter.greet()
->>>>>>> 615cc9f6d548006f4a93d176f035ac168e6b7f8e
+            try await remoteGreeterRef.hello()
         }
-        value.shouldEqual(greeting)
+        value.shouldEqual("hello")
     }
 
     func test_remoteCall_shouldCarryBackThrownError_Codable() async throws {
@@ -240,18 +232,11 @@ final class ClusterSystemTests: ClusterSystemXCTestCase {
         }
         local.cluster.join(node: remote.cluster.uniqueNode)
 
-        let greeter = Greeter(actorSystem: local, greeting: "hello")
-<<<<<<< HEAD
+        let greeter = Greeter(actorSystem: local)
         let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
 
         let error = try await shouldThrow {
-            _ = try await remoteGreeterRef.greetThrow(codable: true)
-=======
-        let localGreeter = try Greeter.resolve(id: greeter.id, using: remote)
-
-        let error = try await shouldThrow {
-            _ = try await localGreeter.greetThrow(codable: true)
->>>>>>> 615cc9f6d548006f4a93d176f035ac168e6b7f8e
+            _ = try await remoteGreeterRef.helloThrow(codable: true)
         }
         guard error is GreeterCodableError else {
             throw testKit.fail("Expected GreeterCodableError, got \(error)")
@@ -269,18 +254,11 @@ final class ClusterSystemTests: ClusterSystemXCTestCase {
         }
         local.cluster.join(node: remote.cluster.uniqueNode)
 
-        let greeter = Greeter(actorSystem: local, greeting: "hello")
-<<<<<<< HEAD
+        let greeter = Greeter(actorSystem: local)
         let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
 
         let error = try await shouldThrow {
-            _ = try await remoteGreeterRef.greetThrow(codable: false)
-=======
-        let localGreeter = try Greeter.resolve(id: greeter.id, using: remote)
-
-        let error = try await shouldThrow {
-            _ = try await localGreeter.greetThrow(codable: false)
->>>>>>> 615cc9f6d548006f4a93d176f035ac168e6b7f8e
+            _ = try await remoteGreeterRef.helloThrow(codable: false)
         }
         guard let remoteCallError = error as? GenericRemoteCallError else {
             throw testKit.fail("Expected GenericRemoteCallError, got \(error)")
@@ -298,17 +276,12 @@ final class ClusterSystemTests: ClusterSystemXCTestCase {
         }
         local.cluster.join(node: remote.cluster.uniqueNode)
 
-        let greeter = Greeter(actorSystem: local, greeting: "hello")
-<<<<<<< HEAD
+        let greeter = Greeter(actorSystem: local)
         let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
-=======
-        let localGreeter = try Greeter.resolve(id: greeter.id, using: remote)
->>>>>>> 615cc9f6d548006f4a93d176f035ac168e6b7f8e
 
         try await shouldNotThrow {
-            try await localGreeter.muted()
+            try await remoteGreeterRef.muted()
         }
-        try self.capturedLogs(of: local).awaitLogContaining(self.testKit(local), text: "Muted greeting: hello")
     }
 
     func test_remoteCallVoid_shouldCarryBackThrownError_Codable() async throws {
@@ -321,15 +294,11 @@ final class ClusterSystemTests: ClusterSystemXCTestCase {
         }
         local.cluster.join(node: remote.cluster.uniqueNode)
 
-        let greeter = Greeter(actorSystem: local, greeting: "hello")
-<<<<<<< HEAD
+        let greeter = Greeter(actorSystem: local)
         let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
-=======
-        let localGreeter = try Greeter.resolve(id: greeter.id, using: remote)
->>>>>>> 615cc9f6d548006f4a93d176f035ac168e6b7f8e
 
         let error = try await shouldThrow {
-            try await localGreeter.mutedThrow(codable: true)
+            try await remoteGreeterRef.mutedThrow(codable: true)
         }
         guard error is GreeterCodableError else {
             throw testKit.fail("Expected GreeterCodableError, got \(error)")
@@ -346,15 +315,11 @@ final class ClusterSystemTests: ClusterSystemXCTestCase {
         }
         local.cluster.join(node: remote.cluster.uniqueNode)
 
-        let greeter = Greeter(actorSystem: local, greeting: "hello")
-<<<<<<< HEAD
+        let greeter = Greeter(actorSystem: local)
         let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
-=======
-        let localGreeter = try Greeter.resolve(id: greeter.id, using: remote)
->>>>>>> 615cc9f6d548006f4a93d176f035ac168e6b7f8e
 
         let error = try await shouldThrow {
-            try await localGreeter.mutedThrow(codable: false)
+            try await remoteGreeterRef.mutedThrow(codable: false)
         }
         guard let remoteCallError = error as? GenericRemoteCallError else {
             throw testKit.fail("Expected GenericRemoteCallError, got \(error)")
@@ -371,20 +336,12 @@ final class ClusterSystemTests: ClusterSystemXCTestCase {
         }
         local.cluster.join(node: remote.cluster.uniqueNode)
 
-        let greeter = Greeter(actorSystem: local, greeting: "hello")
-<<<<<<< HEAD
+        let greeter = Greeter(actorSystem: local)
         let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
 
         let error = try await shouldThrow {
             try await RemoteCall.with(timeout: .milliseconds(200)) {
-                _ = try await remoteGreeterRef.greet(delayNanos: 3_000_000_000)
-=======
-        let localGreeter = try Greeter.resolve(id: greeter.id, using: remote)
-
-        let error = try await shouldThrow {
-            try await RemoteCall.with(timeout: .milliseconds(200)) {
-                _ = try await localGreeter.greet(delayNanos: 3_000_000_000)
->>>>>>> 615cc9f6d548006f4a93d176f035ac168e6b7f8e
+                _ = try await remoteGreeterRef.hello(delayNanos: 3_000_000_000)
             }
         }
 
@@ -405,16 +362,12 @@ final class ClusterSystemTests: ClusterSystemXCTestCase {
         }
         local.cluster.join(node: remote.cluster.uniqueNode)
 
-        let greeter = Greeter(actorSystem: local, greeting: "hello")
-<<<<<<< HEAD
+        let greeter = Greeter(actorSystem: local)
         let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
-=======
-        let localGreeter = try Greeter.resolve(id: greeter.id, using: remote)
->>>>>>> 615cc9f6d548006f4a93d176f035ac168e6b7f8e
 
         let error = try await shouldThrow {
             try await RemoteCall.with(timeout: .milliseconds(200)) {
-                try await localGreeter.muted(delayNanos: 3_000_000_000)
+                try await remoteGreeterRef.muted(delayNanos: 3_000_000_000)
             }
         }
 
@@ -425,66 +378,16 @@ final class ClusterSystemTests: ClusterSystemXCTestCase {
             throw testKit.fail("Expected timeout to be 200 milliseconds but was \(timeoutError.timeout)")
         }
     }
-
-    func test_remoteCall_interceptor() async throws {
-        let local = await setUpNode("local") { settings in
-            settings.enabled = true
-        }
-        let remote = await setUpNode("remote") { settings in
-            settings.enabled = true
-        }
-        local.cluster.join(node: remote.cluster.uniqueNode)
-
-        let greeter = Greeter(actorSystem: local, greeting: "hello")
-        let localGreeter = try Greeter.resolve(id: greeter.id, using: remote)
-
-        let otherGreeter = Greeter(actorSystem: local, greeting: "HI!!!")
-        localGreeter.id.context.remoteCallInterceptor = GreeterRemoteCallInterceptor(system: remote, greeter: otherGreeter)
-
-        let value = try await shouldNotThrow {
-            try await localGreeter.greet()
-        }
-        value.shouldEqual("HI!!!")
-    }
-
-    func test_remoteCallVoid_interceptor() async throws {
-        let local = await setUpNode("local") { settings in
-            settings.enabled = true
-        }
-        let remote = await setUpNode("remote") { settings in
-            settings.enabled = true
-        }
-        local.cluster.join(node: remote.cluster.uniqueNode)
-
-        let greeter = Greeter(actorSystem: local, greeting: "hello")
-        let localGreeter = try Greeter.resolve(id: greeter.id, using: remote)
-
-        let otherGreeter = Greeter(actorSystem: local, greeting: "HI!!!")
-        localGreeter.id.context.remoteCallInterceptor = GreeterRemoteCallInterceptor(system: remote, greeter: otherGreeter)
-
-        try await shouldNotThrow {
-            try await localGreeter.muted()
-        }
-        try self.capturedLogs(of: local).awaitLogContaining(self.testKit(local), text: "Muted greeting: HI!!!")
-    }
 }
 
 private distributed actor Greeter {
-    typealias ID = ClusterSystem.ActorID
     typealias ActorSystem = ClusterSystem
 
-    let greeting: String
-
-    init(actorSystem: ActorSystem, greeting: String) {
-        self.actorSystem = actorSystem
-        self.greeting = greeting
+    distributed func hello() async throws -> String {
+        "hello"
     }
 
-    distributed func greet() async throws -> String {
-        self.greeting
-    }
-
-    distributed func greetThrow(codable: Bool) async throws -> String {
+    distributed func helloThrow(codable: Bool) async throws -> String {
         if codable {
             throw GreeterCodableError()
         } else {
@@ -492,14 +395,12 @@ private distributed actor Greeter {
         }
     }
 
-    distributed func greet(delayNanos: UInt64) async throws -> String {
+    distributed func hello(delayNanos: UInt64) async throws -> String {
         try await Task.sleep(nanoseconds: delayNanos)
-        return try await self.greet()
+        return try await self.hello()
     }
 
-    distributed func muted() async throws {
-        self.actorSystem.log.info("Muted greeting: \(self.greeting)")
-    }
+    distributed func muted() async throws {}
 
     distributed func mutedThrow(codable: Bool) async throws {
         if codable {
@@ -515,58 +416,5 @@ private distributed actor Greeter {
     }
 }
 
-private struct GreeterRemoteCallInterceptor: RemoteCallInterceptor {
-    let system: ClusterSystem
-    let greeter: Greeter
-
-    func interceptRemoteCall<Act, Err, Res>(
-        on actor: Act,
-        target: RemoteCallTarget,
-        invocation: inout ClusterSystem.InvocationEncoder,
-        throwing: Err.Type,
-        returning: Res.Type
-    ) async throws -> Res
-        where Act: DistributedActor,
-        Act.ID == ActorID,
-        Err: Error,
-        Res: Codable
-    {
-        guard let greeter = self.greeter as? Act else {
-            throw GreeterRemoteCallInterceptorError()
-        }
-
-        return try await self.system.remoteCall(
-            on: greeter, // Change the receiver
-            target: target,
-            invocation: &invocation,
-            throwing: throwing,
-            returning: returning
-        )
-    }
-
-    func interceptRemoteCallVoid<Act, Err>(
-        on actor: Act,
-        target: RemoteCallTarget,
-        invocation: inout ClusterSystem.InvocationEncoder,
-        throwing: Err.Type
-    ) async throws
-        where Act: DistributedActor,
-        Act.ID == ActorID,
-        Err: Error
-    {
-        guard let greeter = self.greeter as? Act else {
-            throw GreeterRemoteCallInterceptorError()
-        }
-
-        return try await self.system.remoteCallVoid(
-            on: greeter, // Change the receiver
-            target: target,
-            invocation: &invocation,
-            throwing: throwing
-        )
-    }
-}
-
 private struct GreeterCodableError: Error, Codable {}
 private struct GreeterNonCodableError: Error {}
-private struct GreeterRemoteCallInterceptorError: Error, Codable {}

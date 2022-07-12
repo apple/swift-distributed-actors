@@ -78,7 +78,7 @@ public struct _Props: @unchecked Sendable {
 
     /// Allows for passing properties to creating a distributed actor.
     @TaskLocal
-    public static var forSpawn: _Props = .init()
+    internal static var forSpawn: _Props = .init()
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -173,23 +173,6 @@ extension _Props {
     public var _asNotSoWellKnown: Self {
         var p = self
         p._wellKnown = false
-        return p
-    }
-}
-
-extension _Props {
-<<<<<<< HEAD
-=======
-    public static func _wellKnownActor(name: String) -> Self {
-        var props = Self._wellKnown
-        props._knownActorName = name
-        return props
-    }
-
->>>>>>> 615cc9f6d548006f4a93d176f035ac168e6b7f8e
-    public func _knownAs(name: String) -> Self {
-        var p = self
-        p._knownActorName = name
         return p
     }
 }
