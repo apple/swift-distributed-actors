@@ -1014,7 +1014,7 @@ extension ClusterSystem {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Remote Calls
+// MARK: Outbound Remote Calls
 
 extension ClusterSystem {
     public func makeInvocationEncoder() -> InvocationEncoder {
@@ -1034,9 +1034,19 @@ extension ClusterSystem {
         Res: Codable
     {
         if let interceptor = actor.id.context.remoteCallInterceptor {
+            self.log.warning("INTERCEPTOR remote call \(actor.id)...")
             return try await interceptor.interceptRemoteCall(on: actor, target: target, invocation: &invocation, throwing: throwing, returning: returning)
         }
 
+        guard actor.id.uniqueNode != self.cluster.uniqueNode else {
+            // It actually is a remote call, so redirect it to local call-path.
+            // Such calls can happen when we deal with interceptors and proxies;
+            // To make their lives easier, we centralize the noticing when a call is local and dispatch it from here.
+            self.log.warning("ACTUALLY LOCAL CALL: \(target) on \(actor.id)")
+            return try await self.localCall(on: actor, target: target, invocation: &invocation, throwing: throwing, returning: returning)
+            
+        }
+        
         guard let clusterShell = _cluster else {
             throw RemoteCallError.clusterAlreadyShutDown
         }
@@ -1061,7 +1071,7 @@ extension ClusterSystem {
             throw error
         }
         guard let value = reply.value else {
-            throw RemoteCallError.invalidReply
+            throw RemoteCallError.invalidReply(reply.callID)
         }
         return value
     }
@@ -1139,6 +1149,7 @@ extension ClusterSystem {
                     error = RemoteCallError.clusterAlreadyShutDown
                 } else {
                     error = RemoteCallError.timedOut(
+                        callID,
                         TimeoutError(message: "Remote call [\(callID)] to [\(target)](\(actorID)) timed out", timeout: timeout))
                 }
 
@@ -1166,11 +1177,64 @@ extension ClusterSystem {
             }
 
             self.log.error("Expected [\(Reply.self)] but got [\(type(of: reply as Any))]")
-            throw RemoteCallError.invalidReply
+            throw RemoteCallError.invalidReply(callID)
         }
         return reply
     }
 }
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Local "proxied" calls
+
+extension ClusterSystem {
+    
+    /// Able to direct a `remoteCall` initiated call, right into a local invocation.
+    /// This is used to perform proxying to local actors, for such features like the cluster singleton or similar.
+    internal func localCall<Act, Err, Res>(
+        on actor: Act,
+        target: RemoteCallTarget,
+        invocation: inout InvocationEncoder,
+        throwing: Err.Type,
+        returning: Res.Type
+    ) async throws -> Res
+        where Act: DistributedActor,
+        Act.ID == ActorID,
+        Err: Error,
+        Res: Codable
+    {
+        precondition(self.cluster.uniqueNode == actor.id.uniqueNode,
+                     "Attempted to localCall an actor whose ID was a different node: [\(actor.id)], current node: \(self.cluster.uniqueNode)")
+        precondition(!__isRemoteActor(actor),
+                     "Attempted to localCall a remote actor! \(actor.id)")
+        log.trace("Execute local call", metadata: [
+            "actor/id": "\(actor.id)",
+            "target": "\(target)",
+        ])
+        
+        let anyReturn = try await withCheckedThrowingContinuation { cc in
+            Task { [invocation] in
+                var directDecoder = ClusterInvocationDecoder(system: self, invocation: invocation)
+                let directReturnHandler = ClusterInvocationResultHandler(directReturnContinuation: cc)
+                
+                try await executeDistributedTarget(
+                    on: actor,
+                    target: target,
+                    invocationDecoder: &directDecoder,
+                    handler: directReturnHandler)
+            }
+        }
+        
+        guard let wellTypedReturn = anyReturn as? Res else {
+            throw RemoteCallError.illegalReplyType(UUID(), expected: Res.self, got: type(of: anyReturn))
+        }
+        
+        return wellTypedReturn
+    }
+}
+
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Inbound Remote Calls
 
 extension ClusterSystem {
     func receiveInvocation(_ invocation: InvocationMessage, recipient: ActorID, on channel: Channel) {
@@ -1409,8 +1473,9 @@ internal struct LazyStart<Message: Codable> {
 
 enum RemoteCallError: DistributedActorSystemError {
     case clusterAlreadyShutDown
-    case timedOut(TimeoutError)
-    case invalidReply
+    case timedOut(ClusterSystem.CallID, TimeoutError)
+    case invalidReply(ClusterSystem.CallID)
+    case illegalReplyType(ClusterSystem.CallID, expected: Any.Type, got: Any.Type)
 }
 
 /// Allows for configuring of remote calls by setting task-local values around a remote call being made.
