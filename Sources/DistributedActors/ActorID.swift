@@ -31,9 +31,6 @@ extension ClusterSystem.ActorID {
     public struct Metadata<Value: Sendable & Codable> {
         let keyType: Any.Type
         let id: String
-//        public init(_: Key.Type) {
-//            // no initial value; it must be set during initialization
-//        }
 
         public init(_ keyPath: KeyPath<ActorMetadataKeys, ActorMetadataKey<Value>>) {
             let key = ActorMetadataKeys()[keyPath: keyPath]
@@ -157,7 +154,11 @@ extension ClusterSystem {
         }
 
         /// Internal "actor context" which is used as storage for additional cluster actor features, such as watching.
+<<<<<<< HEAD
         public var context: DistributedActorContext
+=======
+        public internal(set) var context: DistributedActorContext
+>>>>>>> 615cc9f6d548006f4a93d176f035ac168e6b7f8e
 
         /// Underlying path representation, not attached to a specific Actor instance.
         // FIXME(distributed): make optional
@@ -185,7 +186,7 @@ extension ClusterSystem {
 
         // TODO(distributed): remove this initializer, as it is only for Behavior actors
         init(local node: UniqueNode, path: ActorPath?, incarnation: ActorIncarnation) {
-            self.context = .init(lifecycle: nil)
+            self.context = .init(lifecycle: nil, remoteCallInterceptor: nil)
             self._location = .local(node)
             self.incarnation = incarnation
             if let path {
@@ -196,7 +197,7 @@ extension ClusterSystem {
 
         // TODO(distributed): remove this initializer, as it is only for Behavior actors
         init(remote node: UniqueNode, path: ActorPath?, incarnation: ActorIncarnation) {
-            self.context = .init(lifecycle: nil)
+            self.context = .init(lifecycle: nil, remoteCallInterceptor: nil)
             self._location = .remote(node)
             self.incarnation = incarnation
             if let path {
@@ -208,7 +209,7 @@ extension ClusterSystem {
         public init<Act>(remote node: UniqueNode, type: Act.Type, incarnation: ActorIncarnation)
             where Act: DistributedActor, Act.ActorSystem == ClusterSystem
         {
-            self.context = .init(lifecycle: nil)
+            self.context = .init(lifecycle: nil, remoteCallInterceptor: nil)
             self._location = .remote(node)
             self.incarnation = incarnation
             if let mangledName = _mangledTypeName(type) { // TODO: avoid mangling names on every spawn?
@@ -247,6 +248,7 @@ extension ClusterSystem {
             var copy = self
             copy.context = .init(
                 lifecycle: nil,
+                remoteCallInterceptor: nil,
                 metadata: self.metadata
             )
             return copy
@@ -256,6 +258,7 @@ extension ClusterSystem {
             var copy = self
             copy.context = .init(
                 lifecycle: self.context.lifecycle,
+                remoteCallInterceptor: nil,
                 metadata: nil
             )
             return copy
@@ -351,13 +354,15 @@ extension ActorID {
 
     /// :nodoc:
     public var _asRemote: Self {
-        let remote = Self(remote: self.uniqueNode, path: self.path, incarnation: self.incarnation)
+        var remote = self
+        remote._location = .remote(remote.uniqueNode)
         return remote
     }
 
     /// :nodoc:
     public var _asLocal: Self {
-        let local = Self(local: self.uniqueNode, path: self.path, incarnation: self.incarnation)
+        var local = self
+        local._location = .local(self.uniqueNode)
         return local
     }
 }

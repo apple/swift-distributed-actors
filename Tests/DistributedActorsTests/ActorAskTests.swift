@@ -22,7 +22,7 @@ final class ActorAskTests: ClusterSystemXCTestCase {
         let replyTo: _ActorRef<String>
     }
 
-    func test_ask_forSimpleType() throws {
+    func test_ask_forSimpleType() async throws {
         let behavior: _Behavior<TestMessage> = .receiveMessage {
             $0.replyTo.tell("received")
             return .stop
@@ -32,12 +32,12 @@ final class ActorAskTests: ClusterSystemXCTestCase {
 
         let response = ref.ask(for: String.self, timeout: .seconds(1)) { TestMessage(replyTo: $0) }
 
-        let result = try response.wait()
+        let result = try await response.value
 
         result.shouldEqual("received")
     }
 
-    func test_ask_shouldSucceedIfResponseIsReceivedBeforeTimeout() throws {
+    func test_ask_shouldSucceedIfResponseIsReceivedBeforeTimeout() async throws {
         let behavior: _Behavior<TestMessage> = .receiveMessage {
             $0.replyTo.tell("received")
             return .stop
@@ -47,12 +47,12 @@ final class ActorAskTests: ClusterSystemXCTestCase {
 
         let response = ref.ask(for: String.self, timeout: .seconds(1)) { TestMessage(replyTo: $0) }
 
-        let result = try response.wait()
+        let result = try await response.value
 
         result.shouldEqual("received")
     }
 
-    func test_ask_shouldFailIfResponseIsNotReceivedBeforeTimeout() throws {
+    func test_ask_shouldFailIfResponseIsNotReceivedBeforeTimeout() async throws {
         let behavior: _Behavior<TestMessage> = .receiveMessage { _ in
             .stop
         }
@@ -61,8 +61,8 @@ final class ActorAskTests: ClusterSystemXCTestCase {
 
         let response = ref.ask(for: String.self, timeout: .seconds(1)) { TestMessage(replyTo: $0) }
 
-        let error = try shouldThrow {
-            _ = try response.wait()
+        let error = try await shouldThrow {
+            _ = try await response.value
         }
 
         guard case RemoteCallError.timedOut = error else {
@@ -70,7 +70,7 @@ final class ActorAskTests: ClusterSystemXCTestCase {
         }
     }
 
-    func test_ask_shouldCompleteWithFirstResponse() throws {
+    func test_ask_shouldCompleteWithFirstResponse() async throws {
         let behavior: _Behavior<TestMessage> = .receiveMessage {
             $0.replyTo.tell("received:1")
             $0.replyTo.tell("received:2")
@@ -81,7 +81,7 @@ final class ActorAskTests: ClusterSystemXCTestCase {
 
         let response = ref.ask(for: String.self, timeout: .milliseconds(1)) { TestMessage(replyTo: $0) }
 
-        let result = try response.wait()
+        let result = try await response.value
 
         result.shouldEqual("received:1")
     }
@@ -185,15 +185,15 @@ final class ActorAskTests: ClusterSystemXCTestCase {
         try p.expectMessage(msg)
     }
 
-    func test_ask_onDeadLetters_shouldPutMessageIntoDeadLetters() throws {
+    func test_ask_onDeadLetters_shouldPutMessageIntoDeadLetters() async throws {
         let ref = system.deadLetters.adapt(from: AnswerMePlease.self)
 
         let result = ref.ask(for: String.self, timeout: .milliseconds(300)) {
             AnswerMePlease(replyTo: $0)
         }
 
-        let error = try shouldThrow {
-            try result.wait()
+        let error = try await shouldThrow {
+            try await result.value
         }
 
         guard case RemoteCallError.timedOut = error else {

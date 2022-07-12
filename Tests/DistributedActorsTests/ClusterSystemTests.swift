@@ -214,10 +214,17 @@ final class ClusterSystemTests: ClusterSystemXCTestCase {
 
         let greeting = "hello"
         let greeter = Greeter(actorSystem: local, greeting: greeting)
+<<<<<<< HEAD
         let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
 
         let value = try await shouldNotThrow {
             try await remoteGreeterRef.greet()
+=======
+        let localGreeter = try Greeter.resolve(id: greeter.id, using: remote)
+
+        let value = try await shouldNotThrow {
+            try await localGreeter.greet()
+>>>>>>> 615cc9f6d548006f4a93d176f035ac168e6b7f8e
         }
         value.shouldEqual(greeting)
     }
@@ -234,10 +241,17 @@ final class ClusterSystemTests: ClusterSystemXCTestCase {
         local.cluster.join(node: remote.cluster.uniqueNode)
 
         let greeter = Greeter(actorSystem: local, greeting: "hello")
+<<<<<<< HEAD
         let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
 
         let error = try await shouldThrow {
             _ = try await remoteGreeterRef.greetThrow(codable: true)
+=======
+        let localGreeter = try Greeter.resolve(id: greeter.id, using: remote)
+
+        let error = try await shouldThrow {
+            _ = try await localGreeter.greetThrow(codable: true)
+>>>>>>> 615cc9f6d548006f4a93d176f035ac168e6b7f8e
         }
         guard error is GreeterCodableError else {
             throw testKit.fail("Expected GreeterCodableError, got \(error)")
@@ -256,10 +270,17 @@ final class ClusterSystemTests: ClusterSystemXCTestCase {
         local.cluster.join(node: remote.cluster.uniqueNode)
 
         let greeter = Greeter(actorSystem: local, greeting: "hello")
+<<<<<<< HEAD
         let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
 
         let error = try await shouldThrow {
             _ = try await remoteGreeterRef.greetThrow(codable: false)
+=======
+        let localGreeter = try Greeter.resolve(id: greeter.id, using: remote)
+
+        let error = try await shouldThrow {
+            _ = try await localGreeter.greetThrow(codable: false)
+>>>>>>> 615cc9f6d548006f4a93d176f035ac168e6b7f8e
         }
         guard let remoteCallError = error as? GenericRemoteCallError else {
             throw testKit.fail("Expected GenericRemoteCallError, got \(error)")
@@ -278,10 +299,14 @@ final class ClusterSystemTests: ClusterSystemXCTestCase {
         local.cluster.join(node: remote.cluster.uniqueNode)
 
         let greeter = Greeter(actorSystem: local, greeting: "hello")
+<<<<<<< HEAD
         let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
+=======
+        let localGreeter = try Greeter.resolve(id: greeter.id, using: remote)
+>>>>>>> 615cc9f6d548006f4a93d176f035ac168e6b7f8e
 
         try await shouldNotThrow {
-            try await remoteGreeterRef.muted()
+            try await localGreeter.muted()
         }
         try self.capturedLogs(of: local).awaitLogContaining(self.testKit(local), text: "Muted greeting: hello")
     }
@@ -297,10 +322,14 @@ final class ClusterSystemTests: ClusterSystemXCTestCase {
         local.cluster.join(node: remote.cluster.uniqueNode)
 
         let greeter = Greeter(actorSystem: local, greeting: "hello")
+<<<<<<< HEAD
         let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
+=======
+        let localGreeter = try Greeter.resolve(id: greeter.id, using: remote)
+>>>>>>> 615cc9f6d548006f4a93d176f035ac168e6b7f8e
 
         let error = try await shouldThrow {
-            try await remoteGreeterRef.mutedThrow(codable: true)
+            try await localGreeter.mutedThrow(codable: true)
         }
         guard error is GreeterCodableError else {
             throw testKit.fail("Expected GreeterCodableError, got \(error)")
@@ -318,10 +347,14 @@ final class ClusterSystemTests: ClusterSystemXCTestCase {
         local.cluster.join(node: remote.cluster.uniqueNode)
 
         let greeter = Greeter(actorSystem: local, greeting: "hello")
+<<<<<<< HEAD
         let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
+=======
+        let localGreeter = try Greeter.resolve(id: greeter.id, using: remote)
+>>>>>>> 615cc9f6d548006f4a93d176f035ac168e6b7f8e
 
         let error = try await shouldThrow {
-            try await remoteGreeterRef.mutedThrow(codable: false)
+            try await localGreeter.mutedThrow(codable: false)
         }
         guard let remoteCallError = error as? GenericRemoteCallError else {
             throw testKit.fail("Expected GenericRemoteCallError, got \(error)")
@@ -339,11 +372,19 @@ final class ClusterSystemTests: ClusterSystemXCTestCase {
         local.cluster.join(node: remote.cluster.uniqueNode)
 
         let greeter = Greeter(actorSystem: local, greeting: "hello")
+<<<<<<< HEAD
         let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
 
         let error = try await shouldThrow {
             try await RemoteCall.with(timeout: .milliseconds(200)) {
                 _ = try await remoteGreeterRef.greet(delayNanos: 3_000_000_000)
+=======
+        let localGreeter = try Greeter.resolve(id: greeter.id, using: remote)
+
+        let error = try await shouldThrow {
+            try await RemoteCall.with(timeout: .milliseconds(200)) {
+                _ = try await localGreeter.greet(delayNanos: 3_000_000_000)
+>>>>>>> 615cc9f6d548006f4a93d176f035ac168e6b7f8e
             }
         }
 
@@ -365,11 +406,15 @@ final class ClusterSystemTests: ClusterSystemXCTestCase {
         local.cluster.join(node: remote.cluster.uniqueNode)
 
         let greeter = Greeter(actorSystem: local, greeting: "hello")
+<<<<<<< HEAD
         let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
+=======
+        let localGreeter = try Greeter.resolve(id: greeter.id, using: remote)
+>>>>>>> 615cc9f6d548006f4a93d176f035ac168e6b7f8e
 
         let error = try await shouldThrow {
             try await RemoteCall.with(timeout: .milliseconds(200)) {
-                try await remoteGreeterRef.muted(delayNanos: 3_000_000_000)
+                try await localGreeter.muted(delayNanos: 3_000_000_000)
             }
         }
 
@@ -425,6 +470,7 @@ final class ClusterSystemTests: ClusterSystemXCTestCase {
 }
 
 private distributed actor Greeter {
+    typealias ID = ClusterSystem.ActorID
     typealias ActorSystem = ClusterSystem
 
     let greeting: String

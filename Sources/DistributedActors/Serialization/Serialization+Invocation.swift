@@ -60,13 +60,21 @@ public struct ClusterInvocationEncoder: DistributedTargetInvocationEncoder {
 public struct ClusterInvocationDecoder: DistributedTargetInvocationDecoder {
     public typealias SerializationRequirement = any Codable
 
-    let system: ClusterSystem
-    let message: InvocationMessage
+    let state: _State
+    enum _State {
+        case remoteCall(system: ClusterSystem, message: InvocationMessage)
+        // Potentially used by interceptors, when invoking a local target directly
+        case localProxyCall(ClusterSystem.InvocationEncoder)
+    }
+
     var argumentIdx = 0
 
     public init(system: ClusterSystem, message: InvocationMessage) {
-        self.system = system
-        self.message = message
+        self.state = .remoteCall(system: system, message: message)
+    }
+
+    internal init(invocation: ClusterSystem.InvocationEncoder) {
+        self.state = .localProxyCall(invocation)
     }
 
     public mutating func decodeGenericSubstitutions() throws -> [Any.Type] {
@@ -74,22 +82,33 @@ public struct ClusterInvocationDecoder: DistributedTargetInvocationDecoder {
     }
 
     public mutating func decodeNextArgument<Argument: Codable>() throws -> Argument {
-        guard self.message.arguments.count > self.argumentIdx else {
-            throw SerializationError.notEnoughArgumentsEncoded(expected: self.argumentIdx + 1, have: self.message.arguments.count)
+        switch self.state {
+        case .remoteCall(let system, let message):
+            guard message.arguments.count > self.argumentIdx else {
+                throw SerializationError.notEnoughArgumentsEncoded(expected: self.argumentIdx + 1, have: message.arguments.count)
+            }
+
+            let argumentData = message.arguments[self.argumentIdx]
+            self.argumentIdx += 1
+
+            // FIXME: make incoming manifest
+            let manifest = try system.serialization.outboundManifest(Argument.self)
+
+            let serialized = Serialization.Serialized(
+                manifest: manifest,
+                buffer: Serialization.Buffer.data(argumentData)
+            )
+            let argument = try system.serialization.deserialize(as: Argument.self, from: serialized)
+            return argument
+
+        case .localProxyCall(let invocation):
+            guard invocation.arguments.count > self.argumentIdx else {
+                throw SerializationError.notEnoughArgumentsEncoded(expected: self.argumentIdx + 1, have: invocation.arguments.count)
+            }
+
+            self.argumentIdx += 1
+            return invocation.arguments[self.argumentIdx] as! Argument
         }
-
-        let argumentData = self.message.arguments[self.argumentIdx]
-        self.argumentIdx += 1
-
-        // FIXME: make incoming manifest
-        let manifest = try self.system.serialization.outboundManifest(Argument.self)
-
-        let serialized = Serialization.Serialized(
-            manifest: manifest,
-            buffer: Serialization.Buffer.data(argumentData)
-        )
-        let argument = try system.serialization.deserialize(as: Argument.self, from: serialized)
-        return argument
     }
 
     public mutating func decodeErrorType() throws -> Any.Type? {

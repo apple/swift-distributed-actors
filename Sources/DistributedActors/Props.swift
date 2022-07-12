@@ -55,11 +55,15 @@ public struct _Props: @unchecked Sendable {
     /// // TODO(distributed): We should instead allow for an explicit way to pass params to the transport.
     internal var _knownActorName: String?
 
+    /// Makes `DistributedActor.resolve` use the designated ID, rather than assigning one.
+    internal var _designatedActorID: ActorID?
+
     /// INTERNAL API: Marks that this ref is spawned in service of a 'distributed actor'.
     /// This is a temporary solution until we move all the infrastructure onto distributed actors.
     @usableFromInline
     internal var _distributedActor: Bool = false
 
+    // FIXME(distributed): remove this init
     public init(
         metadata: ActorMetadata = ActorMetadata(),
         dispatcher: _DispatcherProps = .default,
@@ -174,6 +178,15 @@ extension _Props {
 }
 
 extension _Props {
+<<<<<<< HEAD
+=======
+    public static func _wellKnownActor(name: String) -> Self {
+        var props = Self._wellKnown
+        props._knownActorName = name
+        return props
+    }
+
+>>>>>>> 615cc9f6d548006f4a93d176f035ac168e6b7f8e
     public func _knownAs(name: String) -> Self {
         var p = self
         p._knownActorName = name

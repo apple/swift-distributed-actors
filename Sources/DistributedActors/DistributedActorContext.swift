@@ -22,13 +22,16 @@ import Distributed
 public final class DistributedActorContext {
     let lifecycle: LifecycleWatchContainer?
     let metadata: ActorMetadata
+    public let remoteCallInterceptor: (any RemoteCallInterceptor)?
 
     public var remoteCallInterceptor: RemoteCallInterceptor?
 
     init(lifecycle: LifecycleWatchContainer?,
+         remoteCallInterceptor: RemoteCallInterceptor?,
          metadata: ActorMetadata? = nil)
     {
         self.lifecycle = lifecycle
+        self.remoteCallInterceptor = remoteCallInterceptor
         self.metadata = metadata ?? ActorMetadata()
 
         traceLog_DeathWatch("Create context; Lifecycle: \(String(describing: lifecycle))")

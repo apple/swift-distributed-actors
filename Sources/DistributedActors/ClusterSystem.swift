@@ -863,6 +863,12 @@ extension ClusterSystem {
         where Act: DistributedActor
     {
         self.log.trace("Resolve: \(id)")
+
+        if let interceptor = id.context.remoteCallInterceptor {
+            self.log.trace("Resolved \(id) as intercepted", metadata: ["interceptor": "\(interceptor)"])
+            return nil
+        }
+
         guard self.cluster.uniqueNode == id.uniqueNode else {
             self.log.trace("Resolved \(id) as remote, on node: \(id.uniqueNode)")
             return nil
@@ -894,7 +900,18 @@ extension ClusterSystem {
     public func assignID<Act>(_ actorType: Act.Type) -> ClusterSystem.ActorID
         where Act: DistributedActor
     {
+        return self._assignID(actorType, baseContext: nil)
+    }
+
+    public func _assignID<Act>(_ actorType: Act.Type, baseContext: DistributedActorContext?) -> ClusterSystem.ActorID
+        where Act: DistributedActor
+    {
         let props = _Props.forSpawn // task-local read for any properties this actor should have
+
+        if let designatedActorID = props._designatedActorID {
+            return designatedActorID
+        }
+
         var id = try! self._reserveName(type: Act.self, props: props)
 
         let lifecycleContainer: LifecycleWatchContainer?
@@ -907,10 +924,17 @@ extension ClusterSystem {
         // TODO: this dance only exists since the "reserve name" actually works on paths,
         //       but we're removing paths and moving them into metadata; so the reserve name should be somewhat different really,
         //       but we can only do this when we remove the dependence on paths and behaviors entirely from DA actors https://github.com/apple/swift-distributed-actors/issues/957
-        id.context = DistributedActorContext(
-            lifecycle: lifecycleContainer,
-            metadata: id.context.metadata
-        )
+        if let context = baseContext {
+            context.metadata.path = id.context.metadata.path
+            assert(id.context.metadata.count == 1, "Unexpected additional metadata from reserved ID: \(id.context.metadata)")
+            id.context = context
+        } else {
+            id.context = DistributedActorContext(
+                lifecycle: lifecycleContainer,
+                remoteCallInterceptor: nil,
+                metadata: id.context.metadata
+            )
+        }
 
         self.log.warning("Assign identity", metadata: [
             "actor/type": "\(actorType)",
@@ -959,6 +983,31 @@ extension ClusterSystem {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Intercepting calls
+
+extension ClusterSystem {
+    public func interceptCalls<Act, Interceptor>(
+        to actorType: Act.Type,
+        metadata: ActorMetadata,
+        interceptor: Interceptor
+    ) throws -> Act
+        where Act: DistributedActor, Act.ActorSystem == ClusterSystem,
+        Interceptor: RemoteCallInterceptor
+    {
+        /// Prepare a distributed actor context base, such that the reserved ID will contain the interceptor in the context.
+        let baseContext = DistributedActorContext(lifecycle: nil, remoteCallInterceptor: interceptor)
+        var id = self._assignID(Act.self, baseContext: baseContext)
+        assert(id.context.remoteCallInterceptor != nil)
+        id = id._asRemote // FIXME(distributed): not strictly necessary ???
+
+        var props = _Props()
+        props._designatedActorID = id
+
+        return try Act.resolve(id: id, using: self)
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Remote Calls
 
 extension ClusterSystem {
@@ -1002,6 +1051,7 @@ extension ClusterSystem {
         }
 
         if let error = reply.thrownError {
+            print("error: \(error)")
             throw error
         }
         guard let value = reply.value else {
@@ -1129,7 +1179,6 @@ extension ClusterSystem {
             let target = invocation.target
             let resultHandler = ClusterInvocationResultHandler(
                 system: self,
-                clusterShell: shell,
                 callID: invocation.callID,
                 channel: channel,
                 recipient: recipient
@@ -1178,39 +1227,62 @@ extension ClusterSystem {
 public struct ClusterInvocationResultHandler: DistributedTargetInvocationResultHandler {
     public typealias SerializationRequirement = any Codable
 
-    let system: ClusterSystem
-    let clusterShell: ClusterShell
-    let callID: ClusterSystem.CallID
-    let channel: Channel
-    let recipient: ClusterSystem.ActorID // FIXME(distributed): remove; we need it only because TransportEnvelope requires it
+    let state: _State
+    enum _State {
+        case remoteCall(
+            system: ClusterSystem,
+            callID: ClusterSystem.CallID,
+            channel: Channel,
+            recipient: ClusterSystem.ActorID // FIXME(distributed): remove; we need it only because TransportEnvelope requires it
+        )
+        case localDirectReturn(CheckedContinuation<Any, Error>)
+    }
 
-    init(system: ClusterSystem, clusterShell: ClusterShell, callID: ClusterSystem.CallID, channel: Channel, recipient: ClusterSystem.ActorID) {
-        self.system = system
-        self.clusterShell = clusterShell
-        self.callID = callID
-        self.channel = channel
-        self.recipient = recipient
+    init(system: ClusterSystem, callID: ClusterSystem.CallID, channel: Channel, recipient: ClusterSystem.ActorID) {
+        self.state = .remoteCall(system: system, callID: callID, channel: channel, recipient: recipient)
+    }
+
+    init(directReturnContinuation: CheckedContinuation<Any, Error>) {
+        self.state = .localDirectReturn(directReturnContinuation)
     }
 
     public func onReturn<Success: Codable>(value: Success) async throws {
-        let reply = RemoteCallReply<Success>(callID: self.callID, value: value)
-        try await self.channel.writeAndFlush(TransportEnvelope(envelope: Payload(payload: .message(reply)), recipient: self.recipient))
+        switch self.state {
+        case .localDirectReturn(let directReturnContinuation):
+            directReturnContinuation.resume(returning: value)
+
+        case .remoteCall(_, let callID, let channel, let recipient):
+            let reply = RemoteCallReply<Success>(callID: callID, value: value)
+            try await channel.writeAndFlush(TransportEnvelope(envelope: Payload(payload: .message(reply)), recipient: recipient))
+        }
     }
 
     public func onReturnVoid() async throws {
-        let reply = RemoteCallReply<_Done>(callID: self.callID, value: .done)
-        try await self.channel.writeAndFlush(TransportEnvelope(envelope: Payload(payload: .message(reply)), recipient: self.recipient))
+        switch self.state {
+        case .localDirectReturn(let directReturnContinuation):
+            directReturnContinuation.resume(returning: ())
+
+        case .remoteCall(_, let callID, let channel, let recipient):
+            let reply = RemoteCallReply<_Done>(callID: callID, value: .done)
+            try await channel.writeAndFlush(TransportEnvelope(envelope: Payload(payload: .message(reply)), recipient: recipient))
+        }
     }
 
     public func onThrow<Err: Error>(error: Err) async throws {
-        self.system.log.warning("Result handler, onThrow: \(error)")
-        let reply: RemoteCallReply<_Done>
-        if let codableError = error as? (Error & Codable) {
-            reply = .init(callID: self.callID, error: codableError)
-        } else {
-            reply = .init(callID: self.callID, error: GenericRemoteCallError(message: "Remote call error of [\(type(of: error as Any))] type occurred"))
+        switch self.state {
+        case .localDirectReturn(let directReturnContinuation):
+            directReturnContinuation.resume(throwing: error)
+
+        case .remoteCall(let system, let callID, let channel, let recipient):
+            system.log.warning("Result handler, onThrow: \(error)")
+            let reply: RemoteCallReply<_Done>
+            if let codableError = error as? (Error & Codable) {
+                reply = .init(callID: callID, error: codableError)
+            } else {
+                reply = .init(callID: callID, error: GenericRemoteCallError(message: "Remote call error of [\(type(of: error as Any))] type occurred"))
+            }
+            try await channel.writeAndFlush(TransportEnvelope(envelope: Payload(payload: .message(reply)), recipient: recipient))
         }
-        try await self.channel.writeAndFlush(TransportEnvelope(envelope: Payload(payload: .message(reply)), recipient: self.recipient))
     }
 }
 
