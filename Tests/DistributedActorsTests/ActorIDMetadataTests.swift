@@ -32,6 +32,9 @@ public protocol ExampleClusterSingletonProtocol: DistributedActor {
 distributed actor ThereCanBeOnlyOneClusterSingleton: ExampleClusterSingletonProtocol {
     typealias ActorSystem = ClusterSystem
 
+    @ActorID.Metadata(\.wellKnown)
+    public var wellKnownName: String
+    
     @ActorID.Metadata(\.exampleClusterSingletonID)
     public var singletonID: String
     // TODO(swift): impossible to assign initial value here, as _enclosingInstance is not available yet "the-one"
@@ -39,6 +42,7 @@ distributed actor ThereCanBeOnlyOneClusterSingleton: ExampleClusterSingletonProt
     init(actorSystem: ActorSystem) async {
         self.actorSystem = actorSystem
         self.singletonID = "the-boss"
+        self.wellKnownName = "boss-singleton"
     }
 }
 
@@ -79,11 +83,23 @@ final class ActorIDMetadataTests: ClusteredActorSystemsXCTestCase {
         "\(example)".shouldContain("\"user-id\": \"user-1234\"")
         try await example.assertThat(userID: userID)
     }
-
+    
     func test_metadata_initializedInline() async throws {
         let system = await setUpNode("first")
         let singleton = await ThereCanBeOnlyOneClusterSingleton(actorSystem: system)
 
         singleton.metadata.exampleClusterSingletonID.shouldEqual("the-boss")
+    }
+    
+    func test_metadata_wellKnown_serialized() async throws {
+        let system = await setUpNode("first")
+        let singleton = await ThereCanBeOnlyOneClusterSingleton(actorSystem: system)
+
+        let encoded = try JSONEncoder().encode(singleton)
+        let encodedString = String(data: encoded, encoding: .utf8)!
+        encodedString.shouldContain("\"wellKnown\":\"boss-singleton\"")
+        
+        let back = try! JSONDecoder().decode(ActorID.self, from: encoded)
+        back.metadata.wellKnown.shouldEqual("boss-singleton")
     }
 }
