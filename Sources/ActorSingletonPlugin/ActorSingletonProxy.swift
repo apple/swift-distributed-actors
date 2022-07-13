@@ -116,7 +116,7 @@ internal distributed actor ActorSingletonProxy<Act: ClusterSingletonProtocol>: A
 
     private func updateTargetNode(node: UniqueNode?) async throws {
         guard self.targetNode != node else {
-            self.log.debug("Skip updating target node. New node is already the same as current targetNode.", metadata: self.metadata())
+            self.log.trace("Skip updating target node. New node is already the same as current targetNode.", metadata: self.metadata())
             return
         }
 

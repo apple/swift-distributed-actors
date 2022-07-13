@@ -962,15 +962,25 @@ extension ActorID: Codable {
             var metadataContainer = container.nestedContainer(keyedBy: ActorCoding.MetadataKeys.self, forKey: ActorCoding.CodingKeys.metadata)
 
             let keys = ActorMetadataKeys.__instance
-            if (metadataSettings == nil || metadataSettings!.propagateMetadata.contains(keys.path.id)),
-               let value = self.metadata.path
-            {
+            func shouldPropagate<V: Sendable &  Codable>(_ key: ActorMetadataKey<V>, metadata: ActorMetadata) -> V? {
+                if metadataSettings == nil || metadataSettings!.propagateMetadata.contains(key.id) {
+                    if let value = metadata[key.id] {
+                        let value = value as! V // as!-safe, the keys guarantee we only store well typed values in metadata
+                        return value
+                    }
+                }
+                return nil
+            }
+            
+            // Handle well known metadata types
+            if let value = shouldPropagate(keys.path, metadata: self.metadata) {
                 try metadataContainer.encode(value, forKey: ActorCoding.MetadataKeys.path)
             }
-            if (metadataSettings == nil || metadataSettings!.propagateMetadata.contains(keys.type.id)),
-               let value = self.metadata.type
-            {
-                try metadataContainer.encode(value, forKey: ActorCoding.MetadataKeys.type)
+            if let value = shouldPropagate(keys.type, metadata: self.metadata) {
+                try metadataContainer.encode(value.mangledName, forKey: ActorCoding.MetadataKeys.type)
+            }
+            if let value = shouldPropagate(keys.wellKnown, metadata: self.metadata) {
+                try metadataContainer.encode(value, forKey: ActorCoding.MetadataKeys.wellKnown)
             }
 
             try encodeCustomMetadata(self.metadata, &metadataContainer)
@@ -989,8 +999,17 @@ extension ActorID: Codable {
         if let metadataContainer = try? container.nestedContainer(keyedBy: ActorCoding.MetadataKeys.self, forKey: ActorCoding.CodingKeys.metadata) {
             // tags container found, try to decode all known tags:
 
-            // FIXME: implement decoding tags/metadata in general
-
+            let metadata = ActorMetadata()
+            if let value = try? metadataContainer.decodeIfPresent(ActorPath.self, forKey: ActorCoding.MetadataKeys.path) {
+                metadata.path = value
+            }
+            if let value = try? metadataContainer.decodeIfPresent(String.self, forKey: ActorCoding.MetadataKeys.type) {
+                metadata.type = .init(mangledName: value)
+            }
+            if let value = try? metadataContainer.decodeIfPresent(String.self, forKey: ActorCoding.MetadataKeys.wellKnown) {
+                metadata.wellKnown = value
+            }
+            
             if let context = decoder.actorSerializationContext {
                 let decodeCustomMetadata = context.system.settings.actorMetadata.decodeCustomMetadata
                 try decodeCustomMetadata(metadataContainer, self.metadata)
@@ -1004,6 +1023,8 @@ extension ActorID: Codable {
 //                    _openExistential(key, do: store) // the `as` here is required, because: inferred result type 'any ActorTagKey.Type' requires explicit coercion due to loss of generic requirements
 //                }
             }
+            
+            self.context = .init(lifecycle: nil, remoteCallInterceptor: nil, metadata: metadata)
         }
     }
 }
