@@ -150,6 +150,9 @@ public distributed actor OpLogDistributedReceptionist: DistributedReceptionist, 
     //       The fast tick could be 1s or 0.5s for example as a default.
 
     public typealias ActorSystem = ClusterSystem
+    
+    @ActorID.Metadata(\.wellKnown)
+    var wellKnownName: String
 
     // TODO: remove this
     typealias ReceptionistRef = OpLogDistributedReceptionist
@@ -230,9 +233,10 @@ public distributed actor OpLogDistributedReceptionist: DistributedReceptionist, 
 
     static var props: _Props {
         var ps = _Props()
-        ps._knownActorName = ActorPath.distributedActorReceptionist.name
+        // ps._knownActorName = ActorPath.distributedActorReceptionist.name
         ps._systemActor = true
         ps._wellKnown = true
+        // _knownActorName name is set with @ActorID.Metadata
         return ps
     }
 
@@ -257,6 +261,7 @@ public distributed actor OpLogDistributedReceptionist: DistributedReceptionist, 
                 }
             }
         }
+        self.wellKnownName = ActorPath.distributedActorReceptionist.name
 
         // === timers ------------------
         // periodically gossip to other receptionists with the last seqNr we've seen,
@@ -625,7 +630,7 @@ extension OpLogDistributedReceptionist {
 //        peerReceptionistRef.tell(ack)
         Task {
             do {
-                assert(self.id.path.description.contains("/system/receptionist"))
+//                assert(self.id.path.description.contains("/system/receptionist"), "Receptionist path did not include /system/receptionist, was: \(self.id.fullDescription)")
                 try await peerReceptionistRef.ackOps(until: latestAppliedSeqNrFromPeer, by: self)
             } catch {
                 switch error {

@@ -123,7 +123,11 @@ final class ActorIDMetadataTests: ClusteredActorSystemsXCTestCase {
         let madeUpID = ActorID(local: system.cluster.uniqueNode, path: ._user, incarnation: .wellKnown)
         madeUpID.metadata.wellKnown = singleton.id.metadata.wellKnown!
         
+        // paths don't have to match at all, they'll be optional and a well known one would not have paths anyway
         singleton.id.shouldEqual(madeUpID)
+        
+        let set: Set<ActorID> = [singleton.id, madeUpID]
+        set.count.shouldEqual(1)
     }
     
     func test_metadata_userDefined_coding() async throws {

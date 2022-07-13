@@ -50,7 +50,6 @@ final class ActorSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCase 
             settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
         }
 
-        // Bring up `ActorSingletonProxy` before setting up cluster (https://github.com/apple/swift-distributed-actors/issues/463)
         let name = "the-one"
         let ref1 = try await first.singleton.host(name: name, settings: singletonSettings) { actorSystem in
             await TheSingleton("Hello-1", actorSystem: actorSystem)
@@ -66,14 +65,9 @@ final class ActorSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCase 
         third.cluster.join(node: first.cluster.uniqueNode.node)
 
         // `first` will be the leader (lowest address) and runs the singleton
-        try await self.ensureNodes(.up, nodes: first.cluster.uniqueNode, second.cluster.uniqueNode, third.cluster.uniqueNode)
         try await first.cluster.waitFor([second.cluster.uniqueNode, third.cluster.uniqueNode], .up, within: .seconds(10))
         
-        first.log.error("--------------------- START CHECKING ------------------------")
-        second.log.error("--------------------- START CHECKING ------------------------")
-        third.log.error("--------------------- START CHECKING ------------------------")
-
-//        try await self.assertSingletonRequestReply(first, singletonRef: ref1, message: "Alice", expectedPrefix: "Hello-1 Alice!")
+        try await self.assertSingletonRequestReply(first, singletonRef: ref1, message: "Alice", expectedPrefix: "Hello-1 Alice!")
         try await self.assertSingletonRequestReply(second, singletonRef: ref2, message: "Bob", expectedPrefix: "Hello-1 Bob!")
         try await self.assertSingletonRequestReply(third, singletonRef: ref3, message: "Charlie", expectedPrefix: "Hello-1 Charlie!")
     }
@@ -86,14 +80,11 @@ final class ActorSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCase 
             attempts += 1
             
             do {
-                print("call: TRY CALL \(singletonRef.id)... message: \(message)")
                 let reply = try await RemoteCall.with(timeout: .seconds(1)) {
                     try await singletonRef.greet(name: message)
                 }
                 reply.shouldStartWith(prefix: expectedPrefix)
-                print("call: SUCCESS: \(reply)")
             } catch {
-                print("call: ERROR: \(error)")
                 throw TestError(
                     """
                     Received no reply from singleton [\(singletonRef)] while sending from [\(system.cluster.uniqueNode.node)], \

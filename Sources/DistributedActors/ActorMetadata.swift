@@ -108,7 +108,7 @@ public final class ActorMetadata: CustomStringConvertible, CustomDebugStringConv
             let key = ActorMetadataKeys.__instance[keyPath: dynamicMember]
             let id = key.id
             if let existing = self._storage[id] {
-                fatalError("Existing ActorID [\(id)] metadata, cannot be replaced. Was: [\(existing)], newValue: [\(optional: newValue))]")
+                fatalError("Existing ActorID metadata, cannot be replaced. Was: [\(existing)], newValue: [\(optional: newValue))]")
             }
             self._storage[id] = newValue
         }
