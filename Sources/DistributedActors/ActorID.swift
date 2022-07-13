@@ -293,9 +293,15 @@ extension ActorID: Hashable {
     }
 
     public func hash(into hasher: inout Hasher) {
-        hasher.combine(self.incarnation)
-        hasher.combine(self.uniqueNode)
-        hasher.combine(self.path)
+        if let wellKnownName = self.metadata.wellKnown {
+            hasher.combine(wellKnownName)
+        }
+//            hasher.combine(self.uniqueNode)
+//        } else {
+            hasher.combine(self.incarnation)
+            hasher.combine(self.uniqueNode)
+            hasher.combine(self.path)
+//        }
     }
 }
 
@@ -545,11 +551,11 @@ extension ActorPath {
     public static let _system: ActorPath = try! ActorPath(root: "system")
 
     internal func makeLocalID(on node: UniqueNode, incarnation: ActorIncarnation) -> ActorID {
-        .init(local: node, path: self, incarnation: incarnation)
+        ActorID(local: node, path: self, incarnation: incarnation)
     }
 
     internal func makeRemoteID(on node: UniqueNode, incarnation: ActorIncarnation) -> ActorID {
-        .init(remote: node, path: self, incarnation: incarnation)
+        ActorID(remote: node, path: self, incarnation: incarnation)
     }
 }
 
