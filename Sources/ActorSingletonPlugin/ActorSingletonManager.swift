@@ -68,6 +68,9 @@ internal distributed actor ActorSingletonManager<Act: ClusterSingletonProtocol> 
         let singleton = try await _Props.$forSpawn.withValue(props) {
             try await self.singletonFactory(self.actorSystem)
         }
+        print("[\(self.actorSystem.cluster.uniqueNode)] Spawned singleton instance: \(singleton.id.fullDescription)")
+        assert(singleton.id.metadata.wellKnown == self.settings.name, "Singleton instance assigned ID is not well-known, but should be")
+        
         self.singleton = singleton
         return singleton
     }
@@ -89,6 +92,7 @@ internal distributed actor ActorSingletonManager<Act: ClusterSingletonProtocol> 
             // TODO: (optimization) tell `ActorSingletonManager` on `to` node that this node is handing off (https://github.com/apple/swift-distributed-actors/issues/329)
             // Finally, release the singleton -- it should not have been refered to strongly by anyone else,
             // causing the instance to be released. TODO: we could assert that we have released it soon after here (it's ID must be resigned).
+            self.actorSystem.releaseWellKnownActorID(instance.id)
             self.singleton = nil
         }
     }
