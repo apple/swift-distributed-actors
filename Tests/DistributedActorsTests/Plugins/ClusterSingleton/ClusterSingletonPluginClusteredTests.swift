@@ -68,6 +68,58 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
         try await self.assertSingletonRequestReply(third, singleton: ref3, greetingName: "Charlie", expectedPrefix: "Hello-1 Charlie!")
     }
 
+    func test_remoteCallShouldFailAfterAllocationTimedOut() async throws {
+        var singletonSettings = ClusterSingletonSettings(name: TheSingleton.name)
+        singletonSettings.allocationStrategy = .byLeadership
+        singletonSettings.allocationTimeout = .milliseconds(100)
+
+        let first = await self.setUpNode("first") { settings in
+            settings.node.port = 7111
+            settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
+            settings += ClusterSingletonPlugin()
+        }
+        let second = await self.setUpNode("second") { settings in
+            settings.node.port = 8222
+            settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
+            settings += ClusterSingletonPlugin()
+        }
+
+        // Bring up `ClusterSingletonBoss` before setting up cluster (https://github.com/apple/swift-distributed-actors/issues/463)
+        _ = try await first.singleton.host(of: TheSingleton.self, settings: singletonSettings) { actorSystem in
+            TheSingleton(greeting: "Hello-1", actorSystem: actorSystem)
+        }
+        let ref2 = try await second.singleton.host(of: TheSingleton.self, settings: singletonSettings) { actorSystem in
+            TheSingleton(greeting: "Hello-2", actorSystem: actorSystem)
+        }
+
+        first.cluster.join(node: second.cluster.uniqueNode.node)
+
+        // `first` will be the leader (lowest address) and runs the singleton
+        try await self.ensureNodes(.up, on: first, nodes: second.cluster.uniqueNode)
+
+        try await self.assertSingletonRequestReply(second, singleton: ref2, greetingName: "Bob", expectedPrefix: "Hello-1 Bob!")
+
+        let firstNode = first.cluster.uniqueNode
+        first.cluster.leave()
+
+        try await self.assertMemberStatus(on: second, node: firstNode, is: .down, within: .seconds(10))
+
+        // Make sure that `second` and `third` see `first` as down and become leader-less
+        try self.testKit(second).eventually(within: .seconds(10)) {
+            try self.assertLeaderNode(on: second, is: nil)
+        }
+
+        // This should take us over allocation timeout. Singleton is nil since there is no leader.
+        try await Task.sleep(nanoseconds: 500_000_000)
+
+        let error = try await shouldThrow {
+            _ = try await ref2.greet(name: "Bob")
+        }
+        guard case ClusterSingletonError.allocationTimeout = error else {
+            throw self.testKit(second).fail("Expected ClusterSingletonError.allocationTimeout, got \(error)")
+        }
+    }
+
     /*
 
          func test_singletonByClusterLeadership_stashMessagesIfNoLeader() throws {
