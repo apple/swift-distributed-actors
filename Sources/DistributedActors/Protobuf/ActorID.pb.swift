@@ -56,10 +56,14 @@ public struct _ProtoActorID {
   /// Clears the value of `path`. Subsequent reads from it will return its default value.
   public mutating func clearPath() {_uniqueStorage()._path = nil}
 
-  /// TODO: encode tags
   public var incarnation: UInt32 {
     get {return _storage._incarnation}
     set {_uniqueStorage()._incarnation = newValue}
+  }
+
+  public var metadata: Dictionary<String,Data> {
+    get {return _storage._metadata}
+    set {_uniqueStorage()._metadata = newValue}
   }
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
@@ -133,12 +137,14 @@ extension _ProtoActorID: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
     1: .same(proto: "node"),
     2: .same(proto: "path"),
     3: .same(proto: "incarnation"),
+    4: .same(proto: "metadata"),
   ]
 
   fileprivate class _StorageClass {
     var _node: _ProtoUniqueNode? = nil
     var _path: _ProtoActorPath? = nil
     var _incarnation: UInt32 = 0
+    var _metadata: Dictionary<String,Data> = [:]
 
     static let defaultInstance = _StorageClass()
 
@@ -148,6 +154,7 @@ extension _ProtoActorID: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
       _node = source._node
       _path = source._path
       _incarnation = source._incarnation
+      _metadata = source._metadata
     }
   }
 
@@ -166,6 +173,7 @@ extension _ProtoActorID: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
         case 1: try decoder.decodeSingularMessageField(value: &_storage._node)
         case 2: try decoder.decodeSingularMessageField(value: &_storage._path)
         case 3: try decoder.decodeSingularUInt32Field(value: &_storage._incarnation)
+        case 4: try decoder.decodeMapField(fieldType: SwiftProtobuf._ProtobufMap<SwiftProtobuf.ProtobufString,SwiftProtobuf.ProtobufBytes>.self, value: &_storage._metadata)
         default: break
         }
       }
@@ -183,6 +191,9 @@ extension _ProtoActorID: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
       if _storage._incarnation != 0 {
         try visitor.visitSingularUInt32Field(value: _storage._incarnation, fieldNumber: 3)
       }
+      if !_storage._metadata.isEmpty {
+        try visitor.visitMapField(fieldType: SwiftProtobuf._ProtobufMap<SwiftProtobuf.ProtobufString,SwiftProtobuf.ProtobufBytes>.self, value: _storage._metadata, fieldNumber: 4)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -195,6 +206,7 @@ extension _ProtoActorID: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
         if _storage._node != rhs_storage._node {return false}
         if _storage._path != rhs_storage._path {return false}
         if _storage._incarnation != rhs_storage._incarnation {return false}
+        if _storage._metadata != rhs_storage._metadata {return false}
         return true
       }
       if !storagesAreEqual {return false}

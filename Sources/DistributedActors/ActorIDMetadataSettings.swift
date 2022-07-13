@@ -47,6 +47,7 @@ internal struct ActorIDMetadataSettings {
     internal var propagateMetadata: Set<String> = [
         ActorMetadataKeys.__instance.path.id,
         ActorMetadataKeys.__instance.type.id,
+        ActorMetadataKeys.__instance.wellKnown.id,
     ]
 
     internal var encodeCustomMetadata: (ActorMetadata, inout KeyedEncodingContainer<ActorCoding.MetadataKeys>) throws -> Void =

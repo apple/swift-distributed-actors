@@ -18,10 +18,10 @@ option optimize_for = SPEED;
 option swift_prefix = "_Proto";
 
 message ActorID {
-    UniqueNode node        = 1;
-    ActorPath path         = 2;
-    uint32 incarnation     = 3;
-    // TODO: encode tags
+    UniqueNode         node        = 1;
+    ActorPath          path        = 2;
+    uint32             incarnation = 3;
+    map<string, bytes> metadata    = 4;
 }
 
 message ActorPath {
@@ -29,7 +29,7 @@ message ActorPath {
 }
 
 message UniqueNode {
-    Node node   = 1;
+    Node   node = 1;
     uint64 nid  = 2;
 }
 
