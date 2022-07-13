@@ -194,7 +194,7 @@ public final class DeadLetterOffice {
             }
 
             metadata["actor/path"] = Logger.MetadataValue.stringConvertible(deadID.path)
-            recipientString = "to [\(String(reflecting: recipient.detailedDescription))]"
+            recipientString = "to [\(recipient.fullDescription)]"
         } else {
             recipientString = ""
         }

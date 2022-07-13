@@ -177,15 +177,17 @@ internal distributed actor ActorSingletonProxy<Act: ClusterSingletonProtocol>: A
         case .some(let node) where node == self.actorSystem.cluster.uniqueNode:
             print("[\(self.actorSystem.cluster.uniqueNode)] update singleton 111: break")
             break
-        case .some(let node):
+            
+        case .some(let otherNode):
             // let targetProxyID = ActorID(remote: node, type: Self.self, incarnation: .wellKnown)
             // targetProxyID.metadata.wellKnown = self.wellKnownName // our "remote counterpart" has the exact same well-known name
-            var targetSingletonID = ActorID(remote: node, type: Act.self, incarnation: .wellKnown)
+            var targetSingletonID = ActorID(remote: otherNode, type: Act.self, incarnation: .wellKnown)
             targetSingletonID.metadata.wellKnown = settings.name // FIXME: rather, use the BOSS as the target
             targetSingletonID.path = self.id.path
             
             print("[\(self.actorSystem.cluster.uniqueNode)] update singleton 111: \(targetSingletonID)")
             self.targetSingleton = try Act.resolve(id: targetSingletonID, using: self.actorSystem)
+        
         case .none:
             self.targetSingleton = nil
         }

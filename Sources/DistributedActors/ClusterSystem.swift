@@ -1030,11 +1030,14 @@ extension ClusterSystem {
                 metadata: id.context.metadata
             )
         }
+        
+        if let wellKnownName = props._knownActorName {
+            id.metadata.wellKnown = wellKnownName
+        }
 
         self.log.trace("Assign identity", metadata: [
             "actor/type": "\(actorType)",
             "actor/id": "\(id)",
-            "actor/id/uniqueNode": "\(id.uniqueNode)",
         ])
 
         return self.namingLock.withLock {
@@ -1060,22 +1063,9 @@ extension ClusterSystem {
         // Store references
         self._managedRefs[actor.id] = ref
         self._managedDistributedActors.insert(actor: actor)
-    }
-
-    /// Called during actor deinit/destroy.
-    public func resignID(_ id: ActorID) {
-        self.log.warning("Resign actor id", metadata: ["actor/id": "\(id)"])
-        self.namingLock.withLockVoid {
-            self._reservedNames.remove(id)
-            if let ref = self._managedRefs.removeValue(forKey: id) {
-                ref._sendSystemMessage(.stop, file: #filePath, line: #line)
-            }
-        }
-        id.context.terminate()
-
-        self.namingLock.withLockVoid {
-            self._managedRefs.removeValue(forKey: id) // TODO: should not be necessary in the future
-            _ = self._managedDistributedActors.removeActor(identifiedBy: id)
+        
+        if actor.id.metadata.wellKnown != nil {
+            self._managedWellKnownDistributedActors[actor.id] = actor
         }
     }
     
@@ -1095,9 +1085,40 @@ extension ClusterSystem {
                 "actor/id": "\(actor.id)",
             ])
             
-            self._managedWellKnownDistributedActors[actor.id] = actor
+            self._managedWellKnownDistributedActors[actor.id.withoutLifecycle] = actor
         }
     }
+
+    /// Called during actor deinit/destroy.
+    public func resignID(_ id: ActorID) {
+        self.log.warning("Resign actor id", metadata: ["actor/id": "\(id)"])
+        self.namingLock.withLockVoid {
+            self._reservedNames.remove(id)
+            if let ref = self._managedRefs.removeValue(forKey: id) {
+                ref._sendSystemMessage(.stop, file: #filePath, line: #line)
+            }
+        }
+        id.context.terminate()
+
+        self.namingLock.withLockVoid {
+            self._managedRefs.removeValue(forKey: id) // TODO: should not be necessary in the future
+            
+            // Remove the weak actor reference
+            _ = self._managedDistributedActors.removeActor(identifiedBy: id)
+            
+            // Well-known actors are held strongly and should be released using `releaseWellKnownActorID`
+        }
+    }
+    
+    public func releaseWellKnownActorID(_ id: ActorID) {
+        precondition(id.metadata.wellKnown != nil, "Attempted to release well-known ActorID, but ID was not well known: \(id.fullDescription)")
+        log.debug("Released well-known ActorID explicitly: \(id), it is expected to resignID soon") // TODO: add checking that we indeed have resigned the ID (the actor has terminated), or we can log a warning if it has not.
+        
+        self.namingLock.withLockVoid {
+            _ = self._managedWellKnownDistributedActors.removeValue(forKey: id)
+        }
+    }
+
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -1460,7 +1481,7 @@ extension ClusterSystem {
         
         // If the actor is not located on this node, immediately resolve as "remote"
         guard self.cluster.uniqueNode == id.uniqueNode else {
-            self.log.trace("Resolve failed, ID is for a remote host: \(id.uniqueNode)", metadata: ["actor/id": "\(id)"])
+            self.log.trace("Resolve local failed, ID is for a remote host: \(id.uniqueNode)", metadata: ["actor/id": "\(id)"])
             return nil
         }
         
@@ -1473,6 +1494,12 @@ extension ClusterSystem {
             if let wellKnownActor {
                 self.log.trace("Resolved \(id) well-known actor: \(wellKnownName)")
                 return wellKnownActor
+            } else {
+                self.log.trace("Resolve failed, no alive actor for well-known ID", metadata: [
+                    "actor/id": "\(id)",
+                    "wellKnown/actors": "\(self._managedWellKnownDistributedActors.keys.map(\.metadata.wellKnown))",
+                ])
+                return nil
             }
         }
         
@@ -1482,7 +1509,9 @@ extension ClusterSystem {
         }
         
         guard let managed = managed else {
-            log.trace("Resolve failed, no alive actor for ID", metadata: ["actor/id": "\(id)"])
+            log.trace("Resolve failed, no alive actor for ID", metadata: [
+                "actor/id": "\(id)",
+            ])
             return nil
         }
         
@@ -1534,6 +1563,7 @@ public struct ClusterInvocationResultHandler: DistributedTargetInvocationResultH
 <<<<<<< HEAD
 <<<<<<< HEAD
 
+<<<<<<< HEAD
 =======
             
 >>>>>>> rework how we get hold of intercepted actors
@@ -1541,6 +1571,11 @@ public struct ClusterInvocationResultHandler: DistributedTargetInvocationResultH
 
 >>>>>>> rework how we get hold of intercepted actors
         case .remoteCall(_, let callID, let channel, let recipient):
+=======
+        case .remoteCall(let system, let callID, let channel, let recipient):
+            system.log.debug("Result handler, onReturn", metadata: ["call/id": "\(callID)"])
+            
+>>>>>>> fix equality
             let reply = RemoteCallReply<Success>(callID: callID, value: value)
             try await channel.writeAndFlush(TransportEnvelope(envelope: Payload(payload: .message(reply)), recipient: recipient))
         }
@@ -1558,8 +1593,13 @@ public struct ClusterInvocationResultHandler: DistributedTargetInvocationResultH
 >>>>>>> rework how we get hold of intercepted actors
 =======
 
+<<<<<<< HEAD
 >>>>>>> rework how we get hold of intercepted actors
         case .remoteCall(_, let callID, let channel, let recipient):
+=======
+        case .remoteCall(let system, let callID, let channel, let recipient):
+            system.log.debug("Result handler, onReturnVoid", metadata: ["call/id": "\(callID)"])
+>>>>>>> fix equality
             let reply = RemoteCallReply<_Done>(callID: callID, value: .done)
             try await channel.writeAndFlush(TransportEnvelope(envelope: Payload(payload: .message(reply)), recipient: recipient))
         }
@@ -1579,7 +1619,7 @@ public struct ClusterInvocationResultHandler: DistributedTargetInvocationResultH
 
 >>>>>>> rework how we get hold of intercepted actors
         case .remoteCall(let system, let callID, let channel, let recipient):
-            system.log.warning("Result handler, onThrow: \(error)")
+            system.log.debug("Result handler, onThrow: \(error)", metadata: ["call/id": "\(callID)"])
             let reply: RemoteCallReply<_Done>
             if let codableError = error as? (Error & Codable) {
                 reply = .init(callID: callID, error: codableError)
