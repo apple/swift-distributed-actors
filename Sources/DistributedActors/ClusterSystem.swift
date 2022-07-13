@@ -914,37 +914,50 @@ extension ClusterSystem {
             }
             
             if let wellKnownActor {
+                guard let wellKnownActor = wellKnownActor as? Act else {
+                    log.trace("Resolved as local well-known instance, however did not match expected type: \(Act.self), well-known: '\(wellKnownName)", metadata: [
+                        "actor/id": "\(wellKnownActor.id)",
+                        "actor/type": "\(type(of: wellKnownActor))",
+                        "expected/type": "\(Act.self)",
+                    ])
+                    
+                    throw DeadLetterError(recipient: id)
+                }
+                
                 // Oh look, it's that well known actor, that goes by the name "wellKnownName"!
                 log.trace("Resolved as local well-known instance: '\(wellKnownName)", metadata: [
                     "actor/id": "\(wellKnownActor.id)",
                 ])
-                
-                return wellKnownActor as? Act
+                return wellKnownActor
             }
         }
 
         // Resolve using the usual id lookup method
-        return try self.namingLock.withLock {
-            guard let managed = self._managedDistributedActors.get(identifiedBy: id) else {
-                log.trace("Resolved as remote reference", metadata: [
-                    "actor/id": "\(id)",
-                ])
-                throw DeadLetterError(recipient: id)
-            }
-
-            if let resolved = managed as? Act {
-                log.info("Resolved as local instance", metadata: [
-                    "actor/id": "\(id)",
-                    "actor": "\(resolved)",
-                ])
-                return resolved
-            } else {
-                log.trace("Resolved as remote reference", metadata: [
-                    "actor/id": "\(id)",
-                ])
-                return nil
-            }
+        let managed = self.namingLock.withLock {
+            return self._managedDistributedActors.get(identifiedBy: id)
         }
+        
+        guard let managed = managed else {
+           log.trace("Resolved as remote reference", metadata: [
+               "actor/id": "\(id)",
+           ])
+           throw DeadLetterError(recipient: id)
+        }
+
+        guard let resolved = managed as? Act else {
+            log.trace("Resolved actor identity, however did not match expected type: \(Act.self)", metadata: [
+                "actor/id": "\(id)",
+                "actor/type": "\(type(of: managed))",
+                "expected/type": "\(Act.self)",
+            ])
+            return nil
+        }
+
+        log.trace("Resolved as local instance", metadata: [
+            "actor/id": "\(id)",
+            "actor": "\(resolved)",
+        ])
+        return resolved
     }
 
     public func assignID<Act>(_ actorType: Act.Type) -> ClusterSystem.ActorID
@@ -1157,6 +1170,7 @@ extension ClusterSystem {
     {
         if let interceptor = actor.id.context.remoteCallInterceptor {
             self.log.warning("INTERCEPTOR remote call \(actor.id)...")
+            print("[\(self.cluster.uniqueNode)] INTERCEPTOR remote call \(actor.id)...")
             return try await interceptor.interceptRemoteCall(on: actor, target: target, invocation: &invocation, throwing: throwing, returning: returning)
         }
 
@@ -1186,11 +1200,14 @@ extension ClusterSystem {
                 genericSubstitutions: invocation.genericSubstitutions,
                 arguments: arguments
             )
+            
+            print("[\(self.cluster.uniqueNode)] SEND INVOCATION: \(invocation) TO \(recipient.id.fullDescription)")
+            log.warning("[\(self.cluster.uniqueNode)] SEND INVOCATION: \(invocation) TO \(recipient.id.fullDescription)")
             recipient.sendInvocation(invocation)
         }
 
         if let error = reply.thrownError {
-            print("error: \(error)")
+            print("[\(self.cluster.uniqueNode)] reply error: \(error)")
             throw error
         }
         guard let value = reply.value else {
@@ -1326,12 +1343,13 @@ extension ClusterSystem {
         Err: Error,
         Res: Codable
     {
+        print("[\(self.cluster.uniqueNode)] ACT: \(actor.id.fullDescription)")
         precondition(self.cluster.uniqueNode == actor.id.uniqueNode,
                      "Attempted to localCall an actor whose ID was a different node: [\(actor.id)], current node: \(self.cluster.uniqueNode)")
-        precondition(!__isRemoteActor(actor),
-                     "Attempted to localCall a remote actor! \(actor.id)")
+//        precondition(!__isRemoteActor(actor),
+//                     "Attempted to localCall a remote actor! \(actor.id)")
         log.trace("Execute local call", metadata: [
-            "actor/id": "\(actor.id)",
+            "actor/id": "\(actor.id.fullDescription)",
             "target": "\(target)",
         ])
         
@@ -1384,7 +1402,7 @@ extension ClusterSystem {
             )
 
             do {
-                guard let actor = self.resolve(id: recipient) else {
+                guard let actor = self.resolveAnyDistributedActor(id: recipient) else {
                     self.deadLetters.tell(DeadLetter(invocation, recipient: recipient))
                     throw DeadLetterError(recipient: recipient)
                 }
@@ -1415,11 +1433,53 @@ extension ClusterSystem {
             continuation.resume(returning: reply)
         }
     }
-
-    private func resolve(id: ActorID) -> (any DistributedActor)? {
-        self.namingLock.withLock {
+    
+    private func resolveAnyDistributedActor(id: ActorID) -> (any DistributedActor)? {
+        if settings.logging.verboseResolve {
+            self.log.trace("Resolve as any DistributedActor: \(id)")
+        }
+        
+        // If it has an interceptor installed, we must pretend to resolve it as "remote",
+        // though the actual messages will be delivered to the interceptor,
+        // and not necessarily a remote destination.
+        if let interceptor = id.context.remoteCallInterceptor {
+            if settings.logging.verboseResolve {
+                self.log.trace("Resolved \(id) as intercepted", metadata: ["interceptor": "\(interceptor)"])
+            }
+            return nil
+        }
+        
+        // If the actor is not located on this node, immediately resolve as "remote"
+        guard self.cluster.uniqueNode == id.uniqueNode else {
+            if settings.logging.verboseResolve {
+                self.log.trace("Resolved \(id) as remote, on node: \(id.uniqueNode)")
+            }
+            return nil
+        }
+        
+        // Is it a well-known actor? If so, we need to special handle the resolution.
+        if let wellKnownName = id.metadata.wellKnown {
+            let wellKnownActor = self.namingLock.withLock {
+                return self._managedWellKnownDistributedActors[id]
+            }
+            
+            if let wellKnownActor {
+                self.log.trace("Resolved \(id) well-known actor: \(wellKnownName)")
+                return wellKnownActor
+            }
+        }
+        
+        // Resolve using the usual id lookup method
+        let managed = self.namingLock.withLock {
             self._managedDistributedActors.get(identifiedBy: id)
         }
+        
+        guard let managed = managed else {
+            log.trace("Resolved as remote reference", metadata: ["actor/id": "\(id)"])
+            return nil
+        }
+        
+        return managed
     }
 }
 

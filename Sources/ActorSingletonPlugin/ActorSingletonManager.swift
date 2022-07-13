@@ -64,7 +64,8 @@ internal distributed actor ActorSingletonManager<Act: ClusterSingletonProtocol> 
         }
         
         // TODO: (optimization) tell `ActorSingletonManager` on `from` node that this node is taking over (https://github.com/apple/swift-distributed-actors/issues/329)
-        let singleton = try await _Props.$forSpawn.withValue(self.singletonProps._knownAs(name: self.settings.name)) {
+        let props = self.singletonProps._knownAs(name: self.settings.name)
+        let singleton = try await _Props.$forSpawn.withValue(props) {
             try await self.singletonFactory(self.actorSystem)
         }
         self.singleton = singleton

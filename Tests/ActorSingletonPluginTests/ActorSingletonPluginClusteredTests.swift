@@ -86,7 +86,7 @@ final class ActorSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCase 
             attempts += 1
             
             do {
-                print("call: TRY CALL \(singletonRef)... message: \(message)")
+                print("call: TRY CALL \(singletonRef.id)... message: \(message)")
                 let reply = try await RemoteCall.with(timeout: .seconds(1)) {
                     try await singletonRef.greet(name: message)
                 }
