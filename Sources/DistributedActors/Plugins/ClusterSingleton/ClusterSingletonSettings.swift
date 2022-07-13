@@ -28,6 +28,10 @@ public struct ClusterSingletonSettings {
     /// Controls allocation of the node on which the singleton runs.
     public var allocationStrategy: AllocationStrategySettings = .byLeadership
 
+    /// Time to wait for the singleton, whether allocated on this node or another, before
+    /// we stop stashing calls and throw error.
+    public var allocationTimeout: Duration = .seconds(30)
+
     public init(name: String) {
         self.name = name
     }

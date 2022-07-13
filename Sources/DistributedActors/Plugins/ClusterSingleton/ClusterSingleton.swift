@@ -20,7 +20,7 @@ import Logging
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Cluster singleton boss
 
-internal protocol _ClusterSingletonBoss {
+internal protocol ClusterSingletonBossProtocol {
     func stop()
 }
 
@@ -37,7 +37,7 @@ internal protocol _ClusterSingletonBoss {
 /// determine the node that the singleton runs on. If the singleton falls on *this* node, `ClusterSingletonBoss`
 /// will spawn the actual singleton actor. Otherwise, `ClusterSingletonBoss` will hand over the singleton
 /// whenever the node changes.
-internal distributed actor ClusterSingletonBoss<Act: DistributedActor>: _ClusterSingletonBoss where Act.ActorSystem == ClusterSystem {
+internal distributed actor ClusterSingletonBoss<Act: ClusterSingletonProtocol>: ClusterSingletonBossProtocol where Act.ActorSystem == ClusterSystem {
     typealias ActorSystem = ClusterSystem
     typealias CallID = UUID
 
@@ -46,18 +46,20 @@ internal distributed actor ClusterSingletonBoss<Act: DistributedActor>: _Cluster
     /// The strategy that determines which node the singleton will be allocated.
     private let allocationStrategy: ClusterSingletonAllocationStrategy
 
-    // FIXME: not needed?
-    let singletonProps: _Props?
-
     /// If `nil`, then this instance will be proxy-only and it will never run the actual actor.
     let singletonFactory: ((ClusterSystem) async throws -> Act)?
 
     /// The node that the singleton runs on
     private var targetNode: UniqueNode?
 
-    /// The concrete distributed actor instance (the "singleton") if this node is indeed hosting it,
-    /// or nil otherwise - meaning that the singleton instance is actually located on another member.
-    private var singleton: Act?
+    /// Keeps track of singleton allocation status
+    private let allocationTracker: AllocationTracker
+
+    private var singleton: Act? {
+        get async {
+            await self.allocationTracker.singleton
+        }
+    }
 
     /// Remote call "buffer" in case `singleton` is `nil`
     private var remoteCallContinuations: [(CallID, CheckedContinuation<Act, Never>)] = []
@@ -70,14 +72,13 @@ internal distributed actor ClusterSingletonBoss<Act: DistributedActor>: _Cluster
     init(
         settings: ClusterSingletonSettings,
         system: ActorSystem,
-        singletonProps: _Props?,
         _ singletonFactory: ((ClusterSystem) async throws -> Act)?
     ) async throws {
         self.actorSystem = system
         self.settings = settings
         self.allocationStrategy = settings.allocationStrategy.makeAllocationStrategy(system.settings, settings)
-        self.singletonProps = singletonProps
         self.singletonFactory = singletonFactory
+        self.allocationTracker = await AllocationTracker(timeout: settings.allocationTimeout)
 
         if system.settings.enabled {
             self.clusterEventsSubscribeTask = Task {
@@ -109,7 +110,8 @@ internal distributed actor ClusterSingletonBoss<Act: DistributedActor>: _Cluster
 
     private func updateTargetNode(node: UniqueNode?) async throws {
         guard self.targetNode != node else {
-            self.log.debug("Skip updating target node. New node is already the same as current targetNode.", metadata: self.metadata())
+            let metadata = await self.metadata()
+            self.log.debug("Skip updating target node. New node is already the same as current targetNode.", metadata: metadata)
             return
         }
 
@@ -129,7 +131,7 @@ internal distributed actor ClusterSingletonBoss<Act: DistributedActor>: _Cluster
             }
 
             // Update `singleton` regardless
-            try self.updateSingleton(node: node)
+            try await self.updateSingleton(node: node)
         }
     }
 
@@ -138,41 +140,43 @@ internal distributed actor ClusterSingletonBoss<Act: DistributedActor>: _Cluster
             preconditionFailure("Cluster singleton [\(self.settings.name)] cannot run on this node. Please review AllocationStrategySettings and/or cluster singleton usage.")
         }
 
-        self.log.debug("Take over singleton [\(self.settings.name)] from [\(String(describing: from))]", metadata: self.metadata())
+        let metadata = await self.metadata()
+        self.log.debug("Take over singleton [\(self.settings.name)] from [\(String(describing: from))]", metadata: metadata)
 
-        let props = self.singletonProps ?? _Props()
         // TODO: (optimization) tell `from` node that this node is taking over (https://github.com/apple/swift-distributed-actors/issues/329)
-        let singleton = try await _Props.$forSpawn.withValue(props.singleton(settings: self.settings)) {
+        let singleton = try await _Props.$forSpawn.withValue(_Props.singleton(settings: self.settings)) {
             try await singletonFactory(self.actorSystem)
         }
-        self.singleton = singleton
-        self.updateSingleton(singleton)
+        await self.updateSingleton(singleton)
     }
 
     private func handOver(to: UniqueNode?) async throws {
-        self.log.debug("Hand over singleton [\(self.settings.name)] to [\(String(describing: to))]", metadata: self.metadata())
+        let metadata = await self.metadata()
+        self.log.debug("Hand over singleton [\(self.settings.name)] to [\(String(describing: to))]", metadata: metadata)
 
         // TODO: (optimization) tell `to` node that this node is handing off (https://github.com/apple/swift-distributed-actors/issues/329)
-        self.singleton = nil
+        await self.updateSingleton(nil)
     }
 
-    private func updateSingleton(node: UniqueNode?) throws {
+    private func updateSingleton(node: UniqueNode?) async throws {
         switch node {
         case .some(let node) where node == self.actorSystem.cluster.uniqueNode:
             ()
         case .some(let node):
-            self.singleton = try Act.resolve(id: .singleton(Act.self, settings: self.settings, remote: node), using: self.actorSystem)
+            let singleton = try Act.resolve(id: .singleton(Act.self, settings: self.settings, remote: node), using: self.actorSystem)
+            await self.updateSingleton(singleton)
         case .none:
-            self.singleton = nil
+            await self.updateSingleton(nil)
         }
     }
 
-    private func updateSingleton(_ newAct: Act?) {
-        self.log.debug("Update singleton from [\(String(describing: self.singleton))] to [\(String(describing: newAct))], flushing \(self.remoteCallContinuations.count) remote calls")
-        self.singleton = newAct
+    private func updateSingleton(_ newSingleton: Act?) async {
+        let currentSingleton = await self.singleton
+        self.log.debug("Update singleton from [\(String(describing: currentSingleton))] to [\(String(describing: newSingleton))], with \(self.remoteCallContinuations.count) remote calls pending")
+        await self.allocationTracker.updateSingleton(newSingleton)
 
         // Unstash messages if we have the singleton
-        guard let singleton = self.singleton else {
+        guard let singleton = newSingleton else {
             return
         }
 
@@ -191,8 +195,9 @@ internal distributed actor ClusterSingletonBoss<Act: DistributedActor>: _Cluster
         where Err: Error,
         Res: Codable
     {
-        let singleton = await self.findSingleton()
-        self.log.trace("Forwarding invocation [\(invocation)] to [\(singleton)]", metadata: self.metadata())
+        let singleton = try await self.findSingleton()
+        let metadata = await self.metadata()
+        self.log.trace("Forwarding invocation [\(invocation)] to [\(singleton)]", metadata: metadata)
 
         var invocation = invocation // FIXME: should be inout param
         return try await singleton.actorSystem.remoteCall(
@@ -209,8 +214,9 @@ internal distributed actor ClusterSingletonBoss<Act: DistributedActor>: _Cluster
         invocation: ActorSystem.InvocationEncoder,
         throwing: Err.Type
     ) async throws where Err: Error {
-        let singleton = await self.findSingleton()
-        self.log.trace("Forwarding invocation [\(invocation)] to [\(singleton)]", metadata: self.metadata())
+        let singleton = try await self.findSingleton()
+        let metadata = await self.metadata()
+        self.log.trace("Forwarding invocation [\(invocation)] to [\(singleton)]", metadata: metadata)
 
         var invocation = invocation // FIXME: should be inout param
         return try await singleton.actorSystem.remoteCallVoid(
@@ -221,13 +227,18 @@ internal distributed actor ClusterSingletonBoss<Act: DistributedActor>: _Cluster
         )
     }
 
-    private func findSingleton() async -> Act {
-        await withCheckedContinuation { continuation in
-            // If singleton is available, forward remote call to it.
-            if let singleton = self.singleton {
-                continuation.resume(returning: singleton)
-                return
-            }
+    private func findSingleton() async throws -> Act {
+        let allocationStatus = await self.allocationTracker.status
+        guard allocationStatus != .timedOut else {
+            throw ClusterSingletonError.allocationTimeout
+        }
+
+        // If singleton is available, forward remote call to it right away.
+        if let singleton = await self.singleton {
+            return singleton
+        }
+
+        return await withCheckedContinuation { continuation in
             // Otherwise, we "stash" the remote call until singleton becomes available.
             Task {
                 let callID = UUID()
@@ -271,13 +282,77 @@ internal distributed actor ClusterSingletonBoss<Act: DistributedActor>: _Cluster
             }
         }
     }
+
+    actor AllocationTracker {
+        /// The concrete distributed actor instance (the "singleton") if this node is indeed hosting it,
+        /// or nil otherwise - meaning that the singleton instance is actually located on another member.
+        var singleton: Act? {
+            didSet {
+                switch self.singleton {
+                case .some:
+                    self.status = .allocated
+                    self.timeoutTask?.cancel()
+                    self.timeoutTask = nil
+                case .none:
+                    self.status = .pending
+                    if self.timeoutTask == nil {
+                        Task {
+                            await self.startTimeoutTask()
+                        }
+                    }
+                }
+            }
+        }
+
+        var status: Status = .pending
+
+        var timeoutTask: Task<Void, Error>?
+        let timeout: Duration
+
+        init(timeout: Duration) async {
+            self.timeout = timeout
+            self.singleton = nil
+            self.status = .pending
+            await self.startTimeoutTask()
+        }
+
+        func updateSingleton(_ singleton: Act?) async {
+            self.singleton = singleton
+        }
+
+        private func startTimeoutTask() async {
+            self.timeoutTask = Task {
+                try await Task.sleep(until: .now + self.timeout, clock: .continuous)
+
+                guard !Task.isCancelled else {
+                    return
+                }
+
+                self.onTimeout()
+            }
+        }
+
+        private func onTimeout() {
+            self.status = .timedOut
+        }
+
+        enum Status {
+            case allocated
+            case pending
+            case timedOut
+        }
+    }
+}
+
+enum ClusterSingletonError: Error, Codable {
+    case allocationTimeout
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Logging
 
 extension ClusterSingletonBoss {
-    func metadata() -> Logger.Metadata {
+    func metadata() async -> Logger.Metadata {
         var metadata: Logger.Metadata = [
             "tag": "singleton",
             "singleton/name": "\(self.settings.name)",
@@ -285,7 +360,7 @@ extension ClusterSingletonBoss {
         ]
 
         metadata["targetNode"] = "\(String(describing: self.targetNode?.debugDescription))"
-        if let singleton = self.singleton {
+        if let singleton = await self.singleton {
             metadata["singleton"] = "\(singleton.id)"
         }
 
@@ -302,7 +377,7 @@ extension ActorID {
         settings: ClusterSingletonSettings,
         remote node: UniqueNode
     ) throws -> ActorID
-        where Act: DistributedActor,
+        where Act: ClusterSingletonProtocol,
         Act.ActorSystem == ClusterSystem
     {
         var id = ActorID(remote: node, type: type, incarnation: .wellKnown)
@@ -332,7 +407,7 @@ extension ClusterSingletonSettings {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Remote call interceptor
 
-struct ClusterSingletonRemoteCallInterceptor<Singleton: DistributedActor>: RemoteCallInterceptor where Singleton.ActorSystem == ClusterSystem {
+struct ClusterSingletonRemoteCallInterceptor<Singleton: ClusterSingletonProtocol>: RemoteCallInterceptor where Singleton.ActorSystem == ClusterSystem {
     let system: ClusterSystem
     let singletonBoss: ClusterSingletonBoss<Singleton>
 

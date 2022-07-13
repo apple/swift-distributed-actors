@@ -31,7 +31,7 @@ public protocol ClusterSingletonProtocol: DistributedActor where ActorSystem == 
 /// - SeeAlso: The `ClusterSingleton` mechanism is conceptually similar to Erlang/OTP's <a href="http://erlang.org/doc/design_principles/distributed_applications.html">`DistributedApplication`</a>,
 ///            and <a href="https://doc.akka.io/docs/akka/current/cluster-singleton.html">`ClusterSingleton` in Akka</a>.
 public actor ClusterSingletonPlugin {
-    private var singletons: [String: (proxyID: ActorID, boss: any _ClusterSingletonBoss)] = [:]
+    private var singletons: [String: (proxyID: ActorID, boss: any ClusterSingletonBossProtocol)] = [:]
 
     private var system: ClusterSystem!
 
@@ -50,7 +50,7 @@ public actor ClusterSingletonPlugin {
         settings: ClusterSingletonSettings,
         makeInstance factory: ((ClusterSystem) async throws -> Act)? = nil
     ) async throws -> Act
-        where Act: DistributedActor,
+        where Act: ClusterSingletonProtocol,
         Act.ActorSystem == ClusterSystem
     {
         let known = self.singletons[settings.name]
@@ -62,7 +62,6 @@ public actor ClusterSingletonPlugin {
         let boss = try await ClusterSingletonBoss(
             settings: settings,
             system: self.system,
-            singletonProps: .init(),
             factory
         )
 

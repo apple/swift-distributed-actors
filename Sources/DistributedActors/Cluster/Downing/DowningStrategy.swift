@@ -118,11 +118,12 @@ internal distributed actor DowningStrategyShell {
             self.memberTimerTasks[member] = Task {
                 defer { self.memberTimerTasks.removeValue(forKey: member) }
 
+                try await Task.sleep(until: .now + delay, clock: .continuous)
+
                 guard !Task.isCancelled else {
                     return
                 }
 
-                try await Task.sleep(until: .now + delay, clock: .continuous)
                 self.onTimeout(member: member)
             }
         case .cancelTimer(let member):
