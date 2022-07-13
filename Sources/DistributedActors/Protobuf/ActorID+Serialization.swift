@@ -34,6 +34,7 @@ extension ActorID: _ProtobufRepresentable {
 
         // TODO: make Error
         let path = try ActorPath(proto.path.segments.map { try ActorPathSegment($0) })
+        
 
         self.init(remote: uniqueNode, path: path, incarnation: ActorIncarnation(proto.incarnation))
     }
