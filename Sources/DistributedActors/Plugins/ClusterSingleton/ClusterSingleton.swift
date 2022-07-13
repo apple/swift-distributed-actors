@@ -59,8 +59,8 @@ internal distributed actor ClusterSingletonBoss<Act: ClusterSingletonProtocol>: 
     private var allocationStatus: AllocationStatus = .pending
     private var allocationTimeoutTask: Task<Void, Error>?
 
-    /// Remote call "buffer" in case `singleton` is `nil`
-    private var remoteCallContinuations: [(CallID, CheckedContinuation<Act, Never>)] = []
+    /// Remote call buffer in case `singleton` is `nil`
+    private var buffer: RemoteCallBuffer
 
     /// `Task` for subscribing to cluster events
     private var clusterEventsSubscribeTask: Task<Void, Error>?
@@ -76,6 +76,7 @@ internal distributed actor ClusterSingletonBoss<Act: ClusterSingletonProtocol>: 
         self.settings = settings
         self.allocationStrategy = settings.allocationStrategy.makeAllocationStrategy(system.settings, settings)
         self.singletonFactory = singletonFactory
+        self.buffer = RemoteCallBuffer(capacity: settings.bufferCapacity)
 
         if system.settings.enabled {
             self.clusterEventsSubscribeTask = Task {
@@ -118,11 +119,9 @@ internal distributed actor ClusterSingletonBoss<Act: ClusterSingletonProtocol>: 
 
         switch node {
         case selfNode:
-            self.log.debug("Node \(selfNode) taking over singleton \(self.settings.name)")
             try await self.takeOver(from: previousTargetNode)
         default:
             if previousTargetNode == selfNode {
-                self.log.debug("Node \(selfNode) handing over singleton \(self.settings.name)")
                 self.handOver(to: node)
             }
 
@@ -165,7 +164,7 @@ internal distributed actor ClusterSingletonBoss<Act: ClusterSingletonProtocol>: 
     }
 
     private func updateSingleton(_ newSingleton: Act?) {
-        self.log.debug("Update singleton from [\(String(describing: self.singleton))] to [\(String(describing: newSingleton))], with \(self.remoteCallContinuations.count) remote calls pending", metadata: self.metadata())
+        self.log.debug("Update singleton from [\(String(describing: self.singleton))] to [\(String(describing: newSingleton))], with \(self.buffer.count) remote calls pending", metadata: self.metadata())
         self.singleton = newSingleton
 
         // Unstash messages if we have the singleton
@@ -179,7 +178,7 @@ internal distributed actor ClusterSingletonBoss<Act: ClusterSingletonProtocol>: 
         self.allocationTimeoutTask?.cancel()
         self.allocationTimeoutTask = nil
 
-        self.remoteCallContinuations.forEach { (callID, continuation) in
+        while let (callID, continuation) = self.buffer.take() {
             self.log.debug("Flushing remote call [\(callID)] to [\(singleton)]", metadata: self.metadata())
             continuation.resume(returning: singleton)
         }
@@ -234,41 +233,30 @@ internal distributed actor ClusterSingletonBoss<Act: ClusterSingletonProtocol>: 
             return singleton
         }
 
-        return await withCheckedContinuation { continuation in
-            // Otherwise, we "stash" the remote call until singleton becomes available.
+        // Otherwise, we "stash" the remote call until singleton becomes available.
+        return try await withCheckedThrowingContinuation { continuation in
             Task {
-                let callID = UUID()
-                self.log.debug("Stashing remote call [\(callID)]", metadata: self.metadata())
-                self.remoteCallContinuations.append((callID, continuation))
-                // FIXME: honor settings.bufferCapacity
+                do {
+                    // FIXME: perhaps interceptor can plumb original callID through so we don't generate another
+                    let callID = UUID()
+                    try self.buffer.stash((callID, continuation))
+                    self.log.debug("Stashed remote call [\(callID)]", metadata: self.metadata())
+                } catch {
+                    switch error {
+                    case BufferError.full:
+                        // TODO: log this warning only "once in while" after buffer becomes full
+                        self.log.warning("Buffer is full. Remote call might start getting disposed.", metadata: self.metadata())
+                        if let oldest = self.buffer.take() {
+                            oldest.continuation.resume(throwing: ClusterSingletonError.bufferCapacityExceeded)
+                        }
+                    default:
+                        self.log.warning("Unable to stash remote call, error: \(error)", metadata: self.metadata())
+                        continuation.resume(throwing: ClusterSingletonError.stashFailure)
+                    }
+                }
             }
         }
     }
-
-//    private func forwardOrStash(_ context: _ActorContext<Message>, message: Message) throws {
-//        // Forward the message if `singleton` is not `nil`, else stash it.
-//        if let singleton = self.ref {
-//            context.log.trace("Forwarding message \(message), to: \(singleton.id)", metadata: self.metadata(context))
-//            singleton.tell(message)
-//        } else {
-//            do {
-//                try self.buffer.stash(message: message)
-//                context.log.trace("Stashed message: \(message)", metadata: self.metadata(context))
-//            } catch {
-//                switch error {
-//                case _StashError.full:
-//                    // TODO: log this warning only "once in while" after buffer becomes full
-//                    context.log.warning("Buffer is full. Messages might start getting disposed.", metadata: self.metadata(context))
-//                    // Move the oldest message to dead letters to make room
-//                    if let oldestMessage = self.buffer.take() {
-//                        context.system.deadLetters.tell(DeadLetter(oldestMessage, recipient: context.id))
-//                    }
-//                default:
-//                    context.log.warning("Unable to stash message, error: \(error)", metadata: self.metadata(context))
-//                }
-//            }
-//        }
-//    }
 
     nonisolated func stop() {
         Task {
@@ -298,8 +286,55 @@ internal distributed actor ClusterSingletonBoss<Act: ClusterSingletonProtocol>: 
     }
 }
 
+extension ClusterSingletonBoss {
+    struct RemoteCallBuffer {
+        typealias Item = (callID: CallID, continuation: CheckedContinuation<Act, Error>)
+
+        private var buffer: [Item] = []
+
+        let capacity: Int
+
+        var count: Int {
+            self.buffer.count
+        }
+
+        var isFull: Bool {
+            self.count >= self.capacity
+        }
+
+        var isEmpty: Bool {
+            self.buffer.isEmpty
+        }
+
+        init(capacity: Int) {
+            self.capacity = capacity
+            self.buffer.reserveCapacity(capacity)
+        }
+
+        mutating func stash(_ item: Item) throws {
+            guard self.count < self.capacity else {
+                throw BufferError.full
+            }
+            self.buffer.append(item)
+        }
+
+        mutating func take() -> Item? {
+            guard !self.isEmpty else {
+                return nil
+            }
+            return self.buffer.removeFirst()
+        }
+    }
+
+    enum BufferError: Error {
+        case full
+    }
+}
+
 enum ClusterSingletonError: Error, Codable {
     case allocationTimeout
+    case bufferCapacityExceeded
+    case stashFailure
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -310,7 +345,7 @@ extension ClusterSingletonBoss {
         var metadata: Logger.Metadata = [
             "tag": "singleton",
             "singleton/name": "\(self.settings.name)",
-            "singleton/buffer": "\(self.remoteCallContinuations.count)/\(self.settings.bufferCapacity)",
+            "singleton/buffer": "\(self.buffer.count)/\(self.buffer.capacity)",
         ]
 
         metadata["targetNode"] = "\(String(describing: self.targetNode?.debugDescription))"
