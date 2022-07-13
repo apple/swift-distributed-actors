@@ -58,8 +58,12 @@ internal distributed actor ActorSingletonProxy<Act: ClusterSingletonProtocol>: A
     /// The node that the singleton runs on
     private var targetNode: UniqueNode?
 
-    /// The singleton
-    private var singleton: Act?
+    /// The target singleton instance we should forward invocations to.
+    private var targetSingleton: Act? {
+        willSet {
+            print("[\(self.actorSystem.cluster.uniqueNode)] NEW SINGLETON: \(newValue?.id.fullDescription) (FROM .... \(self.targetSingleton?.id.fullDescription) .....")
+        }
+    }
 
     /// Manages the singleton; non-nil if `targetNode` is this node.
     private var manager: ActorSingletonManager<Act>?
@@ -168,39 +172,50 @@ internal distributed actor ActorSingletonProxy<Act: ClusterSingletonProtocol>: A
     }
 
     private func updateSingleton(node: UniqueNode?) throws {
+        print("[\(self.actorSystem.cluster.uniqueNode)] update singleton 111: \(node) (\(Self.self))")
         switch node {
         case .some(let node) where node == self.actorSystem.cluster.uniqueNode:
-            ()
+            print("[\(self.actorSystem.cluster.uniqueNode)] update singleton 111: break")
+            break
         case .some(let node):
-            self.singleton = try Act.resolve(id: ._singleton(name: self.settings.name, remote: node), using: self.actorSystem)
+            // let targetProxyID = ActorID(remote: node, type: Self.self, incarnation: .wellKnown)
+            // targetProxyID.metadata.wellKnown = self.wellKnownName // our "remote counterpart" has the exact same well-known name
+            var targetSingletonID = ActorID(remote: node, type: Act.self, incarnation: .wellKnown)
+            targetSingletonID.metadata.wellKnown = settings.name // FIXME: rather, use the BOSS as the target
+            targetSingletonID.path = self.id.path
+            
+            print("[\(self.actorSystem.cluster.uniqueNode)] update singleton 111: \(targetSingletonID)")
+            self.targetSingleton = try Act.resolve(id: targetSingletonID, using: self.actorSystem)
         case .none:
-            self.singleton = nil
+            self.targetSingleton = nil
         }
     }
 
     private func updateSingleton(_ newAct: Act?) {
-        self.log.debug("Updating singleton from [\(String(describing: self.singleton))] to [\(String(describing: newAct))], flushing \(self.remoteCallContinuations.count) remote calls")
-        self.singleton = newAct
+        print("[\(self.actorSystem.cluster.uniqueNode)] update singleton 222: \(newAct?.id.fullDescription) (\(Self.self))")
+        
+        self.log.debug("Updating singleton from [\(String(describing: self.targetSingleton))] to [\(String(describing: newAct))], flushing \(self.remoteCallContinuations.count) remote calls")
+        self.targetSingleton = newAct
 
         // Unstash messages if we have the singleton
-        guard let singleton = self.singleton else {
+        guard let targetSingleton = self.targetSingleton else {
             return
         }
 
-        self.remoteCallContinuations.forEach { (callID, continuation) in
-            self.log.debug("Flushing remote call [\(callID)] to [\(singleton)]")
-            continuation.resume(returning: singleton)
+        self.remoteCallContinuations.forEach { (callID, continuation) in // FIXME: the callIDs are not used in the actual call making (!)
+            self.log.debug("Flushing remote call [\(callID)] to [\(targetSingleton)]")
+            continuation.resume(returning: targetSingleton)
         }
     }
 
     private func findSingleton() async -> Act {
-        await withCheckedContinuation { continuation in
-            // If singleton is available, forward remote call to it.
-            if let singleton = self.singleton {
-                continuation.resume(returning: singleton)
-                return
-            }
-            // Otherwise, we "stash" the remote call until singleton becomes available.
+        // If singleton is available, forward remote call to it.
+        if let targetSingleton = self.targetSingleton {
+            return targetSingleton
+        }
+        
+        // Otherwise, we "stash" the remote call until singleton becomes available.
+        return await withCheckedContinuation { continuation in
             Task {
                 let callID = UUID()
                 self.log.debug("Stashing remote call [\(callID)]")
@@ -227,7 +242,7 @@ internal distributed actor ActorSingletonProxy<Act: ClusterSingletonProtocol>: A
 extension ActorSingletonProxy {
     
     func receiveInboundInvocation(message: InvocationMessage) async throws {
-        
+        fatalError()
     }
     
     // ==== -----------------------------------------------------------------------------------------------------------
@@ -243,10 +258,11 @@ extension ActorSingletonProxy {
         Res: Codable
     {
         let singleton = await self.findSingleton()
+        print("[\(self.actorSystem.cluster.uniqueNode)] found singleton: \(singleton.id.fullDescription)")
         self.log.trace("Forwarding invocation [\(invocation)] to [\(singleton) @ \(singleton.id.detailedDescription)]", metadata: self.metadata())
         self.log.trace("remote call on: singleton.actorSystem \(singleton.actorSystem)")
         
-        var invocation = invocation // FIXME: should be inout param
+        var invocation = invocation
         return try await self.actorSystem.remoteCall(
             on: singleton,
             target: target,
@@ -286,8 +302,8 @@ extension ActorSingletonProxy {
         ]
 
         metadata["targetNode"] = "\(String(describing: self.targetNode?.debugDescription))"
-        if let singleton = self.singleton {
-            metadata["singleton"] = "\(singleton.id)"
+        if let targetSingleton = self.targetSingleton {
+            metadata["singleton"] = "\(targetSingleton.id)"
         }
         if let manager = self.manager {
             metadata["manager"] = "\(manager.id)"
@@ -312,81 +328,3 @@ extension ActorPath {
         try! ActorPath._system.appending("singleton-\(name)")
     }
 }
-
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Serialization
-
-// struct SingletonRemoteCallEnvelope: Codable {
-//    typealias ActorSystem = ClusterSystem
-//    typealias InvocationEncoder = ClusterSystem.InvocationEncoder
-//
-//    let actorTypeHint: String
-//    let actorID: ActorID
-//    let targetIdentifier: String
-//    let arguments: [Data]
-//
-//    let throwingTypeHint: String
-//    let returningTypeHint: String?
-//
-//    var target: RemoteCallTarget {
-//        RemoteCallTarget(self.targetIdentifier)
-//    }
-//
-//    init<Act, Err, Res>(
-//        actor: Act,
-//        target: RemoteCallTarget,
-//        invocation: InvocationEncoder,
-//        throwing: Err.Type,
-//        returning: Res.Type
-//    ) where Act: DistributedActor,
-//        Act.ID == ActorID,
-//        Err: Error,
-//        Res: Codable
-//    {
-//        self.actorTypeHint = Serialization.getTypeHint(Act.self)
-//        self.actorID = actor.id
-//        self.targetIdentifier = target.identifier
-//        self.arguments = invocation.arguments
-//        self.throwingTypeHint = Serialization.getTypeHint(Err.self)
-//        self.returningTypeHint = Serialization.getTypeHint(Res.self)
-//    }
-//
-//    init<Act, Err>(
-//        actor: Act,
-//        target: RemoteCallTarget,
-//        invocation: InvocationEncoder,
-//        throwing: Err.Type
-//    ) where Act: DistributedActor,
-//        Act.ID == ActorID,
-//        Err: Error
-//    {
-//        self.actorTypeHint = Serialization.getTypeHint(Act.self)
-//        self.actorID = actor.id
-//        self.targetIdentifier = target.identifier
-//        self.arguments = invocation.arguments
-//        self.throwingTypeHint = Serialization.getTypeHint(Err.self)
-//        self.returningTypeHint = nil
-//    }
-//
-//    func resolveActor(using system: ActorSystem) throws -> any DistributedActor {
-//        let type = try Serialization.summonType(from: self.actorTypeHint)
-//        guard let actorType = type as? any DistributedActor.Type,
-//              let actor = try system.resolve(id: self.actorID, as: actorType) as (any DistributedActor)? else {
-//            throw SerializationError.unableToDeserialize(hint: self.actorTypeHint)
-//        }
-//        return actor
-//    }
-//
-//    func invocation(system: ActorSystem) -> InvocationEncoder {
-//        InvocationEncoder(system: system, arguments: self.arguments)
-//    }
-// }
-//
-// extension Serialization {
-//    static func summonType(from hint: String) throws -> Any.Type {
-//        guard let type = _typeByName(hint) else {
-//            throw SerializationError.unableToSummonType(hint: hint)
-//        }
-//        return type
-//    }
-// }

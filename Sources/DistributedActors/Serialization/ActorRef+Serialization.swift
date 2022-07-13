@@ -37,9 +37,9 @@ public enum ActorCoding {
 
         public init?(stringValue: String) {
             switch stringValue {
-            case "path": self = .path
-            case "type": self = .type
-            case "wellKnown": self = .wellKnown
+            case "$path": self = .path
+            case "$type": self = .type
+            case "$wellKnown": self = .wellKnown
             default: self = .custom(stringValue)
             }
         }
@@ -59,9 +59,9 @@ public enum ActorCoding {
 
         public var stringValue: String {
             switch self {
-            case .path: return "path"
-            case .type: return "type"
-            case .wellKnown: return "wellKnown"
+            case .path: return "$path"
+            case .type: return "$type"
+            case .wellKnown: return "$wellKnown"
             case .custom(let id): return id
             }
         }

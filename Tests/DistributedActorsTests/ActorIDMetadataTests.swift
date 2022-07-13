@@ -91,7 +91,19 @@ final class ActorIDMetadataTests: ClusteredActorSystemsXCTestCase {
         singleton.metadata.exampleClusterSingletonID.shouldEqual("the-boss")
     }
     
-    func test_metadata_wellKnown_serialized() async throws {
+    func test_metadata_wellKnown_coding() async throws {
+        let system = await setUpNode("first")
+        let singleton = await ThereCanBeOnlyOneClusterSingleton(actorSystem: system)
+
+        let encoded = try JSONEncoder().encode(singleton)
+        let encodedString = String(data: encoded, encoding: .utf8)!
+        encodedString.shouldContain("\"wellKnown\":\"boss-singleton\"")
+        
+        let back = try! JSONDecoder().decode(ActorID.self, from: encoded)
+        back.metadata.wellKnown.shouldEqual("boss-singleton")
+    }
+    
+    func test_metadata_userDefined_coding() async throws {
         let system = await setUpNode("first")
         let singleton = await ThereCanBeOnlyOneClusterSingleton(actorSystem: system)
 
