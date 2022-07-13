@@ -1323,7 +1323,7 @@ extension ClusterSystem {
             )
 
             do {
-                guard let actor = self.resolveAnyDistributedActor(id: recipient) else {
+                guard let actor = self.resolveLocalAnyDistributedActor(id: recipient) else {
                     self.deadLetters.tell(DeadLetter(invocation, recipient: recipient))
                     throw DeadLetterError(recipient: recipient)
                 }
@@ -1355,7 +1355,7 @@ extension ClusterSystem {
         }
     }
     
-    private func resolveAnyDistributedActor(id: ActorID) -> (any DistributedActor)? {
+    private func resolveLocalAnyDistributedActor(id: ActorID) -> (any DistributedActor)? {
         if settings.logging.verboseResolve {
             self.log.trace("Resolve as any DistributedActor: \(id)")
         }
@@ -1372,9 +1372,7 @@ extension ClusterSystem {
         
         // If the actor is not located on this node, immediately resolve as "remote"
         guard self.cluster.uniqueNode == id.uniqueNode else {
-            if settings.logging.verboseResolve {
-                self.log.trace("Resolved \(id) as remote, on node: \(id.uniqueNode)")
-            }
+            self.log.trace("Resolve failed, ID is for a remote host: \(id.uniqueNode)", metadata: ["actor/id": "\(id)"])
             return nil
         }
         
@@ -1396,7 +1394,7 @@ extension ClusterSystem {
         }
         
         guard let managed = managed else {
-            log.trace("Resolved as remote reference", metadata: ["actor/id": "\(id)"])
+            log.trace("Resolve failed, no alive actor for ID", metadata: ["actor/id": "\(id)"])
             return nil
         }
         

@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import Distributed
-import DistributedActors
+@testable import DistributedActors
 import DistributedActorsTestKit
 import XCTest
 
@@ -97,10 +97,22 @@ final class ActorIDMetadataTests: ClusteredActorSystemsXCTestCase {
 
         let encoded = try JSONEncoder().encode(singleton)
         let encodedString = String(data: encoded, encoding: .utf8)!
-        encodedString.shouldContain("\"wellKnown\":\"boss-singleton\"")
+        encodedString.shouldContain("\"$wellKnown\":\"boss-singleton\"")
         
         let back = try! JSONDecoder().decode(ActorID.self, from: encoded)
         back.metadata.wellKnown.shouldEqual("boss-singleton")
+    }
+    
+    func test_metadata_wellKnown_proto() async throws {
+        let system = await setUpNode("first")
+        let singleton = await ThereCanBeOnlyOneClusterSingleton(actorSystem: system)
+
+        let context = Serialization.Context(log: system.log, system: system, allocator: .init())
+        let encoded = try singleton.id.toProto(context: context)
+        print("ENCODED: \(encoded)")
+        
+        let back = try ActorID(fromProto: encoded, context: context)
+        back.metadata.wellKnown.shouldEqual(singleton.id.metadata.wellKnown)
     }
     
     func test_metadata_userDefined_coding() async throws {
@@ -109,9 +121,11 @@ final class ActorIDMetadataTests: ClusteredActorSystemsXCTestCase {
 
         let encoded = try JSONEncoder().encode(singleton)
         let encodedString = String(data: encoded, encoding: .utf8)!
-        encodedString.shouldContain("\"wellKnown\":\"boss-singleton\"")
+        encodedString.shouldContain("\"$wellKnown\":\"boss-singleton\"")
         
         let back = try! JSONDecoder().decode(ActorID.self, from: encoded)
         back.metadata.wellKnown.shouldEqual("boss-singleton")
     }
+    
+    
 }

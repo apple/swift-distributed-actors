@@ -48,7 +48,7 @@ extension ActorMetadataKeys {
     ///
     /// **WARNING:** Do not use this mechanism for "normal" actors, as it makes their addressess "guessable",
     /// which is bad from a security and system independence stand point. Please use the cluster receptionist instead.
-    public var wellKnown: Key<String> { "$wk" }
+    public var wellKnown: Key<String> { "$wellKnown" }
     
     /// The type of the distributed actor identified by this ``ActorID``.
     /// Used only for human radability and debugging purposes, does not participate in equality checks of an actor ID.
