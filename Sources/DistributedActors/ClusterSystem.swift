@@ -62,8 +62,10 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
     // Access MUST be protected with `namingLock`.
     private var _managedRefs: [ActorID: _ReceivesSystemMessages] = [:]
     private var _managedDistributedActors: WeakActorDictionary = .init()
-    private var _managedWellKnownDistributedActors: [ActorID: any DistributedActor] = [:]
     private var _reservedNames: Set<ActorID> = []
+    
+    typealias WellKnownName = String
+    private var _managedWellKnownDistributedActors: [WellKnownName: any DistributedActor] = [:]
 
     // TODO: converge into one tree
     // Note: This differs from Akka, we do full separate trees here
@@ -921,7 +923,7 @@ extension ClusterSystem {
         // Is it a well-known actor? If so, we need to special handle the resolution.
         if let wellKnownName = id.metadata.wellKnown {
             let wellKnownActor = self.namingLock.withLock {
-                return self._managedWellKnownDistributedActors[id]
+                return self._managedWellKnownDistributedActors[wellKnownName]
             }
             
             if let wellKnownActor {
@@ -952,7 +954,7 @@ extension ClusterSystem {
            log.trace("Resolved as remote reference", metadata: [
                "actor/id": "\(id)",
            ])
-           throw DeadLetterError(recipient: id)
+           return nil
         }
 
         guard let resolved = managed as? Act else {
@@ -1040,10 +1042,11 @@ extension ClusterSystem {
             "actor/id": "\(id)",
         ])
 
-        return self.namingLock.withLock {
-            self._reservedNames.insert(id)
-            return id
-        }
+//        return self.namingLock.withLock {
+//            self._reservedNames.insert(id)
+//            return id
+//        }
+        return id
     }
 
     public func actorReady<Act>(_ actor: Act) where Act: DistributedActor, Act.ID == ActorID {
@@ -1054,7 +1057,7 @@ extension ClusterSystem {
 
         self.namingLock.lock()
         defer { self.namingLock.unlock() }
-        precondition(self._reservedNames.remove(actor.id) != nil, "Attempted to ready an identity that was not reserved: \(actor.id)")
+//        precondition(self._reservedNames.remove(actor.id) != nil, "Attempted to ready an identity that was not reserved: \(actor.id)")
 
         // Spawn a behavior actor for it:
         let behavior = InvocationBehavior.behavior(instance: Weak(actor))
@@ -1064,8 +1067,8 @@ extension ClusterSystem {
         self._managedRefs[actor.id] = ref
         self._managedDistributedActors.insert(actor: actor)
         
-        if actor.id.metadata.wellKnown != nil {
-            self._managedWellKnownDistributedActors[actor.id] = actor
+        if let wellKnownName = actor.id.metadata.wellKnown {
+            self._managedWellKnownDistributedActors[wellKnownName] = actor
         }
     }
     
@@ -1073,9 +1076,9 @@ extension ClusterSystem {
     /// Store it in a special lookup table and enable looking it up by its unique well-known name identity.
     public func _wellKnownActorReady<Act>(_ actor: Act) where Act: DistributedActor, Act.ActorSystem == ClusterSystem {
         self.namingLock.withLockVoid {
-            guard self._managedDistributedActors.get(identifiedBy: actor.id) != nil else {
-                preconditionFailure("Attempted to register well known actor, before it was ready; Unable to resolve \(actor.id.detailedDescription)")
-            }
+//            guard self._managedDistributedActors.get(identifiedBy: actor.id) != nil else {
+//                preconditionFailure("Attempted to register well known actor, before it was ready; Unable to resolve \(actor.id.detailedDescription)")
+//            }
             
             guard let wellKnownName = actor.id.metadata.wellKnown else {
                 preconditionFailure("Attempted to register actor as well-known but had no well-known name: \(actor.id)")
@@ -1085,7 +1088,7 @@ extension ClusterSystem {
                 "actor/id": "\(actor.id)",
             ])
             
-            self._managedWellKnownDistributedActors[actor.id.withoutLifecycle] = actor
+            self._managedWellKnownDistributedActors[wellKnownName] = actor
         }
     }
 
@@ -1111,11 +1114,14 @@ extension ClusterSystem {
     }
     
     public func releaseWellKnownActorID(_ id: ActorID) {
-        precondition(id.metadata.wellKnown != nil, "Attempted to release well-known ActorID, but ID was not well known: \(id.fullDescription)")
-        log.debug("Released well-known ActorID explicitly: \(id), it is expected to resignID soon") // TODO: add checking that we indeed have resigned the ID (the actor has terminated), or we can log a warning if it has not.
+        guard let wellKnownName = id.metadata.wellKnown else {
+            preconditionFailure("Attempted to release well-known ActorID, but ID was not well known: \(id.fullDescription)")
+        }
         
         self.namingLock.withLockVoid {
-            _ = self._managedWellKnownDistributedActors.removeValue(forKey: id)
+            log.debug("Released well-known ActorID explicitly: \(id), it is expected to resignID soon") // TODO: add checking that we indeed have resigned the ID (the actor has terminated), or we can log a warning if it has not.
+            
+            _ = self._managedWellKnownDistributedActors.removeValue(forKey: wellKnownName)
         }
     }
 
@@ -1488,18 +1494,20 @@ extension ClusterSystem {
         // Is it a well-known actor? If so, we need to special handle the resolution.
         if let wellKnownName = id.metadata.wellKnown {
             let wellKnownActor = self.namingLock.withLock {
-                return self._managedWellKnownDistributedActors[id]
+                return self._managedWellKnownDistributedActors[wellKnownName]
             }
             
-            if let wellKnownActor {
-                self.log.trace("Resolved \(id) well-known actor: \(wellKnownName)")
-                return wellKnownActor
-            } else {
-                self.log.trace("Resolve failed, no alive actor for well-known ID", metadata: [
-                    "actor/id": "\(id)",
-                    "wellKnown/actors": "\(self._managedWellKnownDistributedActors.keys.map(\.metadata.wellKnown))",
-                ])
-                return nil
+            return self.namingLock.withLock {
+                if let wellKnownActor {
+                    self.log.trace("Resolved \(id) well-known actor: \(wellKnownName)")
+                    return wellKnownActor
+                } else {    
+                    self.log.trace("Resolve failed, no alive actor for well-known ID", metadata: [
+                        "actor/id": "\(id)",
+                        "wellKnown/actors": "\(self._managedWellKnownDistributedActors.keys)",
+                    ])
+                    return nil
+                }
             }
         }
         
