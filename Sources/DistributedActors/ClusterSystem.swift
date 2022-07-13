@@ -250,8 +250,10 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         self.lazyInitializationLock = initializationLock
 
         if !settings.logging.customizedLogger {
+            // Copy the log level that has been set on the initial logger before we replace it
+            let desiredLogLevel = settings.logging._logger.logLevel
             settings.logging._logger = Logger(label: self.name)
-            settings.logging._logger.logLevel = settings.logging.logLevel
+            settings.logging._logger.logLevel = desiredLogLevel
         }
 
         if settings.enabled {
