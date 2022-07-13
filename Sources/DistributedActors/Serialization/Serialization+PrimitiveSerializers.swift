@@ -21,6 +21,11 @@ import Foundation // for Codable
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: String Serializer
 
+extension Serialization.Manifest {
+    public static let stringSerializerManifest: Self =
+        .init(serializerID: .specializedWithTypeHint, hint: "S")
+}
+
 @usableFromInline
 internal class StringSerializer: Serializer<String> {
     private let allocate: ByteBufferAllocator

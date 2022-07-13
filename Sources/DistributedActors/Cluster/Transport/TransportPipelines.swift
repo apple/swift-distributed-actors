@@ -281,7 +281,7 @@ private final class WireEnvelopeHandler: ChannelDuplexHandler {
             let envelope = try self.serialization.deserialize(as: Wire.Envelope.self, from: .nioByteBuffer(buffer), using: knownSpecializedWireEnvelopeManifest)
             context.fireChannelRead(self.wrapInboundOut(envelope))
         } catch {
-            self.log.error("Failed to deserialize: \(data)", metadata: [
+            self.log.error("Failed to deserialize message", metadata: [
                 "buffer": "\(buffer)",
                 "error": "\(error)",
             ])
