@@ -196,7 +196,7 @@ internal distributed actor ClusterSingletonBoss<Act: ClusterSingletonProtocol>: 
         let singleton = try await self.findSingleton()
         self.log.trace("Forwarding invocation [\(invocation)] to [\(singleton)]", metadata: self.metadata())
 
-        var invocation = invocation // FIXME: should be inout param
+        var invocation = invocation // can't be inout param
         return try await singleton.actorSystem.remoteCall(
             on: singleton,
             target: target,
@@ -214,7 +214,7 @@ internal distributed actor ClusterSingletonBoss<Act: ClusterSingletonProtocol>: 
         let singleton = try await self.findSingleton()
         self.log.trace("Forwarding invocation [\(invocation)] to [\(singleton)]", metadata: self.metadata())
 
-        var invocation = invocation // FIXME: should be inout param
+        var invocation = invocation // can't be inout param
         return try await singleton.actorSystem.remoteCallVoid(
             on: singleton,
             target: target,
@@ -237,7 +237,6 @@ internal distributed actor ClusterSingletonBoss<Act: ClusterSingletonProtocol>: 
         return try await withCheckedThrowingContinuation { continuation in
             Task {
                 do {
-                    // FIXME: perhaps interceptor can plumb original callID through so we don't generate another
                     let callID = UUID()
                     try self.buffer.stash((callID, continuation))
                     self.log.debug("Stashed remote call [\(callID)]", metadata: self.metadata())
@@ -416,11 +415,15 @@ struct ClusterSingletonRemoteCallInterceptor<Singleton: ClusterSingletonProtocol
             fatalError("This interceptor expects actor type [\(Singleton.self)] but got [\(Act.self)]")
         }
 
-        // FIXME: can't capture inout param
-        let invocation = invocation
-        return try await self.singletonBoss.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
+        let invocation = invocation // can't capture inout param
+        let result = try await self.singletonBoss.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
             try await __secretlyKnownToBeLocal.forwardOrStashRemoteCall(target: target, invocation: invocation, throwing: throwing, returning: returning)
-        }! // FIXME: !-use
+        }
+
+        guard let result = result else {
+            fatalError("Unexpected remote call")
+        }
+        return result
     }
 
     func interceptRemoteCallVoid<Act, Err>(
@@ -437,8 +440,7 @@ struct ClusterSingletonRemoteCallInterceptor<Singleton: ClusterSingletonProtocol
             fatalError("This interceptor expects actor type [\(Singleton.self)] but got [\(Act.self)]")
         }
 
-        // FIXME: can't capture inout param
-        let invocation = invocation
+        let invocation = invocation // can't capture inout param
         try await self.singletonBoss.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
             try await __secretlyKnownToBeLocal.forwardOrStashRemoteCallVoid(target: target, invocation: invocation, throwing: throwing)
         }
