@@ -115,6 +115,17 @@ final class ActorIDMetadataTests: ClusteredActorSystemsXCTestCase {
         back.metadata.wellKnown.shouldEqual(singleton.id.metadata.wellKnown)
     }
     
+    func test_metadata_wellKnown_equality() async throws {
+        let system = await setUpNode("first")
+        
+        let singleton = await ThereCanBeOnlyOneClusterSingleton(actorSystem: system)
+
+        let madeUpID = ActorID(local: system.cluster.uniqueNode, path: ._user, incarnation: .wellKnown)
+        madeUpID.metadata.wellKnown = singleton.id.metadata.wellKnown!
+        
+        singleton.id.shouldEqual(madeUpID)
+    }
+    
     func test_metadata_userDefined_coding() async throws {
         let system = await setUpNode("first")
         let singleton = await ThereCanBeOnlyOneClusterSingleton(actorSystem: system)
