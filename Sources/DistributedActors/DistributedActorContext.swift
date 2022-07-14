@@ -22,14 +22,17 @@ import Distributed
 public final class DistributedActorContext {
     let lifecycle: LifecycleWatchContainer?
     let metadata: ActorMetadata
+    let remoteCallInterceptor: (any RemoteCallInterceptor)?
 
     init(lifecycle: LifecycleWatchContainer?,
+         remoteCallInterceptor: RemoteCallInterceptor?,
          metadata: ActorMetadata? = nil)
     {
         self.lifecycle = lifecycle
+        self.remoteCallInterceptor = remoteCallInterceptor
         self.metadata = metadata ?? ActorMetadata()
 
-        traceLog_DeathWatch("Create context; Lifecycle: \(lifecycle)")
+        traceLog_DeathWatch("Create context; Lifecycle: \(String(describing: lifecycle))")
     }
 
     /// Invoked by the actor system when the owning actor is terminating, so we can clean up all stored data
@@ -39,4 +42,28 @@ public final class DistributedActorContext {
             lifecycle.clear()
         }
     }
+}
+
+internal protocol RemoteCallInterceptor {
+    func interceptRemoteCall<Act, Err, Res>(
+        on actor: Act,
+        target: RemoteCallTarget,
+        invocation: inout ClusterSystem.InvocationEncoder,
+        throwing: Err.Type,
+        returning: Res.Type
+    ) async throws -> Res
+        where Act: DistributedActor,
+        Act.ID == ActorID,
+        Err: Error,
+        Res: Codable
+
+    func interceptRemoteCallVoid<Act, Err>(
+        on actor: Act,
+        target: RemoteCallTarget,
+        invocation: inout ClusterSystem.InvocationEncoder,
+        throwing: Err.Type
+    ) async throws
+        where Act: DistributedActor,
+        Act.ID == ActorID,
+        Err: Error
 }

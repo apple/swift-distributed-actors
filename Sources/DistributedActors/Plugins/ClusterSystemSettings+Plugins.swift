@@ -53,10 +53,10 @@ public struct _PluginsSettings {
 
     /// Stops all plugins in the *reversed* order as they were added.
     // @available(*, deprecated, message: "use 'actor cluster' transport version instead") // TODO: deprecate
-    internal func stopAll(_ system: ClusterSystem) {
+    internal func stopAll(_ system: ClusterSystem) async {
         // Shut down in reversed order so plugins with the fewest dependencies are stopped first!
         for plugin in self.plugins.reversed() {
-            plugin.stop(system)
+            await plugin.stop(system)
         }
     }
 }

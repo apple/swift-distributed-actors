@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -12,14 +12,12 @@
 //
 //===----------------------------------------------------------------------===//
 
-import DistributedActors
-
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Protocol for singleton allocation strategy
 
 /// Strategy for choosing a `UniqueNode` to allocate singleton.
-internal protocol ActorSingletonAllocationStrategy {
-    /// Receives and handles the `clusterEvent`.
+internal protocol ClusterSingletonAllocationStrategy {
+    /// Receives and handles the `Cluster.Event`.
     ///
     /// - Returns: The current `node` after processing `clusterEvent`.
     func onClusterEvent(_ clusterEvent: Cluster.Event) -> UniqueNode?
@@ -29,10 +27,10 @@ internal protocol ActorSingletonAllocationStrategy {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: AllocationStrategy implementations
+// MARK: ClusterSingletonAllocationStrategy implementations
 
 /// An `AllocationStrategy` in which selection is based on cluster leadership.
-internal class ActorSingletonAllocationByLeadership: ActorSingletonAllocationStrategy {
+internal class ClusterSingletonAllocationByLeadership: ClusterSingletonAllocationStrategy {
     var node: UniqueNode?
 
     init() {}

@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2021 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -31,9 +31,6 @@ extension ClusterSystem.ActorID {
     public struct Metadata<Value: Sendable & Codable> {
         let keyType: Any.Type
         let id: String
-//        public init(_: Key.Type) {
-//            // no initial value; it must be set during initialization
-//        }
 
         public init(_ keyPath: KeyPath<ActorMetadataKeys, ActorMetadataKey<Value>>) {
             let key = ActorMetadataKeys()[keyPath: keyPath]
@@ -183,14 +180,9 @@ extension ClusterSystem {
         /// Uniquely identifies the specific "incarnation" of this actor.
         public let incarnation: ActorIncarnation
 
-        // TODO(distributed): remove this workaround; only exists for old ActorSingletonManager
-        public static func _make(local node: UniqueNode, path: ActorPath?, incarnation: ActorIncarnation) -> Self {
-            .init(local: node, path: path, incarnation: incarnation)
-        }
-
         // TODO(distributed): remove this initializer, as it is only for Behavior actors
         init(local node: UniqueNode, path: ActorPath?, incarnation: ActorIncarnation) {
-            self.context = .init(lifecycle: nil)
+            self.context = .init(lifecycle: nil, remoteCallInterceptor: nil)
             self._location = .local(node)
             self.incarnation = incarnation
             if let path {
@@ -199,14 +191,9 @@ extension ClusterSystem {
             traceLog_DeathWatch("Made ID: \(self)")
         }
 
-        // TODO(distributed): remove this workaround; only exists for old ActorSingletonManager
-        public static func _make(remote node: UniqueNode, path: ActorPath?, incarnation: ActorIncarnation) -> Self {
-            .init(remote: node, path: path, incarnation: incarnation)
-        }
-
         // TODO(distributed): remove this initializer, as it is only for Behavior actors
         init(remote node: UniqueNode, path: ActorPath?, incarnation: ActorIncarnation) {
-            self.context = .init(lifecycle: nil)
+            self.context = .init(lifecycle: nil, remoteCallInterceptor: nil)
             self._location = .remote(node)
             self.incarnation = incarnation
             if let path {
@@ -218,7 +205,7 @@ extension ClusterSystem {
         public init<Act>(remote node: UniqueNode, type: Act.Type, incarnation: ActorIncarnation)
             where Act: DistributedActor, Act.ActorSystem == ClusterSystem
         {
-            self.context = .init(lifecycle: nil)
+            self.context = .init(lifecycle: nil, remoteCallInterceptor: nil)
             self._location = .remote(node)
             self.incarnation = incarnation
             if let mangledName = _mangledTypeName(type) { // TODO: avoid mangling names on every spawn?
@@ -257,6 +244,7 @@ extension ClusterSystem {
             var copy = self
             copy.context = .init(
                 lifecycle: nil,
+                remoteCallInterceptor: nil,
                 metadata: self.metadata
             )
             return copy
@@ -266,6 +254,7 @@ extension ClusterSystem {
             var copy = self
             copy.context = .init(
                 lifecycle: self.context.lifecycle,
+                remoteCallInterceptor: nil,
                 metadata: nil
             )
             return copy
@@ -361,13 +350,15 @@ extension ActorID {
 
     /// :nodoc:
     public var _asRemote: Self {
-        let remote = Self(remote: self.uniqueNode, path: self.path, incarnation: self.incarnation)
+        var remote = self
+        remote._location = .remote(remote.uniqueNode)
         return remote
     }
 
     /// :nodoc:
     public var _asLocal: Self {
-        let local = Self(local: self.uniqueNode, path: self.path, incarnation: self.incarnation)
+        var local = self
+        local._location = .local(self.uniqueNode)
         return local
     }
 }
