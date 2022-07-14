@@ -21,7 +21,7 @@ import Logging
 // MARK: Cluster singleton boss
 
 internal protocol ClusterSingletonBossProtocol {
-    func stop()
+    func stop() async
 }
 
 /// Singleton wrapper of a distributed actor. The underlying singleton might run on this node, in which
@@ -93,7 +93,7 @@ internal distributed actor ClusterSingletonBoss<Act: ClusterSingletonProtocol>: 
     }
 
     deinit {
-        // FIXME: should hand over but it's async call
+        // FIXME(distributed): actor-isolated instance method 'handOver(to:)' can not be referenced from a non-isolated context; this is an error in Swift 6
         // TODO: perhaps we can figure out where `to` is next and hand over gracefully?
 //        self.handOver(to: nil)
         self.clusterEventsSubscribeTask?.cancel()
@@ -257,7 +257,7 @@ internal distributed actor ClusterSingletonBoss<Act: ClusterSingletonProtocol>: 
         }
     }
 
-    nonisolated func stop() {
+    nonisolated func stop() async {
         Task {
             await self.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
                 // TODO: perhaps we can figure out where `to` is next and hand over gracefully?

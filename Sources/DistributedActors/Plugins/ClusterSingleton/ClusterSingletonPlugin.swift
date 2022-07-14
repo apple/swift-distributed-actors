@@ -109,11 +109,9 @@ extension ClusterSingletonPlugin: _Plugin {
         self.system = system
     }
 
-    public nonisolated func stop(_ system: ClusterSystem) {
-        Task {
-            for (_, (_, proxy)) in await self.singletons {
-                proxy.stop()
-            }
+    public func stop(_ system: ClusterSystem) async {
+        for (_, (_, boss)) in self.singletons {
+            await boss.stop()
         }
     }
 }

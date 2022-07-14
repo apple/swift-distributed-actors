@@ -27,6 +27,8 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
     }
 
     func test_singletonByClusterLeadership_happyPath() async throws {
+        throw XCTSkip("!!! Skipping test \(#function) !!!") // FIXME(distributed): disable test until https://github.com/apple/swift-distributed-actors/pull/1001
+
         var singletonSettings = ClusterSingletonSettings(name: TheSingleton.name)
         singletonSettings.allocationStrategy = .byLeadership
 

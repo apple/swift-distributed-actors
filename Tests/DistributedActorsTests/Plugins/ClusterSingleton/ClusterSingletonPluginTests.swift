@@ -18,6 +18,8 @@ import XCTest
 
 final class ClusterSingletonPluginTests: ClusterSystemXCTestCase {
     func test_singletonPlugin_clusterDisabled() async throws {
+        throw XCTSkip("!!! Skipping test \(#function) !!!") // FIXME(distributed): disable test until https://github.com/apple/swift-distributed-actors/pull/1001
+
         // Singleton should work just fine without clustering
         let test = await setUpNode("test") { settings in
             settings.enabled = false

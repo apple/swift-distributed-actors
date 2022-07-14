@@ -493,7 +493,12 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         /// Down this node as part of shutting down; it may have enough time to notify other nodes on an best effort basis.
         self.cluster.down(node: self.settings.node)
 
-        self.settings.plugins.stopAll(self)
+        let pluginsSemaphore = DispatchSemaphore(value: 1)
+        Task {
+            await self.settings.plugins.stopAll(self)
+            pluginsSemaphore.signal()
+        }
+        pluginsSemaphore.wait()
 
         self.log.log(level: .debug, "Shutting down actor system [\(self.name)]. All actors will be stopped.", file: #filePath, function: #function, line: #line)
         defer {
