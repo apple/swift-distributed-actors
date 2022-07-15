@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -22,7 +22,6 @@ import XCTest
 final class ClusterDiscoveryTests: ClusterSystemXCTestCase {
     let A = Cluster.Member(node: UniqueNode(node: Node(systemName: "A", host: "1.1.1.1", port: 7337), nid: .random()), status: .up)
     let B = Cluster.Member(node: UniqueNode(node: Node(systemName: "B", host: "2.2.2.2", port: 8228), nid: .random()), status: .up)
-    let C = Cluster.Member(node: UniqueNode(node: Node(systemName: "C", host: "2.2.2.2", port: 9119), nid: .random()), status: .up)
 
     func test_discovery_shouldInitiateJoinsToNewlyDiscoveredNodes() throws {
         let discovery = TestTriggeredServiceDiscovery<String, Node>()
@@ -62,6 +61,20 @@ final class ClusterDiscoveryTests: ClusterSystemXCTestCase {
             throw testKit.fail(line: #line - 1)
         }
         node3.shouldEqual(self.B.uniqueNode.node)
+    }
+
+    func test_discovery_shouldInitiateJoinsToStaticNodes() throws {
+        let nodes = Set([self.A, self.B].map(\.uniqueNode.node))
+        let settings = ServiceDiscoverySettings(static: Set(nodes))
+        let clusterProbe = testKit.makeTestProbe(expecting: ClusterShell.Message.self)
+        _ = try system._spawn("discovery", DiscoveryShell(settings: settings, cluster: clusterProbe.ref).behavior)
+
+        try clusterProbe.expectMessages(count: 2).forEach { message in
+            guard case .command(.handshakeWith(let node)) = message else {
+                throw testKit.fail(line: #line - 1)
+            }
+            node.shouldBeIn(nodes)
+        }
     }
 
     func test_discovery_shouldHandleMappingsWhenDiscoveryHasItsOwnTypes() throws {

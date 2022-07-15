@@ -324,6 +324,19 @@ extension Equatable {
     }
 }
 
+extension Hashable {
+    /// Asserts that the value is an element in the given set
+    public func shouldBeIn(_ set: Set<Self>, file: StaticString = #filePath, line: UInt = #line, column: UInt = #column) {
+        if set.contains(self) {
+            ()
+        } else {
+            let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
+            let error = callSite.error("Expected \(self) to be an item in \(set)")
+            XCTFail("\(error)", file: callSite.file, line: callSite.line)
+        }
+    }
+}
+
 extension Bool {
     public func shouldBe(_ expected: Bool, file: StaticString = #filePath, line: UInt = #line, column: UInt = #column) {
         let csInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
