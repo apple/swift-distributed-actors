@@ -400,14 +400,14 @@ protocol ClusterSystemInstrumentationProvider {
 /// in an attempt to form (or join) a cluster with those nodes. These typically should include a few initial contact points, but can also include
 /// all the nodes of an existing cluster.
 public struct ServiceDiscoverySettings {
-    internal let implementation: AnyServiceDiscovery
-    private let _subscribe: (@escaping (Result<[Node], Error>) -> Void, @escaping (CompletionReason) -> Void) -> CancellationToken
+    let implementation: ServiceDiscoveryImplementation
+    private let _subscribe: (@escaping (Result<[Node], Error>) -> Void, @escaping (CompletionReason) -> Void) -> CancellationToken?
 
     public init<Discovery, S>(_ implementation: Discovery, service: S)
         where Discovery: ServiceDiscovery, Discovery.Instance == Node,
         S == Discovery.Service
     {
-        self.implementation = AnyServiceDiscovery(implementation)
+        self.implementation = .dynamic(AnyServiceDiscovery(implementation))
         self._subscribe = { onNext, onComplete in
             implementation.subscribe(to: service, onNext: onNext, onComplete: onComplete)
         }
@@ -418,15 +418,32 @@ public struct ServiceDiscoverySettings {
         S == Discovery.Service
     {
         let mappedDiscovery: MapInstanceServiceDiscovery<Discovery, Node> = implementation.mapInstance(transformer)
-        self.implementation = AnyServiceDiscovery(mappedDiscovery)
+        self.implementation = .dynamic(AnyServiceDiscovery(mappedDiscovery))
         self._subscribe = { onNext, onComplete in
             mappedDiscovery.subscribe(to: service, onNext: onNext, onComplete: onComplete)
         }
     }
 
+    public init(static nodes: Set<Node>) {
+        self.implementation = .static(nodes)
+        self._subscribe = { onNext, _ in
+            // Call onNext once and never again since the list of nodes doesn't change
+            onNext(.success(Array(nodes)))
+            // Ignore onComplete because static service discovery never terminates
+
+            // No cancellation token
+            return nil
+        }
+    }
+
     /// Similar to `ServiceDiscovery.subscribe` however it allows the handling of the listings to be generic and handled by the cluster system.
     /// This function is only intended for internal use by the `DiscoveryShell`.
-    func subscribe(onNext nextResultHandler: @escaping (Result<[Node], Error>) -> Void, onComplete completionHandler: @escaping (CompletionReason) -> Void) -> CancellationToken {
+    func subscribe(onNext nextResultHandler: @escaping (Result<[Node], Error>) -> Void, onComplete completionHandler: @escaping (CompletionReason) -> Void) -> CancellationToken? {
         self._subscribe(nextResultHandler, completionHandler)
+    }
+
+    enum ServiceDiscoveryImplementation {
+        case `static`(Set<Node>)
+        case dynamic(AnyServiceDiscovery)
     }
 }
