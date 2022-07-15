@@ -23,6 +23,8 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
     // MARK: leader decision: .joining -> .up
 
     func test_singleLeader() async throws {
+        throw XCTSkip("!!! Skipping known flaky test \(#function) !!!") // FIXME(distributed): revisit and fix https://github.com/apple/swift-distributed-actors/issues/945
+
         let first = await setUpNode("first") { settings in
             settings.node.port = 7111
             settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 1)
