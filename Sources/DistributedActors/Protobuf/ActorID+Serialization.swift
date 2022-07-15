@@ -12,7 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Codable ActorID
 
@@ -31,7 +30,7 @@ extension ActorID: Codable {
             var metadataContainer = container.nestedContainer(keyedBy: ActorCoding.MetadataKeys.self, forKey: ActorCoding.CodingKeys.metadata)
 
             let keys = ActorMetadataKeys.__instance
-            func shouldPropagate<V: Sendable &  Codable>(_ key: ActorMetadataKey<V>, metadata: ActorMetadata) -> V? {
+            func shouldPropagate<V: Sendable & Codable>(_ key: ActorMetadataKey<V>, metadata: ActorMetadata) -> V? {
                 if metadataSettings == nil || metadataSettings!.propagateMetadata.contains(key.id) {
                     if let value = metadata[key.id] {
                         let value = value as! V // as!-safe, the keys guarantee we only store well typed values in metadata
@@ -40,7 +39,7 @@ extension ActorID: Codable {
                 }
                 return nil
             }
-            
+
             // Handle well known metadata types
             if let value = shouldPropagate(keys.path, metadata: self.metadata) {
                 try metadataContainer.encode(value, forKey: ActorCoding.MetadataKeys.path)
@@ -78,7 +77,7 @@ extension ActorID: Codable {
             if let value = try? metadataContainer.decodeIfPresent(String.self, forKey: ActorCoding.MetadataKeys.wellKnown) {
                 metadata.wellKnown = value
             }
-            
+
             if let context = decoder.actorSerializationContext {
                 let decodeCustomMetadata = context.system.settings.actorMetadata.decodeCustomMetadata
                 try decodeCustomMetadata(metadataContainer, self.metadata)
@@ -92,7 +91,7 @@ extension ActorID: Codable {
 //                    _openExistential(key, do: store) // the `as` here is required, because: inferred result type 'any ActorTagKey.Type' requires explicit coercion due to loss of generic requirements
 //                }
             }
-            
+
             self.context = .init(lifecycle: nil, remoteCallInterceptor: nil, metadata: metadata)
         }
     }
@@ -107,7 +106,7 @@ extension ActorID: _ProtobufRepresentable {
     public func toProto(context: Serialization.Context) throws -> _ProtoActorID {
         let metadataSettings = context.system.settings.actorMetadata
         let encodeCustomMetadata = metadataSettings.encodeCustomMetadata
-        
+
         var proto = _ProtoActorID()
         let node = self.uniqueNode
         proto.node = try node.toProto(context: context)
@@ -117,7 +116,7 @@ extension ActorID: _ProtobufRepresentable {
 
         if !self.metadata.isEmpty {
             let keys = ActorMetadataKeys.__instance
-            func shouldPropagate<V: Sendable &  Codable>(_ key: ActorMetadataKey<V>, metadata: ActorMetadata) -> V? {
+            func shouldPropagate<V: Sendable & Codable>(_ key: ActorMetadataKey<V>, metadata: ActorMetadata) -> V? {
                 if metadataSettings.propagateMetadata.contains(key.id) {
                     if let value = metadata[key.id] {
                         let value = value as! V // as!-safe, the keys guarantee we only store well typed values in metadata
@@ -126,7 +125,7 @@ extension ActorID: _ProtobufRepresentable {
                 }
                 return nil
             }
-            
+
             // Handle well known metadata types
             if let value = shouldPropagate(keys.path, metadata: self.metadata) {
                 let serialized = try context.serialization.serialize(value)
@@ -143,7 +142,7 @@ extension ActorID: _ProtobufRepresentable {
 
             // FIXME: implement custom metadata transporting https://github.com/apple/swift-distributed-actors/issues/987
         }
-        
+
         return proto
     }
 
@@ -153,7 +152,7 @@ extension ActorID: _ProtobufRepresentable {
         let path = try ActorPath(proto.path.segments.map { try ActorPathSegment($0) })
 
         self.init(remote: uniqueNode, path: path, incarnation: ActorIncarnation(proto.incarnation))
-        
+
         // Handle well known metadata
         if !proto.metadata.isEmpty {
             let keys = ActorMetadataKeys.__instance
@@ -174,7 +173,7 @@ extension ActorID: _ProtobufRepresentable {
                     self.metadata.type = .init(mangledName: value)
                 }
             }
-            
+
             if let data = proto.metadata[keys.wellKnown.id] {
                 let manifest = Serialization.Manifest.stringSerializerManifest
                 let serialized = Serialization.Serialized(manifest: manifest, buffer: .data(data))

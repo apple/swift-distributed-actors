@@ -21,9 +21,9 @@ import Distributed
 /// Namespace for ``ActorID`` metadata.
 public struct ActorMetadataKeys {
     public typealias Key = ActorMetadataKey
-    
+
     private init() {}
-    
+
     /// Necessary for key-path based property wrapper APIs.
     internal static var __instance: Self { .init() }
 }
@@ -32,7 +32,6 @@ public struct ActorMetadataKeys {
 // MARK: Pre-defined ActorMetadata keys
 
 extension ActorMetadataKeys {
-    
     internal var path: Key<ActorPath> { "$path" }
 
     /// Actor metadata which impacts how actors with this ID are resolved.
@@ -49,7 +48,7 @@ extension ActorMetadataKeys {
     /// **WARNING:** Do not use this mechanism for "normal" actors, as it makes their addressess "guessable",
     /// which is bad from a security and system independence stand point. Please use the cluster receptionist instead.
     public var wellKnown: Key<String> { "$wellKnown" }
-    
+
     /// The type of the distributed actor identified by this ``ActorID``.
     /// Used only for human radability and debugging purposes, does not participate in equality checks of an actor ID.
     internal var type: Key<ActorTypeTagValue> { "$type" } // TODO: remove Tag from name
@@ -58,15 +57,16 @@ extension ActorMetadataKeys {
         var simpleName: String {
             _typeByName(self.mangledName).map { "\($0)" } ?? self.mangledName
         }
+
         var description: String {
-            simpleName
+            self.simpleName
         }
     }
 }
 
 /// Container of tags a concrete actor identity was tagged with.
 @dynamicMemberLookup
-public final class ActorMetadata: CustomStringConvertible, CustomDebugStringConvertible{
+public final class ActorMetadata: CustomStringConvertible, CustomDebugStringConvertible {
     internal let lock = DispatchSemaphore(value: 1)
 
     // We still might re-think how we represent the storage.
@@ -82,7 +82,6 @@ public final class ActorMetadata: CustomStringConvertible, CustomDebugStringConv
 
         return self._storage.count
     }
-
 
     public var isEmpty: Bool {
         self.lock.wait()

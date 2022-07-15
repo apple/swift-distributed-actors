@@ -23,13 +23,12 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
             "/system/cluster/swim",
             "/system/cluster",
             "/system/cluster/gossip",
+            "/system/receptionist",
         ]
     }
 
     func test_singletonByClusterLeadership_happyPath() async throws {
-        throw XCTSkip("!!! Skipping test \(#function) !!!") // FIXME(distributed): disable test until https://github.com/apple/swift-distributed-actors/pull/1001
-
-        var singletonSettings = ClusterSingletonSettings(name: TheSingleton.name)
+        var singletonSettings = ClusterSingletonSettings()
         singletonSettings.allocationStrategy = .byLeadership
 
         let first = await self.setUpNode("first") { settings in
@@ -49,13 +48,14 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
         }
 
         // Bring up `ClusterSingletonBoss` before setting up cluster (https://github.com/apple/swift-distributed-actors/issues/463)
-        let ref1 = try await first.singleton.host(of: TheSingleton.self, settings: singletonSettings) { actorSystem in
+        let name = "the-one"
+        let ref1 = try await first.singleton.host(name: name, settings: singletonSettings) { actorSystem in
             TheSingleton(greeting: "Hello-1", actorSystem: actorSystem)
         }
-        let ref2 = try await second.singleton.host(of: TheSingleton.self, settings: singletonSettings) { actorSystem in
+        let ref2 = try await second.singleton.host(name: name, settings: singletonSettings) { actorSystem in
             TheSingleton(greeting: "Hello-2", actorSystem: actorSystem)
         }
-        let ref3 = try await third.singleton.host(of: TheSingleton.self, settings: singletonSettings) { actorSystem in
+        let ref3 = try await third.singleton.host(name: name, settings: singletonSettings) { actorSystem in
             TheSingleton(greeting: "Hello-3", actorSystem: actorSystem)
         }
 
@@ -63,7 +63,7 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
         third.cluster.join(node: first.cluster.uniqueNode.node)
 
         // `first` will be the leader (lowest address) and runs the singleton
-        try await self.ensureNodes(.up, on: first, nodes: second.cluster.uniqueNode, third.cluster.uniqueNode)
+        try await self.ensureNodes(.up, on: first, within: .seconds(10), nodes: second.cluster.uniqueNode, third.cluster.uniqueNode)
 
         try await self.assertSingletonRequestReply(first, singleton: ref1, greetingName: "Alice", expectedPrefix: "Hello-1 Alice!")
         try await self.assertSingletonRequestReply(second, singleton: ref2, greetingName: "Bob", expectedPrefix: "Hello-1 Bob!")
@@ -71,7 +71,7 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
     }
 
     func test_remoteCallShouldFailAfterAllocationTimedOut() async throws {
-        var singletonSettings = ClusterSingletonSettings(name: TheSingleton.name)
+        var singletonSettings = ClusterSingletonSettings()
         singletonSettings.allocationStrategy = .byLeadership
         singletonSettings.allocationTimeout = .milliseconds(100)
 
@@ -87,10 +87,11 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
         }
 
         // Bring up `ClusterSingletonBoss` before setting up cluster (https://github.com/apple/swift-distributed-actors/issues/463)
-        _ = try await first.singleton.host(of: TheSingleton.self, settings: singletonSettings) { actorSystem in
+        let name = "the-one"
+        _ = try await first.singleton.host(name: name, settings: singletonSettings) { actorSystem in
             TheSingleton(greeting: "Hello-1", actorSystem: actorSystem)
         }
-        let ref2 = try await second.singleton.host(of: TheSingleton.self, settings: singletonSettings) { actorSystem in
+        let ref2 = try await second.singleton.host(name: name, settings: singletonSettings) { actorSystem in
             TheSingleton(greeting: "Hello-2", actorSystem: actorSystem)
         }
 
@@ -316,7 +317,9 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
             attempts += 1
 
             do {
-                let reply = try await singleton.greet(name: greetingName)
+                let reply = try await RemoteCall.with(timeout: .seconds(1)) {
+                    try await singleton.greet(name: greetingName)
+                }
                 reply.shouldStartWith(prefix: expectedPrefix)
             } catch {
                 throw TestError(
@@ -332,8 +335,6 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
 distributed actor TheSingleton: ClusterSingletonProtocol {
     typealias ActorSystem = ClusterSystem
 
-    static let name = "greeter"
-
     private let greeting: String
 
     init(greeting: String, actorSystem: ActorSystem) {
@@ -342,6 +343,6 @@ distributed actor TheSingleton: ClusterSingletonProtocol {
     }
 
     distributed func greet(name: String) -> String {
-        "\(self.greeting) \(name)! (from node: \(self.id.uniqueNode)"
+        "\(self.greeting) \(name)! (from node: \(self.id.uniqueNode), id: \(self.id.detailedDescription))"
     }
 }

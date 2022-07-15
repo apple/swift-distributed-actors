@@ -27,9 +27,8 @@ extension Wire.Envelope: _ProtobufRepresentable {
 
     public func toProto(context: Serialization.Context) throws -> ProtobufRepresentation {
         var proto = ProtobufRepresentation()
-        
         proto.recipient = try self.recipient.toProto(context: context)
-        
+
         proto.manifest = .init()
         if let hint = self.manifest.hint {
             proto.manifest.hint = hint
