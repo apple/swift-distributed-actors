@@ -239,7 +239,7 @@ public struct ClusterSystemSettings {
 
     /// Installs a global backtrace (on fault) pretty-print facility upon actor system start.
     @available(*, deprecated, message: "Backtrace will not longer be offered by the actor system by default, and has to be depended on by end-users")
-    internal var installSwiftBacktrace: Bool = true
+    public var installSwiftBacktrace: Bool = true
 
     // FIXME: should have more proper config section
     public var threadPoolSize: Int = ProcessInfo.processInfo.activeProcessorCount
