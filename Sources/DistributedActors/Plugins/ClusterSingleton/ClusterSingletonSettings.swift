@@ -12,10 +12,13 @@
 //
 //===----------------------------------------------------------------------===//
 
-/// Settings for a singleton.
+/// Settings for a `ClusterSingleton`.
 public struct ClusterSingletonSettings {
-    /// Unique name for the singleton.
-    public let name: String
+    /// Unique name for the singleton, used to identify the conceptual singleton in the cluster.
+    /// E.g. there is always one "boss" instance in the cluster, regardless where it is incarnated.
+    ///
+    /// The name property is set on a settings object while creating a singleton reference (e.g. using `host` or `proxy`).
+    public internal(set) var name: String = ""
 
     /// Capacity of temporary message buffer in case singleton is unavailable.
     /// If the buffer becomes full, the *oldest* messages would be disposed to make room for the newer messages.
@@ -32,9 +35,7 @@ public struct ClusterSingletonSettings {
     /// we stop stashing calls and throw error.
     public var allocationTimeout: Duration = .seconds(30)
 
-    public init(name: String) {
-        self.name = name
-    }
+    public init() {}
 }
 
 /// Singleton node allocation strategies.

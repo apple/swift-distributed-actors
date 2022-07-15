@@ -150,7 +150,7 @@ public distributed actor OpLogDistributedReceptionist: DistributedReceptionist, 
     //       The fast tick could be 1s or 0.5s for example as a default.
 
     public typealias ActorSystem = ClusterSystem
-    
+
     @ActorID.Metadata(\.wellKnown)
     var wellKnownName: String
 

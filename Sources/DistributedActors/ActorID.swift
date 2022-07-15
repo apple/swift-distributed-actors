@@ -61,7 +61,7 @@ extension ClusterSystem.ActorID {
                     fatalError("Attempted to override ActorID Metadata for key \(key.id):\(key.keyType) which already had value: \(value); with new value: \(String(describing: newValue))")
                 }
                 metadata[key.id] = newValue
-                
+
                 if key.id == ActorMetadataKeys.__instance.wellKnown.id {
                     myself.actorSystem._wellKnownActorReady(myself)
                 }
@@ -152,7 +152,7 @@ extension ClusterSystem {
         }
 
         /// Internal "actor context" which is used as storage for additional cluster actor features, such as watching.
-        public internal(set) var context: DistributedActorContext
+        internal var context: DistributedActorContext
 
         /// Underlying path representation, not attached to a specific Actor instance.
         public var path: ActorPath { // FIXME(distributed): make optional
@@ -275,15 +275,16 @@ extension DistributedActor where ActorSystem == ClusterSystem {
 extension ActorID: Hashable {
     public static func == (lhs: ActorID, rhs: ActorID) -> Bool {
         if let lhsWellKnownName = lhs.metadata.wellKnown,
-           let rhsWellKnownName = rhs.metadata.wellKnown {
+           let rhsWellKnownName = rhs.metadata.wellKnown
+        {
             // If we're comparing "well known" actors, we ignore the concrete incarnation,
             // and compare the well known name instead. This works for example for "$receptionist"
             // and other well known names, that can be resolved using them, without an incarnation number.
-            if lhsWellKnownName == rhsWellKnownName && lhs.uniqueNode == rhs.uniqueNode {
+            if lhsWellKnownName == rhsWellKnownName, lhs.uniqueNode == rhs.uniqueNode {
                 return true
             }
         }
-        
+
         // quickest to check if the incarnations are the same
         // if they happen to be equal, we don't know yet for sure if it's the same actor or not,
         // as incarnation is just a random ID thus we need to compare the node and path as well
@@ -298,9 +299,9 @@ extension ActorID: Hashable {
         }
 //            hasher.combine(self.uniqueNode)
 //        } else {
-            hasher.combine(self.incarnation)
-            hasher.combine(self.uniqueNode)
-            hasher.combine(self.path)
+        hasher.combine(self.incarnation)
+        hasher.combine(self.uniqueNode)
+        hasher.combine(self.path)
 //        }
     }
 }
@@ -312,11 +313,11 @@ extension ActorID: CustomStringConvertible {
             res += "\(self.uniqueNode)"
         }
         res += "\(self.path)"
-        
+
         if !self.metadata.isEmpty {
             res += self.metadata.description
         }
-        
+
         return res
     }
 
@@ -330,11 +331,11 @@ extension ActorID: CustomStringConvertible {
         if self.incarnation != ActorIncarnation.wellKnown {
             res += "#\(self.incarnation.value)"
         }
-        
+
         if !self.metadata.isEmpty {
             res += self.metadata.description
         }
-        
+
         return res
     }
 
@@ -346,11 +347,11 @@ extension ActorID: CustomStringConvertible {
         if self.incarnation != ActorIncarnation.wellKnown {
             res += "#\(self.incarnation.value)"
         }
-        
+
         if !self.metadata.isEmpty {
             res += self.metadata.description
         }
-        
+
         return res
     }
 }

@@ -132,10 +132,10 @@ extension ActorTestKit {
     ) throws -> T {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
         let deadline = ContinuousClock.Instant.fromNow(duration)
-        
+
         var lastError: Error?
         var polledTimes = 0
-        
+
         let res: T? = ActorTestKit.withRepeatableContext {
             while deadline.hasTimeLeft() {
                 do {
@@ -149,7 +149,7 @@ extension ActorTestKit {
             }
             return nil
         }
-        
+
         if let res {
             return res
         }
@@ -195,7 +195,7 @@ extension ActorTestKit {
             }
             return nil
         }
-        
+
         if let res {
             return res
         }
@@ -491,13 +491,14 @@ extension ActorTestKit {
 extension ActorTestKit {
     @TaskLocal
     static var repeatableContextCounter = 0
-    
+
     internal static func withRepeatableContext<T>(body: () async throws -> T) async rethrows -> T {
         let currentRepeatableContextCounter = Self.repeatableContextCounter
         return try await Self.$repeatableContextCounter.withValue(currentRepeatableContextCounter + 1) {
             try await body()
         }
     }
+
     internal static func withRepeatableContext<T>(body: () throws -> T) rethrows -> T {
         let currentRepeatableContextCounter = Self.repeatableContextCounter
         return try Self.$repeatableContextCounter.withValue(currentRepeatableContextCounter + 1) {
@@ -512,7 +513,6 @@ extension ActorTestKit {
     internal static func isInRepeatableContext() -> Bool {
         Self.repeatableContextCounter > 0
     }
-
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------

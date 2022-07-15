@@ -95,17 +95,6 @@ var targets: [PackageDescription.Target] = [
 //            "DistributedActorsTestKit"
 //        ]
 //    ),
-<<<<<<< HEAD
-=======
-
-    .testTarget(
-        name: "ActorSingletonPluginTests",
-        dependencies: [
-            "ActorSingletonPlugin",
-            "DistributedActorsTestKit"
-        ]
-    ),
->>>>>>> progress-ktoso
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Integration Tests - `it_` prefixed

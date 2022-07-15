@@ -127,6 +127,7 @@ public struct ClusterInvocationDecoder: DistributedTargetInvocationDecoder {
                 throw SerializationError.notEnoughArgumentsEncoded(expected: self.argumentIdx + 1, have: invocation.arguments.count)
             }
 
+            argumentData = invocation.arguments[self.argumentIdx]
             self.argumentIdx += 1
         }
 
