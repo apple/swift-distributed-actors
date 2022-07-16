@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import AsyncAlgorithms
 import Distributed
 @testable import DistributedActors
 import DistributedActorsTestKit
@@ -70,6 +71,218 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
         try await self.assertSingletonRequestReply(third, singleton: ref3, greetingName: "Charlie", expectedPrefix: "Hello-1 Charlie!")
     }
 
+    func test_singletonByClusterLeadership_stashMessagesIfNoLeader() async throws {
+        var singletonSettings = ClusterSingletonSettings()
+        singletonSettings.allocationStrategy = .byLeadership
+        singletonSettings.allocationTimeout = .seconds(15)
+
+        let first = await self.setUpNode("first") { settings in
+            settings.node.port = 7111
+            settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
+            settings += ClusterSingletonPlugin()
+        }
+        let second = await self.setUpNode("second") { settings in
+            settings.node.port = 8222
+            settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
+            settings += ClusterSingletonPlugin()
+        }
+        let third = await self.setUpNode("third") { settings in
+            settings.node.port = 9333
+            settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
+            settings += ClusterSingletonPlugin()
+        }
+
+        // Bring up `ClusterSingletonBoss`. No leader yet so singleton is not available.
+        let name = "the-one"
+        let ref1 = try await first.singleton.host(name: name, settings: singletonSettings) { actorSystem in
+            TheSingleton(greeting: "Hello-1", actorSystem: actorSystem)
+        }
+        let ref2 = try await second.singleton.host(name: name, settings: singletonSettings) { actorSystem in
+            TheSingleton(greeting: "Hello-2", actorSystem: actorSystem)
+        }
+        let ref3 = try await third.singleton.host(name: name, settings: singletonSettings) { actorSystem in
+            TheSingleton(greeting: "Hello-3", actorSystem: actorSystem)
+        }
+
+        enum TaskType {
+            case cluster
+            case remoteCall
+        }
+
+        func requestReplyTask(singleton: TheSingleton, greetingName: String, expectedPrefix: String) -> (@Sendable () async throws -> TaskType) {
+            {
+                let reply = try await singleton.greet(name: greetingName)
+                reply.shouldStartWith(prefix: expectedPrefix)
+                return .remoteCall
+            }
+        }
+
+        try await withThrowingTaskGroup(of: TaskType.self) { group in
+            group.addTask {
+                // Set up the cluster
+                first.cluster.join(node: second.cluster.uniqueNode.node)
+                third.cluster.join(node: first.cluster.uniqueNode.node)
+
+                // `first` will be the leader (lowest address) and runs the singleton.
+                //
+                // No need to `ensureNodes` status. A leader should only be selected when all three nodes have joined and are up,
+                // and it's possible for `ensureNodes` to return positive response *after* singleton has been allocated,
+                // which means stashed calls have started getting processed and that would cause the test to fail.
+
+                return TaskType.cluster
+            }
+
+            // Remote calls should be stashed until singleton is allocated
+            group.addTask(operation: requestReplyTask(singleton: ref1, greetingName: "Alice", expectedPrefix: "Hello-1 Alice!"))
+            group.addTask(operation: requestReplyTask(singleton: ref2, greetingName: "Bob", expectedPrefix: "Hello-1 Bob!"))
+            group.addTask(operation: requestReplyTask(singleton: ref3, greetingName: "Charlie", expectedPrefix: "Hello-1 Charlie!"))
+
+            var taskTypes = [TaskType]()
+            for try await taskType in group {
+                taskTypes.append(taskType)
+            }
+
+            guard taskTypes.first == .cluster else {
+                throw TestError("Received reply to remote call reply before singleton is allocated")
+            }
+        }
+    }
+
+    func test_singletonByClusterLeadership_withLeaderChange() async throws {
+        var singletonSettings = ClusterSingletonSettings()
+        singletonSettings.allocationStrategy = .byLeadership
+        singletonSettings.allocationTimeout = .seconds(15)
+
+        let first = await self.setUpNode("first") { settings in
+            settings.node.port = 7111
+            settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
+            settings += ClusterSingletonPlugin()
+        }
+        let second = await self.setUpNode("second") { settings in
+            settings.node.port = 8222
+            settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
+            settings += ClusterSingletonPlugin()
+        }
+        let third = await self.setUpNode("third") { settings in
+            settings.node.port = 9333
+            settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
+            settings += ClusterSingletonPlugin()
+        }
+        let fourth = await self.setUpNode("fourth") { settings in
+            settings.node.port = 7444
+            settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
+            settings += ClusterSingletonPlugin()
+        }
+
+        // Bring up `ClusterSingletonBoss`
+        let name = "the-one"
+        let ref1 = try await first.singleton.host(name: name, settings: singletonSettings) { actorSystem in
+            TheSingleton(greeting: "Hello-1", actorSystem: actorSystem)
+        }
+        let ref2 = try await second.singleton.host(name: name, settings: singletonSettings) { actorSystem in
+            TheSingleton(greeting: "Hello-2", actorSystem: actorSystem)
+        }
+        let ref3 = try await third.singleton.host(name: name, settings: singletonSettings) { actorSystem in
+            TheSingleton(greeting: "Hello-3", actorSystem: actorSystem)
+        }
+        _ = try await fourth.singleton.host(name: name, settings: singletonSettings) { actorSystem in
+            TheSingleton(greeting: "Hello-4", actorSystem: actorSystem)
+        }
+
+        first.cluster.join(node: second.cluster.uniqueNode.node)
+        third.cluster.join(node: first.cluster.uniqueNode.node)
+
+        // `first` will be the leader (lowest address) and runs the singleton
+        try await self.ensureNodes(.up, on: first, within: .seconds(10), nodes: second.cluster.uniqueNode, third.cluster.uniqueNode)
+        pinfo("Nodes up: \([first.cluster.uniqueNode, second.cluster.uniqueNode, third.cluster.uniqueNode])")
+
+        try await self.assertSingletonRequestReply(first, singleton: ref1, greetingName: "Alice", expectedPrefix: "Hello-1 Alice!")
+        try await self.assertSingletonRequestReply(second, singleton: ref2, greetingName: "Bob", expectedPrefix: "Hello-1 Bob!")
+        try await self.assertSingletonRequestReply(third, singleton: ref3, greetingName: "Charlie", expectedPrefix: "Hello-1 Charlie!")
+        pinfo("All three nodes communicated with singleton")
+
+        let firstNode = first.cluster.uniqueNode
+        first.cluster.leave()
+
+        // Make sure that `second` and `third` see `first` as down and become leader-less
+        try await self.assertMemberStatus(on: second, node: firstNode, is: .down, within: .seconds(10))
+        try await self.assertMemberStatus(on: third, node: firstNode, is: .down, within: .seconds(10))
+
+        try self.testKit(second).eventually(within: .seconds(10)) {
+            try self.assertLeaderNode(on: second, is: nil)
+            try self.assertLeaderNode(on: third, is: nil)
+        }
+        pinfo("Node \(firstNode) left cluster...")
+
+        // `fourth` will become the new leader and singleton
+        pinfo("Node \(fourth.cluster.uniqueNode) joining cluster...")
+        fourth.cluster.join(node: second.cluster.uniqueNode.node)
+        let start = ContinuousClock.Instant.now
+
+        // No leader so singleton is not available, messages sent should be stashed
+        func requestReplyTask(singleton: TheSingleton, greetingName: String) -> Task<[String], Error> {
+            Task {
+                try await withThrowingTaskGroup(of: String.self) { group in
+                    var attempt = 0
+                    for await _ in AsyncTimerSequence.repeating(every: .seconds(1), clock: .continuous) {
+                        attempt += 1
+                        let message = "\(greetingName) (\(attempt))"
+                        group.addTask {
+                            pnote("  Sending: \(message) -> \(singleton) (it may be terminated/not-re-pointed yet)")
+                            return try await singleton.greet(name: message)
+                        }
+                    }
+
+                    var replies = [String]()
+                    for try await reply in group {
+                        replies.append(reply)
+                    }
+                    return replies
+                }
+            }
+        }
+
+        let ref2Task = requestReplyTask(singleton: ref2, greetingName: "Bob")
+        let ref3Task = requestReplyTask(singleton: ref2, greetingName: "Charlie")
+
+        try await self.ensureNodes(.up, on: second, within: .seconds(10), nodes: third.cluster.uniqueNode, fourth.cluster.uniqueNode)
+        pinfo("Fourth node joined, will become leader; Members now: \([fourth.cluster.uniqueNode, second.cluster.uniqueNode, third.cluster.uniqueNode])")
+
+        ref2Task.cancel()
+        ref3Task.cancel()
+
+        let got2 = try await ref2Task.value
+        pinfo("Received replies (by \(ref2)) from singleton: \(got2)")
+
+        let got2First = got2.first
+        got2First.shouldNotBeNil()
+        got2First!.shouldStartWith(prefix: "Hello-4 Bob")
+
+        if got2First!.starts(with: "Hello-4 Bob (1)!") {
+            pinfo("  No messages were lost! Total \(got2.count) deliveries.")
+        } else {
+            pinfo("  Initial messages may have been lost, delivered message: \(String(describing: got2First))")
+        }
+
+        let got3 = try await ref3Task.value
+        pinfo("Received replies (by \(ref3)) from singleton: \(got3)")
+
+        let got3First = got3.first
+        got3First.shouldNotBeNil()
+        got3First!.shouldStartWith(prefix: "Hello-4 Charlie")
+
+        if got3First!.starts(with: "Hello-4 Charlie (1)!") {
+            pinfo("  No messages were lost! Total \(got3.count) deliveries.")
+        } else {
+            pinfo("  Initial messages may have been lost, delivered message: \(String(describing: got3First))")
+        }
+
+        let stop = ContinuousClock.Instant.now
+        pinfo("Singleton re-pointing took: \((stop - start).prettyDescription)")
+
+        pinfo("Nodes communicated successfully with singleton on [fourth]")
+    }
+
     func test_remoteCallShouldFailAfterAllocationTimedOut() async throws {
         var singletonSettings = ClusterSingletonSettings()
         singletonSettings.allocationStrategy = .byLeadership
@@ -122,191 +335,6 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
             throw self.testKit(second).fail("Expected ClusterSingletonError.allocationTimeout, got \(error)")
         }
     }
-
-    /*
-
-         func test_singletonByClusterLeadership_stashMessagesIfNoLeader() throws {
-             var singletonSettings = ActorSingletonSettings(name: GreeterSingleton.name)
-             singletonSettings.allocationStrategy = .byLeadership
-
-             let first = self.setUpNode("first") { settings in
-                 settings += ActorSingletonPlugin()
-
-                 settings.node.port = 7111
-                 settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
-                 settings.serialization.register(GreeterSingleton.Message.self)
-             }
-             let second = self.setUpNode("second") { settings in
-                 settings += ActorSingletonPlugin()
-
-                 settings.node.port = 8222
-                 settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
-                 settings.serialization.register(GreeterSingleton.Message.self)
-             }
-             let third = self.setUpNode("third") { settings in
-                 settings += ActorSingletonPlugin()
-
-                 settings.node.port = 9333
-                 settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
-                 settings.serialization.register(GreeterSingleton.Message.self)
-             }
-
-             // No leader so singleton is not available, messages sent should be stashed
-             let replyProbe1 = self.testKit(first).makeTestProbe(expecting: String.self)
-             let ref1 = try first.singleton.host(GreeterSingleton.Message.self, settings: singletonSettings, GreeterSingleton("Hello-1").behavior)
-             ref1.tell(.greet(name: "Alice-1", replyTo: replyProbe1.ref))
-
-             let replyProbe2 = self.testKit(second).makeTestProbe(expecting: String.self)
-             let ref2 = try second.singleton.host(GreeterSingleton.Message.self, settings: singletonSettings, GreeterSingleton("Hello-2").behavior)
-             ref2.tell(.greet(name: "Bob-2", replyTo: replyProbe2.ref))
-
-             let replyProbe3 = self.testKit(third).makeTestProbe(expecting: String.self)
-             let ref3 = try third.singleton.host(GreeterSingleton.Message.self, settings: singletonSettings, GreeterSingleton("Hello-3").behavior)
-             ref3.tell(.greet(name: "Charlie-3", replyTo: replyProbe3.ref))
-
-             try replyProbe1.expectNoMessage(for: .milliseconds(200))
-             try replyProbe2.expectNoMessage(for: .milliseconds(200))
-             try replyProbe3.expectNoMessage(for: .milliseconds(200))
-
-             first.cluster.join(node: second.cluster.uniqueNode.node)
-             third.cluster.join(node: second.cluster.uniqueNode.node)
-
-             // `first` becomes the leader (lowest address) and runs the singleton
-             try self.ensureNodes(.up, nodes: first.cluster.uniqueNode, second.cluster.uniqueNode, third.cluster.uniqueNode)
-
-             try replyProbe1.expectMessage("Hello-1 Alice-1!")
-             try replyProbe2.expectMessage("Hello-1 Bob-2!")
-             try replyProbe3.expectMessage("Hello-1 Charlie-3!")
-         }
-
-         func test_singletonByClusterLeadership_withLeaderChange() throws {
-             var singletonSettings = ActorSingletonSettings(name: GreeterSingleton.name)
-             singletonSettings.allocationStrategy = .byLeadership
-
-             let first = self.setUpNode("first") { settings in
-                 settings += ActorSingletonPlugin()
-
-                 settings.node.port = 7111
-                 settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
-                 settings.serialization.register(GreeterSingleton.Message.self)
-             }
-             let second = self.setUpNode("second") { settings in
-                 settings += ActorSingletonPlugin()
-
-                 settings.node.port = 8222
-                 settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
-                 settings.serialization.register(GreeterSingleton.Message.self)
-             }
-             let third = self.setUpNode("third") { settings in
-                 settings += ActorSingletonPlugin()
-
-                 settings.node.port = 9333
-                 settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
-                 settings.serialization.register(GreeterSingleton.Message.self)
-             }
-             let fourth = self.setUpNode("fourth") { settings in
-                 settings += ActorSingletonPlugin()
-
-                 settings.node.port = 7444
-                 settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
-                 settings.serialization.register(GreeterSingleton.Message.self)
-             }
-
-             // Bring up `ActorSingletonProxy` before setting up cluster (https://github.com/apple/swift-distributed-actors/issues/463)
-             let ref1 = try first.singleton.host(GreeterSingleton.Message.self, settings: singletonSettings, GreeterSingleton("Hello-1").behavior)
-             let ref2 = try second.singleton.host(GreeterSingleton.Message.self, settings: singletonSettings, GreeterSingleton("Hello-2").behavior)
-             let ref3 = try third.singleton.host(GreeterSingleton.Message.self, settings: singletonSettings, GreeterSingleton("Hello-3").behavior)
-             _ = try fourth.singleton.host(GreeterSingleton.Message.self, settings: singletonSettings, GreeterSingleton("Hello-4").behavior)
-
-             first.cluster.join(node: second.cluster.uniqueNode.node)
-             third.cluster.join(node: second.cluster.uniqueNode.node)
-
-             try self.ensureNodes(.up, nodes: first.cluster.uniqueNode, second.cluster.uniqueNode, third.cluster.uniqueNode)
-             pinfo("Nodes up: \([first.cluster.uniqueNode, second.cluster.uniqueNode, third.cluster.uniqueNode])")
-
-             let replyProbe2 = self.testKit(second).makeTestProbe(expecting: String.self)
-             let replyProbe3 = self.testKit(third).makeTestProbe(expecting: String.self)
-
-             // `first` has the lowest address so it should be the leader and singleton
-             try self.assertSingletonRequestReply(first, singletonRef: ref1, message: "Alice", expect: "Hello-1 Alice!")
-             try self.assertSingletonRequestReply(second, singletonRef: ref2, message: "Bob", expect: "Hello-1 Bob!")
-             try self.assertSingletonRequestReply(third, singletonRef: ref3, message: "Charlie", expect: "Hello-1 Charlie!")
-             pinfo("All three nodes communicated with singleton")
-
-             let firstNode = first.cluster.uniqueNode
-             first.cluster.leave()
-
-             // Make sure that `second` and `third` see `first` as down and become leader-less
-             try self.testKit(second).eventually(within: .seconds(10)) {
-                 try self.assertMemberStatus(on: second, node: firstNode, is: .down)
-                 try self.assertLeaderNode(on: second, is: nil)
-             }
-             try self.testKit(third).eventually(within: .seconds(10)) {
-                 try self.assertMemberStatus(on: third, node: firstNode, is: .down)
-                 try self.assertLeaderNode(on: third, is: nil)
-             }
-             pinfo("Node \(first.cluster.uniqueNode) left cluster...")
-
-             // `fourth` will become the new leader and singleton
-             pinfo("Node \(fourth.cluster.uniqueNode) joining cluster...")
-             fourth.cluster.join(node: second.cluster.uniqueNode.node)
-             let start = ContinuousClock.Instant.now()
-
-             // No leader so singleton is not available, messages sent should be stashed
-             _ = try second._spawn("teller", of: String.self, .setup { context in
-                 context.timers.startPeriodic(key: "periodic-try-send", message: "tick", interval: .seconds(1))
-                 var attempt = 0
-
-                 return .receiveMessage { _ in
-                     attempt += 1
-                     // No leader so singleton is not available, messages sent should be stashed
-                     let m2 = "Bob-2 (\(attempt))"
-                     pnote("  Sending: \(m2) -> \(ref2) (it may be terminated/not-re-pointed yet)")
-                     ref2.tell(.greet(name: m2, replyTo: replyProbe2.ref))
-
-                     let m3 = "Charlie-3 (\(attempt))"
-                     pnote("  Sending: \(m3) -> \(ref3) (it may be terminated/not-re-pointed yet)")
-                     ref3.tell(.greet(name: m3, replyTo: replyProbe3.ref))
-                     return .same
-                 }
-             })
-
-             try self.ensureNodes(.up, on: second, nodes: second.cluster.uniqueNode, third.cluster.uniqueNode, fourth.cluster.uniqueNode)
-             pinfo("Fourth node joined, will become leader; Members now: \([fourth.cluster.uniqueNode, second.cluster.uniqueNode, third.cluster.uniqueNode])")
-
-             // The stashed messages get routed to new singleton running on `fourth`
-             let got2 = try replyProbe2.expectMessage()
-             got2.shouldStartWith(prefix: "Hello-4 Bob-2")
-             pinfo("Received reply (by \(replyProbe2.id.path)) from singleton: \(got2)")
-             if got2 == "Hello-4 Bob-2 (1)!" {
-                 var counter = 0
-                 while try replyProbe2.maybeExpectMessage(within: .milliseconds(100)) != nil {
-                     counter += 1
-                 }
-                 pinfo("  No messages were lost! Including \(counter) more, following the previous delivery.")
-             } else {
-                 pinfo("  Initial messages may have been lost, delivered message: \(got2)")
-             }
-
-             let got3 = try replyProbe3.expectMessage()
-             got3.shouldStartWith(prefix: "Hello-4 Charlie-3")
-             pinfo("Received reply (by \(replyProbe3.id.path)) from singleton: \(got3)")
-             if got3 == "Hello-4 Charlie-3 (1)!" {
-                 var counter = 0
-                 while try replyProbe3.maybeExpectMessage(within: .milliseconds(100)) != nil {
-                     counter += 1
-                 }
-                 pinfo("  No messages were lost! Including \(counter) more, following the previous delivery.")
-             } else {
-                 pinfo("  Initial messages may have been lost, delivered message: \(got3)")
-             }
-
-             let stop = ContinuousClock.Instant.now()
-             pinfo("Singleton re-pointing took: \((stop - start).prettyDescription)")
-
-             pinfo("Nodes communicated successfully with singleton on [fourth]")
-         }
-     */
 
     /// Since during re-balancing it may happen that a message gets lost, we send messages a few times and only if none "got through" it would be a serious error.
     private func assertSingletonRequestReply(_ system: ClusterSystem, singleton: TheSingleton, greetingName: String, expectedPrefix: String) async throws {
