@@ -86,10 +86,10 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
     public init(selector: Selector, actorSystem: ActorSystem) async throws {
         try await self.init(settings: .init(selector: selector), actorSystem: actorSystem)
     }
-    
+
     public init(settings: WorkerPoolSettings<Worker>, actorSystem system: ActorSystem) async throws {
         try settings.validate()
-        
+
         self.actorSystem = system
         self.whenAllWorkersTerminated = settings.whenAllWorkersTerminated
         self.logLevel = settings.logLevel

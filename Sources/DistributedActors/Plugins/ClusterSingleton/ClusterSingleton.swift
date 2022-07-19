@@ -83,7 +83,7 @@ internal distributed actor ClusterSingletonBoss<Act: ClusterSingletonProtocol>: 
         self.singletonFactory = singletonFactory
         self.buffer = RemoteCallBuffer(capacity: settings.bufferCapacity)
 
-        self.wellKnownName = "$singleton-boss-\(settings.name)"
+        self.wellKnownName = "$singletonBoss-\(settings.name)"
 
         if system.settings.enabled {
             self.clusterEventsSubscribeTask = Task {

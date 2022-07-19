@@ -340,7 +340,7 @@ private struct GreeterRemoteCallInterceptor: RemoteCallInterceptor {
         }
 
         _ = try await withCheckedThrowingContinuation { (cc: CheckedContinuation<Any, Error>) in
-            Task { [invocation] in 
+            Task { [invocation] in
                 var directDecoder = ClusterInvocationDecoder(system: actor.actorSystem as! ClusterSystem, invocation: invocation)
                 let directReturnHandler = ClusterInvocationResultHandler(directReturnContinuation: cc)
 

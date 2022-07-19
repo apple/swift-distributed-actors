@@ -13,10 +13,10 @@
 //===----------------------------------------------------------------------===//
 
 import Distributed
+import Foundation
 import class NIO.EventLoopFuture
 import struct NIO.EventLoopPromise
 import struct NIO.Scheduled
-import Foundation
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Receives Questions

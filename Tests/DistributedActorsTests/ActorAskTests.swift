@@ -179,10 +179,9 @@ final class ActorAskTests: ClusterSystemXCTestCase {
             }
         )
 
-        var msg = "timedOut(DistributedActors.TimeoutError("
-        msg += "message: \"AskResponse<String> timed out after 100ms\", "
-        msg += "timeout: 0.1 seconds))"
-        try p.expectMessage(msg)
+        let message = try p.expectMessage()
+        message.shouldStartWith(prefix: "timedOut(")
+        message.shouldContain("DistributedActors.TimeoutError(message: \"AskResponse<String> timed out after 100ms\", timeout: 0.1 seconds))")
     }
 
     func test_ask_onDeadLetters_shouldPutMessageIntoDeadLetters() async throws {

@@ -325,7 +325,9 @@ extension ActorID {
         case .actorRefs:
             return ActorPath.actorRefReceptionist.makeRemoteID(on: node, incarnation: .wellKnown)
         case .distributedActors:
-            return ActorPath.distributedActorReceptionist.makeRemoteID(on: node, incarnation: .wellKnown)
+            let id = ActorPath.distributedActorReceptionist.makeRemoteID(on: node, incarnation: .wellKnown)
+            id.metadata.wellKnown = ActorPath.distributedActorReceptionist.name
+            return id
         }
     }
 }

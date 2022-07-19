@@ -55,7 +55,7 @@ public actor ClusterSingletonPlugin {
     ) async throws -> Act where Act: ClusterSingletonProtocol {
         var settings = settings
         settings.name = name
-        return try await self.proxy(type, settings: settings, system: self.actorSystem, makeInstance: nil)
+        return try await self._get(type, settings: settings, system: self.actorSystem, makeInstance: nil)
     }
 
     /// Configures the singleton plugin to host instances of this actor.
@@ -67,17 +67,21 @@ public actor ClusterSingletonPlugin {
     ) async throws -> Act where Act: ClusterSingletonProtocol {
         var settings = settings
         settings.name = name
-        return try await self.proxy(type, settings: settings, system: self.actorSystem, makeInstance: factory)
+        return try await self._get(type, settings: settings, system: self.actorSystem, makeInstance: factory)
     }
 
-    internal func proxy<Act>(
+    internal func _get<Act>(
         _ type: Act.Type,
         settings: ClusterSingletonSettings,
         system: ClusterSystem,
         makeInstance factory: ((ClusterSystem) async throws -> Act)?
     ) async throws -> Act where Act: ClusterSingletonProtocol {
-        let key = settings.name.isEmpty ? "\(type)" : settings.name
-        let known = self.singletons[key]
+        let singletonName = settings.name
+        guard !singletonName.isEmpty else {
+            fatalError("ClusterSingleton \(Act.self) must have specified unique name!")
+        }
+
+        let known = self.singletons[singletonName]
         if let existingID = known?.proxyID {
             return try Act.resolve(id: existingID, using: system)
         }
@@ -91,7 +95,7 @@ public actor ClusterSingletonPlugin {
         let interceptor = ClusterSingletonRemoteCallInterceptor(system: system, singletonBoss: boss)
         let proxied = try system.interceptCalls(to: type, metadata: ActorMetadata(), interceptor: interceptor)
 
-        self.singletons[key] = (proxied.id, boss)
+        self.singletons[singletonName] = (proxied.id, boss)
         return proxied
     }
 }

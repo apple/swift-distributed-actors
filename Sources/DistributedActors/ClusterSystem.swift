@@ -914,10 +914,7 @@ extension ClusterSystem {
         }
 
         guard let managed = managed else {
-            self.log.trace("Resolved as remote reference", metadata: [
-                "actor/id": "\(id)",
-            ])
-            return nil
+            throw DeadLetterError(recipient: id)
         }
 
         guard let resolved = managed as? Act else {

@@ -25,7 +25,7 @@ final class ClusterSingletonPluginTests: ClusterSystemXCTestCase {
         }
 
         let name = "the-one"
-        
+
         // singleton.host
         let ref = try await test.singleton.host(name: name) { actorSystem in
             TheSingleton(greeting: "Hello", actorSystem: actorSystem)

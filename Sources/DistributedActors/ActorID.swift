@@ -274,15 +274,25 @@ extension DistributedActor where ActorSystem == ClusterSystem {
 
 extension ActorID: Hashable {
     public static func == (lhs: ActorID, rhs: ActorID) -> Bool {
-        if let lhsWellKnownName = lhs.metadata.wellKnown,
-           let rhsWellKnownName = rhs.metadata.wellKnown
-        {
-            // If we're comparing "well known" actors, we ignore the concrete incarnation,
-            // and compare the well known name instead. This works for example for "$receptionist"
-            // and other well known names, that can be resolved using them, without an incarnation number.
-            if lhsWellKnownName == rhsWellKnownName, lhs.uniqueNode == rhs.uniqueNode {
-                return true
+        // Check the metadata based well-known identity names.
+        //
+        // The legacy "well known path" is checked using the normal path below,
+        // since it is implemented as incarnation == 0, and an unique path.
+        if let lhsWellKnownName = lhs.metadata.wellKnown {
+            if let rhsWellKnownName = rhs.metadata.wellKnown {
+                // If we're comparing "well known" actors, we ignore the concrete incarnation,
+                // and compare the well known name instead. This works for example for "$receptionist"
+                // and other well known names, that can be resolved using them, without an incarnation number.
+                if lhsWellKnownName == rhsWellKnownName, lhs.uniqueNode == rhs.uniqueNode {
+                    return true
+                }
+            } else {
+                // 'lhs' WAS well known, but 'rhs' was not
+                return false
             }
+        } else if rhs.metadata.wellKnown != nil {
+            // 'lhs' was NOT well known, but 'rhs' was:
+            return false
         }
 
         // quickest to check if the incarnations are the same
@@ -296,13 +306,11 @@ extension ActorID: Hashable {
     public func hash(into hasher: inout Hasher) {
         if let wellKnownName = self.metadata.wellKnown {
             hasher.combine(wellKnownName)
+        } else {
+            hasher.combine(self.incarnation)
         }
-//            hasher.combine(self.uniqueNode)
-//        } else {
-        hasher.combine(self.incarnation)
         hasher.combine(self.uniqueNode)
         hasher.combine(self.path)
-//        }
     }
 }
 
@@ -312,9 +320,19 @@ extension ActorID: CustomStringConvertible {
         if self._isRemote {
             res += "\(self.uniqueNode)"
         }
-        res += "\(self.path)"
+        if let path = self.metadata.path {
+            // this is ready for making paths optional already -- and behavior removals
+            res += "\(path)"
+        } else {
+            res += "\(self.incarnation)"
+        }
 
         if !self.metadata.isEmpty {
+            // TODO: we special case the "just a path" metadata to not break existing ActorRef tests
+            if self.metadata.count == 1, self.metadata.path != nil {
+                return res
+            }
+
             res += self.metadata.description
         }
 
@@ -339,14 +357,12 @@ extension ActorID: CustomStringConvertible {
         return res
     }
 
+    /// Prints all information contained in the ID, including `incarnation` and all `metadata`.
     public var fullDescription: String {
         var res = ""
         res += "\(reflecting: self.uniqueNode)"
         res += "\(self.path)"
-
-        if self.incarnation != ActorIncarnation.wellKnown {
-            res += "#\(self.incarnation.value)"
-        }
+        res += "#\(self.incarnation.value)"
 
         if !self.metadata.isEmpty {
             res += self.metadata.description
@@ -739,8 +755,8 @@ public struct ActorIncarnation: Equatable, Hashable, ExpressibleByIntegerLiteral
 extension ActorIncarnation {
     /// To be used ONLY by special actors whose existence is wellKnown and identity never-changing.
     /// Examples: `/system/deadLetters` or `/system/cluster`.
-    @available(*, deprecated, message: "Useful only with behavior actors, to be removed entirely")
-    public static let wellKnown: ActorIncarnation = .init(0)
+    @available(*, deprecated, message: "Useful only with behavior actors, will be removed entirely")
+    internal static let wellKnown: ActorIncarnation = .init(0)
 
     public static func random() -> ActorIncarnation {
         ActorIncarnation(UInt32.random(in: UInt32(1) ... UInt32.max))

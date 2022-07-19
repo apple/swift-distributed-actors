@@ -94,6 +94,7 @@ public final class ActorMetadata: CustomStringConvertible, CustomDebugStringConv
         get {
             self.lock.wait()
             defer { lock.signal() }
+
             let key = ActorMetadataKeys.__instance[keyPath: dynamicMember]
             let id = key.id
             guard let v = self._storage[id] else {
@@ -104,6 +105,7 @@ public final class ActorMetadata: CustomStringConvertible, CustomDebugStringConv
         set {
             self.lock.wait()
             defer { lock.signal() }
+
             let key = ActorMetadataKeys.__instance[keyPath: dynamicMember]
             let id = key.id
             if let existing = self._storage[id] {

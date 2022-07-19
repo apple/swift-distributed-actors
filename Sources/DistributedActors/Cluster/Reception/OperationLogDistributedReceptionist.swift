@@ -233,7 +233,6 @@ public distributed actor OpLogDistributedReceptionist: DistributedReceptionist, 
 
     static var props: _Props {
         var ps = _Props()
-        // ps._knownActorName = ActorPath.distributedActorReceptionist.name
         ps._systemActor = true
         ps._wellKnown = true
         // _knownActorName name is set with @ActorID.Metadata
@@ -254,6 +253,8 @@ public distributed actor OpLogDistributedReceptionist: DistributedReceptionist, 
         self.appliedSequenceNrs = .empty
 
         // === listen to cluster events ------------------
+        self.wellKnownName = ActorPath.distributedActorReceptionist.name
+
         self.eventsListeningTask = Task.detached {
             try await self.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
                 for try await event in system.cluster.events {
@@ -261,7 +262,6 @@ public distributed actor OpLogDistributedReceptionist: DistributedReceptionist, 
                 }
             }
         }
-        self.wellKnownName = ActorPath.distributedActorReceptionist.name
 
         // === timers ------------------
         // periodically gossip to other receptionists with the last seqNr we've seen,
@@ -888,8 +888,8 @@ extension OpLogDistributedReceptionist {
 
     func pruneClusterMember(removedNode: UniqueNode) {
         self.log.trace("Pruning cluster member: \(removedNode)")
-        let terminatedReceptionistAddress = ActorID._receptionist(on: removedNode, for: .distributedActors)
-        let equalityHackPeer = try! Self.resolve(id: terminatedReceptionistAddress, using: actorSystem) // try!-safe because we know the address is correct and remote
+        let terminatedReceptionistID = ActorID._receptionist(on: removedNode, for: .distributedActors)
+        let equalityHackPeer = try! Self.resolve(id: terminatedReceptionistID, using: actorSystem) // try!-safe because we know the address is correct and remote
 
         guard self.peerReceptionistReplayers.removeValue(forKey: equalityHackPeer) != nil else {
             // we already removed it, so no need to keep scanning for it.
@@ -901,8 +901,8 @@ extension OpLogDistributedReceptionist {
 
         // clear observations; we only get them directly from the origin node, so since it has been downed
         // we will never receive more observations from it.
-        _ = self.observedSequenceNrs.pruneReplica(.actorID(terminatedReceptionistAddress))
-        _ = self.appliedSequenceNrs.pruneReplica(.actorID(terminatedReceptionistAddress))
+        _ = self.observedSequenceNrs.pruneReplica(.actorID(terminatedReceptionistID))
+        _ = self.appliedSequenceNrs.pruneReplica(.actorID(terminatedReceptionistID))
 
         // clear state any registrations still lingering about the now-known-to-be-down node
         let pruned = self.storage.pruneNode(removedNode)

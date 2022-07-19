@@ -23,7 +23,7 @@ extension ActorMetadataKeys {
 }
 
 public protocol ExampleClusterSingletonProtocol: DistributedActor {
-    var singletonID: String { get }
+    var exampleSingletonID: String { get }
 
     /// Must be implemented by providing a metadata property wrapper.
     // var _singletonID: ActorID.Metadata<String, ActorMetadata.ExampleClusterSingletonIDTag.Key> { get } // FIXME: property wrapper bug? Property '_singletonID' must be as accessible as its enclosing type because it matches a requirement in protocol 'ClusterSingletonProtocol'
@@ -36,13 +36,13 @@ distributed actor ThereCanBeOnlyOneClusterSingleton: ExampleClusterSingletonProt
     public var wellKnownName: String
 
     @ActorID.Metadata(\.exampleClusterSingletonID)
-    public var singletonID: String
+    public var exampleSingletonID: String
     // TODO(swift): impossible to assign initial value here, as _enclosingInstance is not available yet "the-one"
 
     init(actorSystem: ActorSystem) async {
         self.actorSystem = actorSystem
-        self.singletonID = "the-boss"
-        self.wellKnownName = "boss-singleton"
+        self.exampleSingletonID = "singer-1234"
+        self.wellKnownName = "singer-1234"
     }
 }
 
@@ -88,7 +88,7 @@ final class ActorIDMetadataTests: ClusteredActorSystemsXCTestCase {
         let system = await setUpNode("first")
         let singleton = await ThereCanBeOnlyOneClusterSingleton(actorSystem: system)
 
-        singleton.metadata.exampleClusterSingletonID.shouldEqual("the-boss")
+        singleton.metadata.exampleClusterSingletonID.shouldEqual("singer-1234")
     }
 
     func test_metadata_wellKnown_coding() async throws {
@@ -97,10 +97,10 @@ final class ActorIDMetadataTests: ClusteredActorSystemsXCTestCase {
 
         let encoded = try JSONEncoder().encode(singleton)
         let encodedString = String(data: encoded, encoding: .utf8)!
-        encodedString.shouldContain("\"$wellKnown\":\"boss-singleton\"")
+        encodedString.shouldContain("\"$wellKnown\":\"singer-1234\"")
 
         let back = try! JSONDecoder().decode(ActorID.self, from: encoded)
-        back.metadata.wellKnown.shouldEqual("boss-singleton")
+        back.metadata.wellKnown.shouldEqual("singer-1234")
     }
 
     func test_metadata_wellKnown_proto() async throws {
@@ -109,7 +109,6 @@ final class ActorIDMetadataTests: ClusteredActorSystemsXCTestCase {
 
         let context = Serialization.Context(log: system.log, system: system, allocator: .init())
         let encoded = try singleton.id.toProto(context: context)
-        print("ENCODED: \(encoded)")
 
         let back = try ActorID(fromProto: encoded, context: context)
         back.metadata.wellKnown.shouldEqual(singleton.id.metadata.wellKnown)
@@ -120,11 +119,11 @@ final class ActorIDMetadataTests: ClusteredActorSystemsXCTestCase {
 
         let singleton = await ThereCanBeOnlyOneClusterSingleton(actorSystem: system)
 
-        let madeUpID = ActorID(local: system.cluster.uniqueNode, path: ._user, incarnation: .wellKnown)
+        let madeUpID = ActorID(local: system.cluster.uniqueNode, path: singleton.id.path, incarnation: .wellKnown)
         madeUpID.metadata.wellKnown = singleton.id.metadata.wellKnown!
 
-        // paths don't have to match at all, they'll be optional and a well known one would not have paths anyway
         singleton.id.shouldEqual(madeUpID)
+        singleton.id.hashValue.shouldEqual(madeUpID.hashValue)
 
         let set: Set<ActorID> = [singleton.id, madeUpID]
         set.count.shouldEqual(1)
@@ -136,9 +135,9 @@ final class ActorIDMetadataTests: ClusteredActorSystemsXCTestCase {
 
         let encoded = try JSONEncoder().encode(singleton)
         let encodedString = String(data: encoded, encoding: .utf8)!
-        encodedString.shouldContain("\"$wellKnown\":\"boss-singleton\"")
+        encodedString.shouldContain("\"$wellKnown\":\"singer-1234\"")
 
         let back = try! JSONDecoder().decode(ActorID.self, from: encoded)
-        back.metadata.wellKnown.shouldEqual("boss-singleton")
+        back.metadata.wellKnown.shouldEqual("singer-1234")
     }
 }
