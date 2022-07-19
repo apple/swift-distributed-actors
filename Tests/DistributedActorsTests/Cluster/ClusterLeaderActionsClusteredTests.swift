@@ -35,7 +35,9 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
         _ = try first._spawn(
             "selfishSingleLeader",
             _Behavior<Cluster.Event>.setup { context in
-                context.system.cluster.events.subscribe(context.myself)
+                Task {
+                    await context.system.cluster.events.subscribe(context.myself)
+                }
 
                 return .receiveMessage { event in
                     switch event {
@@ -152,9 +154,9 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
         }
 
         let p1 = self.testKit(first).makeTestProbe(expecting: Cluster.Event.self)
-        first.cluster.events.subscribe(p1.ref)
+        await first.cluster.events.subscribe(p1.ref)
         let p2 = self.testKit(second).makeTestProbe(expecting: Cluster.Event.self)
-        second.cluster.events.subscribe(p2.ref)
+        await second.cluster.events.subscribe(p2.ref)
 
         first.cluster.join(node: second.cluster.uniqueNode.node)
 
@@ -219,21 +221,21 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
             settings.downingStrategy = .timeout(.init(downUnreachableMembersAfter: .milliseconds(300)))
         }
         let p1 = testKit(first).makeTestProbe(expecting: Cluster.Event.self)
-        first.cluster.events.subscribe(p1.ref)
+        await first.cluster.events.subscribe(p1.ref)
 
         let second = await setUpNode("second") { settings in
             settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
             settings.downingStrategy = .timeout(.init(downUnreachableMembersAfter: .milliseconds(300)))
         }
         let p2 = testKit(second).makeTestProbe(expecting: Cluster.Event.self)
-        second.cluster.events.subscribe(p2.ref)
+        await second.cluster.events.subscribe(p2.ref)
 
         let third = await setUpNode("third") { settings in
             settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
             settings.downingStrategy = .timeout(.init(downUnreachableMembersAfter: .milliseconds(300)))
         }
         let p3 = self.testKit(third).makeTestProbe(expecting: Cluster.Event.self)
-        third.cluster.events.subscribe(p3.ref)
+        await third.cluster.events.subscribe(p3.ref)
 
         try await self.joinNodes(node: first, with: second)
         try await self.joinNodes(node: second, with: third)
@@ -291,7 +293,7 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
             settings.downingStrategy = .timeout(.init(downUnreachableMembersAfter: .milliseconds(200)))
         }
         let p1 = self.testKit(first).makeTestProbe(expecting: Cluster.Event.self)
-        first.cluster.events.subscribe(p1.ref)
+        await first.cluster.events.subscribe(p1.ref)
 
         let second = await setUpNode("second") { settings in
             settings.swim.probeInterval = .milliseconds(300)
@@ -300,7 +302,7 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
             settings.downingStrategy = .timeout(.init(downUnreachableMembersAfter: .milliseconds(200)))
         }
         let p2 = self.testKit(second).makeTestProbe(expecting: Cluster.Event.self)
-        second.cluster.events.subscribe(p2.ref)
+        await second.cluster.events.subscribe(p2.ref)
 
         let third = await setUpNode("third") { settings in
             settings.swim.probeInterval = .milliseconds(300)
@@ -309,7 +311,7 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
             settings.downingStrategy = .timeout(.init(downUnreachableMembersAfter: .milliseconds(200)))
         }
         let p3 = self.testKit(third).makeTestProbe(expecting: Cluster.Event.self)
-        third.cluster.events.subscribe(p3.ref)
+        await third.cluster.events.subscribe(p3.ref)
 
         try await self.joinNodes(node: first, with: second)
         try await self.joinNodes(node: second, with: third)

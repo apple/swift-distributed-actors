@@ -29,7 +29,7 @@ public struct ClusterControl {
     ///
     /// This sequence begins with a snapshot of the current cluster state and continues with events representing changes
     /// since the snapshot.
-    public let events: EventStream<Cluster.Event> // FIXME: make this an AsyncSequence<Cluster.Event>
+    public let events: ClusterEventStream
 
     /// Offers a snapshot of membership, which may be used to perform ad-hoc tests against the membership.
     /// Note that this view may be immediately outdated after checking if, if e.g. a membership change is just being processed.
@@ -74,7 +74,7 @@ public struct ClusterControl {
     private let cluster: ClusterShell?
     internal let ref: ClusterShell.Ref
 
-    init(_ settings: ClusterSystemSettings, cluster: ClusterShell?, clusterRef: ClusterShell.Ref, eventStream: EventStream<Cluster.Event>) {
+    init(_ settings: ClusterSystemSettings, cluster: ClusterShell?, clusterRef: ClusterShell.Ref, eventStream: ClusterEventStream) {
         self.settings = settings
         self.cluster = cluster
         self.ref = clusterRef

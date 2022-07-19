@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2021 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -31,22 +31,16 @@ final class ClusterEventStreamTests: ClusterSystemXCTestCase, @unchecked Sendabl
         self.logCapture.grep("Dead letter").shouldBeEmpty()
     }
 
-    func test_clusterEventStream_shouldCollapseEventsAndOfferASnapshotToLateSubscribers() throws {
+    func test_clusterEventStream_shouldCollapseEventsAndOfferASnapshotToLateSubscribers() async throws {
         let p1 = self.testKit.makeTestProbe(expecting: Cluster.Event.self)
         let p2 = self.testKit.makeTestProbe(expecting: Cluster.Event.self)
 
-        let eventStream = try EventStream(
-            system,
-            name: "ClusterEventStream",
-            of: Cluster.Event.self,
-            systemStream: false,
-            customBehavior: ClusterEventStream.Shell.behavior
-        )
+        let eventStream = ClusterEventStream(system)
 
-        eventStream.subscribe(p1.ref) // sub before first -> up was published
-        eventStream.publish(.membershipChange(.init(member: self.memberA, toStatus: .up)))
-        eventStream.subscribe(p2.ref)
-        eventStream.publish(.membershipChange(.init(member: self.memberB, toStatus: .up)))
+        await eventStream.subscribe(p1.ref) // sub before first -> up was published
+        await eventStream.publish(.membershipChange(.init(member: self.memberA, toStatus: .up)))
+        await eventStream.subscribe(p2.ref)
+        await eventStream.publish(.membershipChange(.init(member: self.memberB, toStatus: .up)))
 
         // ==== p1 ---------------------
 
@@ -86,22 +80,16 @@ final class ClusterEventStreamTests: ClusterSystemXCTestCase, @unchecked Sendabl
         }
     }
 
-    func test_clusterEventStream_collapseManyEventsIntoSnapshot() throws {
+    func test_clusterEventStream_collapseManyEventsIntoSnapshot() async throws {
         let p1 = self.testKit.makeTestProbe(expecting: Cluster.Event.self)
 
-        let eventStream = try EventStream(
-            system,
-            name: "ClusterEventStream",
-            of: Cluster.Event.self,
-            systemStream: false,
-            customBehavior: ClusterEventStream.Shell.behavior
-        )
+        let eventStream = ClusterEventStream(system)
 
-        eventStream.publish(.membershipChange(.init(member: self.memberA, toStatus: .joining)))
-        eventStream.publish(.membershipChange(.init(member: self.memberA, toStatus: .up)))
-        eventStream.publish(.membershipChange(.init(member: self.memberB, toStatus: .joining)))
-        eventStream.publish(.membershipChange(.init(member: self.memberB, toStatus: .up)))
-        eventStream.subscribe(p1.ref)
+        await eventStream.publish(.membershipChange(.init(member: self.memberA, toStatus: .joining)))
+        await eventStream.publish(.membershipChange(.init(member: self.memberA, toStatus: .up)))
+        await eventStream.publish(.membershipChange(.init(member: self.memberB, toStatus: .joining)))
+        await eventStream.publish(.membershipChange(.init(member: self.memberB, toStatus: .up)))
+        await eventStream.subscribe(p1.ref)
 
         // ==== p1 ---------------------
 
@@ -117,32 +105,24 @@ final class ClusterEventStreamTests: ClusterSystemXCTestCase, @unchecked Sendabl
         try p1.expectNoMessage(for: .milliseconds(100))
     }
 
-    func test_clusterEventStream_collapseManyEventsIntoSnapshot_async() throws {
-        let eventStream = try EventStream(
-            system,
-            name: "ClusterEventStream",
-            of: Cluster.Event.self,
-            systemStream: false,
-            customBehavior: ClusterEventStream.Shell.behavior
-        )
+    func test_clusterEventStream_collapseManyEventsIntoSnapshot_async() async throws {
+        let eventStream = ClusterEventStream(system)
 
         // Publish events to change membership
-        eventStream.publish(.membershipChange(.init(member: self.memberA, toStatus: .joining)))
-        eventStream.publish(.membershipChange(.init(member: self.memberA, toStatus: .up)))
-        eventStream.publish(.membershipChange(.init(member: self.memberB, toStatus: .joining)))
-        eventStream.publish(.membershipChange(.init(member: self.memberB, toStatus: .up)))
+        await eventStream.publish(.membershipChange(.init(member: self.memberA, toStatus: .joining)))
+        await eventStream.publish(.membershipChange(.init(member: self.memberA, toStatus: .up)))
+        await eventStream.publish(.membershipChange(.init(member: self.memberB, toStatus: .joining)))
+        await eventStream.publish(.membershipChange(.init(member: self.memberB, toStatus: .up)))
 
-        try runAsyncAndBlock {
             // .snapshot is sent on subscribe
-            for await event in eventStream {
-                switch event {
-                case .snapshot(let snapshot):
-                    let members = snapshot.members(atLeast: .joining)
-                    Set(members).shouldEqual(Set([self.memberA, self.memberB]))
-                    return
-                default:
-                    return XCTFail("Expected a snapshot with all the data to be the first received event")
-                }
+        for await event in eventStream {
+            switch event {
+            case .snapshot(let snapshot):
+                let members = snapshot.members(atLeast: .joining)
+                Set(members).shouldEqual(Set([self.memberA, self.memberB]))
+                return
+            default:
+                return XCTFail("Expected a snapshot with all the data to be the first received event")
             }
         }
     }

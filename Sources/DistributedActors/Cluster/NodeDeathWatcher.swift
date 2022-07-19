@@ -190,11 +190,11 @@ enum NodeDeathWatcherShell {
     }
 
     // FIXME: death watcher is incomplete, should handle snapshot!!
-    static func behavior(clusterEvents: EventStream<Cluster.Event>) -> _Behavior<Message> {
+    static func behavior(clusterEvents: ClusterEventStream) -> _Behavior<Message> {
         .setup { context in
             let instance = NodeDeathWatcherInstance(selfNode: context.system.settings.uniqueBindNode)
 
-            context.system.cluster.events.subscribe(context.subReceive(Cluster.Event.self) { event in
+            let onClusterEventRef = context.subReceive(Cluster.Event.self) { event in
                 switch event {
                 case .snapshot(let membership):
                     context.log.info("Membership snapshot: \(membership)")
@@ -213,7 +213,10 @@ enum NodeDeathWatcherShell {
                 default:
                     () // ignore other changes, we only need to react on nodes becoming DOWN
                 }
-            })
+            }
+            Task {
+                await context.system.cluster.events.subscribe(onClusterEventRef)
+            }
 
             return NodeDeathWatcherShell.behavior(instance)
         }

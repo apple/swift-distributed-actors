@@ -330,7 +330,9 @@ extension GossipShell {
                     () // ignore
                 }
             }
-            context.system.cluster.events.subscribe(onClusterEventRef)
+            Task {
+                await context.system.cluster.events.subscribe(onClusterEventRef)
+            }
 
         case .fromReceptionistListing(let id):
             let key = _Reception.Key(_ActorRef<Message>.self, id: id)

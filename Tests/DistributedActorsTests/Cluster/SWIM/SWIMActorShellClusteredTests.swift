@@ -274,26 +274,6 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
         change.member.reachability.shouldEqual(expected)
     }
 
-    private func expectReachabilityInSnapshot(_ testKit: ActorTestKit, node: UniqueNode, expect expected: Cluster.MemberReachability) throws {
-        try testKit.eventually(within: .seconds(3)) {
-            let p11 = testKit.spawnEventStreamTestProbe(subscribedTo: testKit.system.cluster.events)
-            guard case .some(Cluster.Event.snapshot(let snapshot)) = try p11.maybeExpectMessage() else {
-                throw testKit.error("Expected snapshot, was: \(String(reflecting: p11.lastMessage))")
-            }
-
-            if let secondMember = snapshot.uniqueMember(node) {
-                if secondMember.reachability == expected {
-                    return
-                } else {
-                    throw testKit.error("Expected \(node) on \(testKit.system.cluster.uniqueNode) to be [\(expected)] but was: \(secondMember)")
-                }
-            } else {
-                pinfo("Unable to assert reachability of \(node) on \(testKit.system.cluster.uniqueNode) since membership did not contain it. Was: \(snapshot)")
-                () // it may have technically been removed already, so this is "fine"
-            }
-        }
-    }
-
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Gossiping
 

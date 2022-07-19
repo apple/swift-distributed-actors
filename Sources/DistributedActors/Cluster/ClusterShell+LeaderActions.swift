@@ -99,7 +99,14 @@ extension ClusterShell {
         }
 
         system.cluster.updateMembershipSnapshot(state.membership)
-        eventsToPublish.forEach { state.events.publish($0) }
+
+        let eventStream = state.events
+        let events = eventsToPublish
+        Task {
+            for event in events {
+                await eventStream.publish(event)
+            }
+        }
 
         previousState.log.trace(
             "Membership state after leader actions: \(state.membership)",

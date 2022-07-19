@@ -284,28 +284,6 @@ class ActorDocExamples: XCTestCase {
         try system._spawn("caplin", caplinBehavior)
         // end::ask_inside[]
     }
-
-    func example_eventStream() throws {
-        let system = ClusterSystem("System")
-
-        let ref: _ActorRef<Event>! = nil
-
-        // tag::eventStream[]
-        enum Event: String, Codable {
-            case eventOne
-            case eventTwo
-        }
-
-        let stream = try EventStream(system, name: "events", of: Event.self) // <1>
-
-        stream.subscribe(ref) // <2>
-
-        stream.publish(.eventOne) // <3>
-        stream.publish(.eventTwo)
-
-        stream.unsubscribe(ref) // <4>
-        // end::eventStream[]
-    }
 }
 
 // tag::suggested_props_pattern[]

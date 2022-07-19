@@ -243,7 +243,7 @@ internal class ClusterShell {
     }
 
     private var _swimRef: SWIM.Ref?
-    private var clusterEvents: EventStream<Cluster.Event>!
+    private var clusterEvents: ClusterEventStream!
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Cluster Shell, reference used for issuing commands to the cluster
@@ -277,7 +277,7 @@ internal class ClusterShell {
     }
 
     /// Actually starts the shell which kicks off binding to a port, and all further cluster work
-    internal func lazyStart(system: ClusterSystem, clusterEvents: EventStream<Cluster.Event>) throws -> LazyStart<Message> {
+    internal func lazyStart(system: ClusterSystem, clusterEvents: ClusterEventStream) throws -> LazyStart<Message> {
         pprint("Lazy start \(Self.self)")
         let instrumentation = system.settings.instrumentation.makeInternalActorTransportInstrumentation()
         self._serializationPool = try _SerializationPool(settings: .default, serialization: system.serialization, instrumentation: instrumentation)
@@ -297,7 +297,7 @@ internal class ClusterShell {
     }
 
     /// Actually starts the shell which kicks off binding to a port, and all further cluster work
-    internal func start(system: ClusterSystem, clusterEvents: EventStream<Cluster.Event>) throws -> _ActorRef<Message> {
+    internal func start(system: ClusterSystem, clusterEvents: ClusterEventStream) throws -> _ActorRef<Message> {
         let instrumentation = system.settings.instrumentation.makeInternalActorTransportInstrumentation()
         self._serializationPool = try _SerializationPool(settings: .default, serialization: system.serialization, instrumentation: instrumentation)
         self.clusterEvents = clusterEvents
@@ -461,11 +461,21 @@ extension ClusterShell {
                 if let change = state.latestGossip.membership.join(state.selfNode) {
                     // always update the snapshot before emitting events
                     context.system.cluster.updateMembershipSnapshot(state.membership)
-                    self.clusterEvents.publish(.membershipChange(change))
+                    self.publish(.membershipChange(change))
                 }
 
                 return self.ready(state: state)
             }
+        }
+    }
+
+    private func publish(_ event: Cluster.Event) {
+        self.publish(event, to: self.clusterEvents)
+    }
+
+    private func publish(_ event: Cluster.Event, to eventStream: ClusterEventStream) {
+        Task {
+            await eventStream.publish(event)
         }
     }
 
@@ -582,7 +592,7 @@ extension ClusterShell {
                 context.system.cluster.updateMembershipSnapshot(state.membership)
 
                 // we only publish the event if it really caused a change in membership, to avoid echoing "the same" change many times.
-                self.clusterEvents.publish(event)
+                self.publish(event)
             } // else no "effective change", thus we do not publish events
 
             // 3) Collect and interpret leader actions which may result changing the membership and publishing events for the changes
@@ -625,14 +635,22 @@ extension ClusterShell {
             context.system.cluster.updateMembershipSnapshot(state.membership)
 
             // Publish the events
+            var eventsToPublish: [Cluster.Event] = []
             mergeDirective.effectiveChanges.forEach { effectiveChange in
                 // a change COULD have also been a replacement, in which case we need to publish it as well the removal od the
                 if let replacementChange = effectiveChange.replacementDownPreviousNodeChange {
-                    self.clusterEvents.publish(.membershipChange(replacementChange))
+                    eventsToPublish.append(.membershipChange(replacementChange))
                     self.tryConfirmDeadToSWIM(context, state, change: replacementChange)
                 }
-                self.clusterEvents.publish(.membershipChange(effectiveChange))
+                eventsToPublish.append(.membershipChange(effectiveChange))
                 self.tryConfirmDeadToSWIM(context, state, change: effectiveChange)
+            }
+
+            let events = eventsToPublish
+            Task {
+                for event in events {
+                    await self.clusterEvents.publish(event)
+                }
             }
 
             // follow up with leader actions
@@ -875,7 +893,7 @@ extension ClusterShell {
                 // As the new association is stored, any reactions to these events will use the right underlying connection
                 if let change = directive.membershipChange {
                     context.system.cluster.updateMembershipSnapshot(state.membership)
-                    state.events.publish(.membershipChange(change)) // TODO: need a test where a leader observes a replacement, and we ensure that it does not end up signalling up or removal twice?
+                    self.publish(.membershipChange(change), to: state.events) // TODO: need a test where a leader observes a replacement, and we ensure that it does not end up signalling up or removal twice?
                     self.tryIntroduceGossipPeer(context, state, change: change)
                 }
 
@@ -1031,7 +1049,7 @@ extension ClusterShell {
         // 3) publish any cluster events this association caused.
         //    As the new association is stored, any reactions to these events will use the right underlying connection
         if let change = directive.membershipChange {
-            state.events.publish(.membershipChange(change)) // TODO: need a test where a leader observes a replacement, and we ensure that it does not end up signalling up or removal twice?
+            self.publish(.membershipChange(change), to: state.events) // TODO: need a test where a leader observes a replacement, and we ensure that it does not end up signalling up or removal twice?
             self.tryConfirmDeadToSWIM(context, state, change: change)
             self.tryIntroduceGossipPeer(context, state, change: change)
         }
@@ -1070,7 +1088,7 @@ extension ClusterShell {
             //
             // We MUST emit this `.down` before emitting the replacement's event
             let change = Cluster.MembershipChange(member: replacedMember, toStatus: .down)
-            state.events.publish(.membershipChange(change))
+            self.publish(.membershipChange(change), to: state.events)
             self.tryConfirmDeadToSWIM(context, state, change: change)
         }
     }
@@ -1240,7 +1258,7 @@ extension ClusterShell {
         context.system.cluster.updateMembershipSnapshot(state.membership)
 
         // then publish events and update metrics
-        self.clusterEvents.publish(.reachabilityChange(change))
+        self.publish(.reachabilityChange(change))
         self.recordMetrics(context.system.metrics, membership: state.membership)
 
         return self.ready(state: state)
@@ -1258,7 +1276,7 @@ extension ClusterShell {
 
         // the change was applied, so we should update the membership and publish an event
         context.system.cluster.updateMembershipSnapshot(state.membership)
-        self.clusterEvents.publish(.membershipChange(change))
+        self.publish(.membershipChange(change))
         self.tryConfirmDeadToSWIM(context, state, change: change)
 
         if let logChangeLevel = state.settings.logMembershipChanges {

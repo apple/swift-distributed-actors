@@ -97,16 +97,16 @@ extension ActorTestKit {
         )
     }
 
-    /// Spawns an `ActorTestProbe` and immediately subscribes it to the passed in event stream.
+    /// Spawns an `ActorTestProbe` and immediately subscribes it to the system's cluster event stream.
     ///
     /// - Hint: Use `fishForMessages` and `fishFor` to filter expectations for specific events.
-    public func spawnEventStreamTestProbe<Event: Codable>(
+    public func spawnClusterEventStreamTestProbe(
         _ naming: _ActorNaming? = nil,
-        subscribedTo eventStream: EventStream<Event>,
         file: String = #filePath, line: UInt = #line, column: UInt = #column
-    ) -> ActorTestProbe<Event> {
-        let p = self.makeTestProbe(naming ?? _ActorNaming.prefixed(with: "\(eventStream.ref.path.name)-subscriberProbe"), expecting: Event.self)
-        eventStream.subscribe(p.ref)
+    ) async -> ActorTestProbe<Cluster.Event> {
+        let eventStream = self.system.cluster.events
+        let p = self.makeTestProbe(naming ?? _ActorNaming.prefixed(with: "\(ClusterEventStream.self)-subscriberProbe"), expecting: Cluster.Event.self)
+        await eventStream.subscribe(p.ref)
         return p
     }
 }

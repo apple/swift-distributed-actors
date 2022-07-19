@@ -97,8 +97,8 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
 
         let firstEventsProbe = self.testKit(first).makeTestProbe(expecting: Cluster.Event.self)
         let secondEventsProbe = self.testKit(second).makeTestProbe(expecting: Cluster.Event.self)
-        first.cluster.events.subscribe(firstEventsProbe.ref)
-        second.cluster.events.subscribe(secondEventsProbe.ref)
+        await first.cluster.events.subscribe(firstEventsProbe.ref)
+        await second.cluster.events.subscribe(secondEventsProbe.ref)
 
         first.cluster.join(node: second.cluster.uniqueNode.node)
 
@@ -113,8 +113,8 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
             settings.bindPort = secondPort
         }
         let secondReplacementEventsProbe = self.testKit(secondReplacement).makeTestProbe(expecting: Cluster.Event.self)
-        secondReplacement.cluster.events.subscribe(secondReplacementEventsProbe.ref)
-        second.cluster.events.subscribe(secondReplacementEventsProbe.ref)
+        await secondReplacement.cluster.events.subscribe(secondReplacementEventsProbe.ref)
+        await second.cluster.events.subscribe(secondReplacementEventsProbe.ref)
 
         // the new replacement node is now going to initiate a handshake with 'first' which knew about the previous
         // instance (oldSecond) on the same node; It should accept this new handshake, and ban the previous node.
