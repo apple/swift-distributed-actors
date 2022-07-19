@@ -23,7 +23,8 @@ final class WorkerPoolTests: ClusterSystemXCTestCase {
     func test_workerPool_registerNewlyStartedActors() async throws {
         let workerKey = DistributedReception.Key(Greeter.self, id: "request-workers")
 
-        let workers = try await WorkerPool._spawn(self.system, select: .dynamic(workerKey))
+        let settings = WorkerPoolSettings(selector: .dynamic(workerKey))
+        let workers = try await WorkerPool(settings: settings, actorSystem: system)
 
         let pA: ActorTestProbe<String> = self.testKit.makeTestProbe("pA")
         let pB: ActorTestProbe<String> = self.testKit.makeTestProbe("pB")
@@ -72,7 +73,7 @@ final class WorkerPoolTests: ClusterSystemXCTestCase {
 
         let workerKey = DistributedReception.Key(Greeter.self, id: "request-workers")
 
-        let workers = try await WorkerPool._spawn(self.system, select: .dynamic(workerKey))
+        let workers = try await WorkerPool(selector: .dynamic(workerKey), actorSystem: system)
 
         let pA: ActorTestProbe<String> = self.testKit.makeTestProbe("pA")
         let pB: ActorTestProbe<String> = self.testKit.makeTestProbe("pB")
@@ -163,7 +164,7 @@ final class WorkerPoolTests: ClusterSystemXCTestCase {
         var workerC: Greeter? = Greeter(probe: pC, actorSystem: self.system)
 
         // !-safe since we initialize workers above
-        let workers = try await WorkerPool._spawn(self.system, select: .static([workerA!, workerB!, workerC!]))
+        let workers = try await WorkerPool(settings: .init(selector: .static([workerA!, workerB!, workerC!])), actorSystem: system)
 
         let workerProbes: [ClusterSystem.ActorID: ActorTestProbe<String>] = [
             workerA!.id: pA,
@@ -226,7 +227,7 @@ final class WorkerPoolTests: ClusterSystemXCTestCase {
 
     func test_workerPool_static_throwOnEmptyInitialSet() async throws {
         let error = try await shouldThrow {
-            let _: WorkerPool<Greeter> = try await WorkerPool._spawn(self.system, select: .static([]))
+            let _: WorkerPool<Greeter> = try await WorkerPool(selector: .static([]), actorSystem: system)
         }
 
         guard case WorkerPoolError.emptyStaticWorkerPool(let errorMessage) = error else {
