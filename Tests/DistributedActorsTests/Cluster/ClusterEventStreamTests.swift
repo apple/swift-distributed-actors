@@ -114,7 +114,7 @@ final class ClusterEventStreamTests: ClusterSystemXCTestCase, @unchecked Sendabl
         await eventStream.publish(.membershipChange(.init(member: self.memberB, toStatus: .joining)))
         await eventStream.publish(.membershipChange(.init(member: self.memberB, toStatus: .up)))
 
-            // .snapshot is sent on subscribe
+        // .snapshot is sent on subscribe
         for await event in eventStream {
             switch event {
             case .snapshot(let snapshot):
