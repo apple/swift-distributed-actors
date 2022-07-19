@@ -344,28 +344,24 @@ extension OpLogDistributedReceptionist: LifecycleWatch {
     }
 
     public nonisolated func listing<Guest>(
-        of key: DistributedReception.Key<Guest>
+        of key: DistributedReception.Key<Guest>,
+        file: String = #fileID, line: UInt = #line
     ) async -> DistributedReception.GuestListing<Guest>
         where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem
     {
-        let res = await self.whenLocal { _ in
-            DistributedReception.GuestListing<Guest>(receptionist: self, key: key)
-        }
-
-        guard let r = res else {
-            return .init(receptionist: self, key: key)
-        }
-
-        return r
+        return DistributedReception.GuestListing<Guest>(receptionist: self, key: key, file: file, line: line)
     }
 
+    // 'local' impl for 'listing'
     func _listing(
-        subscription: AnyDistributedReceptionListingSubscription
+        subscription: AnyDistributedReceptionListingSubscription,
+        file: String = #fileID, line: UInt = #line
     ) {
         if self.storage.addSubscription(key: subscription.key, subscription: subscription) {
             // self.instrumentation.actorSubscribed(key: anyKey, id: self.id._unwrapActorID) // FIXME: remove the address parameter, it does not make sense anymore
-            self.log.trace("Subscribed async sequence to \(subscription.key) actors", metadata: [
+            self.log.trace("Subscribed async sequence to \(subscription.key)", metadata: [
                 "subscription/key": "\(subscription.key)",
+                "subscription/callSite": "\(file):\(line)",
             ])
         }
     }
@@ -705,7 +701,18 @@ extension OpLogDistributedReceptionist {
 
     /// Receive an Ack and potentially continue streaming ops to peer if still pending operations available.
     distributed func ackOps(until: UInt64, by peer: ReceptionistRef) {
-        guard var replayer = self.peerReceptionistReplayers[peer] else {
+        var replayer = self.peerReceptionistReplayers[peer]
+
+        if replayer == nil, until == 0 {
+            self.log.debug("Received message from \(peer), but no replayer available, create one ad-hoc now", metadata: [
+                "peer": "\(peer.id.uniqueNode)",
+            ])
+            // TODO: Generally we should trigger a `onNewClusterMember` but seems we got a message before that triggered
+            // Seems ordering became less strict here with DA unfortunately...?
+            replayer = self.ops.replay(from: .beginning)
+        }
+
+        guard var replayer = replayer else {
             self.log.trace("Received a confirmation until \(until) from \(peer) but no replayer available for it, ignoring", metadata: [
                 "receptionist/peer/confirmed": "\(until)",
                 "receptionist/peer": "\(peer.id)",

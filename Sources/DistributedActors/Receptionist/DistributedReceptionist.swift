@@ -43,7 +43,7 @@ public protocol DistributedReceptionist: DistributedActor {
     ///
     /// It emits both values for already existing, checked-in before the listing was created,
     /// actors; as well as new actors which are checked-in while the listing was already subscribed to.
-    func listing<Guest>(of key: DistributedReception.Key<Guest>) async -> DistributedReception.GuestListing<Guest>
+    func listing<Guest>(of key: DistributedReception.Key<Guest>, file: String, line: UInt) async -> DistributedReception.GuestListing<Guest>
         where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem
 
     /// Perform a *single* lookup for a distributed actor identified by the passed in `key`.
@@ -54,6 +54,19 @@ public protocol DistributedReceptionist: DistributedActor {
         where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem
 }
 
+extension DistributedReceptionist {
+    /// Returns a "listing" asynchronous sequence which will emit actor references,
+    /// for every distributed actor that the receptionist discovers for the specific key.
+    ///
+    /// It emits both values for already existing, checked-in before the listing was created,
+    /// actors; as well as new actors which are checked-in while the listing was already subscribed to.
+    func listing<Guest>(of key: DistributedReception.Key<Guest>, file: String = #file, line: UInt = #line) async -> DistributedReception.GuestListing<Guest>
+        where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem
+    {
+        await self.listing(of: key, file: file, line: line)
+    }
+}
+
 extension DistributedReception {
     public struct GuestListing<Guest: DistributedActor>: AsyncSequence, Sendable where Guest.ActorSystem == ClusterSystem {
         public typealias Element = Guest
@@ -61,19 +74,29 @@ extension DistributedReception {
         let receptionist: OpLogDistributedReceptionist
         let key: DistributedReception.Key<Guest>
 
-        init(receptionist: OpLogDistributedReceptionist, key: DistributedReception.Key<Guest>) {
+        // Location where the subscription was created
+        let file: String
+        let line: UInt
+
+        init(receptionist: OpLogDistributedReceptionist, key: DistributedReception.Key<Guest>,
+             file: String, line: UInt)
+        {
             self.receptionist = receptionist
             self.key = key
+            self.file = file
+            self.line = line
         }
 
         public func makeAsyncIterator() -> AsyncIterator {
-            AsyncIterator(receptionist: self.receptionist, key: self.key)
+            AsyncIterator(receptionist: self.receptionist, key: self.key, file: self.file, line: self.line)
         }
 
         public class AsyncIterator: AsyncIteratorProtocol {
             var underlying: AsyncStream<Element>.Iterator!
 
-            init(receptionist __secretlyKnownToBeLocal: OpLogDistributedReceptionist, key: DistributedReception.Key<Guest>) {
+            init(receptionist __secretlyKnownToBeLocal: OpLogDistributedReceptionist, key: DistributedReception.Key<Guest>,
+                 file: String, line: UInt)
+            {
                 self.underlying = AsyncStream<Element> { continuation in
                     let anySubscribe = AnyDistributedReceptionListingSubscription(
                         subscriptionID: ObjectIdentifier(self),
@@ -89,7 +112,7 @@ extension DistributedReception {
                     )
 
                     Task {
-                        await __secretlyKnownToBeLocal._listing(subscription: anySubscribe)
+                        await __secretlyKnownToBeLocal._listing(subscription: anySubscribe, file: file, line: line)
                     }
 
                     continuation.onTermination = { @Sendable termination in
