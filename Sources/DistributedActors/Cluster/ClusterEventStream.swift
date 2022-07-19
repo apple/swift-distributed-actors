@@ -25,8 +25,15 @@ public struct ClusterEventStream: AsyncSequence {
 
     private let shell: ClusterEventStreamShell?
 
-    internal init(_ system: ClusterSystem) {
-        self.shell = ClusterEventStreamShell(actorSystem: system)
+    internal init(_ system: ClusterSystem, customName: String? = nil) async {
+        var props = ClusterEventStreamShell.props
+        if let customName = customName {
+            props._knownActorName = customName
+        }
+
+        self.shell = await _Props.$forSpawn.withValue(props) {
+            ClusterEventStreamShell(actorSystem: system)
+        }
     }
 
     // For testing only
@@ -107,6 +114,14 @@ public struct ClusterEventStream: AsyncSequence {
 // FIXME(distributed): the only reason this actor is distributed is because of LifecycleWatch
 internal distributed actor ClusterEventStreamShell: LifecycleWatch {
     typealias ActorSystem = ClusterSystem
+
+    static var props: _Props {
+        var ps = _Props()
+        ps._knownActorName = "clustEventStream"
+        ps._systemActor = true
+        ps._wellKnown = true
+        return ps
+    }
 
     // We maintain a snapshot i.e. the "latest version of the membership",
     // in order to eagerly publish it to anyone who subscribes immediately,

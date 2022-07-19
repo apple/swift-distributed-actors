@@ -35,7 +35,7 @@ final class ClusterEventStreamTests: ClusterSystemXCTestCase, @unchecked Sendabl
         let p1 = self.testKit.makeTestProbe(expecting: Cluster.Event.self)
         let p2 = self.testKit.makeTestProbe(expecting: Cluster.Event.self)
 
-        let eventStream = ClusterEventStream(system)
+        let eventStream = await ClusterEventStream(system, customName: "testClusterEvents")
 
         await eventStream.subscribe(p1.ref) // sub before first -> up was published
         await eventStream.publish(.membershipChange(.init(member: self.memberA, toStatus: .up)))
@@ -83,7 +83,7 @@ final class ClusterEventStreamTests: ClusterSystemXCTestCase, @unchecked Sendabl
     func test_clusterEventStream_collapseManyEventsIntoSnapshot() async throws {
         let p1 = self.testKit.makeTestProbe(expecting: Cluster.Event.self)
 
-        let eventStream = ClusterEventStream(system)
+        let eventStream = await ClusterEventStream(system, customName: "testClusterEvents")
 
         await eventStream.publish(.membershipChange(.init(member: self.memberA, toStatus: .joining)))
         await eventStream.publish(.membershipChange(.init(member: self.memberA, toStatus: .up)))
@@ -106,7 +106,7 @@ final class ClusterEventStreamTests: ClusterSystemXCTestCase, @unchecked Sendabl
     }
 
     func test_clusterEventStream_collapseManyEventsIntoSnapshot_async() async throws {
-        let eventStream = ClusterEventStream(system)
+        let eventStream = await ClusterEventStream(system, customName: "testClusterEvents")
 
         // Publish events to change membership
         await eventStream.publish(.membershipChange(.init(member: self.memberA, toStatus: .joining)))
