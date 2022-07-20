@@ -476,7 +476,7 @@ extension ClusterShell {
     private func publish(_ event: Cluster.Event, to eventStream: ClusterEventStream) {
         Task {
             await eventStream.publish(event)
-        } // TODO(send): we need "send" 
+        } // TODO(send): we need "send"
     }
 
     /// Called periodically to remove association tombstones after the configured TTL.
@@ -646,9 +646,8 @@ extension ClusterShell {
                 self.tryConfirmDeadToSWIM(context, state, change: effectiveChange)
             }
 
-            let events = eventsToPublish
-            Task {
-                for event in events {
+            Task { [eventsToPublish] in
+                for event in eventsToPublish {
                     await self.clusterEvents.publish(event)
                 }
             }
