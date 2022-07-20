@@ -41,15 +41,6 @@ let system = await ClusterSystem("System") { settings in
     settings.downingStrategy = .none
 }
 
-let ref = try system._spawn(
-    "streamWatcher",
-    of: Cluster.Event.self,
-    .receive { context, event in
-        context.log.info("Event: \(event)")
-        return .same
-    }
-)
-
 Task {
     for await event in system.cluster.events {
         system.log.info("Event: \(event)")

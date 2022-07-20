@@ -37,9 +37,9 @@ final class ClusterEventStreamTests: ClusterSystemXCTestCase, @unchecked Sendabl
 
         let eventStream = ClusterEventStream(system, customName: "testClusterEvents")
 
-        await eventStream.subscribe(p1.ref) // sub before first -> up was published
+        await eventStream._subscribe(p1.ref) // sub before first -> up was published
         await eventStream.publish(.membershipChange(.init(member: self.memberA, toStatus: .up)))
-        await eventStream.subscribe(p2.ref)
+        await eventStream._subscribe(p2.ref)
         await eventStream.publish(.membershipChange(.init(member: self.memberB, toStatus: .up)))
 
         // ==== p1 ---------------------
@@ -89,7 +89,7 @@ final class ClusterEventStreamTests: ClusterSystemXCTestCase, @unchecked Sendabl
         await eventStream.publish(.membershipChange(.init(member: self.memberA, toStatus: .up)))
         await eventStream.publish(.membershipChange(.init(member: self.memberB, toStatus: .joining)))
         await eventStream.publish(.membershipChange(.init(member: self.memberB, toStatus: .up)))
-        await eventStream.subscribe(p1.ref)
+        await eventStream._subscribe(p1.ref)
 
         // ==== p1 ---------------------
 

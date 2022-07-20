@@ -214,9 +214,7 @@ enum NodeDeathWatcherShell {
                     () // ignore other changes, we only need to react on nodes becoming DOWN
                 }
             }
-            Task {
-                await context.system.cluster.events.subscribe(onClusterEventRef)
-            }
+            context.system.cluster.events.subscribe(onClusterEventRef)
 
             return NodeDeathWatcherShell.behavior(instance)
         }
