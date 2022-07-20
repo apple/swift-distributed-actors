@@ -23,60 +23,60 @@ import Logging
 public struct ClusterEventStream: AsyncSequence {
     public typealias Element = Cluster.Event
 
-    private let shell: ClusterEventStreamShell?
+    private let actor: ClusterEventStreamActor?
 
     internal init(_ system: ClusterSystem, customName: String? = nil) {
-        var props = ClusterEventStreamShell.props
+        var props = ClusterEventStreamActor.props
         if let customName = customName {
             props._knownActorName = customName
         }
 
-        self.shell = _Props.$forSpawn.withValue(props) {
-            ClusterEventStreamShell(actorSystem: system)
+        self.actor = _Props.$forSpawn.withValue(props) {
+            ClusterEventStreamActor(actorSystem: system)
         }
     }
 
     // For testing only
     internal init() {
-        self.shell = nil
+        self.actor = nil
     }
 
     func subscribe(_ ref: _ActorRef<Cluster.Event>, file: String = #filePath, line: UInt = #line) async {
-        guard let shell = self.shell else { return }
+        guard let actor = self.actor else { return }
 
-        await shell.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
+        await actor.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
             __secretlyKnownToBeLocal.subscribe(ref)
         }
     }
 
     func unsubscribe(_ ref: _ActorRef<Cluster.Event>, file: String = #filePath, line: UInt = #line) async {
-        guard let shell = self.shell else { return }
+        guard let actor = self.actor else { return }
 
-        await shell.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
+        await actor.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
             __secretlyKnownToBeLocal.unsubscribe(ref)
         }
     }
 
     private func subscribe(_ oid: ObjectIdentifier, eventHandler: @escaping (Cluster.Event) -> Void) async {
-        guard let shell = self.shell else { return }
+        guard let actor = self.actor else { return }
 
-        await shell.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
+        await actor.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
             __secretlyKnownToBeLocal.subscribe(oid, eventHandler: eventHandler)
         }
     }
 
     private func unsubscribe(_ oid: ObjectIdentifier) async {
-        guard let shell = self.shell else { return }
+        guard let actor = self.actor else { return }
 
-        await shell.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
+        await actor.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
             __secretlyKnownToBeLocal.unsubscribe(oid)
         }
     }
 
     func publish(_ event: Cluster.Event, file: String = #filePath, line: UInt = #line) async {
-        guard let shell = self.shell else { return }
+        guard let actor = self.actor else { return }
 
-        await shell.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
+        await actor.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
             __secretlyKnownToBeLocal.publish(event)
         }
     }
@@ -112,7 +112,7 @@ public struct ClusterEventStream: AsyncSequence {
 }
 
 // FIXME(distributed): the only reason this actor is distributed is because of LifecycleWatch
-internal distributed actor ClusterEventStreamShell: LifecycleWatch {
+internal distributed actor ClusterEventStreamActor: LifecycleWatch {
     typealias ActorSystem = ClusterSystem
 
     static var props: _Props {
