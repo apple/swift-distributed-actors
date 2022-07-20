@@ -1324,11 +1324,15 @@ extension ClusterShell {
 
 extension ActorID {
     static func _clusterShell(on node: UniqueNode) -> ActorID {
-        ActorPath._clusterShell.makeRemoteID(on: node, incarnation: .wellKnown)
+        let id = ActorPath._clusterShell.makeRemoteID(on: node, incarnation: .wellKnown)
+        // id.metadata.wellKnown = "$cluster"
+        return id
     }
 
     static func _clusterGossip(on node: UniqueNode) -> ActorID {
-        ActorPath._clusterGossip.makeRemoteID(on: node, incarnation: .wellKnown)
+        let id = ActorPath._clusterGossip.makeRemoteID(on: node, incarnation: .wellKnown)
+        // id.metadata.wellKnown = "$gossip"
+        return id
     }
 }
 

@@ -151,6 +151,9 @@ public distributed actor OpLogDistributedReceptionist: DistributedReceptionist, 
 
     public typealias ActorSystem = ClusterSystem
 
+    @ActorID.Metadata(\.wellKnown)
+    var wellKnownName: String
+
     // TODO: remove this
     typealias ReceptionistRef = OpLogDistributedReceptionist
     typealias Key<Guest: DistributedActor> = DistributedReception.Key<Guest> where Guest.ActorSystem == ClusterSystem
@@ -230,9 +233,9 @@ public distributed actor OpLogDistributedReceptionist: DistributedReceptionist, 
 
     static var props: _Props {
         var ps = _Props()
-        ps._knownActorName = ActorPath.distributedActorReceptionist.name
         ps._systemActor = true
         ps._wellKnown = true
+        ps._knownActorName = ActorPath.distributedActorReceptionist.name
         return ps
     }
 
@@ -250,6 +253,9 @@ public distributed actor OpLogDistributedReceptionist: DistributedReceptionist, 
         self.appliedSequenceNrs = .empty
 
         // === listen to cluster events ------------------
+        self.wellKnownName = ActorPath.distributedActorReceptionist.name
+        assert(self.id.path.description == "/system/receptionist") // TODO(distributed): remove when we remove paths entirely
+
         self.eventsListeningTask = Task.detached {
             try await self.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
                 for try await event in system.cluster.events {
@@ -339,28 +345,24 @@ extension OpLogDistributedReceptionist: LifecycleWatch {
     }
 
     public nonisolated func listing<Guest>(
-        of key: DistributedReception.Key<Guest>
+        of key: DistributedReception.Key<Guest>,
+        file: String = #fileID, line: UInt = #line
     ) async -> DistributedReception.GuestListing<Guest>
         where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem
     {
-        let res = await self.whenLocal { _ in
-            DistributedReception.GuestListing<Guest>(receptionist: self, key: key)
-        }
-
-        guard let r = res else {
-            return .init(receptionist: self, key: key)
-        }
-
-        return r
+        return DistributedReception.GuestListing<Guest>(receptionist: self, key: key, file: file, line: line)
     }
 
+    // 'local' impl for 'listing'
     func _listing(
-        subscription: AnyDistributedReceptionListingSubscription
+        subscription: AnyDistributedReceptionListingSubscription,
+        file: String = #fileID, line: UInt = #line
     ) {
         if self.storage.addSubscription(key: subscription.key, subscription: subscription) {
             // self.instrumentation.actorSubscribed(key: anyKey, id: self.id._unwrapActorID) // FIXME: remove the address parameter, it does not make sense anymore
-            self.log.trace("Subscribed async sequence to \(subscription.key) actors", metadata: [
+            self.log.trace("Subscribed async sequence to \(subscription.key)", metadata: [
                 "subscription/key": "\(subscription.key)",
+                "subscription/callSite": "\(file):\(line)",
             ])
         }
     }
@@ -625,7 +627,7 @@ extension OpLogDistributedReceptionist {
 //        peerReceptionistRef.tell(ack)
         Task {
             do {
-                assert(self.id.path.description.contains("/system/receptionist"))
+//                assert(self.id.path.description.contains("/system/receptionist"), "Receptionist path did not include /system/receptionist, was: \(self.id.fullDescription)")
                 try await peerReceptionistRef.ackOps(until: latestAppliedSeqNrFromPeer, by: self)
             } catch {
                 switch error {
@@ -700,7 +702,18 @@ extension OpLogDistributedReceptionist {
 
     /// Receive an Ack and potentially continue streaming ops to peer if still pending operations available.
     distributed func ackOps(until: UInt64, by peer: ReceptionistRef) {
-        guard var replayer = self.peerReceptionistReplayers[peer] else {
+        var replayer = self.peerReceptionistReplayers[peer]
+
+        if replayer == nil, until == 0 {
+            self.log.debug("Received message from \(peer), but no replayer available, create one ad-hoc now", metadata: [
+                "peer": "\(peer.id.uniqueNode)",
+            ])
+            // TODO: Generally we should trigger a `onNewClusterMember` but seems we got a message before that triggered
+            // Seems ordering became less strict here with DA unfortunately...?
+            replayer = self.ops.replay(from: .beginning)
+        }
+
+        guard var replayer = replayer else {
             self.log.trace("Received a confirmation until \(until) from \(peer) but no replayer available for it, ignoring", metadata: [
                 "receptionist/peer/confirmed": "\(until)",
                 "receptionist/peer": "\(peer.id)",
@@ -883,8 +896,8 @@ extension OpLogDistributedReceptionist {
 
     func pruneClusterMember(removedNode: UniqueNode) {
         self.log.trace("Pruning cluster member: \(removedNode)")
-        let terminatedReceptionistAddress = ActorID._receptionist(on: removedNode, for: .distributedActors)
-        let equalityHackPeer = try! Self.resolve(id: terminatedReceptionistAddress, using: actorSystem) // try!-safe because we know the address is correct and remote
+        let terminatedReceptionistID = ActorID._receptionist(on: removedNode, for: .distributedActors)
+        let equalityHackPeer = try! Self.resolve(id: terminatedReceptionistID, using: actorSystem) // try!-safe because we know the address is correct and remote
 
         guard self.peerReceptionistReplayers.removeValue(forKey: equalityHackPeer) != nil else {
             // we already removed it, so no need to keep scanning for it.
@@ -896,8 +909,8 @@ extension OpLogDistributedReceptionist {
 
         // clear observations; we only get them directly from the origin node, so since it has been downed
         // we will never receive more observations from it.
-        _ = self.observedSequenceNrs.pruneReplica(.actorID(terminatedReceptionistAddress))
-        _ = self.appliedSequenceNrs.pruneReplica(.actorID(terminatedReceptionistAddress))
+        _ = self.observedSequenceNrs.pruneReplica(.actorID(terminatedReceptionistID))
+        _ = self.appliedSequenceNrs.pruneReplica(.actorID(terminatedReceptionistID))
 
         // clear state any registrations still lingering about the now-known-to-be-down node
         let pruned = self.storage.pruneNode(removedNode)

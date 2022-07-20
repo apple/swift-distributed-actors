@@ -27,7 +27,7 @@ final class ActorIDTests: ClusteredActorSystemsXCTestCase {
         "\(id.path)".shouldEqual("/user/hello")
         "\(id.path.name)".shouldEqual("hello")
 
-        id.detailedDescription.shouldEqual("/user/hello#8888")
+        id.detailedDescription.shouldEqual("/user/hello#8888[\"$path\": /user/hello]")
         String(reflecting: id).shouldEqual("/user/hello")
         String(reflecting: id.name).shouldEqual("\"hello\"")
         String(reflecting: id.path).shouldEqual("/user/hello")
@@ -42,7 +42,7 @@ final class ActorIDTests: ClusteredActorSystemsXCTestCase {
         let remoteNode = UniqueNode(systemName: "system", host: "127.0.0.1", port: 1234, nid: UniqueNodeID(11111))
         let remote = ActorID(remote: remoteNode, path: id.path, incarnation: ActorIncarnation(8888))
 
-        remote.detailedDescription.shouldEqual("sact://system:11111@127.0.0.1:1234/user/hello#8888")
+        remote.detailedDescription.shouldEqual("sact://system:11111@127.0.0.1:1234/user/hello#8888[\"$path\": /user/hello]")
         String(reflecting: remote).shouldEqual("sact://system@127.0.0.1:1234/user/hello")
         "\(remote)".shouldEqual("sact://system@127.0.0.1:1234/user/hello")
         "\(remote.name)".shouldEqual("hello")
@@ -155,7 +155,7 @@ final class ActorIDTests: ClusteredActorSystemsXCTestCase {
 
         serializedJson.shouldContain(#""incarnation":1"#)
         serializedJson.shouldContain(#""node":["sact","one","127.0.0.1",1234,11111]"#)
-        serializedJson.shouldContain(#""metadata":{"path":{"path":["user","a"]}}"#)
+        serializedJson.shouldContain(#""path":{"path":["user","a"]}"#)
         serializedJson.shouldNotContain(#"$test":"test-value""#)
 
         let back = try JSONDecoder().decode(ActorID.self, from: data)
@@ -178,7 +178,7 @@ final class ActorIDTests: ClusteredActorSystemsXCTestCase {
         // TODO: improve serialization format of identities to be more compact
         serializedJson.shouldContain(#""incarnation":1"#)
         serializedJson.shouldContain(#""node":["sact","one","127.0.0.1",1234,11111]"#)
-        serializedJson.shouldContain(#""metadata":{"path":{"path":["user","a"]}}"#)
+        serializedJson.shouldContain(#""path":{"path":["user","a"]}"#)
         serializedJson.shouldNotContain(#"$test":"test-value""#)
     }
 
@@ -190,11 +190,11 @@ final class ActorIDTests: ClusteredActorSystemsXCTestCase {
         let system = await self.setUpNode("test_serializing_ActorAddress_propagateCustomTag") { settings in
             settings.bindPort = 1234
             settings.actorMetadata.encodeCustomMetadata = { metadata, container in
-                try container.encodeIfPresent(metadata.test, forKey: ActorCoding.MetadataKeys.custom(ActorMetadataKeys().test.id))
+                try container.encodeIfPresent(metadata.test, forKey: ActorCoding.MetadataKeys.custom(ActorMetadataKeys.__instance.test.id))
             }
 
             settings.actorMetadata.decodeCustomMetadata = { container, metadata in
-                if let value = try container.decodeIfPresent(String.self, forKey: .custom(ActorMetadataKeys().test.id)) {
+                if let value = try container.decodeIfPresent(String.self, forKey: .custom(ActorMetadataKeys.__instance.test.id)) {
                     metadata.test = value
                 }
             }
@@ -207,7 +207,7 @@ final class ActorIDTests: ClusteredActorSystemsXCTestCase {
         serializedJson.shouldContain(#""incarnation":1"#)
         serializedJson.shouldContain(#""node":["sact","one","127.0.0.1",1234,11111]"#)
         serializedJson.shouldContain(#""path":{"path":["user","a"]}"#)
-        serializedJson.shouldContain("\"\(ActorMetadataKeys().test.id)\":\"\(a.metadata.test!)\"")
+        serializedJson.shouldContain("\"\(ActorMetadataKeys.__instance.test.id)\":\"\(a.metadata.test!)\"")
     }
 }
 

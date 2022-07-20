@@ -83,7 +83,13 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
     /// Control for waiting and getting notified for new worker.
     private var newWorkerContinuations: [CheckedContinuation<Void, Never>] = []
 
-    init(settings: WorkerPoolSettings<Worker>, system: ActorSystem) async {
+    public init(selector: Selector, actorSystem: ActorSystem) async throws {
+        try await self.init(settings: .init(selector: selector), actorSystem: actorSystem)
+    }
+
+    public init(settings: WorkerPoolSettings<Worker>, actorSystem system: ActorSystem) async throws {
+        try settings.validate()
+
         self.actorSystem = system
         self.whenAllWorkersTerminated = settings.whenAllWorkersTerminated
         self.logLevel = settings.logLevel
@@ -166,21 +172,6 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
         self.roundRobinPos = 0
     }
 
-    // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: Public API, spawning the pool
-
-    // TODO: how can we move the spawn somewhere else so we don't have to pass in the system or context?
-    // TODO: round robin or what strategy?
-    public static func _spawn(
-        _ system: ActorSystem,
-        select selector: WorkerPool<Worker>.Selector,
-        file: String = #filePath, line: UInt = #line
-    ) async throws -> WorkerPool<Worker> {
-        // TODO: pass in settings rather than create them here
-        let settings = try WorkerPoolSettings<Worker>(selector: selector).validate()
-        return await WorkerPool(settings: settings, system: system)
-    }
-
     public nonisolated var description: String {
         "\(Self.self)(\(self.id))"
     }
@@ -241,6 +232,7 @@ public struct WorkerPoolSettings<Worker: DistributedWorker> where Worker.ActorSy
         }
     }
 
+    @discardableResult
     public func validate() throws -> WorkerPoolSettings {
         switch self.selector {
         case .static(let workers) where workers.isEmpty:

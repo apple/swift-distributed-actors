@@ -85,19 +85,19 @@ final class OpLogDistributedReceptionistClusteredTests: ClusteredActorSystemsXCT
     // MARK: Sync
 
     func test_shouldReplicateRegistrations() async throws {
-        let (local, remote) = await self.setUpPair()
-        let testKit: ActorTestKit = self.testKit(local)
-        try await self.joinNodes(node: local, with: remote)
+        let (first, second) = await self.setUpPair()
+        let testKit = self.testKit(first)
+        try await self.joinNodes(node: first, with: second)
 
         let probe = testKit.makeTestProbe(expecting: String.self)
 
-        // Create forwarder on 'local'
-        let forwarder = StringForwarder(probe: probe, actorSystem: local)
+        // Create forwarder on 'first'
+        let forwarder = StringForwarder(probe: probe, actorSystem: first)
 
         // subscribe on `remote`
         let subscriberProbe = testKit.makeTestProbe("subscriber", expecting: StringForwarder.self)
         let subscriptionTask = Task {
-            for try await forwarder in await remote.receptionist.listing(of: .stringForwarders) {
+            for try await forwarder in await second.receptionist.listing(of: .stringForwarders) {
                 subscriberProbe.tell(forwarder)
             }
         }
@@ -105,8 +105,9 @@ final class OpLogDistributedReceptionistClusteredTests: ClusteredActorSystemsXCT
             subscriptionTask.cancel()
         }
 
-        // checkIn on `local`
-        await local.receptionist.checkIn(forwarder, with: .stringForwarders)
+        // checkIn on `first`
+        await first.receptionist.checkIn(forwarder, with: .stringForwarders)
+        first.log.notice("Checked in: \(forwarder)")
 
         try await Task {
             let found = try subscriberProbe.expectMessage()

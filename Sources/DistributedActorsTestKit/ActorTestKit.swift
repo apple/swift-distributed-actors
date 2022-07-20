@@ -136,18 +136,23 @@ extension ActorTestKit {
         var lastError: Error?
         var polledTimes = 0
 
-        ActorTestKit.enterRepeatableContext()
-        while deadline.hasTimeLeft() {
-            do {
-                polledTimes += 1
-                let res = try block()
-                return res
-            } catch {
-                lastError = error
-                usleep(useconds_t(interval.microseconds))
+        let res: T? = ActorTestKit.withRepeatableContext {
+            while deadline.hasTimeLeft() {
+                do {
+                    polledTimes += 1
+                    let res = try block()
+                    return res
+                } catch {
+                    lastError = error
+                    usleep(useconds_t(interval.microseconds))
+                }
             }
+            return nil
         }
-        ActorTestKit.leaveRepeatableContext()
+
+        if let res {
+            return res
+        }
 
         let error = EventuallyError(callSite, duration, polledTimes, lastError: lastError)
         if !ActorTestKit.isInRepeatableContext() {
@@ -177,18 +182,23 @@ extension ActorTestKit {
         var lastError: Error?
         var polledTimes = 0
 
-        ActorTestKit.enterRepeatableContext()
-        while deadline.hasTimeLeft() {
-            do {
-                polledTimes += 1
-                let res = try await block()
-                return res
-            } catch {
-                lastError = error
-                usleep(useconds_t(interval.microseconds))
+        let res: T? = try await ActorTestKit.withRepeatableContext {
+            while deadline.hasTimeLeft() {
+                do {
+                    polledTimes += 1
+                    let res = try await block()
+                    return res
+                } catch {
+                    lastError = error
+                    usleep(useconds_t(interval.microseconds))
+                }
             }
+            return nil
         }
-        ActorTestKit.leaveRepeatableContext()
+
+        if let res {
+            return res
+        }
 
         let error = EventuallyError(callSite, duration, polledTimes, lastError: lastError)
         if !ActorTestKit.isInRepeatableContext() {
@@ -479,22 +489,21 @@ extension ActorTestKit {
 // immediately fail the test, but instead lets the `ActorTestKit.eventually`
 // block handle it.
 extension ActorTestKit {
-    internal static let threadLocalContextKey: String = "SACT_TESTKIT_REPEATABLE_CONTEXT"
+    @TaskLocal
+    static var repeatableContextCounter = 0
 
-    // Sets a flag that can be checked with `isInRepeatableContext`, to avoid
-    // failing a test from within blocks that continuously check conditions,
-    // e.g. `ActorTestKit.eventually`. This is safe to use in nested calls.
-    internal static func enterRepeatableContext() {
-        let currentDepth = self.currentRepeatableContextDepth
-        Foundation.Thread.current.threadDictionary[self.threadLocalContextKey] = currentDepth + 1
+    internal static func withRepeatableContext<T>(body: () async throws -> T) async rethrows -> T {
+        let currentRepeatableContextCounter = Self.repeatableContextCounter
+        return try await Self.$repeatableContextCounter.withValue(currentRepeatableContextCounter + 1) {
+            try await body()
+        }
     }
 
-    // Unsets the flag and causes `isInRepeatableContext` to return `false`.
-    // This is safe to use in nested calls.
-    internal static func leaveRepeatableContext() {
-        let currentDepth = self.currentRepeatableContextDepth
-        precondition(currentDepth > 0, "Imbalanced `leaveRepeatableContext` detected. Depth was \(currentDepth)")
-        Foundation.Thread.current.threadDictionary[self.threadLocalContextKey] = currentDepth - 1
+    internal static func withRepeatableContext<T>(body: () throws -> T) rethrows -> T {
+        let currentRepeatableContextCounter = Self.repeatableContextCounter
+        return try Self.$repeatableContextCounter.withValue(currentRepeatableContextCounter + 1) {
+            try body()
+        }
     }
 
     // Returns `true` if we are currently executing a code clock that repeatedly
@@ -502,20 +511,7 @@ extension ActorTestKit {
     // to avoid failing the test on the first iteration in e.g. an
     // `ActorTestKit.eventually` block.
     internal static func isInRepeatableContext() -> Bool {
-        self.currentRepeatableContextDepth > 0
-    }
-
-    // Returns the current depth of nested repeatable context calls.
-    internal static var currentRepeatableContextDepth: Int {
-        guard let currentValue = Foundation.Thread.current.threadDictionary[self.threadLocalContextKey] else {
-            return 0
-        }
-
-        guard let intValue = currentValue as? Int else {
-            fatalError("Expected value under key [\(self.threadLocalContextKey)] to be [\(Int.self)], but found [\(currentValue)]:\(type(of: currentValue))")
-        }
-
-        return intValue
+        Self.repeatableContextCounter > 0
     }
 }
 

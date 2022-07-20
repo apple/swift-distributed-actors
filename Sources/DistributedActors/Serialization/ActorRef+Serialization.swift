@@ -32,12 +32,14 @@ public enum ActorCoding {
     public enum MetadataKeys: CodingKey {
         case path
         case type
+        case wellKnown
         case custom(String)
 
         public init?(stringValue: String) {
             switch stringValue {
-            case "path": self = .path
-            case "type": self = .type
+            case "$path": self = .path
+            case "$type": self = .type
+            case "$wellKnown": self = .wellKnown
             default: self = .custom(stringValue)
             }
         }
@@ -46,7 +48,8 @@ public enum ActorCoding {
             switch self {
             case .path: return 0
             case .type: return 1
-            case .custom: return 2
+            case .wellKnown: return 2
+            case .custom: return 64
             }
         }
 
@@ -56,8 +59,9 @@ public enum ActorCoding {
 
         public var stringValue: String {
             switch self {
-            case .path: return "path"
-            case .type: return "type"
+            case .path: return "$path"
+            case .type: return "$type"
+            case .wellKnown: return "$wellKnown"
             case .custom(let id): return id
             }
         }

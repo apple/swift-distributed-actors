@@ -345,7 +345,7 @@ final class ClusterSystemTests: ClusterSystemXCTestCase {
             }
         }
 
-        guard case RemoteCallError.timedOut(let timeoutError) = error else {
+        guard case RemoteCallError.timedOut(_, let timeoutError) = error else {
             throw testKit.fail("Expected RemoteCallError.timedOut, got \(error)")
         }
         guard timeoutError.timeout == .milliseconds(200) else {
@@ -371,7 +371,7 @@ final class ClusterSystemTests: ClusterSystemXCTestCase {
             }
         }
 
-        guard case RemoteCallError.timedOut(let timeoutError) = error else {
+        guard case RemoteCallError.timedOut(_, let timeoutError) = error else {
             throw testKit.fail("Expected RemoteCallError.timedOut, got \(error)")
         }
         guard timeoutError.timeout == .milliseconds(200) else {
@@ -393,7 +393,7 @@ final class ClusterSystemTests: ClusterSystemXCTestCase {
 
         let message: String = "hello"
         let value = try await shouldNotThrow {
-            try await remoteGreeterRef.echo(message)
+            try await remoteGreeterRef.genericEcho(message)
         }
         value.shouldEqual(message)
     }
@@ -434,7 +434,7 @@ private distributed actor Greeter {
         try await self.muted()
     }
 
-    distributed func echo<T: Sendable & Codable>(_ message: T) -> T {
+    distributed func genericEcho<T: Sendable & Codable>(_ message: T) -> T {
         message
     }
 }

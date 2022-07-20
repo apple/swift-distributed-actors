@@ -30,7 +30,7 @@ final class DeadLetterTests: ClusterSystemXCTestCase {
 
         office.deliver("Hello")
 
-        try self.logCapture.awaitLogContaining(self.testKit, text: "was not delivered to [\"/user/someone")
+        try self.logCapture.awaitLogContaining(self.testKit, text: "was not delivered to [/user/someone")
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------

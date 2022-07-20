@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import Distributed
+import Foundation
 import class NIO.EventLoopFuture
 import struct NIO.EventLoopPromise
 import struct NIO.Scheduled
@@ -183,7 +184,7 @@ extension AskResponse: _AsyncResult {
             let eventLoop = nioFuture.eventLoop
             let promise: EventLoopPromise<Value> = eventLoop.makePromise()
             let timeoutTask = eventLoop.scheduleTask(in: timeout.toNIO) {
-                promise.fail(RemoteCallError.timedOut(TimeoutError(message: "\(type(of: self)) timed out after \(timeout.prettyDescription)", timeout: timeout)))
+                promise.fail(RemoteCallError.timedOut(UUID(), TimeoutError(message: "\(type(of: self)) timed out after \(timeout.prettyDescription)", timeout: timeout)))
             }
             nioFuture.whenFailure {
                 timeoutTask.cancel()
@@ -263,7 +264,7 @@ internal enum AskActor {
                         Ask was initiated from function [\(function)] in [\(file):\(line)] and \
                         expected response of type [\(String(reflecting: ResponseType.self))].
                         """
-                        completable.fail(RemoteCallError.timedOut(TimeoutError(message: errorMessage, timeout: timeout)))
+                        completable.fail(RemoteCallError.timedOut(UUID(), TimeoutError(message: errorMessage, timeout: timeout)))
 
                         // FIXME: Hack to stop from subReceive. Should we allow this somehow?
                         //        Maybe add a SubReceiveContext or similar?

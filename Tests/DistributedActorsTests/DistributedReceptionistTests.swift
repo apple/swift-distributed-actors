@@ -111,12 +111,12 @@ extension DistributedReception.Key {
 final class DistributedReceptionistTests: ClusterSystemXCTestCase {
     let receptionistBehavior = _OperationLogClusterReceptionist(settings: .default).behavior
 
-    func test_receptionist_mustHaveWellKnownAddress() throws {
+    func test_receptionist_mustHaveWellKnownID() throws {
         let opLogReceptionist = system.receptionist
-        let receptionistAddress = opLogReceptionist.id
+        let id = opLogReceptionist.id
 
-        receptionistAddress.detailedDescription.shouldEqual("/system/receptionist")
-        receptionistAddress.incarnation.shouldEqual(.wellKnown)
+        id.metadata.wellKnown.shouldEqual("receptionist")
+        id.incarnation.shouldEqual(.wellKnown)
     }
 
     func test_receptionist_shouldRespondWithRegisteredRefsForKey() throws {

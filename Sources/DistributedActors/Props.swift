@@ -46,6 +46,13 @@ public struct _Props: @unchecked Sendable {
     /// only if a single incarnation of actor will ever exist under the given path.
     internal var _wellKnown: Bool = false
 
+    /// Sets the ``ActorMetadataKeys/wellKnown`` key to this name during spawning.
+    internal var _wellKnownName: String? {
+        willSet {
+            self._wellKnown = newValue != nil
+        }
+    }
+
     /// INTERNAL API: Internal system actor, spawned under the /system namespace.
     /// This is likely to go away as we remove the actor tree, and move completely to 'distributed actor'.
     internal var _systemActor: Bool = false
