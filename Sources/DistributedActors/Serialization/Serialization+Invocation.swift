@@ -70,6 +70,7 @@ public struct ClusterInvocationDecoder: DistributedTargetInvocationDecoder {
         // Potentially used by interceptors, when invoking a local target directly
         case localProxyCall(ClusterSystem.InvocationEncoder)
     }
+
     var argumentIdx = 0
 
     public init(system: ClusterSystem, message: InvocationMessage) {
@@ -85,7 +86,7 @@ public struct ClusterInvocationDecoder: DistributedTargetInvocationDecoder {
     public mutating func decodeGenericSubstitutions() throws -> [Any.Type] {
         let genericSubstitutions: [String]
         switch self.state {
-        case .remoteCall(_, let message):
+        case .remoteCall(let message):
             genericSubstitutions = message.genericSubstitutions
         case .localProxyCall(let invocation):
             genericSubstitutions = invocation.genericSubstitutions
