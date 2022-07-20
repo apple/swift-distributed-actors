@@ -235,7 +235,7 @@ public distributed actor OpLogDistributedReceptionist: DistributedReceptionist, 
         var ps = _Props()
         ps._systemActor = true
         ps._wellKnown = true
-        // _knownActorName name is set with @ActorID.Metadata
+        ps._knownActorName = ActorPath.distributedActorReceptionist.name
         return ps
     }
 
@@ -254,6 +254,7 @@ public distributed actor OpLogDistributedReceptionist: DistributedReceptionist, 
 
         // === listen to cluster events ------------------
         self.wellKnownName = ActorPath.distributedActorReceptionist.name
+        assert(self.id.path.description == "/system/receptionist") // TODO(distributed): remove when we remove paths entirely
 
         self.eventsListeningTask = Task.detached {
             try await self.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead

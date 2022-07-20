@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import Distributed
+import Foundation
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ActorID
@@ -58,7 +59,7 @@ extension ClusterSystem.ActorID {
                 let metadata = myself.id.metadata
                 let key = myself[keyPath: storageKeyPath]
                 if let value = metadata[key.id] {
-                    fatalError("Attempted to override ActorID Metadata for key \(key.id):\(key.keyType) which already had value: \(value); with new value: \(String(describing: newValue))")
+                    fatalError("Attempted to override ActorID Metadata for key \(key.id):\(key.keyType) which already had value: [\(value)] with new value: [\(String(describing: newValue))]")
                 }
                 metadata[key.id] = newValue
 
@@ -140,6 +141,10 @@ extension ClusterSystem {
             case .remote(let node): return node
             }
         }
+
+        #if DEBUG
+        private var debugID = UUID()
+        #endif
 
         /// Collection of tags associated with this actor identity.
         ///
@@ -367,6 +372,10 @@ extension ActorID: CustomStringConvertible {
         if !self.metadata.isEmpty {
             res += self.metadata.description
         }
+
+        #if DEBUG
+        res += "{debugID:\(debugID)}"
+        #endif
 
         return res
     }

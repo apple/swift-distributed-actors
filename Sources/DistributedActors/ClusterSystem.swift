@@ -972,7 +972,7 @@ extension ClusterSystem {
             )
         }
 
-        if let wellKnownName = props._knownActorName {
+        if let wellKnownName = props._wellKnownName {
             id.metadata.wellKnown = wellKnownName
         }
 
@@ -996,7 +996,9 @@ extension ClusterSystem {
 
         self.namingLock.lock()
         defer { self.namingLock.unlock() }
-//        precondition(self._reservedNames.remove(actor.id) != nil, "Attempted to ready an identity that was not reserved: \(actor.id)")
+        if !actor.id.isWellKnown {
+            precondition(self._reservedNames.remove(actor.id) != nil, "Attempted to ready an identity that was not reserved: \(actor.id)")
+        }
 
         // Spawn a behavior actor for it:
         let behavior = InvocationBehavior.behavior(instance: Weak(actor))

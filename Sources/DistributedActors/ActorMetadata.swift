@@ -29,7 +29,7 @@ public struct ActorMetadataKeys {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Pre-defined ActorMetadata keys
+// MARK: Metadata Keys: Well Known
 
 extension ActorMetadataKeys {
     internal var path: Key<ActorPath> { "$path" }
@@ -48,7 +48,18 @@ extension ActorMetadataKeys {
     /// **WARNING:** Do not use this mechanism for "normal" actors, as it makes their addressess "guessable",
     /// which is bad from a security and system independence stand point. Please use the cluster receptionist instead.
     public var wellKnown: Key<String> { "$wellKnown" }
+}
 
+extension ActorID {
+    internal var isWellKnown: Bool {
+        self.metadata.wellKnown != nil
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Metadata Keys: Type
+
+extension ActorMetadataKeys {
     /// The type of the distributed actor identified by this ``ActorID``.
     /// Used only for human radability and debugging purposes, does not participate in equality checks of an actor ID.
     internal var type: Key<ActorTypeTagValue> { "$type" } // TODO: remove Tag from name
