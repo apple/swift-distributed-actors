@@ -106,7 +106,7 @@ extension ActorTestKit {
     ) async -> ActorTestProbe<Cluster.Event> {
         let eventStream = self.system.cluster.events
         let p = self.makeTestProbe(naming ?? _ActorNaming.prefixed(with: "\(ClusterEventStream.self)-subscriberProbe"), expecting: Cluster.Event.self)
-        await eventStream.subscribe(p.ref)
+        await eventStream._subscribe(p.ref)
         return p
     }
 }
