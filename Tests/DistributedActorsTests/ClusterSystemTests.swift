@@ -378,6 +378,25 @@ final class ClusterSystemTests: ClusterSystemXCTestCase {
             throw testKit.fail("Expected timeout to be 200 milliseconds but was \(timeoutError.timeout)")
         }
     }
+
+    func test_remoteCallGeneric() async throws {
+        let local = await setUpNode("local") { settings in
+            settings.enabled = true
+        }
+        let remote = await setUpNode("remote") { settings in
+            settings.enabled = true
+        }
+        local.cluster.join(node: remote.cluster.uniqueNode)
+
+        let greeter = Greeter(actorSystem: local)
+        let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
+
+        let message: String = "hello"
+        let value = try await shouldNotThrow {
+            try await remoteGreeterRef.echo(message)
+        }
+        value.shouldEqual(message)
+    }
 }
 
 private distributed actor Greeter {
@@ -413,6 +432,10 @@ private distributed actor Greeter {
     distributed func muted(delayNanos: UInt64) async throws {
         try await Task.sleep(nanoseconds: delayNanos)
         try await self.muted()
+    }
+
+    distributed func echo<T: Sendable & Codable>(_ message: T) -> T {
+        message
     }
 }
 

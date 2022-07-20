@@ -20,6 +20,7 @@ import struct Foundation.Data
 public struct InvocationMessage: Sendable, Codable, CustomStringConvertible {
     let callID: ClusterSystem.CallID
     let targetIdentifier: String
+    let genericSubstitutions: [String]
     let arguments: [Data]
 
     var target: RemoteCallTarget {
@@ -27,7 +28,7 @@ public struct InvocationMessage: Sendable, Codable, CustomStringConvertible {
     }
 
     public var description: String {
-        "InvocationMessage(callID: \(callID), target: \(target), arguments: \(arguments.count))"
+        "InvocationMessage(callID: \(callID), target: \(target), genericSubstitutions: \(genericSubstitutions), arguments: \(arguments.count))"
     }
 }
 
