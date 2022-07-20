@@ -150,7 +150,7 @@ internal distributed actor ClusterSingletonBoss<Act: ClusterSingletonProtocol>: 
         }
 
         // TODO: (optimization) tell `from` node that this node is taking over (https://github.com/apple/swift-distributed-actors/issues/329)
-        let props = _Props.singleton(settings: self.settings)
+        let props = _Props.singletonInstance(settings: self.settings)
         let singleton = try await _Props.$forSpawn.withValue(props) {
             try await singletonFactory(self.actorSystem)
         }
@@ -355,13 +355,14 @@ extension ClusterSingletonBoss {
 // MARK: _Props
 
 extension _Props {
-    static func singleton(settings: ClusterSingletonSettings) -> _Props {
-        _Props().singleton(settings: settings)
+    internal static func singletonInstance(settings: ClusterSingletonSettings) -> _Props {
+        _Props().singletonInstance(settings: settings)
     }
 
-    func singleton(settings: ClusterSingletonSettings) -> _Props {
+    internal func singletonInstance(settings: ClusterSingletonSettings) -> _Props {
         var props = self
         props._knownActorName = settings.name
+        props._wellKnownName = settings.name
         return props
     }
 }
