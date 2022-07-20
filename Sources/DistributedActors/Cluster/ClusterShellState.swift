@@ -42,7 +42,7 @@ internal struct ClusterShellState: ReadOnlyClusterState {
     var log: Logger
     let settings: ClusterSystemSettings
 
-    let events: EventStream<Cluster.Event>
+    let events: ClusterEventStream
 
     let channel: Channel
 
@@ -110,7 +110,7 @@ internal struct ClusterShellState: ReadOnlyClusterState {
     init(
         settings: ClusterSystemSettings,
         channel: Channel,
-        events: EventStream<Cluster.Event>,
+        events: ClusterEventStream,
         gossiperControl: GossiperControl<Cluster.MembershipGossip, Cluster.MembershipGossip>,
         log: Logger
     ) {

@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2020 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2020-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -17,12 +17,15 @@ import DistributedActorsTestKit
 import XCTest
 
 final class ClusterMembershipSnapshotTests: ClusteredActorSystemsXCTestCase {
-    func test_membershipSnapshot_initialShouldContainSelfNode() async {
+    func test_membershipSnapshot_initialShouldContainSelfNode() async throws {
         let system = await setUpNode("first")
 
-        await system.cluster.membershipSnapshot.members(atLeast: .joining).shouldContain(
-            Cluster.Member(node: system.cluster.uniqueNode, status: .joining)
-        )
+        let testKit: ActorTestKit = self.testKit(system)
+        try await testKit.eventually(within: .seconds(2)) {
+            await system.cluster.membershipSnapshot.members(atLeast: .joining).shouldContain(
+                Cluster.Member(node: system.cluster.uniqueNode, status: .joining)
+            )
+        }
     }
 
     func test_membershipSnapshot_shouldBeUpdated() async throws {
@@ -53,7 +56,7 @@ final class ClusterMembershipSnapshotTests: ClusteredActorSystemsXCTestCase {
         let second = await setUpNode("second")
         let third = await setUpNode("third")
 
-        let events = self.testKit(first).spawnEventStreamTestProbe(subscribedTo: first.cluster.events)
+        let events = await self.testKit(first).spawnClusterEventStreamTestProbe()
 
         try await self.joinNodes(node: first, with: second)
         try await self.joinNodes(node: first, with: third)

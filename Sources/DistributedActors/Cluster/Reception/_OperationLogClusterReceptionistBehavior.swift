@@ -95,11 +95,13 @@ public final class _OperationLogClusterReceptionist {
             context.log.debug("Initialized receptionist")
 
             // === listen to cluster events ------------------
-            context.system.cluster.events.subscribe(
-                context.subReceive(Cluster.Event.self) { event in
-                    self.onClusterEvent(context, event: event)
-                }
-            )
+            Task {
+                await context.system.cluster.events.subscribe(
+                    context.subReceive(Cluster.Event.self) { event in
+                        self.onClusterEvent(context, event: event)
+                    }
+                )
+            }
 
             // === timers ------------------
             // periodically gossip to other receptionists with the last seqNr we've seen,

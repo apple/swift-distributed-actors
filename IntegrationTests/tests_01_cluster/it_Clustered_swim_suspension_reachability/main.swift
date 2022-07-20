@@ -49,7 +49,12 @@ let ref = try system._spawn(
         return .same
     }
 )
-system.cluster.events.subscribe(ref)
+
+Task {
+    for await event in system.cluster.events {
+        system.log.info("Event: \(event)")
+    }
+}
 
 if args.count >= 3 {
     print("getting host")

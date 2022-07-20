@@ -99,7 +99,12 @@ extension ClusterShell {
         }
 
         system.cluster.updateMembershipSnapshot(state.membership)
-        eventsToPublish.forEach { state.events.publish($0) }
+
+        Task { [eventsToPublish, state] in
+            for event in eventsToPublish {
+                await state.events.publish(event)
+            }
+        }
 
         previousState.log.trace(
             "Membership state after leader actions: \(state.membership)",

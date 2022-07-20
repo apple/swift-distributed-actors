@@ -78,8 +78,8 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
         let expectedDownNode = expectedDownSystem.cluster.uniqueNode
 
         // we start cluster event probes early, so they get the events one by one as they happen
-        let eventsProbeOther = self.testKit(otherNotDownPairSystem).spawnEventStreamTestProbe(subscribedTo: otherNotDownPairSystem.cluster.events)
-        let eventsProbeThird = self.testKit(thirdNeverDownSystem).spawnEventStreamTestProbe(subscribedTo: thirdNeverDownSystem.cluster.events)
+        let eventsProbeOther = await self.testKit(otherNotDownPairSystem).spawnClusterEventStreamTestProbe()
+        let eventsProbeThird = await self.testKit(thirdNeverDownSystem).spawnClusterEventStreamTestProbe()
 
         // we cause the stop of the target node as expected
         switch (stopMethod, stopNode) {
@@ -234,7 +234,7 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
 
         var probes: [UniqueNode: ActorTestProbe<Cluster.Event>] = [:]
         for remainingNode in nodes {
-            probes[remainingNode.cluster.uniqueNode] = self.testKit(remainingNode).spawnEventStreamTestProbe(subscribedTo: remainingNode.cluster.events)
+            probes[remainingNode.cluster.uniqueNode] = await self.testKit(remainingNode).spawnClusterEventStreamTestProbe()
         }
 
         pinfo("Joining \(nodes.count) nodes...")
