@@ -21,6 +21,7 @@ import SwiftProtobuf
 
 public struct ClusterInvocationEncoder: DistributedTargetInvocationEncoder {
     public typealias SerializationRequirement = any Codable
+    var genericSubstitutions: [String] = []
     var arguments: [Data] = []
     var throwing: Bool = false
 
@@ -31,7 +32,8 @@ public struct ClusterInvocationEncoder: DistributedTargetInvocationEncoder {
     }
 
     public mutating func recordGenericSubstitution<T>(_ type: T.Type) throws {
-        fatalError("NOT IMPLEMENTED: \(#function)")
+        let typeName = _mangledTypeName(type) ?? _typeName(type)
+        self.genericSubstitutions.append(typeName)
     }
 
     public mutating func recordArgument<Value: Codable>(_ argument: RemoteCallArgument<Value>) throws {
@@ -72,7 +74,20 @@ public struct ClusterInvocationDecoder: DistributedTargetInvocationDecoder {
     }
 
     public mutating func decodeGenericSubstitutions() throws -> [Any.Type] {
-        fatalError("NOT IMPLEMENTED: \(#function)")
+        let genericSubstitutions: [String]
+        switch self.state {
+        case .remoteCall(_, let message):
+            genericSubstitutions = message.genericSubstitutions
+        case .localProxyCall(let invocation):
+            genericSubstitutions = invocation.genericSubstitutions
+        }
+
+        return try genericSubstitutions.map {
+            guard let type = _typeByName($0) else {
+                throw SerializationError.notAbleToDeserialize(hint: $0)
+            }
+            return type
+        }
     }
 
     public mutating func decodeNextArgument<Argument: Codable>() throws -> Argument {

@@ -1052,6 +1052,7 @@ extension ClusterSystem {
             let invocation = InvocationMessage(
                 callID: callID,
                 targetIdentifier: target.identifier,
+                genericSubstitutions: invocation.genericSubstitutions,
                 arguments: arguments
             )
             recipient.sendInvocation(invocation)
@@ -1094,6 +1095,7 @@ extension ClusterSystem {
             let invocation = InvocationMessage(
                 callID: callID,
                 targetIdentifier: target.identifier,
+                genericSubstitutions: invocation.genericSubstitutions,
                 arguments: arguments
             )
             recipient.sendInvocation(invocation)
