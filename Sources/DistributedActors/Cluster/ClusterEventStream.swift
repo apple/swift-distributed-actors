@@ -25,13 +25,13 @@ public struct ClusterEventStream: AsyncSequence {
 
     private let shell: ClusterEventStreamShell?
 
-    internal init(_ system: ClusterSystem, customName: String? = nil) async {
+    internal init(_ system: ClusterSystem, customName: String? = nil) {
         var props = ClusterEventStreamShell.props
         if let customName = customName {
             props._knownActorName = customName
         }
 
-        self.shell = await _Props.$forSpawn.withValue(props) {
+        self.shell = _Props.$forSpawn.withValue(props) {
             ClusterEventStreamShell(actorSystem: system)
         }
     }

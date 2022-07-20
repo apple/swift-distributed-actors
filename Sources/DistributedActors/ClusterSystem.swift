@@ -305,7 +305,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         }
 
         if !settings.enabled {
-            let clusterEvents = await ClusterEventStream(self)
+            let clusterEvents = ClusterEventStream(self)
             _ = self._clusterStore.storeIfNilThenLoad(Box(nil))
             _ = self._clusterControlStore.storeIfNilThenLoad(Box(ClusterControl(settings, cluster: nil, clusterRef: self.deadLetters.adapted(), eventStream: clusterEvents)))
         }
@@ -317,7 +317,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         if let cluster = self._cluster {
             // try!-safe, this will spawn under /system/... which we have full control over,
             // and there /system namespace and it is known there will be no conflict for this name
-            let clusterEvents = await ClusterEventStream(self)
+            let clusterEvents = ClusterEventStream(self)
             let clusterRef = try! cluster.start(system: self, clusterEvents: clusterEvents) // only spawns when cluster is initialized
             _ = self._clusterControlStore.storeIfNilThenLoad(Box(ClusterControl(settings, cluster: cluster, clusterRef: clusterRef, eventStream: clusterEvents)))
 
