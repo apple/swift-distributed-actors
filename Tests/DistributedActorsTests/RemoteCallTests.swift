@@ -231,9 +231,10 @@ final class RemoteCallTests: ClusteredActorSystemsXCTestCase {
         let error = try await shouldThrow {
             _ = try await remoteGreeterRef.helloThrow(codable: true)
         }
-        guard error is GenericRemoteCallError else {
+        guard let remoteCallError = error as? GenericRemoteCallError else {
             throw TestError("Expected GenericRemoteCallError, got \(error)")
         }
+        remoteCallError.message.shouldStartWith(prefix: "Remote call error of [GreeterCodableError] type occurred")
     }
 
     func test_remoteCall_customCodableErrorAllowList_errorInList() async throws {
@@ -260,6 +261,28 @@ final class RemoteCallTests: ClusteredActorSystemsXCTestCase {
         }
     }
 
+    func test_remoteCall_customCodableErrorAllowList_errorInListButNotRegistered() async throws {
+        let local = await setUpNode("local") { settings in
+            settings.remoteCall.codableErrorAllowance = .custom(allowedTypes: [GreeterCodableError.self, AnotherGreeterCodableError.self])
+        }
+        let remote = await setUpNode("remote") { settings in
+            settings.remoteCall.codableErrorAllowance = .custom(allowedTypes: [GreeterCodableError.self, AnotherGreeterCodableError.self])
+        }
+        local.cluster.join(node: remote.cluster.uniqueNode)
+
+        let greeter = Greeter(actorSystem: local)
+        let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
+
+        let error = try await shouldThrow {
+            try await RemoteCall.with(timeout: .milliseconds(200)) {
+                _ = try await remoteGreeterRef.helloThrow(codable: true)
+            }
+        }
+        guard case RemoteCallError.timedOut = error else {
+            throw TestError("Expected RemoteCallError.timedOut, got \(error)")
+        }
+    }
+
     func test_remoteCall_customCodableErrorAllowList_errorNotInList() async throws {
         let local = await setUpNode("local") { settings in
             settings.remoteCall.codableErrorAllowance = .custom(allowedTypes: [AnotherGreeterCodableError.self])
@@ -279,9 +302,10 @@ final class RemoteCallTests: ClusteredActorSystemsXCTestCase {
         let error = try await shouldThrow {
             _ = try await remoteGreeterRef.helloThrow(codable: true)
         }
-        guard error is GenericRemoteCallError else {
+        guard let remoteCallError = error as? GenericRemoteCallError else {
             throw TestError("Expected GenericRemoteCallError, got \(error)")
         }
+        remoteCallError.message.shouldStartWith(prefix: "Remote call error of [GreeterCodableError] type occurred")
     }
 }
 

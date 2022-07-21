@@ -1502,10 +1502,10 @@ public struct ClusterInvocationResultHandler: DistributedTargetInvocationResultH
                 case .all: // compiler gets confused if this is grouped together with above
                     reply = .init(callID: callID, error: codableError)
                 default:
-                    reply = .init(callID: callID, error: GenericRemoteCallError(message: "Remote call error of [\(errorType)] type occurred"))
+                    reply = .init(callID: callID, error: GenericRemoteCallError(errorType: errorType))
                 }
             } else {
-                reply = .init(callID: callID, error: GenericRemoteCallError(message: "Remote call error of [\(errorType)] type occurred"))
+                reply = .init(callID: callID, error: GenericRemoteCallError(errorType: errorType))
             }
             try await channel.writeAndFlush(TransportEnvelope(envelope: Payload(payload: .message(reply)), recipient: recipient))
         }
@@ -1595,6 +1595,14 @@ struct RemoteCallReply<Value: Codable>: AnyRemoteCallReply {
 
 public struct GenericRemoteCallError: Error, Codable {
     public let message: String
+
+    init(message: String) {
+        self.message = message
+    }
+
+    init(errorType: Any.Type) {
+        self.message = "Remote call error of [\(errorType)] type occurred"
+    }
 }
 
 public enum ClusterSystemError: DistributedActorSystemError {
