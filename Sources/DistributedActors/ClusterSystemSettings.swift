@@ -461,17 +461,33 @@ extension ClusterSystemSettings {
         /// Set to `.effectivelyInfinite` to avoid setting a timeout, although this is not recommended.
         public var defaultTimeout: Duration = .seconds(5)
 
-        public var codableErrorAllowance: CodableErrorAllowance = .all
+        public var codableErrorAllowance: CodableErrorAllowanceSettings = .all
 
-        public enum CodableErrorAllowance {
+        public struct CodableErrorAllowanceSettings {
+            internal enum CodableErrorAllowance {
+                case none
+                case all
+                // OIDs of allowed types
+                case custom(Set<ObjectIdentifier>)
+            }
+
+            internal let underlying: CodableErrorAllowance
+
+            internal init(allowance: CodableErrorAllowance) {
+                self.underlying = allowance
+            }
+
             /// All ``Codable`` errors will be converted to ``GenericRemoteCallError``.
-            case none
+            public static let none: CodableErrorAllowanceSettings = .init(allowance: .none)
 
             /// All ``Codable`` errors will be returned as-is.
-            case all
+            public static let all: CodableErrorAllowanceSettings = .init(allowance: .all)
 
             /// Only the indicated ``Codable`` errors are allowed. Others are converted to ``GenericRemoteCallError``.
-            case custom([(Error & Codable).Type])
+            public static func custom(allowedTypes: [(Error & Codable).Type]) -> CodableErrorAllowanceSettings {
+                let oids = allowedTypes.map { ObjectIdentifier($0) }
+                return .init(allowance: .custom(Set(oids)))
+            }
         }
     }
 }

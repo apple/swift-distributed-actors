@@ -238,12 +238,12 @@ final class RemoteCallTests: ClusteredActorSystemsXCTestCase {
 
     func test_remoteCall_customCodableErrorAllowList_errorInList() async throws {
         let local = await setUpNode("local") { settings in
-            settings.remoteCall.codableErrorAllowance = .custom([GreeterCodableError.self, AnotherGreeterCodableError.self])
+            settings.remoteCall.codableErrorAllowance = .custom(allowedTypes: [GreeterCodableError.self, AnotherGreeterCodableError.self])
             settings.serialization.registerInbound(GreeterCodableError.self)
             settings.serialization.registerInbound(AnotherGreeterCodableError.self)
         }
         let remote = await setUpNode("remote") { settings in
-            settings.remoteCall.codableErrorAllowance = .custom([GreeterCodableError.self, AnotherGreeterCodableError.self])
+            settings.remoteCall.codableErrorAllowance = .custom(allowedTypes: [GreeterCodableError.self, AnotherGreeterCodableError.self])
             settings.serialization.registerInbound(GreeterCodableError.self)
             settings.serialization.registerInbound(AnotherGreeterCodableError.self)
         }
@@ -262,12 +262,12 @@ final class RemoteCallTests: ClusteredActorSystemsXCTestCase {
 
     func test_remoteCall_customCodableErrorAllowList_errorNotInList() async throws {
         let local = await setUpNode("local") { settings in
-            settings.remoteCall.codableErrorAllowance = .custom([AnotherGreeterCodableError.self])
+            settings.remoteCall.codableErrorAllowance = .custom(allowedTypes: [AnotherGreeterCodableError.self])
             settings.serialization.registerInbound(GreeterCodableError.self)
             settings.serialization.registerInbound(AnotherGreeterCodableError.self)
         }
         let remote = await setUpNode("remote") { settings in
-            settings.remoteCall.codableErrorAllowance = .custom([AnotherGreeterCodableError.self])
+            settings.remoteCall.codableErrorAllowance = .custom(allowedTypes: [AnotherGreeterCodableError.self])
             settings.serialization.registerInbound(GreeterCodableError.self)
             settings.serialization.registerInbound(AnotherGreeterCodableError.self)
         }

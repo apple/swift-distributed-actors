@@ -1491,27 +1491,23 @@ public struct ClusterInvocationResultHandler: DistributedTargetInvocationResultH
 
         case .remoteCall(let system, let callID, let channel, let recipient):
             system.log.debug("Result handler, onThrow: \(error)", metadata: ["call/id": "\(callID)"])
+
+            let errorType = type(of: error as Any)
             let reply: RemoteCallReply<_Done>
+
             if let codableError = error as? (Error & Codable) {
-                switch system.settings.remoteCall.codableErrorAllowance {
-                case .custom(let allowedTypes) where errorTypeAllowed(error: error, allowedTypes: allowedTypes):
+                switch system.settings.remoteCall.codableErrorAllowance.underlying {
+                case .custom(let allowedTypeOIDs) where allowedTypeOIDs.contains(ObjectIdentifier(errorType)):
                     reply = .init(callID: callID, error: codableError)
                 case .all: // compiler gets confused if this is grouped together with above
                     reply = .init(callID: callID, error: codableError)
                 default:
-                    reply = .init(callID: callID, error: GenericRemoteCallError(message: "Remote call error of [\(type(of: error as Any))] type occurred"))
+                    reply = .init(callID: callID, error: GenericRemoteCallError(message: "Remote call error of [\(errorType)] type occurred"))
                 }
             } else {
-                reply = .init(callID: callID, error: GenericRemoteCallError(message: "Remote call error of [\(type(of: error as Any))] type occurred"))
+                reply = .init(callID: callID, error: GenericRemoteCallError(message: "Remote call error of [\(errorType)] type occurred"))
             }
             try await channel.writeAndFlush(TransportEnvelope(envelope: Payload(payload: .message(reply)), recipient: recipient))
-        }
-
-        func errorTypeAllowed<Err>(error: Err, allowedTypes: [(Error & Codable).Type]) -> Bool {
-            func isErrorOfType<Err, T: Error & Codable>(_ error: Err, _: T.Type) -> Bool {
-                error is T // `is` and `as` don't work with stored type
-            }
-            return allowedTypes.contains { type in isErrorOfType(error, type) }
         }
     }
 }
