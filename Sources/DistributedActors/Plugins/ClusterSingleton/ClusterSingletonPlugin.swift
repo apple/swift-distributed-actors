@@ -14,21 +14,6 @@
 
 import Distributed
 
-public protocol ClusterSingletonProtocol: DistributedActor where ActorSystem == ClusterSystem {
-    /// The singleton should no longer be active on this cluster member.
-    ///
-    /// Invoked by the cluster singleton manager when it is determined that this member should no longer
-    /// be hosting this singleton instance. The singleton upon receiving this call, should either cease activity,
-    /// or take steps to terminate itself entirely.
-    func passivateSingleton() async
-}
-
-extension ClusterSingletonProtocol {
-    public func passivateSingleton() async {
-        // nothing by default
-    }
-}
-
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Cluster singleton plugin
 
@@ -52,7 +37,7 @@ public actor ClusterSingletonPlugin {
         _ type: Act.Type,
         name: String,
         settings: ClusterSingletonSettings = .init()
-    ) async throws -> Act where Act: ClusterSingletonProtocol {
+    ) async throws -> Act where Act: ClusterSingleton {
         var settings = settings
         settings.name = name
         return try await self._get(type, settings: settings, system: self.actorSystem, makeInstance: nil)
@@ -64,7 +49,7 @@ public actor ClusterSingletonPlugin {
         name: String,
         settings: ClusterSingletonSettings = .init(),
         makeInstance factory: ((ClusterSystem) async throws -> Act)? = nil
-    ) async throws -> Act where Act: ClusterSingletonProtocol {
+    ) async throws -> Act where Act: ClusterSingleton {
         var settings = settings
         settings.name = name
         return try await self._get(type, settings: settings, system: self.actorSystem, makeInstance: factory)
@@ -75,7 +60,7 @@ public actor ClusterSingletonPlugin {
         settings: ClusterSingletonSettings,
         system: ClusterSystem,
         makeInstance factory: ((ClusterSystem) async throws -> Act)?
-    ) async throws -> Act where Act: ClusterSingletonProtocol {
+    ) async throws -> Act where Act: ClusterSingleton {
         let singletonName = settings.name
         guard !singletonName.isEmpty else {
             fatalError("ClusterSingleton \(Act.self) must have specified unique name!")

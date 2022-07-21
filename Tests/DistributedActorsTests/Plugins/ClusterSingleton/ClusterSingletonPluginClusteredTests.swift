@@ -360,7 +360,7 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
     }
 }
 
-distributed actor TheSingleton: ClusterSingletonProtocol {
+distributed actor TheSingleton: ClusterSingleton {
     typealias ActorSystem = ClusterSystem
 
     private let greeting: String
