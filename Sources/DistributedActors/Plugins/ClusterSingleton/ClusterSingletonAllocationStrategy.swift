@@ -16,35 +16,44 @@
 // MARK: Protocol for singleton allocation strategy
 
 /// Strategy for choosing a `UniqueNode` to allocate singleton.
-internal protocol ClusterSingletonAllocationStrategy {
+public protocol ClusterSingletonAllocationStrategy {
+
     /// Receives and handles the `Cluster.Event`.
     ///
     /// - Returns: The current `node` after processing `clusterEvent`.
-    func onClusterEvent(_ clusterEvent: Cluster.Event) -> UniqueNode?
+    func onClusterEvent(_ clusterEvent: Cluster.Event) async -> UniqueNode?
 
     /// The currently allocated `node` for the singleton.
-    var node: UniqueNode? { get }
+    var node: UniqueNode? { get async }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ClusterSingletonAllocationStrategy implementations
 
 /// An `AllocationStrategy` in which selection is based on cluster leadership.
-internal class ClusterSingletonAllocationByLeadership: ClusterSingletonAllocationStrategy {
-    var node: UniqueNode?
+public final class ClusterSingletonAllocationByLeadership: ClusterSingletonAllocationStrategy {
+    var _node: UniqueNode?
 
-    init() {}
+    public init(settings: ClusterSingletonSettings, actorSystem: ClusterSystem) {
+        // not used...
+    }
 
-    func onClusterEvent(_ clusterEvent: Cluster.Event) -> UniqueNode? {
+    public func onClusterEvent(_ clusterEvent: Cluster.Event) async -> UniqueNode? {
         switch clusterEvent {
         case .leadershipChange(let change):
-            self.node = change.newLeader?.uniqueNode
+            self._node = change.newLeader?.uniqueNode
         case .snapshot(let membership):
-            self.node = membership.leader?.uniqueNode
+            self._node = membership.leader?.uniqueNode
         default:
             () // ignore other events
         }
-        return self.node
+        return self._node
+    }
+
+    public var node: UniqueNode? {
+        get async {
+            self._node
+        }
     }
 }
 

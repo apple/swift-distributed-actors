@@ -29,7 +29,7 @@ public struct ClusterSingletonSettings {
     }
 
     /// Controls allocation of the node on which the singleton runs.
-    public var allocationStrategy: AllocationStrategySettings = .byLeadership
+    public var allocationStrategy: ClusterSingletonAllocationStrategySettings = .byLeadership
 
     /// Time to wait for the singleton, whether allocated on this node or another, before
     /// we stop stashing calls and throw error.
@@ -39,10 +39,13 @@ public struct ClusterSingletonSettings {
 }
 
 /// Singleton node allocation strategies.
-public struct AllocationStrategySettings {
+public struct ClusterSingletonAllocationStrategySettings {
     private enum AllocationStrategy {
         /// Singletons will run on the cluster leader. *All* nodes are potential candidates.
         case byLeadership
+
+        /// Custom strategy, allowing end-users to develop their own strategies
+        case custom(@Sendable (ClusterSingletonSettings, ClusterSystem) async -> any ClusterSingletonAllocationStrategy)
     }
 
     private var allocationStrategy: AllocationStrategy
@@ -51,12 +54,24 @@ public struct AllocationStrategySettings {
         self.allocationStrategy = allocationStrategy
     }
 
-    func makeAllocationStrategy(_: ClusterSystemSettings, _: ClusterSingletonSettings) -> ClusterSingletonAllocationStrategy {
+    func makeAllocationStrategy(settings: ClusterSingletonSettings,
+                                actorSystem: ClusterSystem) async -> ClusterSingletonAllocationStrategy {
         switch self.allocationStrategy {
         case .byLeadership:
-            return ClusterSingletonAllocationByLeadership()
+            return ClusterSingletonAllocationByLeadership(settings: settings, actorSystem: actorSystem)
+        case .custom(let make):
+            return await make(settings, actorSystem)
         }
     }
+}
 
-    public static let byLeadership: AllocationStrategySettings = .init(allocationStrategy: .byLeadership)
+extension ClusterSingletonAllocationStrategySettings {
+    /// The singleton instance will be hosted on an `.up` leader member of the cluster.
+    public static let byLeadership: ClusterSingletonAllocationStrategySettings =
+        .init(allocationStrategy: .byLeadership)
+
+    /// Custom strategy.
+    public static func custom<Strategy>(_ make: @Sendable @escaping (ClusterSingletonSettings, ClusterSystem) async -> Strategy) -> ClusterSingletonAllocationStrategySettings where Strategy: ClusterSingletonAllocationStrategy {
+        .init(allocationStrategy: .custom(make))
+    }
 }

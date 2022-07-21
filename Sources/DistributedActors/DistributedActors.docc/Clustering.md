@@ -286,6 +286,6 @@ You can configure the default timeout used by the cluster system during its init
 
 ```swift
 ClusterSystem() { settings in 
-    settings.
+    settings.remoteCall.defaultTimeout = .seconds(5)
 }
 ```

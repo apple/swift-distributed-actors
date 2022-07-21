@@ -26,6 +26,7 @@ public struct _PluginsSettings {
     ///
     /// - Note: A plugin that depends on others should be added *after* its dependencies.
     /// - Faults, when plugin of the exact same `PluginKey` is already included in the settings.
+    @available(*, deprecated, message: "use settings.install(plugin:) instead")
     public mutating func add<P: _Plugin>(_ plugin: P) {
         precondition(
             !self.plugins.contains(where: { $0.key == plugin.key.asAny }),
@@ -63,6 +64,18 @@ public struct _PluginsSettings {
 }
 
 extension _PluginsSettings {
+
+    /// Installs the passed in plugin in the settings.
+    ///
+    /// The plugin will be started as the actor system becomes fully initialized,
+    /// and stopped as the system is shut down.
+    ///
+    /// - Parameter plugin: plugin to install in the actor system
+    public mutating func install(plugin: some _Plugin) {
+        self.add(plugin)
+    }
+
+    @available(*, deprecated, message: "use settings.install(plugin:) instead")
     public static func += <P: _Plugin>(plugins: inout _PluginsSettings, plugin: P) {
         plugins.add(plugin)
     }

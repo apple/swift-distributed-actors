@@ -79,7 +79,7 @@ internal distributed actor ClusterSingletonBoss<Act: ClusterSingletonProtocol>: 
     ) async throws {
         self.actorSystem = system
         self.settings = settings
-        self.allocationStrategy = settings.allocationStrategy.makeAllocationStrategy(system.settings, settings)
+        self.allocationStrategy = await settings.allocationStrategy.makeAllocationStrategy(settings: settings, actorSystem: system)
         self.singletonFactory = singletonFactory
         self.buffer = RemoteCallBuffer(capacity: settings.bufferCapacity)
 
@@ -109,7 +109,7 @@ internal distributed actor ClusterSingletonBoss<Act: ClusterSingletonProtocol>: 
     private func receiveClusterEvent(_ event: Cluster.Event) async throws {
         // Feed the event to `AllocationStrategy` then forward the result to `updateTargetNode`,
         // which will determine if `targetNode` has changed and react accordingly.
-        let node = self.allocationStrategy.onClusterEvent(event)
+        let node = await self.allocationStrategy.onClusterEvent(event)
         try await self.updateTargetNode(node: node)
     }
 
@@ -139,7 +139,7 @@ internal distributed actor ClusterSingletonBoss<Act: ClusterSingletonProtocol>: 
 
     private func takeOver(from: UniqueNode?) async throws {
         guard let singletonFactory = self.singletonFactory else {
-            preconditionFailure("Cluster singleton [\(self.settings.name)] cannot run on this node. Please review AllocationStrategySettings and/or cluster singleton usage.")
+            preconditionFailure("Cluster singleton [\(self.settings.name)] cannot run on this node. Please review ClusterSingletonAllocationStrategySettings and/or cluster singleton usage.")
         }
 
         self.log.debug("Take over singleton [\(self.settings.name)] from [\(String(describing: from))]", metadata: self.metadata())

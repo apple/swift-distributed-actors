@@ -21,6 +21,7 @@ Please note that this project requires the latest **Swift 5.7** language feature
 - <doc:Introduction>
 - <doc:Clustering>
 - <doc:Lifecycle>
+- <doc:ClusterSingleton>
 - <doc:Observability>
 
 <!--### Tutorials -->
@@ -36,7 +37,7 @@ Please note that this project requires the latest **Swift 5.7** language feature
 ### Actor Identity
 
 - ``ClusterSystem/ActorID`` 
-- ``ActorTag``
+- ``ActorMetadata``
 
 
 ### Lifecycle monitoring
