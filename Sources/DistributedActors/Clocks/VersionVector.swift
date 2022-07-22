@@ -33,48 +33,48 @@ import Distributed
 ///
 /// - SeeAlso: [Why Logical Clocks are Easy](https://queue.acm.org/detail.cfm?id=2917756)
 /// - SeeAlso: [Version Vectors are not Vector Clocks](https://haslab.wordpress.com/2011/07/08/version-vectors-are-not-vector-clocks/)
-public struct VersionVector: Equatable {
+internal struct VersionVector: Equatable {
     // TODO: should we disallow mixing ReplicaID types somehow?
 
-    public typealias Version = UInt64
-    public typealias ReplicaVersion = (replicaID: ReplicaID, version: Version) // TODO: struct?
+    typealias Version = UInt64
+    typealias ReplicaVersion = (replicaID: ReplicaID, version: Version) // TODO: struct?
 
     // Internal state is a dictionary of replicas and their corresponding version
     internal var state: [ReplicaID: Version] = [:]
 
-    public static let empty: VersionVector = .init()
+    static let empty: VersionVector = .init()
 
-    public static func first(at replicaID: ReplicaID) -> Self {
+    static func first(at replicaID: ReplicaID) -> Self {
         .init((replicaID, 1))
     }
 
     /// Creates an 'empty' version vector.
-    public init() {}
+    init() {}
 
-    public init(_ versionVector: VersionVector) {
+    init(_ versionVector: VersionVector) {
         self.state.merge(versionVector.state) { _, new in new }
     }
 
-    public init(_ replicaVersion: ReplicaVersion) {
+    init(_ replicaVersion: ReplicaVersion) {
         self.init([replicaVersion])
     }
 
-    public init(_ version: Version, at replicaID: ReplicaID) {
+    init(_ version: Version, at replicaID: ReplicaID) {
         self.init([(replicaID, version)])
     }
 
-    public init(_ replicaVersions: [ReplicaVersion]) {
+    init(_ replicaVersions: [ReplicaVersion]) {
         for rv in replicaVersions {
             precondition(rv.version > 0, "Version must be greater than 0")
             self.state[rv.replicaID] = rv.version
         }
     }
 
-    public var isEmpty: Bool {
+    var isEmpty: Bool {
         self.state.isEmpty
     }
 
-    public var isNotEmpty: Bool {
+    var isNotEmpty: Bool {
         !self.isEmpty
     }
 
@@ -83,7 +83,7 @@ public struct VersionVector: Equatable {
     /// - Parameter replicaID: The replica whose version is to be incremented.
     /// - Returns: The replica's version after the increment.
     @discardableResult
-    public mutating func increment(at replicaID: ReplicaID) -> Version {
+    mutating func increment(at replicaID: ReplicaID) -> Version {
         if let current = self.state[replicaID] {
             let nextVersion = current + 1
             self.state[replicaID] = nextVersion
@@ -94,13 +94,13 @@ public struct VersionVector: Equatable {
         }
     }
 
-    public mutating func merge(other: VersionVector) {
+    mutating func merge(other: VersionVector) {
         // Take point-wise maximum
         self.state.merge(other.state, uniquingKeysWith: max)
     }
 
     /// Prune any trace of the passed in replica id.
-    public func pruneReplica(_ replicaID: ReplicaID) -> Self {
+    func pruneReplica(_ replicaID: ReplicaID) -> Self {
         var s = self
         s.state.removeValue(forKey: replicaID)
         return s
@@ -110,12 +110,12 @@ public struct VersionVector: Equatable {
     ///
     /// - Parameter replicaID: The replica whose version is being queried.
     /// - Returns: The replica's version or 0 if replica is unknown.
-    public subscript(replicaID: ReplicaID) -> Version {
+    subscript(replicaID: ReplicaID) -> Version {
         self.state[replicaID] ?? 0
     }
 
     /// Lists all replica ids that this version vector contains.
-    public var replicaIDs: Dictionary<ReplicaID, Version>.Keys {
+    var replicaIDs: Dictionary<ReplicaID, Version>.Keys {
         self.state.keys
     }
 
@@ -124,7 +124,7 @@ public struct VersionVector: Equatable {
     /// - Parameter replicaID: The replica of interest
     /// - Parameter version: The version of interest
     /// - Returns: True if the replica's version in the `VersionVector` is greater than or equal to `version`. False otherwise.
-    public func contains(_ replicaID: ReplicaID, _ version: Version) -> Bool {
+    func contains(_ replicaID: ReplicaID, _ version: Version) -> Bool {
         self[replicaID] >= version
     }
 
@@ -133,7 +133,7 @@ public struct VersionVector: Equatable {
     ///
     /// - Parameter that: The `VersionVector` to compare this `VersionVector` to.
     /// - Returns: The causal relation between this and the given `VersionVector`.
-    public func compareTo(_ that: VersionVector) -> CausalRelation {
+    func compareTo(_ that: VersionVector) -> CausalRelation {
         if self < that {
             return .happenedBefore
         }
@@ -146,7 +146,7 @@ public struct VersionVector: Equatable {
         return .concurrent
     }
 
-    public enum CausalRelation {
+    enum CausalRelation {
         /// X < Y, meaning X → Y or X "happened before" Y
         case happenedBefore
         /// X > Y, meaning Y → X, or X "happened after" Y
@@ -159,7 +159,7 @@ public struct VersionVector: Equatable {
 }
 
 extension VersionVector: Comparable {
-    public static func < (lhs: VersionVector, rhs: VersionVector) -> Bool {
+    static func < (lhs: VersionVector, rhs: VersionVector) -> Bool {
         // If lhs is empty but rhs is not, then lhs can only be less than ("happened-before").
         // Return false if both lhs and rhs are empty since they are considered the same, not ordered.
         if lhs.isEmpty {
@@ -181,13 +181,13 @@ extension VersionVector: Comparable {
         return hasAtLeastOneStrictlyLessThan
     }
 
-    public static func == (lhs: VersionVector, rhs: VersionVector) -> Bool {
+    static func == (lhs: VersionVector, rhs: VersionVector) -> Bool {
         lhs.state == rhs.state
     }
 }
 
 extension VersionVector: CustomStringConvertible, CustomPrettyStringConvertible {
-    public var description: String {
+    var description: String {
         "\(self.state)"
     }
 }
@@ -203,13 +203,13 @@ extension VersionVector: Codable {
 ///
 /// `VersionDot` is in essence `VersionVector.ReplicaVersion` but since tuples cannot conform to protocols and `Version` needs
 /// to be `Hashable` we have to define a type.
-public struct VersionDot {
-    public typealias Version = UInt64
+internal struct VersionDot {
+    typealias Version = UInt64
 
-    public let replicaID: ReplicaID
-    public let version: Version
+    let replicaID: ReplicaID
+    let version: Version
 
-    public init(_ replicaID: ReplicaID, _ version: Version) {
+    init(_ replicaID: ReplicaID, _ version: Version) {
         self.replicaID = replicaID
         self.version = version
     }
@@ -219,7 +219,7 @@ extension VersionDot: Hashable {}
 
 extension VersionDot: Comparable {
     /// Lexical, NOT causal ordering of two dots.
-    public static func < (lhs: VersionDot, rhs: VersionDot) -> Bool {
+    static func < (lhs: VersionDot, rhs: VersionDot) -> Bool {
         if lhs.replicaID == rhs.replicaID {
             return lhs.version < rhs.version
         } else {
@@ -229,7 +229,7 @@ extension VersionDot: Comparable {
 }
 
 extension VersionDot: CustomStringConvertible {
-    public var description: String {
+    var description: String {
         "Dot(\(self.replicaID),\(self.version))"
     }
 }
@@ -241,7 +241,7 @@ extension VersionDot: Codable {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Replica ID
 
-public struct ReplicaID: Hashable {
+internal struct ReplicaID: Hashable {
     internal enum Storage: Hashable {
         case actorID(ActorID)
         // case actorIdentity(ClusterSystem.ActorID)
@@ -283,7 +283,7 @@ public struct ReplicaID: Hashable {
         self.storage = representation
     }
 
-    public static func actor<M: Codable>(_ context: _ActorContext<M>) -> ReplicaID {
+    static func actor<M: Codable>(_ context: _ActorContext<M>) -> ReplicaID {
         .init(.actorID(context.id))
     }
 
@@ -291,11 +291,11 @@ public struct ReplicaID: Hashable {
         .init(.actorID(id))
     }
 
-    public static func uniqueNode(_ uniqueNode: UniqueNode) -> ReplicaID {
+    static func uniqueNode(_ uniqueNode: UniqueNode) -> ReplicaID {
         .init(.uniqueNode(uniqueNode))
     }
 
-    public static func uniqueNodeID(_ uniqueNode: UniqueNode) -> ReplicaID {
+    static func uniqueNodeID(_ uniqueNode: UniqueNode) -> ReplicaID {
         .init(.uniqueNodeID(uniqueNode.nid))
     }
 
@@ -318,7 +318,7 @@ public struct ReplicaID: Hashable {
 }
 
 extension ReplicaID: CustomStringConvertible {
-    public var description: String {
+    var description: String {
         switch self.storage {
         case .actorID(let id):
             return "actor:\(id)"
@@ -331,7 +331,7 @@ extension ReplicaID: CustomStringConvertible {
 }
 
 extension ReplicaID: Comparable {
-    public static func < (lhs: ReplicaID, rhs: ReplicaID) -> Bool {
+    static func < (lhs: ReplicaID, rhs: ReplicaID) -> Bool {
         switch (lhs.storage, rhs.storage) {
         case (.actorID(let l), .actorID(let r)):
             return l < r
@@ -344,7 +344,7 @@ extension ReplicaID: Comparable {
         }
     }
 
-    public static func == (lhs: ReplicaID, rhs: ReplicaID) -> Bool {
+    static func == (lhs: ReplicaID, rhs: ReplicaID) -> Bool {
         switch (lhs.storage, rhs.storage) {
         case (.actorID(let l), .actorID(let r)):
             return l == r
@@ -366,19 +366,19 @@ extension ReplicaID: Comparable {
 }
 
 extension ReplicaID: Codable {
-    public enum DiscriminatorKeys: String, Codable {
+    enum DiscriminatorKeys: String, Codable {
         case actorID = "a"
         case uniqueNode = "N"
         case uniqueNodeID = "n"
     }
 
-    public enum CodingKeys: CodingKey {
+    enum CodingKeys: CodingKey {
         case _case
 
         case value
     }
 
-    public init(from decoder: Decoder) throws {
+    init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         switch try container.decode(DiscriminatorKeys.self, forKey: ._case) {
         case .actorID:
@@ -390,7 +390,7 @@ extension ReplicaID: Codable {
         }
     }
 
-    public func encode(to encoder: Encoder) throws {
+    func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         switch self.storage {
         case .actorID(let address):
