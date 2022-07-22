@@ -694,14 +694,14 @@ extension _OperationLogClusterReceptionist {
             self.sequencedOps.lazy.map(\.sequenceRange.max).max() ?? 0
         }
 
-        public enum CodingKeys: CodingKey {
+        enum CodingKeys: CodingKey {
             case peer
             case observedSeqNrs
             case sequencedOps
         }
 
         // TODO: annoyance; init MUST be defined here rather than in extension since it is required
-        public required init(from decoder: Decoder) throws {
+        required init(from decoder: Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
             self.peer = try container.decode(_ActorRef<Receptionist.Message>.self, forKey: .peer)
             self.observedSeqNrs = try container.decode(VersionVector.self, forKey: .observedSeqNrs)
@@ -709,7 +709,7 @@ extension _OperationLogClusterReceptionist {
             super.init()
         }
 
-        override public func encode(to encoder: Encoder) throws {
+        override func encode(to encoder: Encoder) throws {
             var container = encoder.container(keyedBy: CodingKeys.self)
             try container.encode(self.peer, forKey: .peer)
             try container.encode(self.observedSeqNrs, forKey: .observedSeqNrs)
@@ -739,14 +739,14 @@ extension _OperationLogClusterReceptionist {
             super.init()
         }
 
-        public enum CodingKeys: CodingKey {
+        enum CodingKeys: CodingKey {
             case until
             case otherObservedSeqNrs
             case peer
         }
 
         // TODO: annoyance; init MUST be defined here rather than in extension since it is required
-        public required init(from decoder: Decoder) throws {
+        required init(from decoder: Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
             let until = try container.decode(UInt64.self, forKey: .until)
             let otherObservedSeqNrs = try container.decode(VersionVector.self, forKey: .otherObservedSeqNrs)
@@ -758,7 +758,7 @@ extension _OperationLogClusterReceptionist {
             super.init()
         }
 
-        override public func encode(to encoder: Encoder) throws {
+        override func encode(to encoder: Encoder) throws {
             var container = encoder.container(keyedBy: CodingKeys.self)
             try container.encode(self.until, forKey: .until)
             try container.encode(self.otherObservedSeqNrs, forKey: .otherObservedSeqNrs)
