@@ -150,27 +150,25 @@ internal distributed actor ClusterSingletonBoss<Act: ClusterSingleton>: ClusterS
         }
 
         // TODO: (optimization) tell `from` node that this node is taking over (https://github.com/apple/swift-distributed-actors/issues/329)
-        let props = _Props.singletonInstance(settings: self.settings)
-        let singleton = try await _Props.$forSpawn.withValue(props) {
-            try await singletonFactory(self.actorSystem)
-        }
-        self.log.trace("Spawned singleton instance: \(singleton.id.fullDescription)", metadata: self.metadata())
-        assert(singleton.id.metadata.wellKnown == self.settings.name, "Singleton instance assigned ID is not well-known, but should be")
-
+        let singleton = try await self.activate(singletonFactory)
         self.updateSingleton(singleton)
     }
 
-    private func handOver(to: UniqueNode?) {
+    internal func handOver(to: UniqueNode?) {
         self.log.debug("Hand over singleton [\(self.settings.name)] to [\(String(describing: to))]", metadata: self.metadata())
 
         guard let instance = self.targetSingleton else {
-            return // we're done, we never activated it at all
+            return // we're done, we never allocated it at all
         }
-
+        
         Task {
             // we ask the singleton to passivate, it may want to flush some writes or similar.
             // TODO: potentially do some timeout on this?
+            if __isLocalActor(instance) {
+                self.log.debug("Passivating singleton \(instance.id)...")
+            }
             await instance.whenLocal { __secretlyKnownToBeLocal in
+                // TODO: should have some timeout
                 await __secretlyKnownToBeLocal.passivateSingleton()
             }
 
@@ -252,6 +250,22 @@ internal distributed actor ClusterSingletonBoss<Act: ClusterSingleton>: ClusterS
                 }
             }
         }
+    }
+    
+    private func activate(_ singletonFactory: (ClusterSystem) async throws -> Act) async throws -> Act {
+        let props = _Props.singletonInstance(settings: self.settings)
+        let singleton = try await _Props.$forSpawn.withValue(props) {
+            try await singletonFactory(self.actorSystem)
+        }
+        
+        await singleton.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in
+            await __secretlyKnownToBeLocal.activateSingleton()
+        }
+        
+        self.log.trace("Activated singleton instance: \(singleton.id.fullDescription)", metadata: self.metadata())
+        assert(singleton.id.metadata.wellKnown == self.settings.name, "Singleton instance assigned ID is not well-known, but should be")
+
+        return singleton
     }
 
     nonisolated func stop() async {

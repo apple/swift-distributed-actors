@@ -71,6 +71,39 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
         try await self.assertSingletonRequestReply(third, singleton: ref3, greetingName: "Charlie", expectedPrefix: "Hello-1 Charlie!")
     }
 
+    func test_singleton_lifecycle() async throws {
+        var singletonSettings = ClusterSingletonSettings()
+        singletonSettings.allocationStrategy = .byLeadership
+
+        let first = await self.setUpNode("first") { settings in
+            settings.node.port = 7111
+            settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 1) // just myself
+            settings.plugins.install(plugin: ClusterSingletonPlugin())
+        }
+        
+        let probe = self.testKit(first).makeTestProbe("p1", expecting: String.self)
+
+        let name = "the-one"
+        let ref1 = try await first.singleton.host(name: name, settings: singletonSettings) { actorSystem in
+            LifecycleTestSingleton(probe: probe, actorSystem: actorSystem)
+        }
+
+        // `first` will be the leader (lowest address) and runs the singleton
+        try await first.cluster.joined(within: .seconds(20))
+        
+        try probe.expectMessage(prefix: "init")
+        try probe.expectMessage(prefix: "activate")
+        
+        // pretend we're handing over to somewhere else:
+        let boss = await first.singleton._boss(name: name, type: LifecycleTestSingleton.self)!
+        await boss.whenLocal { __secretlyKnownToBeLocal in
+            __secretlyKnownToBeLocal.handOver(to: nil)
+        }
+        
+        try probe.expectMessage(prefix: "passivate")
+        try probe.expectMessage(prefix: "deinit")
+    }
+
     func test_singletonByClusterLeadership_stashMessagesIfNoLeader() async throws {
         var singletonSettings = ClusterSingletonSettings()
         singletonSettings.allocationStrategy = .byLeadership
@@ -373,4 +406,35 @@ distributed actor TheSingleton: ClusterSingleton {
     distributed func greet(name: String) -> String {
         "\(self.greeting) \(name)! (from node: \(self.id.uniqueNode), id: \(self.id.detailedDescription))"
     }
+}
+
+distributed actor LifecycleTestSingleton: ClusterSingleton {
+    typealias ActorSystem = ClusterSystem
+
+    let probe: ActorTestProbe<String>
+
+    init(probe: ActorTestProbe<String>, actorSystem: ActorSystem) {
+        self.probe = probe
+        self.actorSystem = actorSystem
+        
+        probe.tell("init: \(self.id)")
+    }
+    
+    func activateSingleton() async {
+        self.probe.tell("activate: \(self.id)")
+    }
+    
+    
+    func passivateSingleton() async {
+        self.probe.tell("passivate: \(self.id)")
+    }
+    
+    deinit {
+        guard __isLocalActor(self) else { // FIXME: workaround until
+            return
+        }
+        
+        self.probe.tell("deinit \(self.id)")
+    }
+    
 }

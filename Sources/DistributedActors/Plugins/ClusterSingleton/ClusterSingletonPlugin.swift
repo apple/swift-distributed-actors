@@ -83,6 +83,15 @@ public actor ClusterSingletonPlugin {
         self.singletons[singletonName] = (proxied.id, boss)
         return proxied
     }
+    
+    // FOR TESTING
+    internal func _boss<Singleton: ClusterSingleton>(name: String, type: Singleton.Type = Singleton.self) -> ClusterSingletonBoss<Singleton>? {
+        guard let (id, boss) = self.singletons[name] else {
+            return nil
+        }
+        
+        return boss as? ClusterSingletonBoss<Singleton>
+    }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------

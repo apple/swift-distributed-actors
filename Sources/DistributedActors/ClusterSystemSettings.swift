@@ -38,7 +38,10 @@ public struct ClusterSystemSettings {
 
     internal var actorMetadata: ActorIDMetadataSettings = .default
 
-    public var plugins: _PluginsSettings = .default
+    /// Configuration of cluster system plugins.
+    /// 
+    /// Mostly used to enable additional plugins during initial system configuration.
+    public var plugins: PluginsSettings = .default
 
     public var receptionist: ReceptionistSettings = .default
 
