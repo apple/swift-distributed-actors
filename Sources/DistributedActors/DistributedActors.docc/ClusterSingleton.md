@@ -7,7 +7,7 @@ including automatic fail-over when the node hosting the instance becomes down.
 
 A _cluster singleton_ is a conceptual distributed actor that is guaranteed to have at-most one instance within the cluster system among all of its ``Cluster/MemberStatus/up`` members.
 
-> Note: This guarantee does not extend to _down_ members; because a down member is not part of the cluster anymore, and 
+> Note: This guarantee does not extend to _down_ members, because a down member is not part of the cluster anymore, and 
 
 ### Implementing a Cluster Singleton
 
