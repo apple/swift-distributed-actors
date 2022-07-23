@@ -13,11 +13,6 @@
 ##
 ##===----------------------------------------------------------------------===##
 
-set -eu
-here="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+set -u
 
-bash $here/validate_license_header.sh
-bash $here/validate_language.sh
-bash $here/validate_format.sh
-bash $here/docs/validate_docc.sh
-bash $here/validate_instruments.sh
+VALIDATE_DOCS=1 swift build --build-tests
