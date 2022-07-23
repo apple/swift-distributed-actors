@@ -50,6 +50,8 @@ To use singletons in your system you must enable the singleton plugin first:
 let system = await ClusterSystem("SingletonExample") { settings in
   settings.plugins.install(plugin: ClusterSingletonPlugin())
 }
+
+MAKE IT FAIL
 ```
 
 Next, you'll be able to make use of the `.singleton` property on the cluster system to perform various actions on the active plugin.
