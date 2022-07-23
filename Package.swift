@@ -54,20 +54,6 @@ var targets: [PackageDescription.Target] = [
         ]
     ),
 
-    // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: Documentation
-
-//    .testTarget(
-//        name: "DistributedActorsDocumentationTests",
-//        dependencies: [
-//            "DistributedActors",
-//            "DistributedActorsTestKit",
-//        ],
-//        exclude: [
-//          "DocumentationProtos/",
-//        ]
-//    ),
-
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Tests
 
@@ -79,7 +65,7 @@ var targets: [PackageDescription.Target] = [
             .product(name: "Atomics", package: "swift-atomics"),
         ]
     ),
-
+    
 //    .testTarget(
 //        name: "DistributedActorsTestKitTests",
 //        dependencies: [
@@ -184,7 +170,8 @@ var dependencies: [Package.Dependency] = [
     .package(url: "https://github.com/apple/swift-service-discovery", from: "1.0.0"),
 
     // ~~~ SwiftPM Plugins ~~~
-    .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.0.0"),
+    // internal only docc assisting fishy-docs plugin:
+    .package(name: "FishyDocsPlugin", path: "./Plugins/FishyDocs/"),
 ]
 
 let products: [PackageDescription.Product] = [
@@ -201,6 +188,27 @@ let products: [PackageDescription.Product] = [
         ]
     ),
 ]
+
+if ProcessInfo.processInfo.environment["VALIDATE_DOCS"] != nil {
+    targets.append(
+        // ==== ------------------------------------------------------------------------------------------------------------
+        // MARK: Documentation
+
+        // Target used to verify compilation of code snippets from documentation
+        .testTarget(
+            name: "DocsTests",
+            dependencies: [
+                "DistributedActors",
+            ],
+            exclude: [
+                "README.md"
+            ],
+            plugins: [
+                .plugin(name: "FishyDocsPlugin", package: "FishyDocsPlugin")
+            ]
+        )
+    )
+}
 
 // This is a workaround since current published nightly docker images don't have the latest Swift availabilities yet
 let platforms: [SupportedPlatform]?

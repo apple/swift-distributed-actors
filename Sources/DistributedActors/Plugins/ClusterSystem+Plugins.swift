@@ -60,7 +60,8 @@ internal struct BoxedPlugin: _AnyPlugin {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Plugin key
 
-public struct _PluginKey<P: _Plugin>: CustomStringConvertible {
+public struct _PluginKey<P: _Plugin>: CustomStringConvertible, ExpressibleByStringLiteral {
+    
     public let plugin: String
     public let sub: String?
 
@@ -68,8 +69,13 @@ public struct _PluginKey<P: _Plugin>: CustomStringConvertible {
         AnyPluginKey(self)
     }
 
-    public init(plugin: String) {
+    public init(id plugin: String) {
         self.init(plugin: plugin, sub: nil)
+    }
+    
+    
+    public init(stringLiteral: StringLiteralType) {
+        self.init(id: stringLiteral)
     }
 
     private init(plugin: String, sub: String?) {

@@ -3,6 +3,8 @@
 Allows for hosting a _single unique instance_ of a distributed actor within the entire distributed actor system, 
 including automatic fail-over when the node hosting the instance becomes down. 
 
+@Comment { fishy-docs:enable }
+
 ## Overview
 
 A _cluster singleton_ is a conceptual distributed actor that is guaranteed to have at-most one instance within the cluster system among all of its ``Cluster/MemberStatus/up`` members.
@@ -16,12 +18,24 @@ A cluster singleton is a distributed actor using the ``ClusterSystem`` actor sys
 We can implement a singleton by declaring a `distributed actor` as follows:
 
 ```swift
-import Distributed
+import DistributedActors
+typealias DefaultDistributedActorSystem = ClusterSystem
+```
 
-distributed actor Worker { } 
+```swift
+distributed actor PrimaryOverseer: ClusterSingleton {
+  var status = WorkStatus()
 
-distributed actor PrimaryOverseer: ClusterSingletonProtocol {
+  distributed func workStatus() -> WorkStatus { 
+    self.status
+  }
+}
 
+distributed actor Worker { /* ... */ }
+
+struct WorkStatus: Codable { 
+  var workerCapacity: Int = 0
+  var workInProgress: Int = 0
 }
 ``` 
 
@@ -33,8 +47,8 @@ The protocol does not have any protocol requirements that are required to be imp
 To use singletons in your system you must enable the singleton plugin first:
 
 ```swift
-let system = ClusterSystem("SingletonExample") { settings in
-  settings.install(plugin: ClusterSingletonPlugin())
+let system = await ClusterSystem("SingletonExample") { settings in
+  settings.plugins.install(plugin: ClusterSingletonPlugin())
 }
 ```
 
@@ -44,9 +58,9 @@ Most importantly, you can issue a `host` call, in order to inform the singleton 
 ```swift
 let uniqueSingletonName = "overseer"
 
-let overseerSingleton: PrimaryOverseer = 
-  try await system.singleton.host(name: uniqueSingletonName) { 
-    PrimaryOverseer(actorSystem: system)
+let overseerSingleton: PrimaryOverseer =    
+  try await system.singleton.host(name: uniqueSingletonName) { actorSystem in 
+    PrimaryOverseer(actorSystem: actorSystem)
   }
 ```
 
@@ -59,8 +73,8 @@ Making calls to cluster singletons looks the same as calls to any other distribu
 
 ```swift
 func obtainStatus(from overseer: PrimaryOverseer) async throws { 
-  let status = try await overseer.status() 
-  print("Work status: \(status.summary)")
+  let status = try await overseer.workStatus() 
+  print("Work status: \(status)")
 }
 ```
 
@@ -68,12 +82,12 @@ Even more interestingly, since the type returned by ``ClusterSingletonPlugin/hos
 it is possible to pass a local `PrimaryOverseer` instance directly when testing methods working with it, even though in a deployed system it would be a cluster singleton:
 
 ```swift
-let system: ClusterSystem = ...
-
-func test_theTestFunction() {
-  let overseer: PrimaryOverseer(actorSystem: system)
+func test_theTestFunction() async throws {
+  let overseer = PrimaryOverseer(actorSystem: system)
   try await obtainStatus(from: overseer)
 }
+
+NEIN
 ```
 
 Such a proxied call to a distributed actor can take one of three general paths showcased on the diagram below, that we'll explain in depth:

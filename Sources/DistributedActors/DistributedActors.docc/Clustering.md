@@ -22,7 +22,7 @@ Next, the first thing you need to do in your clustered applications is to create
 You can use the default `ClusterSystem()` initializer which defaults to a `"ClusterSystem"` system name and the default `127.0.0.1:7337` host/port:
 
 ```swift
-let system = await ClusterSystem() // default 127.0.0.1:7337 bound actor system```
+let system = await ClusterSystem() // default 127.0.0.1:7337 bound actor system
 ```
 
 For more realistic uses, it is expected that you will configure your cluster system as you start it up, so here is how a typical `Main` struct of an server-side application might look like:
