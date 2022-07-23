@@ -80,7 +80,7 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
             settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 1) // just myself
             settings.plugins.install(plugin: ClusterSingletonPlugin())
         }
-        
+
         let probe = self.testKit(first).makeTestProbe("p1", expecting: String.self)
 
         let name = "the-one"
@@ -90,16 +90,16 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
 
         // `first` will be the leader (lowest address) and runs the singleton
         try await first.cluster.joined(within: .seconds(20))
-        
+
         try probe.expectMessage(prefix: "init")
         try probe.expectMessage(prefix: "activate")
-        
+
         // pretend we're handing over to somewhere else:
         let boss = await first.singleton._boss(name: name, type: LifecycleTestSingleton.self)!
         await boss.whenLocal { __secretlyKnownToBeLocal in
             __secretlyKnownToBeLocal.handOver(to: nil)
         }
-        
+
         try probe.expectMessage(prefix: "passivate")
         try probe.expectMessage(prefix: "deinit")
     }
@@ -416,25 +416,23 @@ distributed actor LifecycleTestSingleton: ClusterSingleton {
     init(probe: ActorTestProbe<String>, actorSystem: ActorSystem) {
         self.probe = probe
         self.actorSystem = actorSystem
-        
+
         probe.tell("init: \(self.id)")
     }
-    
+
     func activateSingleton() async {
         self.probe.tell("activate: \(self.id)")
     }
-    
-    
+
     func passivateSingleton() async {
         self.probe.tell("passivate: \(self.id)")
     }
-    
+
     deinit {
         guard __isLocalActor(self) else { // FIXME: workaround until
             return
         }
-        
+
         self.probe.tell("deinit \(self.id)")
     }
-    
 }

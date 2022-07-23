@@ -15,7 +15,7 @@ let package = Package(
         .plugin(
             name: "FishyDocsPlugin",
             targets: [
-                "FishyDocsPlugin"
+                "FishyDocsPlugin",
             ]
         ),
     ],
@@ -37,11 +37,13 @@ let package = Package(
             dependencies: [
                 .product(name: "Markdown", package: "swift-markdown"),
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
-            ]),
+            ]
+        ),
         .testTarget(
             name: "FishyDocsTests",
             dependencies: [
-                "FishyDocs"
-            ]),
+                "FishyDocs",
+            ]
+        ),
     ]
 )

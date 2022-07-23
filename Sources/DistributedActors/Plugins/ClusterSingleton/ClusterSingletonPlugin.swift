@@ -32,9 +32,9 @@ public actor ClusterSingletonPlugin {
     private var singletons: [String: (proxyID: ActorID, boss: any ClusterSingletonBossProtocol)] = [:]
 
     private var actorSystem: ClusterSystem!
-    
+
     public init() {
-        actorSystem = nil // 'actorSystem' is filled in later on in _Plugin.start()
+        self.actorSystem = nil // 'actorSystem' is filled in later on in _Plugin.start()
     }
 
     public func proxy<Act>(
@@ -87,13 +87,13 @@ public actor ClusterSingletonPlugin {
         self.singletons[singletonName] = (proxied.id, boss)
         return proxied
     }
-    
+
     // FOR TESTING
     internal func _boss<Singleton: ClusterSingleton>(name: String, type: Singleton.Type = Singleton.self) -> ClusterSingletonBoss<Singleton>? {
         guard let (id, boss) = self.singletons[name] else {
             return nil
         }
-        
+
         return boss as? ClusterSingletonBoss<Singleton>
     }
 }

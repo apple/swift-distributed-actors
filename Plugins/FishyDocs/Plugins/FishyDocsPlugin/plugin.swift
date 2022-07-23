@@ -1,9 +1,8 @@
 import Foundation
 import PackagePlugin
 
-@main struct FishyDocsBuildPlugin: BuildToolPlugin  {
+@main struct FishyDocsBuildPlugin: BuildToolPlugin {
     func createBuildCommands(context: PluginContext, target: Target) async throws -> [Command] {
-
         let genSourcesDir = context.pluginWorkDirectory
         let doccBasePath = "\(context.package.directory)/Sources/DistributedActors/DistributedActors.docc"
 

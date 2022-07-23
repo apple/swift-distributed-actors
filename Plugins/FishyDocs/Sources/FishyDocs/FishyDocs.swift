@@ -1,6 +1,6 @@
-import Markdown
-import Foundation
 import ArgumentParser
+import Foundation
+import Markdown
 
 func log(_ log: String, file: String = #fileID, line: UInt = #line) {
     print("[fishy-docs] \(log)")
@@ -8,7 +8,6 @@ func log(_ log: String, file: String = #fileID, line: UInt = #line) {
 
 @main
 struct FishyDocs: ParsableCommand {
-
     @Option(help: "Folder containing the docc documentation to scan for fishy-docs")
     var doccFile: String
 
@@ -16,21 +15,20 @@ struct FishyDocs: ParsableCommand {
     var outputFile: String
 
     mutating func run() throws {
-        let fileName = doccFile
-        let testFileName = outputFile
+        let fileName = self.doccFile
+        let testFileName = self.outputFile
 
         // we always have to create the target file... since we're a .buildPlugin
         // even if we won't generate anything into it.
         FileManager.default.createFile(atPath: "\(testFileName)", contents: nil)
 
-
         guard let doccFileURL = URL(string: "file://\(doccFile)") else {
-            log("Failed to parse: \(doccFile)")
+            log("Failed to parse: \(self.doccFile)")
             return
         }
         let document = try Document(parsing: doccFileURL)
 
-        guard usesFishyDocs(document: document) else {
+        guard self.usesFishyDocs(document: document) else {
             return
         }
 
@@ -72,12 +70,11 @@ struct DetectFishyDocs: MarkupWalker {
     var detected: Bool = false
 
     mutating func visitParagraph(_ paragraph: Paragraph) {
-        detected = detected || paragraph.plainText.contains("fishy-docs:enable")
+        self.detected = self.detected || paragraph.plainText.contains("fishy-docs:enable")
     }
 }
 
 struct ConcatCodeBlocks: MarkupWalker {
-
     var importBlocks: [CodeBlock] = []
     var codeBlocks: [CodeBlock] = []
     var code: String {
@@ -112,7 +109,6 @@ struct ConcatCodeBlocks: MarkupWalker {
             codeBlockStrings.append(s)
         }
         codeBlockStrings.append("}") // end of __test()
-
 
         return codeBlockStrings.joined(separator: "\n")
     }

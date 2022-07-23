@@ -169,7 +169,7 @@ public struct ClusterControl {
     public func joined(within: Duration) async throws -> Cluster.Member {
         try await self.waitFor(self.uniqueNode, .up, within: within)
     }
-    
+
     /// Wait, within the given duration, until the passed in node has joined the cluster and become ``Cluster/MemberStatus/.up``.
     ///
     /// - Parameters

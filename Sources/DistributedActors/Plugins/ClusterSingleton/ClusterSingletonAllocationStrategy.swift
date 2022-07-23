@@ -17,7 +17,6 @@
 
 /// Strategy for choosing a `UniqueNode` to allocate singleton.
 public protocol ClusterSingletonAllocationStrategy {
-
     /// Receives and handles the `Cluster.Event`.
     ///
     /// - Returns: The current `node` after processing `clusterEvent`.

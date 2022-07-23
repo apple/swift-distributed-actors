@@ -65,7 +65,7 @@ var targets: [PackageDescription.Target] = [
             .product(name: "Atomics", package: "swift-atomics"),
         ]
     ),
-    
+
 //    .testTarget(
 //        name: "DistributedActorsTestKitTests",
 //        dependencies: [
@@ -186,12 +186,11 @@ let products: [PackageDescription.Product] = [
 ]
 
 if ProcessInfo.processInfo.environment["VALIDATE_DOCS"] != nil {
-    
     dependencies.append(
         // internal only docc assisting fishy-docs plugin:
-        .package(name: "FishyDocsPlugin", path: "./Plugins/FishyDocs/")    
+        .package(name: "FishyDocsPlugin", path: "./Plugins/FishyDocs/")
     )
-    
+
     targets.append(
         // ==== ------------------------------------------------------------------------------------------------------------
         // MARK: Documentation
@@ -203,10 +202,10 @@ if ProcessInfo.processInfo.environment["VALIDATE_DOCS"] != nil {
                 "DistributedActors",
             ],
             exclude: [
-                "README.md"
+                "README.md",
             ],
             plugins: [
-                .plugin(name: "FishyDocsPlugin", package: "FishyDocsPlugin")
+                .plugin(name: "FishyDocsPlugin", package: "FishyDocsPlugin"),
             ]
         )
     )

@@ -28,7 +28,7 @@ import Logging
 ///
 /// To host a distributed cluster singleton, use the ``ClusterSingletonPlugin/host(_:name:settings:makeInstance:)` method.
 public protocol ClusterSingleton: DistributedActor where ActorSystem == ClusterSystem {
-    /// The singleton is now active, and should perform its duties. 
+    /// The singleton is now active, and should perform its duties.
     func activateSingleton() async
 
     /// The singleton should no longer be active on this cluster member.
@@ -43,6 +43,7 @@ extension ClusterSingleton {
     public func activateSingleton() async {
         // nothing by default
     }
+
     public func passivateSingleton() async {
         // nothing by default
     }

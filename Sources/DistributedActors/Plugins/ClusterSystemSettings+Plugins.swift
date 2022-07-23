@@ -61,7 +61,6 @@ public struct PluginsSettings {
 }
 
 extension PluginsSettings {
-
     /// Installs the passed in plugin in the settings.
     ///
     /// The plugin will be started as the actor system becomes fully initialized,
