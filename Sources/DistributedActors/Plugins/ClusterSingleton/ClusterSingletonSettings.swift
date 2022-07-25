@@ -67,7 +67,7 @@ public struct ClusterSingletonAllocationStrategySettings {
 }
 
 extension ClusterSingletonAllocationStrategySettings {
-    /// The singleton instance will be hosted on an `.up` leader member of the cluster.
+    /// Singletons will run on the cluster leader. *All* nodes are potential candidates.
     public static let byLeadership: ClusterSingletonAllocationStrategySettings =
         .init(allocationStrategy: .byLeadership)
 

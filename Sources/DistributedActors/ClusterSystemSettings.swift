@@ -170,11 +170,8 @@ public struct ClusterSystemSettings {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Distributed Actor Calls
 
-    /// If no other timeout is specified, this timeout is applied to every distributed call.
-    /// A "distributed call" is any function call of a distributed function on a 'remote' distributed actor.
-    ///
-    /// Set to `.effectivelyInfinite` to avoid setting a timeout, although this is not recommended.
-    public var defaultRemoteCallTimeout: Duration = .seconds(5)
+    /// A "remote call" is any function call of a `distributed` function on a 'remote' distributed actor.
+    public var remoteCall: RemoteCallSettings = .default
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: TLS & Security settings
@@ -450,5 +447,50 @@ public struct ServiceDiscoverySettings {
     enum ServiceDiscoveryImplementation {
         case `static`(Set<Node>)
         case dynamic(AnyServiceDiscovery)
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Remote Call Settings
+
+extension ClusterSystemSettings {
+    public struct RemoteCallSettings {
+        public static var `default`: RemoteCallSettings {
+            .init()
+        }
+
+        /// If no other timeout is specified, this timeout is applied to every distributed call.
+        ///
+        /// Set to `.effectivelyInfinite` to avoid setting a timeout, although this is not recommended.
+        public var defaultTimeout: Duration = .seconds(5)
+
+        public var codableErrorAllowance: CodableErrorAllowanceSettings = .all
+
+        public struct CodableErrorAllowanceSettings {
+            internal enum CodableErrorAllowance {
+                case none
+                case all
+                // OIDs of allowed types
+                case custom(Set<ObjectIdentifier>)
+            }
+
+            internal let underlying: CodableErrorAllowance
+
+            internal init(allowance: CodableErrorAllowance) {
+                self.underlying = allowance
+            }
+
+            /// All ``Codable`` errors will be converted to ``GenericRemoteCallError``.
+            public static let none: CodableErrorAllowanceSettings = .init(allowance: .none)
+
+            /// All ``Codable`` errors will be returned as-is.
+            public static let all: CodableErrorAllowanceSettings = .init(allowance: .all)
+
+            /// Only the indicated ``Codable`` errors are allowed. Others are converted to ``GenericRemoteCallError``.
+            public static func custom(allowedTypes: [(Error & Codable).Type]) -> CodableErrorAllowanceSettings {
+                let oids = allowedTypes.map { ObjectIdentifier($0) }
+                return .init(allowance: .custom(Set(oids)))
+            }
+        }
     }
 }
