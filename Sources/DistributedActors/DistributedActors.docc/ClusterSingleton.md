@@ -1,19 +1,19 @@
-# ClusterSingleton
+# ``DistributedActors/ClusterSingleton``
+
+@Metadata {
+    @DocumentationExtension(mergeBehavior: append)
+}
 
 Allows for hosting a _single unique instance_ of a distributed actor within the entire distributed actor system, 
 including automatic fail-over when the node hosting the instance becomes down. 
 
-@Comment { fishy-docs:enable }
+<!-- fishy-docs:enable -->
+<!-- Enable additional code snippet verification; all inline snippets concat into a "compile test" and verified when built with VALIDATE_DOCS=1 -->
 
-## Overview
-
-A _cluster singleton_ is a conceptual distributed actor that is guaranteed to have at-most one instance within the cluster system among all of its ``Cluster/MemberStatus/up`` members.
-
-> Note: This guarantee does not extend to _down_ members, because a down member is not part of the cluster anymore, and 
 
 ### Implementing a Cluster Singleton
 
-A cluster singleton is a distributed actor using the ``ClusterSystem`` actor system and conforming to the ``ClusterSingletonProtocol`` protocol.
+A cluster singleton is a distributed actor using the ``ClusterSystem`` actor system and conforming to the ``ClusterSingleton`` protocol.
 
 We can implement a singleton by declaring a `distributed actor` as follows:
 
@@ -56,16 +56,16 @@ Next, you'll be able to make use of the `.singleton` property on the cluster sys
 Most importantly, you can issue a `host` call, in order to inform the singleton boss that this node is capable of hosting the given singleton:
 
 ```swift
-let uniqueSingletonName = "overseer"
-
 let overseerSingleton: PrimaryOverseer =    
-  try await system.singleton.host(name: uniqueSingletonName) { actorSystem in 
+  try await system.singleton.host(name: "overseer") { actorSystem in 
     PrimaryOverseer(actorSystem: actorSystem)
   }
 ```
 
-A `PrimaryOverseer` obtained this way is actually a proxy that will redirect calls made on it to wherever the actual singleton instance is currently hosted.
+The passed `name` is the unique name that the singleton shall be identified with in the cluster. In other words, since we've given this singleton the name `"overseer"`, there will be always at-most-one `"overseer"` actor instance active in the cluster. This allows us to have multiple singletons of the same actor type, but different identities. For example, we could have an `"simple-work-overseer"` and an `"complicated-work-overseer"` singletons running side-by-side. Conceptually, they are different singletons after all, and we can be using them differently. 
 
+A `PrimaryOverseer` obtained this way is actually a proxy that will redirect calls made on it to wherever the actual singleton instance is currently hosted. 
+This includes the local cluster member, in case that is where the singleton ends up _allocated_ (see: <doc#. From the perspective of the caller though, the location of the singleton remains transparent - with the benefit that if the calls are actually remote, they don't have to cross a network boundary and will be more efficient, we should not rely on this though, and program against the singleton as-if it might be remote since it's location might be changing at runtime.
 
 ### Making calls to Cluster Singletons
 
@@ -86,8 +86,6 @@ func test_theTestFunction() async throws {
   let overseer = PrimaryOverseer(actorSystem: system)
   try await obtainStatus(from: overseer)
 }
-
-NEIN
 ```
 
 Such a proxied call to a distributed actor can take one of three general paths showcased on the diagram below, that we'll explain in depth:
@@ -107,16 +105,53 @@ Such a proxied call to a distributed actor can take one of three general paths s
 
 ### Allocation Strategies
 
-The lifecycle of a cluster singleton is managed by the plugin, and not explicitly by the developer, because it depends on the state of the cluster.
+The lifecycle of a cluster singleton is managed by the plugin, and not explicitly by the developer. 
 
-The node on which a singleton is supposed to be hosted
+The _allocation_ of a singleton within a cluster consists of actually creating a new _instance_ and _activating_ it - by calling the ``ClusterSingleton/activateSingleton()-6cvj7`` method. Which member of the cluster is to perform this allocation is determined automatically at runtime, based on the state of the cluster, and is determined by the ``ClusterSingletonAllocationStrategySettings`` as configured for the singleton.
+
+The default allocation strategy is ``ClusterSingletonAllocationStrategySettings/byLeadership`` meaning that a singleton is going to be allocated on the _leader_ node of the cluster. 
+
+> Tip: This also means that all singletons in a cluster by default share the same node they run on. This may be sup-optimal in some scenarios, and can be customized by offering a custom allocation strategy, or by future more advanced strategies offered by the library.
+
+Picking an allocation strategy is made by customizing the settings passed to the ``ClusterSingletonPlugin/host(_:name:settings:makeInstance:)`` method, like this:
+
+```swift
+@Sendable
+func makeCustomAllocationStrategy(
+        settings: ClusterSingletonSettings, 
+        system: ClusterSystem) async -> CustomSingletonAllocationStrategy {
+    CustomSingletonAllocationStrategy()
+}
+
+var bossSingletonSettings = ClusterSingletonSettings()
+bossSingletonSettings.allocationStrategy = .custom(makeCustomAllocationStrategy)
+
+let boss = try await system.singleton.host(name: "boss", settings: bossSingletonSettings) { system in  
+  Boss(actorSystem: system)
+}
+
+actor CustomSingletonAllocationStrategy: ClusterSingletonAllocationStrategy {
+    func onClusterEvent(_ clusterEvent: Cluster.Event) async -> UniqueNode? {
+        fatalError()
+    }
+
+    var node: UniqueNode? { 
+        get async {
+            fatalError()
+        }
+    }
+}
+
+distributed actor Boss: ClusterSingleton { /* ... */ }
+```
 
 ### Singleton Lifecycle
 
-A singleton instance is created and retained (!) by the singleton plugin.
+A singleton instance is created and retained (!) by the singleton plugin when the allocation strategy decides the member should be hosting it.
 
-> Tip: Generally, do not interact with the singleton _instance_ but always with the proxy handling it (that is returned by ``ClusterSingletonPlugin/host(_:name:settings:makeInstance:)``)
+The allocated singleton instance will get the ``activateSingleton()-9ytjf`` method called before any futher calls are delivered to it.
 
+Conversely, when the allocation strategy decides that this cluster member is no longer hosting the singleton the ``passivateSingleton()-97w5s`` method will be invoked and the actor will be released. Make sure to not retain the actor or make it perform any decisions which require single-point-of-truth after it has had passivate called on it, as it no longer is guaranteed to be the unique singleton instance anymore.
 
 ## Glossary
 
@@ -130,11 +165,14 @@ A singleton instance is created and retained (!) by the singleton plugin.
 
 ### Essentials
 
-- ``ClusterSingletonProtocol``
 - ``ClusterSingletonPlugin``
 - ``ClusterSingletonSettings``
 
-### Cluster Singleton allocation strategies
+### Configuring Singleton Allocation Strategies
+
+- ``ClusterSingletonAllocationStrategySettings``
+
+### Implementing a custom Singleton Allocation Strategy 
 
 - ``ClusterSingletonAllocationStrategy``
 - ``ClusterSingletonAllocationByLeadership``

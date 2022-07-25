@@ -158,7 +158,7 @@ public struct ClusterControl {
         self.ref.tell(.command(.downCommandMember(member)))
     }
 
-    /// Wait, within the given duration, until this actor system has joined the cluster and become ``Cluster/MemberStatus/.up``.
+    /// Wait, within the given duration, until this actor system has joined the cluster and become ``Cluster/MemberStatus/up``.
     ///
     /// - Parameters
     ///   - node: The node to be joined by this system.
@@ -170,7 +170,7 @@ public struct ClusterControl {
         try await self.waitFor(self.uniqueNode, .up, within: within)
     }
 
-    /// Wait, within the given duration, until the passed in node has joined the cluster and become ``Cluster/MemberStatus/.up``.
+    /// Wait, within the given duration, until the passed in node has joined the cluster and become ``Cluster/MemberStatus/up``.
     ///
     /// - Parameters
     ///   - node: The node to be joined by this system.

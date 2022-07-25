@@ -49,13 +49,13 @@ distributed actor Juliet: LifecycleWatch {
 }
 ```
 
-The ``LifecycleWatch/watchTermination(of:file:line:)`` API purposefully does not use async/await because that would cause `romeo` to be retained as this function suspends. Instead, we allow it, and the function calling it (which keeps a reference to `Romeo`), to complete and once the romeo actor is determined terminated, we get called back with its ``ActorID`` in the separate ``terminated(actor:file:line:)`` method.
+The ``LifecycleWatch/watchTermination(of:file:line:)`` API purposefully does not use async/await because that would cause `romeo` to be retained as this function suspends. Instead, we allow it, and the function calling it (which keeps a reference to `Romeo`), to complete and once the romeo actor is determined terminated, we get called back with its ``ActorID`` in the separate ``LifecycleWatch/terminated(actor:)`` method.
 
 This API offers the same semantics, regardless where the actors are located, and always triggers the termination closure as the watched actor is considered to have terminated.
 
 In case the watched actor is _local_, it's termination is tied to Swift's ref-counting mechanisms, and an actor is terminated as soon as there are no more strong references to it in a system. It then is deinitialized, and the actor system's `resignID(actor.id)` is triggered, causing propagation to all the other actors which have been watching that actor.
 
-You can also ``unwatchTermination(of:file:line:)``
+You can also ``LifecycleWatch/unwatchTermination(of:file:line:)``
 
 In case the watched actor is _remote_, termination may happen because of two reasons: 
 - either its reference count _on the remote system_ dropped to zero and it followed the same deinitialization steps as just described in the local case;

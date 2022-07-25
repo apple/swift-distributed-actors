@@ -168,6 +168,9 @@ var dependencies: [Package.Dependency] = [
     // swift-metrics 1.x and 2.x are almost API compatible, so most clients should use
     .package(url: "https://github.com/apple/swift-metrics", "1.0.0" ..< "3.0.0"),
     .package(url: "https://github.com/apple/swift-service-discovery", from: "1.0.0"),
+
+    // ~~~ SwiftPM Plugins ~~~
+    .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.0.0"),
 ]
 
 let products: [PackageDescription.Product] = [
@@ -188,7 +191,7 @@ let products: [PackageDescription.Product] = [
 if ProcessInfo.processInfo.environment["VALIDATE_DOCS"] != nil {
     dependencies.append(
         // internal only docc assisting fishy-docs plugin:
-        .package(name: "FishyDocsPlugin", path: "./Plugins/FishyDocs/")
+        .package(name: "FishyDocsPlugin", path: "./InternalPlugins/FishyDocs/")
     )
 
     targets.append(

@@ -222,12 +222,12 @@ system.receptionist.checkIn(worker, with: .workers)
 The receptionist automatically watches checked-in actors, and removes them from the listing once they have been terminated.
 Other actors which discover the actor, and want to be informed once the actor has terminated, should use the <doc:Lifecycle> APIs.
 
-> Warning: `DistributedReception.Key`s are likely to be collapsed with ``ActorTag`` during the beta releases.
+> Warning: `DistributedReception.Key`s are likely to be collapsed with ``ClusterSystem/ActorID/Metadata-swift.struct`` during the beta releases.
 > See [Make use of ActorTag rather than separate keys infra for reception #950](https://github.com/apple/swift-distributed-actors/issues/950)
 
 ### Receptionist: Listings
 
-The opposite side of using a receptionist, is actually obtaining a ``DistributedReceptionist/listing(of:)`` of actors registered with a specific key. 
+The opposite side of using a receptionist, is actually obtaining a ``DistributedReceptionist/listing(of:file:line:)`` of actors registered with a specific key. 
 
 ```swift
 for await worker in await receptionist.listing(of: .workers) {

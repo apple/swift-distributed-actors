@@ -28,7 +28,7 @@ struct FishyDocs: ParsableCommand {
         }
         let document = try Document(parsing: doccFileURL)
 
-        guard self.usesFishyDocs(document: document) else {
+        guard self.usesFishyDocs(document: document, url: doccFileURL) else {
             return
         }
 
@@ -40,11 +40,13 @@ struct FishyDocs: ParsableCommand {
         try code.write(toFile: "\(testFileName)", atomically: true, encoding: .utf8)
     }
 
-    func usesFishyDocs(document: Document) -> Bool {
-        var detectFishyDocs = DetectFishyDocs()
-        detectFishyDocs.visit(document)
+    func usesFishyDocs(document: Document, url: URL) -> Bool {
+        return (try? String(contentsOf: url).contains("fishy-docs:enable")) ?? false
 
-        return detectFishyDocs.detected
+        // FIXME(docc): docc breaks when @Comment is used in symbol documentation: https://github.com/apple/swift-docc/issues/343
+        // var detectFishyDocs = DetectFishyDocs()
+        // detectFishyDocs.visit(document)
+        // return detectFishyDocs.detected
     }
 
     func makeDocsTestCode(document: Document, doccFileName: String) throws -> String? {
