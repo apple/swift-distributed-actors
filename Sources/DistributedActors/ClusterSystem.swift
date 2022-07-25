@@ -1207,7 +1207,7 @@ extension ClusterSystem {
     {
         let callID = UUID()
 
-        let timeout = RemoteCall.timeout ?? self.settings.defaultRemoteCallTimeout
+        let timeout = RemoteCall.timeout ?? self.settings.remoteCall.defaultTimeout
         let timeoutTask: Task<Void, Error> = Task.detached {
             try await Task.sleep(nanoseconds: UInt64(timeout.nanoseconds))
             guard !Task.isCancelled else {
@@ -1491,11 +1491,21 @@ public struct ClusterInvocationResultHandler: DistributedTargetInvocationResultH
 
         case .remoteCall(let system, let callID, let channel, let recipient):
             system.log.debug("Result handler, onThrow: \(error)", metadata: ["call/id": "\(callID)"])
+
+            let errorType = type(of: error as Any)
             let reply: RemoteCallReply<_Done>
+
             if let codableError = error as? (Error & Codable) {
-                reply = .init(callID: callID, error: codableError)
+                switch system.settings.remoteCall.codableErrorAllowance.underlying {
+                case .custom(let allowedTypeOIDs) where allowedTypeOIDs.contains(ObjectIdentifier(errorType)):
+                    reply = .init(callID: callID, error: codableError)
+                case .all: // compiler gets confused if this is grouped together with above
+                    reply = .init(callID: callID, error: codableError)
+                default:
+                    reply = .init(callID: callID, error: GenericRemoteCallError(errorType: errorType))
+                }
             } else {
-                reply = .init(callID: callID, error: GenericRemoteCallError(message: "Remote call error of [\(type(of: error as Any))] type occurred"))
+                reply = .init(callID: callID, error: GenericRemoteCallError(errorType: errorType))
             }
             try await channel.writeAndFlush(TransportEnvelope(envelope: Payload(payload: .message(reply)), recipient: recipient))
         }
@@ -1585,6 +1595,14 @@ struct RemoteCallReply<Value: Codable>: AnyRemoteCallReply {
 
 public struct GenericRemoteCallError: Error, Codable {
     public let message: String
+
+    init(message: String) {
+        self.message = message
+    }
+
+    init(errorType: Any.Type) {
+        self.message = "Remote call error of [\(errorType)] type occurred"
+    }
 }
 
 public enum ClusterSystemError: DistributedActorSystemError {

@@ -98,7 +98,7 @@ Similarly, you can implement the [ServiceDiscovery](https://github.com/apple/swi
 and this will then enable the cluster to locate nodes to contact and join automatically. It also benefits all other uses of service discovery in such new environment,
 so we encourage publishing your implementations if you're able to!
 
-## Cluster events
+## Cluster Events
 
 Cluster events are events emitted by the cluster as changes happen to the lifecycle of members of the cluster.
 
@@ -273,19 +273,55 @@ distributed actor Boss: LifecycleWatch {
 
 Remote calls are at the heart of what makes distributed actors actually distributed.
 
-A call made on a remote distributed actor reference, will cross network boundaries, and therefore may way due to 
+A call made on a remote distributed actor reference will cross network boundaries, and therefore may fail due to 
 network issues, message loss, serialization errors, or other reasons such as the recipient node crashing as it 
 processes the message. Even replies to remote calls could sometimes fail being delivered, so you might need to 
 design your distributed actors with idempotency (the resilience of a method being called more than once, e.g. due to a retry) in mind.
 
 By default, to avoid "hanging" a remote caller forever on a suspended remote call as the recipient node fails to reply to it,
-for example because it (or the network itself), are currently unresponsive, remote calls have a default timeout configured,
-and if no reply is received within this duration, the call will fail with a ``RemoteCallError``.
+for example because it (or the network itself), is currently unresponsive, remote calls have a default timeout configured.
+If no reply is received within this duration, the call will fail with a ``RemoteCallError/timedOut``.
 
 You can configure the default timeout used by the cluster system during its initialization:
 
 ```swift
 ClusterSystem() { settings in 
-    settings.
+    settings.remoteCall.defaultTimeout = .seconds(3)
+}
+```
+
+You can override the default timeout for a specific remote call:
+
+```swift
+try await RemoteCall.with(timeout: .seconds(5)) {
+    try await worker.work()
+}
+```
+
+### Remote call errors
+
+By default, if a remote call results in an error that is ``Codable``, the error is returned as-is. Non-``Codable`` errors are 
+converted to ``GenericRemoteCallError``.
+
+You may restrict which ``Codable`` errors get sent back to the caller through configuration:
+
+```swift
+ClusterSystem() { settings in 
+    // By default, all ``Codable`` errors are allowed.
+    settings.remoteCall.codableErrorAllowance = .all
+}
+```
+
+```swift
+ClusterSystem() { settings in 
+    // Only specific types are allowed. All others are returned as ``GenericRemoteCallError``.
+    settings.remoteCall.codableErrorAllowance = .custom(allowedTypes: [SomeCodableError.self, AnotherCodableError.self, ...])
+}
+```
+
+```swift
+ClusterSystem() { settings in 
+    // All errors are returned as ``GenericRemoteCallError``.
+    settings.remoteCall.codableErrorAllowance = .none
 }
 ```

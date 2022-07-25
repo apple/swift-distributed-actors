@@ -41,11 +41,10 @@ public struct ClusterSingletonSettings {
 /// Singleton node allocation strategies.
 public struct AllocationStrategySettings {
     private enum AllocationStrategy {
-        /// Singletons will run on the cluster leader. *All* nodes are potential candidates.
         case byLeadership
     }
 
-    private var allocationStrategy: AllocationStrategy
+    private let allocationStrategy: AllocationStrategy
 
     private init(allocationStrategy: AllocationStrategy) {
         self.allocationStrategy = allocationStrategy
@@ -58,5 +57,6 @@ public struct AllocationStrategySettings {
         }
     }
 
+    /// Singletons will run on the cluster leader. *All* nodes are potential candidates.
     public static let byLeadership: AllocationStrategySettings = .init(allocationStrategy: .byLeadership)
 }
