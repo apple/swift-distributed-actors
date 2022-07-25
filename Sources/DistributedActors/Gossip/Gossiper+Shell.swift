@@ -328,6 +328,8 @@ extension GossipShell {
                     resolveInsertPeer(context, member: change.member)
                 case .leadershipChange, .reachabilityChange:
                     () // ignore
+                case ._PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE:
+                    context.log.error("Received Cluster.Event [\(event)]. This should not happen, please file an issue.")
                 }
             }
             context.system.cluster.events.subscribe(onClusterEventRef)

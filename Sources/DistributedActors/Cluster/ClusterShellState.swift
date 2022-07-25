@@ -456,6 +456,9 @@ extension ClusterShellState {
                 changeWasApplied = changeWasApplied || directive.applied
                 // actions we'll calculate below, once
             }
+        case ._PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE:
+            self.log.error("Received Cluster.Event [\(event)]. This should not happen, please file an issue.")
+            changeWasApplied = false
         }
 
         guard changeWasApplied else {
