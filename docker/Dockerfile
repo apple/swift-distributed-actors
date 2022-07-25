@@ -1,7 +1,7 @@
 # FIXME: use stable version once 5.7 is released; this project always requires 5.7+ due to 'distribtued actor'
-ARG swift_version=nightly-5.7
+ARG swift_version='nightly-5.7'
 ARG ubuntu_version=focal
-ARG base_image=swift:$swift_version-$ubuntu_version
+ARG base_image=swiftlang/swift:$swift_version-$ubuntu_version
 FROM $base_image
 # needed to do again after FROM due to docker limitation
 ARG swift_version
