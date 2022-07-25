@@ -182,7 +182,7 @@ extension ActorTestKit {
         var lastError: Error?
         var polledTimes = 0
 
-        let res: T? = try await ActorTestKit.withRepeatableContext {
+        let res: T? = await ActorTestKit.withRepeatableContext {
             while deadline.hasTimeLeft() {
                 do {
                     polledTimes += 1

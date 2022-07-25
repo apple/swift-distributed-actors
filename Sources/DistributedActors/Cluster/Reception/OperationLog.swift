@@ -151,12 +151,12 @@ extension OpLog.SequencedOp: Codable where Op: Codable {
 extension OpLog.SequencedOp: Equatable where Op: Equatable {}
 
 extension OpLog.SequencedOp.SequenceRange: Codable {
-    public enum DiscriminatorKeys: String, Codable {
+    enum DiscriminatorKeys: String, Codable {
         case single
         case inclusiveRange
     }
 
-    public enum CodingKeys: CodingKey {
+    enum CodingKeys: CodingKey {
         case _case
 
         case single_value

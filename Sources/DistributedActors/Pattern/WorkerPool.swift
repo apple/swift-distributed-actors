@@ -83,8 +83,7 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
     /// Control for waiting and getting notified for new worker.
     private var newWorkerContinuations: [CheckedContinuation<Void, Never>] = []
 
-    // TODO(distributed): the convenience is no longer required, but because this only got fixed in very recent toolchains; we keep it on for now. We should be able to remove this once 5.7 lands with this fixed (it is the actors and initializers proposal)
-    public convenience init(selector: Selector, actorSystem: ActorSystem) async throws {
+    public init(selector: Selector, actorSystem: ActorSystem) async throws {
         try await self.init(settings: .init(selector: selector), actorSystem: actorSystem)
     }
 

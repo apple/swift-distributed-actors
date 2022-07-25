@@ -17,35 +17,51 @@ import Logging
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: DowningStrategySettings
 
-public enum DowningStrategySettings {
-    case none
-    case timeout(TimeoutBasedDowningStrategySettings)
+public struct DowningStrategySettings {
+    private enum _DowningStrategySettings {
+        case none
+        case timeout(TimeoutBasedDowningStrategySettings)
+    }
+
+    private let underlying: _DowningStrategySettings
+
+    private init(_ underlying: _DowningStrategySettings) {
+        self.underlying = underlying
+    }
 
     func make(_ clusterSystemSettings: ClusterSystemSettings) -> DowningStrategy? {
-        switch self {
+        switch self.underlying {
         case .none:
             return nil
         case .timeout(let settings):
             return TimeoutBasedDowningStrategy(settings, selfNode: clusterSystemSettings.uniqueBindNode)
         }
     }
+
+    public static let none: DowningStrategySettings = .init(.none)
+
+    public static func timeout(_ settings: TimeoutBasedDowningStrategySettings) -> DowningStrategySettings {
+        .init(.timeout(settings))
+    }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: OnDownActionStrategySettings
 
-public enum OnDownActionStrategySettings {
-    /// Take no (automatic) action upon noticing that this member is marked as [.down].
-    ///
-    /// When using this mode you should take special care to implement some form of shutting down of this node (!).
-    /// As a ``Cluster/MemberStatus/down`` node is effectively useless for the rest of the cluster -- i.e. other
-    /// members MUST refuse communication with this down node.
-    case none
-    /// Upon noticing that this member is marked as [.down], initiate a shutdown.
-    case gracefulShutdown(delay: Duration)
+public struct OnDownActionStrategySettings {
+    private enum _OnDownActionStrategySettings {
+        case none
+        case gracefulShutdown(delay: Duration)
+    }
+
+    private let underlying: _OnDownActionStrategySettings
+
+    private init(_ underlying: _OnDownActionStrategySettings) {
+        self.underlying = underlying
+    }
 
     func make() -> (ClusterSystem) throws -> Void {
-        switch self {
+        switch self.underlying {
         case .none:
             return { _ in () } // do nothing
 
@@ -77,5 +93,17 @@ public enum OnDownActionStrategySettings {
                 )
             }
         }
+    }
+
+    /// Take no (automatic) action upon noticing that this member is marked as [.down].
+    ///
+    /// When using this mode you should take special care to implement some form of shutting down of this node (!).
+    /// As a ``Cluster/MemberStatus/down`` node is effectively useless for the rest of the cluster -- i.e. other
+    /// members MUST refuse communication with this down node.
+    public static let none: OnDownActionStrategySettings = .init(.none)
+
+    /// Upon noticing that this member is marked as [.down], initiate a shutdown.
+    public static func gracefulShutdown(delay: Duration) -> OnDownActionStrategySettings {
+        .init(.gracefulShutdown(delay: delay))
     }
 }
