@@ -24,14 +24,13 @@ import Logging
 /// instance within the cluster system among all of its ``Cluster/MemberStatus/up`` members.
 ///
 /// > Note: This guarantee does not extend to _down_ members, because a down member is not part of the cluster anymore, and
-/// 
+///
 /// To create a managed singleton you must use the ``ClusterSingletonPlugin``,
 /// and have the instantiation and lifecycle of the actor be managed by the plugin.
 ///
 /// To host a distributed cluster singleton, use the ``ClusterSingletonPlugin/host(_:name:settings:makeInstance:)`` method.
 ///
 public protocol ClusterSingleton: DistributedActor where ActorSystem == ClusterSystem {
-    
     /// The singleton is now active, and should perform its duties.
     ///
     /// Invoked by the cluster singleton boss when after it has created this instance of the singleton
