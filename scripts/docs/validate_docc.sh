@@ -15,4 +15,13 @@
 
 set -u
 
+set -eu
+here="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+printf "=> Checking docc: check docc warnings\n"
+
+printf "=> Checking docc: compile inline snippets (fishy-docs)\n"
+
 VALIDATE_DOCS=1 swift build --build-tests
+
+printf "\033[0;32mokay.\033[0m\n"

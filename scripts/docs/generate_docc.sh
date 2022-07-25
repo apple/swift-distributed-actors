@@ -28,8 +28,16 @@ else
   doc_link_version="main" # since dev is latest development we point to main
 fi
 
-# FIXME: hardcoded version for now
-version="1.0.0-beta"
+recent_tag=$(git tag | tail -n1)
+recent_tag_commit=$(git show $recent_tag | grep commit | head -n1 | cut -d ' ' -f2)
+last_commit=$(git show | grep commit | head -n1 | cut -d ' ' -f2)
+
+if [[ "$last_commit" == "$recent_tag_commit" ]];
+then
+  version="$recent_tag"
+else
+  version="$recent_tag-dev"
+fi
 
 echo "Project version: ${version}"
 
