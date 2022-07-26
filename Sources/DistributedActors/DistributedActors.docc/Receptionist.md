@@ -57,15 +57,13 @@ Other actors which discover the actor, and want to be informed once the actor ha
 
 ### Receptionist: Listings
 
-The opposite side of using a receptionist, is actually obtaining a ``DistributedReceptionist/listing(of:file:line:)`` of actors registered with a specific key. 
+The opposite side of using a receptionist, is actually obtaining a ``DistributedReceptionist/listing(of:file:line:)`` of actors registered with a specific key.
+
+Since keys are well typed, the obtained actors are also well typed, and this is how we can obtain a stream of workers which are checked in already, or are checking in with the receptionist as the stream continues:
 
 ```swift
 for await worker in await system.receptionist.listing(of: .workers) {
     try await worker.work() // message or store discovered workers
-    
-    if enoughWorkers {
-        return
-    }
 }
 ```
 
@@ -76,7 +74,7 @@ Once that actor is deinitialized, that task should be cancelled as well, which w
 
 ```swift
 distributed actor Boss: LifecycleWatch { 
-    var workers: [Worker.ID: Weak<Worker<Worker>] = [:]
+    var workers: WeakActorDictionary<Worker> = [:]
     
     var listingTask: Task<Void, Never>?
     
@@ -87,14 +85,14 @@ distributed actor Boss: LifecycleWatch {
         }
 
         listingTask = Task {
-            for await worker in actorSystem.receptionist.listing(of: .workers) {
-                workers[worker.id] = worker
+            for await worker in await actorSystem.receptionist.listing(of: .workers) {
+                workers.insert(worker)
             }
         }
     }
 
     func terminated(actor id: ActorID) async {
-        workers.remove(forKey: id)
+        workers.removeActor(identifiedBy: id)
     }
     
     deinit {

@@ -106,7 +106,7 @@ struct ConcatCodeBlocks: MarkupWalker {
     init(name: String) {
         self.name = name
     }
-    
+
     var code: String {
         var allBlocks = importBlocks
         allBlocks.append(contentsOf: codeBlocks)

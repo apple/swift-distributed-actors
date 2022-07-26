@@ -18,95 +18,6 @@ import DistributedActorsTestKit
 import Foundation
 import XCTest
 
-distributed actor Forwarder {
-    typealias ActorSystem = ClusterSystem
-    let probe: ActorTestProbe<String>?
-    let name: String
-
-    init(probe: ActorTestProbe<String>?, name: String, actorSystem: ActorSystem) {
-        self.actorSystem = actorSystem
-        self.probe = probe
-        self.name = name
-    }
-
-    distributed func forward(message: String) {
-        self.probe?.tell("\(self.id) \(self.name) forwarded: \(message)")
-    }
-}
-
-private distributed actor Boss: LifecycleWatch {
-    typealias ActorSystem = ClusterSystem
-    let probe: ActorTestProbe<String>?
-    let name: String
-
-    var workers: Set<ActorID> = []
-
-    var listingTask: Task<Void, Never>?
-
-    init(probe: ActorTestProbe<String>?, name: String, actorSystem: ActorSystem) {
-        self.probe = probe
-        self.actorSystem = actorSystem
-        self.name = name
-    }
-
-    distributed func findWorkers() {
-        guard self.listingTask == nil else {
-            self.actorSystem.log.info("\(self.id) \(self.name) already looking for workers")
-            return
-        }
-
-        self.listingTask = Task {
-            for await worker in await self.actorSystem.receptionist.listing(of: .workers) {
-                self.workers.insert(watchTermination(of: worker).id)
-                self.probe?.tell("\(self.id) \(self.name) found \(worker.id)")
-            }
-        }
-    }
-
-    func terminated(actor id: ActorID) async {
-        self.workers.remove(id)
-    }
-
-    distributed func done() {
-        self.listingTask?.cancel()
-        self.probe?.tell("\(self.name) done")
-    }
-
-    deinit {
-        self.listingTask?.cancel()
-        self.probe?.tell("\(self.name) deinit")
-    }
-}
-
-private distributed actor Worker: CustomStringConvertible {
-    typealias ActorSystem = ClusterSystem
-    let name: String
-
-    init(name: String, actorSystem: ActorSystem) {
-        self.actorSystem = actorSystem
-        self.name = name
-    }
-
-    nonisolated var description: String {
-        "\(Self.self) \(self.id)"
-    }
-}
-
-extension DistributedReception.Key {
-    fileprivate static var forwarders: DistributedReception.Key<Forwarder> {
-        "forwarder/*"
-    }
-
-    fileprivate static var workers: DistributedReception.Key<Worker> {
-        "worker/*"
-    }
-
-    /// A key that shall have NONE actors checked in
-    fileprivate static var unknown: DistributedReception.Key<Forwarder> {
-        "unknown"
-    }
-}
-
 final class DistributedReceptionistTests: ClusterSystemXCTestCase {
     let receptionistBehavior = _OperationLogClusterReceptionist(settings: .default).behavior
 
@@ -376,4 +287,93 @@ final class DistributedReceptionistTests: ClusterSystemXCTestCase {
 //        let listing1 = try lookupProbe.expectMessage()
 //        listing1.count.shouldEqual(3)
 //    }
+}
+
+distributed actor Forwarder {
+    typealias ActorSystem = ClusterSystem
+    let probe: ActorTestProbe<String>?
+    let name: String
+
+    init(probe: ActorTestProbe<String>?, name: String, actorSystem: ActorSystem) {
+        self.actorSystem = actorSystem
+        self.probe = probe
+        self.name = name
+    }
+
+    distributed func forward(message: String) {
+        self.probe?.tell("\(self.id) \(self.name) forwarded: \(message)")
+    }
+}
+
+private distributed actor Boss: LifecycleWatch {
+    typealias ActorSystem = ClusterSystem
+    let probe: ActorTestProbe<String>?
+    let name: String
+
+    var workers: Set<ActorID> = []
+
+    var listingTask: Task<Void, Never>?
+
+    init(probe: ActorTestProbe<String>?, name: String, actorSystem: ActorSystem) {
+        self.probe = probe
+        self.actorSystem = actorSystem
+        self.name = name
+    }
+
+    distributed func findWorkers() {
+        guard self.listingTask == nil else {
+            self.actorSystem.log.info("\(self.id) \(self.name) already looking for workers")
+            return
+        }
+
+        self.listingTask = Task {
+            for await worker in await self.actorSystem.receptionist.listing(of: .workers) {
+                self.workers.insert(watchTermination(of: worker).id)
+                self.probe?.tell("\(self.id) \(self.name) found \(worker.id)")
+            }
+        }
+    }
+
+    func terminated(actor id: ActorID) async {
+        self.workers.remove(id)
+    }
+
+    distributed func done() {
+        self.listingTask?.cancel()
+        self.probe?.tell("\(self.name) done")
+    }
+
+    deinit {
+        self.listingTask?.cancel()
+        self.probe?.tell("\(self.name) deinit")
+    }
+}
+
+private distributed actor Worker: CustomStringConvertible {
+    typealias ActorSystem = ClusterSystem
+    let name: String
+
+    init(name: String, actorSystem: ActorSystem) {
+        self.actorSystem = actorSystem
+        self.name = name
+    }
+
+    nonisolated var description: String {
+        "\(Self.self) \(self.id)"
+    }
+}
+
+extension DistributedReception.Key {
+    fileprivate static var forwarders: DistributedReception.Key<Forwarder> {
+        "forwarder/*"
+    }
+
+    fileprivate static var workers: DistributedReception.Key<Worker> {
+        "worker/*"
+    }
+
+    /// A key that shall have NONE actors checked in
+    fileprivate static var unknown: DistributedReception.Key<Forwarder> {
+        "unknown"
+    }
 }
