@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -75,6 +75,8 @@ extension Cluster {
                 return Member(node: self.uniqueNode, status: .down)
             case .down, .removed:
                 return self
+            case ._PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE:
+                return Member(node: self.uniqueNode, status: .down)
             }
         }
 
@@ -162,6 +164,10 @@ extension Cluster.Member: Codable {
 extension Cluster {
     /// Describes the status of a member within the clusters lifecycle.
     public enum MemberStatus: String, CaseIterable, Comparable {
+        public static var allCases: [MemberStatus] {
+            [.joining, .up, .leaving, .down, .removed]
+        }
+
         /// Describes a node which is connected to at least one other member in the cluster,
         /// it may want to serve some traffic, however should await the leader moving it to .up
         /// before it takes on serious work.
@@ -208,6 +214,8 @@ extension Cluster {
         /// Note, that a removal also ensures storage of tombstones on the networking layer, such that any future attempts
         /// of such node re-connecting will be automatically rejected, disallowing the node to "come back" (which we'd call a "zombie" node).
         case removed
+
+        case _PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE
 
         internal static let maxStrLen = 7 // hardcoded strlen of the words used for joining...removed; used for padding
     }
@@ -271,6 +279,8 @@ extension Cluster.MemberStatus {
             return rhs == .removed
         case .removed:
             return false
+        case ._PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE:
+            fatalError("LHS is \(Self.self) [\(lhs)]. This should not happen, please file an issue.")
         }
     }
 }
