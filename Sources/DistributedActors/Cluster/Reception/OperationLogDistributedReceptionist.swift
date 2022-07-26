@@ -391,7 +391,7 @@ extension OpLogDistributedReceptionist: LifecycleWatch {
 
         // self.instrumentation.listingPublished(key: message._key, subscribers: 1, registrations: registrations.count) // TODO(distributed): make the instrumentation calls compatible with distributed actor based types
         let guests = Set(registrations.compactMap { versioned in
-            try? Guest.resolve(id: versioned.actor.underlying.id as! ActorID, using: self.actorSystem)
+             try? Guest.resolve(id: versioned.actor.underlying.id as! ActorID, using: self.actorSystem)
         })
 
         assert(guests.count == registrations.count, """
