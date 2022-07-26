@@ -219,7 +219,7 @@ final class WorkerPoolTests: ClusterSystemXCTestCase {
             _ = try await workers.submit(work: "after-all-dead")
         }
 
-        guard case WorkerPoolError.staticPoolExhausted(let errorMessage) = error else {
+        guard let workerPoolError = error as? WorkerPoolError, case .staticPoolExhausted(let errorMessage) = workerPoolError.underlying.error else {
             throw testKit.fail("Expected WorkerPoolError.staticPoolExhausted, got \(error)")
         }
         errorMessage.shouldContain("Static worker pool exhausted, all workers have terminated")
@@ -230,7 +230,7 @@ final class WorkerPoolTests: ClusterSystemXCTestCase {
             let _: WorkerPool<Greeter> = try await WorkerPool(selector: .static([]), actorSystem: system)
         }
 
-        guard case WorkerPoolError.emptyStaticWorkerPool(let errorMessage) = error else {
+        guard let workerPoolError = error as? WorkerPoolError, case .emptyStaticWorkerPool(let errorMessage) = workerPoolError.underlying.error else {
             throw testKit.fail("Expected WorkerPoolError.emptyStaticWorkerPool, got \(error)")
         }
         errorMessage.shouldContain("Illegal empty collection passed to `.static` worker pool")
