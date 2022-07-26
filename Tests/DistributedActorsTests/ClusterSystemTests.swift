@@ -164,6 +164,25 @@ final class ClusterSystemTests: ClusterSystemXCTestCase {
         secondReceptacle.wait(atMost: .seconds(3))!.shouldBeNil()
     }
 
+    func test_terminated_shouldBeResumedWhenSystemIsShutDown() async throws {
+        let system = await ClusterSystem("ShutMeDown")
+        let firstReceptacle = BlockingReceptacle<Error?>()
+
+        system.shutdown(afterShutdownCompleted: { error in
+            firstReceptacle.offerOnce(error)
+        })
+
+        firstReceptacle.wait(atMost: .seconds(3))!.shouldBeNil()
+
+        let secondReceptacle = BlockingReceptacle<Error?>()
+
+        system.shutdown(afterShutdownCompleted: { error in
+            secondReceptacle.offerOnce(error)
+        })
+
+        secondReceptacle.wait(atMost: .seconds(3))!.shouldBeNil()
+    }
+
     func test_cleanUpAssociationTombstones() async throws {
         let local = await setUpNode("local") { settings in
             settings.enabled = true
