@@ -83,7 +83,8 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
     /// Control for waiting and getting notified for new worker.
     private var newWorkerContinuations: [CheckedContinuation<Void, Never>] = []
 
-    public init(selector: Selector, actorSystem: ActorSystem) async throws {
+    // TODO: remove the convenience marker; since SE-0327 we don't need it anymore: https://github.com/apple/swift-evolution/blob/main/proposals/0327-actor-initializers.md
+    public convenience init(selector: Selector, actorSystem: ActorSystem) async throws {
         try await self.init(settings: .init(selector: selector), actorSystem: actorSystem)
     }
 
