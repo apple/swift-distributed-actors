@@ -179,6 +179,10 @@ final class ClusterSystemTests: ClusterSystemXCTestCase {
         system.shutdown(afterShutdownCompleted: { error in
             secondReceptacle.offerOnce(error)
         })
+        
+        Task.detached {
+            try await system.terminated
+        }
 
         secondReceptacle.wait(atMost: .seconds(3))!.shouldBeNil()
     }

@@ -447,7 +447,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         }
     }
 
-    /// Suspends until the ``ClusterSystem`` is terminated by a call to ``shutdown``.
+    /// Suspends until the ``ClusterSystem`` is terminated by a call to ``shutdown(queue:afterShutdownCompleted:)``.
     var terminated: Void {
         get async throws {
             try await Task.detached {

@@ -6,6 +6,13 @@ func log(_ log: String, file: String = #fileID, line: UInt = #line) {
     print("[fishy-docs] \(log)")
 }
 
+struct Commands {
+    static let Namespace = "fishy-docs"
+    static let Enable = "\(Namespace):enable"
+    static let Disable = "\(Namespace):disable"
+    static let Skip = "\(Namespace):skip-next"
+}
+
 @main
 struct FishyDocs: ParsableCommand {
     @Option(help: "Folder containing the docc documentation to scan for fishy-docs")
@@ -47,7 +54,17 @@ struct FishyDocs: ParsableCommand {
     }
 
     func makeDocsTestCode(document: Document, doccFileName: String) throws -> String? {
-        var concatCodeBlocks = ConcatCodeBlocks()
+        assert(!doccFileName.isEmpty)
+
+        guard var name = doccFileName.split(separator: "/").last else {
+            return nil
+        }
+        guard let simpleName = name.split(separator: ".").first else {
+            return nil
+        }
+        name = simpleName
+
+        var concatCodeBlocks = ConcatCodeBlocks(name: String(name))
         concatCodeBlocks.visit(document)
 
         guard !concatCodeBlocks.code.isEmpty else {
@@ -76,6 +93,20 @@ struct DetectFishyDocs: MarkupWalker {
 struct ConcatCodeBlocks: MarkupWalker {
     var importBlocks: [CodeBlock] = []
     var codeBlocks: [CodeBlock] = []
+
+    /// True if capturing code blocks is enabled
+    var includeCodeBlock: Bool = true
+
+    /// Allows for skipping a single code block, followed after the fishy-docs:skip-next
+    var skipNextCodeBlock: Bool = false
+
+    /// Name of the file we're compile-testing
+    let name: String
+
+    init(name: String) {
+        self.name = name
+    }
+    
     var code: String {
         var allBlocks = importBlocks
         allBlocks.append(contentsOf: codeBlocks)
@@ -85,7 +116,7 @@ struct ConcatCodeBlocks: MarkupWalker {
             codeBlockStrings.append(block.code)
         }
 
-        codeBlockStrings.append("func __test() async throws {")
+        codeBlockStrings.append("func __compileTest_\(self.name)() async throws {")
         for block in codeBlocks {
             var s = "// ==== "
 
@@ -112,7 +143,26 @@ struct ConcatCodeBlocks: MarkupWalker {
         return codeBlockStrings.joined(separator: "\n")
     }
 
+    mutating func visitParagraph(_ paragraph: Paragraph) {
+        if paragraph.plainText.contains(Commands.Enable) {
+            self.includeCodeBlock = true
+        } else if paragraph.plainText.contains(Commands.Disable) {
+            self.includeCodeBlock = false
+        } else if paragraph.plainText.contains(Commands.Skip) {
+            self.skipNextCodeBlock = true
+            self.includeCodeBlock = false
+        }
+    }
+
     mutating func visitCodeBlock(_ codeBlock: CodeBlock) {
+        guard !self.skipNextCodeBlock else {
+            self.skipNextCodeBlock = false
+            return
+        }
+        guard self.includeCodeBlock else {
+            return
+        }
+
         if codeBlock.code.contains("import ") {
             self.importBlocks.append(codeBlock)
         } else {

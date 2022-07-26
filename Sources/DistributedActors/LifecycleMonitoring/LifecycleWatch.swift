@@ -29,7 +29,7 @@ public protocol LifecycleWatch: DistributedActor where ActorSystem == ClusterSys
     /// located on has been declared ``Cluster/MemberStatus/down``.
     ///
     /// - Parameter id: the ID of the now terminated actor
-    func terminated(actor id: ActorID) async throws // FIXME(distributed): Should not need to be throwing: https://github.com/apple/swift/pull/59397
+    func terminated(actor id: ActorID) async
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
