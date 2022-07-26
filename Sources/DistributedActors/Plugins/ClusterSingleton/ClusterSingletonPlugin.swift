@@ -14,21 +14,6 @@
 
 import Distributed
 
-public protocol ClusterSingletonProtocol: DistributedActor where ActorSystem == ClusterSystem {
-    /// The singleton should no longer be active on this cluster member.
-    ///
-    /// Invoked by the cluster singleton manager when it is determined that this member should no longer
-    /// be hosting this singleton instance. The singleton upon receiving this call, should either cease activity,
-    /// or take steps to terminate itself entirely.
-    func passivateSingleton() async
-}
-
-extension ClusterSingletonProtocol {
-    public func passivateSingleton() async {
-        // nothing by default
-    }
-}
-
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Cluster singleton plugin
 
@@ -48,11 +33,15 @@ public actor ClusterSingletonPlugin {
 
     private var actorSystem: ClusterSystem!
 
+    public init() {
+        self.actorSystem = nil // 'actorSystem' is filled in later on in _Plugin.start()
+    }
+
     public func proxy<Act>(
         _ type: Act.Type,
         name: String,
         settings: ClusterSingletonSettings = .init()
-    ) async throws -> Act where Act: ClusterSingletonProtocol {
+    ) async throws -> Act where Act: ClusterSingleton {
         var settings = settings
         settings.name = name
         return try await self._get(type, settings: settings, system: self.actorSystem, makeInstance: nil)
@@ -64,7 +53,7 @@ public actor ClusterSingletonPlugin {
         name: String,
         settings: ClusterSingletonSettings = .init(),
         makeInstance factory: ((ClusterSystem) async throws -> Act)? = nil
-    ) async throws -> Act where Act: ClusterSingletonProtocol {
+    ) async throws -> Act where Act: ClusterSingleton {
         var settings = settings
         settings.name = name
         return try await self._get(type, settings: settings, system: self.actorSystem, makeInstance: factory)
@@ -75,7 +64,7 @@ public actor ClusterSingletonPlugin {
         settings: ClusterSingletonSettings,
         system: ClusterSystem,
         makeInstance factory: ((ClusterSystem) async throws -> Act)?
-    ) async throws -> Act where Act: ClusterSingletonProtocol {
+    ) async throws -> Act where Act: ClusterSingleton {
         let singletonName = settings.name
         guard !singletonName.isEmpty else {
             fatalError("ClusterSingleton \(Act.self) must have specified unique name!")
@@ -98,13 +87,22 @@ public actor ClusterSingletonPlugin {
         self.singletons[singletonName] = (proxied.id, boss)
         return proxied
     }
+
+    // FOR TESTING
+    internal func _boss<Singleton: ClusterSingleton>(name: String, type: Singleton.Type = Singleton.self) -> ClusterSingletonBoss<Singleton>? {
+        guard let (id, boss) = self.singletons[name] else {
+            return nil
+        }
+
+        return boss as? ClusterSingletonBoss<Singleton>
+    }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Plugin protocol conformance
 
 extension ClusterSingletonPlugin: _Plugin {
-    static let pluginKey = _PluginKey<ClusterSingletonPlugin>(plugin: "$clusterSingleton")
+    static let pluginKey: Key = "$clusterSingleton"
 
     public nonisolated var key: Key {
         Self.pluginKey

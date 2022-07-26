@@ -13,8 +13,10 @@
 //===----------------------------------------------------------------------===//
 
 /// Settings for `ClusterSystem` plugins.
-public struct _PluginsSettings {
-    public static var `default`: _PluginsSettings {
+///
+/// Use to enable additional plugins that are started and stopped along with the cluster system.
+public struct PluginsSettings {
+    public static var `default`: PluginsSettings {
         .init()
     }
 
@@ -26,13 +28,9 @@ public struct _PluginsSettings {
     ///
     /// - Note: A plugin that depends on others should be added *after* its dependencies.
     /// - Faults, when plugin of the exact same `PluginKey` is already included in the settings.
+    @available(*, deprecated, message: "use settings.install(plugin:) instead")
     public mutating func add<P: _Plugin>(_ plugin: P) {
-        precondition(
-            !self.plugins.contains(where: { $0.key == plugin.key.asAny }),
-            "Attempted to add plugin \(plugin.key) but key already used! Plugin [\(plugin)], installed plugins: \(self.plugins)."
-        )
-
-        return self.plugins.append(BoxedPlugin(plugin))
+        self.install(plugin: plugin)
     }
 
     /// Returns `Plugin` identified by `key`.
@@ -62,8 +60,24 @@ public struct _PluginsSettings {
     }
 }
 
-extension _PluginsSettings {
-    public static func += <P: _Plugin>(plugins: inout _PluginsSettings, plugin: P) {
+extension PluginsSettings {
+    /// Installs the passed in plugin in the settings.
+    ///
+    /// The plugin will be started as the actor system becomes fully initialized,
+    /// and stopped as the system is shut down.
+    ///
+    /// - Parameter plugin: plugin to install in the actor system
+    public mutating func install<P: _Plugin>(plugin: P) {
+        precondition(
+            !self.plugins.contains(where: { $0.key == plugin.key.asAny }),
+            "Attempted to add plugin \(plugin.key) but key already used! Plugin [\(plugin)], installed plugins: \(self.plugins)."
+        )
+
+        return self.plugins.append(BoxedPlugin(plugin))
+    }
+
+    @available(*, deprecated, message: "use settings.install(plugin:) instead")
+    public static func += <P: _Plugin>(plugins: inout PluginsSettings, plugin: P) {
         plugins.add(plugin)
     }
 }

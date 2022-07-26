@@ -15,8 +15,6 @@ To do so, you can refer to:
 - [Concurrency: Actors](https://docs.swift.org/swift-book/LanguageGuide/Concurrency.html#ID645) section of the Swift Book,
 - or the [Protect mutable state with Swift actors](https://developer.apple.com/videos/play/wwdc2021/10133/) introduction video from WWDC 2021.
 
-
-
 ## Thinking in (distributed) actors
 
 In order to build distributed systems successfully you will need to get into the right mindset. 

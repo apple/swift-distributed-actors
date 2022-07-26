@@ -33,7 +33,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
     public typealias InvocationEncoder = ClusterInvocationEncoder
     public typealias SerializationRequirement = any Codable
     public typealias ResultHandler = ClusterInvocationResultHandler
-    internal typealias CallID = UUID
+    public typealias CallID = UUID
 
     public let name: String
 
@@ -1635,7 +1635,7 @@ internal struct LazyStart<Message: Codable> {
     }
 }
 
-enum RemoteCallError: DistributedActorSystemError {
+public enum RemoteCallError: DistributedActorSystemError {
     case clusterAlreadyShutDown
     case timedOut(ClusterSystem.CallID, TimeoutError)
     case invalidReply(ClusterSystem.CallID)

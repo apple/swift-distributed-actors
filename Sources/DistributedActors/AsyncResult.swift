@@ -71,7 +71,7 @@ extension EventLoopFuture: _AsyncResult {
 }
 
 /// Error that signals that an operation timed out.
-internal struct TimeoutError: Error {
+public struct TimeoutError: Error {
     let message: String
     let timeout: Duration
 
