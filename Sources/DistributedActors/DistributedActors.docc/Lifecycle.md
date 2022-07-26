@@ -27,7 +27,7 @@ distributed actor Romeo: LifecycleWatch {
         watchTermination(of: romeo)
     }
     
-    distributed func terminated(actor id: ActorID) async {
+    func terminated(actor id: ActorID) async {
         print("Oh no! \(id) is dead!")
         // *Drinks poison*
     }
@@ -42,7 +42,7 @@ distributed actor Juliet: LifecycleWatch {
         watchTermination(of: romeo)
     }
 
-    distributed func terminated(actor id: ActorID) async {
+    func terminated(actor id: ActorID) async {
         print("Oh no! \(id) is dead!")
         // *Stabs through heart*
     }

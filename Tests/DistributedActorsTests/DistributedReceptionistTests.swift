@@ -63,8 +63,7 @@ private distributed actor Boss: LifecycleWatch {
         }
     }
 
-    // FIXME(distributed): should not need to be distributed
-    distributed func terminated(actor id: ActorID) async throws {
+    func terminated(actor id: ActorID) async {
         self.workers.remove(id)
     }
 

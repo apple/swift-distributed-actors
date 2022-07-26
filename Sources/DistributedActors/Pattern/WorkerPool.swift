@@ -145,7 +145,7 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
         return selected
     }
 
-    public distributed func terminated(actor id: Worker.ID) {
+    public func terminated(actor id: Worker.ID) {
         self.workers.removeValue(forKey: id)
         self.hasTerminatedWorkers = true
         self.roundRobinPos = 0
