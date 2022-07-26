@@ -1085,8 +1085,6 @@ extension ClusterSystem {
         Res: Codable
     {
         if let interceptor = actor.id.context.remoteCallInterceptor {
-            self.log.warning("INTERCEPTOR remote call \(actor.id)...")
-            print("[\(self.cluster.uniqueNode)] INTERCEPTOR remote call \(actor.id)...")
             return try await interceptor.interceptRemoteCall(on: actor, target: target, invocation: &invocation, throwing: throwing, returning: returning)
         }
 
@@ -1094,7 +1092,6 @@ extension ClusterSystem {
             // It actually is a remote call, so redirect it to local call-path.
             // Such calls can happen when we deal with interceptors and proxies;
             // To make their lives easier, we centralize the noticing when a call is local and dispatch it from here.
-            self.log.warning("ACTUALLY LOCAL CALL: \(target) on \(actor.id)")
             return try await self.localCall(on: actor, target: target, invocation: &invocation, throwing: throwing, returning: returning)
         }
 
@@ -1116,13 +1113,10 @@ extension ClusterSystem {
                 arguments: arguments
             )
 
-            print("[\(self.cluster.uniqueNode)] SEND INVOCATION: \(invocation) TO \(recipient.id.fullDescription)")
-            log.warning("[\(self.cluster.uniqueNode)] SEND INVOCATION: \(invocation) TO \(recipient.id.fullDescription)")
             recipient.sendInvocation(invocation)
         }
 
         if let error = reply.thrownError {
-            print("[\(self.cluster.uniqueNode)] reply error: \(error)")
             throw error
         }
         guard let value = reply.value else {
@@ -1258,13 +1252,10 @@ extension ClusterSystem {
         Err: Error,
         Res: Codable
     {
-        print("[\(self.cluster.uniqueNode)] ACT: \(actor.id.fullDescription)")
         precondition(
             self.cluster.uniqueNode == actor.id.uniqueNode,
             "Attempted to localCall an actor whose ID was a different node: [\(actor.id)], current node: \(self.cluster.uniqueNode)"
         )
-//        precondition(!__isRemoteActor(actor),
-//                     "Attempted to localCall a remote actor! \(actor.id)")
         self.log.trace("Execute local call", metadata: [
             "actor/id": "\(actor.id.fullDescription)",
             "target": "\(target)",
