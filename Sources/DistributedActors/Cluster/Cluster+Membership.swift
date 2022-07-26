@@ -354,7 +354,7 @@ extension Cluster.Membership {
 
         // we soundness check that the wanna-be leader is already a member
         guard self._members[wannabeLeader.uniqueNode] != nil else {
-            throw Cluster.MembershipError.nonMemberLeaderSelected(self, wannabeLeader: wannabeLeader)
+            throw Cluster.MembershipError(.nonMemberLeaderSelected(self, wannabeLeader: wannabeLeader))
         }
 
         if self.leader == wannabeLeader {
@@ -666,37 +666,61 @@ extension MembershipDiff: CustomDebugStringConvertible {
 // MARK: Errors
 
 extension Cluster {
-    public enum MembershipError: Error, CustomPrettyStringConvertible {
-        case nonMemberLeaderSelected(Cluster.Membership, wannabeLeader: Cluster.Member)
-        case notFound(UniqueNode, in: Cluster.Membership)
-        case atLeastStatusRequirementNotMet(expectedAtLeast: Cluster.MemberStatus, found: Cluster.Member)
-        case statusRequirementNotMet(expected: Cluster.MemberStatus, found: Cluster.Member)
-        case awaitStatusTimedOut(Duration, Error?)
+    public struct MembershipError: Error, CustomStringConvertible {
+        internal enum _MembershipError: CustomPrettyStringConvertible {
+            case nonMemberLeaderSelected(Cluster.Membership, wannabeLeader: Cluster.Member)
+            case notFound(UniqueNode, in: Cluster.Membership)
+            case atLeastStatusRequirementNotMet(expectedAtLeast: Cluster.MemberStatus, found: Cluster.Member)
+            case statusRequirementNotMet(expected: Cluster.MemberStatus, found: Cluster.Member)
+            case awaitStatusTimedOut(Duration, Error?)
 
-        public var prettyDescription: String {
-            "\(Self.self)(\(self), details: \(self.details))"
+            var prettyDescription: String {
+                "\(self), details: \(self.details)"
+            }
+
+            private var details: String {
+                switch self {
+                case .nonMemberLeaderSelected(let membership, let wannabeLeader):
+                    return "[\(wannabeLeader)] selected leader but is not a member [\(membership)]"
+                case .notFound(let node, let membership):
+                    return "[\(node)] is not a member [\(membership)]"
+                case .atLeastStatusRequirementNotMet(let expectedAtLeastStatus, let foundMember):
+                    return "Expected \(reflecting: foundMember.uniqueNode) to be seen as at-least [\(expectedAtLeastStatus)] but was [\(foundMember.status)]"
+                case .statusRequirementNotMet(let expectedStatus, let foundMember):
+                    return "Expected \(reflecting: foundMember.uniqueNode) to be seen as [\(expectedStatus)] but was [\(foundMember.status)]"
+                case .awaitStatusTimedOut(let duration, let lastError):
+                    let lastErrorMessage: String
+                    if let error = lastError {
+                        lastErrorMessage = "Last error: \(error)"
+                    } else {
+                        lastErrorMessage = "Last error: <none>"
+                    }
+
+                    return "No result within \(duration.prettyDescription). \(lastErrorMessage)"
+                }
+            }
         }
 
-        private var details: String {
-            switch self {
-            case .nonMemberLeaderSelected(let membership, let wannabeLeader):
-                return "[\(wannabeLeader)] selected leader but is not a member [\(membership)]"
-            case .notFound(let node, let membership):
-                return "[\(node)] is not a member [\(membership)]"
-            case .atLeastStatusRequirementNotMet(let expectedAtLeastStatus, let foundMember):
-                return "Expected \(reflecting: foundMember.uniqueNode) to be seen as at-least [\(expectedAtLeastStatus)] but was [\(foundMember.status)]"
-            case .statusRequirementNotMet(let expectedStatus, let foundMember):
-                return "Expected \(reflecting: foundMember.uniqueNode) to be seen as [\(expectedStatus)] but was [\(foundMember.status)]"
-            case .awaitStatusTimedOut(let duration, let lastError):
-                let lastErrorMessage: String
-                if let error = lastError {
-                    lastErrorMessage = "Last error: \(error)"
-                } else {
-                    lastErrorMessage = "Last error: <none>"
-                }
+        internal class _Storage {
+            let error: _MembershipError
+            let file: String
+            let line: UInt
 
-                return "No result within \(duration.prettyDescription). \(lastErrorMessage)"
+            init(error: _MembershipError, file: String, line: UInt) {
+                self.error = error
+                self.file = file
+                self.line = line
             }
+        }
+
+        let underlying: _Storage
+
+        internal init(_ error: _MembershipError, file: String = #fileID, line: UInt = #line) {
+            self.underlying = _Storage(error: error, file: file, line: line)
+        }
+
+        public var description: String {
+            "\(Self.self)(\(self.underlying.error), at: \(self.underlying.file):\(self.underlying.line))"
         }
     }
 }

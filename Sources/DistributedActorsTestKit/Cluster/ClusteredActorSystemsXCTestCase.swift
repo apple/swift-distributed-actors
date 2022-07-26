@@ -169,8 +169,6 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
         let testKit = self.testKit(onSystem)
         do {
             try await onSystem.cluster.waitFor(Set(nodes), status, within: within)
-        } catch let error as Cluster.MembershipError {
-            throw testKit.error("\(error.prettyDescription)", file: file, line: line)
         } catch {
             throw testKit.error("\(error)", file: file, line: line)
         }
@@ -188,8 +186,6 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
         do {
             // all members on onMember should have reached this status (e.g. up)
             try await onSystem.cluster.waitFor(Set(nodes), atLeast: status, within: within)
-        } catch let error as Cluster.MembershipError {
-            throw testKit.error("\(error.prettyDescription)", file: file, line: line)
         } catch {
             throw testKit.error("\(error)", file: file, line: line)
         }
@@ -366,7 +362,7 @@ extension ClusteredActorSystemsXCTestCase {
         do {
             _ = try await system.cluster.waitFor(node, expectedStatus, within: within)
         } catch let error as Cluster.MembershipError {
-            switch error {
+            switch error.underlying.error {
             case .notFound:
                 throw testKit.error("Expected [\(system.cluster.uniqueNode)] to know about [\(node)] member", file: file, line: line)
             case .statusRequirementNotMet(_, let foundMember):
@@ -379,7 +375,7 @@ extension ClusteredActorSystemsXCTestCase {
                     line: line
                 )
             default:
-                throw testKit.error(error.prettyDescription, file: file, line: line)
+                throw testKit.error(error.description, file: file, line: line)
             }
         }
     }
@@ -395,7 +391,7 @@ extension ClusteredActorSystemsXCTestCase {
         do {
             _ = try await system.cluster.waitFor(node, atLeast: expectedAtLeastStatus, within: within)
         } catch let error as Cluster.MembershipError {
-            switch error {
+            switch error.underlying.error {
             case .notFound:
                 throw testKit.error("Expected [\(system.cluster.uniqueNode)] to know about [\(node)] member", file: file, line: line)
             case .atLeastStatusRequirementNotMet(_, let foundMember):
@@ -408,7 +404,7 @@ extension ClusteredActorSystemsXCTestCase {
                     line: line
                 )
             default:
-                throw testKit.error(error.prettyDescription, file: file, line: line)
+                throw testKit.error(error.description, file: file, line: line)
             }
         }
     }

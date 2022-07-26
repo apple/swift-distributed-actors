@@ -242,11 +242,11 @@ public struct ClusterControl {
                     // so we're seeing an already removed member, this can indeed happen and is okey
                     return Cluster.Member(node: node, status: .removed).asUnreachable
                 }
-                throw Cluster.MembershipError.notFound(node, in: membership)
+                throw Cluster.MembershipError(.notFound(node, in: membership))
             }
 
             if status != foundMember.status {
-                throw Cluster.MembershipError.statusRequirementNotMet(expected: status, found: foundMember)
+                throw Cluster.MembershipError(.statusRequirementNotMet(expected: status, found: foundMember))
             }
             return foundMember
         }
@@ -276,11 +276,11 @@ public struct ClusterControl {
                     // so we're seeing an already removed member, this can indeed happen and is okey
                     return Cluster.Member(node: node, status: .removed).asUnreachable
                 }
-                throw Cluster.MembershipError.notFound(node, in: membership)
+                throw Cluster.MembershipError(.notFound(node, in: membership))
             }
 
             if atLeastStatus <= foundMember.status {
-                throw Cluster.MembershipError.atLeastStatusRequirementNotMet(expectedAtLeast: atLeastStatus, found: foundMember)
+                throw Cluster.MembershipError(.atLeastStatusRequirementNotMet(expectedAtLeast: atLeastStatus, found: foundMember))
             }
             return foundMember
         }
@@ -301,6 +301,6 @@ public struct ClusterControl {
             }
         }
 
-        throw Cluster.MembershipError.awaitStatusTimedOut(within, lastError)
+        throw Cluster.MembershipError(.awaitStatusTimedOut(within, lastError))
     }
 }

@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2020 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -23,12 +23,12 @@ extension Never: _NotActuallyCodableMessage {}
 
 // FIXME: we should not add Codable conformance onto a stdlib type, but rather fix this in stdlib
 extension Result: Codable where Success: Codable, Failure: Codable {
-    public enum DiscriminatorKeys: String, Codable {
+    enum DiscriminatorKeys: String, Codable {
         case success
         case failure
     }
 
-    public enum CodingKeys: CodingKey {
+    enum CodingKeys: CodingKey {
         case _case
         case success_value
         case failure_value

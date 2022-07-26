@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -60,9 +60,9 @@ extension Cluster.MembershipChange: _ProtobufRepresentable {
 
         proto.node = try self.node.toProto(context: context)
         if let fromStatus = self.previousStatus {
-            proto.fromStatus = fromStatus.toProto(context: context)
+            proto.fromStatus = try fromStatus.toProto(context: context)
         }
-        proto.toStatus = self.status.toProto(context: context)
+        proto.toStatus = try self.status.toProto(context: context)
 
         return proto
     }

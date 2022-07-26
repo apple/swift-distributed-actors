@@ -112,6 +112,8 @@ final class ClusterSystemMetrics {
                 leaving += 1
             case .removed:
                 removed += 1
+            case ._PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE:
+                ()
             }
 
             switch b.reachability {
@@ -234,8 +236,6 @@ final class ClusterSystemMetrics {
         self._receptionist_keys = .init(label: settings.makeLabel("receptionist", "keys"))
         self._receptionist_registrations = .init(label: settings.makeLabel("receptionist", "actors"), positive: [("type", "registered")], negative: [("type", "removed")])
         self._receptionist_oplog_size = .init(label: settings.makeLabel("receptionist", "oplog", "size"))
-
-        // ==== CRDTs -----------------------------------------------
 
         // ==== Cluster ---------------------------------------------
         let clusterMembersLabel = settings.makeLabel("cluster", "members")

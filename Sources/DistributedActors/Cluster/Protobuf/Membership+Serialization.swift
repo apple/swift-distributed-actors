@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -52,7 +52,7 @@ extension Cluster.Member: _ProtobufRepresentable {
     public func toProto(context: Serialization.Context) throws -> ProtobufRepresentation {
         var proto = ProtobufRepresentation()
         proto.node = try self.uniqueNode.toProto(context: context)
-        proto.status = self.status.toProto(context: context)
+        proto.status = try self.status.toProto(context: context)
         proto.reachability = try self.reachability.toProto(context: context)
         if let number = self._upNumber {
             proto.upNumber = UInt32(number)
@@ -79,6 +79,8 @@ extension Cluster.MemberReachability {
             return .reachable
         case .unreachable:
             return .unreachable
+        case ._PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE:
+            throw SerializationError.unableToSerialize(hint: "\(Self.self) is [\(self)]. This should not happen, please file an issue.")
         }
     }
 
@@ -98,7 +100,7 @@ extension Cluster.MemberReachability {
 
 // not conforming to _InternalProtobufRepresentable since this is a raw `enum` not a Message
 extension Cluster.MemberStatus {
-    func toProto(context: Serialization.Context) -> _ProtoClusterMemberStatus {
+    func toProto(context: Serialization.Context) throws -> _ProtoClusterMemberStatus {
         var proto = _ProtoClusterMemberStatus()
         switch self {
         case .joining:
@@ -111,6 +113,8 @@ extension Cluster.MemberStatus {
             proto = .down
         case .removed:
             proto = .removed
+        case ._PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE:
+            throw SerializationError.unableToSerialize(hint: "\(Self.self) is [\(self)]. This should not happen, please file an issue.")
         }
         return proto
     }

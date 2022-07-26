@@ -301,7 +301,7 @@ final class ActorLeakingTests: ClusterSystemXCTestCase {
 }
 
 extension ActorLeakingTests.LeakTestMessage: Codable {
-    public enum CodingKeys: CodingKey {
+    enum CodingKeys: CodingKey {
         case _deallocated
     }
 
