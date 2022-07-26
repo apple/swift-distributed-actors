@@ -7,8 +7,10 @@
 Allows for hosting a _single unique instance_ of a distributed actor within the entire distributed actor system, 
 including automatic fail-over when the node hosting the instance becomes down. 
 
-<!-- fishy-docs:enable -->
-<!-- Enable additional code snippet verification; all inline snippets concat into a "compile test" and verified when built with VALIDATE_DOCS=1 -->
+@Comment { 
+    fishy-docs:enable
+    Enable additional code snippet verification; all inline snippets concat into a "compile test" and verified when built with VALIDATE_DOCS=1 
+}
 
 
 ### Implementing a Cluster Singleton

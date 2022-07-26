@@ -41,12 +41,9 @@ struct FishyDocs: ParsableCommand {
     }
 
     func usesFishyDocs(document: Document, url: URL) -> Bool {
-        return (try? String(contentsOf: url).contains("fishy-docs:enable")) ?? false
-
-        // FIXME(docc): docc breaks when @Comment is used in symbol documentation: https://github.com/apple/swift-docc/issues/343
-        // var detectFishyDocs = DetectFishyDocs()
-        // detectFishyDocs.visit(document)
-        // return detectFishyDocs.detected
+        var detectFishyDocs = DetectFishyDocs()
+        detectFishyDocs.visit(document)
+        return detectFishyDocs.detected
     }
 
     func makeDocsTestCode(document: Document, doccFileName: String) throws -> String? {
