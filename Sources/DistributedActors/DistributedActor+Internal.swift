@@ -68,10 +68,7 @@ extension DistributedActor where ActorSystem == ClusterSystem {
     }
 }
 
-distributed actor StubDistributedActor {
+internal distributed actor StubDistributedActor {
     typealias ID = ClusterSystem.ActorID
     typealias ActorSystem = ClusterSystem
-
-    // TODO: this is just to prevent a DI crash because of enums without cases and Codable
-    distributed func _noop() {}
 }
