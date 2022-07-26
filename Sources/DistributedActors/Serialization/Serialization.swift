@@ -331,6 +331,8 @@ extension Serialization {
         case data(Data)
         case nioByteBuffer(ByteBuffer)
 
+        case _PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE
+
         /// Number of bytes available in buffer
         public var count: Int {
             switch self {
@@ -338,6 +340,8 @@ extension Serialization {
                 return data.count
             case .nioByteBuffer(let buffer):
                 return buffer.readableBytes
+            case ._PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE:
+                fatalError("\(Self.self) is [\(self)]. This should not happen, please file an issue.")
             }
         }
 
@@ -349,6 +353,8 @@ extension Serialization {
             case .nioByteBuffer(var buffer):
                 // TODO: metrics how often we really have to copy
                 return buffer.readData(length: buffer.readableBytes)! // !-safe since reading readableBytes
+            case ._PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE:
+                fatalError("\(Self.self) is [\(self)]. This should not happen, please file an issue.")
             }
         }
 
@@ -363,6 +369,8 @@ extension Serialization {
                 return buffer
             case .nioByteBuffer(let buffer):
                 return buffer
+            case ._PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE:
+                fatalError("\(Self.self) is [\(self)]. This should not happen, please file an issue.")
             }
         }
     }

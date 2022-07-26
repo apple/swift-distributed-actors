@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2020 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -53,6 +53,8 @@ internal class StringSerializer: Serializer<String> {
                 throw SerializationError.notAbleToDeserialize(hint: String(reflecting: String.self))
             }
             return s
+        case ._PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE:
+            throw SerializationError.notAbleToDeserialize(hint: "\(Self.self) is [\(self)]. This should not happen, please file an issue.")
         }
     }
 }
@@ -83,6 +85,8 @@ internal class IntegerSerializer<Number: FixedWidthInteger>: Serializer<Number> 
                 throw SerializationError.notAbleToDeserialize(hint: "\(buffer) as \(Number.self)")
             }
             return i
+        case ._PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE:
+            throw SerializationError.notAbleToDeserialize(hint: "\(Self.self) is [\(self)]. This should not happen, please file an issue.")
         }
     }
 }
@@ -112,6 +116,8 @@ internal class BoolSerializer: Serializer<Bool> {
                 throw SerializationError.notAbleToDeserialize(hint: "\(buffer) as \(Bool.self) (1/0 Int8)")
             }
             return i == 1
+        case ._PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE:
+            throw SerializationError.notAbleToDeserialize(hint: "\(Self.self) is [\(self)]. This should not happen, please file an issue.")
         }
     }
 }
