@@ -34,13 +34,6 @@ var targets: [PackageDescription.Target] = [
         ]
     ),
 
-    .executableTarget(
-        name: "ExecApp",
-        dependencies: [
-            "DistributedActors",
-        ]
-    ),
-
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: TestKit
 
