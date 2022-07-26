@@ -473,13 +473,13 @@ extension ClusterSystemSettings {
                 self.underlying = allowance
             }
 
-            /// All ``Codable`` errors will be converted to ``GenericRemoteCallError``.
+            /// All `Codable` errors will be converted to ``GenericRemoteCallError``.
             public static let none: CodableErrorAllowanceSettings = .init(allowance: .none)
 
-            /// All ``Codable`` errors will be returned as-is.
+            /// All `Codable` errors will be returned as-is.
             public static let all: CodableErrorAllowanceSettings = .init(allowance: .all)
 
-            /// Only the indicated ``Codable`` errors are allowed. Others are converted to ``GenericRemoteCallError``.
+            /// Only the indicated `Codable` errors are allowed. Others are converted to ``GenericRemoteCallError``.
             public static func custom(allowedTypes: [(Error & Codable).Type]) -> CodableErrorAllowanceSettings {
                 let oids = allowedTypes.map { ObjectIdentifier($0) }
                 return .init(allowance: .custom(Set(oids)))

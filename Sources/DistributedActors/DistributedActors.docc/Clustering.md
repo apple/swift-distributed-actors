@@ -300,14 +300,14 @@ try await RemoteCall.with(timeout: .seconds(5)) {
 
 ### Remote call errors
 
-By default, if a remote call results in an error that is ``Codable``, the error is returned as-is. Non-``Codable`` errors are 
+By default, if a remote call results in an error that is `Codable`, the error is returned as-is. Non-`Codable` errors are 
 converted to ``GenericRemoteCallError``.
 
-You may restrict which ``Codable`` errors get sent back to the caller through configuration:
+You may restrict which `Codable` errors get sent back to the caller through configuration:
 
 ```swift
 ClusterSystem() { settings in 
-    // By default, all ``Codable`` errors are allowed.
+    // By default, all `Codable` errors are allowed.
     settings.remoteCall.codableErrorAllowance = .all
 }
 ```
