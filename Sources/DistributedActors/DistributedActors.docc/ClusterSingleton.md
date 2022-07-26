@@ -62,10 +62,10 @@ let overseerSingleton: PrimaryOverseer =
   }
 ```
 
-The passed `name` is the unique name that the singleton shall be identified with in the cluster. In other words, since we've given this singleton the name `"overseer"`, there will be always at-most-one `"overseer"` actor instance active in the cluster. This allows us to have multiple singletons of the same actor type, but different identities. For example, we could have an `"simple-work-overseer"` and an `"complicated-work-overseer"` singletons running side-by-side. Conceptually, they are different singletons after all, and we can be using them differently. 
+The passed `name` is the unique name that the singleton shall be identified with in the cluster. In other words, since we've given this singleton the name `"overseer"`, there will be always at-most-one `"overseer"` actor instance active in the cluster. This allows us to have multiple singletons of the same actor type, but different identities. For example, we could have a `"simple-work-overseer"` and a `"complicated-work-overseer"` singleton running side-by-side. Conceptually, they are different singletons after all, and we can use them differently. 
 
 A `PrimaryOverseer` obtained this way is actually a proxy that will redirect calls made on it to wherever the actual singleton instance is currently hosted. 
-This includes the local cluster member, in case that is where the singleton ends up _allocated_ (see: <doc#. From the perspective of the caller though, the location of the singleton remains transparent - with the benefit that if the calls are actually remote, they don't have to cross a network boundary and will be more efficient, we should not rely on this though, and program against the singleton as-if it might be remote since it's location might be changing at runtime.
+This includes the local cluster member, in case that is where the singleton ends up _allocated_ (see: <doc#. From the perspective of the caller though, the location of the singleton remains transparent - with the benefit that if the calls are actually remote, they don't have to cross a network boundary and will be more efficient. We should not rely on this though, and we should program against the singleton as-if it might be remote since its location might be changing at runtime.
 
 ### Making calls to Cluster Singletons
 
@@ -111,7 +111,7 @@ The _allocation_ of a singleton within a cluster consists of actually creating a
 
 The default allocation strategy is ``ClusterSingletonAllocationStrategySettings/byLeadership`` meaning that a singleton is going to be allocated on the _leader_ node of the cluster. 
 
-> Tip: This also means that all singletons in a cluster by default share the same node they run on. This may be sup-optimal in some scenarios, and can be customized by offering a custom allocation strategy, or by future more advanced strategies offered by the library.
+> Tip: This also means that all singletons in a cluster by default share the same node they run on. This may be sup-optimal in some scenarios, and can be customized by providing a custom allocation strategy, or in the future more advanced strategies will be offered by the library.
 
 Picking an allocation strategy is made by customizing the settings passed to the ``ClusterSingletonPlugin/host(_:name:settings:makeInstance:)`` method, like this:
 
@@ -149,7 +149,7 @@ distributed actor Boss: ClusterSingleton { /* ... */ }
 
 A singleton instance is created and retained (!) by the singleton plugin when the allocation strategy decides the member should be hosting it.
 
-The allocated singleton instance will get the ``activateSingleton()-9ytjf`` method called before any futher calls are delivered to it.
+The allocated singleton instance will get the ``activateSingleton()-9ytjf`` method called before any further calls are delivered to it.
 
 Conversely, when the allocation strategy decides that this cluster member is no longer hosting the singleton the ``passivateSingleton()-97w5s`` method will be invoked and the actor will be released. Make sure to not retain the actor or make it perform any decisions which require single-point-of-truth after it has had passivate called on it, as it no longer is guaranteed to be the unique singleton instance anymore.
 
