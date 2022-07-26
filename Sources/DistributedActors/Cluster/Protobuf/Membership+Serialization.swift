@@ -79,6 +79,8 @@ extension Cluster.MemberReachability {
             return .reachable
         case .unreachable:
             return .unreachable
+        case ._PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE:
+            throw SerializationError.unableToSerialize(hint: "\(Self.self) is [\(self)]. This should not happen, please file an issue.")
         }
     }
 
