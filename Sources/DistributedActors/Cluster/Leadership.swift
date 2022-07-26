@@ -318,19 +318,29 @@ extension Leadership {
 // MARK: Leadership settings
 
 extension ClusterSystemSettings {
-    public enum LeadershipSelectionSettings {
-        /// No automatic leader selection, you can write your own logic and issue a `Cluster.LeadershipChange` ``Cluster/Event`` to the `system.cluster.events` event stream.
-        case none
-        /// All nodes get ordered by their node addresses and the "lowest" is always selected as a leader.
-        case lowestReachable(minNumberOfMembers: Int)
+    public struct LeadershipSelectionSettings {
+        private enum _LeadershipSelectionSettings {
+            case none
+            case lowestReachable(minNumberOfMembers: Int)
+        }
+
+        private let underlying: _LeadershipSelectionSettings
 
         func make(_: ClusterSystemSettings) -> LeaderElection? {
-            switch self {
+            switch self.underlying {
             case .none:
                 return nil
             case .lowestReachable(let nr):
                 return Leadership.LowestReachableMember(minimumNrOfMembers: nr)
             }
+        }
+
+        /// No automatic leader selection, you can write your own logic and issue a `Cluster.LeadershipChange` ``Cluster/Event`` to the `system.cluster.events` event stream.
+        public static let none: LeadershipSelectionSettings = .init(underlying: .none)
+
+        /// All nodes get ordered by their node addresses and the "lowest" is always selected as a leader.
+        public static func lowestReachable(minNumberOfMembers: Int) -> LeadershipSelectionSettings {
+            .init(underlying: .lowestReachable(minNumberOfMembers: minNumberOfMembers))
         }
     }
 }
