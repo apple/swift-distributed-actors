@@ -178,14 +178,6 @@ let products: [PackageDescription.Product] = [
         name: "DistributedActors",
         targets: ["DistributedActors"]
     ),
-
-    // TODO(distributed): remove the exec app, it was just a toy example
-    .executable(
-        name: "ExecApp",
-        targets: [
-            "ExecApp",
-        ]
-    ),
 ]
 
 if ProcessInfo.processInfo.environment["VALIDATE_DOCS"] != nil {
