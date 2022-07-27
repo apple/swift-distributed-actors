@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import DistributedActors
+@testable import DistributedActors
 @testable import DistributedActorsTestKit
 import Foundation
 import XCTest
@@ -28,18 +28,6 @@ class DeadlineTests: XCTestCase {
         now.isBefore(now).shouldBeFalse()
         now.isBefore(pastDeadline).shouldBeTrue()
         now.isBefore(.distantFuture).shouldBeTrue()
-    }
-
-    func test_deadline_remainingShouldReturnExpectedDurations() {
-        let now = Deadline.now()
-
-        let t1Millis = 12000
-        let d1 = now + .milliseconds(t1Millis)
-
-        let t2Millis = 1_200_000
-        let d2 = now + .milliseconds(t2Millis)
-
-        d1.isBefore(d2).shouldBeTrue()
     }
 
     func test_deadline_hasTimeLeft() {

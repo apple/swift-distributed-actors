@@ -26,7 +26,6 @@ import NIO
 /// and individually watched actors, the watcher handles subscribing for cluster events on behalf of actors which watch
 /// other actors on remote nodes, and messages them `SystemMessage.nodeTerminated(node)` upon node termination (down),
 /// which are in turn translated by the actors locally to `SystemMessage.terminated(ref:existenceConfirmed:idTerminated:true)`
-///
 /// to any actor which watched at least one actor on a node that has been downed.
 ///
 /// Actor which is notified automatically when a remote actor is `context.watch()`-ed.

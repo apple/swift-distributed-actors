@@ -427,6 +427,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         #endif
     }
 
+    /// Object that can be awaited on until the system has completed shutting down.
     public struct Shutdown {
         private let receptacle: BlockingReceptacle<Error?>
 
@@ -434,6 +435,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
             self.receptacle = receptacle
         }
 
+        @available(*, deprecated, message: "will be replaced by distributed actor / closure version")
         public func wait(atMost timeout: Duration) throws {
             if let error = self.receptacle.wait(atMost: timeout).flatMap({ $0 }) {
                 throw error
@@ -447,8 +449,8 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         }
     }
 
-    /// Suspends until the ``ClusterSystem`` is terminated by a call to ``shutdown(queue:afterShutdownCompleted:)``.
-    var terminated: Void {
+    /// Suspends until the ``ClusterSystem`` is terminated by a call to ``shutdown(queue:)``.
+    public var terminated: Void {
         get async throws {
             try await Task.detached {
                 try Shutdown(receptacle: self.shutdownReceptacle).wait()
