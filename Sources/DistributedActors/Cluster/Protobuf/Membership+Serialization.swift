@@ -62,7 +62,7 @@ extension Cluster.Member: _ProtobufRepresentable {
 
     public init(fromProto proto: ProtobufRepresentation, context: Serialization.Context) throws {
         guard proto.hasNode else {
-            throw SerializationError.missingField("node", type: "\(ProtobufRepresentation.self)")
+            throw SerializationError(.missingField("node", type: "\(ProtobufRepresentation.self)"))
         }
         self.uniqueNode = try .init(fromProto: proto.node, context: context)
         self.status = try .init(fromProto: proto.status, context: context)
@@ -80,16 +80,16 @@ extension Cluster.MemberReachability {
         case .unreachable:
             return .unreachable
         case ._PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE:
-            throw SerializationError.unableToSerialize(hint: "\(Self.self) is [\(self)]. This should not happen, please file an issue.")
+            throw SerializationError(.unableToSerialize(hint: "\(Self.self) is [\(self)]. This should not happen, please file an issue."))
         }
     }
 
     init(fromProto proto: _ProtoClusterMemberReachability, context: Serialization.Context) throws {
         switch proto {
         case .unspecified:
-            throw SerializationError.missingField("reachability", type: "\(_ProtoClusterMemberReachability.self)")
+            throw SerializationError(.missingField("reachability", type: "\(_ProtoClusterMemberReachability.self)"))
         case .UNRECOGNIZED(let n):
-            throw SerializationError.missingField("reachability:\(n)", type: "\(_ProtoClusterMemberReachability.self)")
+            throw SerializationError(.missingField("reachability:\(n)", type: "\(_ProtoClusterMemberReachability.self)"))
         case .reachable:
             self = .reachable
         case .unreachable:
@@ -114,7 +114,7 @@ extension Cluster.MemberStatus {
         case .removed:
             proto = .removed
         case ._PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE:
-            throw SerializationError.unableToSerialize(hint: "\(Self.self) is [\(self)]. This should not happen, please file an issue.")
+            throw SerializationError(.unableToSerialize(hint: "\(Self.self) is [\(self)]. This should not happen, please file an issue."))
         }
         return proto
     }
@@ -122,9 +122,9 @@ extension Cluster.MemberStatus {
     init(fromProto proto: _ProtoClusterMemberStatus, context: Serialization.Context) throws {
         switch proto {
         case .unspecified:
-            throw SerializationError.missingField("status", type: "\(_ProtoClusterMemberStatus.self)")
+            throw SerializationError(.missingField("status", type: "\(_ProtoClusterMemberStatus.self)"))
         case .UNRECOGNIZED(let n):
-            throw SerializationError.missingField("status:\(n)", type: "\(_ProtoClusterMemberStatus.self)")
+            throw SerializationError(.missingField("status:\(n)", type: "\(_ProtoClusterMemberStatus.self)"))
         case .joining:
             self = .joining
         case .up:

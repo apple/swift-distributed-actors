@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -229,7 +229,7 @@ extension _ActorRef: _ProtobufRepresentable {
 extension ActorPath {
     init(_ proto: _ProtoActorPath) throws {
         guard !proto.segments.isEmpty else {
-            throw SerializationError.emptyRepeatedField("path.segments")
+            throw SerializationError(.emptyRepeatedField("path.segments"))
         }
 
         self.segments = try proto.segments.map { try ActorPathSegment($0) }
@@ -248,10 +248,10 @@ extension _ProtoActorPath {
 extension UniqueNode {
     init(_ proto: _ProtoUniqueNode) throws {
         guard proto.hasNode else {
-            throw SerializationError.missingField("address", type: String(describing: UniqueNode.self))
+            throw SerializationError(.missingField("address", type: String(describing: UniqueNode.self)))
         }
         guard proto.nid != 0 else {
-            throw SerializationError.missingField("uid", type: String(describing: UniqueNode.self))
+            throw SerializationError(.missingField("uid", type: String(describing: UniqueNode.self)))
         }
         let node = Node(proto.node)
         let nid = UniqueNodeID(proto.nid)

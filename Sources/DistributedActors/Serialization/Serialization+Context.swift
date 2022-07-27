@@ -105,14 +105,14 @@ public protocol CodableSerializationContext {
     ///
     /// ```swift
     ///    guard let serializationContext = decoder.actorSerializationContext else {
-    ///        throw SerializationError.missingSerializationContext(decoder, MyMessage.self)
+    ///        throw SerializationError(.missingSerializationContext(decoder, MyMessage.self))
     ///    }
     /// ```
     ///
     /// Similarly, in case the context is extracted from an `encoder`:
     /// ```swift
     ///    guard let serializationContext = encoder.actorSerializationContext else {
-    ///        throw SerializationError.missingSerializationContext(encoder, value)
+    ///        throw SerializationError(.missingSerializationContext(encoder, value))
     ///    }
     /// ```
     var actorSerializationContext: Serialization.Context? { get }

@@ -99,7 +99,7 @@ public struct ErrorEnvelope: Error, Codable {
         let errorType = try context.summonType(from: manifest)
 
         guard let codableErrorType = errorType as? CodableError.Type else {
-            throw SerializationError.unableToDeserialize(hint: "Error type \(errorType) is not Codable")
+            throw SerializationError(.unableToDeserialize(hint: "Error type \(errorType) is not Codable"))
         }
 
         let errorDecoder = try container.superDecoder(forKey: .error)

@@ -195,7 +195,7 @@ extension LocalActorRefProvider {
 }
 
 /// INTERNAL API
-public protocol _ActorTreeTraversable {
+internal protocol _ActorTreeTraversable {
     func _traverse<T>(context: _TraversalContext<T>, _ visit: (_TraversalContext<T>, _AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T>
 
     /// Resolves the given actor path against the underlying actor tree.
@@ -228,7 +228,7 @@ internal struct CompositeActorTreeTraversable: _ActorTreeTraversable {
 
     // TODO: duplicates some logic from _traverse implementation on Actor system (due to initialization dances), see if we can remove the duplication of this
     // TODO: we may be able to pull this off by implementing the "root" as traversable and then we expose it to the Serialization() impl
-    public func _traverse<T>(context: _TraversalContext<T>, _ visit: (_TraversalContext<T>, _AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
+    func _traverse<T>(context: _TraversalContext<T>, _ visit: (_TraversalContext<T>, _AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
         let systemTraversed = self.systemTree._traverse(context: context, visit)
 
         switch systemTraversed {
@@ -249,7 +249,6 @@ internal struct CompositeActorTreeTraversable: _ActorTreeTraversable {
         }
     }
 
-    @usableFromInline
     func _resolve<Message>(context: _ResolveContext<Message>) -> _ActorRef<Message> {
         guard let selector = context.selectorSegments.first else {
             return context.personalDeadLetters // i.e. we resolved a "dead reference" as it points to nothing
@@ -262,7 +261,7 @@ internal struct CompositeActorTreeTraversable: _ActorTreeTraversable {
         }
     }
 
-    public func _resolveUntyped(context: _ResolveContext<Never>) -> _AddressableActorRef {
+    func _resolveUntyped(context: _ResolveContext<Never>) -> _AddressableActorRef {
         guard let selector = context.selectorSegments.first else {
             return context.personalDeadLetters.asAddressable // i.e. we resolved a "dead reference" as it points to nothing
         }
@@ -276,7 +275,7 @@ internal struct CompositeActorTreeTraversable: _ActorTreeTraversable {
 }
 
 /// INTERNAL API: May change without any prior notice.
-public struct _TraversalContext<T> {
+internal struct _TraversalContext<T> {
     var depth: Int
     var accumulated: [T]
     var selectorSegments: ArraySlice<ActorPathSegment> // "remaining path" that we try to locate, if `nil` we select all actors
@@ -326,19 +325,19 @@ public struct _TraversalContext<T> {
 }
 
 /// INTERNAL API: May change without any prior notice.
-public struct _ResolveContext<Message: Codable> {
+internal struct _ResolveContext<Message: Codable> {
     /// The "remaining path" of the resolve being performed
-    public var selectorSegments: ArraySlice<ActorPathSegment>
+    var selectorSegments: ArraySlice<ActorPathSegment>
 
     /// Address that we are trying to resolve.
-    public var id: ActorID
+    var id: ActorID
 
-    public let system: ClusterSystem
+    let system: ClusterSystem
 
     /// Allows carrying metadata from Coder
-    public let userInfo: [CodingUserInfoKey: Any]
+    let userInfo: [CodingUserInfoKey: Any]
 
-    public init(id: ActorID, system: ClusterSystem, userInfo: [CodingUserInfoKey: Any] = [:]) {
+    init(id: ActorID, system: ClusterSystem, userInfo: [CodingUserInfoKey: Any] = [:]) {
         self.id = id
         self.selectorSegments = id.path.segments[...]
         self.system = system
@@ -348,14 +347,14 @@ public struct _ResolveContext<Message: Codable> {
     /// Returns copy of traversal context yet "one level deeper."
     ///
     /// Note that this also drops the `path` if it was present, but retains the `incarnation` as we may want to resolve a _specific_ ref after all.
-    public var deeper: _ResolveContext {
+    var deeper: _ResolveContext {
         var next = self
         next.selectorSegments = self.selectorSegments.dropFirst()
         return next
     }
 
     /// A dead letters reference that is personalized for the context's address, and well  well typed for `Message`.
-    public var personalDeadLetters: _ActorRef<Message> {
+    var personalDeadLetters: _ActorRef<Message> {
         self.system.personalDeadLetters(recipient: self.id)
     }
 }
@@ -363,7 +362,7 @@ public struct _ResolveContext<Message: Codable> {
 /// INTERNAL API: Not intended to be used by end users.
 ///
 /// Directives that steer the traversal state machine (which, however, always remains depth-first).
-public enum _TraversalDirective<T> {
+internal enum _TraversalDirective<T> {
     case `continue`
     // case `return`(T) // immediately return this value
     case accumulateSingle(T)
@@ -372,7 +371,7 @@ public enum _TraversalDirective<T> {
 }
 
 /// INTERNAL API: Not intended to be used by end users.
-public enum _TraversalResult<T> {
+internal enum _TraversalResult<T> {
     case result(T)
     case results([T])
     case completed

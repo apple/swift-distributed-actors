@@ -110,7 +110,6 @@ public final class _RemoteClusterActorPersonality<Message: Codable> {
         }
     }
 
-    @usableFromInline
     func sendSystemMessage(_ message: _SystemMessage, file: String = #filePath, line: UInt = #line) {
         traceLog_Cell("RemoteActorRef(\(self.id)) sendSystemMessage: \(message)")
 

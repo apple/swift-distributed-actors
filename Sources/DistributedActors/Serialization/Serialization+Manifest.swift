@@ -122,7 +122,7 @@ extension Serialization {
         }
 
         guard let selectedManifest = manifest else {
-            throw SerializationError.unableToCreateManifest(hint: "Cannot create manifest for type [\(String(reflecting: messageType))]")
+            throw SerializationError(.unableToCreateManifest(hint: "Cannot create manifest for type [\(String(reflecting: messageType))]"))
         }
 
         return selectedManifest
@@ -155,6 +155,6 @@ extension Serialization {
 
         print("\(settings.manifest2TypeRegistry)")
 
-        throw SerializationError.unableToSummonTypeFromManifest(manifest)
+        throw SerializationError(.unableToSummonTypeFromManifest(manifest))
     }
 }

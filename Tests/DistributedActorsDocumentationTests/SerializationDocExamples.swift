@@ -329,7 +329,7 @@ struct DistributedAlgorithmExampleEnvelope<Payload: ForSomeReasonNotCodable>: Co
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
         guard let context = decoder.actorSerializationContext else {
-            throw SerializationError.missingSerializationContext(decoder, Self.self)
+            throw SerializationError(.missingSerializationContext(decoder, Self.self))
         }
 
         let manifest = try container.decode(Serialization.Manifest.self, forKey: .payloadManifest)
@@ -356,7 +356,7 @@ struct DistributedAlgorithmExampleEnvelope<Payload: ForSomeReasonNotCodable>: Co
 
     func encode(to encoder: Encoder) throws {
         guard let context = encoder.actorSerializationContext else {
-            throw SerializationError.missingSerializationContext(encoder, self)
+            throw SerializationError(.missingSerializationContext(encoder, self))
         }
 
         var container = encoder.container(keyedBy: CodingKeys.self)

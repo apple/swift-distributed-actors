@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2020 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2020-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -39,14 +39,14 @@ final class TopLevelProtobufBlobEncoder: _TopLevelBlobEncoder {
         var container = self.singleValueContainer()
         try container.encode(value)
         guard let result = self.result else {
-            throw SerializationError.unableToSerialize(hint: "No bytes were written while encoding \(value) using \(Self.self)!")
+            throw SerializationError(.unableToSerialize(hint: "No bytes were written while encoding \(value) using \(Self.self)!"))
         }
         return result
     }
 
     func store(data: Data) throws {
         guard self.result == nil else {
-            throw SerializationError.unableToSerialize(hint: "Already encoded a single value, yet attempted to store another in \(Self.self)")
+            throw SerializationError(.unableToSerialize(hint: "Already encoded a single value, yet attempted to store another in \(Self.self)"))
         }
 
         self.result = .data(data)
@@ -54,7 +54,7 @@ final class TopLevelProtobufBlobEncoder: _TopLevelBlobEncoder {
 
     func store(buffer: ByteBuffer) throws {
         guard self.result == nil else {
-            throw SerializationError.unableToSerialize(hint: "Already encoded a single value, yet attempted to store another in \(Self.self)")
+            throw SerializationError(.unableToSerialize(hint: "Already encoded a single value, yet attempted to store another in \(Self.self)"))
         }
 
         self.result = .nioByteBuffer(buffer)
@@ -62,7 +62,7 @@ final class TopLevelProtobufBlobEncoder: _TopLevelBlobEncoder {
 
     func store(bytes: [UInt8]) throws {
         guard self.result == nil else {
-            throw SerializationError.unableToSerialize(hint: "Already encoded a single value, yet attempted to store another in \(Self.self)")
+            throw SerializationError(.unableToSerialize(hint: "Already encoded a single value, yet attempted to store another in \(Self.self)"))
         }
 
         var result = self.allocator.buffer(capacity: bytes.count)
@@ -101,7 +101,7 @@ struct TopLevelProtobufBlobSingleValueEncodingContainer: SingleValueEncodingCont
         case let bytes as [UInt8]:
             try self.superEncoder.store(bytes: bytes)
         default:
-            throw SerializationError.unableToSerialize(hint: "Attempted encode \(T.self) into a \(Self.self) which only supports _ProtobufRepresentable")
+            throw SerializationError(.unableToSerialize(hint: "Attempted encode \(T.self) into a \(Self.self) which only supports _ProtobufRepresentable"))
         }
     }
 
@@ -109,63 +109,63 @@ struct TopLevelProtobufBlobSingleValueEncodingContainer: SingleValueEncodingCont
     // MARK: Not supported operations
 
     func encodeNil() throws {
-        throw SerializationError.unableToSerialize(hint: "\(#function) failed! Only a top-level blob of bytes can be serialized by \(Self.self)!")
+        throw SerializationError(.unableToSerialize(hint: "\(#function) failed! Only a top-level blob of bytes can be serialized by \(Self.self)!"))
     }
 
     func encode(_ value: Bool) throws {
-        throw SerializationError.unableToSerialize(hint: "\(#function) for \(value) failed! Only a top-level blob of bytes can be serialized by \(Self.self)!")
+        throw SerializationError(.unableToSerialize(hint: "\(#function) for \(value) failed! Only a top-level blob of bytes can be serialized by \(Self.self)!"))
     }
 
     func encode(_ value: String) throws {
-        throw SerializationError.unableToSerialize(hint: "\(#function) for \(value) failed! Only a top-level blob of bytes can be serialized by \(Self.self)!")
+        throw SerializationError(.unableToSerialize(hint: "\(#function) for \(value) failed! Only a top-level blob of bytes can be serialized by \(Self.self)!"))
     }
 
     func encode(_ value: Double) throws {
-        throw SerializationError.unableToSerialize(hint: "\(#function) for \(value) failed! Only a top-level blob of bytes can be serialized by \(Self.self)!")
+        throw SerializationError(.unableToSerialize(hint: "\(#function) for \(value) failed! Only a top-level blob of bytes can be serialized by \(Self.self)!"))
     }
 
     func encode(_ value: Float) throws {
-        throw SerializationError.unableToSerialize(hint: "\(#function) for \(value) failed! Only a top-level blob of bytes can be serialized by \(Self.self)!")
+        throw SerializationError(.unableToSerialize(hint: "\(#function) for \(value) failed! Only a top-level blob of bytes can be serialized by \(Self.self)!"))
     }
 
     func encode(_ value: Int) throws {
-        throw SerializationError.unableToSerialize(hint: "\(#function) for \(value) failed! Only a top-level blob of bytes can be serialized by \(Self.self)!")
+        throw SerializationError(.unableToSerialize(hint: "\(#function) for \(value) failed! Only a top-level blob of bytes can be serialized by \(Self.self)!"))
     }
 
     func encode(_ value: Int8) throws {
-        throw SerializationError.unableToSerialize(hint: "\(#function) for \(value) failed! Only a top-level blob of bytes can be serialized by \(Self.self)!")
+        throw SerializationError(.unableToSerialize(hint: "\(#function) for \(value) failed! Only a top-level blob of bytes can be serialized by \(Self.self)!"))
     }
 
     func encode(_ value: Int16) throws {
-        throw SerializationError.unableToSerialize(hint: "\(#function) for \(value) failed! Only a top-level blob of bytes can be serialized by \(Self.self)!")
+        throw SerializationError(.unableToSerialize(hint: "\(#function) for \(value) failed! Only a top-level blob of bytes can be serialized by \(Self.self)!"))
     }
 
     func encode(_ value: Int32) throws {
-        throw SerializationError.unableToSerialize(hint: "\(#function) for \(value) failed! Only a top-level blob of bytes can be serialized by \(Self.self)!")
+        throw SerializationError(.unableToSerialize(hint: "\(#function) for \(value) failed! Only a top-level blob of bytes can be serialized by \(Self.self)!"))
     }
 
     func encode(_ value: Int64) throws {
-        throw SerializationError.unableToSerialize(hint: "\(#function) for \(value) failed! Only a top-level blob of bytes can be serialized by \(Self.self)!")
+        throw SerializationError(.unableToSerialize(hint: "\(#function) for \(value) failed! Only a top-level blob of bytes can be serialized by \(Self.self)!"))
     }
 
     func encode(_ value: UInt) throws {
-        throw SerializationError.unableToSerialize(hint: "\(#function) for \(value) failed! Only a top-level blob of bytes can be serialized by \(Self.self)!")
+        throw SerializationError(.unableToSerialize(hint: "\(#function) for \(value) failed! Only a top-level blob of bytes can be serialized by \(Self.self)!"))
     }
 
     func encode(_ value: UInt8) throws {
-        throw SerializationError.unableToSerialize(hint: "\(#function) for \(value) failed! Only a top-level blob of bytes can be serialized by \(Self.self)!")
+        throw SerializationError(.unableToSerialize(hint: "\(#function) for \(value) failed! Only a top-level blob of bytes can be serialized by \(Self.self)!"))
     }
 
     func encode(_ value: UInt16) throws {
-        throw SerializationError.unableToSerialize(hint: "\(#function) for \(value) failed! Only a top-level blob of bytes can be serialized by \(Self.self)!")
+        throw SerializationError(.unableToSerialize(hint: "\(#function) for \(value) failed! Only a top-level blob of bytes can be serialized by \(Self.self)!"))
     }
 
     func encode(_ value: UInt32) throws {
-        throw SerializationError.unableToSerialize(hint: "\(#function) for \(value) failed! Only a top-level blob of bytes can be serialized by \(Self.self)!")
+        throw SerializationError(.unableToSerialize(hint: "\(#function) for \(value) failed! Only a top-level blob of bytes can be serialized by \(Self.self)!"))
     }
 
     func encode(_ value: UInt64) throws {
-        throw SerializationError.unableToSerialize(hint: "\(#function) for \(value) failed! Only a top-level blob of bytes can be serialized by \(Self.self)!")
+        throw SerializationError(.unableToSerialize(hint: "\(#function) for \(value) failed! Only a top-level blob of bytes can be serialized by \(Self.self)!"))
     }
 }
 
@@ -234,9 +234,9 @@ struct TopLevelProtobufBlobSingleValueDecodingContainer: SingleValueDecodingCont
             return buffer.readData() as! T
 
         default:
-            throw SerializationError.unableToDeserialize(hint:
+            throw SerializationError(.unableToDeserialize(hint:
                 "Attempted decode \(reflecting: type) from a \(Self.self) which only supports raw bytes (ByteBuffer or Data) \(type is Foundation.Data.Type)"
-            )
+            ))
         }
     }
 
@@ -245,58 +245,58 @@ struct TopLevelProtobufBlobSingleValueDecodingContainer: SingleValueDecodingCont
     }
 
     func decode(_ type: Bool.Type) throws -> Bool {
-        throw SerializationError.unableToDeserialize(hint: "\(#function) failed! Only a top-level blob of bytes can be deserialized by \(Self.self)!")
+        throw SerializationError(.unableToDeserialize(hint: "\(#function) failed! Only a top-level blob of bytes can be deserialized by \(Self.self)!"))
     }
 
     func decode(_ type: String.Type) throws -> String {
-        throw SerializationError.unableToDeserialize(hint: "\(#function) failed! Only a top-level blob of bytes can be deserialized by \(Self.self)!")
+        throw SerializationError(.unableToDeserialize(hint: "\(#function) failed! Only a top-level blob of bytes can be deserialized by \(Self.self)!"))
     }
 
     func decode(_ type: Double.Type) throws -> Double {
-        throw SerializationError.unableToDeserialize(hint: "\(#function) failed! Only a top-level blob of bytes can be deserialized by \(Self.self)!")
+        throw SerializationError(.unableToDeserialize(hint: "\(#function) failed! Only a top-level blob of bytes can be deserialized by \(Self.self)!"))
     }
 
     func decode(_ type: Float.Type) throws -> Float {
-        throw SerializationError.unableToDeserialize(hint: "\(#function) failed! Only a top-level blob of bytes can be deserialized by \(Self.self)!")
+        throw SerializationError(.unableToDeserialize(hint: "\(#function) failed! Only a top-level blob of bytes can be deserialized by \(Self.self)!"))
     }
 
     func decode(_ type: Int.Type) throws -> Int {
-        throw SerializationError.unableToDeserialize(hint: "\(#function) failed! Only a top-level blob of bytes can be deserialized by \(Self.self)!")
+        throw SerializationError(.unableToDeserialize(hint: "\(#function) failed! Only a top-level blob of bytes can be deserialized by \(Self.self)!"))
     }
 
     func decode(_ type: Int8.Type) throws -> Int8 {
-        throw SerializationError.unableToDeserialize(hint: "\(#function) failed! Only a top-level blob of bytes can be deserialized by \(Self.self)!")
+        throw SerializationError(.unableToDeserialize(hint: "\(#function) failed! Only a top-level blob of bytes can be deserialized by \(Self.self)!"))
     }
 
     func decode(_ type: Int16.Type) throws -> Int16 {
-        throw SerializationError.unableToDeserialize(hint: "\(#function) failed! Only a top-level blob of bytes can be deserialized by \(Self.self)!")
+        throw SerializationError(.unableToDeserialize(hint: "\(#function) failed! Only a top-level blob of bytes can be deserialized by \(Self.self)!"))
     }
 
     func decode(_ type: Int32.Type) throws -> Int32 {
-        throw SerializationError.unableToDeserialize(hint: "\(#function) failed! Only a top-level blob of bytes can be deserialized by \(Self.self)!")
+        throw SerializationError(.unableToDeserialize(hint: "\(#function) failed! Only a top-level blob of bytes can be deserialized by \(Self.self)!"))
     }
 
     func decode(_ type: Int64.Type) throws -> Int64 {
-        throw SerializationError.unableToDeserialize(hint: "\(#function) failed! Only a top-level blob of bytes can be deserialized by \(Self.self)!")
+        throw SerializationError(.unableToDeserialize(hint: "\(#function) failed! Only a top-level blob of bytes can be deserialized by \(Self.self)!"))
     }
 
     func decode(_ type: UInt.Type) throws -> UInt {
-        throw SerializationError.unableToDeserialize(hint: "\(#function) failed! Only a top-level blob of bytes can be deserialized by \(Self.self)!")
+        throw SerializationError(.unableToDeserialize(hint: "\(#function) failed! Only a top-level blob of bytes can be deserialized by \(Self.self)!"))
     }
 
     func decode(_ type: UInt8.Type) throws -> UInt8 {
-        throw SerializationError.unableToDeserialize(hint: "\(#function) failed! Only a top-level blob of bytes can be deserialized by \(Self.self)!")
+        throw SerializationError(.unableToDeserialize(hint: "\(#function) failed! Only a top-level blob of bytes can be deserialized by \(Self.self)!"))
     }
 
     func decode(_ type: UInt16.Type) throws -> UInt16 {
-        throw SerializationError.unableToDeserialize(hint: "\(#function) failed! Only a top-level blob of bytes can be deserialized by \(Self.self)!")
+        throw SerializationError(.unableToDeserialize(hint: "\(#function) failed! Only a top-level blob of bytes can be deserialized by \(Self.self)!"))
     }
 
     func decode(_ type: UInt32.Type) throws -> UInt32 {
-        throw SerializationError.unableToDeserialize(hint: "\(#function) failed! Only a top-level blob of bytes can be deserialized by \(Self.self)!")
+        throw SerializationError(.unableToDeserialize(hint: "\(#function) failed! Only a top-level blob of bytes can be deserialized by \(Self.self)!"))
     }
 
     func decode(_ type: UInt64.Type) throws -> UInt64 {
-        throw SerializationError.unableToDeserialize(hint: "\(#function) failed! Only a top-level blob of bytes can be deserialized by \(Self.self)!")
+        throw SerializationError(.unableToDeserialize(hint: "\(#function) failed! Only a top-level blob of bytes can be deserialized by \(Self.self)!"))
     }
 }

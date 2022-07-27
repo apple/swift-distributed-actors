@@ -374,9 +374,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         // in the initialization of the actor system, as we will start receiving
         // messages and all field on the system have to be initialized beforehand.
         lazyReceptionist.wakeUp()
-        for transport in self.settings.transports {
-            transport.onActorSystemStart(system: self)
-        }
+
         // lazyCluster?.wakeUp()
         lazyNodeDeathWatcher?.wakeUp()
 
@@ -406,11 +404,6 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
     public func park(atMost parkTimeout: Duration? = nil) throws {
         let howLongParkingMsg = parkTimeout == nil ? "indefinitely" : "for \(parkTimeout!.prettyDescription)"
         self.log.info("Parking actor system \(howLongParkingMsg)...")
-
-        for transport in self.settings.transports {
-            self.log.info("Offering transport [\(transport.protocolName)] chance to park the thread...")
-            transport.onActorSystemPark()
-        }
 
         if let maxParkingTime = parkTimeout {
             if let error = self.shutdownReceptacle.wait(atMost: maxParkingTime).flatMap({ $0 }) {
@@ -744,7 +737,7 @@ extension ClusterSystem: _ActorTreeTraversable {
         }
     }
 
-    public func _traverse<T>(context: _TraversalContext<T>, _ visit: (_TraversalContext<T>, _AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
+    func _traverse<T>(context: _TraversalContext<T>, _ visit: (_TraversalContext<T>, _AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
         let systemTraversed: _TraversalResult<T> = self.systemProvider._traverse(context: context, visit)
 
         switch systemTraversed {
@@ -776,7 +769,7 @@ extension ClusterSystem: _ActorTreeTraversable {
     }
 
     /// INTERNAL API: Not intended to be used by end users.
-    public func _resolve<Message: Codable>(context: _ResolveContext<Message>) -> _ActorRef<Message> {
+    func _resolve<Message: Codable>(context: _ResolveContext<Message>) -> _ActorRef<Message> {
         do {
             try context.system.serialization._ensureSerializer(Message.self)
         } catch {
@@ -784,16 +777,6 @@ extension ClusterSystem: _ActorTreeTraversable {
         }
         guard let selector = context.selectorSegments.first else {
             return context.personalDeadLetters
-        }
-
-        var resolved: _ActorRef<Message>?
-        // TODO: The looping through transports could be ineffective... but realistically we dont have many
-        // TODO: realistically we ARE becoming a transport and thus should be able to remove 'transports' entirely
-        for transport in context.system.settings.transports {
-            resolved = transport._resolve(context: context)
-            if let successfullyResolved = resolved {
-                return successfullyResolved
-            }
         }
 
         // definitely a local ref, has no `address.node`
@@ -813,20 +796,9 @@ extension ClusterSystem: _ActorTreeTraversable {
         return try StubDistributedActor.resolve(id: identity, using: self)
     }
 
-    public func _resolveUntyped(context: _ResolveContext<Never>) -> _AddressableActorRef {
+    func _resolveUntyped(context: _ResolveContext<Never>) -> _AddressableActorRef {
         guard let selector = context.selectorSegments.first else {
             return context.personalDeadLetters.asAddressable
-        }
-
-        var resolved: _AddressableActorRef?
-        // TODO: The looping through transports could be ineffective... but realistically we dont have many
-        // TODO: realistically we ARE becoming a transport and thus should be able to remove 'transports' entirely
-        for transport in context.system.settings.transports {
-            resolved = transport._resolveUntyped(context: context)
-
-            if let successfullyResolved = resolved {
-                return successfullyResolved
-            }
         }
 
         // definitely a local ref, has no `address.node`
@@ -1127,10 +1099,10 @@ extension ClusterSystem {
         }
 
         guard let clusterShell = _cluster else {
-            throw RemoteCallError.clusterAlreadyShutDown
+            throw RemoteCallError(.clusterAlreadyShutDown)
         }
         guard self.shutdownFlag.load(ordering: .relaxed) == 0 else {
-            throw RemoteCallError.clusterAlreadyShutDown
+            throw RemoteCallError(.clusterAlreadyShutDown)
         }
 
         let recipient = _RemoteClusterActorPersonality<InvocationMessage>(shell: clusterShell, id: actor.id._asRemote, system: self)
@@ -1154,7 +1126,7 @@ extension ClusterSystem {
             throw error
         }
         guard let value = reply.value else {
-            throw RemoteCallError.invalidReply(reply.callID)
+            throw RemoteCallError(.invalidReply(reply.callID))
         }
         return value
     }
@@ -1174,10 +1146,10 @@ extension ClusterSystem {
         }
 
         guard let clusterShell = self._cluster else {
-            throw RemoteCallError.clusterAlreadyShutDown
+            throw RemoteCallError(.clusterAlreadyShutDown)
         }
         guard self.shutdownFlag.load(ordering: .relaxed) == 0 else {
-            throw RemoteCallError.clusterAlreadyShutDown
+            throw RemoteCallError(.clusterAlreadyShutDown)
         }
 
         let recipient = _RemoteClusterActorPersonality<InvocationMessage>(shell: clusterShell, id: actor.id._asRemote, system: self)
@@ -1230,12 +1202,12 @@ extension ClusterSystem {
                     //
                     // If we're shutting down, it is okay to not get acknowledgements to calls for example,
                     // and we don't care about them missing -- we're shutting down anyway.
-                    error = RemoteCallError.clusterAlreadyShutDown
+                    error = RemoteCallError(.clusterAlreadyShutDown)
                 } else {
-                    error = RemoteCallError.timedOut(
+                    error = RemoteCallError(.timedOut(
                         callID,
                         TimeoutError(message: "Remote call [\(callID)] to [\(target)](\(actorID)) timed out", timeout: timeout)
-                    )
+                    ))
                 }
 
                 continuation.resume(throwing: error)
@@ -1262,7 +1234,7 @@ extension ClusterSystem {
             }
 
             self.log.error("Expected [\(Reply.self)] but got [\(type(of: reply as Any))]")
-            throw RemoteCallError.invalidReply(callID)
+            throw RemoteCallError(.invalidReply(callID))
         }
         return reply
     }
@@ -1313,7 +1285,7 @@ extension ClusterSystem {
         }
 
         guard let wellTypedReturn = anyReturn as? Res else {
-            throw RemoteCallError.illegalReplyType(UUID(), expected: Res.self, got: type(of: anyReturn))
+            throw RemoteCallError(.illegalReplyType(UUID(), expected: Res.self, got: type(of: anyReturn)))
         }
 
         return wellTypedReturn
@@ -1564,7 +1536,7 @@ struct RemoteCallReply<Value: Codable>: AnyRemoteCallReply {
             let errorManifest = try container.decode(Serialization.Manifest.self, forKey: .thrownErrorManifest)
             let summonedErrorType = try context.serialization.summonType(from: errorManifest)
             guard let errorAnyType = summonedErrorType as? (Error & Codable).Type else {
-                throw SerializationError.notAbleToDeserialize(hint: "manifest type results in [\(summonedErrorType)] type, which is NOT \((Error & Codable).self)")
+                throw SerializationError(.notAbleToDeserialize(hint: "manifest type results in [\(summonedErrorType)] type, which is NOT \((Error & Codable).self)"))
             }
             self.thrownError = try container.decode(errorAnyType, forKey: .thrownError)
             self.value = nil
@@ -1605,16 +1577,64 @@ public struct GenericRemoteCallError: Error, Codable {
     }
 }
 
-public enum ClusterSystemError: DistributedActorSystemError {
-    case duplicateActorPath(path: ActorPath)
-    case shuttingDown(String)
+public struct ClusterSystemError: DistributedActorSystemError, CustomStringConvertible {
+    internal enum _ClusterSystemError {
+        case duplicateActorPath(path: ActorPath)
+        case shuttingDown(String)
+    }
+
+    internal class _Storage {
+        let error: _ClusterSystemError
+        let file: String
+        let line: UInt
+
+        init(error: _ClusterSystemError, file: String, line: UInt) {
+            self.error = error
+            self.file = file
+            self.line = line
+        }
+    }
+
+    let underlying: _Storage
+
+    internal init(_ error: _ClusterSystemError, file: String = #fileID, line: UInt = #line) {
+        self.underlying = _Storage(error: error, file: file, line: line)
+    }
+
+    public var description: String {
+        "\(Self.self)(\(self.underlying.error), at: \(self.underlying.file):\(self.underlying.line))"
+    }
 }
 
 /// Error thrown when unable to resolve an ``ActorID``.
 ///
 /// Refer to ``ClusterSystem/resolve(id:as:)`` or the distributed actors Swift Evolution proposal for details.
-public enum ResolveError: DistributedActorSystemError {
-    case illegalIdentity(ClusterSystem.ActorID)
+public struct ResolveError: DistributedActorSystemError, CustomStringConvertible {
+    internal enum _ResolveError {
+        case illegalIdentity(ClusterSystem.ActorID)
+    }
+
+    internal class _Storage {
+        let error: _ResolveError
+        let file: String
+        let line: UInt
+
+        init(error: _ResolveError, file: String, line: UInt) {
+            self.error = error
+            self.file = file
+            self.line = line
+        }
+    }
+
+    let underlying: _Storage
+
+    internal init(_ error: _ResolveError, file: String = #fileID, line: UInt = #line) {
+        self.underlying = _Storage(error: error, file: file, line: line)
+    }
+
+    public var description: String {
+        "\(Self.self)(\(self.underlying.error), at: \(self.underlying.file):\(self.underlying.line))"
+    }
 }
 
 /// Represents an actor that has been initialized, but not yet scheduled to run. Calling `wakeUp` will
@@ -1635,11 +1655,35 @@ internal struct LazyStart<Message: Codable> {
     }
 }
 
-public enum RemoteCallError: DistributedActorSystemError {
-    case clusterAlreadyShutDown
-    case timedOut(ClusterSystem.CallID, TimeoutError)
-    case invalidReply(ClusterSystem.CallID)
-    case illegalReplyType(ClusterSystem.CallID, expected: Any.Type, got: Any.Type)
+public struct RemoteCallError: DistributedActorSystemError, CustomStringConvertible {
+    internal enum _RemoteCallError {
+        case clusterAlreadyShutDown
+        case timedOut(ClusterSystem.CallID, TimeoutError)
+        case invalidReply(ClusterSystem.CallID)
+        case illegalReplyType(ClusterSystem.CallID, expected: Any.Type, got: Any.Type)
+    }
+
+    internal class _Storage {
+        let error: _RemoteCallError
+        let file: String
+        let line: UInt
+
+        init(error: _RemoteCallError, file: String, line: UInt) {
+            self.error = error
+            self.file = file
+            self.line = line
+        }
+    }
+
+    let underlying: _Storage
+
+    internal init(_ error: _RemoteCallError, file: String = #fileID, line: UInt = #line) {
+        self.underlying = _Storage(error: error, file: file, line: line)
+    }
+
+    public var description: String {
+        "\(Self.self)(\(self.underlying.error), at: \(self.underlying.file):\(self.underlying.line))"
+    }
 }
 
 /// Allows for configuring of remote calls by setting task-local values around a remote call being made.

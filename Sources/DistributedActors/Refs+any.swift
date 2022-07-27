@@ -42,7 +42,6 @@ public struct _AddressableActorRef: _DeathWatchable, Hashable {
         }
     }
 
-    @usableFromInline
     let ref: _ReceivesSystemMessages
 
     @usableFromInline
@@ -80,7 +79,7 @@ public struct _AddressableActorRef: _DeathWatchable, Hashable {
         }
     }
 
-    public func _sendSystemMessage(_ message: _SystemMessage, file: String = #filePath, line: UInt = #line) {
+    func _sendSystemMessage(_ message: _SystemMessage, file: String = #filePath, line: UInt = #line) {
         self.ref._sendSystemMessage(message, file: file, line: line)
     }
 }

@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2020 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2020-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -54,7 +54,7 @@ extension _Reception.Key {
         let guestManifest = try container.decode(Serialization.Manifest.self, forKey: .manifest)
         let guestType = try context.summonType(from: guestManifest)
         guard guestType is Guest.Type else {
-            throw SerializationError.notAbleToDeserialize(hint: "manifest type results in [\(guestType)] type, which is NOT \(Guest.self)")
+            throw SerializationError(.notAbleToDeserialize(hint: "manifest type results in [\(guestType)] type, which is NOT \(Guest.self)"))
         }
 
         self.init(Guest.self, id: id)

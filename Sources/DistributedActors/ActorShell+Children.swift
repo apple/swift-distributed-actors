@@ -186,7 +186,7 @@ public class _Children {
 // MARK: Traversal
 
 extension _Children: _ActorTreeTraversable {
-    public func _traverse<T>(context: _TraversalContext<T>, _ visit: (_TraversalContext<T>, _AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
+    func _traverse<T>(context: _TraversalContext<T>, _ visit: (_TraversalContext<T>, _AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
         var c = context.deeper
 
         let children = self.rwLock.withReaderLock {
@@ -222,7 +222,7 @@ extension _Children: _ActorTreeTraversable {
         return c.result
     }
 
-    public func _resolve<Message>(context: _ResolveContext<Message>) -> _ActorRef<Message> {
+    func _resolve<Message>(context: _ResolveContext<Message>) -> _ActorRef<Message> {
         guard let selector = context.selectorSegments.first else {
             // no selector, we should not be in this place!
             fatalError("Resolve should have stopped before stepping into children._resolve, this is a bug!")
@@ -242,7 +242,7 @@ extension _Children: _ActorTreeTraversable {
         }
     }
 
-    public func _resolveUntyped(context: _ResolveContext<Never>) -> _AddressableActorRef {
+    func _resolveUntyped(context: _ResolveContext<Never>) -> _AddressableActorRef {
         guard let selector = context.selectorSegments.first else {
             // no selector, we should not be in this place!
             fatalError("Resolve should have stopped before stepping into children._resolve, this is a bug!")
@@ -356,9 +356,9 @@ extension _ActorShell {
     func _stop<T>(child ref: _ActorRef<T>) throws {
         guard ref.id.path.isChildPathOf(self.id.path) else {
             if ref.id == self.myself.id {
-                throw _ActorContextError.attemptedStoppingMyselfUsingContext(ref: ref.asAddressable)
+                throw _ActorContextError(.attemptedStoppingMyselfUsingContext(ref: ref.asAddressable))
             } else {
-                throw _ActorContextError.attemptedStoppingNonChildActor(ref: ref.asAddressable)
+                throw _ActorContextError(.attemptedStoppingNonChildActor(ref: ref.asAddressable))
             }
         }
 
@@ -374,24 +374,48 @@ extension _ActorShell {
     private func validateUniqueName(_ name: String) throws {
         if children.contains(name: name) {
             let childPath: ActorPath = try self.id.path.makeChildPath(name: name)
-            throw _ActorContextError.duplicateActorPath(path: childPath)
+            throw _ActorContextError(.duplicateActorPath(path: childPath))
         }
     }
 }
 
 /// Errors which can occur while executing actions on the [ActorContext].
-public enum _ActorContextError: Error {
-    /// It is illegal to `context.stop(context.myself)` as it would result in potentially unexpected behavior,
-    /// as the actor would continue running until it receives the stop message. Rather, to stop the current actor
-    /// it should return `_Behavior.stop` from its receive block, which will cause it to immediately stop processing
-    /// any further messages.
-    case attemptedStoppingMyselfUsingContext(ref: _AddressableActorRef)
-    /// Only the parent actor is allowed to stop its children. This is to avoid mistakes in which one part of the system
-    /// can stop arbitrary actors of another part of the system which was programmed under the assumption such actor would
-    /// wellKnownly exist.
-    case attemptedStoppingNonChildActor(ref: _AddressableActorRef)
-    /// It is not allowed to spawn
-    case duplicateActorPath(path: ActorPath)
-    /// It is not allowed to spawn new actors when the system is stopping
-    case alreadyStopping(String)
+public struct _ActorContextError: Error, CustomStringConvertible {
+    internal enum __ActorContextError {
+        /// It is illegal to `context.stop(context.myself)` as it would result in potentially unexpected behavior,
+        /// as the actor would continue running until it receives the stop message. Rather, to stop the current actor
+        /// it should return `_Behavior.stop` from its receive block, which will cause it to immediately stop processing
+        /// any further messages.
+        case attemptedStoppingMyselfUsingContext(ref: _AddressableActorRef)
+        /// Only the parent actor is allowed to stop its children. This is to avoid mistakes in which one part of the system
+        /// can stop arbitrary actors of another part of the system which was programmed under the assumption such actor would
+        /// wellKnownly exist.
+        case attemptedStoppingNonChildActor(ref: _AddressableActorRef)
+        /// It is not allowed to spawn
+        case duplicateActorPath(path: ActorPath)
+        /// It is not allowed to spawn new actors when the system is stopping
+        case alreadyStopping(String)
+    }
+
+    internal class _Storage {
+        let error: __ActorContextError
+        let file: String
+        let line: UInt
+
+        init(error: __ActorContextError, file: String, line: UInt) {
+            self.error = error
+            self.file = file
+            self.line = line
+        }
+    }
+
+    let underlying: _Storage
+
+    internal init(_ error: __ActorContextError, file: String = #fileID, line: UInt = #line) {
+        self.underlying = _Storage(error: error, file: file, line: line)
+    }
+
+    public var description: String {
+        "\(Self.self)(\(self.underlying.error), at: \(self.underlying.file):\(self.underlying.line))"
+    }
 }

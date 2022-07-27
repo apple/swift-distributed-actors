@@ -28,7 +28,7 @@ public struct _ActorRef<Message: Codable>: @unchecked Sendable, _ReceivesMessage
     /// The actor ref is "aware" whether it represents a local, remote or otherwise special actor.
     ///
     /// Adj. self-conscious: feeling undue awareness of oneself, one's appearance, or one's actions.
-    public enum Personality {
+    internal enum Personality {
         case cell(_ActorCell<Message>)
         case remote(_RemoteClusterActorPersonality<Message>)
         case adapter(_AbstractAdapter)
@@ -40,7 +40,7 @@ public struct _ActorRef<Message: Codable>: @unchecked Sendable, _ReceivesMessage
     internal let personality: Personality
 
     /// INTERNAL API: May change without further notice.
-    public init(_ personality: Personality) {
+    internal init(_ personality: Personality) {
         self.personality = personality
     }
 
@@ -160,7 +160,7 @@ public protocol _ReceivesMessages: Sendable, Codable {
 // MARK: Internal implementation classes
 
 /// INTERNAL API: Only for use by the actor system itself
-public protocol _ReceivesSystemMessages: Codable {
+internal protocol _ReceivesSystemMessages: Codable {
     var id: ActorID { get }
     var path: ActorPath { get }
 
@@ -198,7 +198,7 @@ extension _ReceivesSystemMessages {
 // MARK: Actor Ref Internals and Internal Capabilities
 
 extension _ActorRef {
-    public func _sendSystemMessage(_ message: _SystemMessage, file: String = #filePath, line: UInt = #line) {
+    func _sendSystemMessage(_ message: _SystemMessage, file: String = #filePath, line: UInt = #line) {
         switch self.personality {
         case .cell(let cell):
             cell.sendSystemMessage(message, file: file, line: line)
@@ -370,7 +370,6 @@ public final class _ActorCell<Message: Codable> {
         self.mailbox.sendMessage(envelope: Payload(payload: .message(message)), file: file, line: line)
     }
 
-    @usableFromInline
     func sendSystemMessage(_ message: _SystemMessage, file: String = #filePath, line: UInt = #line) {
         traceLog_Mailbox(self.id.path, "sendSystemMessage: [\(message)], to: \(String(describing: self))")
         self.mailbox.sendSystemMessage(message, file: file, line: line)
@@ -446,7 +445,7 @@ open class _CellDelegate<Message: Codable> {
         fatalError("Not implemented: \(#function), called from \(file):\(line)")
     }
 
-    open func sendSystemMessage(_ message: _SystemMessage, file: String = #filePath, line: UInt = #line) {
+    func sendSystemMessage(_ message: _SystemMessage, file: String = #filePath, line: UInt = #line) {
         fatalError("Not implemented: \(#function), called from \(file):\(line)")
     }
 
@@ -470,7 +469,6 @@ open class _CellDelegate<Message: Codable> {
 /// It steps on the outer edge of the actor system and does not abide to its rules.
 ///
 /// Only a single instance of this "actor" exists, and it is the parent of all top level guardians.
-@usableFromInline
 internal struct TheOneWhoHasNoParent: _ReceivesSystemMessages { // FIXME: fix the name
     // path is breaking the rules -- it never can be empty, but this is "the one", it can do whatever it wants
     @usableFromInline
@@ -480,7 +478,6 @@ internal struct TheOneWhoHasNoParent: _ReceivesSystemMessages { // FIXME: fix th
         self.id = ActorID._localRoot(on: node)
     }
 
-    @usableFromInline
     internal func _sendSystemMessage(_ message: _SystemMessage, file: String = #filePath, line: UInt = #line) {
         CDistributedActorsMailbox.sact_dump_backtrace()
         fatalError("The \(self.id) actor MUST NOT receive any messages. Yet received \(message); Sent at \(file):\(line)")
@@ -582,7 +579,6 @@ public class _Guardian {
         self.deadLetters.tell(DeadLetter(message, recipient: self.id), file: file, line: line)
     }
 
-    @usableFromInline
     func sendSystemMessage(_ message: _SystemMessage, file: String = #filePath, line: UInt = #line) {
         switch message {
         case .childTerminated(let ref, let circumstances):
@@ -639,11 +635,11 @@ public class _Guardian {
     func makeChild<Message>(path: ActorPath, spawn: () throws -> _ActorShell<Message>) throws -> _ActorRef<Message> {
         try self._childrenLock.synchronized {
             if self.stopping {
-                throw _ActorContextError.alreadyStopping("system: \(self.system?.name ?? "<nil>")")
+                throw _ActorContextError(.alreadyStopping("system: \(self.system?.name ?? "<nil>")"))
             }
 
             if self._children.contains(name: path.name) {
-                throw ClusterSystemError.duplicateActorPath(path: path)
+                throw ClusterSystemError(.duplicateActorPath(path: path))
             }
 
             let cell = try spawn()
@@ -656,7 +652,7 @@ public class _Guardian {
     func stopChild(_ childRef: _AddressableActorRef) throws {
         try self._childrenLock.synchronized {
             guard self._children.contains(identifiedBy: childRef.id) else {
-                throw _ActorContextError.attemptedStoppingNonChildActor(ref: childRef)
+                throw _ActorContextError(.attemptedStoppingNonChildActor(ref: childRef))
             }
 
             if self._children.removeChild(identifiedBy: childRef.id) {
@@ -697,11 +693,12 @@ public class _Guardian {
 }
 
 extension _Guardian: _ActorTreeTraversable {
-    public func _traverse<T>(context: _TraversalContext<T>, _ visit: (_TraversalContext<T>, _AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
+    func _traverse<T>(context: _TraversalContext<T>, _ visit: (_TraversalContext<T>, _AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
         let children: _Children = self.children
 
         var c = context.deeper
-        switch visit(context, self.ref.asAddressable) {
+        let directive = visit(context, self.ref.asAddressable)
+        switch directive {
         case .continue:
             return children._traverse(context: c, visit)
         case .accumulateSingle(let t):
@@ -715,7 +712,7 @@ extension _Guardian: _ActorTreeTraversable {
         }
     }
 
-    public func _resolve<Message>(context: _ResolveContext<Message>) -> _ActorRef<Message> {
+    func _resolve<Message>(context: _ResolveContext<Message>) -> _ActorRef<Message> {
         guard let selector = context.selectorSegments.first else {
             fatalError("Expected selector in guardian._resolve()!")
         }
@@ -727,7 +724,7 @@ extension _Guardian: _ActorTreeTraversable {
         }
     }
 
-    public func _resolveUntyped(context: _ResolveContext<Never>) -> _AddressableActorRef {
+    func _resolveUntyped(context: _ResolveContext<Never>) -> _AddressableActorRef {
         guard let selector = context.selectorSegments.first else {
             fatalError("Expected selector in guardian._resolve()!")
         }

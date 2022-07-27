@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -20,8 +20,8 @@ import Foundation // for Codable
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Codable _ActorRef
 
-public enum ActorCoding {
-    public enum CodingKeys: CodingKey {
+enum ActorCoding {
+    enum CodingKeys: CodingKey {
         case node
         case path
         case type
@@ -29,13 +29,13 @@ public enum ActorCoding {
         case incarnation
     }
 
-    public enum MetadataKeys: CodingKey {
+    enum MetadataKeys: CodingKey {
         case path
         case type
         case wellKnown
         case custom(String)
 
-        public init?(stringValue: String) {
+        init?(stringValue: String) {
             switch stringValue {
             case "$path": self = .path
             case "$type": self = .type
@@ -44,7 +44,7 @@ public enum ActorCoding {
             }
         }
 
-        public var intValue: Int? {
+        var intValue: Int? {
             switch self {
             case .path: return 0
             case .type: return 1
@@ -53,11 +53,11 @@ public enum ActorCoding {
             }
         }
 
-        public init?(intValue: Int) {
+        init?(intValue: Int) {
             return nil
         }
 
-        public var stringValue: String {
+        var stringValue: String {
             switch self {
             case .path: return "$path"
             case .type: return "$type"

@@ -41,28 +41,6 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
     public typealias WorkItem = Worker.WorkItem
     public typealias WorkResult = Worker.WorkResult
 
-    /// A selector defines how actors should be selected to participate in the pool.
-    /// E.g. the `dynamic` mode uses a receptionist key, and will add any workers which register
-    /// using this key to the pool. On the other hand, static configurations could restrict the set
-    /// of members to be statically provided etc.
-    public enum Selector {
-        /// Instructs the `WorkerPool` to subscribe to given receptionist key, and add/remove
-        /// any actors which register/leave with the receptionist using this key.
-        case dynamic(DistributedReception.Key<Worker>)
-        // TODO: let awaitAtLeast: Int // before starting to direct traffic
-
-        /// Instructs the `WorkerPool` to use only the specified actors for routing.
-        ///
-        /// The actors will be removed from the pool if they terminate and will not be replaced automatically.
-        /// Thus, the workers should use a `_SupervisionStrategy` appropriate for them so they can survive failures.
-        ///
-        /// ### No remaining workers
-        /// The worker pool will terminate itself if all of its static workers have terminated.
-        /// You may death-watch the worker pool in order to react to this situation, e.g. by spawning a replacement pool,
-        /// or gracefully shutting down your application.
-        case `static`([Worker])
-    }
-
     // Don't store `WorkerPoolSettings` or `Selector` because it would cause `WorkerPool`
     // to hold on to `Worker` references and prevent them from getting terminated.
     private let whenAllWorkersTerminated: AllWorkersTerminatedDirective
@@ -95,7 +73,7 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
         self.whenAllWorkersTerminated = settings.whenAllWorkersTerminated
         self.logLevel = settings.logLevel
 
-        switch settings.selector {
+        switch settings.selector.underlying {
         case .dynamic(let key):
             self.newWorkersSubscribeTask = Task {
                 for await worker in await self.actorSystem.receptionist.listing(of: key) {
@@ -189,16 +167,75 @@ internal extension WorkerPool {
     }
 }
 
+extension WorkerPool {
+    /// A selector defines how actors should be selected to participate in the pool.
+    /// E.g. the `dynamic` mode uses a receptionist key, and will add any workers which register
+    /// using this key to the pool. On the other hand, static configurations could restrict the set
+    /// of members to be statically provided etc.
+    public struct Selector {
+        enum _Selector {
+            // TODO: let awaitAtLeast: Int // before starting to direct traffic
+            case dynamic(DistributedReception.Key<Worker>)
+            case `static`([Worker])
+        }
+
+        let underlying: _Selector
+
+        /// Instructs the `WorkerPool` to subscribe to given receptionist key, and add/remove
+        /// any actors which register/leave with the receptionist using this key.
+        public static func dynamic(_ key: DistributedReception.Key<Worker>) -> Selector {
+            .init(underlying: .dynamic(key))
+        }
+
+        /// Instructs the `WorkerPool` to use only the specified actors for routing.
+        ///
+        /// The actors will be removed from the pool if they terminate and will not be replaced automatically.
+        /// Thus, the workers should use a `_SupervisionStrategy` appropriate for them so they can survive failures.
+        ///
+        /// ### No remaining workers
+        /// The worker pool will terminate itself if all of its static workers have terminated.
+        /// You may death-watch the worker pool in order to react to this situation, e.g. by spawning a replacement pool,
+        /// or gracefully shutting down your application.
+        public static func `static`(_ workers: [Worker]) -> Selector {
+            .init(underlying: .static(workers))
+        }
+    }
+}
+
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: WorkerPool Errors
 
-public enum WorkerPoolError: Error {
-    // --- runtime errors
-    case staticPoolExhausted(String)
+public struct WorkerPoolError: Error, CustomStringConvertible {
+    internal enum _WorkerPoolError {
+        // --- runtime errors
+        case staticPoolExhausted(String)
 
-    // --- configuration errors
-    case emptyStaticWorkerPool(String)
-    case illegalAwaitNewWorkersForStaticPoolConfigured(String)
+        // --- configuration errors
+        case emptyStaticWorkerPool(String)
+        case illegalAwaitNewWorkersForStaticPoolConfigured(String)
+    }
+
+    internal class _Storage {
+        let error: _WorkerPoolError
+        let file: String
+        let line: UInt
+
+        init(error: _WorkerPoolError, file: String, line: UInt) {
+            self.error = error
+            self.file = file
+            self.line = line
+        }
+    }
+
+    let underlying: _Storage
+
+    internal init(_ error: _WorkerPoolError, file: String = #fileID, line: UInt = #line) {
+        self.underlying = _Storage(error: error, file: file, line: line)
+    }
+
+    public var description: String {
+        "\(Self.self)(\(self.underlying.error), at: \(self.underlying.file):\(self.underlying.line))"
+    }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -224,20 +261,20 @@ public struct WorkerPoolSettings<Worker: DistributedWorker> where Worker.ActorSy
     public init(selector: WorkerPool<Worker>.Selector) {
         self.selector = selector
 
-        switch selector {
+        switch selector.underlying {
         case .dynamic:
             self.whenAllWorkersTerminated = .awaitNewWorkers
         case .static:
             let message = "Static worker pool exhausted, all workers have terminated, selector was [\(selector)]."
-            self.whenAllWorkersTerminated = .throw(.staticPoolExhausted(message))
+            self.whenAllWorkersTerminated = .throw(WorkerPoolError(.staticPoolExhausted(message)))
         }
     }
 
     @discardableResult
     public func validate() throws -> WorkerPoolSettings {
-        switch self.selector {
+        switch self.selector.underlying {
         case .static(let workers) where workers.isEmpty:
-            throw WorkerPoolError.emptyStaticWorkerPool("Illegal empty collection passed to `.static` worker pool!")
+            throw WorkerPoolError(.emptyStaticWorkerPool("Illegal empty collection passed to `.static` worker pool!"))
         case .static(let workers):
             if case .awaitNewWorkers = self.whenAllWorkersTerminated {
                 let message = """
@@ -246,7 +283,7 @@ public struct WorkerPoolSettings<Worker: DistributedWorker> where Worker.ActorSy
                 MUST terminate when in .static mode and all workers terminate. Alternatively, use a .dynamic pool, \
                 and provide an initial set of workers.
                 """
-                throw WorkerPoolError.illegalAwaitNewWorkersForStaticPoolConfigured(message)
+                throw WorkerPoolError(.illegalAwaitNewWorkersForStaticPoolConfigured(message))
             }
         default:
             () // ok

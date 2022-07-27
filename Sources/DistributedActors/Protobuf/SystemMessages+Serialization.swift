@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -94,35 +94,35 @@ extension _SystemMessage: _ProtobufRepresentable {
             proto.payload = .terminated(terminated)
 
         case .carrySignal(let signal):
-            throw SerializationError.nonTransportableMessage(type: "SystemMessage.carrySignal(\(signal))")
+            throw SerializationError(.nonTransportableMessage(type: "SystemMessage.carrySignal(\(signal))"))
         case .start:
-            throw SerializationError.nonTransportableMessage(type: "SystemMessage.start")
+            throw SerializationError(.nonTransportableMessage(type: "SystemMessage.start"))
         case .nodeTerminated:
-            throw SerializationError.nonTransportableMessage(type: "SystemMessage.idTerminated")
+            throw SerializationError(.nonTransportableMessage(type: "SystemMessage.idTerminated"))
         case .childTerminated:
-            throw SerializationError.nonTransportableMessage(type: "SystemMessage.childTerminated")
+            throw SerializationError(.nonTransportableMessage(type: "SystemMessage.childTerminated"))
         case .resume:
-            throw SerializationError.nonTransportableMessage(type: "SystemMessage.resume")
+            throw SerializationError(.nonTransportableMessage(type: "SystemMessage.resume"))
         case .stop:
-            throw SerializationError.nonTransportableMessage(type: "SystemMessage.stop")
+            throw SerializationError(.nonTransportableMessage(type: "SystemMessage.stop"))
         case .tombstone:
-            throw SerializationError.nonTransportableMessage(type: "SystemMessage.tombstone")
+            throw SerializationError(.nonTransportableMessage(type: "SystemMessage.tombstone"))
         }
         return proto
     }
 
     public init(fromProto proto: _ProtoSystemMessage, context: Serialization.Context) throws {
         guard let payload = proto.payload else {
-            throw SerializationError.missingField("payload", type: String(describing: _SystemMessage.self))
+            throw SerializationError(.missingField("payload", type: String(describing: _SystemMessage.self)))
         }
 
         switch payload {
         case .watch(let w):
             guard w.hasWatchee else {
-                throw SerializationError.missingField("watchee", type: "SystemMessage.watch")
+                throw SerializationError(.missingField("watchee", type: "SystemMessage.watch"))
             }
             guard w.hasWatcher else {
-                throw SerializationError.missingField("watcher", type: "SystemMessage.watch")
+                throw SerializationError(.missingField("watcher", type: "SystemMessage.watch"))
             }
             let watcheeID: ActorID = try .init(fromProto: w.watchee, context: context)
             let watchee = context._resolveAddressableActorRef(identifiedBy: watcheeID)
@@ -134,10 +134,10 @@ extension _SystemMessage: _ProtobufRepresentable {
 
         case .unwatch(let u):
             guard u.hasWatchee else {
-                throw SerializationError.missingField("watchee", type: "SystemMessage.unwatch")
+                throw SerializationError(.missingField("watchee", type: "SystemMessage.unwatch"))
             }
             guard u.hasWatcher else {
-                throw SerializationError.missingField("watcher", type: "SystemMessage.unwatch")
+                throw SerializationError(.missingField("watcher", type: "SystemMessage.unwatch"))
             }
             let watcheeID: ActorID = try .init(fromProto: u.watchee, context: context)
             let watchee = context._resolveAddressableActorRef(identifiedBy: watcheeID)
@@ -149,7 +149,7 @@ extension _SystemMessage: _ProtobufRepresentable {
 
         case .terminated(let t):
             guard t.hasRef else {
-                throw SerializationError.missingField("ref", type: "SystemMessage.terminated")
+                throw SerializationError(.missingField("ref", type: "SystemMessage.terminated"))
             }
             // TODO: it is known dead, optimize the resolve?
             let ref = try context._resolveAddressableActorRef(identifiedBy: .init(fromProto: t.ref, context: context))

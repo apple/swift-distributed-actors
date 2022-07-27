@@ -37,7 +37,7 @@ extension ReplicaID: _ProtobufRepresentable {
 
     public init(fromProto proto: _ProtoVersionReplicaID, context: Serialization.Context) throws {
         guard let value = proto.value else {
-            throw SerializationError.missingField("value", type: String(describing: ReplicaID.self))
+            throw SerializationError(.missingField("value", type: String(describing: ReplicaID.self)))
         }
 
         switch value {
@@ -89,7 +89,7 @@ extension VersionVector: _ProtobufRepresentable {
             case .uniqueNodeID(let nid):
                 replicaVersion.replicaID.uniqueNodeID = nid.value
             case .actorID:
-                throw SerializationError.unableToSerialize(hint: "Can't serialize using actor address as replica id! Was: \(replicaID)")
+                throw SerializationError(.unableToSerialize(hint: "Can't serialize using actor address as replica id! Was: \(replicaID)"))
             }
             replicaVersion.version = UInt64(version)
             return replicaVersion
@@ -105,7 +105,7 @@ extension VersionVector: _ProtobufRepresentable {
 
         for replicaVersion in proto.state {
             guard replicaVersion.hasReplicaID else {
-                throw SerializationError.missingField("replicaID", type: String(describing: ReplicaVersion.self))
+                throw SerializationError(.missingField("replicaID", type: String(describing: ReplicaVersion.self)))
             }
             let replicaID = try ReplicaID(fromProto: replicaVersion.replicaID, context: context)
             state[replicaID] = replicaVersion.version
@@ -128,7 +128,7 @@ extension VersionDot: _ProtobufRepresentable {
 
     public init(fromProto proto: _ProtoVersionDot, context: Serialization.Context) throws {
         guard proto.hasReplicaID else {
-            throw SerializationError.missingField("replicaID", type: String(describing: VersionDot.self))
+            throw SerializationError(.missingField("replicaID", type: String(describing: VersionDot.self)))
         }
         self.replicaID = try ReplicaID(fromProto: proto.replicaID, context: context)
         self.version = proto.version

@@ -143,7 +143,7 @@ final class RemoteCallTests: ClusteredActorSystemsXCTestCase {
             }
         }
 
-        guard case RemoteCallError.timedOut(_, let timeoutError) = error else {
+        guard let remoteCallError = error as? RemoteCallError, case .timedOut(_, let timeoutError) = remoteCallError.underlying.error else {
             throw TestError("Expected RemoteCallError.timedOut, got \(error)")
         }
         guard timeoutError.timeout == .milliseconds(200) else {
@@ -165,7 +165,7 @@ final class RemoteCallTests: ClusteredActorSystemsXCTestCase {
             }
         }
 
-        guard case RemoteCallError.timedOut(_, let timeoutError) = error else {
+        guard let remoteCallError = error as? RemoteCallError, case .timedOut(_, let timeoutError) = remoteCallError.underlying.error else {
             throw TestError("Expected RemoteCallError.timedOut, got \(error)")
         }
         guard timeoutError.timeout == .milliseconds(200) else {
@@ -278,7 +278,7 @@ final class RemoteCallTests: ClusteredActorSystemsXCTestCase {
                 _ = try await remoteGreeterRef.helloThrow(codable: true)
             }
         }
-        guard case RemoteCallError.timedOut = error else {
+        guard let remoteCallError = error as? RemoteCallError, case .timedOut = remoteCallError.underlying.error else {
             throw TestError("Expected RemoteCallError.timedOut, got \(error)")
         }
     }

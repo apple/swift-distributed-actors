@@ -30,12 +30,12 @@ import NIO
 /// Hamlet Act III, scene 1, saying "To be, or not to be, that is the question: [...]." In the same sense,
 /// props for Swift Distributed Actors are accompanying objects/settings, which help the actor perform its duties.
 public struct _Props: @unchecked Sendable {
-    public var dispatcher: _DispatcherProps
+    internal var dispatcher: _DispatcherProps = .default
 
     // _Supervision properties will be removed.
     // This type of "parent/child" supervision and the entire actor tree will be removed.
     // Instead we will rely exclusively on watching other actors explicitly.
-    internal var supervision: _SupervisionProps
+    internal var supervision: _SupervisionProps = .default
 
     /// Tags to be passed to the actor's identity.
     internal var metadata: ActorMetadata
@@ -73,13 +73,9 @@ public struct _Props: @unchecked Sendable {
     // FIXME(distributed): remove this init
     public init(
         metadata: ActorMetadata = ActorMetadata(),
-        dispatcher: _DispatcherProps = .default,
-        supervision: _SupervisionProps = .default,
         metrics: MetricsProps = .disabled
     ) {
         self.metadata = metadata
-        self.dispatcher = dispatcher
-        self.supervision = supervision
         self.metrics = metrics
     }
 
@@ -95,14 +91,14 @@ public struct _Props: @unchecked Sendable {
 
 extension _Props {
     /// Creates a new `_Props` with default values, and overrides the `dispatcher` with the provided one.
-    public static func dispatcher(_ dispatcher: _DispatcherProps) -> _Props {
+    static func dispatcher(_ dispatcher: _DispatcherProps) -> _Props {
         var props = _Props()
         props.dispatcher = dispatcher
         return props
     }
 
     /// Creates copy of this `_Props` changing the dispatcher props, useful for setting a few options in-line when spawning actors.
-    public func dispatcher(_ dispatcher: _DispatcherProps) -> _Props {
+    func dispatcher(_ dispatcher: _DispatcherProps) -> _Props {
         var props = self
         props.dispatcher = dispatcher
         return props
@@ -112,7 +108,7 @@ extension _Props {
 /// Configuring dispatchers should only be associated with actual research if the change is indeed beneficial.
 /// In the vast majority of cases the default thread pool backed implementation should perform the best for typical workloads.
 // TODO: Eventually: probably also best as not enum but a bunch of factories?
-public enum _DispatcherProps {
+internal enum _DispatcherProps {
     /// Lets runtime determine the default dispatcher
     case `default`
 
