@@ -193,7 +193,7 @@ design your distributed actors with idempotency (the resilience of a method bein
 
 By default, to avoid "hanging" a remote caller forever on a suspended remote call as the recipient node fails to reply to it,
 for example because it (or the network itself), is currently unresponsive, remote calls have a default timeout configured.
-If no reply is received within this duration, the call will fail with a ``RemoteCallError/timedOut(_:_:)``.
+If no reply is received within this duration, the call will fail with a ``RemoteCallError``.
 
 You can configure the default timeout used by the cluster system during its initialization:
 

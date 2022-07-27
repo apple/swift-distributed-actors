@@ -23,6 +23,7 @@ Please note that this project requires the latest **Swift 5.7** language feature
 - <doc:Lifecycle>
 - <doc:Receptionist>
 - <doc:ClusterSingleton>
+- <doc:Security>
 - <doc:Observability>
 
 <!--### Tutorials -->

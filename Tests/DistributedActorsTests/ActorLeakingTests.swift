@@ -210,11 +210,11 @@ final class ActorLeakingTests: ClusterSystemXCTestCase {
         #else
         throw XCTSkip("!!! Skipping test \(#function) !!!") // FIXME(distributed): we need to manage the retain cycles with the receptionist better #831
 
-        let initialSystemCount = await ClusterSystem.actorSystemInitCounter.load(ordering: .relaxed)
+        let initialSystemCount = ClusterSystem.actorSystemInitCounter.load(ordering: .relaxed)
 
         for n in 1 ... 5 {
             let system = await ClusterSystem("Test-\(n)")
-            try! system.shutdown().wait()
+            try! await system.shutdown().wait()
         }
 
         ClusterSystem.actorSystemInitCounter.load(ordering: .relaxed).shouldEqual(initialSystemCount)
@@ -231,7 +231,7 @@ final class ActorLeakingTests: ClusterSystemXCTestCase {
 
         let ref = try system!._spawn("echo", of: String.self, .receive { context, message in
             if message == "shutdown" {
-                context.system.shutdown()
+                try! context.system.shutdown()
             }
             p.tell("system:\(context.system)")
             return .same
@@ -266,7 +266,7 @@ final class ActorLeakingTests: ClusterSystemXCTestCase {
             context.log.trace("Not going to be logged")
             return .receiveMessage { _ in .same }
         })
-        try! system?.shutdown().wait()
+        try! await system?.shutdown().wait()
         system = nil
 
         ClusterSystem.actorSystemInitCounter.load(ordering: .relaxed).shouldEqual(initialSystemCount)
@@ -288,7 +288,7 @@ final class ActorLeakingTests: ClusterSystemXCTestCase {
             context.log.warning("Not going to be logged")
             return .receiveMessage { _ in .same }
         })
-        try! system?.shutdown().wait()
+        try! await system?.shutdown().wait()
         system = nil
 
         ClusterSystem.actorSystemInitCounter.load(ordering: .relaxed).shouldEqual(initialSystemCount)

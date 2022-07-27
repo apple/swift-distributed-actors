@@ -175,9 +175,17 @@ public struct ClusterSystemSettings {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: TLS & Security settings
 
-    /// If set, all communication with other nodes will be secured using TLS
+    /// If set, all communication with other nodes will be secured using TLS.
+    ///
+    /// The configuration is a `NIOSSL.TLSConfiguration`, so please refer to
+    /// [swift-nio-ssl](https://github.com/apple/swift-nio-ssl) documentation for more details about it.
+    ///
+    /// - SeeAlso: `NIOSSL.NIOSSLContext`
     public var tls: TLSConfiguration?
 
+    /// Callback invoked when a passphrase is required for TLS.
+    ///
+    /// - SeeAlso: `NIOSSL.NIOSSLContext`
     public var tlsPassphraseCallback: NIOSSLPassphraseCallback<[UInt8]>?
 
     // ==== ------------------------------------------------------------------------------------------------------------
