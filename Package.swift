@@ -63,7 +63,7 @@ var targets: [PackageDescription.Target] = [
         name: "DistributedActorsTestKitTests",
         dependencies: [
             "DistributedActors",
-            "DistributedActorsTestKit"
+            "DistributedActorsTestKit",
         ]
     ),
 

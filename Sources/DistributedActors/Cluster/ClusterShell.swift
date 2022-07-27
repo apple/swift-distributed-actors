@@ -1305,11 +1305,11 @@ extension ClusterShell {
                 let onDownAction = context.system.settings.onDownAction.make()
                 try onDownAction(context.system) // TODO: return a future and run with a timeout
             } catch {
-                context.system.log.error("Failed to executed onDownAction! Shutting down system forcefully!", metadata: ["error": "\(error)", ])
+                context.system.log.error("Failed to executed onDownAction! Shutting down system forcefully!", metadata: ["error": "\(error)"])
                 do {
                     try context.system.shutdown()
                 } catch {
-                    context.system.log.error("Failed shutting down actor system!", metadata: ["error": "\(error)", ])
+                    context.system.log.error("Failed shutting down actor system!", metadata: ["error": "\(error)"])
                 }
             }
 
