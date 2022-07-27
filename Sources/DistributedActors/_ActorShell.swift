@@ -950,7 +950,9 @@ extension AbstractShellProtocol {
 
     public func _traverse<T>(context: _TraversalContext<T>, _ visit: (_TraversalContext<T>, _AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
         var c = context.deeper
-        switch visit(context, self.asAddressable) {
+        let directive = visit(context, self.asAddressable)
+
+        switch directive {
         case .continue:
             let res = self.children._traverse(context: c, visit)
             return res
@@ -962,6 +964,8 @@ extension AbstractShellProtocol {
             return self.children._traverse(context: c, visit)
         case .abort(let err):
             return .failed(err)
+        case ._PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE:
+            fatalError("\(_TraversalDirective<T>.self) is [\(directive)]. This should not happen, please file an issue.")
         }
     }
 

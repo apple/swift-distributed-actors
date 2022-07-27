@@ -701,7 +701,8 @@ extension _Guardian: _ActorTreeTraversable {
         let children: _Children = self.children
 
         var c = context.deeper
-        switch visit(context, self.ref.asAddressable) {
+        let directive = visit(context, self.ref.asAddressable)
+        switch directive {
         case .continue:
             return children._traverse(context: c, visit)
         case .accumulateSingle(let t):
@@ -712,6 +713,8 @@ extension _Guardian: _ActorTreeTraversable {
             return children._traverse(context: c, visit)
         case .abort(let err):
             return .failed(err)
+        case ._PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE:
+            fatalError("\(_TraversalDirective<T>.self) is [\(directive)]. This should not happen, please file an issue.")
         }
     }
 

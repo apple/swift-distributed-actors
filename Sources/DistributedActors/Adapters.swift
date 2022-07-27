@@ -149,7 +149,9 @@ internal final class _ActorRefAdapter<To: Codable>: _AbstractAdapter {
 extension _ActorRefAdapter {
     public func _traverse<T>(context: _TraversalContext<T>, _ visit: (_TraversalContext<T>, _AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
         var c = context.deeper
-        switch visit(context, self.myselfAddressable) {
+        let directive = visit(context, self.myselfAddressable)
+
+        switch directive {
         case .continue:
             ()
         case .accumulateSingle(let t):
@@ -158,6 +160,8 @@ extension _ActorRefAdapter {
             c.accumulated.append(contentsOf: ts)
         case .abort(let err):
             return .failed(err)
+        case ._PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE:
+            fatalError("\(_TraversalDirective<T>.self) is [\(directive)]. This should not happen, please file an issue.")
         }
 
         return c.result
@@ -366,7 +370,9 @@ internal final class SubReceiveAdapter<Message: Codable, OwnerMessage: Codable>:
 extension SubReceiveAdapter {
     public func _traverse<T>(context: _TraversalContext<T>, _ visit: (_TraversalContext<T>, _AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
         var c = context.deeper
-        switch visit(context, self.myself.asAddressable) {
+        let directive = visit(context, self.myself.asAddressable)
+
+        switch directive {
         case .continue:
             ()
         case .accumulateSingle(let t):
@@ -375,6 +381,8 @@ extension SubReceiveAdapter {
             c.accumulated.append(contentsOf: ts)
         case .abort(let err):
             return .failed(err)
+        case ._PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE:
+            fatalError("\(_TraversalDirective<T>.self) is [\(directive)]. This should not happen, please file an issue.")
         }
 
         return c.result

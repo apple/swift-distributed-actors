@@ -313,6 +313,8 @@ extension ActorTestKit {
         case .results(let refs): throw callSiteInfo.error("Found more than a single ref for assertion! Got \(refs).")
         case .completed: throw callSiteInfo.error("Failed to find actor occupying [\(path)]!")
         case .failed(let err): throw callSiteInfo.error("Path \(path) was not occupied by any actor! Error: \(err)")
+        case ._PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE:
+            throw callSiteInfo.error("\(_TraversalResult<_AddressableActorRef>.self) is [\(res)]. This should not happen!")
         }
     }
 
