@@ -639,7 +639,7 @@ extension OpLogDistributedReceptionist {
                     log.error("Error: \(error)")
                 }
             }
-            
+
             func isIgnorable(_ error: RemoteCallError) -> Bool {
                 switch error.underlying.error {
                 case .clusterAlreadyShutDown, .timedOut:
