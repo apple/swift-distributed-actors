@@ -57,7 +57,7 @@ Other actors which discover the actor, and want to be informed once the actor ha
 
 ### Receptionist: Listings
 
-The opposite side of using a receptionist, is actually obtaining a ``DistributedReceptionist/listing(of:file:line:)`` of actors registered with a specific key.
+The opposite of using a receptionist is obtaining a ``DistributedReceptionist/listing(of:file:line:)`` of actors registered with a specific key.
 
 Since keys are well typed, the obtained actors are also well typed, and this is how we can obtain a stream of workers which are checked in already, or are checking in with the receptionist as the stream continues:
 
