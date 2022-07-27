@@ -643,7 +643,7 @@ public class _Guardian {
             }
 
             if self._children.contains(name: path.name) {
-                throw ClusterSystemError.duplicateActorPath(path: path)
+                throw ClusterSystemError(.duplicateActorPath(path: path))
             }
 
             let cell = try spawn()

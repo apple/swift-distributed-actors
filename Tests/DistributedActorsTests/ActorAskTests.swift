@@ -65,7 +65,7 @@ final class ActorAskTests: ClusterSystemXCTestCase {
             _ = try await response.value
         }
 
-        guard case RemoteCallError.timedOut = error else {
+        guard let remoteCallError = error as? RemoteCallError, case .timedOut = remoteCallError.underlying.error else {
             throw testKit.fail("Expected RemoteCallError.timedOut, got \(error)")
         }
     }
@@ -180,7 +180,7 @@ final class ActorAskTests: ClusterSystemXCTestCase {
         )
 
         let message = try p.expectMessage()
-        message.shouldStartWith(prefix: "timedOut(")
+        message.shouldStartWith(prefix: "RemoteCallError(timedOut(")
         message.shouldContain("DistributedActors.TimeoutError(message: \"AskResponse<String> timed out after 100ms\", timeout: 0.1 seconds))")
     }
 
@@ -195,7 +195,7 @@ final class ActorAskTests: ClusterSystemXCTestCase {
             try await result.value
         }
 
-        guard case RemoteCallError.timedOut = error else {
+        guard let remoteCallError = error as? RemoteCallError, case .timedOut = remoteCallError.underlying.error else {
             throw testKit.fail("Expected RemoteCallError.timedOut, got \(error)")
         }
     }

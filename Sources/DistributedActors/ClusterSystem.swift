@@ -1130,10 +1130,10 @@ extension ClusterSystem {
         }
 
         guard let clusterShell = _cluster else {
-            throw RemoteCallError.clusterAlreadyShutDown
+            throw RemoteCallError(.clusterAlreadyShutDown)
         }
         guard self.shutdownFlag.load(ordering: .relaxed) == 0 else {
-            throw RemoteCallError.clusterAlreadyShutDown
+            throw RemoteCallError(.clusterAlreadyShutDown)
         }
 
         let recipient = _RemoteClusterActorPersonality<InvocationMessage>(shell: clusterShell, id: actor.id._asRemote, system: self)
@@ -1157,7 +1157,7 @@ extension ClusterSystem {
             throw error
         }
         guard let value = reply.value else {
-            throw RemoteCallError.invalidReply(reply.callID)
+            throw RemoteCallError(.invalidReply(reply.callID))
         }
         return value
     }
@@ -1177,10 +1177,10 @@ extension ClusterSystem {
         }
 
         guard let clusterShell = self._cluster else {
-            throw RemoteCallError.clusterAlreadyShutDown
+            throw RemoteCallError(.clusterAlreadyShutDown)
         }
         guard self.shutdownFlag.load(ordering: .relaxed) == 0 else {
-            throw RemoteCallError.clusterAlreadyShutDown
+            throw RemoteCallError(.clusterAlreadyShutDown)
         }
 
         let recipient = _RemoteClusterActorPersonality<InvocationMessage>(shell: clusterShell, id: actor.id._asRemote, system: self)
@@ -1233,12 +1233,12 @@ extension ClusterSystem {
                     //
                     // If we're shutting down, it is okay to not get acknowledgements to calls for example,
                     // and we don't care about them missing -- we're shutting down anyway.
-                    error = RemoteCallError.clusterAlreadyShutDown
+                    error = RemoteCallError(.clusterAlreadyShutDown)
                 } else {
-                    error = RemoteCallError.timedOut(
+                    error = RemoteCallError(.timedOut(
                         callID,
                         TimeoutError(message: "Remote call [\(callID)] to [\(target)](\(actorID)) timed out", timeout: timeout)
-                    )
+                    ))
                 }
 
                 continuation.resume(throwing: error)
@@ -1265,7 +1265,7 @@ extension ClusterSystem {
             }
 
             self.log.error("Expected [\(Reply.self)] but got [\(type(of: reply as Any))]")
-            throw RemoteCallError.invalidReply(callID)
+            throw RemoteCallError(.invalidReply(callID))
         }
         return reply
     }
@@ -1316,7 +1316,7 @@ extension ClusterSystem {
         }
 
         guard let wellTypedReturn = anyReturn as? Res else {
-            throw RemoteCallError.illegalReplyType(UUID(), expected: Res.self, got: type(of: anyReturn))
+            throw RemoteCallError(.illegalReplyType(UUID(), expected: Res.self, got: type(of: anyReturn)))
         }
 
         return wellTypedReturn
@@ -1608,16 +1608,64 @@ public struct GenericRemoteCallError: Error, Codable {
     }
 }
 
-public enum ClusterSystemError: DistributedActorSystemError {
-    case duplicateActorPath(path: ActorPath)
-    case shuttingDown(String)
+public struct ClusterSystemError: DistributedActorSystemError, CustomStringConvertible {
+    internal enum _ClusterSystemError {
+        case duplicateActorPath(path: ActorPath)
+        case shuttingDown(String)
+    }
+
+    internal class _Storage {
+        let error: _ClusterSystemError
+        let file: String
+        let line: UInt
+
+        init(error: _ClusterSystemError, file: String, line: UInt) {
+            self.error = error
+            self.file = file
+            self.line = line
+        }
+    }
+
+    let underlying: _Storage
+
+    internal init(_ error: _ClusterSystemError, file: String = #fileID, line: UInt = #line) {
+        self.underlying = _Storage(error: error, file: file, line: line)
+    }
+
+    public var description: String {
+        "\(Self.self)(\(self.underlying.error), at: \(self.underlying.file):\(self.underlying.line))"
+    }
 }
 
 /// Error thrown when unable to resolve an ``ActorID``.
 ///
 /// Refer to ``ClusterSystem/resolve(id:as:)`` or the distributed actors Swift Evolution proposal for details.
-public enum ResolveError: DistributedActorSystemError {
-    case illegalIdentity(ClusterSystem.ActorID)
+public struct ResolveError: DistributedActorSystemError, CustomStringConvertible {
+    internal enum _ResolveError {
+        case illegalIdentity(ClusterSystem.ActorID)
+    }
+
+    internal class _Storage {
+        let error: _ResolveError
+        let file: String
+        let line: UInt
+
+        init(error: _ResolveError, file: String, line: UInt) {
+            self.error = error
+            self.file = file
+            self.line = line
+        }
+    }
+
+    let underlying: _Storage
+
+    internal init(_ error: _ResolveError, file: String = #fileID, line: UInt = #line) {
+        self.underlying = _Storage(error: error, file: file, line: line)
+    }
+
+    public var description: String {
+        "\(Self.self)(\(self.underlying.error), at: \(self.underlying.file):\(self.underlying.line))"
+    }
 }
 
 /// Represents an actor that has been initialized, but not yet scheduled to run. Calling `wakeUp` will
@@ -1638,11 +1686,35 @@ internal struct LazyStart<Message: Codable> {
     }
 }
 
-public enum RemoteCallError: DistributedActorSystemError {
-    case clusterAlreadyShutDown
-    case timedOut(ClusterSystem.CallID, TimeoutError)
-    case invalidReply(ClusterSystem.CallID)
-    case illegalReplyType(ClusterSystem.CallID, expected: Any.Type, got: Any.Type)
+public struct RemoteCallError: DistributedActorSystemError, CustomStringConvertible {
+    internal enum _RemoteCallError {
+        case clusterAlreadyShutDown
+        case timedOut(ClusterSystem.CallID, TimeoutError)
+        case invalidReply(ClusterSystem.CallID)
+        case illegalReplyType(ClusterSystem.CallID, expected: Any.Type, got: Any.Type)
+    }
+
+    internal class _Storage {
+        let error: _RemoteCallError
+        let file: String
+        let line: UInt
+
+        init(error: _RemoteCallError, file: String, line: UInt) {
+            self.error = error
+            self.file = file
+            self.line = line
+        }
+    }
+
+    let underlying: _Storage
+
+    internal init(_ error: _RemoteCallError, file: String = #fileID, line: UInt = #line) {
+        self.underlying = _Storage(error: error, file: file, line: line)
+    }
+
+    public var description: String {
+        "\(Self.self)(\(self.underlying.error), at: \(self.underlying.file):\(self.underlying.line))"
+    }
 }
 
 /// Allows for configuring of remote calls by setting task-local values around a remote call being made.
