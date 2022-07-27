@@ -220,24 +220,34 @@ final class DistributedReceptionistTests: ClusterSystemXCTestCase {
 
     // ==== ----------------------------------------------------------------------------------------------------------------
 
-//    func test_receptionist_shouldNotRegisterTheSameRefTwice() throws {
-//        let receptionist = SystemReceptionist(ref: try system._spawn("receptionist", self.receptionistBehavior))
-//        let lookupProbe: ActorTestProbe<_Reception.Listing<_ActorRef<String>>> = self.testKit.makeTestProbe()
-//
-//        let ref: _ActorRef<String> = try system._spawn(.anonymous, .receiveMessage { _ in .same })
-//
-//        let key = _Reception.Key(_ActorRef<String>.self, id: "test")
-//
-//        receptionist.checkIn(ref, with: key)
-//        receptionist.checkIn(ref, with: key)
-//
-//        receptionist.lookup(key, replyTo: lookupProbe.ref)
-//
-//        let listing = try lookupProbe.expectMessage()
-//
-//        listing.refs.count.shouldEqual(1)
-//    }
-//
+    func test_receptionist_shouldNotRegisterTheSameRefTwice() async throws {
+        let ref = Forwarder(probe: nil, name: "D", actorSystem: system)
+
+        await system.receptionist.checkIn(ref, with: .forwarders)
+        await system.receptionist.checkIn(ref, with: .forwarders)
+
+        let listing = await system.receptionist.lookup(.forwarders)
+
+        listing.count.shouldEqual(1)
+    }
+
+    func test_receptionist_happyPath_lookup() async throws {
+        let (first, second) = await self.setUpPair() { settings in
+            settings.enabled = true
+        }
+
+        let ref = Forwarder(probe: nil, name: "D", actorSystem: first)
+        await first.receptionist.checkIn(ref, with: .forwarders)
+
+        first.cluster.join(node: second.cluster.uniqueNode.node)
+        try await first.cluster.joined(node: second.cluster.uniqueNode, within: .seconds(30))
+
+        let listing = await second.receptionist.lookup(.forwarders)
+
+        listing.count.shouldEqual(1)
+        listing.first!.id.shouldEqual(ref.id)
+    }
+
 //    func test_receptionist_shouldRemoveAndAddNewSingletonRef() throws {
 //        let receptionist = SystemReceptionist(ref: try system._spawn("receptionist", self.receptionistBehavior))
 //        let lookupProbe: ActorTestProbe<_Reception.Listing<_ActorRef<String>>> = self.testKit.makeTestProbe()
