@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -20,7 +20,7 @@
 /// of actors, they can't be prevented from receiving messages while waiting for
 /// the external source to respond. In this case messages should be stashed and
 /// then unstashed once the external source has responded.
-public final class _StashBuffer<Message: Codable> {
+internal final class _StashBuffer<Message: Codable> {
     @usableFromInline
     let buffer: RingBuffer<Message>
 
@@ -93,7 +93,7 @@ public final class _StashBuffer<Message: Codable> {
     }
 }
 
-public enum _StashError: Error {
+internal enum _StashError: Error {
     case full
     case empty
 }
