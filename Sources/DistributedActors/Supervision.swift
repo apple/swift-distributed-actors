@@ -13,28 +13,28 @@
 //===----------------------------------------------------------------------===//
 
 /// Properties configuring supervision for given actor.
-public struct _SupervisionProps {
+internal struct _SupervisionProps {
     // internal var supervisionMappings: [ErrorTypeIdentifier: _SupervisionStrategy]
     // on purpose stored as list, to keep order in which the supervisors are added as we "scan" from first to last when we handle
     internal var supervisionMappings: [ErrorTypeBoundSupervisionStrategy]
 
-    public static let `default`: _SupervisionProps = .init()
+    static let `default`: _SupervisionProps = .init()
 
-    public init() {
+    init() {
         self.supervisionMappings = []
     }
 
     /// Add another supervision strategy for a specific `Error` type to the supervision chain contained within these props.
     ///
     /// - SeeAlso: The `_Supervise.All.*` wildcard failure  type selectors may be used for the `forErrorType` parameter.
-    public mutating func add(strategy: _SupervisionStrategy, forErrorType errorType: Error.Type) {
+    mutating func add(strategy: _SupervisionStrategy, forErrorType errorType: Error.Type) {
         self.supervisionMappings.append(ErrorTypeBoundSupervisionStrategy(failureType: errorType, strategy: strategy))
     }
 
     /// Non mutating version of `_SupervisionProps.add(strategy:forErrorType:)`
     ///
     /// - SeeAlso: The `_Supervise.All.*` wildcard failure  type selectors may be used for the `forErrorType` parameter.
-    public func adding(strategy: _SupervisionStrategy, forErrorType errorType: Error.Type) -> _SupervisionProps {
+    func adding(strategy: _SupervisionStrategy, forErrorType errorType: Error.Type) -> _SupervisionProps {
         var p = self
         p.add(strategy: strategy, forErrorType: errorType)
         return p
@@ -49,7 +49,7 @@ extension _Props {
     /// - Parameters:
     ///   - strategy: supervision strategy to apply for the given class of failures
     ///   - forErrorType: error type selector, determining for what type of error the given supervisor should perform its logic.
-    public static func supervision(strategy: _SupervisionStrategy, forErrorType errorType: Error.Type) -> _Props {
+    internal static func supervision(strategy: _SupervisionStrategy, forErrorType errorType: Error.Type) -> _Props {
         var props = _Props()
         props.supervise(strategy: strategy, forErrorType: errorType)
         return props
@@ -62,7 +62,7 @@ extension _Props {
     /// - Parameters:
     ///   - strategy: supervision strategy to apply for the given class of failures
     ///   - forAll: failure type selector, working as a "catch all" for the specific types of failures.
-    public static func supervision(strategy: _SupervisionStrategy, forAll selector: _Supervise.All = .failures) -> _Props {
+    internal static func supervision(strategy: _SupervisionStrategy, forAll selector: _Supervise.All = .failures) -> _Props {
         self.supervision(strategy: strategy, forErrorType: _Supervise.internalErrorTypeFor(selector: selector))
     }
 
@@ -73,7 +73,7 @@ extension _Props {
     /// - Parameters:
     ///   - strategy: supervision strategy to apply for the given class of failures
     ///   - forErrorType: error type selector, determining for what type of error the given supervisor should perform its logic.
-    public func supervision(strategy: _SupervisionStrategy, forErrorType errorType: Error.Type) -> _Props {
+    internal func supervision(strategy: _SupervisionStrategy, forErrorType errorType: Error.Type) -> _Props {
         var props = self
         props.supervise(strategy: strategy, forErrorType: errorType)
         return props
@@ -86,7 +86,7 @@ extension _Props {
     /// - Parameters:
     ///   - strategy: supervision strategy to apply for the given class of failures
     ///   - forAll: failure type selector, working as a "catch all" for the specific types of failures.
-    public func supervision(strategy: _SupervisionStrategy, forAll selector: _Supervise.All = .failures) -> _Props {
+    internal func supervision(strategy: _SupervisionStrategy, forAll selector: _Supervise.All = .failures) -> _Props {
         self.supervision(strategy: strategy, forErrorType: _Supervise.internalErrorTypeFor(selector: selector))
     }
 
@@ -97,7 +97,7 @@ extension _Props {
     /// - Parameters:
     ///   - strategy: supervision strategy to apply for the given class of failures
     ///   - forErrorType: failure type selector, working as a "catch all" for the specific types of failures.
-    public mutating func supervise(strategy: _SupervisionStrategy, forErrorType errorType: Error.Type) {
+    internal mutating func supervise(strategy: _SupervisionStrategy, forErrorType errorType: Error.Type) {
         self.supervision.add(strategy: strategy, forErrorType: errorType)
     }
 
@@ -108,7 +108,7 @@ extension _Props {
     /// - Parameters:
     ///   - strategy: supervision strategy to apply for the given class of failures
     ///   - forAll: failure type selector, working as a "catch all" for the specific types of failures.
-    public mutating func supervise(strategy: _SupervisionStrategy, forAll selector: _Supervise.All = .failures) {
+    internal mutating func supervise(strategy: _SupervisionStrategy, forAll selector: _Supervise.All = .failures) {
         self.supervise(strategy: strategy, forErrorType: _Supervise.internalErrorTypeFor(selector: selector))
     }
 }
@@ -166,7 +166,7 @@ extension _Props {
 ///
 /// Backoffs are tremendously useful in building resilient retrying systems, as they allow the avoidance of thundering situations,
 /// in case a fault caused multiple actors to fail for the same reason (e.g. the failure of a shared resource).
-public enum _SupervisionStrategy {
+internal enum _SupervisionStrategy {
     /// Default supervision strategy applied to all actors, unless a different one is selected in their `_Props`.
     ///
     /// Semantically equivalent to not applying any supervision strategy at all, since not applying a strategy
@@ -247,7 +247,7 @@ internal struct ErrorTypeBoundSupervisionStrategy {
 /// Namespace for supervision associated types.
 ///
 /// - SeeAlso: `_SupervisionStrategy` for thorough documentation of supervision strategies and semantics.
-public enum _Supervision {
+internal enum _Supervision {
     /// Internal conversion from supervision props to appropriate (potentially composite) `Supervisor<Message>`.
     internal static func supervisorFor<Message>(_ system: ClusterSystem, initialBehavior: _Behavior<Message>, props: _SupervisionProps) -> Supervisor<Message> {
         func supervisorFor0(failureType: Error.Type, strategy: _SupervisionStrategy) -> Supervisor<Message> {
@@ -283,7 +283,7 @@ public enum _Supervision {
     /// Represents (and unifies) actor failures, i.e. what happens when code running inside an actor throws,
     /// or if such code encounters a fault (such as `fatalError`, divides by zero or causes an out-of-bounds fault
     /// by un-safely accessing an array.
-    public enum Failure {
+    internal enum Failure {
         /// The failure was caused by the actor throwing during its execution.
         /// The carried `Error` is the error that the actor has thrown.
         case error(Error)
@@ -297,7 +297,7 @@ public enum _Supervision {
 
     /// Thrown in the case of illegal supervision decisions being made, e.g. returning `.same` as decision,
     /// or other situations where supervision failed in some other way.
-    public enum SupervisionError: Error {
+    internal enum SupervisionError: Error {
         case illegalDecision(String, handledError: Error, error: Error)
     }
 }
@@ -335,13 +335,13 @@ extension _Supervision.Failure: CustomStringConvertible, CustomDebugStringConver
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Phantom types for registering supervisors
 
-public enum _Supervise {
+internal enum _Supervise {
     /// Supervision failure "catch all" selectors.
     /// By configuring supervision with one of the following you may configure a supervisor to catch only a specific
     /// type of failures (e.g. only swift `Error`s or only faults).
     ///
     /// See also supervision overloads which accept an `Error.Type` which allows you to specifically select an error type to supervise.
-    public enum All {
+    internal enum All {
         case errors
         case faults
         case failures
@@ -407,9 +407,7 @@ extension ProcessingAction {
 /// Handles failures that may occur during message (or signal) handling within an actor.
 ///
 /// Currently not for user extension.
-@usableFromInline
 internal class Supervisor<Message: Codable> {
-    @usableFromInline
     typealias Directive = SupervisionDirective<Message>
 
     internal final func interpretSupervised(target: _Behavior<Message>, context: _ActorContext<Message>, message: Message) throws -> _Behavior<Message> {
@@ -674,7 +672,6 @@ final class CompositeSupervisor<Message: Codable>: Supervisor<Message> {
 /// Instructs the mailbox to take specific action, reflecting wha the supervisor intends to do with the actor.
 ///
 /// - SeeAlso: `Supervisor.handleFailure`
-@usableFromInline
 internal enum SupervisionDirective<Message: Codable> {
     /// Directs mailbox to directly stop processing.
     case stop

@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -140,14 +140,14 @@ public enum _Signals {
     ///         you may choose to handle all `Terminated` signals the same way.
     ///
     /// - SeeAlso: `Terminated` which is sent when a watched actor terminates.
-    public final class _ChildTerminated: Terminated {
+    final class _ChildTerminated: Terminated {
         /// Filled with the error that caused the child actor to terminate.
         /// This kind of information is only known to the parent, which may decide to perform
         /// some action based on the error, i.e. proactively stop other children or spawn another worker
         /// targeting a different resource URI (e.g. if error indicates that the previously used resource is too busy).
-        public let escalation: _Supervision.Failure?
+        let escalation: _Supervision.Failure?
 
-        public init(id: ActorID, escalation: _Supervision.Failure?) {
+        init(id: ActorID, escalation: _Supervision.Failure?) {
             self.escalation = escalation
             super.init(id: id, existenceConfirmed: true)
         }

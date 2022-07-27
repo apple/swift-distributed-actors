@@ -17,10 +17,8 @@
 /// The most important behavior is `_Behavior.receive` since it allows handling incoming messages with a simple block.
 /// Various other predefined behaviors exist, such as "stopping" or "ignoring" a message.
 public struct _Behavior<Message: Codable>: @unchecked Sendable {
-    @usableFromInline
     let underlying: __Behavior<Message>
 
-    @usableFromInline
     init(underlying: __Behavior<Message>) {
         self.underlying = underlying
     }
@@ -443,7 +441,6 @@ extension _Behavior {
     }
 
     /// Creates internal representation of stopped behavior, see `stop(_:)` for public api.
-    @usableFromInline
     internal static func stop(postStop: _Behavior<Message>? = nil, reason: StopReason) -> _Behavior<Message> {
         _Behavior(underlying: .stop(postStop: postStop, reason: reason))
     }
@@ -452,13 +449,11 @@ extension _Behavior {
     ///
     /// - parameters
     ///   - error: cause of the actor's failing.
-    @usableFromInline
     internal func fail(cause: _Supervision.Failure) -> _Behavior<Message> {
         _Behavior(underlying: __Behavior<Message>.failed(behavior: self, cause: cause))
     }
 }
 
-@usableFromInline
 internal enum __Behavior<Message: Codable> {
     case setup(_ onStart: (_ActorContext<Message>) throws -> _Behavior<Message>)
 
@@ -491,7 +486,6 @@ internal enum __Behavior<Message: Codable> {
     indirect case suspended(previousBehavior: _Behavior<Message>, handler: (Result<Any, Error>) throws -> _Behavior<Message>)
 }
 
-@usableFromInline
 internal enum StopReason {
     /// the actor decided to stop and returned _Behavior.stop
     case stopMyself
@@ -705,7 +699,6 @@ extension _Behavior {
 
 /// Internal operations for behavior manipulation
 extension _Behavior {
-    @inlinable
     internal func interpretOrElse(
         context: _ActorContext<Message>,
         first: _Behavior<Message>, orElse second: _Behavior<Message>, message: Message,
@@ -757,7 +750,6 @@ extension _Behavior {
     }
 
     /// Shorthand for checking if the current behavior is a `.unhandled`
-    @inlinable
     internal var isUnhandled: Bool {
         switch self.underlying {
         case .unhandled: return true
@@ -766,7 +758,6 @@ extension _Behavior {
     }
 
     /// Shorthand for checking if the `_Behavior` is `.stop` or `.failed`.
-    @inlinable
     internal var isTerminal: Bool {
         switch self.underlying {
         case .stop, .failed: return true
@@ -775,12 +766,10 @@ extension _Behavior {
     }
 
     /// Shorthand for checking if the `_Behavior` is NOT `.stop` or `.failed`.
-    @inlinable
     internal var isStillAlive: Bool {
         !self.isTerminal
     }
 
-    @inlinable
     internal var isSuspend: Bool {
         switch self.underlying {
         case .suspend: return true
@@ -788,7 +777,6 @@ extension _Behavior {
         }
     }
 
-    @inlinable
     internal var isSuspended: Bool {
         switch self.underlying {
         case .suspended: return true
@@ -796,7 +784,6 @@ extension _Behavior {
         }
     }
 
-    @inlinable
     internal var isSame: Bool {
         switch self.underlying {
         case .same: return true
@@ -804,7 +791,6 @@ extension _Behavior {
         }
     }
 
-    @inlinable
     internal var isSetup: Bool {
         switch self.underlying {
         case .setup: return true
@@ -814,7 +800,6 @@ extension _Behavior {
 
     /// Returns `false` if canonicalizing behavior is known to not create a change in behavior.
     /// For example `.same` or semantically equivalent behaviors.
-    @inlinable
     internal var isChanging: Bool {
         switch self.underlying {
         case .same, .ignore, .unhandled: return false
@@ -942,7 +927,6 @@ extension _Behavior {
     ///
     /// - Parameter predicate: used to check if any behavior in the stack has a specific property
     /// - Returns: `true` if a behavior exists that matches the predicate, `false` otherwise
-    @inlinable
     internal func existsInStack(_ predicate: (_Behavior<Message>) -> Bool) -> Bool {
         if predicate(self) {
             return true
@@ -958,7 +942,6 @@ extension _Behavior {
 }
 
 extension _Behavior: CustomStringConvertible {
-    @inlinable
     public var description: String {
         let fqcn = String(reflecting: _Behavior<Message>.self)
         return "\(fqcn).\(self.underlying)"

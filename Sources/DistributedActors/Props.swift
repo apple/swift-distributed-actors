@@ -35,7 +35,7 @@ public struct _Props: @unchecked Sendable {
     // _Supervision properties will be removed.
     // This type of "parent/child" supervision and the entire actor tree will be removed.
     // Instead we will rely exclusively on watching other actors explicitly.
-    internal var supervision: _SupervisionProps
+    internal var supervision: _SupervisionProps = .default
 
     /// Tags to be passed to the actor's identity.
     internal var metadata: ActorMetadata
@@ -73,11 +73,9 @@ public struct _Props: @unchecked Sendable {
     // FIXME(distributed): remove this init
     public init(
         metadata: ActorMetadata = ActorMetadata(),
-        supervision: _SupervisionProps = .default,
         metrics: MetricsProps = .disabled
     ) {
         self.metadata = metadata
-        self.supervision = supervision
         self.metrics = metrics
     }
 

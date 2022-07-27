@@ -160,7 +160,7 @@ public protocol _ReceivesMessages: Sendable, Codable {
 // MARK: Internal implementation classes
 
 /// INTERNAL API: Only for use by the actor system itself
-public protocol _ReceivesSystemMessages: Codable {
+internal protocol _ReceivesSystemMessages: Codable {
     var id: ActorID { get }
     var path: ActorPath { get }
 
@@ -198,7 +198,7 @@ extension _ReceivesSystemMessages {
 // MARK: Actor Ref Internals and Internal Capabilities
 
 extension _ActorRef {
-    public func _sendSystemMessage(_ message: _SystemMessage, file: String = #filePath, line: UInt = #line) {
+    func _sendSystemMessage(_ message: _SystemMessage, file: String = #filePath, line: UInt = #line) {
         switch self.personality {
         case .cell(let cell):
             cell.sendSystemMessage(message, file: file, line: line)
@@ -370,7 +370,6 @@ public final class _ActorCell<Message: Codable> {
         self.mailbox.sendMessage(envelope: Payload(payload: .message(message)), file: file, line: line)
     }
 
-    @usableFromInline
     func sendSystemMessage(_ message: _SystemMessage, file: String = #filePath, line: UInt = #line) {
         traceLog_Mailbox(self.id.path, "sendSystemMessage: [\(message)], to: \(String(describing: self))")
         self.mailbox.sendSystemMessage(message, file: file, line: line)
@@ -446,7 +445,7 @@ open class _CellDelegate<Message: Codable> {
         fatalError("Not implemented: \(#function), called from \(file):\(line)")
     }
 
-    open func sendSystemMessage(_ message: _SystemMessage, file: String = #filePath, line: UInt = #line) {
+    func sendSystemMessage(_ message: _SystemMessage, file: String = #filePath, line: UInt = #line) {
         fatalError("Not implemented: \(#function), called from \(file):\(line)")
     }
 
@@ -470,7 +469,6 @@ open class _CellDelegate<Message: Codable> {
 /// It steps on the outer edge of the actor system and does not abide to its rules.
 ///
 /// Only a single instance of this "actor" exists, and it is the parent of all top level guardians.
-@usableFromInline
 internal struct TheOneWhoHasNoParent: _ReceivesSystemMessages { // FIXME: fix the name
     // path is breaking the rules -- it never can be empty, but this is "the one", it can do whatever it wants
     @usableFromInline
@@ -480,7 +478,6 @@ internal struct TheOneWhoHasNoParent: _ReceivesSystemMessages { // FIXME: fix th
         self.id = ActorID._localRoot(on: node)
     }
 
-    @usableFromInline
     internal func _sendSystemMessage(_ message: _SystemMessage, file: String = #filePath, line: UInt = #line) {
         CDistributedActorsMailbox.sact_dump_backtrace()
         fatalError("The \(self.id) actor MUST NOT receive any messages. Yet received \(message); Sent at \(file):\(line)")
@@ -582,7 +579,6 @@ public class _Guardian {
         self.deadLetters.tell(DeadLetter(message, recipient: self.id), file: file, line: line)
     }
 
-    @usableFromInline
     func sendSystemMessage(_ message: _SystemMessage, file: String = #filePath, line: UInt = #line) {
         switch message {
         case .childTerminated(let ref, let circumstances):

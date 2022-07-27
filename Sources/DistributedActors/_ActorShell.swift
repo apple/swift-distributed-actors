@@ -82,7 +82,6 @@ public final class _ActorShell<Message: Codable>: _ActorContext<Message>, Abstra
             mailbox: _Mailbox(shell: self)
         )
 
-    @usableFromInline
     var _myselfReceivesSystemMessages: _ReceivesSystemMessages {
         self.myself
     }
@@ -105,7 +104,7 @@ public final class _ActorShell<Message: Codable>: _ActorContext<Message>, Abstra
     // MARK: Fault handling infrastructure
 
     // We always have a supervisor in place, even if it is just the ".stop" one.
-    @usableFromInline internal let supervisor: Supervisor<Message>
+    internal let supervisor: Supervisor<Message>
     // TODO: we can likely optimize not having to call "through" supervisor if we are .stop anyway
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -257,7 +256,6 @@ public final class _ActorShell<Message: Codable>: _ActorContext<Message>, Abstra
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Interpreting messages
 
-    @inlinable
     var runState: ActorRunResult {
         if self.continueRunning {
             return .continueRunning
@@ -404,7 +402,6 @@ public final class _ActorShell<Message: Codable>: _ActorContext<Message>, Abstra
         return self.runState
     }
 
-    @inlinable
     internal var continueRunning: Bool {
         switch self.behavior.underlying {
         case .suspended: return false
@@ -442,7 +439,6 @@ public final class _ActorShell<Message: Codable>: _ActorContext<Message>, Abstra
         }
     }
 
-    @usableFromInline
     internal func _escalate(failure: _Supervision.Failure) -> _Behavior<Message> {
         self.behavior = self.behavior.fail(cause: failure)
 
@@ -775,7 +771,7 @@ public final class _ActorShell<Message: Codable>: _ActorContext<Message>, Abstra
 // MARK: Internal system message / signal handling functions
 
 extension _ActorShell {
-    @inlinable func interpretSystemWatch(watcher: _AddressableActorRef) {
+    func interpretSystemWatch(watcher: _AddressableActorRef) {
         if self.behavior.isStillAlive {
             self.deathWatch.becomeWatchedBy(watcher: watcher, myself: self.myself, parent: self._parent)
         } else {

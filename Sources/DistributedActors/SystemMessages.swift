@@ -38,7 +38,7 @@
 /// in the cluster membership.
 ///
 /// - SeeAlso: `OutboundSystemMessageRedeliverySettings` to configure the `redeliveryBufferLimit`
-public enum _SystemMessage: Equatable {
+internal enum _SystemMessage: Equatable {
     /// Sent to an Actor for it to "start", i.e. inspect and potentially evaluate a behavior wrapper that should
     /// be executed immediately e.g. `setup` or similar ones.
     ///
@@ -94,7 +94,7 @@ public enum _SystemMessage: Equatable {
 
 // TODO: Child actors are being removed
 /// The circumstances under which a child actor has terminated.
-public enum _TerminationCircumstances {
+internal enum _TerminationCircumstances {
     /// The actor stopped naturally, by becoming `.stop`
     case stopped
     /// The actor has failed during message processing.
