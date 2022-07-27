@@ -146,14 +146,11 @@ extension Serialization {
             return custom
         }
 
-        // TODO: mark as unsafe mode only
         if let hint = manifest.hint,
            let type = _typeByName(hint)
         {
             return type
         }
-
-        print("\(settings.manifest2TypeRegistry)")
 
         throw SerializationError(.unableToSummonTypeFromManifest(manifest))
     }

@@ -318,7 +318,7 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
         try await self.ensureNodes(.up, nodes: first.cluster.uniqueNode, second.cluster.uniqueNode, third.cluster.uniqueNode)
 
         // crash the second node
-        second.shutdown()
+        try second.shutdown()
 
         // other nodes have observed it down
         try await self.ensureNodes(atLeast: .down, on: first, within: .seconds(15), nodes: second.cluster.uniqueNode)

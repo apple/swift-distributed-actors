@@ -65,7 +65,7 @@ final class ClusterSystemTests: ClusterSystemXCTestCase {
         p.watch(ref1)
         p.watch(ref2)
 
-        try system2.shutdown().wait()
+        try await system2.shutdown().wait()
 
         try p.expectTerminatedInAnyOrder([ref1.asAddressable, ref2.asAddressable])
 
@@ -77,20 +77,20 @@ final class ClusterSystemTests: ClusterSystemXCTestCase {
 
     func test_shutdown_shouldCompleteReturnedHandleWhenDone() async throws {
         let system2 = await ClusterSystem("ShutdownSystem")
-        let shutdown = system2.shutdown()
+        let shutdown = try system2.shutdown()
         try shutdown.wait(atMost: .seconds(5))
     }
 
     func test_shutdown_shouldReUseReceptacleWhenCalledMultipleTimes() async throws {
         throw XCTSkip("Needs to be re-enabled") // FIXME: re-enable this test
         let system2 = await ClusterSystem("ShutdownSystem")
-        let shutdown1 = system2.shutdown()
-        let shutdown2 = system2.shutdown()
-        let shutdown3 = system2.shutdown()
+        let shutdown1 = try system2.shutdown()
+        let shutdown2 = try system2.shutdown()
+        let shutdown3 = try system2.shutdown()
 
-        try shutdown1.wait(atMost: .seconds(5))
-        try shutdown2.wait(atMost: .milliseconds(1))
-        try shutdown3.wait(atMost: .milliseconds(1))
+        try await shutdown1.wait(atMost: .seconds(5))
+        try await shutdown2.wait(atMost: .milliseconds(1))
+        try await shutdown3.wait(atMost: .milliseconds(1))
     }
 
     func test_shutdown_selfSendingActorShouldNotDeadlockSystem() async throws {
@@ -105,7 +105,7 @@ final class ClusterSystemTests: ClusterSystemXCTestCase {
 
         p.watch(selfSender)
 
-        try system2.shutdown().wait()
+        try await system2.shutdown().wait()
 
         try p.expectTerminated(selfSender)
     }
@@ -116,10 +116,18 @@ final class ClusterSystemTests: ClusterSystemXCTestCase {
         }
 
         Task.detached {
-            system2.shutdown()
+            try system2.shutdown()
         }
 
         try await system2.terminated // should be terminated after shutdown()
+    }
+
+    func test_shutdownWait_triggerOnceSystemIsShutdown() async throws {
+        let system2 = await ClusterSystem("ShutdownSystem") {
+            $0.enabled = false // no clustering
+        }
+
+        try await system2.shutdown().wait()
     }
 
     func test_resolveUnknownActor_shouldReturnPersonalDeadLetters() throws {
@@ -130,61 +138,6 @@ final class ClusterSystemTests: ClusterSystemXCTestCase {
 
         ref.id.path.shouldEqual(ActorPath._dead.appending(segments: path.segments))
         ref.id.incarnation.shouldEqual(id.incarnation)
-    }
-
-    func test_shutdown_callbackShouldBeInvoked() async throws {
-        let system = await ClusterSystem("ShutMeDown") { settings in
-            settings.bindPort = 9877
-        }
-        let receptacle = BlockingReceptacle<Error?>()
-
-        system.shutdown(afterShutdownCompleted: { error in
-            receptacle.offerOnce(error)
-        })
-
-        receptacle.wait(atMost: .seconds(3))!.shouldBeNil()
-    }
-
-    func test_shutdown_callbackShouldBeInvokedWhenAlreadyShutdown() async throws {
-        let system = await ClusterSystem("ShutMeDown")
-        let firstReceptacle = BlockingReceptacle<Error?>()
-
-        system.shutdown(afterShutdownCompleted: { error in
-            firstReceptacle.offerOnce(error)
-        })
-
-        firstReceptacle.wait(atMost: .seconds(3))!.shouldBeNil()
-
-        let secondReceptacle = BlockingReceptacle<Error?>()
-
-        system.shutdown(afterShutdownCompleted: { error in
-            secondReceptacle.offerOnce(error)
-        })
-
-        secondReceptacle.wait(atMost: .seconds(3))!.shouldBeNil()
-    }
-
-    func test_terminated_shouldBeResumedWhenSystemIsShutDown() async throws {
-        let system = await ClusterSystem("ShutMeDown")
-        let firstReceptacle = BlockingReceptacle<Error?>()
-
-        system.shutdown(afterShutdownCompleted: { error in
-            firstReceptacle.offerOnce(error)
-        })
-
-        firstReceptacle.wait(atMost: .seconds(3))!.shouldBeNil()
-
-        let secondReceptacle = BlockingReceptacle<Error?>()
-
-        system.shutdown(afterShutdownCompleted: { error in
-            secondReceptacle.offerOnce(error)
-        })
-
-        Task.detached {
-            try await system.terminated
-        }
-
-        secondReceptacle.wait(atMost: .seconds(3))!.shouldBeNil()
     }
 
     func test_cleanUpAssociationTombstones() async throws {

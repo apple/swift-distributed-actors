@@ -25,7 +25,7 @@ import Foundation // for Codable
 
 extension Serialization {
     public struct Settings {
-        // TODO: Workaround for https://bugs.swift.org/browse/SR-12315 "Extension of nested type does not have access to types it is nested in"
+        // TODO: Workaround for https://bugs.swift.org/browse/SR-12315 rdar://31838975 "Extension of nested type does not have access to types it is nested in"
         public typealias SerializerID = Serialization.SerializerID
         internal typealias ReservedID = Serialization.ReservedID
         public typealias Manifest = Serialization.Manifest
@@ -42,8 +42,7 @@ extension Serialization {
         ///
         /// - Warning: Do not set this value to true in production deployments, as it could be used send and deserialize any codable type
         ///   and the serialization infrastructure would attempt deserializing it, potentially opening up for security risks.
-        // TODO: We are using an internal function here to allow us to automatically enable the more strict mode in release builds.
-        public var insecureSerializeNotRegisteredMessages: Bool = _isDebugAssertConfiguration()
+        public var insecureSerializeNotRegisteredMessages: Bool = _isDebugAssertConfiguration() // TODO: We are using an internal function here to allow us to automatically enable the more strict mode in release builds.
 
         /// Configures which `Codable` serializer (`Encoder` / `Decoder` pair) should be used whenever a
         /// a message is sent however the type does not have a specific serializer requirement configured (via `register` calls).

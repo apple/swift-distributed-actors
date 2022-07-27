@@ -74,7 +74,7 @@ public struct OnDownActionStrategySettings {
                         guard .milliseconds(0) < shutdownDelay else {
                             context.log.warning("This node was marked as [.down], delay is immediate. Shutting down the system immediately!")
                             Task {
-                                system.shutdown()
+                                try system.shutdown()
                             }
                             return .stop
                         }
@@ -85,7 +85,7 @@ public struct OnDownActionStrategySettings {
                         return .receiveMessage { _ in
                             system.log.warning("Shutting down...")
                             Task {
-                                system.shutdown()
+                                try system.shutdown()
                             }
                             return .stop
                         }

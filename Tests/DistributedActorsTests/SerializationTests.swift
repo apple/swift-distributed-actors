@@ -144,12 +144,9 @@ class SerializationTests: ClusterSystemXCTestCase {
     }
 
     func test_serialize_actorRef_inMessage_forRemoting() async throws {
-        let remoteCapableSystem = await ClusterSystem("remoteCapableSystem") { settings in
+        let remoteCapableSystem = await self.setUpNode("remoteCapableSystem") { settings in
             settings.enabled = true
             settings.serialization.register(HasStringRef.self)
-        }
-        defer {
-            try! remoteCapableSystem.shutdown().wait()
         }
 
         let testKit = ActorTestKit(remoteCapableSystem)
@@ -372,11 +369,8 @@ class SerializationTests: ClusterSystemXCTestCase {
             try system.serialization.serialize(test)
         }
 
-        let system2 = await ClusterSystem("OtherSystem") { settings in
+        let system2 = await self.setUpNode("OtherSystem") { settings in
             settings.serialization.register(PListXMLCodableTest.self, serializerID: .foundationPropertyListBinary) // on purpose "wrong" format
-        }
-        defer {
-            try! system2.shutdown().wait()
         }
 
         _ = try shouldThrow {

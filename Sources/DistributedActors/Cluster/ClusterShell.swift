@@ -674,7 +674,7 @@ extension ClusterShell {
             }
             .receiveSpecificSignal(_Signals.Terminated.self) { context, signal in
                 context.log.error("Cluster actor \(signal.id) terminated unexpectedly! Will initiate cluster shutdown.")
-                context.system.shutdown()
+                try context.system.shutdown()
                 return .same // the system shutdown will cause downing which we may want to still handle, and then will stop us
             }
     }
@@ -1305,8 +1305,12 @@ extension ClusterShell {
                 let onDownAction = context.system.settings.onDownAction.make()
                 try onDownAction(context.system) // TODO: return a future and run with a timeout
             } catch {
-                context.system.log.error("Failed to executed onDownAction! Shutting down system forcefully! Error: \(error)")
-                context.system.shutdown()
+                context.system.log.error("Failed to executed onDownAction! Shutting down system forcefully!", metadata: ["error": "\(error)", ])
+                do {
+                    try context.system.shutdown()
+                } catch {
+                    context.system.log.error("Failed shutting down actor system!", metadata: ["error": "\(error)", ])
+                }
             }
 
             state = self.interpretLeaderActions(context.system, state, state.collectLeaderActions())

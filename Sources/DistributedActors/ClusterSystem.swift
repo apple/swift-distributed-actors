@@ -442,19 +442,28 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
             }
         }
 
+        @available(*, deprecated, message: "will be replaced by distributed actor / closure version")
         public func wait() throws {
             if let error = self.receptacle.wait() {
                 throw error
             }
+        }
+
+        /// Suspend until the system has completed its shutdown and is terminated.
+        public func wait() async throws {
+            // TODO: implement without blocking the internal task;
+            try await Task.detached {
+                if let error = self.receptacle.wait() {
+                    throw error
+                }
+            }.value
         }
     }
 
     /// Suspends until the ``ClusterSystem`` is terminated by a call to ``shutdown(queue:)``.
     public var terminated: Void {
         get async throws {
-            try await Task.detached {
-                try Shutdown(receptacle: self.shutdownReceptacle).wait()
-            }.value
+            try await Shutdown(receptacle: self.shutdownReceptacle).wait()
         }
     }
 
@@ -464,16 +473,11 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
     /// You can use `shutdown().wait()` to synchronously await on the system's termination,
     /// or provide a callback to be executed after the system has completed it's shutdown.
     ///
-    /// - Parameters:
-    ///   - queue: allows configuring on which dispatch queue the shutdown operation will be finalized.
-    ///   - afterShutdownCompleted: optional callback to be invoked when the system has completed shutting down.
-    ///     Will be invoked on the passed in `queue` (which defaults to `DispatchQueue.global()`).
     /// - Returns: A `Shutdown` value that can be waited upon until the system has completed the shutdown.
     @discardableResult
-    public func shutdown(queue: DispatchQueue = DispatchQueue.global(), afterShutdownCompleted: @escaping (Error?) -> Void = { _ in () }) -> Shutdown {
+    public func shutdown() throws -> Shutdown {
         guard self.shutdownFlag.loadThenWrappingIncrement(by: 1, ordering: .relaxed) == 0 else {
             // shutdown already kicked off by someone else
-            afterShutdownCompleted(nil)
             return Shutdown(receptacle: self.shutdownReceptacle)
         }
 
@@ -512,7 +516,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
             // self._receptionistRef = self.deadLetters.adapted()
         } catch {
             self.shutdownReceptacle.offerOnce(error)
-            afterShutdownCompleted(error)
+            throw error
         }
 
         /// Only once we've shutdown all dispatchers and loops, we clear cycles between the serialization and system,
@@ -525,7 +529,6 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         _ = self._clusterStore.storeIfNilThenLoad(Box(nil))
 
         self.shutdownReceptacle.offerOnce(nil)
-        afterShutdownCompleted(nil)
 
         return Shutdown(receptacle: self.shutdownReceptacle)
     }
@@ -1295,7 +1298,7 @@ extension ClusterSystem {
             "invocation": "\(invocation)",
         ])
 
-        guard let shell = self._cluster else {
+        guard self._cluster != nil else {
             self.log.error("Cluster has shut down already, yet received message. Message will be dropped: \(invocation)")
             return
         }
