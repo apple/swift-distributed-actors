@@ -186,7 +186,7 @@ public class _Children {
 // MARK: Traversal
 
 extension _Children: _ActorTreeTraversable {
-    public func _traverse<T>(context: _TraversalContext<T>, _ visit: (_TraversalContext<T>, _AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
+    func _traverse<T>(context: _TraversalContext<T>, _ visit: (_TraversalContext<T>, _AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
         var c = context.deeper
 
         let children = self.rwLock.withReaderLock {
@@ -215,9 +215,6 @@ extension _Children: _ActorTreeTraversable {
                 continue
             case .failed:
                 return descendResult // early return, failures abort traversal
-
-            case ._PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE:
-                fatalError("\(_TraversalResult<T>.self) is [\(descendResult)]. This should not happen, please file an issue.")
             }
         }
 
@@ -225,7 +222,7 @@ extension _Children: _ActorTreeTraversable {
         return c.result
     }
 
-    public func _resolve<Message>(context: _ResolveContext<Message>) -> _ActorRef<Message> {
+    func _resolve<Message>(context: _ResolveContext<Message>) -> _ActorRef<Message> {
         guard let selector = context.selectorSegments.first else {
             // no selector, we should not be in this place!
             fatalError("Resolve should have stopped before stepping into children._resolve, this is a bug!")
@@ -245,7 +242,7 @@ extension _Children: _ActorTreeTraversable {
         }
     }
 
-    public func _resolveUntyped(context: _ResolveContext<Never>) -> _AddressableActorRef {
+    func _resolveUntyped(context: _ResolveContext<Never>) -> _AddressableActorRef {
         guard let selector = context.selectorSegments.first else {
             // no selector, we should not be in this place!
             fatalError("Resolve should have stopped before stepping into children._resolve, this is a bug!")

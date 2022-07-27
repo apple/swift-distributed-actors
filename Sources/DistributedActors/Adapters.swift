@@ -15,7 +15,7 @@
 /// INTERNAL API: May change without any prior notice.
 ///
 // TODO: can this instead be a CellDelegate?
-public protocol _AbstractAdapter: _ActorTreeTraversable {
+internal protocol _AbstractAdapter: _ActorTreeTraversable {
     var fromType: Any.Type { get }
 
     var id: ActorID { get }
@@ -147,7 +147,7 @@ internal final class _ActorRefAdapter<To: Codable>: _AbstractAdapter {
 }
 
 extension _ActorRefAdapter {
-    public func _traverse<T>(context: _TraversalContext<T>, _ visit: (_TraversalContext<T>, _AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
+    func _traverse<T>(context: _TraversalContext<T>, _ visit: (_TraversalContext<T>, _AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
         var c = context.deeper
         let directive = visit(context, self.myselfAddressable)
 
@@ -160,14 +160,12 @@ extension _ActorRefAdapter {
             c.accumulated.append(contentsOf: ts)
         case .abort(let err):
             return .failed(err)
-        case ._PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE:
-            fatalError("\(_TraversalDirective<T>.self) is [\(directive)]. This should not happen, please file an issue.")
         }
 
         return c.result
     }
 
-    public func _resolve<Message>(context: _ResolveContext<Message>) -> _ActorRef<Message> {
+    func _resolve<Message>(context: _ResolveContext<Message>) -> _ActorRef<Message> {
         guard context.selectorSegments.first == nil,
               self.id.incarnation == context.id.incarnation
         else {
@@ -177,7 +175,7 @@ extension _ActorRefAdapter {
         return .init(.adapter(self))
     }
 
-    public func _resolveUntyped(context: _ResolveContext<Never>) -> _AddressableActorRef {
+    func _resolveUntyped(context: _ResolveContext<Never>) -> _AddressableActorRef {
         guard context.selectorSegments.first == nil, self.id.incarnation == context.id.incarnation else {
             return context.personalDeadLetters.asAddressable
         }
@@ -223,15 +221,15 @@ internal final class _DeadLetterAdapterPersonality: _AbstractAdapter {
         // nothing to stop, a dead letters adapter is special
     }
 
-    public func _traverse<T>(context: _TraversalContext<T>, _ visit: (_TraversalContext<T>, _AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
+    func _traverse<T>(context: _TraversalContext<T>, _ visit: (_TraversalContext<T>, _AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
         .completed
     }
 
-    public func _resolve<Message2>(context: _ResolveContext<Message2>) -> _ActorRef<Message2> {
+    func _resolve<Message2>(context: _ResolveContext<Message2>) -> _ActorRef<Message2> {
         self.deadLetters.adapted()
     }
 
-    public func _resolveUntyped(context: _ResolveContext<Never>) -> _AddressableActorRef {
+    func _resolveUntyped(context: _ResolveContext<Never>) -> _AddressableActorRef {
         self.deadLetters.asAddressable
     }
 }
@@ -368,7 +366,7 @@ internal final class SubReceiveAdapter<Message: Codable, OwnerMessage: Codable>:
 }
 
 extension SubReceiveAdapter {
-    public func _traverse<T>(context: _TraversalContext<T>, _ visit: (_TraversalContext<T>, _AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
+    func _traverse<T>(context: _TraversalContext<T>, _ visit: (_TraversalContext<T>, _AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
         var c = context.deeper
         let directive = visit(context, self.myself.asAddressable)
 
@@ -381,14 +379,12 @@ extension SubReceiveAdapter {
             c.accumulated.append(contentsOf: ts)
         case .abort(let err):
             return .failed(err)
-        case ._PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE:
-            fatalError("\(_TraversalDirective<T>.self) is [\(directive)]. This should not happen, please file an issue.")
         }
 
         return c.result
     }
 
-    public func _resolve<Message>(context: _ResolveContext<Message>) -> _ActorRef<Message> {
+    func _resolve<Message>(context: _ResolveContext<Message>) -> _ActorRef<Message> {
         guard context.selectorSegments.first == nil,
               self.id.incarnation == context.id.incarnation
         else {
@@ -403,7 +399,7 @@ extension SubReceiveAdapter {
         }
     }
 
-    public func _resolveUntyped(context: _ResolveContext<Never>) -> _AddressableActorRef {
+    func _resolveUntyped(context: _ResolveContext<Never>) -> _AddressableActorRef {
         guard context.selectorSegments.first == nil, self.id.incarnation == context.id.incarnation else {
             return context.personalDeadLetters.asAddressable
         }

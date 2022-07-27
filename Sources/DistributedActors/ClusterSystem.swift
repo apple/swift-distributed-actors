@@ -374,9 +374,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         // in the initialization of the actor system, as we will start receiving
         // messages and all field on the system have to be initialized beforehand.
         lazyReceptionist.wakeUp()
-        for transport in self.settings.transports {
-            transport.onActorSystemStart(system: self)
-        }
+
         // lazyCluster?.wakeUp()
         lazyNodeDeathWatcher?.wakeUp()
 
@@ -406,11 +404,6 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
     public func park(atMost parkTimeout: Duration? = nil) throws {
         let howLongParkingMsg = parkTimeout == nil ? "indefinitely" : "for \(parkTimeout!.prettyDescription)"
         self.log.info("Parking actor system \(howLongParkingMsg)...")
-
-        for transport in self.settings.transports {
-            self.log.info("Offering transport [\(transport.protocolName)] chance to park the thread...")
-            transport.onActorSystemPark()
-        }
 
         if let maxParkingTime = parkTimeout {
             if let error = self.shutdownReceptacle.wait(atMost: maxParkingTime).flatMap({ $0 }) {
@@ -744,7 +737,7 @@ extension ClusterSystem: _ActorTreeTraversable {
         }
     }
 
-    public func _traverse<T>(context: _TraversalContext<T>, _ visit: (_TraversalContext<T>, _AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
+    func _traverse<T>(context: _TraversalContext<T>, _ visit: (_TraversalContext<T>, _AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
         let systemTraversed: _TraversalResult<T> = self.systemProvider._traverse(context: context, visit)
 
         switch systemTraversed {
@@ -762,9 +755,6 @@ extension ClusterSystem: _ActorTreeTraversable {
 
         case .failed(let err):
             return .failed(err) // short circuit
-
-        case ._PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE:
-            fatalError("\(_TraversalResult<T>.self) is [\(systemTraversed)]. This should not happen, please file an issue.")
         }
     }
 
@@ -779,7 +769,7 @@ extension ClusterSystem: _ActorTreeTraversable {
     }
 
     /// INTERNAL API: Not intended to be used by end users.
-    public func _resolve<Message: Codable>(context: _ResolveContext<Message>) -> _ActorRef<Message> {
+    func _resolve<Message: Codable>(context: _ResolveContext<Message>) -> _ActorRef<Message> {
         do {
             try context.system.serialization._ensureSerializer(Message.self)
         } catch {
@@ -787,16 +777,6 @@ extension ClusterSystem: _ActorTreeTraversable {
         }
         guard let selector = context.selectorSegments.first else {
             return context.personalDeadLetters
-        }
-
-        var resolved: _ActorRef<Message>?
-        // TODO: The looping through transports could be ineffective... but realistically we dont have many
-        // TODO: realistically we ARE becoming a transport and thus should be able to remove 'transports' entirely
-        for transport in context.system.settings.transports {
-            resolved = transport._resolve(context: context)
-            if let successfullyResolved = resolved {
-                return successfullyResolved
-            }
         }
 
         // definitely a local ref, has no `address.node`
@@ -816,20 +796,9 @@ extension ClusterSystem: _ActorTreeTraversable {
         return try StubDistributedActor.resolve(id: identity, using: self)
     }
 
-    public func _resolveUntyped(context: _ResolveContext<Never>) -> _AddressableActorRef {
+    func _resolveUntyped(context: _ResolveContext<Never>) -> _AddressableActorRef {
         guard let selector = context.selectorSegments.first else {
             return context.personalDeadLetters.asAddressable
-        }
-
-        var resolved: _AddressableActorRef?
-        // TODO: The looping through transports could be ineffective... but realistically we dont have many
-        // TODO: realistically we ARE becoming a transport and thus should be able to remove 'transports' entirely
-        for transport in context.system.settings.transports {
-            resolved = transport._resolveUntyped(context: context)
-
-            if let successfullyResolved = resolved {
-                return successfullyResolved
-            }
         }
 
         // definitely a local ref, has no `address.node`

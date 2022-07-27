@@ -964,8 +964,6 @@ extension AbstractShellProtocol {
             return self.children._traverse(context: c, visit)
         case .abort(let err):
             return .failed(err)
-        case ._PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE:
-            fatalError("\(_TraversalDirective<T>.self) is [\(directive)]. This should not happen, please file an issue.")
         }
     }
 

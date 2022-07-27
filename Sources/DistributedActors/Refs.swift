@@ -697,7 +697,7 @@ public class _Guardian {
 }
 
 extension _Guardian: _ActorTreeTraversable {
-    public func _traverse<T>(context: _TraversalContext<T>, _ visit: (_TraversalContext<T>, _AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
+    func _traverse<T>(context: _TraversalContext<T>, _ visit: (_TraversalContext<T>, _AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
         let children: _Children = self.children
 
         var c = context.deeper
@@ -713,12 +713,10 @@ extension _Guardian: _ActorTreeTraversable {
             return children._traverse(context: c, visit)
         case .abort(let err):
             return .failed(err)
-        case ._PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE:
-            fatalError("\(_TraversalDirective<T>.self) is [\(directive)]. This should not happen, please file an issue.")
         }
     }
 
-    public func _resolve<Message>(context: _ResolveContext<Message>) -> _ActorRef<Message> {
+    func _resolve<Message>(context: _ResolveContext<Message>) -> _ActorRef<Message> {
         guard let selector = context.selectorSegments.first else {
             fatalError("Expected selector in guardian._resolve()!")
         }
@@ -730,7 +728,7 @@ extension _Guardian: _ActorTreeTraversable {
         }
     }
 
-    public func _resolveUntyped(context: _ResolveContext<Never>) -> _AddressableActorRef {
+    func _resolveUntyped(context: _ResolveContext<Never>) -> _AddressableActorRef {
         guard let selector = context.selectorSegments.first else {
             fatalError("Expected selector in guardian._resolve()!")
         }

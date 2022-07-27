@@ -45,7 +45,6 @@ public struct ClusterSystemSettings {
 
     public var receptionist: ReceptionistSettings = .default
 
-    internal var transports: [_InternalActorTransport] = []
     public var serialization: Serialization.Settings = .default
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -261,12 +260,6 @@ public struct ClusterSystemSettings {
         self.swim.metrics.labelPrefix = "cluster.swim"
         self.discovery = nil
         self.serialization.localNode = self.uniqueBindNode
-    }
-}
-
-extension Array where Element == _InternalActorTransport {
-    public static func += <T: _InternalActorTransport>(transports: inout Self, transport: T) {
-        transports.append(transport)
     }
 }
 
