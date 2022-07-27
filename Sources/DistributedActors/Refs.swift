@@ -28,7 +28,7 @@ public struct _ActorRef<Message: Codable>: @unchecked Sendable, _ReceivesMessage
     /// The actor ref is "aware" whether it represents a local, remote or otherwise special actor.
     ///
     /// Adj. self-conscious: feeling undue awareness of oneself, one's appearance, or one's actions.
-    public enum Personality {
+    internal enum Personality {
         case cell(_ActorCell<Message>)
         case remote(_RemoteClusterActorPersonality<Message>)
         case adapter(_AbstractAdapter)
@@ -40,7 +40,7 @@ public struct _ActorRef<Message: Codable>: @unchecked Sendable, _ReceivesMessage
     internal let personality: Personality
 
     /// INTERNAL API: May change without further notice.
-    public init(_ personality: Personality) {
+    internal init(_ personality: Personality) {
         self.personality = personality
     }
 
