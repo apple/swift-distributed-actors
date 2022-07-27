@@ -639,7 +639,7 @@ public class _Guardian {
     func makeChild<Message>(path: ActorPath, spawn: () throws -> _ActorShell<Message>) throws -> _ActorRef<Message> {
         try self._childrenLock.synchronized {
             if self.stopping {
-                throw _ActorContextError.alreadyStopping("system: \(self.system?.name ?? "<nil>")")
+                throw _ActorContextError(.alreadyStopping("system: \(self.system?.name ?? "<nil>")"))
             }
 
             if self._children.contains(name: path.name) {
@@ -656,7 +656,7 @@ public class _Guardian {
     func stopChild(_ childRef: _AddressableActorRef) throws {
         try self._childrenLock.synchronized {
             guard self._children.contains(identifiedBy: childRef.id) else {
-                throw _ActorContextError.attemptedStoppingNonChildActor(ref: childRef)
+                throw _ActorContextError(.attemptedStoppingNonChildActor(ref: childRef))
             }
 
             if self._children.removeChild(identifiedBy: childRef.id) {
