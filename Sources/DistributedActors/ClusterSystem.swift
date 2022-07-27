@@ -1564,7 +1564,7 @@ struct RemoteCallReply<Value: Codable>: AnyRemoteCallReply {
             let errorManifest = try container.decode(Serialization.Manifest.self, forKey: .thrownErrorManifest)
             let summonedErrorType = try context.serialization.summonType(from: errorManifest)
             guard let errorAnyType = summonedErrorType as? (Error & Codable).Type else {
-                throw SerializationError.notAbleToDeserialize(hint: "manifest type results in [\(summonedErrorType)] type, which is NOT \((Error & Codable).self)")
+                throw SerializationError(.notAbleToDeserialize(hint: "manifest type results in [\(summonedErrorType)] type, which is NOT \((Error & Codable).self)"))
             }
             self.thrownError = try container.decode(errorAnyType, forKey: .thrownError)
             self.value = nil

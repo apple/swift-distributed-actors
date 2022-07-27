@@ -1044,7 +1044,7 @@ extension OpLogDistributedReceptionist {
         }
 
         public required init(from decoder: Decoder) throws {
-            throw SerializationError.nonTransportableMessage(type: "\(Self.self)")
+            throw SerializationError(.nonTransportableMessage(type: "\(Self.self)"))
         }
 
         var description: String {

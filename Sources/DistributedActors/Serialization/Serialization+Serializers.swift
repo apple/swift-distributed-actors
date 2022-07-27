@@ -56,12 +56,12 @@ extension Serializer: AnySerializer {
 
     public func trySerialize(_ message: Any) throws -> Serialization.Buffer {
         guard let _message = message as? Message else {
-            throw SerializationError.wrongSerializer(
+            throw SerializationError(.wrongSerializer(
                 hint: """
                 Attempted to serialize message type [\(String(reflecting: type(of: message)))] \
                 as [\(String(reflecting: Message.self))], which do not match! Serializer: [\(self)]
                 """
-            )
+            ))
         }
 
         return try self.serialize(_message)
@@ -82,11 +82,11 @@ extension Serializer: AnySerializer {
 
 internal class NonTransportableSerializer<Message>: Serializer<Message> {
     override func serialize(_ message: Message) throws -> Serialization.Buffer {
-        throw SerializationError.unableToSerialize(hint: "\(Self.self): \(Message.self)")
+        throw SerializationError(.unableToSerialize(hint: "\(Self.self): \(Message.self)"))
     }
 
     override func deserialize(from bytes: Serialization.Buffer) throws -> Message {
-        throw SerializationError.unableToDeserialize(hint: "\(Self.self): \(Message.self)")
+        throw SerializationError(.unableToDeserialize(hint: "\(Self.self): \(Message.self)"))
     }
 }
 

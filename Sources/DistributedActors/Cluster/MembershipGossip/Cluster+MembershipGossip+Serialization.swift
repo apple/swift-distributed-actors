@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -36,20 +36,20 @@ extension Cluster.MembershipGossip: _ProtobufRepresentable {
 
     public init(fromProto proto: ProtobufRepresentation, context: Serialization.Context) throws {
         guard proto.ownerUniqueNodeID != 0 else {
-            throw SerializationError.missingField("ownerUniqueNodeID", type: "\(reflecting: Cluster.MembershipGossip.self)")
+            throw SerializationError(.missingField("ownerUniqueNodeID", type: "\(reflecting: Cluster.MembershipGossip.self)"))
         }
         guard proto.hasMembership else {
-            throw SerializationError.missingField("membership", type: "\(reflecting: Cluster.MembershipGossip.self)")
+            throw SerializationError(.missingField("membership", type: "\(reflecting: Cluster.MembershipGossip.self)"))
         }
         guard proto.hasSeenTable else {
-            throw SerializationError.missingField("seenTable", type: "\(reflecting: Cluster.MembershipGossip.self)")
+            throw SerializationError(.missingField("seenTable", type: "\(reflecting: Cluster.MembershipGossip.self)"))
         }
 
         let membership = try Cluster.Membership(fromProto: proto.membership, context: context)
 
         let ownerID = UniqueNodeID(proto.ownerUniqueNodeID)
         guard let ownerNode = membership.member(byUniqueNodeID: ownerID)?.uniqueNode else {
-            throw SerializationError.unableToDeserialize(hint: "Missing member for ownerUniqueNodeID, members: \(membership)")
+            throw SerializationError(.unableToDeserialize(hint: "Missing member for ownerUniqueNodeID, members: \(membership)"))
         }
 
         var gossip = Cluster.MembershipGossip(ownerNode: ownerNode)
@@ -58,7 +58,7 @@ extension Cluster.MembershipGossip: _ProtobufRepresentable {
         for row in proto.seenTable.rows {
             let nodeID: UniqueNodeID = .init(row.uniqueNodeID)
             guard let member = membership.member(byUniqueNodeID: nodeID) else {
-                throw SerializationError.unableToDeserialize(hint: "Missing Member for unique node id: \(nodeID), members: \(membership)")
+                throw SerializationError(.unableToDeserialize(hint: "Missing Member for unique node id: \(nodeID), members: \(membership)"))
             }
 
             var replicaVersions: [VersionVector.ReplicaVersion] = []

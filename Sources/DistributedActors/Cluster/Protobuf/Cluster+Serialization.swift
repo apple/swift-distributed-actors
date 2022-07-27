@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -54,10 +54,10 @@ extension ClusterShell.Message: _InternalProtobufRepresentable {
                     )
                 )
             case .none:
-                throw SerializationError.missingField("inbound.message", type: "\(_ProtoClusterInbound.self)")
+                throw SerializationError(.missingField("inbound.message", type: "\(_ProtoClusterInbound.self)"))
             }
         case .none:
-            throw SerializationError.missingField("message", type: "\(ProtobufRepresentation.self)")
+            throw SerializationError(.missingField("message", type: "\(ProtobufRepresentation.self)"))
         }
     }
 }

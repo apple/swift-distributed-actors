@@ -45,16 +45,16 @@ internal class StringSerializer: Serializer<String> {
         switch buffer {
         case .data(let data):
             guard let s = String(data: data, encoding: .utf8) else {
-                throw SerializationError.notAbleToDeserialize(hint: String(reflecting: String.self))
+                throw SerializationError(.notAbleToDeserialize(hint: String(reflecting: String.self)))
             }
             return s
         case .nioByteBuffer(let buffer):
             guard let s = buffer.getString(at: 0, length: buffer.readableBytes) else {
-                throw SerializationError.notAbleToDeserialize(hint: String(reflecting: String.self))
+                throw SerializationError(.notAbleToDeserialize(hint: String(reflecting: String.self)))
             }
             return s
         case ._PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE:
-            throw SerializationError.notAbleToDeserialize(hint: "\(Self.self) is [\(self)]. This should not happen, please file an issue.")
+            throw SerializationError(.notAbleToDeserialize(hint: "\(Self.self) is [\(self)]. This should not happen, please file an issue."))
         }
     }
 }
@@ -82,11 +82,11 @@ internal class IntegerSerializer<Number: FixedWidthInteger>: Serializer<Number> 
             return Number(bigEndian: data.withUnsafeBytes { $0.load(as: Number.self) })
         case .nioByteBuffer(let buffer):
             guard let i = buffer.getInteger(at: 0, endianness: .big, as: Number.self) else {
-                throw SerializationError.notAbleToDeserialize(hint: "\(buffer) as \(Number.self)")
+                throw SerializationError(.notAbleToDeserialize(hint: "\(buffer) as \(Number.self)"))
             }
             return i
         case ._PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE:
-            throw SerializationError.notAbleToDeserialize(hint: "\(Self.self) is [\(self)]. This should not happen, please file an issue.")
+            throw SerializationError(.notAbleToDeserialize(hint: "\(Self.self) is [\(self)]. This should not happen, please file an issue."))
         }
     }
 }
@@ -113,11 +113,11 @@ internal class BoolSerializer: Serializer<Bool> {
             return i == 1
         case .nioByteBuffer(let buffer):
             guard let i = buffer.getInteger(at: 0, endianness: .big, as: Int8.self) else {
-                throw SerializationError.notAbleToDeserialize(hint: "\(buffer) as \(Bool.self) (1/0 Int8)")
+                throw SerializationError(.notAbleToDeserialize(hint: "\(buffer) as \(Bool.self) (1/0 Int8)"))
             }
             return i == 1
         case ._PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE:
-            throw SerializationError.notAbleToDeserialize(hint: "\(Self.self) is [\(self)]. This should not happen, please file an issue.")
+            throw SerializationError(.notAbleToDeserialize(hint: "\(Self.self) is [\(self)]. This should not happen, please file an issue."))
         }
     }
 }

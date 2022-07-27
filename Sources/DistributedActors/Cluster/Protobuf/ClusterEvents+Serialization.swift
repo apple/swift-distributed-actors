@@ -69,7 +69,7 @@ extension Cluster.MembershipChange: _ProtobufRepresentable {
 
     public init(fromProto proto: ProtobufRepresentation, context: Serialization.Context) throws {
         guard proto.hasNode else {
-            throw SerializationError.missingField("node", type: "\(Cluster.MembershipChange.self)")
+            throw SerializationError(.missingField("node", type: "\(Cluster.MembershipChange.self)"))
         }
 
         self = try .init(

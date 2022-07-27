@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -86,7 +86,7 @@ extension SWIM.RemoteMessage: _ProtobufRepresentable {
             self = .pingResponse(try SWIM.PingResponse(fromProto: pingResponse, context: context))
 
         case .none:
-            throw SerializationError.missingField("request", type: String(describing: SWIM.Message.self))
+            throw SerializationError(.missingField("request", type: String(describing: SWIM.Message.self)))
         }
     }
 }
@@ -127,9 +127,9 @@ extension SWIM.Status: _ProtobufRepresentable {
         case .dead:
             self = .dead
         case .unspecified:
-            throw SerializationError.missingField("type", type: String(describing: SWIM.Status.self))
+            throw SerializationError(.missingField("type", type: String(describing: SWIM.Status.self)))
         case .UNRECOGNIZED(let num):
-            throw SerializationError.unknownEnumValue(num)
+            throw SerializationError(.unknownEnumValue(num))
         }
     }
 }
@@ -166,7 +166,7 @@ extension SWIM.Member: _ProtobufRepresentable {
     public func toProto(context: Serialization.Context) throws -> _ProtoSWIMMember {
         var proto = _ProtoSWIMMember()
         guard let actorPeer = self.peer as? SWIM.Ref else {
-            throw SerializationError.unableToSerialize(hint: "Expected peer to be \(SWIM.Ref.self) but was \(self.peer)!")
+            throw SerializationError(.unableToSerialize(hint: "Expected peer to be \(SWIM.Ref.self) but was \(self.peer)!"))
         }
         proto.id = try actorPeer.toProto(context: context)
         proto.status = try self.status.toProto(context: context)
@@ -192,7 +192,7 @@ extension SWIM.PingResponse: _ProtobufRepresentable {
         case .ack(let target, let incarnation, let payload, let sequenceNumber):
             var ack = _ProtoSWIMPingResponse.Ack()
             guard let targetRef = target as? SWIM.Ref else {
-                throw SerializationError.unableToSerialize(hint: "Can't serialize SWIM target as \(SWIM.Ref.self), was: \(target)")
+                throw SerializationError(.unableToSerialize(hint: "Can't serialize SWIM target as \(SWIM.Ref.self), was: \(target)"))
             }
             ack.target = try targetRef.toProto(context: context)
             ack.incarnation = incarnation
@@ -202,20 +202,20 @@ extension SWIM.PingResponse: _ProtobufRepresentable {
         case .nack(let target, let sequenceNumber):
             var nack = _ProtoSWIMPingResponse.Nack()
             guard let targetRef = target as? SWIM.Ref else {
-                throw SerializationError.unableToSerialize(hint: "Can't serialize SWIM target as \(SWIM.Ref.self), was: \(target)")
+                throw SerializationError(.unableToSerialize(hint: "Can't serialize SWIM target as \(SWIM.Ref.self), was: \(target)"))
             }
             nack.target = try targetRef.toProto(context: context)
             nack.sequenceNumber = sequenceNumber
             proto.nack = nack
         case .timeout:
-            throw SerializationError.nonTransportableMessage(type: "\(self)")
+            throw SerializationError(.nonTransportableMessage(type: "\(self)"))
         }
         return proto
     }
 
     public init(fromProto proto: _ProtoSWIMPingResponse, context: Serialization.Context) throws {
         guard let pingResponse = proto.pingResponse else {
-            throw SerializationError.missingField("pingResponse", type: String(describing: SWIM.PingResponse.self))
+            throw SerializationError(.missingField("pingResponse", type: String(describing: SWIM.PingResponse.self)))
         }
         switch pingResponse {
         case .ack(let ack):
@@ -255,7 +255,7 @@ extension ClusterMembership.Node: _ProtobufRepresentable {
 
     public init(fromProto proto: ProtobufRepresentation, context: Serialization.Context) throws {
         guard proto.hasNode else {
-            throw SerializationError.missingField("node", type: String(describing: Node.self))
+            throw SerializationError(.missingField("node", type: String(describing: Node.self)))
         }
         let protoNode: _ProtoNode = proto.node
         let `protocol` = protoNode.protocol

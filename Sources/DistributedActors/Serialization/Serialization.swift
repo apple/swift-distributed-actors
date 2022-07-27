@@ -238,11 +238,14 @@ extension Serialization {
             // 2.3. create and store the appropriate serializer
             do {
                 self._serializers[oid] = try self.makeCodableSerializer(type, manifest: manifest)
-            } catch SerializationError.noNeedToEnsureSerializer {
+            } catch let error as SerializationError {
                 // some types are specifically marked as "do not serialize" and we should ignore failures
                 // to create serializers for them. E.g. this cna happen for a "top level protocol"
                 // which by itself is never sent/serialized, but subclasses of it might.
-                return
+                if case .noNeedToEnsureSerializer = error.underlying.error {
+                    return
+                }
+                throw error
             } catch {
                 // all other errors are real and should be escalated
                 throw error
@@ -264,16 +267,16 @@ extension Serialization {
     internal func makeCodableSerializer<Message: Codable>(_ type: Message.Type, manifest: Manifest) throws -> AnySerializer {
         switch manifest.serializerID {
         case .doNotSerialize:
-            throw SerializationError.noNeedToEnsureSerializer
+            throw SerializationError(.noNeedToEnsureSerializer)
 
         case Serialization.SerializerID.specializedWithTypeHint:
             guard let make = self.settings.specializedSerializerMakers[manifest] else {
-                throw SerializationError.unableToMakeSerializer(
+                throw SerializationError(.unableToMakeSerializer(
                     hint: """
                     Type: \(String(reflecting: type)), \
                     Manifest: \(manifest), \
                     Specialized serializer makers: \(self.settings.specializedSerializerMakers)
-                    """)
+                    """))
             }
 
             let serializer = make(self.allocator)
@@ -306,7 +309,7 @@ extension Serialization {
             return _TopLevelBytesBlobSerializer<Message>(allocator: self.allocator, context: self.context)
 
         default:
-            throw SerializationError.unableToMakeSerializer(hint: "Not recognized serializerID: \(manifest.serializerID), in manifest: [\(manifest)] for type [\(type)]")
+            throw SerializationError(.unableToMakeSerializer(hint: "Not recognized serializerID: \(manifest.serializerID), in manifest: [\(manifest)] for type [\(type)]"))
         }
     }
 }
@@ -420,14 +423,14 @@ extension Serialization {
                 // TODO: we need to be able to abstract over Coders to collapse this into "giveMeACoder().encode()"
                 switch manifest.serializerID {
                 case .specializedWithTypeHint:
-                    throw SerializationError.unableToMakeSerializer(
+                    throw SerializationError(.unableToMakeSerializer(
                         hint:
                         """
                         Manifest hints at using specialized serializer for \(message), \
                         however no specialized serializer could be made for it! Manifest: \(manifest), \
                         known specializedSerializerMakers: \(self.settings.specializedSerializerMakers)
                         """
-                    )
+                    ))
 
                 case ._ProtobufRepresentable:
                     let encoder = TopLevelProtobufBlobEncoder(allocator: self.allocator)
@@ -456,17 +459,17 @@ extension Serialization {
                     result = .data(try encodableMessage._encode(using: encoder))
 
                 case let otherSerializerID:
-                    throw SerializationError.unableToMakeSerializer(hint: "SerializerID: \(otherSerializerID), messageType: \(messageType), manifest: \(manifest)")
+                    throw SerializationError(.unableToMakeSerializer(hint: "SerializerID: \(otherSerializerID), messageType: \(messageType), manifest: \(manifest)"))
                 }
             } else {
                 self.debugPrintSerializerTable(header: "Unable to find serializer for manifest (\(manifest)),message type: \(String(reflecting: messageType))")
-                throw SerializationError.noSerializerRegisteredFor(manifest: manifest, hint: "Type: \(messageType), id: \(messageType), known serializers: \(self._serializers)")
+                throw SerializationError(.noSerializerRegisteredFor(manifest: manifest, hint: "Type: \(messageType), id: \(messageType), known serializers: \(self._serializers)"))
             }
 
             return Serialized(manifest: manifest, buffer: result)
         } catch {
             // enrich with location of the failed serialization
-            throw SerializationError.serializationError(error, file: file, line: line)
+            throw SerializationError(.serializationError(error, file: file, line: line))
         }
     }
 
@@ -502,11 +505,11 @@ extension Serialization {
         if let deserialized = deserializedAny as? T {
             return deserialized
         } else {
-            throw SerializationError.serializationError(
-                SerializationError.unableToDeserialize(hint: "Deserialized value is NOT an instance of \(String(reflecting: T.self)), was: \(deserializedAny)"),
+            throw SerializationError(.serializationError(
+                SerializationError(.unableToDeserialize(hint: "Deserialized value is NOT an instance of \(String(reflecting: T.self)), was: \(deserializedAny)")),
                 file: file,
                 line: line
-            )
+            ))
         }
     }
 
@@ -544,14 +547,14 @@ extension Serialization {
                 // TODO: we need to be able to abstract over Coders to collapse this into "giveMeACoder().decode()"
                 switch manifest.serializerID {
                 case .specializedWithTypeHint:
-                    throw SerializationError.unableToMakeSerializer(
+                    throw SerializationError(.unableToMakeSerializer(
                         hint:
                         """
                         Manifest hints at using specialized serializer for manifest \(manifest), \
                         however no specialized serializer could be made for it! \
                         Known specializedSerializerMakers: \(self.settings.specializedSerializerMakers)
                         """
-                    )
+                    ))
 
                 case ._ProtobufRepresentable:
                     let decoder = TopLevelProtobufBlobDecoder()
@@ -577,7 +580,7 @@ extension Serialization {
                     result = try decodableMessageType._decode(from: buffer, using: decoder, format: .xml)
 
                 case let otherSerializerID:
-                    throw SerializationError.unableToMakeSerializer(hint: "SerializerID: \(otherSerializerID), messageType: \(manifestMessageType), manifest: \(manifest)")
+                    throw SerializationError(.unableToMakeSerializer(hint: "SerializerID: \(otherSerializerID), messageType: \(manifestMessageType), manifest: \(manifest)"))
                 }
             } else {
                 // TODO: Do we really need to store them at all?
@@ -585,7 +588,7 @@ extension Serialization {
                     self._serializers[manifestMessageTypeID]
                 }) else {
                     self.debugPrintSerializerTable(header: "Unable to find serializer for manifest (\(manifest)),message type: \(String(reflecting: manifestMessageType))")
-                    throw SerializationError.noSerializerRegisteredFor(manifest: manifest, hint: "Manifest Type: \(manifestMessageType), id: \(messageTypeID), known serializers: \(self._serializers)")
+                    throw SerializationError(.noSerializerRegisteredFor(manifest: manifest, hint: "Manifest Type: \(manifestMessageType), id: \(messageTypeID), known serializers: \(self._serializers)"))
                 }
 
                 result = try serializer.tryDeserialize(buffer)
@@ -594,7 +597,7 @@ extension Serialization {
             return result
         } catch {
             // enrich with location of the failed serialization
-            throw SerializationError.serializationError(error, file: file, line: line)
+            throw SerializationError(.serializationError(error, file: file, line: line))
         }
     }
 
@@ -613,7 +616,7 @@ extension Serialization {
                 // checking if the deserialized is equal to the passed in is a bit tricky,
                 // so we only check if the round trip invocation was possible at all or not.
             } catch {
-                throw SerializationError.unableToDeserialize(hint: "verifySerializable failed, manifest: \(serialized.manifest), message: \(message), error: \(error)")
+                throw SerializationError(.unableToDeserialize(hint: "verifySerializable failed, manifest: \(serialized.manifest), message: \(message), error: \(error)"))
             }
         }
     }
@@ -752,51 +755,75 @@ extension Foundation.Data {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Serialization: Errors
 
-public enum SerializationError: Error {
-    case serializationError(_: Error, file: String, line: UInt)
+public struct SerializationError: Error, CustomStringConvertible {
+    internal enum _SerializationError {
+        case serializationError(_: Error, file: String, line: UInt)
 
-    // --- registration errors ---
-    case alreadyDefined(hint: String, serializerID: Serialization.SerializerID)
-    case reservedSerializerID(hint: String)
+        // --- registration errors ---
+        case alreadyDefined(hint: String, serializerID: Serialization.SerializerID)
+        case reservedSerializerID(hint: String)
 
-    // --- lookup errors ---
-    case noSerializerKeyAvailableFor(hint: String)
-    case noSerializerRegisteredFor(manifest: Serialization.Manifest?, hint: String)
-    case notAbleToDeserialize(hint: String)
-    case wrongSerializer(hint: String)
+        // --- lookup errors ---
+        case noSerializerKeyAvailableFor(hint: String)
+        case noSerializerRegisteredFor(manifest: Serialization.Manifest?, hint: String)
+        case notAbleToDeserialize(hint: String)
+        case wrongSerializer(hint: String)
 
-    /// Thrown when an operation needs to obtain an `Serialization.Context` however none was present in coder.
-    ///
-    /// This could be because an attempt was made to decode/encode an `_ActorRef` outside of a system's `Serialization`,
-    /// which is not supported, since refs are tied to a specific system and can not be (de)serialized without this context.
-    case missingSerializationContext(Any.Type, details: String, file: String, line: UInt)
+        /// Thrown when an operation needs to obtain an `Serialization.Context` however none was present in coder.
+        ///
+        /// This could be because an attempt was made to decode/encode an `_ActorRef` outside of a system's `Serialization`,
+        /// which is not supported, since refs are tied to a specific system and can not be (de)serialized without this context.
+        case missingSerializationContext(Any.Type, details: String, file: String, line: UInt)
 
-    // --- Manifest errors ---
-    case missingManifest(hint: String)
-    case unableToCreateManifest(hint: String)
-    /// Thrown when an illegal manifest is provided, but also when an existing well-formed manifest
-    /// is passed to a system which a) is not aware of the type the manifest represents (e.g. it is no longer part of the application),
-    /// or b) the type exists but is private (!).
-    case unableToSummonTypeFromManifest(Serialization.Manifest)
+        // --- Manifest errors ---
+        case missingManifest(hint: String)
+        case unableToCreateManifest(hint: String)
+        /// Thrown when an illegal manifest is provided, but also when an existing well-formed manifest
+        /// is passed to a system which a) is not aware of the type the manifest represents (e.g. it is no longer part of the application),
+        /// or b) the type exists but is private (!).
+        case unableToSummonTypeFromManifest(Serialization.Manifest)
 
-    // --- format errors ---
-    case missingField(String, type: String)
-    case emptyRepeatedField(String)
-    case unknownEnumValue(Int)
+        // --- format errors ---
+        case missingField(String, type: String)
+        case emptyRepeatedField(String)
+        case unknownEnumValue(Int)
 
-    // --- illegal errors ---
-    case nonTransportableMessage(type: String)
+        // --- illegal errors ---
+        case nonTransportableMessage(type: String)
 
-    case unableToMakeSerializer(hint: String)
-    case unableToSerialize(hint: String)
-    case unableToDeserialize(hint: String)
+        case unableToMakeSerializer(hint: String)
+        case unableToSerialize(hint: String)
+        case unableToDeserialize(hint: String)
 
-    /// Thrown and to be handled internally by the Serialization system when a serializer should NOT be ensured.
-    case noNeedToEnsureSerializer
-    case notEnoughArgumentsEncoded(expected: Int, have: Int)
+        /// Thrown and to be handled internally by the Serialization system when a serializer should NOT be ensured.
+        case noNeedToEnsureSerializer
+        case notEnoughArgumentsEncoded(expected: Int, have: Int)
+    }
+
+    internal class _Storage {
+        let error: _SerializationError
+        let file: String
+        let line: UInt
+
+        init(error: _SerializationError, file: String, line: UInt) {
+            self.error = error
+            self.file = file
+            self.line = line
+        }
+    }
+
+    let underlying: _Storage
+
+    internal init(_ error: _SerializationError, file: String = #fileID, line: UInt = #line) {
+        self.underlying = _Storage(error: error, file: file, line: line)
+    }
+
+    public var description: String {
+        "\(Self.self)(\(self.underlying.error), at: \(self.underlying.file):\(self.underlying.line))"
+    }
 
     public static func missingSerializationContext(_ coder: Swift.Decoder, _ _type: Any.Type, file: String = #filePath, line: UInt = #line) -> SerializationError {
-        SerializationError.missingSerializationContext(
+        SerializationError(.missingSerializationContext(
             _type,
             details:
             """
@@ -805,11 +832,11 @@ public enum SerializationError: Error {
             """,
             file: file,
             line: line
-        )
+        ))
     }
 
     public static func missingSerializationContext(_ coder: Swift.Encoder, _ message: Any, file: String = #filePath, line: UInt = #line) -> SerializationError {
-        SerializationError.missingSerializationContext(
+        SerializationError(.missingSerializationContext(
             type(of: message),
             details:
             """
@@ -818,7 +845,7 @@ public enum SerializationError: Error {
             """,
             file: file,
             line: line
-        )
+        ))
     }
 }
 

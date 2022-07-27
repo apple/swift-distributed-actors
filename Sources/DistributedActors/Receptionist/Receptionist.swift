@@ -50,7 +50,7 @@ public struct Receptionist {
         }
 
         public required init(from decoder: Decoder) throws {
-            throw SerializationError.nonTransportableMessage(type: "")
+            throw SerializationError(.nonTransportableMessage(type: ""))
         }
 
         override internal var _addressableActorRef: _AddressableActorRef {
@@ -83,7 +83,7 @@ public struct Receptionist {
         }
 
         required init(from decoder: Decoder) throws {
-            throw SerializationError.nonTransportableMessage(type: "\(Self.self)")
+            throw SerializationError(.nonTransportableMessage(type: "\(Self.self)"))
         }
 
         override func replyWith(_ refs: Set<_AddressableActorRef>) {
@@ -108,7 +108,7 @@ public struct Receptionist {
         }
 
         public required init(from decoder: Decoder) throws {
-            throw SerializationError.nonTransportableMessage(type: "\(Self.self)")
+            throw SerializationError(.nonTransportableMessage(type: "\(Self.self)"))
         }
 
         override internal var _key: AnyReceptionKey {
@@ -390,7 +390,7 @@ public class _Lookup: _ReceptionistMessage, _NotActuallyCodableMessage {
     }
 
     required init(from decoder: Decoder) throws {
-        throw SerializationError.nonTransportableMessage(type: "\(Self.self)")
+        throw SerializationError(.nonTransportableMessage(type: "\(Self.self)"))
     }
 
     func replyWith(_ refs: Set<_AddressableActorRef>) {
@@ -505,7 +505,7 @@ public class _Subscribe: _ReceptionistMessage, _NotActuallyCodableMessage {
     }
 
     required init(from decoder: Decoder) throws {
-        throw SerializationError.nonTransportableMessage(type: "\(Self.self)")
+        throw SerializationError(.nonTransportableMessage(type: "\(Self.self)"))
     }
 }
 
@@ -556,7 +556,7 @@ internal final class _ReceptionistDelayedListingFlushTick: _ReceptionistMessage,
     }
 
     required init(from decoder: Decoder) throws {
-        throw SerializationError.nonTransportableMessage(type: "\(Self.self)")
+        throw SerializationError(.nonTransportableMessage(type: "\(Self.self)"))
     }
 }
 

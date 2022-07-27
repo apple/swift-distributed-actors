@@ -514,7 +514,7 @@ struct ManifestArray<Element: Codable>: Codable, ExpressibleByArrayLiteral {
         }
         var container = try decoder.unkeyedContainer()
         guard let count = container.count else {
-            throw SerializationError.missingField("count", type: "Int")
+            throw SerializationError(.missingField("count", type: "Int"))
         }
         self.elements = try (0 ..< count).map { _ in
             var nested = try container.nestedContainer(keyedBy: BoxCodingKeys.self)

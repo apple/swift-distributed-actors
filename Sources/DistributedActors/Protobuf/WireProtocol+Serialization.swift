@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -80,13 +80,13 @@ extension _ProtoProtocolVersion {
 extension Wire.HandshakeAccept {
     init(_ proto: _ProtoHandshakeAccept) throws {
         guard proto.hasVersion else {
-            throw SerializationError.missingField("version", type: String(describing: Wire.HandshakeAccept.self))
+            throw SerializationError(.missingField("version", type: String(describing: Wire.HandshakeAccept.self)))
         }
         guard proto.hasTargetNode else {
-            throw SerializationError.missingField("targetNode", type: String(describing: Wire.HandshakeAccept.self))
+            throw SerializationError(.missingField("targetNode", type: String(describing: Wire.HandshakeAccept.self)))
         }
         guard proto.hasOriginNode else {
-            throw SerializationError.missingField("originNode", type: String(describing: Wire.HandshakeAccept.self))
+            throw SerializationError(.missingField("originNode", type: String(describing: Wire.HandshakeAccept.self)))
         }
         self.version = .init(proto.version)
         self.targetNode = try .init(proto.targetNode)
@@ -108,13 +108,13 @@ extension _ProtoHandshakeAccept {
 extension Wire.HandshakeReject {
     init(_ proto: _ProtoHandshakeReject) throws {
         guard proto.hasVersion else {
-            throw SerializationError.missingField("version", type: String(describing: Wire.HandshakeReject.self))
+            throw SerializationError(.missingField("version", type: String(describing: Wire.HandshakeReject.self)))
         }
         guard proto.hasTargetNode else {
-            throw SerializationError.missingField("targetNode", type: String(describing: Wire.HandshakeReject.self))
+            throw SerializationError(.missingField("targetNode", type: String(describing: Wire.HandshakeReject.self)))
         }
         guard proto.hasOriginNode else {
-            throw SerializationError.missingField("originNode", type: String(describing: Wire.HandshakeReject.self))
+            throw SerializationError(.missingField("originNode", type: String(describing: Wire.HandshakeReject.self)))
         }
 
         self.version = .init(proto.version)
@@ -142,13 +142,13 @@ extension Wire.HandshakeOffer {
 
     init(fromProto proto: _ProtoHandshakeOffer) throws {
         guard proto.hasOriginNode else {
-            throw SerializationError.missingField("originNode", type: String(reflecting: Wire.HandshakeOffer.self))
+            throw SerializationError(.missingField("originNode", type: String(reflecting: Wire.HandshakeOffer.self)))
         }
         guard proto.hasTargetNode else {
-            throw SerializationError.missingField("targetNode", type: String(reflecting: Wire.HandshakeOffer.self))
+            throw SerializationError(.missingField("targetNode", type: String(reflecting: Wire.HandshakeOffer.self)))
         }
         guard proto.hasVersion else {
-            throw SerializationError.missingField("version", type: String(reflecting: Wire.HandshakeOffer.self))
+            throw SerializationError(.missingField("version", type: String(reflecting: Wire.HandshakeOffer.self)))
         }
 
         self.originNode = try UniqueNode(proto.originNode)
@@ -169,13 +169,13 @@ extension _ProtoHandshakeOffer {
         try proto.merge(serializedData: data)
 
         guard proto.hasVersion else {
-            throw SerializationError.missingField("version", type: String(reflecting: Wire.HandshakeOffer.self))
+            throw SerializationError(.missingField("version", type: String(reflecting: Wire.HandshakeOffer.self)))
         }
         guard proto.hasOriginNode else {
-            throw SerializationError.missingField("hasOriginNode", type: String(reflecting: Wire.HandshakeOffer.self))
+            throw SerializationError(.missingField("hasOriginNode", type: String(reflecting: Wire.HandshakeOffer.self)))
         }
         guard proto.hasTargetNode else {
-            throw SerializationError.missingField("targetNode", type: String(reflecting: Wire.HandshakeOffer.self))
+            throw SerializationError(.missingField("targetNode", type: String(reflecting: Wire.HandshakeOffer.self)))
         }
 
         self = proto

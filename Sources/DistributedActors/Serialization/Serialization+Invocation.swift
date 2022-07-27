@@ -94,7 +94,7 @@ public struct ClusterInvocationDecoder: DistributedTargetInvocationDecoder {
 
         return try genericSubstitutions.map {
             guard let type = _typeByName($0) else {
-                throw SerializationError.notAbleToDeserialize(hint: $0)
+                throw SerializationError(.notAbleToDeserialize(hint: $0))
             }
             return type
         }
@@ -106,7 +106,7 @@ public struct ClusterInvocationDecoder: DistributedTargetInvocationDecoder {
         switch self.state {
         case .remoteCall(let message):
             guard self.argumentIdx < message.arguments.count else {
-                throw SerializationError.notEnoughArgumentsEncoded(expected: self.argumentIdx + 1, have: message.arguments.count)
+                throw SerializationError(.notEnoughArgumentsEncoded(expected: self.argumentIdx + 1, have: message.arguments.count))
             }
 
             argumentData = message.arguments[self.argumentIdx]
@@ -125,7 +125,7 @@ public struct ClusterInvocationDecoder: DistributedTargetInvocationDecoder {
         case .localProxyCall(let invocation):
             // TODO: potentially able to optimize and avoid serialization round trip for such calls
             guard self.argumentIdx < invocation.arguments.count else {
-                throw SerializationError.notEnoughArgumentsEncoded(expected: self.argumentIdx + 1, have: invocation.arguments.count)
+                throw SerializationError(.notEnoughArgumentsEncoded(expected: self.argumentIdx + 1, have: invocation.arguments.count))
             }
 
             argumentData = invocation.arguments[self.argumentIdx]

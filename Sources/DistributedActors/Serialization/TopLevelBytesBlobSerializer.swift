@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2020 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2020-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -35,7 +35,7 @@ public class _TopLevelBytesBlobSerializer<Message: Codable>: Serializer<Message>
         encoder.userInfo[.actorSerializationContext] = self.context
         try message.encode(to: encoder)
         guard let bytes = encoder.result else {
-            throw SerializationError.unableToSerialize(hint: "Encoding result of \(TopLevelBytesBlobEncoder.self) was empty, for message: \(message)")
+            throw SerializationError(.unableToSerialize(hint: "Encoding result of \(TopLevelBytesBlobEncoder.self) was empty, for message: \(message)"))
         }
 
         traceLog_Serialization("serialized to: \(bytes)")
