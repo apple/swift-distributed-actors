@@ -169,11 +169,11 @@ class SerializationTests: ClusterSystemXCTestCase {
         }
         let serializedFormat: String = serialized.buffer.stringDebugDescription()
         pinfo("serialized ref: \(serializedFormat)")
-        serializedFormat.contains("sact").shouldBeTrue()
-        serializedFormat.contains("\(remoteCapableSystem.settings.uniqueBindNode.nid)").shouldBeTrue()
-        serializedFormat.contains(remoteCapableSystem.name).shouldBeTrue() // automatically picked up name from system
-        serializedFormat.contains("\(ClusterSystemSettings.Default.bindHost)").shouldBeTrue()
-        serializedFormat.contains("\(ClusterSystemSettings.Default.bindPort)").shouldBeTrue()
+        serializedFormat.shouldContain("sact")
+        serializedFormat.shouldContain("\(remoteCapableSystem.settings.uniqueBindNode.nid)")
+        serializedFormat.shouldContain(remoteCapableSystem.name) // automatically picked up name from system
+        serializedFormat.shouldContain("\(remoteCapableSystem.settings.bindHost)")
+        serializedFormat.shouldContain("\(remoteCapableSystem.settings.bindPort)")
 
         let back: HasStringRef = try shouldNotThrow {
             try remoteCapableSystem.serialization.deserialize(as: HasStringRef.self, from: serialized)

@@ -101,3 +101,8 @@ distributed actor Boss: LifecycleWatch {
 }
 ```
 
+### Checking-out from receptionist listings
+
+In general, the receptionist should not be used as means of implementing "presence" in the sense of a specific
+actor checking in and out of the receptionist as it sees fit, e.g. to signal "I am now available again!". Such
+patterns are to be implemented in the application layer of your system, and should be done b

@@ -330,7 +330,7 @@ final class _OpLogClusterReceptionistClusteredTests: ClusteredActorSystemsXCTest
         try await second.shutdown().wait()
 
         // it should be removed from all listings; on both nodes, for all keys
-        try p1.eventuallyExpectListing(expected: [firstRef], within: .seconds(5), verbose: true)
+        try p1.eventuallyExpectListing(expected: [firstRef], within: .seconds(5), verbose: false)
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
