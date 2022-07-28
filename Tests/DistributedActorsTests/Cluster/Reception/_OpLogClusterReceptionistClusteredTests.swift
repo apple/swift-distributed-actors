@@ -207,7 +207,7 @@ final class _OpLogClusterReceptionistClusteredTests: ClusteredActorSystemsXCTest
             refA.tell("stop")
             refB.tell("stop")
         case .shutdownNode:
-            try first.shutdown().wait()
+            try await first.shutdown().wait()
         }
 
         try remoteLookupProbe.eventuallyExpectListing(expected: [], within: .seconds(3))
@@ -290,7 +290,7 @@ final class _OpLogClusterReceptionistClusteredTests: ClusteredActorSystemsXCTest
         try p2.eventuallyExpectListing(expected: [firstRef, secondRef], within: .seconds(3))
 
         // crash the second node
-        try second.shutdown().wait()
+        try await second.shutdown().wait()
 
         // it should be removed from all listings; on both nodes, for all keys
         try p1.eventuallyExpectListing(expected: [firstRef], within: .seconds(5))
@@ -327,10 +327,10 @@ final class _OpLogClusterReceptionistClusteredTests: ClusteredActorSystemsXCTest
         try p2.eventuallyExpectListing(expected: allRefs, within: .seconds(5))
 
         // crash the second node
-        try second.shutdown().wait()
+        try await second.shutdown().wait()
 
         // it should be removed from all listings; on both nodes, for all keys
-        try p1.eventuallyExpectListing(expected: [firstRef], within: .seconds(5), verbose: true)
+        try p1.eventuallyExpectListing(expected: [firstRef], within: .seconds(5), verbose: false)
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------

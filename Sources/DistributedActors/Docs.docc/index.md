@@ -19,9 +19,11 @@ Please note that this project requires the latest **Swift 5.7** language feature
 ### Articles
 
 - <doc:Introduction>
-- <doc:ClusterSingleton>
+- <doc:Clustering>
 - <doc:Lifecycle>
+- <doc:Receptionist>
 - <doc:ClusterSingleton>
+- <doc:Security>
 - <doc:Observability>
 
 <!--### Tutorials -->
@@ -71,4 +73,3 @@ Please note that this project requires the latest **Swift 5.7** language feature
 
 - ``ExponentialBackoffStrategy``
 - ``Backoff``
-- ``VersionVector``

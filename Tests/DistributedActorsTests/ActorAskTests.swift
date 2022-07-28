@@ -201,8 +201,6 @@ final class ActorAskTests: ClusterSystemXCTestCase {
     }
 
     func test_ask_withTerminatedSystem_shouldNotCauseCrash() async throws {
-        // throw XCTSkip("TODO: not sure why this is hanging but relates to the NIO Futures issue I'm sure") // FIXME: unlock this test and fix NIO future handling
-
         let system = await ClusterSystem("AskCrashSystem")
 
         let ref = try system._spawn(
@@ -214,7 +212,7 @@ final class ActorAskTests: ClusterSystemXCTestCase {
             }
         )
 
-        try! system.shutdown().wait()
+        try! await system.shutdown().wait()
 
         _ = ref.ask(for: String.self, timeout: .milliseconds(300)) { replyTo in
             TestMessage(replyTo: replyTo)

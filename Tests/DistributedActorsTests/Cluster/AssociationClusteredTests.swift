@@ -106,7 +106,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
         try assertAssociated(second, withExactly: first.cluster.uniqueNode)
 
         let oldSecond = second
-        let shutdown = oldSecond.shutdown() // kill second node
+        let shutdown = try oldSecond.shutdown() // kill second node
         try shutdown.wait(atMost: .seconds(3))
 
         let secondReplacement = await setUpNode(secondName + "-REPLACEMENT") { settings in

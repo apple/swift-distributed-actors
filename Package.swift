@@ -59,14 +59,14 @@ var targets: [PackageDescription.Target] = [
         ]
     ),
 
-//    .testTarget(
-//        name: "DistributedActorsTestKitTests",
-//        dependencies: [
-//            "DistributedActors",
-//            "DistributedActorsTestKit"
-//        ]
-//    ),
-//
+    .testTarget(
+        name: "DistributedActorsTestKitTests",
+        dependencies: [
+            "DistributedActors",
+            "DistributedActorsTestKit",
+        ]
+    ),
+
 //    .testTarget(
 //        name: "CDistributedActorsMailboxTests",
 //        dependencies: [

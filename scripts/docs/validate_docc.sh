@@ -16,10 +16,23 @@
 set -eu
 here="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-printf "\033[0;32mokay.\033[0m\n"
-
-printf "=> Checking docc: compile inline snippets (fishy-docs)\n"
+printf "=> Checking docc: compiling inline snippets (fishy-docs)...\n"
 
 VALIDATE_DOCS=1 swift build --build-tests
 
 printf "\033[0;32mokay.\033[0m\n"
+
+printf "=> Checking docc: for unexpected warnings...\n"
+
+module=DistributedActors
+docc_warnings=$(swift package generate-documentation --target $module)
+
+if [[ $(echo "$docc_warnings" | grep 'warning:' | wc -l) -gt 0 ]];
+then
+  printf "\033[0;31mWarnings found docc documentation of '$module':\033[0m\n"
+  echo $docc_warnings
+  exit 1
+else
+  printf "\033[0;32mokay.\033[0m\n"
+  exit 0
+fi

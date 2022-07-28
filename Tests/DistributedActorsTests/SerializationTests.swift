@@ -144,12 +144,9 @@ class SerializationTests: ClusterSystemXCTestCase {
     }
 
     func test_serialize_actorRef_inMessage_forRemoting() async throws {
-        let remoteCapableSystem = await ClusterSystem("remoteCapableSystem") { settings in
+        let remoteCapableSystem = await self.setUpNode("remoteCapableSystem") { settings in
             settings.enabled = true
             settings.serialization.register(HasStringRef.self)
-        }
-        defer {
-            try! remoteCapableSystem.shutdown().wait()
         }
 
         let testKit = ActorTestKit(remoteCapableSystem)
@@ -172,11 +169,11 @@ class SerializationTests: ClusterSystemXCTestCase {
         }
         let serializedFormat: String = serialized.buffer.stringDebugDescription()
         pinfo("serialized ref: \(serializedFormat)")
-        serializedFormat.contains("sact").shouldBeTrue()
-        serializedFormat.contains("\(remoteCapableSystem.settings.uniqueBindNode.nid)").shouldBeTrue()
-        serializedFormat.contains(remoteCapableSystem.name).shouldBeTrue() // automatically picked up name from system
-        serializedFormat.contains("\(ClusterSystemSettings.Default.bindHost)").shouldBeTrue()
-        serializedFormat.contains("\(ClusterSystemSettings.Default.bindPort)").shouldBeTrue()
+        serializedFormat.shouldContain("sact")
+        serializedFormat.shouldContain("\(remoteCapableSystem.settings.uniqueBindNode.nid)")
+        serializedFormat.shouldContain(remoteCapableSystem.name) // automatically picked up name from system
+        serializedFormat.shouldContain("\(remoteCapableSystem.settings.bindHost)")
+        serializedFormat.shouldContain("\(remoteCapableSystem.settings.bindPort)")
 
         let back: HasStringRef = try shouldNotThrow {
             try remoteCapableSystem.serialization.deserialize(as: HasStringRef.self, from: serialized)
@@ -372,11 +369,8 @@ class SerializationTests: ClusterSystemXCTestCase {
             try system.serialization.serialize(test)
         }
 
-        let system2 = await ClusterSystem("OtherSystem") { settings in
+        let system2 = await self.setUpNode("OtherSystem") { settings in
             settings.serialization.register(PListXMLCodableTest.self, serializerID: .foundationPropertyListBinary) // on purpose "wrong" format
-        }
-        defer {
-            try! system2.shutdown().wait()
         }
 
         _ = try shouldThrow {

@@ -20,13 +20,13 @@ class ActorTestProbeTests: XCTestCase {
     var system: ClusterSystem!
     var testKit: ActorTestKit!
 
-    override func setUp() {
-        self.system = ClusterSystem(String(describing: type(of: self)))
+    override func setUp() async throws {
+        self.system = await ClusterSystem(String(describing: type(of: self)))
         self.testKit = ActorTestKit(self.system)
     }
 
-    override func tearDown() {
-        try! self.system.shutdown().wait()
+    override func tearDown() async throws {
+        try await self.system.shutdown().wait()
     }
 
     func test_maybeExpectMessage_shouldReturnTheReceivedMessage() throws {

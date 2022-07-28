@@ -40,8 +40,7 @@ distributed actor Romeo: LifecycleWatch, CustomStringConvertible {
         // nothing important here
     }
 
-    // FIXME(distributed): Should not need to be distributed: https://github.com/apple/swift/pull/59397
-    public distributed func terminated(actor id: ActorID) async throws {
+    public func terminated(actor id: ActorID) async {
         // ignore
     }
 
@@ -71,8 +70,7 @@ distributed actor Juliet: LifecycleWatch, CustomStringConvertible {
         self.log.info("Watched \(romeo)")
     }
 
-    // FIXME(distributed): Should not need to be distributed: https://github.com/apple/swift/pull/59397
-    public distributed func terminated(actor id: ActorID) async { // not REALLY distributed...
+    public func terminated(actor id: ActorID) async {
         self.log.info("Got terminated: \(id)")
         self.probe.tell("Received terminated: \(id)")
     }

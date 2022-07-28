@@ -843,8 +843,7 @@ private distributed actor _TestProbeInternal: LifecycleWatch {
 
     let terminatedQueue = _Queue<ActorID>()
 
-    // FIXME(distributed): Should not need to be distributed: https://github.com/apple/swift/pull/59397
-    public distributed func terminated(actor id: ActorID) async { // not REALLY distributed...
+    public func terminated(actor id: ActorID) async {
         self.terminatedQueue.enqueue(id)
     }
 

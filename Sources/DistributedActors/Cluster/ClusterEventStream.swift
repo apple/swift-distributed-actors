@@ -123,7 +123,6 @@ public struct ClusterEventStream: AsyncSequence {
     }
 }
 
-// FIXME(distributed): the only reason this actor is distributed is because of LifecycleWatch
 internal distributed actor ClusterEventStreamActor: LifecycleWatch {
     typealias ActorSystem = ClusterSystem
 
@@ -210,7 +209,7 @@ internal distributed actor ClusterEventStreamActor: LifecycleWatch {
         }
     }
 
-    distributed func terminated(actor id: ActorID) {
+    func terminated(actor id: ActorID) {
         if self.subscribers.removeValue(forKey: id) != nil {
             self.log.trace("Removed subscriber [\(id)], because it terminated")
         }

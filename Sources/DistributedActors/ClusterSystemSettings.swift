@@ -175,9 +175,17 @@ public struct ClusterSystemSettings {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: TLS & Security settings
 
-    /// If set, all communication with other nodes will be secured using TLS
+    /// If set, all communication with other nodes will be secured using TLS.
+    ///
+    /// The configuration is a `NIOSSL.TLSConfiguration`, so please refer to
+    /// [swift-nio-ssl](https://github.com/apple/swift-nio-ssl) documentation for more details about it.
+    ///
+    /// - SeeAlso: `NIOSSL.NIOSSLContext`
     public var tls: TLSConfiguration?
 
+    /// Callback invoked when a passphrase is required for TLS.
+    ///
+    /// - SeeAlso: `NIOSSL.NIOSSLContext`
     public var tlsPassphraseCallback: NIOSSLPassphraseCallback<[UInt8]>?
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -238,7 +246,7 @@ public struct ClusterSystemSettings {
 
     /// Installs a global backtrace (on fault) pretty-print facility upon actor system start.
     @available(*, deprecated, message: "Backtrace will not longer be offered by the actor system by default, and has to be depended on by end-users")
-    public var installSwiftBacktrace: Bool = true
+    public var installSwiftBacktrace: Bool = false
 
     // FIXME: should have more proper config section
     public var threadPoolSize: Int = ProcessInfo.processInfo.activeProcessorCount
@@ -473,13 +481,13 @@ extension ClusterSystemSettings {
                 self.underlying = allowance
             }
 
-            /// All ``Codable`` errors will be converted to ``GenericRemoteCallError``.
+            /// All `Codable` errors will be converted to ``GenericRemoteCallError``.
             public static let none: CodableErrorAllowanceSettings = .init(allowance: .none)
 
-            /// All ``Codable`` errors will be returned as-is.
+            /// All `Codable` errors will be returned as-is.
             public static let all: CodableErrorAllowanceSettings = .init(allowance: .all)
 
-            /// Only the indicated ``Codable`` errors are allowed. Others are converted to ``GenericRemoteCallError``.
+            /// Only the indicated `Codable` errors are allowed. Others are converted to ``GenericRemoteCallError``.
             public static func custom(allowedTypes: [(Error & Codable).Type]) -> CodableErrorAllowanceSettings {
                 let oids = allowedTypes.map { ObjectIdentifier($0) }
                 return .init(allowance: .custom(Set(oids)))

@@ -812,7 +812,7 @@ extension OpLogDistributedReceptionist {
 // MARK: Termination handling
 
 extension OpLogDistributedReceptionist {
-    public distributed func terminated(actor id: ID) {
+    public func terminated(actor id: ID) {
         if id == ActorID._receptionist(on: id.uniqueNode, for: .distributedActors) {
             self.log.debug("Watched receptionist terminated: \(id)")
             self.receptionistTerminated(identity: id)

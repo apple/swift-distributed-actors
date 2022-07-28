@@ -89,8 +89,8 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
         case (.downSelf, .firstLeader): first.cluster.down(node: first.cluster.uniqueNode.node)
         case (.downSelf, .secondNonLeader): second.cluster.down(node: second.cluster.uniqueNode.node)
 
-        case (.shutdownSelf, .firstLeader): first.shutdown()
-        case (.shutdownSelf, .secondNonLeader): second.shutdown()
+        case (.shutdownSelf, .firstLeader): try first.shutdown()
+        case (.shutdownSelf, .secondNonLeader): try second.shutdown()
 
         case (.downFromOtherMember, .firstLeader): second.cluster.down(node: first.cluster.uniqueNode.node)
         case (.downFromOtherMember, .secondNonLeader): thirdNeverDownSystem.cluster.down(node: second.cluster.uniqueNode.node)
@@ -252,7 +252,7 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
 
         pinfo("Downing \(nodesToDown.count) nodes: \(nodesToDown.map(\.cluster.uniqueNode))")
         for node in nodesToDown {
-            try! node.shutdown().wait()
+            try! await node.shutdown().wait()
         }
 
         func expectedDownMemberEventsFishing(

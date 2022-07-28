@@ -61,7 +61,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
 
     // Access MUST be protected with `namingLock`.
     private var _managedRefs: [ActorID: _ReceivesSystemMessages] = [:]
-    private var _managedDistributedActors: WeakActorDictionary = .init()
+    private var _managedDistributedActors: WeakAnyDistributedActorDictionary = .init()
     private var _reservedNames: Set<ActorID> = []
 
     typealias WellKnownName = String
@@ -427,6 +427,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         #endif
     }
 
+    /// Object that can be awaited on until the system has completed shutting down.
     public struct Shutdown {
         private let receptacle: BlockingReceptacle<Error?>
 
@@ -434,25 +435,35 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
             self.receptacle = receptacle
         }
 
+        @available(*, deprecated, message: "will be replaced by distributed actor / closure version")
         public func wait(atMost timeout: Duration) throws {
             if let error = self.receptacle.wait(atMost: timeout).flatMap({ $0 }) {
                 throw error
             }
         }
 
+        @available(*, deprecated, message: "will be replaced by distributed actor / closure version")
         public func wait() throws {
             if let error = self.receptacle.wait() {
                 throw error
             }
         }
+
+        /// Suspend until the system has completed its shutdown and is terminated.
+        public func wait() async throws {
+            // TODO: implement without blocking the internal task;
+            try await Task.detached {
+                if let error = self.receptacle.wait() {
+                    throw error
+                }
+            }.value
+        }
     }
 
-    /// Suspends until the ``ClusterSystem`` is terminated by a call to ``shutdown``.
-    var terminated: Void {
+    /// Suspends until the ``ClusterSystem`` is terminated by a call to ``shutdown()``.
+    public var terminated: Void {
         get async throws {
-            try await Task.detached {
-                try Shutdown(receptacle: self.shutdownReceptacle).wait()
-            }.value
+            try await Shutdown(receptacle: self.shutdownReceptacle).wait()
         }
     }
 
@@ -462,16 +473,11 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
     /// You can use `shutdown().wait()` to synchronously await on the system's termination,
     /// or provide a callback to be executed after the system has completed it's shutdown.
     ///
-    /// - Parameters:
-    ///   - queue: allows configuring on which dispatch queue the shutdown operation will be finalized.
-    ///   - afterShutdownCompleted: optional callback to be invoked when the system has completed shutting down.
-    ///     Will be invoked on the passed in `queue` (which defaults to `DispatchQueue.global()`).
     /// - Returns: A `Shutdown` value that can be waited upon until the system has completed the shutdown.
     @discardableResult
-    public func shutdown(queue: DispatchQueue = DispatchQueue.global(), afterShutdownCompleted: @escaping (Error?) -> Void = { _ in () }) -> Shutdown {
+    public func shutdown() throws -> Shutdown {
         guard self.shutdownFlag.loadThenWrappingIncrement(by: 1, ordering: .relaxed) == 0 else {
             // shutdown already kicked off by someone else
-            afterShutdownCompleted(nil)
             return Shutdown(receptacle: self.shutdownReceptacle)
         }
 
@@ -510,7 +516,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
             // self._receptionistRef = self.deadLetters.adapted()
         } catch {
             self.shutdownReceptacle.offerOnce(error)
-            afterShutdownCompleted(error)
+            throw error
         }
 
         /// Only once we've shutdown all dispatchers and loops, we clear cycles between the serialization and system,
@@ -523,7 +529,6 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         _ = self._clusterStore.storeIfNilThenLoad(Box(nil))
 
         self.shutdownReceptacle.offerOnce(nil)
-        afterShutdownCompleted(nil)
 
         return Shutdown(receptacle: self.shutdownReceptacle)
     }
@@ -1085,8 +1090,6 @@ extension ClusterSystem {
         Res: Codable
     {
         if let interceptor = actor.id.context.remoteCallInterceptor {
-            self.log.warning("INTERCEPTOR remote call \(actor.id)...")
-            print("[\(self.cluster.uniqueNode)] INTERCEPTOR remote call \(actor.id)...")
             return try await interceptor.interceptRemoteCall(on: actor, target: target, invocation: &invocation, throwing: throwing, returning: returning)
         }
 
@@ -1094,7 +1097,6 @@ extension ClusterSystem {
             // It actually is a remote call, so redirect it to local call-path.
             // Such calls can happen when we deal with interceptors and proxies;
             // To make their lives easier, we centralize the noticing when a call is local and dispatch it from here.
-            self.log.warning("ACTUALLY LOCAL CALL: \(target) on \(actor.id)")
             return try await self.localCall(on: actor, target: target, invocation: &invocation, throwing: throwing, returning: returning)
         }
 
@@ -1116,13 +1118,10 @@ extension ClusterSystem {
                 arguments: arguments
             )
 
-            print("[\(self.cluster.uniqueNode)] SEND INVOCATION: \(invocation) TO \(recipient.id.fullDescription)")
-            log.warning("[\(self.cluster.uniqueNode)] SEND INVOCATION: \(invocation) TO \(recipient.id.fullDescription)")
             recipient.sendInvocation(invocation)
         }
 
         if let error = reply.thrownError {
-            print("[\(self.cluster.uniqueNode)] reply error: \(error)")
             throw error
         }
         guard let value = reply.value else {
@@ -1258,13 +1257,10 @@ extension ClusterSystem {
         Err: Error,
         Res: Codable
     {
-        print("[\(self.cluster.uniqueNode)] ACT: \(actor.id.fullDescription)")
         precondition(
             self.cluster.uniqueNode == actor.id.uniqueNode,
             "Attempted to localCall an actor whose ID was a different node: [\(actor.id)], current node: \(self.cluster.uniqueNode)"
         )
-//        precondition(!__isRemoteActor(actor),
-//                     "Attempted to localCall a remote actor! \(actor.id)")
         self.log.trace("Execute local call", metadata: [
             "actor/id": "\(actor.id.fullDescription)",
             "target": "\(target)",
@@ -1302,7 +1298,7 @@ extension ClusterSystem {
             "invocation": "\(invocation)",
         ])
 
-        guard let shell = self._cluster else {
+        guard self._cluster != nil else {
             self.log.error("Cluster has shut down already, yet received message. Message will be dropped: \(invocation)")
             return
         }

@@ -180,94 +180,14 @@ The ``Cluster/Membership`` also offers a number of useful APIs to inspect the me
 
 ## Cluster Leadership
 
-TODO: document leadership and Leadership changes.
+The cluster has a few operations which must be performed in a consistent fashion, such as moving a joining member to the ``Cluster/MemberStatus/up`` state. Other member status changes such as becoming `joining` or `down` do not require such strict decision-making and are disseminated throughout the cluster even without a leader.
 
-## Actor Discovery: Receptionist
+Which cluster member is designated a leader is decided by the configured ``LeaderElection`` strategy.
 
-Discovering actors is an important aspect of distributed programming, as it is _the_ primary way we can discover actors on other nodes,
-and communicate with them.
+By default, the leader is selected in a coordination free method which relies on the membership state and member ordering. 
+For details, refer to the ``Leadership/LowestReachableMember`` documentation.
 
-Distributed actors are not automatically advertised in the cluster, and must opt-in into discovery by checking-in with the system's local
-receptionist. This is because not all distributed actors need to necessarily be discovered by _any_ other node in the cluster. 
-Some distributed actors may only be handed out after authenticating who is trying to access them (and then still, they may perform
-additional authentication for specific remote calls).
-
-> Tip: The receptionist pattern is called "receptionist", because similar to a hotel, actors need to check-in at it in
-> order to let others know they are available to meet now.
- 
-Checking-in with the receptionist is performed by calling ``DistributedReceptionist/checkIn(_:with:)`` and passing a 
-specific key; The key is useful for when the same types of actor, may want to perform different roles. For example, you may
-have the same type of actor serve requests for different "teams", and use the reception keys to identify 
-
-```swift
-distributed actor Worker {
-    typealias ActorSystem = ClusterSystem
-    
-    distributed func work() { /* ... */ }
-}
-
-extension DistributedReception.Key {
-    static var workers: DistributedReception.Key<Worker> {
-        "workers"
-    }
-}
-
-// ------------
-let worker = Worker()
-// ------------
-
-system.receptionist.checkIn(worker, with: .workers) 
-```
-
-The receptionist automatically watches checked-in actors, and removes them from the listing once they have been terminated.
-Other actors which discover the actor, and want to be informed once the actor has terminated, should use the <doc:Lifecycle> APIs.
-
-> Warning: `DistributedReception.Key`s are likely to be collapsed with ``ClusterSystem/ActorID/Metadata-swift.struct`` during the beta releases.
-> See [Make use of ActorTag rather than separate keys infra for reception #950](https://github.com/apple/swift-distributed-actors/issues/950)
-
-### Receptionist: Listings
-
-The opposite side of using a receptionist, is actually obtaining a ``DistributedReceptionist/listing(of:file:line:)`` of actors registered with a specific key. 
-
-```swift
-for await worker in await receptionist.listing(of: .workers) {
-    try await worker.work() // message or store discovered workers
-    
-    if enoughWorkers {
-        return
-    }
-}
-```
-
-A typical pattern to use with listings is to create an unstructured task (using `Task { ... }`),
-and store it inside an actor that will be responsible for interacting with the discovered actors.
-
-Once that actor is deinitialized, that task should be cancelled as well, which we can do in its `deinit`, like this:
-
-```swift
-distributed actor Boss: LifecycleWatch { 
-    var workers: Set<Weak<Worker>> = []
-    
-    var listingTask: Task<Void, Never>?
-    
-    func findWorkers() async {
-        guard listingTask == nil else {
-            actorSystem.log.info("Already looking for workers")
-            return
-        }
-
-        listingTask = Task {
-            for await worker in actorSystem.receptionist.listing(of: .workers) {
-                workers.insert(worker)
-            }
-        }
-    }
-    
-    deinit {
-        listingTask?.cancel()
-    }
-}
-```
+You can configure leader election by changing the ``ClusterSystemSettings/autoLeaderElection`` setting while initializing your ``ClusterSystem``.
 
 ## Customizing Remote Calls
 
@@ -280,7 +200,7 @@ design your distributed actors with idempotency (the resilience of a method bein
 
 By default, to avoid "hanging" a remote caller forever on a suspended remote call as the recipient node fails to reply to it,
 for example because it (or the network itself), is currently unresponsive, remote calls have a default timeout configured.
-If no reply is received within this duration, the call will fail with a ``RemoteCallError/timedOut``.
+If no reply is received within this duration, the call will fail with a ``RemoteCallError``.
 
 You can configure the default timeout used by the cluster system during its initialization:
 
@@ -300,14 +220,14 @@ try await RemoteCall.with(timeout: .seconds(5)) {
 
 ### Remote call errors
 
-By default, if a remote call results in an error that is ``Codable``, the error is returned as-is. Non-``Codable`` errors are 
+By default, if a remote call results in an error that is `Codable`, the error is returned as-is. Non-`Codable` errors are 
 converted to ``GenericRemoteCallError``.
 
-You may restrict which ``Codable`` errors get sent back to the caller through configuration:
+You may restrict which `Codable` errors get sent back to the caller through configuration:
 
 ```swift
 ClusterSystem() { settings in 
-    // By default, all ``Codable`` errors are allowed.
+    // By default, all `Codable` errors are allowed.
     settings.remoteCall.codableErrorAllowance = .all
 }
 ```
@@ -315,7 +235,11 @@ ClusterSystem() { settings in
 ```swift
 ClusterSystem() { settings in 
     // Only specific types are allowed. All others are returned as ``GenericRemoteCallError``.
-    settings.remoteCall.codableErrorAllowance = .custom(allowedTypes: [SomeCodableError.self, AnotherCodableError.self, ...])
+    settings.remoteCall.codableErrorAllowance = 
+        .custom(allowedTypes: [
+            SomeCodableError.self, 
+            AnotherCodableError.self
+        ])
 }
 ```
 

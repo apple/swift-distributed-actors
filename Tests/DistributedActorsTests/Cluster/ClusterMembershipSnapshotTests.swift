@@ -21,7 +21,7 @@ final class ClusterMembershipSnapshotTests: ClusteredActorSystemsXCTestCase {
         let system = await setUpNode("first")
 
         let testKit: ActorTestKit = self.testKit(system)
-        try await testKit.eventually(within: .seconds(2)) {
+        try await testKit.eventually(within: .seconds(5)) {
             await system.cluster.membershipSnapshot.members(atLeast: .joining).shouldContain(
                 Cluster.Member(node: system.cluster.uniqueNode, status: .joining)
             )

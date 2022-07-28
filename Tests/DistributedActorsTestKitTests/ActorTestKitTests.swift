@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import DistributedActors
+@testable import DistributedActors
 @testable import DistributedActorsTestKit
 import XCTest
 
@@ -20,13 +20,13 @@ final class ActorTestKitTests: XCTestCase {
     var system: ClusterSystem!
     var testKit: ActorTestKit!
 
-    override func setUp() {
-        self.system = ClusterSystem(String(describing: type(of: self)))
+    override func setUp() async throws {
+        self.system = await ClusterSystem(String(describing: type(of: self)))
         self.testKit = ActorTestKit(self.system)
     }
 
-    override func tearDown() {
-        try! self.system.shutdown().wait()
+    override func tearDown() async throws {
+        try await self.system.shutdown().wait()
     }
 
     func test_error_withMessage() throws {
@@ -137,28 +137,5 @@ final class ActorTestKitTests: XCTestCase {
         } catch {
             "\(error)".shouldContain("Boom: yes-1")
         }
-    }
-
-    func test_ensureRegistered() throws {
-        let p = self.testKit.makeTestProbe(expecting: String.self)
-        let receptionKey: _Reception.Key<_ActorRef<String>> = "*"
-
-        self.system._receptionist.register(p.ref, as: "*")
-
-        try self.testKit.ensureRegistered(
-            key: receptionKey,
-            expectedCount: 1,
-            expectedRefs: [p.ref],
-            within: .seconds(3)
-        )
-
-        p.stop()
-
-        try self.testKit.ensureRegistered(
-            key: receptionKey,
-            expectedCount: 0,
-            expectedRefs: nil,
-            within: .seconds(3)
-        )
     }
 }
