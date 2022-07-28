@@ -223,9 +223,9 @@ extension Leadership {
     /// fulfilling this role whenever the minimum number of nodes exist. This may be useful when operation would
     /// potentially be unsafe given less than `minimumNrOfMembers` nodes.
     ///
-    // TODO: In situations which need strong guarantees, this leadership election scheme does NOT provide strong enough
-    /// guarantees, and you should consider using another scheme or consensus based modes.
     public struct LowestReachableMember: LeaderElection {
+        // TODO: In situations which need strong guarantees, this leadership election scheme does NOT provide strong enough
+        // guarantees, and you should consider using another scheme or consensus based modes.
         let minimumNumberOfMembersToDecide: Int
         let loseLeadershipIfBelowMinNrOfMembers: Bool
 
@@ -318,6 +318,7 @@ extension Leadership {
 // MARK: Leadership settings
 
 extension ClusterSystemSettings {
+    /// Configure leadership election using which the cluster leader should be decided.
     public struct LeadershipSelectionSettings {
         private enum _LeadershipSelectionSettings {
             case none

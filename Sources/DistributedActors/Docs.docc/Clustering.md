@@ -180,7 +180,14 @@ The ``Cluster/Membership`` also offers a number of useful APIs to inspect the me
 
 ## Cluster Leadership
 
-TODO: document leadership and Leadership changes.
+The cluster has a few operations which must be performed in a consistent fashion, such as moving a joining member to the ``Cluster/MemberStatus/up`` state. Other member status changes such as becoming `joining` or `down` do not require such strict decision-making and are disseminated throughout the cluster even without a leader.
+
+Which cluster member is designated a leader is decided by the configured ``LeaderElection`` strategy.
+
+By default, the leader is selected in a coordination free method which relies on the membership state and member ordering. 
+For details, refer to the ``Leadership/LowestReachableMember`` documentation.
+
+You can configure leader election by changing the ``ClusterSystemSettings/autoLeaderElection`` setting while initializing your ``ClusterSystem``.
 
 ## Customizing Remote Calls
 
