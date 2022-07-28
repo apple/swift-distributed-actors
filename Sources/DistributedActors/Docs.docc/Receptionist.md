@@ -103,6 +103,7 @@ distributed actor Boss: LifecycleWatch {
 
 ### Checking-out from receptionist listings
 
-In general, the receptionist should not be used as means of implementing "presence" in the sense of a specific
-actor checking in and out of the receptionist as it sees fit, e.g. to signal "I am now available again!". Such
-patterns are to be implemented in the application layer of your system, and should be done b
+Checking out of the receptionist is performed automatically when a previously checked-in actor is terminated,
+be it by the node that it was located on terminating, or the actor itself being deallocated.
+
+There is no explicit API for checking out an actor. The receptionist should not be used to aggressively add and remove the same actor, but instead publish actors which are supposed to be well known and relatively stable contact points. For aggressively added/removed actors, it is recommended to handle this on the application level, by one well known actor managing the handing out of references. This way it also is possible to more tightly check where and how actor references are handed out. 
