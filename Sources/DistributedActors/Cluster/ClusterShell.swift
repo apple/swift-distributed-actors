@@ -405,10 +405,14 @@ extension ClusterShell {
             }
 
             // 3) leader election, so it may move members: .joining -> .up (and other `LeaderAction`s)
-            if let leaderElection = self.settings.autoLeaderElection.make(context.system.cluster.settings) {
-                let leadershipShell = Leadership.Shell(leaderElection)
-                let leadership = try context._spawn(Leadership.Shell.naming, leadershipShell.behavior)
-                context.watch(leadership) // if leadership fails for some reason, we are in trouble and need to know about it
+            if let leaderElectionStrategy = self.settings.autoLeaderElection.make(context.system.cluster.settings) {
+                Task {
+                    let leaderElectionActor = await ClusterLeadership.Shell(strategy: leaderElectionStrategy, actorSystem: context.system)
+                }
+                // let leadershipShell = ClusterLeadership.Shell(leaderElection)
+//                let leaderElection = ClusterLeaderElection(leaderElection)
+//                let leadership = try context._spawn(ClusterLeadership.Shell.naming, leadershipShell.behavior)
+//                context.watch(leadership) // if leadership fails for some reason, we are in trouble and need to know about it
             }
 
             context.log.info("Binding to: [\(uniqueBindAddress)]")
