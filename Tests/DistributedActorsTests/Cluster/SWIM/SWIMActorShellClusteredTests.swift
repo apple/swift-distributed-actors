@@ -136,7 +136,7 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
 
         // FIXME: use a non-responsive test probe instead of real system
         // Down the node so it doesn't respond to ping
-        thirdNode.shutdown()
+        try thirdNode.shutdown()
         try await self.ensureNodes(.removed, on: secondNode, nodes: thirdNode.cluster.uniqueNode)
 
         let originPeer = try SWIMActorShell.resolve(id: first.id._asRemote, using: secondNode)
@@ -456,7 +456,7 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
     private func awaitStatus(
         _ status: SWIM.Status, for peer: SWIMActorShell,
         on swimShell: SWIMActorShell, within timeout: Duration,
-        file: StaticString = #file, line: UInt = #line, column: UInt = #column
+        file: StaticString = #filePath, line: UInt = #line, column: UInt = #column
     ) async throws {
         let testKit = self.testKit(swimShell.actorSystem)
 

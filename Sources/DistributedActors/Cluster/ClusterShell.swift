@@ -280,7 +280,7 @@ internal class ClusterShell {
     }
 
     /// Actually starts the shell which kicks off binding to a port, and all further cluster work
-    internal func start(system: ClusterSystem, clusterEvents: ClusterEventStream) throws -> _ActorRef<Message> {
+    internal func start(system: ClusterSystem, clusterEvents: ClusterEventStream) async throws -> _ActorRef<Message> {
         let instrumentation = system.settings.instrumentation.makeInternalActorTransportInstrumentation()
         self._serializationPool = try _SerializationPool(settings: .default, serialization: system.serialization, instrumentation: instrumentation)
         self.clusterEvents = clusterEvents

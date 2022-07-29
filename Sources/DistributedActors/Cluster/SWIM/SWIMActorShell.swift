@@ -31,8 +31,6 @@ internal distributed actor SWIMActorShell: CustomStringConvertible {
 
     private lazy var swim = SWIM.Instance(settings: self.customizeSWIMSettings(self._settings), myself: self)
 
-    private lazy var timers = ActorTimers<SWIMActorShell>(self)
-
     private lazy var log: Logger = {
         var log = Logger(actor: self)
         log.logLevel = self._settings.logger.logLevel
@@ -102,8 +100,9 @@ internal distributed actor SWIMActorShell: CustomStringConvertible {
                 }
 
             case .scheduleNextTick(let delay):
-                // Keep scheduling the timer (cancelAfter = false) so that it fires for each tick
-                self.timers.startSingle(key: SWIMActorShell.protocolPeriodTimerKey, delay: .nanoseconds(delay.nanoseconds), cancelAfter: false) {
+                // Keep scheduling the timer so that it fires for each tick
+                Task {
+                    try await Task.sleep(until: .now + .nanoseconds(delay.nanoseconds), clock: .continuous)
                     self.handlePeriodicProtocolPeriodTick()
                 }
             }
@@ -549,8 +548,6 @@ extension SWIMActorShell {
         ps._wellKnown = true
         return ps.metrics(group: "swim.shell", measure: [.serialization, .deserialization])
     }
-
-    static let protocolPeriodTimerKey = _TimerKey("\(SWIMActorShell.name)/periodic-ping")
 }
 
 extension ActorID {
