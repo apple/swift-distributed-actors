@@ -14,7 +14,6 @@
 
 import ClusterMembership
 import struct Dispatch.DispatchTime
-import enum Dispatch.DispatchTimeInterval
 import Distributed
 import Logging
 import NIOCore
@@ -25,30 +24,35 @@ import SWIM
 /// - SeeAlso: `SWIM.Instance` for detailed documentation about the SWIM protocol implementation.
 internal distributed actor SWIMActorShell: CustomStringConvertible {
     typealias ActorSystem = ClusterSystem
-
-    private let _settings: SWIM.Settings
+    typealias SWIMInstance = SWIM.Instance<SWIMActorShell, SWIMActorShell, SWIMActorShell>
+    
+    private let settings: SWIM.Settings
     private let clusterRef: ClusterShell.Ref
 
-    private lazy var swim = SWIM.Instance(settings: self.customizeSWIMSettings(self._settings), myself: self)
+    // !-safe since we initialize this during init() right after the actor becomes ready;
+    // The reason for this is that the instance needs our `self` in order to use it as a `SWIMPeer`
+    private var swim: SWIM.Instance<SWIMActorShell, SWIMActorShell, SWIMActorShell>!
 
     private lazy var log: Logger = {
         var log = Logger(actor: self)
-        log.logLevel = self._settings.logger.logLevel
+        log.logLevel = self.settings.logger.logLevel
         return log
     }()
 
-    var settings: SWIM.Settings {
-        self.swim.settings
-    }
+//    var settings: SWIM.Settings {
+//        self.swim.settings
+//    }
 
     var metrics: SWIM.Metrics {
         self.swim.metrics
     }
 
     init(settings: SWIM.Settings, clusterRef: ClusterShell.Ref, system: ActorSystem) async {
-        self._settings = settings
+        self.settings = settings
         self.clusterRef = clusterRef
         self.actorSystem = system
+
+        self.swim = SWIMInstance(settings: self.customizeSWIMSettings(self.settings), myself: self)
 
         self.onStart()
     }
@@ -114,13 +118,13 @@ internal distributed actor SWIMActorShell: CustomStringConvertible {
 
     @discardableResult
     internal func sendPing(
-        to target: SWIMPeer,
-        payload: SWIM.GossipPayload,
-        pingRequestOrigin: SWIMPingRequestOriginPeer?,
+        to target: SWIMActorShell,
+        payload: SWIM.GossipPayload<SWIMActorShell>,
+        pingRequestOrigin: SWIMActorShell?,
         pingRequestSequenceNumber: SWIM.SequenceNumber?,
-        timeout: DispatchTimeInterval,
+        timeout: Duration,
         sequenceNumber: SWIM.SequenceNumber
-    ) async -> SWIM.PingResponse {
+    ) async -> SWIM.PingResponse<SWIMActorShell, SWIMActorShell> {
         let payload = self.swim.makeGossipPayload(to: target)
 
         self.log.debug("Sending ping", metadata: self.swim.metadata([
@@ -159,12 +163,12 @@ internal distributed actor SWIMActorShell: CustomStringConvertible {
         }
     }
 
-    internal func sendPingRequests(_ directive: SWIM.Instance.SendPingRequestDirective) async {
+    internal func sendPingRequests(_ directive: SWIMInstance.SendPingRequestDirective) async {
         // We are only interested in successful pings, as a single success tells us the node is
         // still alive. Therefore we propagate only the first success, but no failures.
         // The failure case is handled through the timeout of the whole operation.
         let eventLoop = self.actorSystem._eventLoopGroup.next()
-        let firstSuccessful = eventLoop.makePromise(of: SWIM.PingResponse.self)
+        let firstSuccessful = eventLoop.makePromise(of: SWIM.PingResponse<SWIMActorShell, SWIMActorShell>.self)
         let pingTimeout = directive.timeout
         let peerToPing = directive.target
 
@@ -254,11 +258,11 @@ internal distributed actor SWIMActorShell: CustomStringConvertible {
     // Otherwise, we might need to send ack/nack response to `pingRequestOrigin`, so it is the result of this
     // method that should be propagated, not the original ping response.
     internal func handlePingResponse(
-        response: SWIM.PingResponse,
-        pingRequestOrigin: SWIMPingRequestOriginPeer?,
+        response: SWIM.PingResponse<SWIMActorShell, SWIMActorShell>,
+        pingRequestOrigin: SWIMActorShell?,
         pingRequestSequenceNumber: SWIM.SequenceNumber?
-    ) -> SWIM.PingResponse {
-        var pingRequestOriginResponse: SWIM.PingResponse?
+    ) -> SWIM.PingResponse<SWIMActorShell, SWIMActorShell> {
+        var pingRequestOriginResponse: SWIM.PingResponse<SWIMActorShell, SWIMActorShell>?
 
         self.swim.onPingResponse(
             response: response,
@@ -285,7 +289,7 @@ internal distributed actor SWIMActorShell: CustomStringConvertible {
         return pingRequestOriginResponse ?? response
     }
 
-    internal func handlePingRequestResponse(response: SWIM.PingResponse, pinged: SWIMPeer) {
+    internal func handlePingRequestResponse(response: SWIM.PingResponse<SWIMActorShell, SWIMActorShell>, pinged: SWIMActorShell) {
         // self.tracelog(context, .receive(pinged: pinged), message: response)
         self.swim.onPingRequestResponse(
             response,
@@ -315,7 +319,7 @@ internal distributed actor SWIMActorShell: CustomStringConvertible {
     }
 
     /// Announce to the `ClusterShell` a change in reachability of a member.
-    private func tryAnnounceMemberReachability(change: SWIM.MemberStatusChangedEvent?) {
+    private func tryAnnounceMemberReachability(change: SWIM.MemberStatusChangedEvent<SWIMActorShell>?) {
         guard let change = change else {
             // this means it likely was a change to the same status or it was about us, so we do not need to announce anything
             return
@@ -366,7 +370,7 @@ internal distributed actor SWIMActorShell: CustomStringConvertible {
         self.clusterRef.tell(.command(.failureDetectorReachabilityChanged(uniqueNode, reachability)))
     }
 
-    private func handleGossipPayloadProcessedDirective(_ directive: SWIM.Instance.GossipProcessedDirective) {
+    private func handleGossipPayloadProcessedDirective(_ directive: SWIM.Instance<SWIMActorShell, SWIMActorShell, SWIMActorShell>.GossipProcessedDirective) {
         switch directive {
         case .applied(let change):
             self.tryAnnounceMemberReachability(change: change)
@@ -374,7 +378,7 @@ internal distributed actor SWIMActorShell: CustomStringConvertible {
     }
 
     /// We have to handle *every* response, because they adjust the value of the timeouts we'll be using in future probes.
-    private func handleEveryPingRequestResponse(response: SWIM.PingResponse, pinged: SWIMPeer) {
+    private func handleEveryPingRequestResponse(response: SWIM.PingResponse<SWIMActorShell, SWIMActorShell>, pinged: SWIMActorShell) {
         // self.tracelog(.receive(pinged: pinged.node), message: "\(response)")
         let directives = self.swim.onEveryPingRequestResponse(response, pinged: pinged)
 
@@ -391,11 +395,27 @@ internal distributed actor SWIMActorShell: CustomStringConvertible {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Distributed functions
 
+    /// ``SWIMPeer`` conformance; turn this call into a ``ping(origin:payload:sequenceNumber)`` distributed call with a ``timeout``.
+    nonisolated func ping(
+        payload: SWIM.GossipPayload<SWIMActorShell>,
+        from pingOrigin: SWIMActorShell,
+        timeout: Duration,
+        sequenceNumber: SWIM.SequenceNumber
+    ) async throws -> SWIM.PingResponse<SWIMActorShell, SWIMActorShell> {
+        return try await RemoteCall.with(timeout: .nanoseconds(timeout.nanoseconds)) {
+            let response = try await self.ping(origin: pingOrigin, payload: payload, sequenceNumber: sequenceNumber)
+            if case .nack = response {
+                throw SWIMActorError.illegalMessageType("Unexpected .nack reply to .ping message! Was: \(response)")
+            }
+            return response
+        }
+    }
+
     distributed func ping(
         origin: SWIMActorShell,
-        payload: SWIM.GossipPayload,
+        payload: SWIM.GossipPayload<SWIMActorShell>,
         sequenceNumber: SWIM.SequenceNumber
-    ) async throws -> SWIM.PingResponse {
+    ) async throws -> SWIM.PingResponse<SWIMActorShell, SWIMActorShell> {
         self.log.trace("Received ping@\(sequenceNumber)", metadata: self.swim.metadata([
             "swim/ping/origin": "\(origin.id)",
             "swim/ping/payload": "\(payload)",
@@ -421,13 +441,31 @@ internal distributed actor SWIMActorShell: CustomStringConvertible {
 
         throw SWIMActorError.noResponse
     }
+    
+    nonisolated func pingRequest(
+        target: SWIMActorShell,
+        payload: SWIM.GossipPayload<SWIMActorShell>,
+        from pingRequestOrigin: SWIMActorShell,
+        timeout: Duration,
+        sequenceNumber: SWIM.SequenceNumber
+    ) async throws -> SWIM.PingResponse<SWIMActorShell, SWIMActorShell> {
+        try await RemoteCall.with(timeout: .nanoseconds(timeout.nanoseconds)) {
+            try await self.pingRequest(
+                target: target,
+                pingRequestOrigin: pingRequestOrigin,
+                payload: payload,
+                sequenceNumber: sequenceNumber
+            )
+        }
+    }
+
 
     distributed func pingRequest(
         target: SWIMActorShell,
         pingRequestOrigin: SWIMActorShell,
-        payload: SWIM.GossipPayload,
+        payload: SWIM.GossipPayload<SWIMActorShell>,
         sequenceNumber pingRequestSequenceNumber: SWIM.SequenceNumber
-    ) async throws -> SWIM.PingResponse {
+    ) async throws -> SWIM.PingResponse<SWIMActorShell, SWIMActorShell> {
         self.log.trace("Received pingRequest@\(pingRequestSequenceNumber) [\(target)] from [\(pingRequestOrigin)]", metadata: self.swim.metadata([
             "swim/pingRequest/origin": "\(pingRequestOrigin)",
             "swim/pingRequest/payload": "\(payload)",
@@ -526,11 +564,11 @@ internal distributed actor SWIMActorShell: CustomStringConvertible {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: For testing only
 
-    func _getMembershipState() -> [SWIM.Member] {
+    func _getMembershipState() -> [SWIM.Member<SWIMActorShell>] {
         Array(self.swim.members)
     }
 
-    func _configureSWIM(_ configure: (SWIM.Instance) throws -> Void) rethrows {
+    func _configureSWIM(_ configure: (SWIM.Instance<SWIMActorShell, SWIMActorShell, SWIMActorShell>) throws -> Void) rethrows {
         try configure(self.swim)
     }
 

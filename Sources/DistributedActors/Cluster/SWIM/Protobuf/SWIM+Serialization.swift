@@ -77,13 +77,14 @@ extension SWIM.GossipPayload: _ProtobufRepresentable {
     }
 
     public init(fromProto proto: _ProtoSWIMGossipPayload, context: Serialization.Context) throws {
+        precondition(Peer.self == SWIMActorShell.self)
         if proto.member.isEmpty {
             self = .none
         } else {
-            let members = try proto.member.map { proto in
-                try SWIM.Member(fromProto: proto, context: context)
+            let members: [SWIM.Member<SWIMActorShell>] = try proto.member.map { proto in
+                try .init(fromProto: proto, context: context)
             }
-            self = .membership(members)
+            self = .membership(members as! [SWIM.Member<Peer>]) // as!-safe, since Peer always is SWIMActorShell in this implementation
         }
     }
 }
@@ -103,11 +104,12 @@ extension SWIM.Member: _ProtobufRepresentable {
     }
 
     public init(fromProto proto: _ProtoSWIMMember, context: Serialization.Context) throws {
+        precondition(Peer.self == SWIMActorShell.self)
         let id = try ActorID(fromProto: proto.id, context: context)
         let peer = try SWIMActorShell.resolve(id: id, using: context.system)
         let status = try SWIM.Status(fromProto: proto.status, context: context)
         let protocolPeriod = proto.protocolPeriod
-        self.init(peer: peer, status: status, protocolPeriod: protocolPeriod)
+        self.init(peer: peer as! Peer, status: status, protocolPeriod: protocolPeriod) // as!-safe since we only deal with Actor impls
     }
 }
 
@@ -142,22 +144,25 @@ extension SWIM.PingResponse: _ProtobufRepresentable {
     }
 
     public init(fromProto proto: _ProtoSWIMPingResponse, context: Serialization.Context) throws {
+        precondition(Peer.self == SWIMActorShell.self)
         guard let pingResponse = proto.pingResponse else {
-            throw SerializationError(.missingField("pingResponse", type: String(describing: SWIM.PingResponse.self)))
+            throw SerializationError(.missingField("pingResponse", type: String(describing: SWIM.PingResponse<SWIMActorShell, SWIMActorShell>.self)))
         }
         switch pingResponse {
         case .ack(let ack):
             let targetID = try ActorID(fromProto: ack.target, context: context)
             let target = try SWIMActorShell.resolve(id: targetID, using: context.system)
-            let payload = try SWIM.GossipPayload(fromProto: ack.payload, context: context)
+            let targetPeer = target as! Peer // as!-safe, since we only ever deal with Actor
+            let payload = try SWIM.GossipPayload<Peer>(fromProto: ack.payload, context: context)
             let sequenceNumber = ack.sequenceNumber
-            self = .ack(target: target, incarnation: ack.incarnation, payload: payload, sequenceNumber: sequenceNumber)
+            self = .ack(target: targetPeer, incarnation: ack.incarnation, payload: payload, sequenceNumber: sequenceNumber)
 
         case .nack(let nack):
             let targetID = try ActorID(fromProto: nack.target, context: context)
             let target = try SWIMActorShell.resolve(id: targetID, using: context.system)
+            let targetPeer = target as! Peer // as!-safe, since we only ever deal with Actor impls
             let sequenceNumber = nack.sequenceNumber
-            self = .nack(target: target, sequenceNumber: sequenceNumber)
+            self = .nack(target: targetPeer, sequenceNumber: sequenceNumber)
         }
     }
 }

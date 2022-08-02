@@ -114,7 +114,7 @@ final class ActorMetricsSWIMActorPeerMetricsTests: ClusteredActorSystemsXCTestCa
         let targetPeer = try SWIMActorShell.resolve(id: target.id._asRemote, using: originNode)
         let throughPeer = try SWIMActorShell.resolve(id: through.id._asRemote, using: originNode)
 
-        let directive = SWIM.Instance.SendPingRequestDirective(
+        let directive = SWIM.Instance<SWIMActorShell, SWIMActorShell, SWIMActorShell>.SendPingRequestDirective(
             target: targetPeer,
             timeout: .seconds(1),
             requestDetails: [
