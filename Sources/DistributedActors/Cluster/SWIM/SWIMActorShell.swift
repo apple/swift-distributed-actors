@@ -22,7 +22,7 @@ import SWIM
 /// The SWIM shell is responsible for driving all interactions of the `SWIM.Instance` with the outside world.
 ///
 /// - SeeAlso: `SWIM.Instance` for detailed documentation about the SWIM protocol implementation.
-internal distributed actor SWIMActorShell: CustomStringConvertible {
+internal distributed actor SWIMActorShell: SWIMPeer, SWIMAddressablePeer, CustomStringConvertible {
     typealias ActorSystem = ClusterSystem
     typealias SWIMInstance = SWIM.Instance<SWIMActorShell, SWIMActorShell, SWIMActorShell>
     
@@ -33,15 +33,19 @@ internal distributed actor SWIMActorShell: CustomStringConvertible {
     // The reason for this is that the instance needs our `self` in order to use it as a `SWIMPeer`
     private var swim: SWIM.Instance<SWIMActorShell, SWIMActorShell, SWIMActorShell>!
 
+    nonisolated var swimNode: ClusterMembership.Node {
+        .init(
+            protocol: self.id.uniqueNode.node.protocol,
+            host: self.id.uniqueNode.host,
+            port: self.id.uniqueNode.port,
+            uid: self.id.uniqueNode.nid.value)
+    }
+    
     private lazy var log: Logger = {
         var log = Logger(actor: self)
         log.logLevel = self.settings.logger.logLevel
         return log
     }()
-
-//    var settings: SWIM.Settings {
-//        self.swim.settings
-//    }
 
     var metrics: SWIM.Metrics {
         self.swim.metrics
@@ -568,8 +572,8 @@ internal distributed actor SWIMActorShell: CustomStringConvertible {
         Array(self.swim.members)
     }
 
-    func _configureSWIM(_ configure: (SWIM.Instance<SWIMActorShell, SWIMActorShell, SWIMActorShell>) throws -> Void) rethrows {
-        try configure(self.swim)
+    func _configureSWIM(_ configure: (inout SWIM.Instance<SWIMActorShell, SWIMActorShell, SWIMActorShell>) throws -> Void) rethrows {
+        try configure(&self.swim)
     }
 
     nonisolated var description: String {
