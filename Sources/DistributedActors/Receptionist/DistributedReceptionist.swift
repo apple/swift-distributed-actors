@@ -100,6 +100,7 @@ extension DistributedReception {
                 self.underlying = AsyncStream<Element> { continuation in
                     let anySubscribe = AnyDistributedReceptionListingSubscription(
                         subscriptionID: ObjectIdentifier(self),
+                        file: file, line: line,
                         key: key.asAnyKey,
                         onNext: { anyGuest in
                             switch continuation.yield(anyGuest.force(as: Guest.self)) {
@@ -107,6 +108,8 @@ extension DistributedReception {
                                 continuation.finish()
                             case .enqueued:
                                 () // ok
+                            default:
+                                assertionFailure("Unexpected case!")
                             }
                         }
                     )
@@ -353,6 +356,11 @@ internal final class AnyDistributedReceptionListingSubscription: Hashable, @unch
     let subscriptionID: ObjectIdentifier
     let key: AnyDistributedReceptionKey
 
+    #if DEBUG
+    let file: String
+    let line: UInt
+    #endif
+
     /// Offer a new listing to the subscription stream. // FIXME: implement this by offering single elements (!!!)
     private let onNext: @Sendable (AnyDistributedActor) -> Void
 
@@ -362,6 +370,7 @@ internal final class AnyDistributedReceptionListingSubscription: Hashable, @unch
 
     init(
         subscriptionID: ObjectIdentifier,
+        file: String, line: UInt,
         key: AnyDistributedReceptionKey,
         onNext: @escaping @Sendable (AnyDistributedActor) -> Void
     ) {
@@ -369,6 +378,10 @@ internal final class AnyDistributedReceptionListingSubscription: Hashable, @unch
         self.key = key
         self.onNext = onNext
         self.seenActorRegistrations = .empty
+        #if DEBUG
+        self.file = file
+        self.line = line
+        #endif
     }
 
     /// Attempt to offer a registration to the subscriber of this stream.

@@ -158,6 +158,28 @@ final class DistributedReceptionistTests: ClusterSystemXCTestCase {
         listing.first!.id.shouldEqual(ref.id)
     }
 
+    func test_receptionist_happyPath_lookup_then_listing() async throws {
+        let (first, second) = await self.setUpPair() { settings in
+            settings.enabled = true
+        }
+
+        let ref = Forwarder(probe: nil, name: "D", actorSystem: first)
+        await first.receptionist.checkIn(ref, with: .forwarders)
+
+        first.cluster.join(node: second.cluster.uniqueNode.node)
+        try await first.cluster.joined(node: second.cluster.uniqueNode, within: .seconds(30))
+
+        let lookup = await second.receptionist.lookup(.forwarders)
+        lookup.count.shouldEqual(1)
+        lookup.first!.id.shouldEqual(ref.id)
+
+        let listing = await second.receptionist.listing(of: .forwarders)
+        for await forwarder in listing {
+            forwarder.id.shouldEqual(ref.id)
+            return
+        }
+    }
+
 //    func test_receptionist_shouldRemoveAndAddNewSingletonRef() throws {
 //        let receptionist = SystemReceptionist(ref: try system._spawn("receptionist", self.receptionistBehavior))
 //        let lookupProbe: ActorTestProbe<_Reception.Listing<_ActorRef<String>>> = self.testKit.makeTestProbe()

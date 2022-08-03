@@ -89,11 +89,33 @@ func pprint(_ message: String, file: String = #filePath, line: UInt = #line) {
     """)
 }
 
+func pprint(_ message: String, metadata: [String: Any], file: String = #filePath, line: UInt = #line) {
+    print("""
+    [pprint]\
+    [\(_createTimeFormatter().string(from: Date()))] \
+    [\(file):\(line)]\
+    {\(metadata.map { "\($0):\($1)" }.joined(separator: ";"))}
+    [\(_hackyPThreadThreadId())]: \
+    \(message)
+    """)
+}
+
 func pprint(_ message: StaticString, file: String = #filePath, line: UInt = #line) {
     print("""
     [pprint]\
     [\(_createTimeFormatter().string(from: Date()))] \
     [\(file):\(line)]\
+    [\(_hackyPThreadThreadId())]: \
+    \(message)
+    """)
+}
+
+func pprint(_ message: StaticString, metadata: [String: Any], file: String = #filePath, line: UInt = #line) {
+    print("""
+    [pprint]\
+    [\(_createTimeFormatter().string(from: Date()))] \
+    [\(file):\(line)]\
+    {\(metadata.map { "\($0):\($1)" }.joined(separator: ";"))}
     [\(_hackyPThreadThreadId())]: \
     \(message)
     """)
