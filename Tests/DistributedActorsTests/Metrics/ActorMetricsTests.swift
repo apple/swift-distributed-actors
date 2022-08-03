@@ -29,8 +29,8 @@ final class ActorMetricsTests: ClusteredActorSystemsXCTestCase {
         MetricsSystem.bootstrapInternal(self.metrics)
     }
 
-    override func tearDown() {
-        super.tearDown()
+    override func tearDown() async throws {
+        try await super.tearDown()
         self.metrics = nil
         MetricsSystem.bootstrapInternal(NOOPMetricsHandler.instance)
     }

@@ -25,7 +25,7 @@ import SWIM
 internal distributed actor SWIMActorShell: SWIMPeer, SWIMAddressablePeer, CustomStringConvertible {
     typealias ActorSystem = ClusterSystem
     typealias SWIMInstance = SWIM.Instance<SWIMActorShell, SWIMActorShell, SWIMActorShell>
-    
+
     private let settings: SWIM.Settings
     private let clusterRef: ClusterShell.Ref
 
@@ -38,9 +38,10 @@ internal distributed actor SWIMActorShell: SWIMPeer, SWIMAddressablePeer, Custom
             protocol: self.id.uniqueNode.node.protocol,
             host: self.id.uniqueNode.host,
             port: self.id.uniqueNode.port,
-            uid: self.id.uniqueNode.nid.value)
+            uid: self.id.uniqueNode.nid.value
+        )
     }
-    
+
     private lazy var log: Logger = {
         var log = Logger(actor: self)
         log.logLevel = self.settings.logger.logLevel
@@ -445,7 +446,7 @@ internal distributed actor SWIMActorShell: SWIMPeer, SWIMAddressablePeer, Custom
 
         throw SWIMActorError.noResponse
     }
-    
+
     nonisolated func pingRequest(
         target: SWIMActorShell,
         payload: SWIM.GossipPayload<SWIMActorShell>,
@@ -462,7 +463,6 @@ internal distributed actor SWIMActorShell: SWIMPeer, SWIMAddressablePeer, Custom
             )
         }
     }
-
 
     distributed func pingRequest(
         target: SWIMActorShell,

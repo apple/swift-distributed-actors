@@ -46,8 +46,8 @@ open class ClusterSystemXCTestCase: ClusteredActorSystemsXCTestCase {
         _ = await self.setUpNode(String(describing: type(of: self)))
     }
 
-    override open func tearDown() {
-        super.tearDown()
+    override open func tearDown() async throws {
+        try await super.tearDown()
     }
 
     override open func setUpNode(_ name: String, _ modifySettings: ((inout ClusterSystemSettings) -> Void)? = nil) async -> ClusterSystem {

@@ -26,8 +26,8 @@ final class MembershipSerializationTests: ClusterSystemXCTestCase {
         allocator: system.settings.serialization.allocator
     )
 
-    override func tearDown() {
-        super.tearDown()
+    override func tearDown() async throws {
+        try await super.tearDown()
         self.context = nil
     }
 

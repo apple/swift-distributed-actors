@@ -106,8 +106,8 @@ final class SerializationPoolTests: XCTestCase {
         self.actorPath2 = try! ActorPath([ActorPathSegment("foo"), ActorPathSegment("baz")])
     }
 
-    override func tearDown() {
-        try! self.system.shutdown().wait()
+    override func tearDown() async throws {
+        try! await self.system.shutdown().wait()
         self.system = nil
         self.testKit = nil
         try! self.elg.syncShutdownGracefully()

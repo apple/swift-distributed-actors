@@ -20,7 +20,7 @@ import Logging
 /// - Warning: NOT thread safe! Only use from Actors, properly synchronize access, or create multiple instances for each execution context.
 internal final class LoggingContext {
     // TODO: deprecate, we should not need this explicit type
-    
+
     let identifier: String
 
     // TODO: want to eventually not have this; also move to more structured logging perhaps...

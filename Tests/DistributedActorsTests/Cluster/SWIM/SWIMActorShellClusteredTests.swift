@@ -31,8 +31,8 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
         super.setUp()
     }
 
-    override func tearDown() {
-        super.tearDown()
+    override func tearDown() async throws {
+        try await super.tearDown()
         self.metrics = nil
         MetricsSystem.bootstrapInternal(NOOPMetricsHandler.instance)
     }
@@ -109,7 +109,7 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
             throw testKit(firstNode).fail("Expected ack, but got \(response)")
         }
 
-        (pinged as! SWIMActorShell).shouldEqual(first)
+        pinged.shouldEqual(first)
         incarnation.shouldEqual(0)
     }
 
@@ -218,7 +218,7 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
             throw testKit(firstNode).fail("Expected ack, but got \(response)")
         }
 
-        (pinged as! SWIMActorShell).shouldEqual(third)
+        pinged.shouldEqual(third)
         incarnation.shouldEqual(0)
     }
 
@@ -392,8 +392,8 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
         }
 
         members.count.shouldEqual(2)
-        members.shouldContain(where: { ($0.peer as! SWIMActorShell) == secondPeer && $0.status == .alive(incarnation: 0) })
-        members.shouldContain(where: { ($0.peer as! SWIMActorShell) == first && $0.status == .alive(incarnation: 0) })
+        members.shouldContain(where: { $0.peer == secondPeer && $0.status == .alive(incarnation: 0) })
+        members.shouldContain(where: { $0.peer == first && $0.status == .alive(incarnation: 0) })
     }
 
     func test_SWIMShell_shouldMonitorJoinedClusterMembers() async throws {
@@ -466,7 +466,7 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
             } ?? []
 
             let otherStatus = membership
-                .first(where: { $0.peer as! SWIMActorShell == peer })
+                .first(where: { $0.peer == peer })
                 .map(\.status)
 
             guard otherStatus == status else {
