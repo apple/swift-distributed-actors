@@ -797,8 +797,12 @@ extension ClusterSystem: _ActorTreeTraversable {
         return self._resolveUntyped(context: .init(id: id, system: self))
     }
 
-    func _resolveStub(identity: ActorID) throws -> StubDistributedActor {
-        return try StubDistributedActor.resolve(id: identity, using: self)
+    func _resolveStub(id: ActorID) -> StubDistributedActor {
+        do {
+            return try StubDistributedActor.resolve(id: id, using: self)
+        } catch {
+            fatalError("Failed to resolve a \(StubDistributedActor.self) for \(id); This operation is expected to always succeed")
+        }
     }
 
     func _resolveUntyped(context: _ResolveContext<Never>) -> _AddressableActorRef {
@@ -891,6 +895,11 @@ extension ClusterSystem {
         }
 
         guard let managed = managed else {
+            // TRICK: for _resolveStub which we may be resolving an ID which may be dead, but we always want to get the stub anyway
+            if Act.self is StubDistributedActor.Type {
+                return nil
+            }
+
             throw DeadLetterError(recipient: id)
         }
 

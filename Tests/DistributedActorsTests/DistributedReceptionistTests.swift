@@ -180,40 +180,31 @@ final class DistributedReceptionistTests: ClusterSystemXCTestCase {
         }
     }
 
-//    func test_receptionist_shouldRemoveAndAddNewSingletonRef() throws {
-//        let receptionist = SystemReceptionist(ref: try system._spawn("receptionist", self.receptionistBehavior))
-//        let lookupProbe: ActorTestProbe<_Reception.Listing<_ActorRef<String>>> = self.testKit.makeTestProbe()
-//
-//        let old: _ActorRef<String> = try system._spawn(
-//                .anonymous,
-//                .receive { context, _ in
-//                    context.log.info("Stopping...")
-//                    return .stop
-//                }
-//        )
-//        let new: _ActorRef<String> = try system._spawn(
-//                .anonymous,
-//                .receiveMessage { _ in
-//                    .same
-//                }
-//        )
-//
-//        let key = _Reception.Key(_ActorRef<String>.self, id: "shouldBeOne")
-//
-//        receptionist.checkIn(old, with: key)
-//        old.tell("stop")
-//        receptionist.checkIn(new, with: key)
-//
-//        try self.testKit.eventually(within: .seconds(2)) {
-//            receptionist.lookup(key, replyTo: lookupProbe.ref)
-//            let listing = try lookupProbe.expectMessage()
-//
-//            if listing.refs.count != 1 {
-//                throw Boom("Listing had more members than 1, expected 1. Listing: \(listing.refs)")
-//            }
-//        }
-//    }
-//
+    func test_receptionist_shouldRemoveAndAddNewSingletonRef() async throws {
+        var old: Forwarder? = Forwarder(probe: nil, name: "old", actorSystem: system)
+        let new = Forwarder(probe: nil, name: "new", actorSystem: system)
+
+        await system.receptionist.checkIn(old!, with: .forwarders)
+
+        try await self.testKit.eventually(within: .seconds(2)) {
+            let lookup = await system.receptionist.lookup(.forwarders)
+            if lookup.count != 1 {
+                throw Boom("Expected lookup to contain ONLY \(old!.id), but was: \(lookup)")
+            }
+        }
+
+        // release the old ref
+        old = nil
+        await system.receptionist.checkIn(new, with: .forwarders)
+
+        try await self.testKit.eventually(within: .seconds(5)) {
+            let lookup = await system.receptionist.lookup(.forwarders)
+            if lookup.count != 1 {
+                throw Boom("Listing had more members than 1, expected 1, was: \(lookup)")
+            }
+        }
+    }
+
 //    func test_receptionist_shouldReplyWithRegistered() throws {
 //        let receptionist = SystemReceptionist(ref: try system._spawn("receptionist", self.receptionistBehavior))
 //        let probe: ActorTestProbe<_Reception.Registered<_ActorRef<String>>> = self.testKit.makeTestProbe()
@@ -320,6 +311,12 @@ distributed actor Forwarder {
         self.actorSystem = actorSystem
         self.probe = probe
         self.name = name
+
+        pprint("<< init: \(self.id)")
+    }
+
+    deinit {
+        pprint("<< deinit: \(self.id)")
     }
 
     distributed func forward(message: String) {

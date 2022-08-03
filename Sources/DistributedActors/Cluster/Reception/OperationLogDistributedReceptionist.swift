@@ -393,18 +393,33 @@ extension OpLogDistributedReceptionist: LifecycleWatch {
     private func _lookup<Guest>(_ key: DistributedReception.Key<Guest>) -> Set<Guest>
         where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem
     {
-        let registrations = self.storage.registrations(forKey: key.asAnyKey) ?? []
+        guard let registrations = self.storage.registrations(forKey: key.asAnyKey) else {
+            return []
+        }
 
         // self.instrumentation.listingPublished(key: message._key, subscribers: 1, registrations: registrations.count) // TODO(distributed): make the instrumentation calls compatible with distributed actor based types
-        let guests = Set(registrations.compactMap { versioned in
-            try? Guest.resolve(id: versioned.actor.underlying.id as! ActorID, using: self.actorSystem)
-        })
+        var guests: Set<Guest> = []
+        guests.reserveCapacity(registrations.count)
+        for versioned in registrations {
+            do {
+                let guest = try Guest.resolve(id: versioned.actorID, using: self.actorSystem)
+                guests.insert(guest)
+            } catch is DeadLetterError {
+                // This just means that this `lookup` arrived before the `terminated` of this specific actor as it terminated.
+                // This specific actor actor is already dead, so there's no need to emit it in our listing.
+                //
+                // The terminated arrives asynchronously and will arrive a bit later;
+                // We can also just cause the terminated eagerly over here
+                self.actorTerminated(id: versioned.actorID)
+                continue
+            } catch {
+                self.actorSystem.log.debug("Failed to resolve guest for listing key \(key)", metadata: [
+                    "actor/id": "\(versioned.actorID)",
+                    "actor/type": "\(Guest.self)",
+                ])
+            }
+        }
 
-        assert(guests.count == registrations.count, """
-        Was unable to map some registrations to \(Guest.self).
-          Registrations: \(registrations)
-          Guests:        \(guests)
-        """)
         return guests
     }
 }
@@ -561,15 +576,15 @@ extension OpLogDistributedReceptionist {
         switch op {
         case .register(let anyKey, let identity):
             // We resolve a stub that we cannot really ever send messages to, but we can "watch" it
-            let resolved = try! actorSystem._resolveStub(identity: identity) // TODO(distributed): remove the throwing here?
+            let resolved = try! actorSystem._resolveStub(id: identity) // TODO(distributed): remove the throwing here?
 
             watchTermination(of: resolved)
             if self.storage.addRegistration(sequenced: sequenced, key: anyKey, guest: resolved) {
                 // self.instrumentation.actorRegistered(key: key, id: id) // TODO(distributed): make the instrumentation calls compatible with distributed actor based types
             }
 
-        case .remove(let anyKey, let identity):
-            let resolved = try! actorSystem._resolveStub(identity: identity) // TODO(distributed): remove the throwing here?
+        case .remove(let anyKey, let id):
+            let resolved = actorSystem._resolveStub(id: id)
 
             unwatchTermination(of: resolved)
             if self.storage.removeRegistration(key: anyKey, guest: resolved) != nil {
@@ -632,7 +647,6 @@ extension OpLogDistributedReceptionist {
 //        peerReceptionistRef.tell(ack)
         Task {
             do {
-//                assert(self.id.path.description.contains("/system/receptionist"), "Receptionist path did not include /system/receptionist, was: \(self.id.fullDescription)")
                 try await peerReceptionistRef.ackOps(until: latestAppliedSeqNrFromPeer, by: self)
             } catch {
                 switch error {
@@ -823,7 +837,7 @@ extension OpLogDistributedReceptionist {
             self.receptionistTerminated(identity: id)
         } else {
             self.log.debug("Watched actor terminated: \(id)")
-            self.actorTerminated(identity: id)
+            self.actorTerminated(id: id)
         }
     }
 
@@ -831,9 +845,15 @@ extension OpLogDistributedReceptionist {
         self.pruneClusterMember(removedNode: id.uniqueNode)
     }
 
-    private func actorTerminated(identity id: ID) {
-        let equalityHackRef = try! actorSystem._resolveStub(identity: id) // FIXME: cleanup the try!
-        let wasRegisteredWithKeys = self.storage.removeFromKeyMappings(equalityHackRef.asAnyDistributedActor)
+    private func actorTerminated(id: ID) {
+        let wasRegisteredWithKeys = self.storage.removeFromKeyMappings(id)
+
+        // In case we manually caused an `actorTerminated` already, or if the actor
+        // just was never registered to begin with, just ignore it completely and don't
+        // even log this removal attempt; Can't remove something that wasn't added.
+        guard !wasRegisteredWithKeys.registeredUnderKeys.isEmpty else {
+            return
+        }
 
         for key in wasRegisteredWithKeys.registeredUnderKeys {
             _ = self.addOperation(.remove(key: key, identity: id))
