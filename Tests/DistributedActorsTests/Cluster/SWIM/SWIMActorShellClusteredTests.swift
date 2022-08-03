@@ -77,7 +77,7 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
 
         try await self.configureSWIM(for: first, members: [second])
 
-        // SWIMActorShell's sendFirstRemotePing might have been triggered when the nodes
+        // SWIMActor's sendFirstRemotePing might have been triggered when the nodes
         // are associated. Reset so we get metrics just for the test call.
         (try await self.metrics.getSWIMCounter(second) { $0.messageInboundCount })?.reset()
 
@@ -102,7 +102,7 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
             throw testKit(secondNode).fail("SWIM shell of [\(secondNode)] should not be nil")
         }
 
-        let originPeer = try SWIMActorShell.resolve(id: second.id._asRemote, using: firstNode)
+        let originPeer = try SWIMActor.resolve(id: second.id._asRemote, using: firstNode)
         let response = try await first.ping(origin: originPeer, payload: .none, sequenceNumber: 13)
 
         guard case .ack(let pinged, let incarnation, _, _) = response else {
@@ -139,8 +139,8 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
         try thirdNode.shutdown()
         try await self.ensureNodes(.removed, on: secondNode, nodes: thirdNode.cluster.uniqueNode)
 
-        let originPeer = try SWIMActorShell.resolve(id: first.id._asRemote, using: secondNode)
-        let targetPeer = try SWIMActorShell.resolve(id: third.id._asRemote, using: secondNode)
+        let originPeer = try SWIMActor.resolve(id: first.id._asRemote, using: secondNode)
+        let targetPeer = try SWIMActor.resolve(id: third.id._asRemote, using: secondNode)
         // `first` pings `third` through `second`. `third` is down so `second` will return nack for ping request.
         let response = try await second.pingRequest(target: targetPeer, pingRequestOrigin: originPeer, payload: .none, sequenceNumber: 13)
 
@@ -170,7 +170,7 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
 
         try await self.configureSWIM(for: first, members: [second, third])
 
-        // SWIMActorShell's sendFirstRemotePing might have been triggered when the nodes
+        // SWIMActor's sendFirstRemotePing might have been triggered when the nodes
         // are associated. Reset so we get metrics just for the test calls.
         (try await self.metrics.getSWIMCounter(second) { $0.messageInboundCount })?.reset()
         (try await self.metrics.getSWIMCounter(third) { $0.messageInboundCount })?.reset()
@@ -209,8 +209,8 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
 
         try await self.configureSWIM(for: first, members: [second, third])
 
-        let originPeer = try SWIMActorShell.resolve(id: first.id._asRemote, using: secondNode)
-        let targetPeer = try SWIMActorShell.resolve(id: third.id._asRemote, using: secondNode)
+        let originPeer = try SWIMActor.resolve(id: first.id._asRemote, using: secondNode)
+        let targetPeer = try SWIMActor.resolve(id: third.id._asRemote, using: secondNode)
         // `first` pings `third` through `second`
         let response = try await second.pingRequest(target: targetPeer, pingRequestOrigin: originPeer, payload: .none, sequenceNumber: 13)
 
@@ -241,7 +241,7 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
 
         try await self.configureSWIM(for: first, members: [second])
 
-        let targetPeer = try SWIMActorShell.resolve(id: second.id._asRemote, using: firstNode)
+        let targetPeer = try SWIMActor.resolve(id: second.id._asRemote, using: firstNode)
 
         // FIXME: use a non-responsive test probe instead of faking response
         // Fake a failed ping
@@ -273,8 +273,8 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
 
         try await self.configureSWIM(for: first, members: [second, third])
 
-        let throughPeer = try SWIMActorShell.resolve(id: second.id._asRemote, using: firstNode)
-        let targetPeer = try SWIMActorShell.resolve(id: third.id._asRemote, using: firstNode)
+        let throughPeer = try SWIMActor.resolve(id: second.id._asRemote, using: firstNode)
+        let targetPeer = try SWIMActor.resolve(id: third.id._asRemote, using: firstNode)
 
         // FIXME: use non-response test probes instead of faking responses
         // Fake a failed ping and ping request
@@ -328,8 +328,8 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
 
         try await self.configureSWIM(for: first, members: [second, third])
 
-        let originPeer = try SWIMActorShell.resolve(id: third.id._asRemote, using: secondNode)
-        let targetPeer = try SWIMActorShell.resolve(id: second.id._asRemote, using: firstNode)
+        let originPeer = try SWIMActor.resolve(id: third.id._asRemote, using: secondNode)
+        let targetPeer = try SWIMActor.resolve(id: second.id._asRemote, using: firstNode)
 
         _ = await first.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
             __secretlyKnownToBeLocal.handlePeriodicProtocolPeriodTick()
@@ -384,7 +384,7 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
 
         try await self.configureSWIM(for: first, members: [second])
 
-        let secondPeer = try SWIMActorShell.resolve(id: second.id._asRemote, using: firstNode)
+        let secondPeer = try SWIMActor.resolve(id: second.id._asRemote, using: firstNode)
         let response = try await first.ping(origin: secondPeer, payload: .none, sequenceNumber: 1)
 
         guard case .ack(_, _, .membership(let members), _) = response else {
@@ -409,33 +409,33 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
             throw testKit(remoteNode).fail("SWIM shell of [\(remoteNode)] should not be nil")
         }
 
-        let remotePeer = try SWIMActorShell.resolve(id: remote.id._asRemote, using: localNode)
+        let remotePeer = try SWIMActor.resolve(id: remote.id._asRemote, using: localNode)
         try await self.awaitStatus(.alive(incarnation: 0), for: remotePeer, on: local, within: .seconds(1))
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: utility functions
 
-    private func configureSWIM(for swimShell: SWIMActorShell, members: [SWIMActorShell]) async throws {
-        var memberStatus: [SWIMActorShell: SWIM.Status] = [:]
+    private func configureSWIM(for swimShell: SWIMActor, members: [SWIMActor]) async throws {
+        var memberStatus: [SWIMActor: SWIM.Status] = [:]
         for member in members {
             memberStatus[member] = .alive(incarnation: 0)
         }
         try await self.configureSWIM(for: swimShell, members: memberStatus)
     }
 
-    private func configureSWIM(for swimShell: SWIMActorShell, members: [SWIMActorShell: SWIM.Status]) async throws {
+    private func configureSWIM(for swimShell: SWIMActor, members: [SWIMActor: SWIM.Status]) async throws {
         try await swimShell.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
             try __secretlyKnownToBeLocal._configureSWIM { swim in
                 for (member, status) in members {
-                    let member = try SWIMActorShell.resolve(id: member.id._asRemote, using: swimShell.actorSystem)
+                    let member = try SWIMActor.resolve(id: member.id._asRemote, using: swimShell.actorSystem)
                     _ = swim.addMember(member, status: status)
                 }
             }
         }
     }
 
-    private func assertMessageInboundCount(of swimShell: SWIMActorShell, atLeast: Int, within: Duration) async throws {
+    private func assertMessageInboundCount(of swimShell: SWIMActor, atLeast: Int, within: Duration) async throws {
         // FIXME: with test probes we can control the exact number of messages (e.g., probe.expectMessage()),
         // but that's not easy with do with real systems so we check for inbound message count and do at-least
         // instead of exact comparisons.
@@ -454,8 +454,8 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
     }
 
     private func awaitStatus(
-        _ status: SWIM.Status, for peer: SWIMActorShell,
-        on swimShell: SWIMActorShell, within timeout: Duration,
+        _ status: SWIM.Status, for peer: SWIMActor,
+        on swimShell: SWIMActor, within timeout: Duration,
         file: StaticString = #filePath, line: UInt = #line, column: UInt = #column
     ) async throws {
         let testKit = self.testKit(swimShell.actorSystem)

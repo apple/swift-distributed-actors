@@ -28,8 +28,8 @@ extension ClusterMembership.Node {
         )
     }
 
-    func swimShell(_ system: ClusterSystem) -> SWIMActorShell {
-        try! SWIMActorShell.resolve(id: ._swim(on: self.asUniqueNode!), using: system) // TODO: the ! is not so nice
+    func swimShell(_ system: ClusterSystem) -> SWIMActor {
+        try! SWIMActor.resolve(id: ._swim(on: self.asUniqueNode!), using: system) // TODO: the ! is not so nice
     }
 
     var asUniqueNode: UniqueNode? {

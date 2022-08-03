@@ -27,9 +27,9 @@ final class SWIMSerializationTests: ClusterSystemXCTestCase {
             throw testKit.fail("SWIM shell of [\(targetNode)] should not be nil")
         }
 
-        let targetPeer = try SWIMActorShell.resolve(id: target.id._asRemote, using: self.system)
+        let targetPeer = try SWIMActor.resolve(id: target.id._asRemote, using: self.system)
         let payload: SWIM.GossipPayload = .membership([.init(peer: targetPeer, status: .alive(incarnation: 0), protocolPeriod: 0)])
-        let pingReq: SWIM.PingResponse<SWIMActorShell, SWIMActorShell> = .ack(target: targetPeer, incarnation: 1, payload: payload, sequenceNumber: 13)
+        let pingReq: SWIM.PingResponse<SWIMActor, SWIMActor> = .ack(target: targetPeer, incarnation: 1, payload: payload, sequenceNumber: 13)
         try self.shared_serializationRoundtrip(pingReq)
     }
 
@@ -42,8 +42,8 @@ final class SWIMSerializationTests: ClusterSystemXCTestCase {
             throw testKit.fail("SWIM shell of [\(targetNode)] should not be nil")
         }
 
-        let targetPeer = try SWIMActorShell.resolve(id: target.id._asRemote, using: self.system)
-        let pingReq: SWIM.PingResponse<SWIMActorShell, SWIMActorShell> = .nack(target: targetPeer, sequenceNumber: 13)
+        let targetPeer = try SWIMActor.resolve(id: target.id._asRemote, using: self.system)
+        let pingReq: SWIM.PingResponse<SWIMActor, SWIMActor> = .nack(target: targetPeer, sequenceNumber: 13)
         try self.shared_serializationRoundtrip(pingReq)
     }
 

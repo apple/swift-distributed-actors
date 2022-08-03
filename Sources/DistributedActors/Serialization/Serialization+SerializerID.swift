@@ -104,7 +104,7 @@ extension Serialization {
         internal static let ClusterShellMessage: SerializerID = ._checkProtobufRepresentable(ClusterShell.Message.self)
         internal static let ClusterEvent: SerializerID = ._checkProtobufRepresentable(Cluster.Event.self)
 
-        internal static let SWIMPingResponse: SerializerID = ._checkProtobufRepresentable(SWIM.PingResponse<SWIMActorShell, SWIMActorShell>.self)
+        internal static let SWIMPingResponse: SerializerID = ._checkProtobufRepresentable(SWIM.PingResponse<SWIMActor, SWIMActor>.self)
 
         // op log receptionist
         internal static let PushOps: SerializerID = .foundationJSON

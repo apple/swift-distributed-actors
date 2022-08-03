@@ -55,12 +55,12 @@ final class ActorMetricsSWIMActorPeerMetricsTests: ClusteredActorSystemsXCTestCa
             throw testKit(targetNode).fail("SWIM shell of [\(targetNode)] should not be nil")
         }
 
-        // SWIMActorShell's sendFirstRemotePing might have been triggered when the nodes
+        // SWIMActor's sendFirstRemotePing might have been triggered when the nodes
         // are associated. Reset so we get metrics just for our sendPing call.
         (try await self.metrics.getSWIMTimer(origin) { $0.pingResponseTime })?.reset()
         (try await self.metrics.getSWIMCounter(origin) { $0.messageOutboundCount })?.reset()
 
-        let targetPeer = try SWIMActorShell.resolve(id: target.id._asRemote, using: originNode)
+        let targetPeer = try SWIMActor.resolve(id: target.id._asRemote, using: originNode)
 
         _ = await origin.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
             await __secretlyKnownToBeLocal.sendPing(
@@ -107,14 +107,14 @@ final class ActorMetricsSWIMActorPeerMetricsTests: ClusteredActorSystemsXCTestCa
             throw testKit(throughNode).fail("SWIM shell of [\(throughNode)] should not be nil")
         }
 
-        // SWIMActorShell's sendFirstRemotePing might have been triggered when the nodes
+        // SWIMActor's sendFirstRemotePing might have been triggered when the nodes
         // are associated. Reset so we get metrics just for our sendPingRequest call.
         (try await self.metrics.getSWIMCounter(origin) { $0.messageOutboundCount })?.reset()
 
-        let targetPeer = try SWIMActorShell.resolve(id: target.id._asRemote, using: originNode)
-        let throughPeer = try SWIMActorShell.resolve(id: through.id._asRemote, using: originNode)
+        let targetPeer = try SWIMActor.resolve(id: target.id._asRemote, using: originNode)
+        let throughPeer = try SWIMActor.resolve(id: through.id._asRemote, using: originNode)
 
-        let directive = SWIM.Instance<SWIMActorShell, SWIMActorShell, SWIMActorShell>.SendPingRequestDirective(
+        let directive = SWIM.Instance<SWIMActor, SWIMActor, SWIMActor>.SendPingRequestDirective(
             target: targetPeer,
             timeout: .seconds(1),
             requestDetails: [
@@ -148,7 +148,7 @@ final class ActorMetricsSWIMActorPeerMetricsTests: ClusteredActorSystemsXCTestCa
 }
 
 extension TestMetrics {
-    func getSWIMTimer(_ swimShell: SWIMActorShell, _ body: (SWIM.Metrics.ShellMetrics) -> Timer) async throws -> TestTimer? {
+    func getSWIMTimer(_ swimShell: SWIMActor, _ body: (SWIM.Metrics.ShellMetrics) -> Timer) async throws -> TestTimer? {
         let timer = await swimShell.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
             body(__secretlyKnownToBeLocal.metrics.shell)
         }
@@ -160,7 +160,7 @@ extension TestMetrics {
         return try self.expectTimer(timer)
     }
 
-    func getSWIMCounter(_ swimShell: SWIMActorShell, _ body: (SWIM.Metrics.ShellMetrics) -> Counter) async throws -> TestCounter? {
+    func getSWIMCounter(_ swimShell: SWIMActor, _ body: (SWIM.Metrics.ShellMetrics) -> Counter) async throws -> TestCounter? {
         let counter = await swimShell.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
             body(__secretlyKnownToBeLocal.metrics.shell)
         }

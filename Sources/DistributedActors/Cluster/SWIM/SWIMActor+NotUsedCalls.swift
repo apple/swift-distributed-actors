@@ -18,26 +18,17 @@ import struct Dispatch.DispatchTime
 import enum Dispatch.DispatchTimeInterval
 import SWIM
 
-extension SWIMActorShell: SWIMPingOriginPeer {
-    nonisolated func ack(acknowledging sequenceNumber: SWIM.SequenceNumber, target: SWIMActorShell, incarnation: SWIM.Incarnation, payload: SWIM.GossipPayload<SWIMActorShell>) async throws {
+extension SWIMActor: SWIMPingOriginPeer {
+    nonisolated func ack(acknowledging sequenceNumber: SWIM.SequenceNumber, target: SWIMActor, incarnation: SWIM.Incarnation, payload: SWIM.GossipPayload<SWIMActor>) async throws {
         fatalError("SWIM.ACKs are sent directly as replies to ping requests; the \(#function) is not used or implemented in ClusterSystem")
     }
 }
 
-extension SWIMActorShell: SWIMPingRequestOriginPeer {
+extension SWIMActor: SWIMPingRequestOriginPeer {
     nonisolated func nack(
         acknowledging sequenceNumber: SWIM.SequenceNumber,
-        target: SWIMActorShell
+        target: SWIMActor
     ) async throws {
         fatalError("SWIM.NACKs are sent directly as replies to ping requests; the \(#function) is not used or implemented in ClusterSystem")
     }
-}
-
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Errors
-
-internal enum SWIMActorError: Error {
-    case illegalPeerType(String)
-    case illegalMessageType(String)
-    case noResponse
 }

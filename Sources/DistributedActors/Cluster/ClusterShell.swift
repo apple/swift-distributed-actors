@@ -244,7 +244,7 @@ internal class ClusterShell {
         return pool
     }
 
-    internal private(set) var _swimShell: SWIMActorShell!
+    internal private(set) var _swimShell: SWIMActor!
 
     private var clusterEvents: ClusterEventStream!
 
@@ -288,8 +288,8 @@ internal class ClusterShell {
         let ref = try system._spawnSystemActor(ClusterShell.naming, self.bind(), props: self.props)
         self._ref = ref
 
-        await _Props.$forSpawn.withValue(SWIMActorShell.props) {
-            self._swimShell = await SWIMActorShell(settings: self.settings.swim, clusterRef: ref, system: system)
+        await _Props.$forSpawn.withValue(SWIMActor.props) {
+            self._swimShell = await SWIMActor(settings: self.settings.swim, clusterRef: ref, system: system)
         }
 
         return ref
