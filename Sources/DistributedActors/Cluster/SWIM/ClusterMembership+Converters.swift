@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2020 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -28,8 +28,8 @@ extension ClusterMembership.Node {
         )
     }
 
-    func swimRef(_ context: _ActorContext<SWIM.Ref.Message>) -> SWIM.PeerRef {
-        context.system._resolve(context: .init(id: ._swim(on: self.asUniqueNode!), system: context.system)) // TODO: the ! is not so nice
+    func swimShell(_ system: ClusterSystem) -> SWIMActor {
+        try! SWIMActor.resolve(id: ._swim(on: self.asUniqueNode!), using: system) // TODO: the ! is not so nice
     }
 
     var asUniqueNode: UniqueNode? {

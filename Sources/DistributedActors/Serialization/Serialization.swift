@@ -135,9 +135,7 @@ public class Serialization {
         settings.register(Receptionist.Message.self, serializerID: .doNotSerialize)
 
         // swim failure detector
-        settings.register(SWIM.Message.self)
-        settings.register(SWIM.RemoteMessage.self)
-        settings.register(SWIM.PingResponse.self)
+        settings.register(SWIM.PingResponse<SWIMActor, SWIMActor>.self)
 
         // TODO: Allow plugins to register types...?
 

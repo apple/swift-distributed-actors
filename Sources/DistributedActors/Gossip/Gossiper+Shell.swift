@@ -16,8 +16,6 @@ import Logging
 
 private let gossipTickKey: _TimerKey = "gossip-tick"
 
-/// :nodoc:
-///
 /// Not intended to be spawned directly, use `Gossiper.spawn` instead!
 internal final class GossipShell<Gossip: Codable, Acknowledgement: Codable> {
     typealias Ref = _ActorRef<Message>

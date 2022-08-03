@@ -321,7 +321,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
             // try!-safe, this will spawn under /system/... which we have full control over,
             // and there /system namespace and it is known there will be no conflict for this name
             let clusterEvents = ClusterEventStream(self)
-            let clusterRef = try! cluster.start(system: self, clusterEvents: clusterEvents) // only spawns when cluster is initialized
+            let clusterRef = try! await cluster.start(system: self, clusterEvents: clusterEvents) // only spawns when cluster is initialized
             _ = self._clusterControlStore.storeIfNilThenLoad(Box(ClusterControl(settings, cluster: cluster, clusterRef: clusterRef, eventStream: clusterEvents)))
 
             self._associationTombstoneCleanupTask = eventLoopGroup.next().scheduleRepeatedTask(

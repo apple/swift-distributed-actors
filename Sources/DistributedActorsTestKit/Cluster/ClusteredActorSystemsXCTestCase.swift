@@ -99,15 +99,15 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
         return (first, second)
     }
 
-    override open func tearDown() {
+    override open func tearDown() async throws {
         let testsFailed = self.testRun?.totalFailureCount ?? 0 > 0
         if self.captureLogs, self.alwaysPrintCaptureLogs || testsFailed {
             self.printAllCapturedLogs()
         }
 
-        self._nodes.forEach { node in
+        for node in self._nodes {
             node.log.warning("======================== TEST TEAR DOWN: SHUTDOWN ========================")
-            try! node.shutdown().wait()
+            try! await node.shutdown().wait()
         }
 
         self._nodes = []

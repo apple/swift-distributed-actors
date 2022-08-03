@@ -395,7 +395,6 @@ extension ActorID {
 }
 
 extension ActorID {
-    /// :nodoc:
     public var _isLocal: Bool {
         switch self._location {
         case .local: return true
@@ -403,19 +402,16 @@ extension ActorID {
         }
     }
 
-    /// :nodoc:
     public var _isRemote: Bool {
         !self._isLocal
     }
 
-    /// :nodoc:
     public var _asRemote: Self {
         var remote = self
         remote._location = .remote(remote.uniqueNode)
         return remote
     }
 
-    /// :nodoc:
     public var _asLocal: Self {
         var local = self
         local._location = .local(self.uniqueNode)

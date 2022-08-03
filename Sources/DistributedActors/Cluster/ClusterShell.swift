@@ -119,7 +119,11 @@ internal class ClusterShell {
         }
 
         // 2) Ensure the failure detector knows about this node
-        self._swimRef?.tell(.local(SWIM.LocalMessage.monitor(associated.handshake.remoteNode)))
+        Task {
+            await self._swimShell.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
+                __secretlyKnownToBeLocal.monitor(node: associated.handshake.remoteNode)
+            }
+        }
     }
 
     /// Performs all cleanups related to terminating an association:
@@ -149,10 +153,8 @@ internal class ClusterShell {
         // notify the failure detector, that we shall assume this node as dead from here on.
         // it's gossip will also propagate the information through the cluster
         traceLog_Remote(system.cluster.uniqueNode, "Finish terminate association [\(remoteNode)]: Notifying SWIM, .confirmDead")
-        if let swim = self._swimRef {
-            system.log.warning("Confirm .dead to underlying SWIM, node: \(reflecting: remoteNode)")
-            swim.tell(.local(SWIM.LocalMessage.confirmDead(remoteNode)))
-        }
+        system.log.warning("Confirm .dead to underlying SWIM, node: \(reflecting: remoteNode)")
+        self._swimShell.confirmDead(node: remoteNode)
 
         // it is important that we first check the contains; as otherwise we'd re-add a .down member for what was already removed (!)
         if state.membership.contains(remoteNode) {
@@ -242,7 +244,8 @@ internal class ClusterShell {
         return pool
     }
 
-    private var _swimRef: SWIM.Ref?
+    internal private(set) var _swimShell: SWIMActor!
+
     private var clusterEvents: ClusterEventStream!
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -277,33 +280,17 @@ internal class ClusterShell {
     }
 
     /// Actually starts the shell which kicks off binding to a port, and all further cluster work
-    internal func lazyStart(system: ClusterSystem, clusterEvents: ClusterEventStream) throws -> LazyStart<Message> {
-        pprint("Lazy start \(Self.self)")
-        let instrumentation = system.settings.instrumentation.makeInternalActorTransportInstrumentation()
-        self._serializationPool = try _SerializationPool(settings: .default, serialization: system.serialization, instrumentation: instrumentation)
-        self.clusterEvents = clusterEvents
-
-        // TODO: concurrency... lock the ref as others may read it?
-        let delayed = try system._prepareSystemActor(
-            ClusterShell.naming,
-            self.bind(),
-            props: self.props
-        )
-
-        self._ref = delayed.ref
-
-        pprint("Return delayed \(Self.self)")
-        return delayed
-    }
-
-    /// Actually starts the shell which kicks off binding to a port, and all further cluster work
-    internal func start(system: ClusterSystem, clusterEvents: ClusterEventStream) throws -> _ActorRef<Message> {
+    internal func start(system: ClusterSystem, clusterEvents: ClusterEventStream) async throws -> _ActorRef<Message> {
         let instrumentation = system.settings.instrumentation.makeInternalActorTransportInstrumentation()
         self._serializationPool = try _SerializationPool(settings: .default, serialization: system.serialization, instrumentation: instrumentation)
         self.clusterEvents = clusterEvents
 
         let ref = try system._spawnSystemActor(ClusterShell.naming, self.bind(), props: self.props)
         self._ref = ref
+
+        await _Props.$forSpawn.withValue(SWIMActor.props) {
+            self._swimShell = await SWIMActor(settings: self.settings.swim, clusterRef: ref, system: system)
+        }
 
         return ref
     }
@@ -373,10 +360,6 @@ internal class ClusterShell {
         case failure(HandshakeStateMachine.HandshakeConnectionError)
     }
 
-    private var behavior: _Behavior<Message> {
-        return self.bind()
-    }
-
     private let props: _Props =
         .init()
             .supervision(strategy: .escalate) // always escalate failures, if this actor fails we're in big trouble -> terminate the system
@@ -395,9 +378,8 @@ extension ClusterShell {
             // let clusterSettings = context.system.settings
             let uniqueBindAddress = self.selfNode
 
-            // 1) failure detector:
-            let swimBehavior = SWIMActorShell.behavior(settings: self.settings.swim, clusterRef: context.myself)
-            self._swimRef = try context._spawn(SWIMActorShell.naming, props: SWIMActorShell.props, swimBehavior)
+            // 1) failure detector (SWIM)
+            // Moved to start method
 
             // 2) discovering of new members:
             if let discoverySettings = self.settings.discovery {
@@ -681,7 +663,7 @@ extension ClusterShell {
 
     func tryConfirmDeadToSWIM(_ context: _ActorContext<Message>, _ state: ClusterShellState, change: Cluster.MembershipChange) {
         if change.status.isAtLeast(.down) {
-            self._swimRef?.tell(.local(SWIM.LocalMessage.confirmDead(change.member.uniqueNode)))
+            self._swimShell.confirmDead(node: change.member.uniqueNode)
         }
     }
 
@@ -1289,7 +1271,7 @@ extension ClusterShell {
         }
 
         // whenever we down a node we must ensure to confirm it to swim, so it won't keep monitoring it forever needlessly
-        self._swimRef?.tell(.local(SWIM.LocalMessage.confirmDead(memberToDown.uniqueNode)))
+        self._swimShell.confirmDead(node: memberToDown.uniqueNode)
 
         if memberToDown.uniqueNode == state.selfNode {
             // ==== ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

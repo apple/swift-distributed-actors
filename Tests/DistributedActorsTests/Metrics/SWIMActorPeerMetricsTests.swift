@@ -29,87 +29,146 @@ final class ActorMetricsSWIMActorPeerMetricsTests: ClusteredActorSystemsXCTestCa
         super.setUp()
     }
 
-    override func tearDown() {
-        super.tearDown()
+    override func tearDown() async throws {
+        try await super.tearDown()
         self.metrics = nil
         MetricsSystem.bootstrapInternal(NOOPMetricsHandler.instance)
     }
 
+    override func configureLogCapture(settings: inout LogCapture.Settings) {
+        settings.filterActorPaths = ["/user/swim"]
+    }
+
     func test_swimPeer_ping_shouldRemoteMetrics() async throws {
-        let first = await setUpNode("first")
+        let originNode = await setUpNode("origin") { settings in
+            settings.swim.probeInterval = .seconds(30) // Don't let gossip interfere with the test
+        }
+        let targetNode = await setUpNode("target")
 
-        let origin = testKit(first).makeTestProbe(expecting: SWIM.Message.self)
-        let target = testKit(first).makeTestProbe(expecting: SWIM.Message.self)
+        originNode.cluster.join(node: targetNode.cluster.uniqueNode)
+        try assertAssociated(originNode, withExactly: targetNode.cluster.uniqueNode)
 
-        let fakeClusterRef = testKit(first).makeTestProbe(expecting: ClusterShell.Message.self).ref
-
-        let instance = SWIM.Instance(settings: first.settings.swim, myself: origin.ref)
-        _ = try first._spawn("swim", of: SWIM.Message.self, .setup { context in
-            let shell = SWIMActorShell(instance, clusterRef: fakeClusterRef)
-            shell.sendPing(to: target.ref, payload: .none, pingRequestOrigin: nil, pingRequestSequenceNumber: nil, timeout: .seconds(2), sequenceNumber: 1, context: context)
-            return .receiveMessage { _ in .same }
-        })
-
-        switch try target.expectMessage() {
-        case .remote(.ping(let pingOrigin, _, let sequenceNumber)):
-            pingOrigin.ack(acknowledging: sequenceNumber, target: target.ref, incarnation: 1, payload: .none)
-        case let other:
-            fatalError("Unexpected message: \(other)")
+        guard let origin = originNode._cluster?._swimShell else {
+            throw testKit(originNode).fail("SWIM shell of [\(originNode)] should not be nil")
+        }
+        guard let target = targetNode._cluster?._swimShell else {
+            throw testKit(targetNode).fail("SWIM shell of [\(targetNode)] should not be nil")
         }
 
-        sleep(2) // FIXME: if we rework how throws work with eventually() we can avoid the sleep
+        // SWIMActor's sendFirstRemotePing might have been triggered when the nodes
+        // are associated. Reset so we get metrics just for our sendPing call.
+        (try await self.metrics.getSWIMTimer(origin) { $0.pingResponseTime })?.reset()
+        (try await self.metrics.getSWIMCounter(origin) { $0.messageOutboundCount })?.reset()
 
-        let timer = try self.metrics.expectTimer(instance.metrics.shell.pingResponseTime)
+        let targetPeer = try SWIMActor.resolve(id: target.id._asRemote, using: originNode)
+
+        _ = await origin.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
+            await __secretlyKnownToBeLocal.sendPing(
+                to: targetPeer,
+                payload: .none,
+                pingRequestOrigin: nil,
+                pingRequestSequenceNumber: nil,
+                timeout: .milliseconds(200),
+                sequenceNumber: 1
+            )
+        }
+
+        guard let timer = try await self.metrics.getSWIMTimer(origin, { $0.pingResponseTime }) else {
+            throw testKit(originNode).fail("SWIM metrics pingResponseTime should not be nil")
+        }
         pinfo("Recorded \(timer): \(String(reflecting: timer.lastValue.map { Duration.nanoseconds($0).prettyDescription }))")
-        timer.label.shouldEqual("first.cluster.swim.roundTripTime.ping")
+        timer.label.shouldEqual("origin.cluster.swim.roundTripTime.ping")
         timer.lastValue!.shouldBeGreaterThan(0)
 
-        try self.metrics.expectCounter(instance.metrics.shell.messageOutboundCount).totalValue.shouldEqual(1)
+        guard let counter = try await self.metrics.getSWIMCounter(origin, { $0.messageOutboundCount }) else {
+            throw testKit(originNode).fail("SWIM metrics messageOutboundCount should not be nil")
+        }
+        counter.totalValue.shouldEqual(1)
     }
 
     func test_swimPeer_pingRequest_shouldRemoteMetrics() async throws {
-        let first = await setUpNode("first")
+        let originNode = await setUpNode("origin") { settings in
+            settings.swim.probeInterval = .seconds(30) // Don't let gossip interfere with the test
+        }
+        let targetNode = await setUpNode("target")
+        let throughNode = await setUpNode("through")
 
-        let origin = testKit(first).makeTestProbe(expecting: SWIM.Message.self)
-        let target = testKit(first).makeTestProbe(expecting: SWIM.Message.self)
-        let through = testKit(first).makeTestProbe(expecting: SWIM.Message.self)
+        originNode.cluster.join(node: throughNode.cluster.uniqueNode)
+        targetNode.cluster.join(node: throughNode.cluster.uniqueNode)
+        try assertAssociated(originNode, withExactly: [targetNode.cluster.uniqueNode, throughNode.cluster.uniqueNode])
 
-        let fakeClusterRef = testKit(first).makeTestProbe(expecting: ClusterShell.Message.self).ref
-        let directive = SWIM.Instance.SendPingRequestDirective(
-            target: target.ref,
+        guard let origin = originNode._cluster?._swimShell else {
+            throw testKit(originNode).fail("SWIM shell of [\(originNode)] should not be nil")
+        }
+        guard let target = targetNode._cluster?._swimShell else {
+            throw testKit(targetNode).fail("SWIM shell of [\(targetNode)] should not be nil")
+        }
+        guard let through = throughNode._cluster?._swimShell else {
+            throw testKit(throughNode).fail("SWIM shell of [\(throughNode)] should not be nil")
+        }
+
+        // SWIMActor's sendFirstRemotePing might have been triggered when the nodes
+        // are associated. Reset so we get metrics just for our sendPingRequest call.
+        (try await self.metrics.getSWIMCounter(origin) { $0.messageOutboundCount })?.reset()
+
+        let targetPeer = try SWIMActor.resolve(id: target.id._asRemote, using: originNode)
+        let throughPeer = try SWIMActor.resolve(id: through.id._asRemote, using: originNode)
+
+        let directive = SWIM.Instance<SWIMActor, SWIMActor, SWIMActor>.SendPingRequestDirective(
+            target: targetPeer,
             timeout: .seconds(1),
             requestDetails: [
-                .init(peerToPingRequestThrough: through.ref, payload: .none, sequenceNumber: 1),
+                .init(peerToPingRequestThrough: throughPeer, payload: .none, sequenceNumber: 1),
             ]
         )
 
-        let instance = SWIM.Instance(settings: first.settings.swim, myself: origin.ref)
-        _ = try first._spawn("swim", of: SWIM.Message.self, .setup { context in
-            let shell = SWIMActorShell(instance, clusterRef: fakeClusterRef)
-            shell.sendPingRequests(directive, context: context) // we need a real context here since we reach into system metrics through it
-            return .receiveMessage { _ in .same }
-        })
-
-        switch try through.expectMessage() {
-        case .remote(.pingRequest(_, let pingOrigin, _, let sequenceNumber)):
-            // pretend we did a successful ping to the target
-            pingOrigin.ack(acknowledging: sequenceNumber, target: target.ref, incarnation: 10, payload: .none)
-        case let other:
-            fatalError("unexpected message: \(other)")
+        _ = await origin.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
+            await __secretlyKnownToBeLocal.sendPingRequests(directive)
         }
 
-        sleep(2) // FIXME: if we rework how throws work with eventually() we can avoid the sleep
-
-        let timerFirst = try self.metrics.expectTimer(instance.metrics.shell.pingRequestResponseTimeFirst)
+        guard let timerFirst = try await self.metrics.getSWIMTimer(origin, { $0.pingRequestResponseTimeFirst }) else {
+            throw testKit(originNode).fail("SWIM metrics pingRequestResponseTimeFirst should not be nil")
+        }
         pinfo("Recorded \(timerFirst): \(String(reflecting: timerFirst.lastValue.map { Duration.nanoseconds($0).prettyDescription }))")
-        timerFirst.label.shouldEqual("first.cluster.swim.roundTripTime.pingRequest")
+        timerFirst.label.shouldEqual("origin.cluster.swim.roundTripTime.pingRequest")
         timerFirst.lastValue!.shouldBeGreaterThan(0)
 
-        let timerAll = try self.metrics.expectTimer(instance.metrics.shell.pingRequestResponseTimeAll)
+        guard let timerAll = try await self.metrics.getSWIMTimer(origin, { $0.pingRequestResponseTimeAll }) else {
+            throw testKit(originNode).fail("SWIM metrics pingRequestResponseTimeAll should not be nil")
+        }
         pinfo("Recorded \(timerAll): \(String(reflecting: timerAll.lastValue.map { Duration.nanoseconds($0).prettyDescription }))")
-        timerAll.label.shouldEqual("first.cluster.swim.roundTripTime.pingRequest")
+        timerAll.label.shouldEqual("origin.cluster.swim.roundTripTime.pingRequest")
         timerAll.lastValue!.shouldBeGreaterThan(0)
 
-        try self.metrics.expectCounter(instance.metrics.shell.messageOutboundCount).totalValue.shouldEqual(1)
+        guard let counter = try await self.metrics.getSWIMCounter(origin, { $0.messageOutboundCount }) else {
+            throw testKit(originNode).fail("SWIM metrics messageOutboundCount should not be nil")
+        }
+        counter.totalValue.shouldEqual(1)
+    }
+}
+
+extension TestMetrics {
+    func getSWIMTimer(_ swimShell: SWIMActor, _ body: (SWIM.Metrics.ShellMetrics) -> Timer) async throws -> TestTimer? {
+        let timer = await swimShell.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
+            body(__secretlyKnownToBeLocal.metrics.shell)
+        }
+
+        guard let timer = timer else {
+            return nil
+        }
+
+        return try self.expectTimer(timer)
+    }
+
+    func getSWIMCounter(_ swimShell: SWIMActor, _ body: (SWIM.Metrics.ShellMetrics) -> Counter) async throws -> TestCounter? {
+        let counter = await swimShell.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
+            body(__secretlyKnownToBeLocal.metrics.shell)
+        }
+
+        guard let counter = counter else {
+            return nil
+        }
+
+        return try self.expectCounter(counter)
     }
 }

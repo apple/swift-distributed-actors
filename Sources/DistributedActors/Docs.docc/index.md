@@ -26,8 +26,6 @@ Please note that this project requires the latest **Swift 5.7** language feature
 - <doc:Security>
 - <doc:Observability>
 
-<!--### Tutorials -->
-
 ### Clustering essentials 
 
 - ``ClusterSystem``

@@ -26,7 +26,6 @@ import NIO
 /// Remote actors are considered terminated when they deinitialize, same as local actors,
 /// or when the node hosting them is declared `.down`.
 final class LifecycleWatchContainer {
-    // private let _lock: Lock // FIXME(lock): generally this type shall only be accessed by the owning actor... but deinitialization can be in a different thread, and we saw some crashes and know of issues in actor isolation which have a fix merged: https://github.com/apple/swift/issues/58517 so better safe than sorry for the time being
     private let _lock = DispatchSemaphore(value: 1)
 
     internal let watcherID: ClusterSystem.ActorID
