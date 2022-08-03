@@ -364,6 +364,12 @@ extension OpLogDistributedReceptionist: LifecycleWatch {
                 "subscription/key": "\(subscription.key)",
                 "subscription/callSite": "\(file):\(line)",
             ])
+
+            // We immediately flush all already-known registrations;
+            // as new ones come in, they will be reported to this subscription later on
+            for alreadyRegisteredAtSubscriptionTime in self.storage.registrations(forKey: subscription.key) ?? [] {
+                subscription.tryOffer(registration: alreadyRegisteredAtSubscriptionTime)
+            }
         }
     }
 
@@ -380,11 +386,11 @@ extension OpLogDistributedReceptionist: LifecycleWatch {
         where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem
     {
         await self.whenLocal { __secretlyKnownToBeLocal in
-            await __secretlyKnownToBeLocal._lookup(key)
+            __secretlyKnownToBeLocal._lookup(key)
         } ?? []
     }
 
-    private func _lookup<Guest>(_ key: DistributedReception.Key<Guest>) async -> Set<Guest>
+    private func _lookup<Guest>(_ key: DistributedReception.Key<Guest>) -> Set<Guest>
         where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem
     {
         let registrations = self.storage.registrations(forKey: key.asAnyKey) ?? []
@@ -553,21 +559,20 @@ extension OpLogDistributedReceptionist {
 
         // apply operation to storage
         switch op {
-        case .register(let key, let identity):
+        case .register(let anyKey, let identity):
             // We resolve a stub that we cannot really ever send messages to, but we can "watch" it
             let resolved = try! actorSystem._resolveStub(identity: identity) // TODO(distributed): remove the throwing here?
 
             watchTermination(of: resolved)
-            if self.storage.addRegistration(sequenced: sequenced, key: key, guest: resolved) {
+            if self.storage.addRegistration(sequenced: sequenced, key: anyKey, guest: resolved) {
                 // self.instrumentation.actorRegistered(key: key, id: id) // TODO(distributed): make the instrumentation calls compatible with distributed actor based types
             }
 
-        case .remove(let key, let identity):
-            //            let resolved = system._resolveUntyped(context: .init(id: id, system: system))
+        case .remove(let anyKey, let identity):
             let resolved = try! actorSystem._resolveStub(identity: identity) // TODO(distributed): remove the throwing here?
 
-            unwatch(resolved)
-            if self.storage.removeRegistration(key: key, guest: resolved) != nil {
+            unwatchTermination(of: resolved)
+            if self.storage.removeRegistration(key: anyKey, guest: resolved) != nil {
                 // self.instrumentation.actorRemoved(key: key, id: id) // TODO(distributed): make the instrumentation calls compatible with distributed actor based types
             }
         }
