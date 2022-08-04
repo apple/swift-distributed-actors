@@ -196,17 +196,17 @@ enum NodeDeathWatcherShell {
             let onClusterEventRef = context.subReceive(Cluster.Event.self) { event in
                 switch event {
                 case .snapshot(let membership):
-                    context.log.info("Membership snapshot: \(membership)")
+                    context.log.trace("Membership snapshot: \(membership)")
                     let diff = Cluster.Membership._diff(from: .empty, to: membership)
                     for change in diff.changes {
                         instance.onMembershipChanged(change)
                     }
 
                 case .membershipChange(let change) where change.isAtLeast(.down):
-                    context.log.info("Node down: \(change)!")
+                    context.log.trace("Node down: \(change)!")
                     instance.handleAddressDown(change)
                 case .membershipChange(let change):
-                    context.log.info("Node change: \(change)!")
+                    context.log.trace("Node change: \(change)!")
                     instance.onMembershipChanged(change)
 
                 default:

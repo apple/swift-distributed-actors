@@ -181,6 +181,17 @@ public struct ClusterControl {
     public func joined(node: UniqueNode, within: Duration) async throws -> Cluster.Member {
         try await self.waitFor(node, .up, within: within)
     }
+    /// Wait, within the given duration, until the passed in node has joined the cluster and become ``Cluster/MemberStatus/up``.
+    ///
+    /// - Parameters
+    ///   - node: The node to be joined by this system.
+    ///   - within: Duration to wait for.
+    ///
+    /// - Returns `Cluster.Member` for the joined node.
+    @discardableResult
+    public func joined(node: Node, within: Duration) async throws -> Cluster.Member? {
+        try await self.waitFor(node, .up, within: within)
+    }
 
     /// Wait, within the given duration, for this actor system to be a member of all the nodes' respective cluster and have the specified status.
     ///
@@ -188,14 +199,14 @@ public struct ClusterControl {
     ///   - nodes: The nodes to be joined by this system.
     ///   - status: The expected member status.
     ///   - within: Duration to wait for.
-    public func waitFor(_ nodes: Set<UniqueNode>, _ status: Cluster.MemberStatus, within: Duration) async throws {
+    public func waitFor(_ nodes: some Collection<UniqueNode>, _ status: Cluster.MemberStatus, within: Duration) async throws {
         try await withThrowingTaskGroup(of: Void.self) { group in
             for node in nodes {
                 group.addTask {
                     try await self.waitFor(node, status, within: within)
                 }
             }
-            // loop explicitly to propagagte any error that might have been thrown
+            // loop explicitly to propagate any error that might have been thrown
             for try await _ in group {}
         }
     }
@@ -206,14 +217,14 @@ public struct ClusterControl {
     ///   - nodes: The nodes to be joined by this system.
     ///   - status: The minimum expected member status.
     ///   - within: Duration to wait for.
-    public func waitFor(_ nodes: Set<UniqueNode>, atLeast atLeastStatus: Cluster.MemberStatus, within: Duration) async throws {
+    public func waitFor(_ nodes: some Collection<UniqueNode>, atLeast atLeastStatus: Cluster.MemberStatus, within: Duration) async throws {
         try await withThrowingTaskGroup(of: Void.self) { group in
             for node in nodes {
                 group.addTask {
                     _ = try await self.waitFor(node, atLeast: atLeastStatus, within: within)
                 }
             }
-            // loop explicitly to propagagte any error that might have been thrown
+            // loop explicitly to propagate any error that might have been thrown
             for try await _ in group {}
         }
     }
@@ -243,6 +254,33 @@ public struct ClusterControl {
                     return Cluster.Member(node: node, status: .removed).asUnreachable
                 }
                 throw Cluster.MembershipError(.notFound(node, in: membership))
+            }
+
+            if status != foundMember.status {
+                throw Cluster.MembershipError(.statusRequirementNotMet(expected: status, found: foundMember))
+            }
+            return foundMember
+        }
+    }
+
+    /// Wait, within the given duration, for this actor system to be a member of the node's cluster and have the specified status.
+    ///
+    /// - Parameters
+    ///   - node: The node to be joined by this system.
+    ///   - status: The expected member status.
+    ///   - within: Duration to wait for.
+    ///
+    /// - Returns `Cluster.Member` for the joined node with the expected status.
+    ///         If the expected status is `.down` or `.removed`, and the node is already known to have been removed from the cluster
+    ///         a synthesized `Cluster/MemberStatus/removed` (and `.unreachable`) member is returned.
+    @discardableResult
+    public func waitFor(_ node: Node, _ status: Cluster.MemberStatus, within: Duration) async throws -> Cluster.Member? {
+        try await self.waitForMembershipEventually(Optional<Cluster.Member>.self, within: within) { membership in
+            guard let foundMember = membership.member(node) else {
+                if status == .down || status == .removed {
+                    return nil
+                }
+                throw Cluster.MembershipError(.notFoundAny(node, in: membership))
             }
 
             if status != foundMember.status {
@@ -286,7 +324,10 @@ public struct ClusterControl {
         }
     }
 
-    private func waitForMembershipEventually<T>(within: Duration, interval: Duration = .milliseconds(100), _ block: (Cluster.Membership) async throws -> T) async throws -> T {
+    private func waitForMembershipEventually<T>(_: T.Type = T.self,
+                                                within: Duration,
+                                                interval: Duration = .milliseconds(100),
+                                                _ block: (Cluster.Membership) async throws -> T) async throws -> T {
         let deadline = ContinuousClock.Instant.fromNow(within)
 
         var lastError: Error?
@@ -303,4 +344,5 @@ public struct ClusterControl {
 
         throw Cluster.MembershipError(.awaitStatusTimedOut(within, lastError))
     }
+    
 }

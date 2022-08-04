@@ -48,6 +48,33 @@ var targets: [PackageDescription.Target] = [
     ),
 
     // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: MultiNodeTestKit
+
+    .target(
+        name: "MultiNodeTestKit",
+        dependencies: [
+            "DistributedActors",
+            // "DistributedActorsTestKit", // can't depend on it because it'll pull in XCTest, and that crashes in executable then
+            .product(name: "Backtrace", package: "swift-backtrace"),
+            .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
+            .product(name: "Atomics", package: "swift-atomics"),
+            .product(name: "OrderedCollections", package: "swift-collections"),
+        ]
+    ),
+
+    .executableTarget(
+        name: "MultiNodeTestKitRunner",
+        dependencies: [
+            // Depend on tests to run:
+            "DistributedActorsMultiNodeTests",
+
+            // Dependencies:
+            "MultiNodeTestKit",
+            .product(name: "ArgumentParser", package: "swift-argument-parser"),
+        ]
+    ),
+
+    // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Tests
 
     .testTarget(
@@ -65,6 +92,14 @@ var targets: [PackageDescription.Target] = [
             "DistributedActors",
             "DistributedActorsTestKit",
         ]
+    ),
+
+    .target(
+        name: "DistributedActorsMultiNodeTests",
+        dependencies: [
+            "MultiNodeTestKit",
+        ],
+        path: "MultiNodeTests/DistributedActorsMultiNodeTests"
     ),
 
 //    .testTarget(
@@ -166,6 +201,12 @@ var dependencies: [Package.Dependency] = [
 
     // ~~~ SwiftPM Plugins ~~~
     .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.0.0"),
+
+    // ~~~ MultiNode Testing ~~~
+    .package(name: "MultiNodeTestPlugin", path: "./InternalPlugins/MultiNodeTest/"),
+
+    // ~~~ Command Line ~~~~
+    .package(url: "https://github.com/apple/swift-argument-parser", from: "1.0.3"),
 ]
 
 let products: [PackageDescription.Product] = [
