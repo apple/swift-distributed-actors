@@ -154,7 +154,6 @@ extension DistributedReception {
 internal struct VersionedRegistration: Hashable {
     let version: VersionVector
     let actorID: ClusterSystem.ActorID
-    // let actor: WeakAny<AnyDistributedActor>
 
     init(remoteOpSeqNr: UInt64, actor: AnyDistributedActor) {
         self.version = VersionVector(remoteOpSeqNr, at: .uniqueNode(actor.id.uniqueNode))
