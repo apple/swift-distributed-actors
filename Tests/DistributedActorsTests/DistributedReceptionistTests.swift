@@ -311,12 +311,6 @@ distributed actor Forwarder {
         self.actorSystem = actorSystem
         self.probe = probe
         self.name = name
-
-        pprint("<< init: \(self.id)")
-    }
-
-    deinit {
-        pprint("<< deinit: \(self.id)")
     }
 
     distributed func forward(message: String) {
