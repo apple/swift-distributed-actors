@@ -406,7 +406,7 @@ extension OpLogDistributedReceptionist: LifecycleWatch {
                 guests.insert(guest)
             } catch is DeadLetterError {
                 // This just means that this `lookup` arrived before the `terminated` of this specific actor as it terminated.
-                // This specific actor actor is already dead, so there's no need to emit it in our listing.
+                // This specific actor is already dead, so there's no need to emit it in our listing.
                 //
                 // The terminated arrives asynchronously and will arrive a bit later;
                 // We can also just cause the terminated eagerly over here
