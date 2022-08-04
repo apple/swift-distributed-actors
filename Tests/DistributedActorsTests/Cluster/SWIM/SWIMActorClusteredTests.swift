@@ -23,7 +23,7 @@ import Foundation
 @testable import SWIM
 import XCTest
 
-final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
+final class SWIMActorClusteredTests: ClusteredActorSystemsXCTestCase {
     var metrics: TestMetrics! = TestMetrics()
 
     override func setUp() {
