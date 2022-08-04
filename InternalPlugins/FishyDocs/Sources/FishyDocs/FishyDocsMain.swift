@@ -14,7 +14,7 @@ struct Commands {
 }
 
 @main
-struct FishyDocs: ParsableCommand {
+struct FishyDocsMain: ParsableCommand {
     @Option(help: "Folder containing the docc documentation to scan for fishy-docs")
     var doccFile: String
 

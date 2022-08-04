@@ -670,6 +670,7 @@ extension Cluster {
         internal enum _MembershipError: CustomPrettyStringConvertible {
             case nonMemberLeaderSelected(Cluster.Membership, wannabeLeader: Cluster.Member)
             case notFound(UniqueNode, in: Cluster.Membership)
+            case notFoundAny(Node, in: Cluster.Membership)
             case atLeastStatusRequirementNotMet(expectedAtLeast: Cluster.MemberStatus, found: Cluster.Member)
             case statusRequirementNotMet(expected: Cluster.MemberStatus, found: Cluster.Member)
             case awaitStatusTimedOut(Duration, Error?)
@@ -683,6 +684,8 @@ extension Cluster {
                 case .nonMemberLeaderSelected(let membership, let wannabeLeader):
                     return "[\(wannabeLeader)] selected leader but is not a member [\(membership)]"
                 case .notFound(let node, let membership):
+                    return "[\(node)] is not a member [\(membership)]"
+                case .notFoundAny(let node, let membership):
                     return "[\(node)] is not a member [\(membership)]"
                 case .atLeastStatusRequirementNotMet(let expectedAtLeastStatus, let foundMember):
                     return "Expected \(reflecting: foundMember.uniqueNode) to be seen as at-least [\(expectedAtLeastStatus)] but was [\(foundMember.status)]"

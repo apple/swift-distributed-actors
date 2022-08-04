@@ -429,7 +429,7 @@ distributed actor LifecycleTestSingleton: ClusterSingleton {
     }
 
     deinit {
-        guard __isLocalActor(self) else { // FIXME: workaround until
+        guard __isLocalActor(self) else { // FIXME: workaround until fixed Swift is released
             return
         }
 

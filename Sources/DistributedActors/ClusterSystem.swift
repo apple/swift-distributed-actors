@@ -467,6 +467,11 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         }
     }
 
+    /// Returns `true` if the system was already successfully terminated (i.e. awaiting ``terminated`` would resume immediately).
+    public var isTerminated: Bool {
+        self.shutdownFlag.load(ordering: .relaxed) > 0
+    }
+
     /// Forcefully stops this actor system and all actors that live within it.
     /// This is an asynchronous operation and will be executed on a separate thread.
     ///
