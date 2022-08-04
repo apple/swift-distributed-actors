@@ -416,6 +416,7 @@ extension OpLogDistributedReceptionist: LifecycleWatch {
                 self.actorSystem.log.debug("Failed to resolve guest for listing key \(key)", metadata: [
                     "actor/id": "\(versioned.actorID)",
                     "actor/type": "\(Guest.self)",
+                    "error": "\(error)",
                 ])
             }
         }
@@ -576,7 +577,7 @@ extension OpLogDistributedReceptionist {
         switch op {
         case .register(let anyKey, let identity):
             // We resolve a stub that we cannot really ever send messages to, but we can "watch" it
-            let resolved = try! actorSystem._resolveStub(id: identity) // TODO(distributed): remove the throwing here?
+            let resolved = actorSystem._resolveStub(id: identity)
 
             watchTermination(of: resolved)
             if self.storage.addRegistration(sequenced: sequenced, key: anyKey, guest: resolved) {
