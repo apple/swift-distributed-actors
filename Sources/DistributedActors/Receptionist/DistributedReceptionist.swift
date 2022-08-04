@@ -97,13 +97,25 @@ extension DistributedReception {
             init(receptionist __secretlyKnownToBeLocal: OpLogDistributedReceptionist, key: DistributedReception.Key<Guest>,
                  file: String, line: UInt)
             {
-                self.underlying = AsyncStream<Element> { continuation in
+                let system = __secretlyKnownToBeLocal.actorSystem
+                self.underlying = AsyncStream<Guest> { continuation in
                     let anySubscribe = AnyDistributedReceptionListingSubscription(
                         subscriptionID: ObjectIdentifier(self),
                         file: file, line: line,
                         key: key.asAnyKey,
-                        onNext: { anyGuest in
-                            switch continuation.yield(anyGuest.force(as: Guest.self)) {
+                        onNext: { [weak system] guestID in
+                            guard let system else {
+                                // system seems to have deinitialized, no reason to keep working here
+                                continuation.finish()
+                                return
+                            }
+
+                            guard let guest = try? Guest.resolve(id: guestID, using: system) else {
+                                system.log.warning("Failed to resolve \(guestID) for listing \(self)")
+                                return
+                            }
+
+                            switch continuation.yield(guest) {
                             case .terminated, .dropped:
                                 continuation.finish()
                             case .enqueued:
@@ -141,24 +153,24 @@ extension DistributedReception {
 /// and only emit those to the user-facing stream which have not been observed yet.
 internal struct VersionedRegistration: Hashable {
     let version: VersionVector
-    let actor: AnyDistributedActor
+    let actorID: ClusterSystem.ActorID
 
     init(remoteOpSeqNr: UInt64, actor: AnyDistributedActor) {
         self.version = VersionVector(remoteOpSeqNr, at: .uniqueNode(actor.id.uniqueNode))
-        self.actor = actor
+        self.actorID = actor.id
     }
 
-    init(forRemovalOf actor: AnyDistributedActor) {
+    init(forRemovalOf actorID: ActorID) {
         self.version = .empty
-        self.actor = actor
+        self.actorID = actorID
     }
 
     func hash(into hasher: inout Hasher) {
-        hasher.combine(self.actor)
+        hasher.combine(self.actorID)
     }
 
     static func == (lhs: VersionedRegistration, rhs: VersionedRegistration) -> Bool {
-        if lhs.actor != rhs.actor {
+        if lhs.actorID != rhs.actorID {
             return false
         }
         return true
@@ -211,11 +223,11 @@ internal final class DistributedReceptionistStorage {
     {
         let address = guest.id
 
-        _ = self.removeFromKeyMappings(guest.asAnyDistributedActor)
+        _ = self.removeFromKeyMappings(guest.id)
         self.removeSingleRegistrationNodeRelation(key: key, node: address.uniqueNode)
 
         let versionedRegistration = VersionedRegistration(
-            forRemovalOf: guest.asAnyDistributedActor
+            forRemovalOf: guest.id
         )
         return self.removeFrom(dict: &self._registrations, key: key, value: versionedRegistration)
     }
@@ -252,25 +264,15 @@ internal final class DistributedReceptionistStorage {
         self._subscriptions[key]
     }
 
-    /// - Returns: keys that this actor was REGISTERED under, and thus listings associated with it should be updated
-    func removeFromKeyMappings(identity: ClusterSystem.ActorID) -> RefMappingRemovalResult {
-        guard let registeredUnderKeys = self._identityToRegisteredKeys.removeValue(forKey: identity) else {
+    func removeFromKeyMappings(_ id: ActorID) -> RefMappingRemovalResult {
+        guard let associatedKeys = self._identityToRegisteredKeys.removeValue(forKey: id) else {
             // was not registered under any keys before
-            return RefMappingRemovalResult(registeredUnderKeys: [])
-        }
-
-        return RefMappingRemovalResult(registeredUnderKeys: registeredUnderKeys)
-    }
-
-    /// - Returns: set of keys that this actor was REGISTERED under, and thus listings associated with it should be updated
-    func removeFromKeyMappings(_ ref: AnyDistributedActor) -> RefMappingRemovalResult {
-        guard let associatedKeys = self._identityToRegisteredKeys.removeValue(forKey: ref.id) else {
             return RefMappingRemovalResult(registeredUnderKeys: [])
         }
 
         var registeredKeys: Set<AnyDistributedReceptionKey> = [] // TODO: OR we store it directly as registeredUnderKeys/subscribedToKeys in the dict
         for key in associatedKeys {
-            if self._registrations[key]?.remove(.init(forRemovalOf: ref)) != nil {
+            if self._registrations[key]?.remove(.init(forRemovalOf: id)) != nil {
                 _ = registeredKeys.insert(key)
             }
         }
@@ -303,7 +305,7 @@ internal final class DistributedReceptionistStorage {
             // 1) we remove any registrations that it hosted
             let registrations = self._registrations.removeValue(forKey: key) ?? []
             let remainingRegistrations = registrations.filter { registration in
-                registration.actor.id.uniqueNode != node
+                registration.actorID.uniqueNode != node
             }
             if !remainingRegistrations.isEmpty {
                 self._registrations[key] = remainingRegistrations
@@ -361,8 +363,8 @@ internal final class AnyDistributedReceptionListingSubscription: Hashable, @unch
     let line: UInt
     #endif
 
-    /// Offer a new listing to the subscription stream. // FIXME: implement this by offering single elements (!!!)
-    private let onNext: @Sendable (AnyDistributedActor) -> Void
+    /// Offer a new listing to the subscription stream
+    private let onNext: @Sendable (ClusterSystem.ActorID) -> Void
 
     /// We very carefully only modify this from the owning actor (receptionist).
     // TODO: It would be lovely to be able to express this in the type system as "actor owned" or "actor local" to some actor instance.
@@ -372,7 +374,7 @@ internal final class AnyDistributedReceptionListingSubscription: Hashable, @unch
         subscriptionID: ObjectIdentifier,
         file: String, line: UInt,
         key: AnyDistributedReceptionKey,
-        onNext: @escaping @Sendable (AnyDistributedActor) -> Void
+        onNext: @escaping @Sendable (ClusterSystem.ActorID) -> Void
     ) {
         self.subscriptionID = subscriptionID
         self.key = key
@@ -409,7 +411,7 @@ internal final class AnyDistributedReceptionListingSubscription: Hashable, @unch
         case .happenedAfter:
             // the incoming registration has not yet been seen before,
             // which means that we should emit the actor to the stream.
-            self.onNext(registration.actor)
+            self.onNext(registration.actorID)
         case .concurrent:
             fatalError("""
             It should not be possible for a version vector to be concurrent with a PAST version of itself before the merge
