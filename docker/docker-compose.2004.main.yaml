@@ -10,6 +10,8 @@ services:
 
   unit-tests:
     image: swift-distributed-actors:20.04-main
+    environment:
+      - EXPLICIT_TARGET_DEPENDENCY_IMPORT_CHECK=--explicit-target-dependency-import-check error
 
   unit-tests-until-failure:
     image: swift-distributed-actors:20.04-main
@@ -19,15 +21,11 @@ services:
 
   test:
     image: swift-distributed-actors:20.04-main
+    environment:
+      - EXPLICIT_TARGET_DEPENDENCY_IMPORT_CHECK=--explicit-target-dependency-import-check error
 
   bench:
     image: swift-distributed-actors:20.04-main
 
   shell:
-    image: swift-distributed-actors:20.04-main
-
-  sample-crash:
-    image: swift-distributed-actors:20.04-main
-
-  sample-crash-actor:
     image: swift-distributed-actors:20.04-main
