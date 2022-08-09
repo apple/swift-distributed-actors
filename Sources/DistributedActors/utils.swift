@@ -79,7 +79,7 @@ private func _createTimeFormatter() -> DateFormatter {
 }
 
 /// Short for "pretty print", useful for debug tracing
-func pprint(_ message: String, file: String = #filePath, line: UInt = #line) {
+func pprint(_ message: String, file: String = #fileID, line: UInt = #line) {
     print("""
     [pprint]\
     [\(_createTimeFormatter().string(from: Date()))] \
@@ -89,7 +89,7 @@ func pprint(_ message: String, file: String = #filePath, line: UInt = #line) {
     """)
 }
 
-func pprint(_ message: String, metadata: [String: Any], file: String = #filePath, line: UInt = #line) {
+func pprint(_ message: String, metadata: [String: Any], file: String = #fileID, line: UInt = #line) {
     print("""
     [pprint]\
     [\(_createTimeFormatter().string(from: Date()))] \
@@ -100,7 +100,7 @@ func pprint(_ message: String, metadata: [String: Any], file: String = #filePath
     """)
 }
 
-func pprint(_ message: StaticString, file: String = #filePath, line: UInt = #line) {
+func pprint(_ message: StaticString, file: String = #fileID, line: UInt = #line) {
     print("""
     [pprint]\
     [\(_createTimeFormatter().string(from: Date()))] \
@@ -110,7 +110,7 @@ func pprint(_ message: StaticString, file: String = #filePath, line: UInt = #lin
     """)
 }
 
-func pprint(_ message: StaticString, metadata: [String: Any], file: String = #filePath, line: UInt = #line) {
+func pprint(_ message: StaticString, metadata: [String: Any], file: String = #fileID, line: UInt = #line) {
     print("""
     [pprint]\
     [\(_createTimeFormatter().string(from: Date()))] \
@@ -127,7 +127,7 @@ internal let CONSOLE_YELLOW = "\u{001B}[0;33m"
 internal let CONSOLE_GREEN = "\u{001B}[0;32m"
 
 /// Like [pprint] but yellow, use for things that are better not to miss.
-func pnote(_ message: String, file: StaticString = #filePath, line: UInt = #line) {
+func pnote(_ message: String, file: StaticString = #fileID, line: UInt = #line) {
     print("""
     \(CONSOLE_YELLOW)\
     [\(_createTimeFormatter().string(from: Date()))] \
@@ -137,7 +137,7 @@ func pnote(_ message: String, file: StaticString = #filePath, line: UInt = #line
 }
 
 /// Like [pprint] but green, use for notable "good" output.
-func pinfo(_ message: String, file: StaticString = #filePath, line: UInt = #line) {
+func pinfo(_ message: String, file: StaticString = #fileID, line: UInt = #line) {
     print("""
     \(CONSOLE_GREEN)\
     [\(_createTimeFormatter().string(from: Date()))] \
@@ -161,49 +161,49 @@ internal func _hackyPThreadThreadId() -> String {
 // MARK: Functions used for debug tracing, eventually likely to be removed
 
 /// INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
-internal func traceLog_DeathWatch(_ message: @autoclosure () -> String, file: String = #filePath, line: UInt = #line) {
+internal func traceLog_DeathWatch(_ message: @autoclosure () -> String, file: String = #fileID, line: UInt = #line) {
     #if SACT_TRACE_DEATHWATCH
     pprint("SACT_TRACE_DEATHWATCH: \(message())", file: file, line: line)
     #endif
 }
 
 /// INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
-internal func traceLog_Mailbox(_ path: ActorPath?, _ message: @autoclosure () -> String, file: String = #filePath, line: UInt = #line) {
+internal func traceLog_Mailbox(_ path: ActorPath?, _ message: @autoclosure () -> String, file: String = #fileID, line: UInt = #line) {
     #if SACT_TRACE_MAILBOX
     pprint("SACT_TRACE_MAILBOX(\(path.map { "\($0)" } ?? "<unknown>")): \(message())", file: file, line: line)
     #endif
 }
 
 /// INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
-internal func traceLog_Cell(_ message: @autoclosure () -> String, file: String = #filePath, line: UInt = #line) {
+internal func traceLog_Cell(_ message: @autoclosure () -> String, file: String = #fileID, line: UInt = #line) {
     #if SACT_TRACE_ACTOR_CELL
     pprint("SACT_TRACE_ACTOR_CELL: \(message())", file: file, line: line)
     #endif
 }
 
 /// INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
-internal func traceLog_Probe(_ message: @autoclosure () -> String, file: String = #filePath, line: UInt = #line) {
+internal func traceLog_Probe(_ message: @autoclosure () -> String, file: String = #fileID, line: UInt = #line) {
     #if SACT_TRACE_PROBE
     pprint("SACT_TRACE_PROBE: \(message())", file: file, line: line)
     #endif
 }
 
 /// INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
-internal func traceLog_Supervision(_ message: @autoclosure () -> String, file: String = #filePath, line: UInt = #line) {
+internal func traceLog_Supervision(_ message: @autoclosure () -> String, file: String = #fileID, line: UInt = #line) {
     #if SACT_TRACE_SUPERVISION
     pprint("SACT_TRACE_SUPERVISION: \(message())", file: file, line: line)
     #endif
 }
 
 /// INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
-func traceLog_Serialization(_ message: @autoclosure () -> String, file: String = #filePath, line: UInt = #line) {
+func traceLog_Serialization(_ message: @autoclosure () -> String, file: String = #fileID, line: UInt = #line) {
     #if SACT_TRACE_SERIALIZATION
     pprint("SACT_TRACE_SERIALIZATION: \(message())", file: file, line: line)
     #endif
 }
 
 /// INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
-func traceLog_Remote(_ node: UniqueNode, _ message: @autoclosure () -> String, file: String = #filePath, line: UInt = #line) {
+func traceLog_Remote(_ node: UniqueNode, _ message: @autoclosure () -> String, file: String = #fileID, line: UInt = #line) {
     #if SACT_TRACE_REMOTE
     pprint("SACT_TRACE_REMOTE [\(node)]: \(message())", file: file, line: line)
     #endif

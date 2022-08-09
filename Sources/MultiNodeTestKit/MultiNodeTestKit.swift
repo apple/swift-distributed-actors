@@ -21,21 +21,26 @@ public struct MultiNodeTest {
     public let nodeNames: OrderedSet<String>
     public let crashRegex: String?
     public let runTest: (any MultiNodeTestControlProtocol) async throws -> Void
+    public let configureActorSystem: (inout ClusterSystemSettings) -> Void
+    public let configureMultiNodeTest: (inout MultiNodeTestSettings) -> Void
     public let makeControl: (String) -> any MultiNodeTestControlProtocol
 
-    public init<Nodes: MultiNodeNodes>(
-        nodes _: Nodes.Type,
-        _ runTest: @escaping RunTestFn<Nodes>
+    public init<TestSuite: MultiNodeTestSuite>(
+        _ suite: TestSuite.Type,
+        _ runTest: @escaping RunTestFn<TestSuite.Nodes>
     ) {
-        self.nodeNames = OrderedSet(Nodes.allCases.map(\.rawValue))
+        self.nodeNames = OrderedSet(TestSuite.Nodes.allCases.map(\.rawValue))
         self.crashRegex = nil
         self.runTest = { (anyControl: any MultiNodeTestControlProtocol) in
-            let control = anyControl as! Control<Nodes>
+            let control = anyControl as! Control<TestSuite.Nodes>
             try await runTest(control)
         }
 
-        self.makeControl = { nodeName -> Control<Nodes> in
-            Self.Control<Nodes>(nodeName: nodeName)
+        self.configureActorSystem = TestSuite.configureActorSystem
+        self.configureMultiNodeTest = TestSuite.configureMultiNodeTest
+
+        self.makeControl = { nodeName -> Control<TestSuite.Nodes> in
+            Self.Control<TestSuite.Nodes>(nodeName: nodeName)
         }
     }
 }
@@ -53,7 +58,8 @@ public protocol MultiNodeTestControlProtocol {
 public protocol MultiNodeTestSuite {
     init()
     associatedtype Nodes: MultiNodeNodes
-    func configureActorSystem(settings: inout ClusterSystemSettings)
+    static func configureActorSystem(settings: inout ClusterSystemSettings)
+    static func configureMultiNodeTest(settings: inout MultiNodeTestSettings)
 }
 
 extension MultiNodeTestSuite {
@@ -64,5 +70,4 @@ extension MultiNodeTestSuite {
     var nodeNames: [String] {
         Nodes.allCases.map(\.rawValue)
     }
-
 }

@@ -1115,10 +1115,14 @@ extension ClusterSystem {
         }
 
         guard let clusterShell = _cluster else {
-            throw RemoteCallError(.clusterAlreadyShutDown)
+            throw RemoteCallError(
+                .clusterAlreadyShutDown,
+                on: actor.id,
+                target: target
+            )
         }
         guard self.shutdownFlag.load(ordering: .relaxed) == 0 else {
-            throw RemoteCallError(.clusterAlreadyShutDown)
+            throw RemoteCallError(.clusterAlreadyShutDown, on: actor.id, target: target)
         }
 
         let recipient = _RemoteClusterActorPersonality<InvocationMessage>(shell: clusterShell, id: actor.id._asRemote, system: self)
@@ -1139,7 +1143,11 @@ extension ClusterSystem {
             throw error
         }
         guard let value = reply.value else {
-            throw RemoteCallError(.invalidReply(reply.callID))
+            throw RemoteCallError(
+                .invalidReply(reply.callID),
+                on: actor.id,
+                target: target
+            )
         }
         return value
     }
@@ -1159,10 +1167,18 @@ extension ClusterSystem {
         }
 
         guard let clusterShell = self._cluster else {
-            throw RemoteCallError(.clusterAlreadyShutDown)
+            throw RemoteCallError(
+                .clusterAlreadyShutDown,
+                on: actor.id,
+                target: target
+            )
         }
         guard self.shutdownFlag.load(ordering: .relaxed) == 0 else {
-            throw RemoteCallError(.clusterAlreadyShutDown)
+            throw RemoteCallError(
+                .clusterAlreadyShutDown,
+                on: actor.id,
+                target: target
+            )
         }
 
         let recipient = _RemoteClusterActorPersonality<InvocationMessage>(shell: clusterShell, id: actor.id._asRemote, system: self)
@@ -1215,12 +1231,12 @@ extension ClusterSystem {
                     //
                     // If we're shutting down, it is okay to not get acknowledgements to calls for example,
                     // and we don't care about them missing -- we're shutting down anyway.
-                    error = RemoteCallError(.clusterAlreadyShutDown)
+                    error = RemoteCallError(.clusterAlreadyShutDown, on: actorID, target: target)
                 } else {
                     error = RemoteCallError(.timedOut(
                         callID,
                         TimeoutError(message: "Remote call [\(callID)] to [\(target)](\(actorID)) timed out", timeout: timeout)
-                    ))
+                    ), on: actorID, target: target)
                 }
 
                 continuation.resume(throwing: error)
@@ -1247,7 +1263,11 @@ extension ClusterSystem {
             }
 
             self.log.error("Expected [\(Reply.self)] but got [\(type(of: reply as Any))]")
-            throw RemoteCallError(.invalidReply(callID))
+            throw RemoteCallError(
+                .invalidReply(callID),
+                on: actorID,
+                target: target
+            )
         }
         return reply
     }
@@ -1295,7 +1315,10 @@ extension ClusterSystem {
         }
 
         guard let wellTypedReturn = anyReturn as? Res else {
-            throw RemoteCallError(.illegalReplyType(UUID(), expected: Res.self, got: type(of: anyReturn)))
+            throw RemoteCallError(
+                .illegalReplyType(UUID(), expected: Res.self, got: type(of: anyReturn)),
+                on: actor.id, target: target
+            )
         }
 
         return wellTypedReturn
@@ -1675,11 +1698,15 @@ public struct RemoteCallError: DistributedActorSystemError, CustomStringConverti
 
     internal class _Storage {
         let error: _RemoteCallError
+        let actorID: ActorID
+        let target: RemoteCallTarget
         let file: String
         let line: UInt
 
-        init(error: _RemoteCallError, file: String, line: UInt) {
+        init(error: _RemoteCallError, actorID: ActorID, target: RemoteCallTarget, file: String, line: UInt) {
             self.error = error
+            self.actorID = actorID
+            self.target = target
             self.file = file
             self.line = line
         }
@@ -1687,8 +1714,16 @@ public struct RemoteCallError: DistributedActorSystemError, CustomStringConverti
 
     let underlying: _Storage
 
+    internal init(_ error: _RemoteCallError, on actorID: ActorID, target: RemoteCallTarget,
+                  file: String = #fileID, line: UInt = #line)
+    {
+        self.underlying = _Storage(error: error, actorID: actorID, target: target, file: file, line: line)
+    }
+
     internal init(_ error: _RemoteCallError, file: String = #fileID, line: UInt = #line) {
-        self.underlying = _Storage(error: error, file: file, line: line)
+        let actorID = ActorID._deadLetters(on: UniqueNode.init(protocol: "dead", systemName: "", host: "", port: 1, nid: .init(0)))
+        let target = RemoteCallTarget("<unknown>")
+        self.underlying = _Storage(error: error, actorID: actorID, target: target, file: file, line: line)
     }
 
     public var description: String {

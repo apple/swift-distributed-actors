@@ -20,40 +20,99 @@ func log(_ log: String, file: String = #fileID, line: UInt = #line) {
 }
 
 @main
-struct MultiNodeTestPlugin: CommandPlugin {
+final class MultiNodeTestPlugin: CommandPlugin {
+    var buildConfiguration: PackageManager.BuildConfiguration = .release
+
     func performCommand(context: PluginContext, arguments: [String]) async throws {
-        log("Building project...")
+        guard arguments.count > 0 else {
+            try self.usage(arguments: arguments)
+        }
+
+        if let configIdx = arguments.firstIndex(of: "-c") {
+            let configValueIdx = arguments.index(after: configIdx)
+            if configValueIdx < arguments.endIndex {
+                if arguments[configValueIdx] == "debug" {
+                    self.buildConfiguration = .debug
+                } else if arguments[configValueIdx] == "release" {
+                    self.buildConfiguration = .release
+                }
+            }
+        }
+
+        // Kill all previous runners
+        do {
+            let killAllRunners = Process()
+            killAllRunners.binaryPath = "/usr/bin/killall"
+            killAllRunners.arguments = ["-9", "MultiNodeTestKitRunner"]
+            try killAllRunners.runProcess()
+            killAllRunners.waitUntilExit()
+        }
+
+        switch self.buildConfiguration {
+        case .debug:
+            log("Building multi-node project for debugging (good for attaching lldb)...")
+        case .release:
+            log("Building multi-node project for production...")
+        @unknown default:
+            break
+        }
+
         let buildResult = try packageManager.build(
             .all(includingTests: true),
-            parameters: .init())
+            parameters: .init(configuration: self.buildConfiguration)
+        )
 
         guard buildResult.succeeded else {
+            log(buildResult.logText)
             return
         }
 
-        var multiNodeRunner = buildResult.builtArtifacts
-            .filter{ $0.kind == .executable }
-            .first { $0.path.lastComponent.starts(with: "MultiNodeTestKitRunner" )}
+        let multiNodeRunner = buildResult.builtArtifacts
+            .filter { $0.kind == .executable }
+            .first { $0.path.lastComponent.starts(with: "MultiNodeTestKitRunner") }
         guard let multiNodeRunner = multiNodeRunner else {
             throw MultiNodeTestPluginError(message: "Failed")
         }
-        
+
         log("Detected multi-node test runner: \(multiNodeRunner.path.lastComponent)")
 
-        let command = arguments.first ?? "run-all"
+        let command = arguments.last!
 
         let process = Process()
         process.binaryPath = "/usr/bin/swift"
         process.arguments = ["run", "MultiNodeTestKitRunner", command]
 
-        log("Invoke: swift \(process.arguments?.joined(separator: " ") ?? "")")
+        log("> swift \(process.arguments?.joined(separator: " ") ?? "")")
 
         do {
             try process.runProcess()
-        log("POrocess: \(process)")
+            process.waitUntilExit()
         } catch {
             log("[error] Failed to execute multi-node \(command)! Error: \(error)")
         }
+    }
+
+    func usage(arguments: [String]) throws -> Never {
+        throw UsageError(message: """
+        ILLEGAL INVOCATION: \(arguments)
+        USAGE:
+        > swift package --disable-sandbox multi-node [OPTIONS] COMMAND
+
+        OPTIONS:
+            -c release/debug  - to build in release or debug mode (default: \(self.buildConfiguration))
+
+        COMMAND:
+            test - run multi-node tests
+            _exec
+        """)
+    }
+}
+
+struct UsageError: Error, CustomStringConvertible {
+    let message: String
+
+    var description: String {
+        self.message
     }
 }
 

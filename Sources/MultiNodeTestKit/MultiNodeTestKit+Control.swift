@@ -13,16 +13,21 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
+import Logging
 import OrderedCollections
-
 
 extension MultiNodeTest {
     public struct Control<Nodes: MultiNodeNodes>: MultiNodeTestControlProtocol {
+        /// Simple name of the actor system node (e.g. "first").
         let nodeName: String
+
         public var _actorSystem: ClusterSystem? {
             willSet {
                 if let newValue {
-                    precondition(newValue.name == nodeName, "Node name does not match set cluster system!")
+                    precondition(newValue.name == self.nodeName, "Node name does not match set cluster system!")
+                }
+                if let log = newValue?.log {
+                    self.log = log
                 }
             }
         }
@@ -32,11 +37,16 @@ extension MultiNodeTest {
             return self._actorSystem!
         }
 
+        /// Logger specific to this concrete node in a multi-node test.
+        /// Once an ``actorSystem`` is assigned to this multi-node control,
+        /// this logger is the same as the actor system's default logger.
+        public var log = Logger(label: "multi-node")
+
         public var _allNodes: [String: Node] = [:]
 
-        public var _conductor: MultiNodeTestConductor? = nil
+        public var _conductor: MultiNodeTestConductor?
         public var conductor: MultiNodeTestConductor {
-            return _conductor!
+            return self._conductor!
         }
 
         public var cluster: ClusterControl {
@@ -51,7 +61,7 @@ extension MultiNodeTest {
             self.nodeName = nodeName
         }
 
-        public subscript (_ nid: Nodes) -> Node {
+        public subscript(_ nid: Nodes) -> Node {
             guard let node = self._allNodes[nid.rawValue] else {
                 fatalError("No node present for [\(nid.rawValue)], available: \(self._allNodes) (on \(self.actorSystem))")
             }
@@ -65,6 +75,10 @@ extension MultiNodeTest {
 // MARK: Run pieces of code on specific node
 
 extension MultiNodeTest.Control {
+    public func on(_ node: Nodes) -> Bool {
+        return node.rawValue == self.actorSystem.name
+    }
+
     @discardableResult
     public func runOn<T: Sendable>(_ node: Nodes, body: (ClusterSystem) async throws -> T) async rethrows -> T? {
         if node.rawValue == self.actorSystem.name {
@@ -77,6 +91,7 @@ extension MultiNodeTest.Control {
             return nil
         }
     }
+
     @discardableResult
     public func runOn<T: Sendable>(_ node: Nodes, body: (ClusterSystem) throws -> T) rethrows -> T? {
         if node.rawValue == self.actorSystem.name {
@@ -94,6 +109,7 @@ extension MultiNodeTest.Control {
             return nil
         }
     }
+
     @discardableResult
     public func runOn<T: Sendable>(_ node: Nodes, body: () throws -> T) rethrows -> T? {
         if node.rawValue == self.actorSystem.name {
@@ -108,15 +124,28 @@ extension MultiNodeTest.Control {
 // MARK: Check points
 
 extension MultiNodeTest.Control {
-    public func checkPoint(_ name: String) async throws {
-        let start = ContinuousClock.now
+    /// Enter a checkpoint with the given name.
+    ///
+    /// - Parameters:
+    ///   - name:
+    ///   - waitTime:
+    ///   - file:
+    ///   - line:
+    /// - Throws:
+    public func checkPoint(_ name: String,
+                           within waitTime: Duration? = nil,
+                           file: String = #fileID, line: UInt = #line) async throws
+    {
+        let checkPoint = MultiNode.CheckPoint(name: name, file: file, line: line)
 
-        // TODO: timeouts
-//        Task {
-//            let conductorID = ActorID(.remote())
-//            self.actorSystem.resolve()
-//        }
+        try await self.conductor.enterCheckPoint(
+            node: self.actorSystem.cluster.uniqueNode,
+            checkPoint: checkPoint,
+            waitTime: waitTime ?? .seconds(30)
+        )
     }
 
-    public func kill(_ node: Nodes) {}
+    public func kill(_ node: Nodes) {
+        fatalError("KILL NOT IMPLEMENTED")
+    }
 }

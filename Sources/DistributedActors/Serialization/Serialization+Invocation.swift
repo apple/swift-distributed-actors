@@ -44,8 +44,14 @@ public struct ClusterInvocationEncoder: DistributedTargetInvocationEncoder {
     }
 
     public mutating func recordArgument<Value: Codable>(_ argument: RemoteCallArgument<Value>) throws {
-        let serialized = try self.system.serialization.serialize(argument.value)
-        let data = serialized.buffer.readData()
+//        pprint("Record argument: \(Value.self)")
+        // let serialized = try self.system.serialization.serialize(argument.value)
+//        let serialized = try self.system.serialization.serialize(argument.value)
+//        let data = serialized.buffer.readData()
+        let encoder = JSONEncoder()
+        encoder.userInfo[.actorSystemKey] = self.system
+        encoder.userInfo[.actorSerializationContext] = self.system.serialization.context
+        let data = try encoder.encode(argument.value)
         self.arguments.append(data)
     }
 
@@ -119,7 +125,11 @@ public struct ClusterInvocationDecoder: DistributedTargetInvocationDecoder {
                 manifest: manifest,
                 buffer: Serialization.Buffer.data(argumentData)
             )
-            let argument = try system.serialization.deserialize(as: Argument.self, from: serialized)
+            // let argument = try system.serialization.deserialize(as: Argument.self, from: serialized)
+            let decoder = JSONDecoder()
+            decoder.userInfo[.actorSystemKey] = self.system
+            decoder.userInfo[.actorSerializationContext] = self.system.serialization.context
+            let argument = try decoder.decode(Argument.self, from: serialized.buffer.readData())
             return argument
 
         case .localProxyCall(let invocation):
