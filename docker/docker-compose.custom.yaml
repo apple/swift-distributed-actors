@@ -40,11 +40,11 @@ services:
 
   integration-tests:
     <<: *common
-    command: /bin/bash -cl "./scripts/integration_tests.sh"
+    command: /bin/bash -cl "swift package --disable-sandbox multi-node test"
 
   test:
     <<: *common
-    command: /bin/bash -cl "swift -version; SACT_WARNINGS_AS_ERRORS=yes swift test -Xswiftc -DSACT_TESTS_LEAKS && ./scripts/integration_tests.sh"
+    command: /bin/bash -cl "swift -version; SACT_WARNINGS_AS_ERRORS=yes swift test -Xswiftc -DSACT_TESTS_LEAKS"
 
   bench:
     <<: *common

@@ -47,11 +47,11 @@ public final class ClusterCrashMultiNodeTests: MultiNodeTestSuite {
         settings.initialJoinTimeout = .seconds(5)
         settings.dumpNodeLogs = .always
 
-        settings.installPrettyLogger = false
+        settings.installPrettyLogger = true
     }
 
     public static func configureActorSystem(settings: inout ClusterSystemSettings) {
-        settings.logging.logLevel = .debug
+//        settings.logging.logLevel = .debug
     }
 
     public let testCrashSecondNode = MultiNodeTest(ClusterCrashMultiNodeTests.self) { multiNode in
