@@ -19,15 +19,13 @@ services:
 
   test:
     image: swift-distributed-actors:20.04-57
-
+    environment:
+      - VALIDATE_DOCS=1
+      
   bench:
     image: swift-distributed-actors:20.04-57
 
   shell:
     image: swift-distributed-actors:20.04-57
-
-  sample-crash:
-    image: swift-distributed-actors:20.04-57
-
-  sample-crash-actor:
-    image: swift-distributed-actors:20.04-57
+    environment:
+      - VALIDATE_DOCS=1
