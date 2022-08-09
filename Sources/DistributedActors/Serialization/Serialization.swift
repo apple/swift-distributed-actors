@@ -68,7 +68,7 @@ public class Serialization {
     /// Used to protect `_serializers`.
     private var _serializersLock = ReadWriteLock()
 
-    private let context: Serialization.Context
+    internal let context: Serialization.Context
 
     internal init(settings systemSettings: ClusterSystemSettings, system: ClusterSystem) {
         var settings = systemSettings.serialization

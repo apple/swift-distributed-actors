@@ -27,7 +27,8 @@ let package = Package(
             name: "MultiNodeTestPlugin",
             capability: .command(
                 intent: .custom(verb: "multi-node", description: "Run MultiNodeTestKit based tests across multiple processes or physical compute nodes")
-                /*permissions: needs full network access*/),
+                /* permissions: needs full network access */
+            ),
             dependencies: [
             ]
         ),

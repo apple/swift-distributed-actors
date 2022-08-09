@@ -16,7 +16,9 @@ import ArgumentParser
 import DistributedActors
 import struct Foundation.Date
 import class Foundation.FileHandle
+import class Foundation.ProcessInfo
 import struct Foundation.URL
+import Logging
 import MultiNodeTestKit
 import NIOCore
 import NIOPosix
@@ -26,23 +28,45 @@ import OrderedCollections
 // MARK: Code executing on each specific process/node
 
 extension MultiNodeTestKitRunnerBoot {
-
     /// Within a dedicated process, execute the test with the specific node:
     func executeTest(multiNodeTest: MultiNodeTest,
                      nodeName: String,
-                     allNodes multiNodeEndpoints: [MultiNode.Endpoint]) async throws {
+                     allNodes multiNodeEndpoints: [MultiNode.Endpoint]) async throws
+    {
         var control = multiNodeTest.makeControl(nodeName)
         control._allNodes = convertAllNodes(allNodes: multiNodeEndpoints)
         let myNode = control._allNodes[nodeName]! // !-safe, we just prepared this node collection
+
+        var multiNodeSettings = MultiNodeTestSettings()
+        multiNodeTest.configureMultiNodeTest(&multiNodeSettings)
+
+        startExecRunHardKillTask(multiNodeSettings)
+
+        if let waitBeforeBootstrap = multiNodeSettings.waitBeforeBootstrap {
+            await prettyWait(
+                seconds: waitBeforeBootstrap.seconds,
+                hint: "before starting actor system (allow e.g. attaching lldb)"
+            )
+        }
 
         let actorSystem = await ClusterSystem(nodeName) { settings in
             settings.bindHost = myNode.host
             settings.bindPort = myNode.port
 
+            /// By default get better backtraces in case we crash:
+            settings.installSwiftBacktrace = true
+
+            /// Configure a nicer logger, that pretty prints metadata and also includes source location of logs
+            if multiNodeSettings.installPrettyLogger {
+                settings.logging.baseLogger = Logger(label: nodeName, factory: LogCaptureLogHandler.init(nodeName:))
+            }
+
             // we use the singleton to implement a simple Coordinator
             // TODO: if the node hosting the coordinator dies we'd potentially have some races at hand
             //       there's a few ways to solve this... but for now this is good enough.
             settings += ClusterSingletonPlugin()
+
+            multiNodeTest.configureActorSystem(&settings)
         }
         control._actorSystem = actorSystem
 
@@ -50,13 +74,13 @@ extension MultiNodeTestKitRunnerBoot {
         print("JOIN ============================================")
         let otherNodes = control._allNodes.values.filter { $0.systemName != nodeName }
         for other in otherNodes {
-            log("Prepare: join [\(nodeName)] with \(other)")
+            log("Prepare cluster: join [\(nodeName)] with \(other)")
             actorSystem.cluster.join(node: other)
         }
 
         var allNodes: Set<UniqueNode> = [actorSystem.cluster.uniqueNode]
         for other in otherNodes {
-            let joinedOther = try await actorSystem.cluster.joined(node: other, within: .seconds(15)) // TODO: configurable join timeouts
+            let joinedOther = try await actorSystem.cluster.joined(node: other, within: multiNodeSettings.initialJoinTimeout)
             guard let joinedOther else {
                 fatalError("[multi-node][\(nodeName)] Failed to join \(other)!")
             }
@@ -66,34 +90,31 @@ extension MultiNodeTestKitRunnerBoot {
 
         let conductorSingletonSettings = ClusterSingletonSettings()
         let conductorName = "$test-conductor"
-        let multiNodeSettings = MultiNodeTestSettings()
         let conductor = try await actorSystem.singleton.host(name: conductorName, settings: conductorSingletonSettings) { actorSystem in
             MultiNodeTestConductor(
                 name: conductorName,
                 allNodes: allNodes,
                 settings: multiNodeSettings,
-                actorSystem: actorSystem)
+                actorSystem: actorSystem
+            )
         }
         control._conductor = conductor
+        let pong = try await conductor.ping(message: "init", from: "\(actorSystem.name)")
+        log("Conductor ready, pong reply: \(pong)")
 
         print("JOIN END ============================================")
 
         do {
             print("RUN ============================================")
-            print("RUN ============================================")
-            print("RUN ============================================")
             try await multiNodeTest.runTest(control)
             print("DONE ============================================")
-            print("DONE ============================================")
-            print("DONE ============================================")
         } catch {
-            log("ERROR[\(nodeName)]: \(error)")
-            try await actorSystem.shutdown()
-            return
+            print("FAILED ============================================")
+            // we'll crash the entire process shortly, no clean shutdown here.
+            throw error
         }
 
-        try await actorSystem.shutdown()
-        return
+        try actorSystem.shutdown()
     }
 
     func convertAllNodes(allNodes: [MultiNode.Endpoint]) -> [String: Node] {
@@ -103,5 +124,12 @@ extension MultiNodeTestKitRunnerBoot {
             return (n.systemName, n)
         }
         return .init(uniqueKeysWithValues: nodeList)
+    }
+
+    func startExecRunHardKillTask(_ multiNodeSettings: MultiNodeTestSettings) {
+        Task.detached {
+            try? await Task.sleep(until: .now + multiNodeSettings.execRunHardTimeout, clock: .continuous)
+            kill("\(ProcessInfo.processInfo.processIdentifier)")
+        }
     }
 }

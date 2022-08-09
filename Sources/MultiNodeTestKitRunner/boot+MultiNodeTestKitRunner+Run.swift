@@ -27,6 +27,8 @@ import OrderedCollections
 // MARK: Code executing on each specific process/node
 
 extension MultiNodeTestKitRunnerBoot {
+    static let OK = "\("test passed".green)"
+    static let FAIL = "\("test failed".red)"
 
     func runMultiNodeTest(_ name: String, suite: String, binary: String) async throws -> InterpretedRunResult {
         let elg = MultiThreadedEventLoopGroup(numberOfThreads: 1)
@@ -43,19 +45,32 @@ extension MultiNodeTestKitRunnerBoot {
             devNull.closeFile()
         }
 
+        var settings = MultiNodeTestSettings()
+        multiNodeTest.self.configureMultiNodeTest(&settings)
+
         let allNodesCommandString = makeAllNodesCommandString(
             nodeNames: multiNodeTest.nodeNames,
-            deployNodes: [])
+            deployNodes: []
+        )
 
-        let results = try await withThrowingTaskGroup(
-            of: InterpretedRunResult.self,
-            returning: [InterpretedRunResult].self
+        let testResults = try await withThrowingTaskGroup(
+            of: NodeInterpretedRunResult.self,
+            returning: [NodeInterpretedRunResult].self
         ) { group in
+
             for nodeName in multiNodeTest.nodeNames {
-                group.addTask {
-                    let grepper = OutputGrepper.make(group: elg)
+                group.addTask { [settings] in
+                    let grepper = OutputGrepper.make(
+                        nodeName: nodeName,
+                        group: elg,
+                        programLogRecipient: nil
+                    ) // TODO: use distributed log recipient for multi device tests
 
                     let processOutputPipe = FileHandle(fileDescriptor: try! grepper.processOutputPipe.takeDescriptorOwnership())
+
+                    // TODO: killall except the current ones?
+                    // killAll(binary)
+
                     let process = Process()
                     process.binaryPath = binary
                     process.standardInput = devNull
@@ -65,7 +80,8 @@ extension MultiNodeTestKitRunnerBoot {
                     process.arguments = ["_exec", suite, name, nodeName, allNodesCommandString]
 
                     try process.runProcess()
-                    print("Execute: \(process.binaryPath!) \(process.arguments?.joined(separator: " ") ?? "") PID: \(process.processIdentifier)")
+                    log("[exec] \(process.binaryPath!) \(process.arguments?.joined(separator: " ") ?? "")\n  \(nodeName) -> PID: \(process.processIdentifier)")
+                    assert(process.processIdentifier != 0)
 
                     process.waitUntilExit()
                     processOutputPipe.closeFile()
@@ -73,19 +89,22 @@ extension MultiNodeTestKitRunnerBoot {
                         try grepper.result.wait()
                     }
 
-                    log("RESULT[\(nodeName)]: \(result)")
-
-                    return try interpretOutput(
+                    let testResult = try interpretNodeTestOutput(
                         result,
-                        regex: multiNodeTest.crashRegex,
+                        nodeName: nodeName,
+                        expectedFailureRegex: multiNodeTest.crashRegex,
+                        grepper: grepper,
+                        settings: settings,
                         runResult: process.terminationReason == .exit ?
                             .exit(Int(process.terminationStatus)) :
                             .signal(Int(process.terminationStatus))
                     )
+
+                    return .init(node: nodeName, result: testResult)
                 }
             }
 
-            var results: [InterpretedRunResult] = []
+            var results: [NodeInterpretedRunResult] = []
             results.reserveCapacity(multiNodeTest.nodeNames.count)
 
             for try await result in group {
@@ -95,8 +114,60 @@ extension MultiNodeTestKitRunnerBoot {
             return results
         }
 
-        log("RESULTS: \(results)")
+        let completeResult = (testResults.contains { $0.result.failed }) ? Self.FAIL : Self.OK
+        let testFullName = "\(suite).\(name)"
+        log("Test '\(testFullName)' results: \(completeResult)")
 
-        return results.first! // FIXME: return all
+        for test in testResults {
+            let mark = test.result.passed ? Self.OK : Self.FAIL
+            log("[\(test.node)] [\(mark)] \(test.result)")
+        }
+
+        // return the first failure we found
+        for testResult in testResults {
+            if testResult.result.failed {
+                return testResult.result // return this error (first of them all)
+            }
+        }
+
+        // all nodes passed okey
+        return .passedAsExpected
     }
+
+    func kill(_ binary: String) {
+        guard let binaryName = binary.split(separator: "/").last else {
+            return
+        }
+
+        let process = Process()
+        process.binaryPath = "/usr/bin/kill"
+        process.arguments = ["-9", String(binaryName)]
+        log("Clean-up: \(process.binaryPath!) \(process.arguments?.joined(separator: " ") ?? "")")
+
+        try? process.runProcess()
+
+        process.waitUntilExit()
+    }
+}
+
+struct NodeInterpretedRunResult {
+    let node: String
+    let result: MultiNodeTestKitRunnerBoot.InterpretedRunResult
+}
+
+func prettyWait(seconds: Int64, hint: String) async {
+    if seconds < 1 {
+        return
+    }
+
+    let messageBase = "[multi-node] Wait (\(hint))"
+
+    var lastMsg = "\(seconds)s remaining..."
+    print("\(messageBase) \(lastMsg)", terminator: "")
+    for i in 0 ..< seconds {
+        try? await Task.sleep(until: .now + .seconds(1), clock: .continuous)
+        lastMsg = "\(seconds - i)s remaining..."
+        print("\r\(messageBase) \(lastMsg)", terminator: " ")
+    }
+    print("\r\(messageBase) (waited \(seconds)s) GO!                            ".yellow)
 }

@@ -43,27 +43,44 @@ public final class ClusterCrashMultiNodeTests: MultiNodeTestSuite {
         case second
     }
 
-    public let testCrashSecondNode: MultiNodeTest = MultiNodeTest(nodes: Nodes.self) { multiNode in
-        // Cluster should already be formed, but we can check it:
-//        try await multiNode.cluster.waitFor(multiNode.allNodes, .up, within: .seconds(10))
+    public static func configureMultiNodeTest(settings: inout MultiNodeTestSettings) {
+        settings.initialJoinTimeout = .seconds(5)
+        settings.dumpNodeLogs = .always
 
+        settings.installPrettyLogger = false
+    }
+
+    public static func configureActorSystem(settings: inout ClusterSystemSettings) {
+        settings.logging.logLevel = .debug
+    }
+
+    public let testCrashSecondNode = MultiNodeTest(ClusterCrashMultiNodeTests.self) { multiNode in
+        multiNode.log.info("Before checkpoint ------")
         // A checkPoint suspends until all nodes have reached it, and then all nodes resume execution.
-        try await multiNode.checkPoint("step 1: all nodes should reach here")
+        try await multiNode.checkPoint("initial")
+        multiNode.log.info("After checkpoint ------")
 
         // We can execute code only on a specific node:
+        multiNode.log.info("Before RUN ON SECOND ------")
         try await multiNode.runOn(.second) { second in
-            print("SHUTDOWN ............................")
+            multiNode.log.info("SECOND SHUTDOWN")
             try second.shutdown()
             try await second.terminated
-            print("SHUTDOWN DONE ............................")
-            return
         }
 
-        // actually, let's completely kill the entire node/process (send KILL the process)
-        multiNode.kill(.second)
+//        multiNode.log.info("Before RUN ON SECOND LAST ------")
+//        if multiNode.on(.second) {
+//            multiNode.log.info("RETURNING")
+//            return
+//        }
+
+//        // actually, let's completely kill the entire node/process (send KILL the process)
+//        multiNode.kill(.second)
 
         try await multiNode.runOn(.first) { first in
             try await first.cluster.waitFor(multiNode[.second], .down, within: .seconds(10))
         }
+
+        assert(false)
     }
 }

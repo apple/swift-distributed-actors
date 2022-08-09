@@ -181,6 +181,7 @@ public struct ClusterControl {
     public func joined(node: UniqueNode, within: Duration) async throws -> Cluster.Member {
         try await self.waitFor(node, .up, within: within)
     }
+
     /// Wait, within the given duration, until the passed in node has joined the cluster and become ``Cluster/MemberStatus/up``.
     ///
     /// - Parameters
@@ -275,7 +276,7 @@ public struct ClusterControl {
     ///         a synthesized `Cluster/MemberStatus/removed` (and `.unreachable`) member is returned.
     @discardableResult
     public func waitFor(_ node: Node, _ status: Cluster.MemberStatus, within: Duration) async throws -> Cluster.Member? {
-        try await self.waitForMembershipEventually(Optional<Cluster.Member>.self, within: within) { membership in
+        try await self.waitForMembershipEventually(Cluster.Member?.self, within: within) { membership in
             guard let foundMember = membership.member(node) else {
                 if status == .down || status == .removed {
                     return nil
@@ -327,7 +328,8 @@ public struct ClusterControl {
     private func waitForMembershipEventually<T>(_: T.Type = T.self,
                                                 within: Duration,
                                                 interval: Duration = .milliseconds(100),
-                                                _ block: (Cluster.Membership) async throws -> T) async throws -> T {
+                                                _ block: (Cluster.Membership) async throws -> T) async throws -> T
+    {
         let deadline = ContinuousClock.Instant.fromNow(within)
 
         var lastError: Error?
@@ -344,5 +346,4 @@ public struct ClusterControl {
 
         throw Cluster.MembershipError(.awaitStatusTimedOut(within, lastError))
     }
-    
 }

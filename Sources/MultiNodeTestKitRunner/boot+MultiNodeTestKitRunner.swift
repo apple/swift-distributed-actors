@@ -37,9 +37,24 @@ struct MultiNodeTestKitRunnerBoot {
     enum InterpretedRunResult {
         case passedAsExpected
         case crashedAsExpected
-        case regexDidNotMatch(regex: String, output: String)
+        case crashRegexDidNotMatch(regex: String, output: String)
         case unexpectedRunResult(RunResult)
         case outputError(String)
+
+        /// Passed test case, for whatever
+        var passed: Bool {
+            switch self {
+            case .passedAsExpected, .crashedAsExpected:
+                return true
+            case .crashRegexDidNotMatch, .unexpectedRunResult, .outputError:
+                return false
+            }
+        }
+
+        /// Failed test case, for whatever reason
+        var failed: Bool {
+            !self.passed
+        }
     }
 
     struct MultiNodeTestNotFound: Error {
@@ -68,24 +83,63 @@ struct MultiNodeTestKitRunnerBoot {
             .1
     }
 
-    func interpretOutput(_ result: Result<ProgramOutput, Error>,
-                         regex: String?,
-                         runResult: RunResult) throws -> InterpretedRunResult
-    {
-        struct NoOutputFound: Error {}
-        guard let regex = regex else {
-            return .passedAsExpected
+    func interpretNodeTestOutput(
+        _ result: Result<ProgramOutput, Error>,
+        nodeName: String,
+        expectedFailureRegex: String?,
+        grepper: OutputGrepper,
+        settings: MultiNodeTestSettings,
+        runResult: RunResult
+    ) throws -> InterpretedRunResult {
+        print(String(repeating: "-", count: 120))
+        print("[multi-node] [\(nodeName)] Captured logs:")
+        defer {
+            print(String(repeating: "=", count: 120))
+        }
+
+        let expectedFailure = expectedFailureRegex != nil
+
+        if !expectedFailure {
+            switch result {
+            case .failure(let error as MultiNodeProgramError):
+                for line in error.completeOutput {
+                    log("[\(nodeName)] \(line)")
+                }
+                return .outputError("MultiNode test failed, output was dumped.")
+            case .success(let logs):
+                if settings.dumpNodeLogs == .always {
+                    for line in logs {
+                        log("[\(nodeName)] \(line)")
+                    }
+                }
+                return .passedAsExpected
+            default:
+                break
+            }
+        }
+
+        guard let expectedFailureRegex = expectedFailureRegex else {
+            return .unexpectedRunResult(runResult)
         }
 
         guard case .signal(Int(SIGILL)) = runResult else {
             return .unexpectedRunResult(runResult)
         }
 
-        let output = try result.get()
-        if output.range(of: regex, options: .regularExpression) != nil {
+        let outputLines = try result.get()
+        let outputJoined = outputLines.joined(separator: "\n")
+        if outputJoined.range(of: expectedFailureRegex, options: .regularExpression) != nil {
+            if settings.dumpNodeLogs == .always {
+                for line in outputLines {
+                    log("[\(nodeName)] \(line)")
+                }
+            }
             return .crashedAsExpected
         } else {
-            return .regexDidNotMatch(regex: regex, output: output)
+            for line in outputLines {
+                log("[\(nodeName)] \(line)")
+            }
+            return .crashRegexDidNotMatch(regex: expectedFailureRegex, output: outputJoined)
         }
     }
 
@@ -93,7 +147,7 @@ struct MultiNodeTestKitRunnerBoot {
         print("\(CommandLine.arguments.first ?? "\(Self.self)") COMMAND [OPTIONS]")
         print()
         print("COMMAND is:")
-        print("  run-all                         to run all crash tests")
+        print("  test                         to run all crash tests")
         print("  run SUITE TEST-NAME             to run the crash test SUITE.TEST-NAME")
         print("")
         print("For debugging purposes, you can also directly run the test binary directly:")
@@ -107,21 +161,20 @@ struct MultiNodeTestKitRunnerBoot {
         func runAndEval(_ test: String, suite: String) async throws {
             let startDate = Date()
             let startInstant = ContinuousClock.now
-            print("[multi-node] TestSuite '\(suite)' Test '\(test)' started at \(startDate)")
+            print("[multi-node] Test '\(suite).\(test)' started at \(startDate)")
 
             let runResult =
                 try await runMultiNodeTest(test, suite: suite, binary: CommandLine.arguments.first!)
 
-            let endDate = Date()
             let endInstant = ContinuousClock.now
-            print("[multi-node] TestSuite '\(suite)' test '\(test)' finished:", terminator: " ")
+            print("[multi-node] Test '\(suite).\(test)' finished:", terminator: " ")
             switch runResult {
             case .passedAsExpected:
                 print("OK (PASSED)", terminator: " ")
-            case .regexDidNotMatch(regex: let regex, output: let output):
+            case .crashRegexDidNotMatch(regex: let regex, output: let output):
                 print(
-                    "FAILED: regex did not match output",
-                    "regex: \(regex)",
+                    "FAILED: crash regex did not match output",
+                    "crash regex: \(regex)",
                     "output: \(output)",
                     separator: "\n",
                     terminator: ""
@@ -141,7 +194,7 @@ struct MultiNodeTestKitRunnerBoot {
         }
 
         switch CommandLine.arguments.dropFirst().first {
-        case .some("run-all"):
+        case .some("test"):
             for testSuite in MultiNodeTestSuites {
                 let suiteStartDate = Date()
                 print("[multi-node] TestSuite '\(testSuite.key)' started at \(suiteStartDate)")
@@ -166,10 +219,15 @@ struct MultiNodeTestKitRunnerBoot {
                let allNodes = Optional(MultiNode.parseAllNodes(allNodesString)),
                let multiNodeTest = findMultiNodeTest(testName, suite: testSuiteName)
             {
-                try await executeTest(
-                    multiNodeTest: multiNodeTest,
-                    nodeName: nodeName,
-                    allNodes: allNodes)
+                do {
+                    try await executeTest(
+                        multiNodeTest: multiNodeTest,
+                        nodeName: nodeName,
+                        allNodes: allNodes
+                    )
+                } catch {
+                    fatalError("Test '\(testSuiteName).\(testName)' execution threw error on node [\(nodeName)], error: \(error)".red)
+                }
             } else {
                 fatalError("can't find/create test for \(Array(CommandLine.arguments.dropFirst(2)))")
             }
@@ -182,8 +240,6 @@ struct MultiNodeTestKitRunnerBoot {
     }
 
     func makeAllNodesCommandString(nodeNames: OrderedSet<String>, deployNodes: [(String, Int)]) -> String {
-        var commandString = ""
-
         var nodePort = 7301
         return nodeNames.map { nodeName in
             var s = ""
@@ -199,12 +255,11 @@ struct MultiNodeTestKitRunnerBoot {
 }
 
 enum MultiNode {
-
     static func parseAllNodes(_ string: String) -> [MultiNode.Endpoint] {
         var nodes: [MultiNode.Endpoint] = []
         let sNodes = string.split(separator: ",")
         nodes.reserveCapacity(sNodes.count)
-        
+
         func fail() -> Never {
             fatalError("Bad node list syntax: \(string)")
         }
@@ -212,31 +267,32 @@ enum MultiNode {
             guard let atIndex = sNode.firstIndex(of: "@") else {
                 fail()
             }
-            let name = sNode[sNode.startIndex..<atIndex]
-            
+            let name = sNode[sNode.startIndex ..< atIndex]
+
             guard let colonIndex = sNode.firstIndex(of: ":") else {
                 fail()
             }
-            let host = sNode[sNode.index(after: atIndex)..<colonIndex]
-            
+            let host = sNode[sNode.index(after: atIndex) ..< colonIndex]
+
             guard let colonIndex = sNode.firstIndex(of: ":") else {
                 fail()
             }
-            guard let port = Int(sNode[sNode.index(after: colonIndex)..<sNode.endIndex]) else {
+            guard let port = Int(sNode[sNode.index(after: colonIndex) ..< sNode.endIndex]) else {
                 fail()
             }
-            
+
             let node = MultiNode.Endpoint(
                 name: String(name),
                 sactHost: String(host),
                 sactPort: port,
                 deployHost: nil,
-                deployPort: nil)
-            
+                deployPort: nil
+            )
+
             nodes.append(node)
         }
         return nodes
-        
+
         // FIXME: issue using regex...
         // dyld[44973]: Symbol not found: _$s12RegexBuilder0a9ComponentB0O17buildPartialBlock5first17_StringProcessing0A0Vy0A6OutputQzGx_tAF0aC0RzlFZ
         // Referenced from: <0B3B1546-7B0D-32FE-BC10-3C3A213DC1C5> /Users/ktoso/code/swift-distributed-actors/.build/arm64-apple-macosx/debug/MultiNodeTestKitRunner
