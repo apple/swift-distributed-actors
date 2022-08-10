@@ -116,18 +116,17 @@ public struct ClusterInvocationDecoder: DistributedTargetInvocationDecoder {
             argumentData = message.arguments[self.argumentIdx]
             self.argumentIdx += 1
 
-            // FIXME: make incoming manifest
             let manifest = try system.serialization.outboundManifest(Argument.self)
 
             let serialized = Serialization.Serialized(
                 manifest: manifest,
                 buffer: Serialization.Buffer.data(argumentData)
             )
-//            let argument = try system.serialization.deserialize(as: Argument.self, from: serialized) // FIXME: undo this
-            let decoder = JSONDecoder()
-            decoder.userInfo[.actorSystemKey] = self.system
-            decoder.userInfo[.actorSerializationContext] = self.system.serialization.context
-            let argument = try decoder.decode(Argument.self, from: serialized.buffer.readData())
+            let argument = try system.serialization.deserialize(as: Argument.self, from: serialized)
+//            let decoder = JSONDecoder()
+//            decoder.userInfo[.actorSystemKey] = self.system
+//            decoder.userInfo[.actorSerializationContext] = self.system.serialization.context
+//            let argument = try decoder.decode(Argument.self, from: serialized.buffer.readData())
             return argument
 
         case .localProxyCall(let invocation):

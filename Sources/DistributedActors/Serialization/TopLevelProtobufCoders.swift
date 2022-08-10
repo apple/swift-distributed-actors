@@ -93,7 +93,6 @@ struct TopLevelProtobufBlobSingleValueEncodingContainer: SingleValueEncodingCont
     }
 
     func encode<T>(_ value: T) throws where T: Encodable {
-        print("ENCODE >>>> \(value)")
         switch value {
         case let repr as _AnyProtobufRepresentable:
             try repr.encode(to: self.superEncoder)

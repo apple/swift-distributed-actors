@@ -126,19 +126,19 @@ extension LogCapture {
                     metadata.removeValue(forKey: ignoreKey)
                 }
                 if !metadata.isEmpty {
-                    metadataString = "\n// metadata:\n"
+                    metadataString = "\n"
                     for key in metadata.keys.sorted() {
                         let value: Logger.MetadataValue = metadata[key]!
                         let valueDescription = self.prettyPrint(metadata: value)
 
-                        var allString = "\n// \"\(key)\": \(valueDescription)"
+                        var allString = "\n\"\(key)\": \(valueDescription)"
                         if allString.contains("\n") {
                             allString = String(
                                 allString.split(separator: "\n").map { valueLine in
                                     if valueLine.starts(with: "// ") {
-                                        return "\(valueLine)\n"
+                                        return "[captured] [\(self.captureLabel)] \(valueLine)\n"
                                     } else {
-                                        return "// \(valueLine)\n"
+                                        return "[captured] [\(self.captureLabel)] // \(valueLine)\n"
                                     }
                                 }.joined(separator: "")
                             )
@@ -151,7 +151,7 @@ extension LogCapture {
             let date = ActorOriginLogHandler._createFormatter().string(from: log.date)
             let file = log.file.split(separator: "/").last ?? ""
             let line = log.line
-            print("Captured log [\(self.captureLabel)][\(date)] [\(file):\(line)]\(actorPath) [\(log.level)] \(log.message)\(metadataString)")
+            print("[captured] [\(self.captureLabel)] [\(date)] [\(file):\(line)]\(actorPath) [\(log.level)] \(log.message)\(metadataString)")
         }
     }
 
