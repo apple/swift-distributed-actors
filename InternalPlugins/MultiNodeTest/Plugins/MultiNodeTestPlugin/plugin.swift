@@ -40,13 +40,7 @@ final class MultiNodeTestPlugin: CommandPlugin {
         }
 
         // Kill all previous runners
-        do {
-            let killAllRunners = Process()
-            killAllRunners.binaryPath = "/usr/bin/killall"
-            killAllRunners.arguments = ["-9", "MultiNodeTestKitRunner"]
-            try killAllRunners.runProcess()
-            killAllRunners.waitUntilExit()
-        }
+        Process.killall(name: "MultiNodeTestKitRunner")
 
         switch self.buildConfiguration {
         case .debug:
@@ -141,6 +135,16 @@ extension Process {
         } else {
             self.launch()
         }
+    }
+}
+
+extension Process {
+    static func killall(name: String) {
+        let killAllRunners = Process()
+        killAllRunners.binaryPath = "/usr/bin/killall"
+        killAllRunners.arguments = ["-9", "MultiNodeTestKitRunner"]
+        try? killAllRunners.runProcess()
+        killAllRunners.waitUntilExit()
     }
 }
 
