@@ -22,5 +22,5 @@ import NIOCore
 import NIOPosix
 
 let MultiNodeTestSuites: [String: Any] = [
-    "ClusterCrashMultiNodeTests": ClusterCrashMultiNodeTests(),
+    "_ConductorMultiNodeTests": _ConductorMultiNodeTests(),
 ]

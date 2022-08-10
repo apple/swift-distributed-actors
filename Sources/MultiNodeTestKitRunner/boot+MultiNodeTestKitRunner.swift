@@ -109,7 +109,7 @@ struct MultiNodeTestKitRunnerBoot {
             case .success(let logs):
                 if settings.dumpNodeLogs == .always {
                     for line in logs {
-                        log("[\(nodeName)] \(line)")
+                        print("[multi-node] [\(nodeName)] \(line)")
                     }
                 }
                 return .passedAsExpected
@@ -226,11 +226,13 @@ struct MultiNodeTestKitRunnerBoot {
                         allNodes: allNodes
                     )
                 } catch {
-                    fatalError("Test '\(testSuiteName).\(testName)' execution threw error on node [\(nodeName)], error: \(error)".red)
+                    fatalError("Test '\(testSuiteName).\(testName)' execution threw error on node [\(nodeName)], error:\(error)".red)
                 }
             } else {
                 fatalError("can't find/create test for \(Array(CommandLine.arguments.dropFirst(2)))")
             }
+
+            exit(CInt(0))
         default:
             usage()
             exit(EXIT_FAILURE)

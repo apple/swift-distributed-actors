@@ -14,8 +14,9 @@
 
 import Distributed
 import DistributedActors
+import Logging
 
-public distributed actor MultiNodeTestConductor: ClusterSingleton {
+public distributed actor MultiNodeTestConductor: ClusterSingleton, CustomStringConvertible {
     public typealias ActorSystem = ClusterSystem
 
     typealias NodeName = String
@@ -24,13 +25,14 @@ public distributed actor MultiNodeTestConductor: ClusterSingleton {
     var allNodes: Set<UniqueNode>
     // TODO: also add readyNodes here
 
-    // Settings
+    lazy var log = Logger(actor: self)
+
     let settings: MultiNodeTestSettings
 
     // === Checkpoints
     var activeCheckPoint: MultiNode.CheckPoint?
-    var nodesAtCheckPoint: [UniqueNode: CheckedContinuation<MultiNode.CheckPoint, Error>]
-    func setContinuation(node: UniqueNode, cc: CheckedContinuation<MultiNode.CheckPoint, Error>) {
+    var nodesAtCheckPoint: [String /* FIXME: should be UniqueNode*/: CheckedContinuation<MultiNode.CheckPoint, Error>]
+    func setContinuation(node: String /* FIXME: should be UniqueNode*/, cc: CheckedContinuation<MultiNode.CheckPoint, Error>) {
         self.nodesAtCheckPoint[node] = cc
     }
 
@@ -43,6 +45,10 @@ public distributed actor MultiNodeTestConductor: ClusterSingleton {
         self.activeCheckPoint = nil
         self.nodesAtCheckPoint = [:]
     }
+
+    public nonisolated var description: String {
+        "\(Self.self)(\(self.id))"
+    }
 }
 
 public struct MultiNodeCheckPointError: Error, Codable {
@@ -52,48 +58,13 @@ public struct MultiNodeCheckPointError: Error, Codable {
 
 public enum MultiNode {}
 
-public struct MultiNodeTestSettings {
-    public init() {}
-
-    /// Total deadline for an 'exec' run of a test to complete running.
-    /// After this deadline is exceeded the process is KILLED, harshly, without any error collecting or reporting.
-    /// This is to prevent hanging nodes/tests lingering around.
-    public var execRunHardTimeout: Duration = .seconds(120)
-
-    /// Install a pretty print logger which prints metadata as multi-line comment output and also includes source location of log statements
-    public var installPrettyLogger: Bool = false
-
-    /// How long to wait after the node process has been initialized,
-    /// and before initializing the actor system on the child system.
-    ///
-    /// Useful when necessary to attach a debugger to a process before
-    /// kicking off the actor system etc.
-    public var waitBeforeBootstrap: Duration? = .seconds(10)
-
-    /// How long the initial join of the nodes is allowed to take.
-    public var initialJoinTimeout: Duration = .seconds(30)
-
-    /// Configure when to dump logs from nodes
-    public var dumpNodeLogs: DumpNodeLogSettings = .onFailure
-    public enum DumpNodeLogSettings {
-        case onFailure
-        case always
-    }
-
-    /// Wait time on entering a ``MultiNode/CheckPoint``.
-    /// After exceeding the allocated wait time, all waiters are failed.
-    ///
-    /// I.e. "all nodes must reach this checkpoint within 30 seconds".
-    public var checkPointWaitTime: Duration = .seconds(30)
-}
-
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Ping
 
 extension MultiNodeTestConductor {
     /// Used to check if the conductor is responsive.
     public distributed func ping(message: String, from node: String) -> String {
-        self.actorSystem.log.info("Conductor received ping: \(message) from \(node)")
+        self.actorSystem.log.info("Conductor received ping: \(message) from \(node) (node.length: \(node.count))")
         return "pong:\(message) (conductor node: \(self.actorSystem.cluster.uniqueNode))"
     }
 }
@@ -103,18 +74,24 @@ extension MultiNodeTestConductor {
 
 extension MultiNodeTestConductor {
     /// Helper function which sets a large timeout for this remote call -- the call will suspend until all nodes have arrived at the checkpoint
-    public nonisolated func enterCheckPoint(node: UniqueNode, checkPoint: MultiNode.CheckPoint, waitTime: Duration) async throws {
+    public nonisolated func enterCheckPoint(node: String /* FIXME: should be UniqueNode*/,
+                                            checkPoint: MultiNode.CheckPoint,
+                                            waitTime: Duration) async throws
+    {
         self.actorSystem.log.warning("CHECKPOINT FROM \(node)")
         try await RemoteCall.with(timeout: waitTime) {
-            self.actorSystem.log.warning("CHECKPOINT FROM \(node) INNER")
+            self.actorSystem.log.warning("CHECKPOINT FROM \(node) INNER (\(__isRemoteActor(self)))")
             try await self._enterCheckPoint(node: node, checkPoint: checkPoint)
+            self.actorSystem.log.warning("CHECKPOINT FROM \(node) DONE")
         }
     }
 
     /// Reentrant; all nodes will enter the checkpoint and eventually be resumed once all have arrived.
-    internal distributed func _enterCheckPoint(node: UniqueNode, checkPoint: MultiNode.CheckPoint) async throws {
-        self.actorSystem.log.warning("CHECKPOINT FROM \(node) INNER RECEIVED")
-        print("[multi-node][checkpoint:\(checkPoint.name)] Node [\(node)] entering checkpoint...")
+    internal distributed func _enterCheckPoint(node: String /* FIXME: should be UniqueNode*/,
+                                               checkPoint: MultiNode.CheckPoint) async throws
+    {
+        self.actorSystem.log.warning("Conductor received `enterCheckPoint` FROM \(node) INNER RECEIVED")
+        self.log.notice("[multi-node][checkpoint:\(checkPoint.name)] Node [\(node)] entering checkpoint...")
 
         if self.activeCheckPoint == nil {
             // We are the first node to enter this checkpoint so lets activate it.
@@ -127,18 +104,25 @@ extension MultiNodeTestConductor {
         }
     }
 
-    func enterActiveCheckPoint(_ node: UniqueNode, checkPoint: MultiNode.CheckPoint) async throws {
+    func enterActiveCheckPoint(_ node: String /* FIXME: should be UniqueNode*/, checkPoint: MultiNode.CheckPoint) async throws {
         guard self.nodesAtCheckPoint[node] == nil else {
             throw MultiNodeCheckPointError(
-                nodeName: node.node.systemName,
-                message: "[multi-node][checkpoint:\(checkPoint.name)] \(node.node.systemName) entered checkpoint [\(checkPoint)] more than once!"
+                nodeName: node,
+                message: "[multi-node][checkpoint:\(checkPoint.name)] Node [\(node)] entered checkpoint [\(checkPoint)] more than once!"
             )
         }
-        print("[multi-node][checkpoint:\(checkPoint.name) @ \(self.nodesAtCheckPoint.count + 1)/\(self.allNodes.count)] \(node.node.systemName) entered checkpoint [\(checkPoint)]... Waiting for [\(self.allNodes.count - 1 - self.nodesAtCheckPoint.count) remaining nodes].")
+        let remainingNodes = self.allNodes.count - 1 - self.nodesAtCheckPoint.count
+        self.log.notice("[multi-node][checkpoint:\(checkPoint.name) @ \(self.nodesAtCheckPoint.count + 1)/\(self.allNodes.count)] \(node) entered checkpoint [\(checkPoint)]... Waiting for \(remainingNodes) remaining nodes.")
 
         // last node arriving at the checkpoint, resume them all!
-        if self.allNodes.count == (self.nodesAtCheckPoint.count + 1) {
-            print("[multi-node][checkpoint:\(checkPoint.name)] \(node.node.systemName) entered checkpoint [\(checkPoint)]...")
+        if remainingNodes == 0 {
+            print("[multi-node] [checkpoint:\(checkPoint.name)] All [\(self.allNodes.count)] nodes entered checkpoint! Release: \(checkPoint.name) at \(checkPoint.file):\(checkPoint.line)")
+
+            for waitingAtCheckpoint in self.nodesAtCheckPoint.values {
+                waitingAtCheckpoint.resume(returning: checkPoint)
+            }
+            self.nodesAtCheckPoint = [:]
+
             return
         }
 
@@ -148,10 +132,10 @@ extension MultiNodeTestConductor {
         }
     }
 
-    func activateCheckPoint(_ node: UniqueNode, checkPoint: MultiNode.CheckPoint) async throws {
+    func activateCheckPoint(_ node: String /* FIXME: should be UniqueNode*/, checkPoint: MultiNode.CheckPoint) async throws {
         guard self.activeCheckPoint == nil else {
             throw MultiNodeCheckPointError(
-                nodeName: node.node.systemName,
+                nodeName: node,
                 message: "Checkpoint already active, yet tried to activate first: \(checkPoint)"
             )
         }
@@ -160,12 +144,12 @@ extension MultiNodeTestConductor {
         try await self.enterActiveCheckPoint(node, checkPoint: checkPoint)
     }
 
-    func enterIllegalCheckpoint(_ node: UniqueNode,
+    func enterIllegalCheckpoint(_ node: String /* FIXME: should be UniqueNode*/,
                                 active activeCheckPoint: MultiNode.CheckPoint,
                                 entered enteredCheckPoint: MultiNode.CheckPoint) throws
     {
         throw MultiNodeCheckPointError(
-            nodeName: node.node.systemName,
+            nodeName: node,
             message: "Attempted to enter \(enteredCheckPoint), but the current active checkpoint was: \(activeCheckPoint)"
         )
     }

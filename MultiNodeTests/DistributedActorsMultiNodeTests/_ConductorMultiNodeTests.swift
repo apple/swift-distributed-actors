@@ -15,7 +15,8 @@
 import DistributedActors
 import MultiNodeTestKit
 
-public final class ClusterCrashMultiNodeTests: MultiNodeTestSuite {
+/// Tests of the ``MultiNodeTestConductor`` itself.
+public final class _ConductorMultiNodeTests: MultiNodeTestSuite {
     public init() {}
 
     /// Spawns two nodes: first and second, and forms a cluster with them.
@@ -28,8 +29,8 @@ public final class ClusterCrashMultiNodeTests: MultiNodeTestSuite {
     /// at shared state, since the nodes are properly isolated as if in a real cluster.
     ///
     /// ## Distributed execution
-    /// To execute the same test across different physical nodes pass a list of
-    /// nodes to use when running the test, e.g.
+    /// To execute the same test across different physical nodes pass a list ofv
+    /// nodes to use when running the test, e.g.v
     ///
     /// ```
     /// swift package multi-node test --deploy 192.168.0.101:22,192.168.0.102:22,192.168.0.103:22
@@ -47,6 +48,12 @@ public final class ClusterCrashMultiNodeTests: MultiNodeTestSuite {
         settings.initialJoinTimeout = .seconds(5)
         settings.dumpNodeLogs = .always
 
+        settings.logCapture.excludeGrep = [
+            "SWIMActor.swift", "SWIMInstance.swift",
+            "OperationLogDistributedReceptionist.swift",
+            "Gossiper+Shell.swift",
+        ]
+
         settings.installPrettyLogger = true
     }
 
@@ -54,33 +61,25 @@ public final class ClusterCrashMultiNodeTests: MultiNodeTestSuite {
 //        settings.logging.logLevel = .debug
     }
 
-    public let testCrashSecondNode = MultiNodeTest(ClusterCrashMultiNodeTests.self) { multiNode in
-        multiNode.log.info("Before checkpoint ------")
+    public let testCrashSecondNode = MultiNodeTest(_ConductorMultiNodeTests.self) { multiNode in
         // A checkPoint suspends until all nodes have reached it, and then all nodes resume execution.
         try await multiNode.checkPoint("initial")
-        multiNode.log.info("After checkpoint ------")
 
         // We can execute code only on a specific node:
         multiNode.log.info("Before RUN ON SECOND ------")
         try await multiNode.runOn(.second) { second in
+            multiNode.log.info("Before RUN INSIDE SECOND ------")
             multiNode.log.info("SECOND SHUTDOWN")
             try second.shutdown()
             try await second.terminated
+            return
         }
-
-//        multiNode.log.info("Before RUN ON SECOND LAST ------")
-//        if multiNode.on(.second) {
-//            multiNode.log.info("RETURNING")
-//            return
-//        }
-
-//        // actually, let's completely kill the entire node/process (send KILL the process)
-//        multiNode.kill(.second)
 
         try await multiNode.runOn(.first) { first in
-            try await first.cluster.waitFor(multiNode[.second], .down, within: .seconds(10))
+            try await first.cluster.waitFor(multiNode[.second], .down, within: .seconds(20))
         }
 
-        assert(false)
+        try multiNode.actorSystem.shutdown()
+        try await multiNode.actorSystem.terminated
     }
 }

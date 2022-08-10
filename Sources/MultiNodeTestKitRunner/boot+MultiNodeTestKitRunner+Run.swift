@@ -134,18 +134,21 @@ extension MultiNodeTestKitRunnerBoot {
         return .passedAsExpected
     }
 
-    func kill(_ binary: String) {
-        guard let binaryName = binary.split(separator: "/").last else {
-            return
-        }
-
+    func kill(pid: Int32) {
         let process = Process()
-        process.binaryPath = "/usr/bin/kill"
-        process.arguments = ["-9", String(binaryName)]
-        log("Clean-up: \(process.binaryPath!) \(process.arguments?.joined(separator: " ") ?? "")")
+        #if os(Linux)
+        process.binaryPath = "/usr/bin/bash"
+        #elseif os(macOS)
+        process.binaryPath = "/usr/bin/local/bash"
+        #else
+        log("WARNING: can't kill process \(pid), not sure how to kill on this platform")
+        return
+        #endif
+
+        process.arguments = ["-9", "\(pid)"]
+        log("Kill-ing process: \(process.binaryPath!) \(process.arguments?.joined(separator: " ") ?? "")")
 
         try? process.runProcess()
-
         process.waitUntilExit()
     }
 }

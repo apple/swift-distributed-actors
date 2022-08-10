@@ -1107,7 +1107,7 @@ extension ClusterSystem {
             return try await interceptor.interceptRemoteCall(on: actor, target: target, invocation: &invocation, throwing: throwing, returning: returning)
         }
 
-        guard actor.id.uniqueNode != self.cluster.uniqueNode else {
+        guard __isRemoteActor(actor), actor.id.uniqueNode != self.cluster.uniqueNode else {
             // It actually is a remote call, so redirect it to local call-path.
             // Such calls can happen when we deal with interceptors and proxies;
             // To make their lives easier, we centralize the noticing when a call is local and dispatch it from here.
@@ -1164,6 +1164,13 @@ extension ClusterSystem {
     {
         if let interceptor = actor.id.context.remoteCallInterceptor {
             return try await interceptor.interceptRemoteCallVoid(on: actor, target: target, invocation: &invocation, throwing: throwing)
+        }
+
+        guard __isRemoteActor(actor), actor.id.uniqueNode != self.cluster.uniqueNode else {
+            // It actually is a remote call, so redirect it to local call-path.
+            // Such calls can happen when we deal with interceptors and proxies;
+            // To make their lives easier, we centralize the noticing when a call is local and dispatch it from here.
+            return try await self.localCallVoid(on: actor, target: target, invocation: &invocation, throwing: throwing)
         }
 
         guard let clusterShell = self._cluster else {
@@ -1323,6 +1330,42 @@ extension ClusterSystem {
 
         return wellTypedReturn
     }
+
+    /// Able to direct a `remoteCallVoid` initiated call, right into a local invocation.
+    /// This is used to perform proxying to local actors, for such features like the cluster singleton or similar.
+    internal func localCallVoid<Act, Err>(
+        on actor: Act,
+        target: RemoteCallTarget,
+        invocation: inout InvocationEncoder,
+        throwing: Err.Type
+    ) async throws
+        where Act: DistributedActor,
+        Act.ID == ActorID,
+        Err: Error
+    {
+        precondition(
+            self.cluster.uniqueNode == actor.id.uniqueNode,
+            "Attempted to localCall an actor whose ID was a different node: [\(actor.id)], current node: \(self.cluster.uniqueNode)"
+        )
+        self.log.trace("Execute local void call", metadata: [
+            "actor/id": "\(actor.id.fullDescription)",
+            "target": "\(target)",
+        ])
+
+        _ = try await withCheckedThrowingContinuation { (cc: CheckedContinuation<Any, Error>) in
+            Task { [invocation] in
+                var directDecoder = ClusterInvocationDecoder(system: self, invocation: invocation)
+                let directReturnHandler = ClusterInvocationResultHandler(directReturnContinuation: cc)
+
+                try await executeDistributedTarget(
+                    on: actor,
+                    target: target,
+                    invocationDecoder: &directDecoder,
+                    handler: directReturnHandler
+                )
+            }
+        }
+    }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -1469,7 +1512,10 @@ public struct ClusterInvocationResultHandler: DistributedTargetInvocationResultH
             directReturnContinuation.resume(returning: value)
 
         case .remoteCall(let system, let callID, let channel, let recipient):
-            system.log.debug("Result handler, onReturn", metadata: ["call/id": "\(callID)"])
+            system.log.trace("Result handler, onReturn", metadata: [
+                "call/id": "\(callID)",
+                "type": "\(Success.self)",
+            ])
 
             let reply = RemoteCallReply<Success>(callID: callID, value: value)
             try await channel.writeAndFlush(TransportEnvelope(envelope: Payload(payload: .message(reply)), recipient: recipient))
@@ -1482,7 +1528,9 @@ public struct ClusterInvocationResultHandler: DistributedTargetInvocationResultH
             directReturnContinuation.resume(returning: ())
 
         case .remoteCall(let system, let callID, let channel, let recipient):
-            system.log.debug("Result handler, onReturnVoid", metadata: ["call/id": "\(callID)"])
+            system.log.debug("Result handler, onReturnVoid", metadata: [
+                "call/id": "\(callID)",
+            ])
 
             let reply = RemoteCallReply<_Done>(callID: callID, value: .done)
             try await channel.writeAndFlush(TransportEnvelope(envelope: Payload(payload: .message(reply)), recipient: recipient))

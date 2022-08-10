@@ -137,9 +137,16 @@ extension MultiNodeTest.Control {
                            file: String = #fileID, line: UInt = #line) async throws
     {
         let checkPoint = MultiNode.CheckPoint(name: name, file: file, line: line)
+        log.notice("CheckPoint [\(name)], wait for all other nodes to arrive at the same checkpoint ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+
+        let startWait: ContinuousClock.Instant = .now
+        defer {
+            let endWait: ContinuousClock.Instant = .now
+            log.notice("CheckPoint \(name) passed, all nodes arrived within: \(startWait - endWait) ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~") // TODO: make it print more nicely
+        }
 
         try await self.conductor.enterCheckPoint(
-            node: self.actorSystem.cluster.uniqueNode,
+            node: self.actorSystem.name, // FIXME: should be: self.actorSystem.cluster.uniqueNode,
             checkPoint: checkPoint,
             waitTime: waitTime ?? .seconds(30)
         )

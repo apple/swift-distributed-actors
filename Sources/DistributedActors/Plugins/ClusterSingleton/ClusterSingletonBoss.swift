@@ -183,7 +183,9 @@ internal distributed actor ClusterSingletonBoss<Act: ClusterSingleton>: ClusterS
     private func updateSingleton(node: UniqueNode?) throws {
         switch node {
         case .some(let node) where node == self.actorSystem.cluster.uniqueNode:
-            break
+            // This must have been a result of an activate() and the singleton must be stored locally
+            precondition(self.targetSingleton?.id.uniqueNode == self.actorSystem.cluster.uniqueNode)
+            return
         case .some(let otherNode):
             var targetSingletonID = ActorID(remote: otherNode, type: Act.self, incarnation: .wellKnown)
             targetSingletonID.metadata.wellKnown = self.settings.name // FIXME: rather, use the BOSS as the target
@@ -197,7 +199,7 @@ internal distributed actor ClusterSingletonBoss<Act: ClusterSingleton>: ClusterS
     }
 
     private func updateSingleton(_ newSingleton: Act?) {
-        self.log.debug("Update singleton from [\(String(describing: self.targetSingleton))] to [\(String(describing: newSingleton))], with \(self.buffer.count) remote calls pending", metadata: self.metadata())
+        self.log.debug("Update singleton from [\(String(describing: self.targetSingleton))] to [\(newSingleton?.id.description ?? "nil")], with \(self.buffer.count) remote calls pending", metadata: self.metadata())
         self.targetSingleton = newSingleton
 
         // Unstash messages if we have the singleton
@@ -211,14 +213,15 @@ internal distributed actor ClusterSingletonBoss<Act: ClusterSingleton>: ClusterS
         self.allocationTimeoutTask?.cancel()
         self.allocationTimeoutTask = nil
 
-        // FIXME: the callIDs are not used in the actual call making (!)
-        while let (callID, continuation) = self.buffer.take() {
-            self.log.debug("Flushing remote call [\(callID)] to [\(singleton)]", metadata: self.metadata())
-            continuation.resume(returning: singleton)
+        if !buffer.isEmpty {
+            self.log.debug("Flushing \(buffer.count) remote calls to [\(Act.self)] on [\(singleton.id.uniqueNode)]", metadata: self.metadata())
+            while let (callID, continuation) = self.buffer.take() { // FIXME: the callIDs are not used in the actual call making but could be for better consistency
+                continuation.resume(returning: singleton)
+            }
         }
     }
 
-    private func findSingleton() async throws -> Act {
+    private func findSingleton(target: RemoteCallTarget) async throws -> Act {
         guard self.allocationStatus != .timedOut else {
             throw ClusterSingletonError.allocationTimeout
         }
@@ -229,12 +232,14 @@ internal distributed actor ClusterSingletonBoss<Act: ClusterSingleton>: ClusterS
         }
 
         // Otherwise, we "stash" the remote call until singleton becomes available.
-        return try await withCheckedThrowingContinuation { continuation in
+        let found = try await withCheckedThrowingContinuation { continuation in
             Task {
                 do {
                     let callID = UUID()
                     try self.buffer.stash((callID, continuation))
-                    self.log.debug("Stashed remote call [\(callID)]", metadata: self.metadata())
+                    self.log.debug("Stashed remote call [\(callID)] to [\(target)]", metadata: self.metadata([
+                        "remoteCall/target": "\(target)",
+                    ]))
                 } catch {
                     switch error {
                     case BufferError.full:
@@ -250,6 +255,9 @@ internal distributed actor ClusterSingletonBoss<Act: ClusterSingleton>: ClusterS
                 }
             }
         }
+
+        log.info("FOUND SINGLETON: \(found) local:\(__isLocalActor(found))", metadata: self.metadata())
+        return found
     }
 
     private func activate(_ singletonFactory: (ClusterSystem) async throws -> Act) async throws -> Act {
@@ -349,16 +357,19 @@ enum ClusterSingletonError: Error, Codable {
 // MARK: Logging
 
 extension ClusterSingletonBoss {
-    func metadata() -> Logger.Metadata {
+    func metadata(_ extra: [String: Any] = [:]) -> Logger.Metadata {
         var metadata: Logger.Metadata = [
-            "tag": "singleton",
             "singleton/name": "\(self.settings.name)",
+            "singleton/type": "\(Act.self)",
             "singleton/buffer": "\(self.buffer.count)/\(self.buffer.capacity)",
         ]
 
-        metadata["targetNode"] = "\(String(describing: self.targetNode?.debugDescription))"
+        metadata["target/node"] = "\(String(describing: self.targetNode?.debugDescription ?? "nil"))"
         if let targetSingleton = self.targetSingleton {
-            metadata["targetSingleton"] = "\(targetSingleton.id)"
+            metadata["target/id"] = "\(targetSingleton.id)"
+        }
+        for (k, v) in extra {
+            metadata[k] = "\(v)"
         }
 
         return metadata
@@ -395,9 +406,14 @@ extension ClusterSingletonBoss {
         where Err: Error,
         Res: Codable
     {
-        let singleton = try await self.findSingleton()
-        self.log.trace("Forwarding invocation [\(invocation)] to [\(singleton) @ \(singleton.id.detailedDescription)]", metadata: self.metadata())
-        self.log.trace("Remote call on: singleton.actorSystem \(singleton.actorSystem)")
+        let singleton = try await self.findSingleton(target: target)
+        self.log.trace(
+            "Forwarding call to \(target)",
+            metadata: self.metadata([
+                "remoteCall/target": "\(target)",
+                "remoteCall/invocation": "\(invocation)",
+            ])
+        )
 
         var invocation = invocation // can't be inout param
         return try await singleton.actorSystem.remoteCall(
@@ -415,9 +431,15 @@ extension ClusterSingletonBoss {
         invocation: ActorSystem.InvocationEncoder,
         throwing: Err.Type
     ) async throws where Err: Error {
-        let singleton = try await self.findSingleton()
-        self.log.trace("Forwarding invocation [\(invocation)] to [\(singleton) @ \(singleton.id.detailedDescription)]", metadata: self.metadata())
-        self.log.trace("Remote call on: singleton.actorSystem \(singleton.actorSystem)")
+        self.log.trace("ENTER forwardOrStashRemoteCallVoid \(target)")
+        let singleton = try await self.findSingleton(target: target)
+        self.log.trace(
+            "Forwarding call to [\(target)] to [\(singleton) @ \(singleton.id)]",
+            metadata: self.metadata([
+                "remoteCall/target": "\(target)",
+                "remoteCall/invocation": "\(invocation)",
+            ])
+        )
 
         var invocation = invocation // can't be inout param
         return try await singleton.actorSystem.remoteCallVoid(

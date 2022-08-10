@@ -16,16 +16,27 @@ import ArgumentParser
 import DistributedActors
 import Foundation
 import Logging
+import MultiNodeTestKit
 
-struct LogCaptureLogHandler: LogHandler {
+struct PrettyMultiNodeLogHandler: LogHandler {
     let nodeName: String
+    let settings: MultiNodeTestSettings.MultiNodeLogCaptureSettings
 
-    init(nodeName: String) {
+    init(nodeName: String, settings: MultiNodeTestSettings.MultiNodeLogCaptureSettings) {
         self.nodeName = nodeName
+        self.settings = settings
     }
 
     public func log(level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata?, file: String, function: String, line: UInt) {
         var _metadata: Logger.Metadata = metadata ?? [:]
+
+        for excludeGrep in self.settings.excludeGrep {
+            if file.contains(excludeGrep) ||
+                "\(message)".contains(excludeGrep)
+            {
+                return
+            }
+        }
 
         let date = Date()
         _metadata.merge(metadata ?? [:], uniquingKeysWith: { _, r in r })
@@ -39,7 +50,7 @@ struct LogCaptureLogHandler: LogHandler {
 
             metadata.removeValue(forKey: "label")
             if !metadata.isEmpty {
-                metadataString = "\n// metadata:\n"
+                metadataString = "\n"
                 for key in metadata.keys.sorted() {
                     let value: Logger.MetadataValue = metadata[key]!
                     let valueDescription = self.prettyPrint(metadata: value)
@@ -63,7 +74,7 @@ struct LogCaptureLogHandler: LogHandler {
         }
         let dateStr = Self._createFormatter().string(from: date)
         let file = file.split(separator: "/").last ?? ""
-        print("[\(self.nodeName)][\(dateStr)] [\(file):\(line)]\(actorPath) [\(level)] \(message)\(metadataString)")
+        print("[\(dateStr)] [\(file):\(line)]\(actorPath) [\(level)] \(message)\(metadataString)")
     }
 
     internal func prettyPrint(metadata: Logger.MetadataValue) -> String {

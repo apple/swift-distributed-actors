@@ -40,7 +40,7 @@ extension MultiNodeTestKitRunnerBoot {
         var multiNodeSettings = MultiNodeTestSettings()
         multiNodeTest.configureMultiNodeTest(&multiNodeSettings)
 
-        startExecRunHardKillTask(multiNodeSettings)
+        startExecRunHardKillTask(name: nodeName, multiNodeSettings)
 
         if let waitBeforeBootstrap = multiNodeSettings.waitBeforeBootstrap {
             await prettyWait(
@@ -58,7 +58,9 @@ extension MultiNodeTestKitRunnerBoot {
 
             /// Configure a nicer logger, that pretty prints metadata and also includes source location of logs
             if multiNodeSettings.installPrettyLogger {
-                settings.logging.baseLogger = Logger(label: nodeName, factory: LogCaptureLogHandler.init(nodeName:))
+                settings.logging.baseLogger = Logger(label: nodeName, factory: { label in
+                    PrettyMultiNodeLogHandler(nodeName: label, settings: multiNodeSettings.logCapture)
+                })
             }
 
             // we use the singleton to implement a simple Coordinator
@@ -126,10 +128,12 @@ extension MultiNodeTestKitRunnerBoot {
         return .init(uniqueKeysWithValues: nodeList)
     }
 
-    func startExecRunHardKillTask(_ multiNodeSettings: MultiNodeTestSettings) {
+    func startExecRunHardKillTask(name: String, _ multiNodeSettings: MultiNodeTestSettings) {
         Task.detached {
             try? await Task.sleep(until: .now + multiNodeSettings.execRunHardTimeout, clock: .continuous)
-            kill("\(ProcessInfo.processInfo.processIdentifier)")
+
+            log("Timeout (execRunHardTimeout) \(multiNodeSettings.execRunHardTimeout) exceeded, HARD KILL process: \(name)")
+            kill(pid: ProcessInfo.processInfo.processIdentifier)
         }
     }
 }
