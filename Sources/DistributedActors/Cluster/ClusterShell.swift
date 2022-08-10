@@ -905,7 +905,7 @@ extension ClusterShell {
             }
 
         case .abortIncomingHandshake(let error):
-            state.log.warning("Aborting incoming handshake: \(error)") // TODO: remove
+            state.log.debug("Aborting incoming handshake: \(error)")
             handshakePromise.fail(error)
             state.closeHandshakeChannel(offer: offer, channel: inboundChannel)
             return .same

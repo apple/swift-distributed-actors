@@ -44,7 +44,7 @@ final class MultiNodeTestPlugin: CommandPlugin {
 
         switch self.buildConfiguration {
         case .debug:
-            log("Building multi-node project for debugging (good for attaching lldb)...")
+            log("Building multi-node project for debugging...")
         case .release:
             log("Building multi-node project for production...")
         @unknown default:

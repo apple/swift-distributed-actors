@@ -182,14 +182,11 @@ class TopLevelProtobufBlobDecoder: _TopLevelBlobDecoder {
     var buffer: Serialization.Buffer?
 
     func container<Key>(keyedBy type: Key.Type) throws -> KeyedDecodingContainer<Key> where Key: CodingKey {
-        fatalError("container(keyedBy:) has not been implemented")
+        fatalErrorBacktrace("\(#function) has not been implemented")
     }
 
     func unkeyedContainer() throws -> UnkeyedDecodingContainer {
-        fatalError("""
-        \(#function)
-         has not been implemented
-        """)
+        fatalErrorBacktrace("\(#function) has not been implemented")
     }
 
     func singleValueContainer() throws -> SingleValueDecodingContainer {

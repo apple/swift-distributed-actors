@@ -150,7 +150,7 @@ extension Cluster.Member: CustomStringConvertible, CustomDebugStringConvertible 
     }
 
     public var debugDescription: String {
-        "Member(\(String(reflecting: self.uniqueNode)), status: \(self.status), reachability: \(self.reachability)\(self._upNumber.map { ", upNumber: \($0)" } ?? ""))"
+        "Member(\(String(reflecting: self.uniqueNode)), status: \(self.status), reachability: \(self.reachability)\(self._upNumber.map { ", _upNumber: \($0)" } ?? ""))"
     }
 }
 
