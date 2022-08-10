@@ -103,12 +103,12 @@ public class Serialization {
             IntegerSerializer(UInt64.self, allocator)
         }
 
-        settings.register(String.self, hint: "S", serializerID: .specializedWithTypeHint)
-        settings.register(String.self, hint: "S", serializerID: .specializedWithTypeHint)
-        settings.registerSpecializedSerializer(String.self, hint: "S", serializerID: .specializedWithTypeHint) { allocator in
-            StringSerializer(allocator)
-        }
-        settings.register(String?.self, hint: "qS")
+//        settings.register(String.self, hint: "S", serializerID: .specializedWithTypeHint)
+//        settings.register(String.self, hint: "S", serializerID: .specializedWithTypeHint)
+//        settings.registerSpecializedSerializer(String.self, hint: "S", serializerID: .specializedWithTypeHint) { allocator in
+//            StringSerializer(allocator)
+//        }
+//        settings.register(String?.self, hint: "qS")
         settings.register(Int?.self, hint: "qI")
 
         // ==== Declare some system messages to be handled with specialized serializers:

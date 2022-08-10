@@ -73,7 +73,7 @@ extension MultiNodeTestKitRunnerBoot {
         control._actorSystem = actorSystem
 
         // join all the other nodes
-        print("JOIN ============================================")
+        print("CLUSTER JOIN ============================================")
         let otherNodes = control._allNodes.values.filter { $0.systemName != nodeName }
         for other in otherNodes {
             log("Prepare cluster: join [\(nodeName)] with \(other)")
@@ -104,14 +104,12 @@ extension MultiNodeTestKitRunnerBoot {
         let pong = try await conductor.ping(message: "init", from: "\(actorSystem.name)")
         log("Conductor ready, pong reply: \(pong)")
 
-        print("JOIN END ============================================")
-
         do {
-            print("RUN ============================================")
+            print("TEST RUN ============================================")
             try await multiNodeTest.runTest(control)
-            print("DONE ============================================")
+            print("TEST DONE ============================================")
         } catch {
-            print("FAILED ============================================")
+            print("TEST FAILED ============================================")
             // we'll crash the entire process shortly, no clean shutdown here.
             throw error
         }
