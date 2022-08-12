@@ -152,10 +152,14 @@ final class DistributedReceptionistTests: ClusterSystemXCTestCase {
         first.cluster.join(node: second.cluster.uniqueNode.node)
         try await first.cluster.joined(node: second.cluster.uniqueNode, within: .seconds(30))
 
-        let listing = await second.receptionist.lookup(.forwarders)
-
-        listing.count.shouldEqual(1)
-        listing.first!.id.shouldEqual(ref.id)
+        try await testKit.eventually(within: .seconds(5)) {
+            let lookup = await second.receptionist.lookup(.forwarders)
+            lookup.count.shouldEqual(1)
+            guard let first = lookup.first else {
+                throw TestError("Lookup returned but is empty: \(lookup)")
+            }
+            first.id.shouldEqual(ref.id)
+        }
     }
 
     func test_receptionist_happyPath_lookup_then_listing() async throws {
@@ -169,14 +173,19 @@ final class DistributedReceptionistTests: ClusterSystemXCTestCase {
         first.cluster.join(node: second.cluster.uniqueNode.node)
         try await first.cluster.joined(node: second.cluster.uniqueNode, within: .seconds(30))
 
-        let lookup = await second.receptionist.lookup(.forwarders)
-        lookup.count.shouldEqual(1)
-        lookup.first!.id.shouldEqual(ref.id)
+        try await testKit.eventually(within: .seconds(5)) {
+            let lookup = await second.receptionist.lookup(.forwarders)
+            lookup.count.shouldEqual(1)
+            guard let first = lookup.first else {
+                throw TestError("Lookup returned but is empty: \(lookup)")
+            }
+            first.id.shouldEqual(ref.id)
 
-        let listing = await second.receptionist.listing(of: .forwarders)
-        for await forwarder in listing {
-            forwarder.id.shouldEqual(ref.id)
-            return
+            let listing = await second.receptionist.listing(of: .forwarders)
+            for await forwarder in listing {
+                forwarder.id.shouldEqual(ref.id)
+                return
+            }
         }
     }
 
