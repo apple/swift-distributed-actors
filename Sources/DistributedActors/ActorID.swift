@@ -325,6 +325,11 @@ extension ActorID: CustomStringConvertible {
         if self._isRemote {
             res += "\(self.uniqueNode)"
         }
+
+        if let wellKnown = self.metadata.wellKnown {
+            return "[$wellKnown: \(wellKnown)]"
+        }
+
         if let path = self.metadata.path {
             // this is ready for making paths optional already -- and behavior removals
             res += "\(path)"

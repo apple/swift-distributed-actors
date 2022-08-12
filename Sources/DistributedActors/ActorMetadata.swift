@@ -40,12 +40,12 @@ extension ActorMetadataKeys {
     /// the ``wellKnown`` metadata are resolved by their "well known name".
     ///
     /// In practice this means that it is possible to resolve a concrete well-known instance on a remote host,
-    /// without ever exchanging information betwen those peers and obtaining the targets exact ID.
+    /// without ever exchanging information between those peers and obtaining the targets exact ID.
     ///
     /// This is necessary for certain actors like the failure detectors, the cluster receptionist, or other actors
-    /// which must be interacted with right away, without prior knowlage.
+    /// which must be interacted with right away, without prior knowledge.
     ///
-    /// **WARNING:** Do not use this mechanism for "normal" actors, as it makes their addressess "guessable",
+    /// **WARNING:** Do not use this mechanism for "normal" actors, as it makes their addresses "guessable",
     /// which is bad from a security and system independence stand point. Please use the cluster receptionist instead.
     public var wellKnown: Key<String> { "$wellKnown" }
 }
