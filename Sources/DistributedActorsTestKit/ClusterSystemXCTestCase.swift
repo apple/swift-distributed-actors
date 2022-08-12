@@ -16,6 +16,7 @@
 import DistributedActorsConcurrencyHelpers
 import NIO
 import XCTest
+import Foundation
 
 /// Base class to handle the repetitive setUp/tearDown code involved in most `ClusterSystem` requiring tests.
 open class ClusterSystemXCTestCase: ClusteredActorSystemsXCTestCase {
@@ -34,6 +35,8 @@ open class ClusterSystemXCTestCase: ClusteredActorSystemsXCTestCase {
         self.testKit(self.system)
     }
 
+    private var actorStatsBefore: InspectKit.ActorStats = .init()
+
     public var logCapture: LogCapture {
         guard let handler = self._logCaptures.first else {
             fatalError("No log capture installed!")
@@ -42,12 +45,20 @@ open class ClusterSystemXCTestCase: ClusteredActorSystemsXCTestCase {
     }
 
     override open func setUp() async throws {
+        self.actorStatsBefore = try InspectKit.actorStats()
+
         try await super.setUp()
         _ = await self.setUpNode(String(describing: type(of: self)))
+
     }
 
     override open func tearDown() async throws {
         try await super.tearDown()
+
+        let actorStatsAfter = try InspectKit.actorStats()
+        if let error = self.actorStatsBefore.detectLeaks(latest: actorStatsAfter) {
+            fatalError(error.message)
+        }
     }
 
     override open func setUpNode(_ name: String, _ modifySettings: ((inout ClusterSystemSettings) -> Void)? = nil) async -> ClusterSystem {
