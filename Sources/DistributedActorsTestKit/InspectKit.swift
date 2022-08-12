@@ -12,16 +12,15 @@
 //
 //===----------------------------------------------------------------------===//
 
-import XCTest
 import Foundation
+import XCTest
 
 internal struct InspectKit {
-
     private static var baseDir: String {
         FileManager.default.currentDirectoryPath
     }
 
-    private static func runCommand(cmd : String, args : String...) -> (output: [Substring], error: [Substring], exitCode: Int32) {
+    private static func runCommand(cmd: String, args: String...) -> (output: [Substring], error: [Substring], exitCode: Int32) {
         var output: [Substring] = []
         var error: [Substring] = []
 
@@ -58,14 +57,14 @@ internal struct InspectKit {
         var stats: [String: Row] = [:]
 
         func dump() {
-            for v in stats.values {
+            for v in self.stats.values {
                 v.dump()
             }
         }
 
         func dumpString() -> String {
             var s = ""
-            for v in stats.values {
+            for v in self.stats.values {
                 s += v.dumpString()
             }
             return s
@@ -73,7 +72,7 @@ internal struct InspectKit {
 
         var totalCount: Int {
             var c = 0
-            for v in stats.values {
+            for v in self.stats.values {
                 c += v.count
             }
             return c
@@ -133,9 +132,9 @@ internal struct InspectKit {
 
             func dumpString() -> String {
                 """
-                \(typeName)
-                  - count: \(count)
-                  - ids: \(objectIDs)\n
+                \(self.typeName)
+                  - count: \(self.count)
+                  - ids: \(self.objectIDs)\n
                 """
             }
         }
@@ -173,10 +172,7 @@ internal struct InspectKit {
     }
 }
 
-extension Dictionary<Substring, InspectKit.ActorStats> {
-
-}
-
+extension [Substring: InspectKit.ActorStats] {}
 
 // Compatible with Swift on all macOS versions as well as Linux
 extension Process {
