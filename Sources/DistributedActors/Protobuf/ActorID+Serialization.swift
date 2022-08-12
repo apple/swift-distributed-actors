@@ -167,7 +167,7 @@ extension ActorID: _ProtobufRepresentable {
             //                }
             //            }
             if let data = proto.metadata[keys.type.id] {
-                let manifest = Serialization.Manifest.stringSerializerManifest
+                let manifest = try context.serialization.outboundManifest(String.self)
                 let serialized = Serialization.Serialized(manifest: manifest, buffer: .data(data))
                 if let value = try? context.serialization.deserialize(as: String.self, from: serialized) {
                     self.metadata.type = .init(mangledName: value)
@@ -175,7 +175,7 @@ extension ActorID: _ProtobufRepresentable {
             }
 
             if let data = proto.metadata[keys.wellKnown.id] {
-                let manifest = Serialization.Manifest.stringSerializerManifest
+                let manifest = try context.serialization.outboundManifest(String.self)
                 let serialized = Serialization.Serialized(manifest: manifest, buffer: .data(data))
                 if let value = try? context.serialization.deserialize(as: String.self, from: serialized) {
                     self.metadata.wellKnown = value

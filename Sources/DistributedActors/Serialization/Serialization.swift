@@ -94,20 +94,18 @@ public class Serialization {
             IntegerSerializer(UInt.self, allocator)
         }
 
-        settings.register(Int64.self, hint: "i64", serializerID: .specializedWithTypeHint)
-        settings.registerSpecializedSerializer(Int64.self, hint: "i64", serializerID: .specializedWithTypeHint) { allocator in
-            IntegerSerializer(Int64.self, allocator)
-        }
-        settings.register(UInt64.self, hint: "u64", serializerID: .specializedWithTypeHint)
-        settings.registerSpecializedSerializer(UInt64.self, hint: "u64", serializerID: .specializedWithTypeHint) { allocator in
-            IntegerSerializer(UInt64.self, allocator)
-        }
-
-//        settings.register(String.self, hint: "S", serializerID: .specializedWithTypeHint)
-//        settings.register(String.self, hint: "S", serializerID: .specializedWithTypeHint)
-//        settings.registerSpecializedSerializer(String.self, hint: "S", serializerID: .specializedWithTypeHint) { allocator in
-//            StringSerializer(allocator)
+//        settings.register(Int64.self, hint: "i64", serializerID: .specializedWithTypeHint)
+//        settings.registerSpecializedSerializer(Int64.self, hint: "i64", serializerID: .specializedWithTypeHint) { allocator in
+//            IntegerSerializer(Int64.self, allocator)
 //        }
+////        settings.register(UInt64.self, hint: "u64", serializerID: .specializedWithTypeHint)
+////        settings.registerSpecializedSerializer(UInt64.self, hint: "u64", serializerID: .specializedWithTypeHint) { allocator in
+////            IntegerSerializer(UInt64.self, allocator)
+////        }
+
+        settings.registerSpecializedSerializer(String.self, hint: "S", serializerID: .specializedWithTypeHint) { allocator in
+            StringSerializer(allocator)
+        }
 //        settings.register(String?.self, hint: "qS")
         settings.register(Int?.self, hint: "qI")
 

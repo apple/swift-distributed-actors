@@ -211,6 +211,9 @@ public final class DeadLetterOffice {
                 if let recipient = deadLetter.recipient?.detailedDescription {
                     metadata["deadLetter/recipient"] = "\(recipient)"
                 }
+                if let invocation = deadLetter.message as? InvocationMessage {
+                    metadata["deadLetter/invocation/target"] = "\(invocation.target.description)"
+                }
                 metadata["deadLetter/location"] = "\(file):\(line)"
                 metadata["deadLetter/message"] = "\(deadLetter.message)"
                 metadata["deadLetter/message/type"] = "\(String(reflecting: type(of: deadLetter.message)))"

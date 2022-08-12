@@ -21,11 +21,6 @@ import Foundation // for Codable
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: String Serializer
 
-extension Serialization.Manifest {
-    public static let stringSerializerManifest: Self =
-        .init(serializerID: .specializedWithTypeHint, hint: "S")
-}
-
 @usableFromInline
 internal class StringSerializer: Serializer<String> {
     private let allocate: ByteBufferAllocator
@@ -35,7 +30,7 @@ internal class StringSerializer: Serializer<String> {
     }
 
     override func serialize(_ message: String) throws -> Serialization.Buffer {
-        let len = message.lengthOfBytes(using: .utf8) // TODO: optimize for ascii?
+        let len = message.lengthOfBytes(using: .utf8)
         var buffer = self.allocate.buffer(capacity: len)
         buffer.writeString(message)
         return .nioByteBuffer(buffer)
