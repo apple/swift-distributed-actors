@@ -98,10 +98,10 @@ public class Serialization {
 //        settings.registerSpecializedSerializer(Int64.self, hint: "i64", serializerID: .specializedWithTypeHint) { allocator in
 //            IntegerSerializer(Int64.self, allocator)
 //        }
-////        settings.register(UInt64.self, hint: "u64", serializerID: .specializedWithTypeHint)
-////        settings.registerSpecializedSerializer(UInt64.self, hint: "u64", serializerID: .specializedWithTypeHint) { allocator in
-////            IntegerSerializer(UInt64.self, allocator)
-////        }
+        ////        settings.register(UInt64.self, hint: "u64", serializerID: .specializedWithTypeHint)
+        ////        settings.registerSpecializedSerializer(UInt64.self, hint: "u64", serializerID: .specializedWithTypeHint) { allocator in
+        ////            IntegerSerializer(UInt64.self, allocator)
+        ////        }
 
         settings.registerSpecializedSerializer(String.self, hint: "S", serializerID: .specializedWithTypeHint) { allocator in
             StringSerializer(allocator)
