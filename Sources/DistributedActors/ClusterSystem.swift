@@ -1478,14 +1478,14 @@ extension ClusterSystem {
                 self.log.trace("Resolve failed, no alive actor for ID", metadata: [
                     "actor/id": "\(id.detailedDescription)",
                     "managed/ids": Logger.MetadataValue.array(
-                            self._managedDistributedActors.underlying.values.compactMap { ref in
-                                if let actor = ref.actor {
-                                    return Logger.MetadataValue.string("\(actor.id)")
-                                } else {
-                                    return nil
-                                }
+                        self._managedDistributedActors.underlying.values.compactMap { ref in
+                            if let actor = ref.actor {
+                                return Logger.MetadataValue.string("\(actor.id)")
+                            } else {
+                                return nil
                             }
-                    )
+                        }
+                    ),
                 ])
             }
             return nil
