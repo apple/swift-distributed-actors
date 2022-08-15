@@ -104,7 +104,7 @@ extension MultiNodeTestKitRunnerBoot {
 
         let conductorSingletonSettings = ClusterSingletonSettings()
         let conductorName = "$test-conductor"
-        let conductor = try await actorSystem.singleton.host(name: conductorName, settings: conductorSingletonSettings) { actorSystem in
+        let conductor = try await actorSystem.singleton.host(name: conductorName, settings: conductorSingletonSettings) { [allNodes, multiNodeSettings] actorSystem in
             MultiNodeTestConductor(
                 name: conductorName,
                 allNodes: allNodes,

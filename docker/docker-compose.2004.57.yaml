@@ -20,6 +20,8 @@ services:
 
   test:
     image: swift-distributed-actors:20.04-57
+    # TODO: workaround until Regex is enabled on Linux toolchains: https://github.com/apple/swift/pull/59623
+    command: /bin/bash -cl "swift test -Xswiftc -Xfrontend -Xswiftc -enable-experimental-string-processing"
 
   bench:
     image: swift-distributed-actors:20.04-57

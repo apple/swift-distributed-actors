@@ -47,6 +47,8 @@ final class MultiNodeTestPlugin: CommandPlugin {
             log("Building multi-node project for debugging...")
         case .release:
             log("Building multi-node project for production...")
+        default:
+            fatalError("Unknown build configuration: \(self.buildConfiguration)")
         }
 
         let buildResult = try packageManager.build(
