@@ -65,10 +65,6 @@ public struct ClusterControl {
         func update(_ membership: Cluster.Membership) {
             self.membership = membership
         }
-
-        func join(_ node: UniqueNode) {
-            _ = self.membership.join(node)
-        }
     }
 
     private let cluster: ClusterShell?
@@ -80,11 +76,9 @@ public struct ClusterControl {
         self.ref = clusterRef
         self.events = eventStream
 
-        let membershipHolder = ClusterControl.MembershipHolder(membership: .empty)
-        self._membershipSnapshotHolder = membershipHolder
-        Task {
-            await membershipHolder.join(settings.uniqueBindNode)
-        }
+        var initialMembership: Cluster.Membership = .empty
+        _ = initialMembership.join(settings.uniqueBindNode)
+        self._membershipSnapshotHolder = ClusterControl.MembershipHolder(membership: initialMembership)
     }
 
     /// The node value representing _this_ node in the cluster.
