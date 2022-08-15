@@ -12,15 +12,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-import ArgumentParser
-import DistributedActors
 import DistributedActorsMultiNodeTests
-import class Foundation.FileHandle
-import class Foundation.Process
-import struct Foundation.URL
-import NIOCore
-import NIOPosix
+import MultiNodeTestKit
 
-let MultiNodeTestSuites: [String: Any] = [
-    "_ConductorMultiNodeTests": _ConductorMultiNodeTests(),
+let MultiNodeTestSuites: [any MultiNodeTestSuite.Type] = [
+    MultiNodeConductorTests.self,
+    MultiNodeClusterSingletonTests.self,
 ]

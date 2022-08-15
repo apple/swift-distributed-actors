@@ -16,7 +16,7 @@ import DistributedActors
 import MultiNodeTestKit
 
 /// Tests of the ``MultiNodeTestConductor`` itself.
-public final class _ConductorMultiNodeTests: MultiNodeTestSuite {
+public final class MultiNodeConductorTests: MultiNodeTestSuite {
     public init() {}
 
     /// Spawns two nodes: first and second, and forms a cluster with them.
@@ -61,7 +61,7 @@ public final class _ConductorMultiNodeTests: MultiNodeTestSuite {
 //        settings.logging.logLevel = .debug
     }
 
-    public let testCrashSecondNode = MultiNodeTest(_ConductorMultiNodeTests.self) { multiNode in
+    public let testCrashSecondNode = MultiNodeTest(MultiNodeConductorTests.self) { multiNode in
         // A checkPoint suspends until all nodes have reached it, and then all nodes resume execution.
         try await multiNode.checkPoint("initial")
 
@@ -76,10 +76,10 @@ public final class _ConductorMultiNodeTests: MultiNodeTestSuite {
         }
 
         try await multiNode.runOn(.first) { first in
-            try await first.cluster.waitFor(multiNode[.second], .down, within: .seconds(20))
+            try await first.cluster.waitFor(multiNode[.second], .down, within: .seconds(30))
         }
 
-        try multiNode.actorSystem.shutdown()
-        try await multiNode.actorSystem.terminated
+        try multiNode.system.shutdown()
+        try await multiNode.system.terminated
     }
 }

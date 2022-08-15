@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import ArgumentParser
+import Dispatch
 import DistributedActors
 import struct Foundation.Date
 import class Foundation.FileHandle
@@ -72,8 +73,19 @@ extension MultiNodeTestKitRunnerBoot {
         }
         control._actorSystem = actorSystem
 
+        let signalQueue = DispatchQueue(label: "multi.node.\(multiNodeTest.testSuiteName).\(multiNodeTest.testName).\(nodeName).SignalHandlerQueue")
+        let signalSource = DispatchSource.makeSignalSource(signal: SIGINT, queue: signalQueue)
+        signalSource.setEventHandler {
+            signalSource.cancel()
+            print("\n[multi-node] received signal, initiating shutdown which should complete after the last request finished.")
+
+            try! actorSystem.shutdown()
+        }
+        signal(SIGINT, SIG_IGN)
+        signalSource.resume()
+
         // join all the other nodes
-        print("CLUSTER JOIN ============================================")
+        print("CLUSTER JOIN ============================================".yellow)
         let otherNodes = control._allNodes.values.filter { $0.systemName != nodeName }
         for other in otherNodes {
             log("Prepare cluster: join [\(nodeName)] with \(other)")
@@ -105,11 +117,11 @@ extension MultiNodeTestKitRunnerBoot {
         log("Conductor ready, pong reply: \(pong)")
 
         do {
-            print("TEST RUN ============================================")
+            print("TEST RUN ============================================".yellow)
             try await multiNodeTest.runTest(control)
-            print("TEST DONE ============================================")
+            print("TEST DONE ============================================".green)
         } catch {
-            print("TEST FAILED ============================================")
+            print("TEST FAILED ============================================".red)
             // we'll crash the entire process shortly, no clean shutdown here.
             throw error
         }

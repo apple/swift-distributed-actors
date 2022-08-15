@@ -30,15 +30,98 @@ extension MultiNodeTestKitRunnerBoot {
     static let OK = "\("test passed".green)"
     static let FAIL = "\("test failed".red)"
 
-    func runMultiNodeTest(_ name: String, suite: String, binary: String) async throws -> InterpretedRunResult {
+    struct MultiNodeTestSummary {
+        private var summaryLines: [Line] = []
+
+        struct Line {
+            let line: String
+            let failed: Bool
+        }
+
+        mutating func emit(_ message: String, failed: Bool) {
+            if failed {
+                return emitFailed(message)
+            }
+
+            print("[multi-node] \(message)")
+            self.summaryLines.append(Line(line: message, failed: false))
+        }
+
+        mutating func emitFailed(_ message: String) {
+            print("[multi-node] \(message)".red)
+            self.summaryLines.append(Line(line: message, failed: true))
+        }
+
+        func dump() {
+            print(String(repeating: "=", count: 120))
+            print("[multi-node] MULTI NODE TEST SUITE RUN SUMMARY:")
+            for line in self.summaryLines {
+                print(line.line)
+            }
+            print(String(repeating: "=", count: 120))
+        }
+
+        var failedTests: Int {
+            self.summaryLines.filter(\.failed).count
+        }
+    }
+
+    func runAndEval(suite: String, testName: String, summary: inout MultiNodeTestSummary) async {
+        let startDate = Date()
+        let startInstant = ContinuousClock.now
+        summary.emit("Test '\(suite).\(testName)' started at \(startDate)", failed: false)
+
+        do {
+            let runResult = try await runMultiNodeTest(suite: suite, testName: testName, binary: CommandLine.arguments.first!)
+
+            let endInstant = ContinuousClock.now
+            var message = "Test '\(suite).\(testName)' finished: "
+            var failed = false
+            switch runResult {
+            case .passedAsExpected:
+                message += "OK (PASSED) "
+            case .crashedAsExpected:
+                message += "OK (EXPECTED CRASH) "
+
+            case .crashRegexDidNotMatch(regex: let regex, output: _):
+                message += "FAILED: crash regex did not match output; regex: \(regex) "
+                failed = true
+            case .unexpectedRunResult(let runResult):
+                summary.emitFailed("FAILED: unexpected run result: \(runResult) ")
+                failed = true
+            case .outputError(let description):
+                message += "FAILED: \(description) "
+                failed = true
+            }
+            summary.emit("\(message) (took: \((endInstant - startInstant).prettyDescription))", failed: failed)
+        } catch {
+            let endInstant = ContinuousClock.now
+            summary.emitFailed("Test '\(suite).\(testName)' finished: FAILED (took: \((endInstant - startInstant).prettyDescription)), threw error: \(error)")
+        }
+    }
+
+    func commandTest(summary: inout MultiNodeTestSummary) async {
+        for testSuite in MultiNodeTestSuites {
+            let suiteStartDate = Date()
+            summary.emit("", failed: false)
+            summary.emit("[multi-node] TestSuite '\(testSuite.key)' started at \(suiteStartDate)", failed: false)
+            for test in allTestsForSuite(testSuite.key) {
+                await runAndEval(suite: testSuite.key, testName: test.0, summary: &summary)
+            }
+        }
+    }
+
+    func runMultiNodeTest(suite: String, testName: String, binary: String) async throws -> InterpretedRunResult {
         let elg = MultiThreadedEventLoopGroup(numberOfThreads: 1)
         defer {
             try! elg.syncShutdownGracefully()
         }
 
-        guard let multiNodeTest = findMultiNodeTest(name, suite: suite) else {
-            throw MultiNodeTestNotFound(suite: suite, test: name)
+        guard let multiNodeTest = findMultiNodeTest(suite: suite, testName: testName) else {
+            throw MultiNodeTestNotFound(suite: suite, test: testName)
         }
+
+        print("NODESSSSS: \(multiNodeTest.nodeNames)")
 
         let devNull = try FileHandle(forUpdating: URL(fileURLWithPath: "/dev/null"))
         defer {
@@ -77,7 +160,7 @@ extension MultiNodeTestKitRunnerBoot {
                     process.standardOutput = processOutputPipe
                     process.standardError = processOutputPipe // we pipe all output to the same pipe; we don't really care that much
 
-                    process.arguments = ["_exec", suite, name, nodeName, allNodesCommandString]
+                    process.arguments = ["_exec", suite, testName, nodeName, allNodesCommandString]
 
                     try process.runProcess()
                     log("[exec] \(process.binaryPath!) \(process.arguments?.joined(separator: " ") ?? "")\n  \(nodeName) -> PID: \(process.processIdentifier)")
@@ -115,7 +198,7 @@ extension MultiNodeTestKitRunnerBoot {
         }
 
         let completeResult = (testResults.contains { $0.result.failed }) ? Self.FAIL : Self.OK
-        let testFullName = "\(suite).\(name)"
+        let testFullName = "\(suite).\(testName)"
         log("Test '\(testFullName)' results: \(completeResult)")
 
         for test in testResults {

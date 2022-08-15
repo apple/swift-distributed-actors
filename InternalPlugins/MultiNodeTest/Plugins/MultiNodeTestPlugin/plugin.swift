@@ -70,11 +70,12 @@ final class MultiNodeTestPlugin: CommandPlugin {
 
         log("Detected multi-node test runner: \(multiNodeRunner.path.lastComponent)")
 
-        let command = arguments.last!
-
         let process = Process()
         process.binaryPath = "/usr/bin/swift"
-        process.arguments = ["run", "MultiNodeTestKitRunner", command]
+        process.arguments = ["run", "MultiNodeTestKitRunner"]
+        for arg in arguments {
+            process.arguments?.append(arg)
+        }
 
         log("> swift \(process.arguments?.joined(separator: " ") ?? "")")
 
@@ -82,7 +83,7 @@ final class MultiNodeTestPlugin: CommandPlugin {
             try process.runProcess()
             process.waitUntilExit()
         } catch {
-            log("[error] Failed to execute multi-node \(command)! Error: \(error)")
+            log("[error] Failed to execute multi-node [\(process.binaryPath) \(process.arguments)]! Error: \(error)")
         }
     }
 
