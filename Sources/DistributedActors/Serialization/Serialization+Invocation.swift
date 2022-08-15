@@ -123,10 +123,6 @@ public struct ClusterInvocationDecoder: DistributedTargetInvocationDecoder {
                 buffer: Serialization.Buffer.data(argumentData)
             )
             let argument = try system.serialization.deserialize(as: Argument.self, from: serialized)
-//            let decoder = JSONDecoder()
-//            decoder.userInfo[.actorSystemKey] = self.system
-//            decoder.userInfo[.actorSerializationContext] = self.system.serialization.context
-//            let argument = try decoder.decode(Argument.self, from: serialized.buffer.readData())
             return argument
 
         case .localProxyCall(let invocation):

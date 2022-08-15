@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import Foundation
+import RegexBuilder
 import XCTest
 
 internal struct InspectKit {
@@ -140,13 +141,14 @@ internal struct InspectKit {
         }
     }
 
+    #if swift(>=5.8.0) // FIXME: Regex is missing on Swift 5.7.0 nightly docker builds?
     /// Actor names to their counts
     static func actorStats() throws -> ActorStats {
         let (out, err, _) = Self.runCommand(cmd: "\(self.baseDir)/scripts/dump_actors.sh")
 
         var stats: [String: ActorStats.Row] = [:]
         for line in out {
-            let line = line.trimmingPrefix { $0 == " " }
+            let line = line.drop(while: { $0 == " " })
 
             guard let idAndType = line.firstMatch(of: try Regex(".*?(?= state)"))?.0 else {
                 continue
@@ -170,6 +172,7 @@ internal struct InspectKit {
 
         return ActorStats(stats: stats)
     }
+    #endif
 }
 
 extension [Substring: InspectKit.ActorStats] {}
