@@ -76,10 +76,10 @@ public class Serialization {
         settings.register(InvocationMessage.self, serializerID: .foundationJSON)
 
         // ==== Declare mangled names of some known popular types // TODO: hardcoded mangled name until we have _mangledTypeName
-        settings.register(Bool.self, hint: "b", serializerID: .specializedWithTypeHint)
-        settings.registerSpecializedSerializer(Bool.self, hint: "b", serializerID: .specializedWithTypeHint) { allocator in
-            BoolSerializer(allocator)
-        }
+//        settings.register(Bool.self, hint: "b", serializerID: .specializedWithTypeHint)
+//        settings.registerSpecializedSerializer(Bool.self, hint: "b", serializerID: .specializedWithTypeHint) { allocator in
+//            BoolSerializer(allocator)
+//        }
         // harder since no direct mapping to write... onto a byte buffer
         // settings.register(Float.self, hint: "f", serializerID: .specializedWithTypeHint)
         // settings.register(Float32.self, hint: "f", serializerID: .specializedWithTypeHint)

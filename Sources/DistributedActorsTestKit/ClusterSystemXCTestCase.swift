@@ -45,20 +45,12 @@ open class ClusterSystemXCTestCase: ClusteredActorSystemsXCTestCase {
     }
 
     override open func setUp() async throws {
-        self.actorStatsBefore = try InspectKit.actorStats()
-
         try await super.setUp()
         _ = await self.setUpNode(String(describing: type(of: self)))
     }
 
     override open func tearDown() async throws {
         try await super.tearDown()
-
-        let actorStatsAfter = try InspectKit.actorStats()
-        // TODO: Enable and fix leaks; today we have reference cycles between system actors and the system that don't get broken
-        // if let error = self.actorStatsBefore.detectLeaks(latest: actorStatsAfter) {
-        //     fatalError(error.message)
-        // }
     }
 
     override open func setUpNode(_ name: String, _ modifySettings: ((inout ClusterSystemSettings) -> Void)? = nil) async -> ClusterSystem {

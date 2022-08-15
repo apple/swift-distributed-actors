@@ -47,8 +47,6 @@ final class MultiNodeTestPlugin: CommandPlugin {
             log("Building multi-node project for debugging...")
         case .release:
             log("Building multi-node project for production...")
-        @unknown default:
-            break
         }
 
         let buildResult = try packageManager.build(
@@ -77,13 +75,12 @@ final class MultiNodeTestPlugin: CommandPlugin {
             process.arguments?.append(arg)
         }
 
-        log("> swift \(process.arguments?.joined(separator: " ") ?? "")")
-
         do {
+            log("> swift \(process.arguments?.joined(separator: " ") ?? "")")
             try process.runProcess()
             process.waitUntilExit()
         } catch {
-            log("[error] Failed to execute multi-node [\(process.binaryPath) \(process.arguments)]! Error: \(error)")
+            log("[error] Failed to execute multi-node [\(process.binaryPath!) \(process.arguments!)]! Error: \(error)")
         }
     }
 

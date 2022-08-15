@@ -52,7 +52,7 @@ public actor ClusterSingletonPlugin {
         _ type: Act.Type = Act.self,
         name: String,
         settings: ClusterSingletonSettings = .init(),
-        makeInstance factory: ((ClusterSystem) async throws -> Act)? = nil
+        makeInstance factory: (@Sendable (ClusterSystem) async throws -> Act)? = nil
     ) async throws -> Act where Act: ClusterSingleton {
         var settings = settings
         settings.name = name
@@ -63,7 +63,7 @@ public actor ClusterSingletonPlugin {
         _ type: Act.Type,
         settings: ClusterSingletonSettings,
         system: ClusterSystem,
-        makeInstance factory: ((ClusterSystem) async throws -> Act)?
+        makeInstance factory: (@Sendable (ClusterSystem) async throws -> Act)?
     ) async throws -> Act where Act: ClusterSingleton {
         let singletonName = settings.name
         guard !singletonName.isEmpty else {
