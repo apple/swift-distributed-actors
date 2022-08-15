@@ -63,22 +63,31 @@ struct MultiNodeTestKitRunnerBoot {
     }
 
     func allTestsForSuite(_ testSuite: String) -> [(String, MultiNodeTest)] {
-        return MultiNodeTestSuites[testSuite].map { testSuiteObject in
-            Mirror(reflecting: testSuiteObject)
-                .children
-                .filter { $0.label?.starts(with: "test") ?? false }
-                .compactMap { multiNodeTestDescriptor in
-                    multiNodeTestDescriptor.label.flatMap { label in
-                        (multiNodeTestDescriptor.value as? MultiNodeTest).map { multiNodeTest in
-                            return (label, multiNodeTest)
-                        }
+        guard let suiteType = MultiNodeTestSuites.first(where: { testSuite == "\($0)" }) else {
+            return []
+        }
+
+        let suiteInstance = suiteType.init()
+
+        var tests: [(String, MultiNodeTest)] = []
+        Mirror(reflecting: suiteInstance)
+            .children
+            .filter { $0.label?.starts(with: "test") ?? false }
+            .forEach { multiNodeTestDescriptor in
+                multiNodeTestDescriptor.label.flatMap { label in
+                    (multiNodeTestDescriptor.value as? MultiNodeTest).map { multiNodeTest in
+                        var multiNodeTest = multiNodeTest
+                        multiNodeTest._testSuiteName = testSuite
+                        multiNodeTest._testName = label
+                        tests.append((label, multiNodeTest))
                     }
                 }
-        } ?? []
+            }
+        return tests
     }
 
-    func findMultiNodeTest(_ testName: String, suite: String) -> MultiNodeTest? {
-        return allTestsForSuite(suite)
+    func findMultiNodeTest(suite: String, testName: String) -> MultiNodeTest? {
+        allTestsForSuite(suite)
             .first(where: { $0.0 == testName })?
             .1
     }
@@ -102,10 +111,15 @@ struct MultiNodeTestKitRunnerBoot {
         if !expectedFailure {
             switch result {
             case .failure(let error as MultiNodeProgramError):
+                var reason: String = "MultiNode test failed, output was dumped."
                 for line in error.completeOutput {
                     log("[\(nodeName)] \(line)")
+
+                    if line.contains("Fatal error: ") {
+                        reason = line
+                    }
                 }
-                return .outputError("MultiNode test failed, output was dumped.")
+                return .outputError(reason)
             case .success(let logs):
                 if settings.dumpNodeLogs == .always {
                     for line in logs {
@@ -144,11 +158,12 @@ struct MultiNodeTestKitRunnerBoot {
     }
 
     func usage() {
+        print("ARGS: \(CommandLine.arguments)")
         print("\(CommandLine.arguments.first ?? "\(Self.self)") COMMAND [OPTIONS]")
         print()
         print("COMMAND is:")
         print("  test                         to run all crash tests")
-        print("  run SUITE TEST-NAME             to run the crash test SUITE.TEST-NAME")
+        print("  run SUITE [TEST-NAME]        to run the crash test SUITE.TEST-NAME")
         print("")
         print("For debugging purposes, you can also directly run the test binary directly:")
         print("  \(CommandLine.arguments.first ?? "\(Self.self)") _exec SUITE TEST-NAME NODE-NAME")
@@ -158,66 +173,37 @@ struct MultiNodeTestKitRunnerBoot {
         signal(SIGPIPE, SIG_IGN)
 
         var failedTests = 0
-        func runAndEval(_ test: String, suite: String) async throws {
-            let startDate = Date()
-            let startInstant = ContinuousClock.now
-            print("[multi-node] Test '\(suite).\(test)' started at \(startDate)")
-
-            let runResult =
-                try await runMultiNodeTest(test, suite: suite, binary: CommandLine.arguments.first!)
-
-            let endInstant = ContinuousClock.now
-            print("[multi-node] Test '\(suite).\(test)' finished:", terminator: " ")
-            switch runResult {
-            case .passedAsExpected:
-                print("OK (PASSED)", terminator: " ")
-            case .crashRegexDidNotMatch(regex: let regex, output: let output):
-                print(
-                    "FAILED: crash regex did not match output",
-                    "crash regex: \(regex)",
-                    "output: \(output)",
-                    separator: "\n",
-                    terminator: ""
-                )
-                failedTests += 1
-            case .unexpectedRunResult(let runResult):
-                print("FAILED: unexpected run result: \(runResult)")
-                failedTests += 1
-            case .outputError(let description):
-                print("FAILED: \(description)", terminator: " ")
-                failedTests += 1
-            case .crashedAsExpected:
-                print("OK (EXPECTED CRASH)", terminator: " ")
-            }
-
-            print("(took: \((endInstant - startInstant).prettyDescription))")
-        }
 
         switch CommandLine.arguments.dropFirst().first {
+        case .some("test") where CommandLine.arguments.contains("--filter"):
+            fatalError("Filtering not implemented yet")
+//            var summary = MultiNodeTestSummary()
+//            defer {
+//                summary.dump()
+//            }
+//            if let suite = CommandLine.arguments.dropFirst(2).first {
+//                for testName in CommandLine.arguments.dropFirst(1) {
+//                    await runAndEval(suite: suite, testName: testName, summary: &summary)
+//                }
+//            } else {
+//                usage()
+//                exit(EXIT_FAILURE)
+//            }
+
         case .some("test"):
-            for testSuite in MultiNodeTestSuites {
-                let suiteStartDate = Date()
-                print("[multi-node] TestSuite '\(testSuite.key)' started at \(suiteStartDate)")
-                for test in allTestsForSuite(testSuite.key) {
-                    try await runAndEval(test.0, suite: testSuite.key)
-                }
+            var summary = MultiNodeTestSummary()
+            defer {
+                summary.dump()
             }
-        case .some("run"):
-            if let suite = CommandLine.arguments.dropFirst(2).first {
-                for test in CommandLine.arguments.dropFirst(3) {
-                    try await runAndEval(test, suite: suite)
-                }
-            } else {
-                usage()
-                exit(EXIT_FAILURE)
-            }
+            await commandTest(summary: &summary)
+
         case .some("_exec"):
             if let testSuiteName = CommandLine.arguments.dropFirst(2).first,
                let testName = CommandLine.arguments.dropFirst(3).first,
                let nodeName = CommandLine.arguments.dropFirst(4).first,
                let allNodesString = CommandLine.arguments.dropFirst(5).first,
                let allNodes = Optional(MultiNode.parseAllNodes(allNodesString)),
-               let multiNodeTest = findMultiNodeTest(testName, suite: testSuiteName)
+               let multiNodeTest = findMultiNodeTest(suite: testSuiteName, testName: testName)
             {
                 do {
                     try await executeTest(

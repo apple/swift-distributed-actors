@@ -49,7 +49,7 @@ public struct MultiNodeTestSettings {
         case always
     }
 
-    /// Wait time on entering a ``MultiNode/CheckPoint``.
+    /// Wait time on entering a ``MultiNode/Checkpoint``.
     /// After exceeding the allocated wait time, all waiters are failed.
     ///
     /// I.e. "all nodes must reach this checkpoint within 30 seconds".

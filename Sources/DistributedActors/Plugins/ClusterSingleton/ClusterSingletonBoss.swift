@@ -54,6 +54,9 @@ internal distributed actor ClusterSingletonBoss<Act: ClusterSingleton>: ClusterS
 
     /// The node that the singleton runs on.
     private var targetNode: UniqueNode?
+    private var selfNode: UniqueNode {
+        self.actorSystem.cluster.uniqueNode
+    }
 
     /// The target singleton instance we should forward invocations to.
     ///
@@ -118,8 +121,6 @@ internal distributed actor ClusterSingletonBoss<Act: ClusterSingleton>: ClusterS
             self.log.trace("Skip updating target node. New node is already the same as current targetNode.", metadata: self.metadata())
             return
         }
-
-        let selfNode = self.actorSystem.cluster.uniqueNode
 
         let previousTargetNode = self.targetNode
         self.targetNode = node
@@ -416,6 +417,22 @@ extension ClusterSingletonBoss {
         )
 
         var invocation = invocation // can't be inout param
+        if targetNode == selfNode,
+           let singleton = self.targetSingleton
+        {
+            assert(
+                singleton.id.uniqueNode == selfNode,
+                "Target singleton node and targetNode were not the same! TargetNode: \(targetNode)," +
+                    " singleton.id.uniqueNode: \(singleton.id.uniqueNode)"
+            )
+            return try await singleton.actorSystem.localCall(
+                on: singleton,
+                target: target, invocation: &invocation,
+                throwing: throwing,
+                returning: returning
+            )
+        }
+
         return try await singleton.actorSystem.remoteCall(
             on: singleton,
             target: target,
@@ -442,6 +459,23 @@ extension ClusterSingletonBoss {
         )
 
         var invocation = invocation // can't be inout param
+        if targetNode == selfNode,
+           let singleton = self.targetSingleton
+        {
+            self.log.trace("ENTER forwardOrStashRemoteCallVoid \(target) -> DIRECT LOCAL CALL")
+
+            assert(
+                singleton.id.uniqueNode == selfNode,
+                "Target singleton node and targetNode were not the same! TargetNode: \(targetNode)," +
+                    " singleton.id.uniqueNode: \(singleton.id.uniqueNode)"
+            )
+            return try await singleton.actorSystem.localCallVoid(
+                on: singleton,
+                target: target, invocation: &invocation,
+                throwing: throwing
+            )
+        }
+
         return try await singleton.actorSystem.remoteCallVoid(
             on: singleton,
             target: target,

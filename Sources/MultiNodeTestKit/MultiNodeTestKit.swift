@@ -18,6 +18,20 @@ import OrderedCollections
 public struct MultiNodeTest {
     public typealias RunTestFn<Nodes: MultiNodeNodes> = (Control<Nodes>) async throws -> Void
 
+    public var _testSuiteName: String = ""
+    public var testSuiteName: String {
+        self._testSuiteName
+    }
+
+    public var _testName: String = ""
+    public var testName: String {
+        self._testName
+    }
+
+    public var fullTestName: String {
+        "\(self.testSuiteName).\(self.testName)"
+    }
+
     public let nodeNames: OrderedSet<String>
     public let crashRegex: String?
     public let runTest: (any MultiNodeTestControlProtocol) async throws -> Void
@@ -63,6 +77,10 @@ public protocol MultiNodeTestSuite {
 }
 
 extension MultiNodeTestSuite {
+    public static var key: String {
+        "\(Self.self)".split(separator: ".").last.map(String.init) ?? ""
+    }
+
     public func configureActorSystem(settings: inout ClusterSystemSettings) {
         // do nothing by default
     }

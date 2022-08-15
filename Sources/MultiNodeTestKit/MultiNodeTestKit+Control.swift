@@ -32,7 +32,7 @@ extension MultiNodeTest {
             }
         }
 
-        public var actorSystem: ClusterSystem {
+        public var system: ClusterSystem {
             precondition(self._actorSystem != nil, "Actor system already released!")
             return self._actorSystem!
         }
@@ -50,7 +50,7 @@ extension MultiNodeTest {
         }
 
         public var cluster: ClusterControl {
-            self.actorSystem.cluster
+            self.system.cluster
         }
 
         public var allNodes: some Collection<Node> {
@@ -63,7 +63,7 @@ extension MultiNodeTest {
 
         public subscript(_ nid: Nodes) -> Node {
             guard let node = self._allNodes[nid.rawValue] else {
-                fatalError("No node present for [\(nid.rawValue)], available: \(self._allNodes) (on \(self.actorSystem))")
+                fatalError("No node present for [\(nid.rawValue)], available: \(self._allNodes) (on \(self.system))")
             }
 
             return node
@@ -76,17 +76,17 @@ extension MultiNodeTest {
 
 extension MultiNodeTest.Control {
     public func on(_ node: Nodes) -> Bool {
-        return node.rawValue == self.actorSystem.name
+        return node.rawValue == self.system.name
     }
 
     @discardableResult
     public func runOn<T: Sendable>(_ node: Nodes, body: (ClusterSystem) async throws -> T) async rethrows -> T? {
-        if node.rawValue == self.actorSystem.name {
-            if self.actorSystem.isTerminated {
+        if node.rawValue == self.system.name {
+            if self.system.isTerminated {
                 fatalError("Attempted to runOn(\(node)) after terminating the actor system!")
             }
 
-            return try await body(self.actorSystem)
+            return try await body(self.system)
         } else {
             return nil
         }
@@ -94,8 +94,8 @@ extension MultiNodeTest.Control {
 
     @discardableResult
     public func runOn<T: Sendable>(_ node: Nodes, body: (ClusterSystem) throws -> T) rethrows -> T? {
-        if node.rawValue == self.actorSystem.name {
-            return try body(self.actorSystem)
+        if node.rawValue == self.system.name {
+            return try body(self.system)
         } else {
             return nil
         }
@@ -103,7 +103,7 @@ extension MultiNodeTest.Control {
 
     @discardableResult
     public func runOn<T: Sendable>(_ node: Nodes, body: () async throws -> T) async rethrows -> T? {
-        if node.rawValue == self.actorSystem.name {
+        if node.rawValue == self.system.name {
             return try await body()
         } else {
             return nil
@@ -112,7 +112,7 @@ extension MultiNodeTest.Control {
 
     @discardableResult
     public func runOn<T: Sendable>(_ node: Nodes, body: () throws -> T) rethrows -> T? {
-        if node.rawValue == self.actorSystem.name {
+        if node.rawValue == self.system.name {
             return try body()
         } else {
             return nil
@@ -136,20 +136,24 @@ extension MultiNodeTest.Control {
                            within waitTime: Duration? = nil,
                            file: String = #fileID, line: UInt = #line) async throws
     {
-        let checkPoint = MultiNode.CheckPoint(name: name, file: file, line: line)
-        log.notice("CheckPoint [\(name)], wait for all other nodes to arrive at the same checkpoint ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+        let checkPoint = MultiNode.Checkpoint(name: name, file: file, line: line)
+        log.notice("Checkpoint [\(name)], wait for all other nodes to arrive at the same checkpoint ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
 
         let startWait: ContinuousClock.Instant = .now
-        defer {
-            let endWait: ContinuousClock.Instant = .now
-            log.notice("CheckPoint \(name) passed, all nodes arrived within: \(startWait - endWait) ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~") // TODO: make it print more nicely
+
+        do {
+            try await self.conductor.enterCheckPoint(
+                node: self.system.name, // FIXME: should be: self.system.cluster.uniqueNode,
+                checkPoint: checkPoint,
+                waitTime: waitTime ?? .seconds(30)
+            )
+        } catch {
+            log.notice("Checkpoint [\(name)] timed out! xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx") // TODO: make it print more nicely
+            throw error
         }
 
-        try await self.conductor.enterCheckPoint(
-            node: self.actorSystem.name, // FIXME: should be: self.actorSystem.cluster.uniqueNode,
-            checkPoint: checkPoint,
-            waitTime: waitTime ?? .seconds(30)
-        )
+        let endWait: ContinuousClock.Instant = .now
+        log.notice("Checkpoint [\(name)] passed, all nodes arrived within: \(startWait - endWait) >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>") // TODO: make it print more nicely
     }
 
     public func kill(_ node: Nodes) {
