@@ -112,16 +112,12 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         return SystemReceptionist(ref: ref)
     }
 
-    private let _receptionistStore: ManagedAtomicLazyReference<OpLogDistributedReceptionist>
+    private var _receptionistStore: OpLogDistributedReceptionist?
     public var receptionist: OpLogDistributedReceptionist {
-        guard let value = _receptionistStore.load() else {
-            self.initLock.lock()
-            defer { initLock.unlock() }
+        self.initLock.lock()
+        defer { initLock.unlock() }
 
-            return self.receptionist
-        }
-
-        return value
+        return self._receptionistStore!
     }
 
     // ==== ----------------------------------------------------------------------------------------------------------------
@@ -173,7 +169,13 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         return box.value
     }
 
-    internal var downing: DowningStrategyShell?
+    internal var _downingStrategyStore: DowningStrategyShell?
+    internal var downing: DowningStrategyShell? {
+        self.initLock.lock()
+        defer { self.initLock.unlock() }
+
+        return self._downingStrategyStore
+    }
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Logging
@@ -270,7 +272,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         self.metrics = ClusterSystemMetrics(settings.metrics)
 
         self._receptionistRef = ManagedAtomicLazyReference()
-        self._receptionistStore = ManagedAtomicLazyReference()
+//        self._receptionistStore = ManagedAtomicLazyReference()
         self._serialization = ManagedAtomicLazyReference()
         self._clusterStore = ManagedAtomicLazyReference()
         self._clusterControlStore = ManagedAtomicLazyReference()
@@ -351,18 +353,18 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
                 settings: self.settings.receptionist,
                 system: self
             )
-            _ = self._receptionistStore.storeIfNilThenLoad(receptionist)
+            self._receptionistStore = receptionist
         }
 
         // downing strategy (automatic downing)
         if settings.enabled {
             await _Props.$forSpawn.withValue(DowningStrategyShell.props) {
                 if let downingStrategy = self.settings.downingStrategy.make(self.settings) {
-                    self.downing = await DowningStrategyShell(downingStrategy, system: self)
+                    self._downingStrategyStore = await DowningStrategyShell(downingStrategy, system: self)
                 }
             }
         } else {
-            self.downing = nil
+            self._downingStrategyStore = nil
         }
 
         #if SACT_TESTS_LEAKS
@@ -511,7 +513,25 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         self.userProvider.stopAll()
         self.systemProvider.stopAll()
         self.dispatcher.shutdown()
-        self.downing = nil
+
+        // Release system all actors
+        self.initLock.withLockVoid {
+            print("SHUTDOWN")
+            self._receptionistStore = nil
+            self._downingStrategyStore = nil
+            
+            // This weird dance is because releasing distributed actors will trigger resignID,
+            // which calls into the system, and also uses `namingLock` to find the actor to release.
+            // We can't have it acquire the same lock, so we copy the refs out and release the last
+            // references to those actors outside of the naming lock.
+            var knownActors = self.namingLock.withLock {
+                self._managedWellKnownDistributedActors // copy references
+            }
+            self.namingLock.withLock {
+                self._managedWellKnownDistributedActors = [:] // release
+            }
+            knownActors = [:] // release the references outside namingLock
+        }
 
         self._associationTombstoneCleanupTask?.cancel()
         self._associationTombstoneCleanupTask = nil
