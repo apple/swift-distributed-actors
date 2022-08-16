@@ -27,5 +27,4 @@ services:
     image: swift-distributed-actors:20.04-57
 
   shell:
-    privileged: true
     image: swift-distributed-actors:20.04-57
