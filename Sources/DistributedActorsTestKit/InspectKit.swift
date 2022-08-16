@@ -13,7 +13,10 @@
 //===----------------------------------------------------------------------===//
 
 import Foundation
+#if swift(>=5.8.0)
+// FIXME(regex): rdar://98705227 can't use regex on 5.7 on Linux because of a bug that crashes String.starts(with:) at runtime then
 import RegexBuilder
+#endif
 import XCTest
 
 internal struct InspectKit {
@@ -143,6 +146,8 @@ internal struct InspectKit {
 
     /// Actor names to their counts
     static func actorStats() throws -> ActorStats {
+    #if swift(>=5.8.0)
+        // FIXME(regex): rdar://98705227 can't use regex on 5.7 on Linux because of a bug that crashes String.starts(with:) at runtime then
         let (out, err, _) = Self.runCommand(cmd: "\(self.baseDir)/scripts/dump_actors.sh")
 
         var stats: [String: ActorStats.Row] = [:]
@@ -170,6 +175,9 @@ internal struct InspectKit {
         }
 
         return ActorStats(stats: stats)
+    #else
+        return .init()
+    #endif
     }
 }
 
