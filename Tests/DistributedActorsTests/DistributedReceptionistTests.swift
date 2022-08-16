@@ -60,11 +60,15 @@ final class DistributedReceptionistTests: SingleClusterSystemXCTestCase {
         let forwarderA = Forwarder(probe: probe, name: "A", actorSystem: system)
         let forwarderB = Forwarder(probe: probe, name: "B", actorSystem: system)
 
+        system.log.notice("Checking in: \(forwarderA.id)")
         await receptionist.checkIn(forwarderA, with: .forwarders)
+        system.log.notice("Checking in: \(forwarderB.id)")
         await receptionist.checkIn(forwarderB, with: .forwarders)
 
         var i = 0
+        system.log.notice("here")
         for await forwarder in await receptionist.listing(of: .forwarders) {
+            system.log.notice("here more \(i): \(forwarder.id)")
             i += 1
             try await forwarder.forward(message: "test")
 

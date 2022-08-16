@@ -13,6 +13,8 @@
 //===----------------------------------------------------------------------===//
 
 @testable import DistributedActors
+import DistributedActorsConcurrencyHelpers
+import Foundation
 import XCTest
 
 /// Convenience class for building multi-node (yet same-process) tests with many actor systems involved.
@@ -20,9 +22,12 @@ import XCTest
 /// Systems started using `setUpNode` are automatically terminated upon test completion, and logs are automatically
 /// captured and only printed when a test failure occurs.
 open class ClusteredActorSystemsXCTestCase: XCTestCase {
+    internal let lock = DistributedActorsConcurrencyHelpers.Lock()
     public private(set) var _nodes: [ClusterSystem] = []
     public private(set) var _testKits: [ActorTestKit] = []
     public private(set) var _logCaptures: [LogCapture] = []
+
+    private var stuckTestDumpLogsTask: Task<Void, Error>?
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Actor leak detection
@@ -52,6 +57,12 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
     /// - Default: `true`
     open var captureLogs: Bool {
         true
+    }
+
+    /// Unconditionally dump logs if the test has been running longer than this duration.
+    /// This is to help diagnose stuck tests.
+    open var dumpLogsAfter: Duration {
+        .seconds(60)
     }
 
     /// Enables logging all captured logs, even if the test passed successfully.
@@ -84,6 +95,19 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
         if self.inspectDetectActorLeaks {
             self.actorStatsBefore = try InspectKit.actorStats()
         }
+
+        self.stuckTestDumpLogsTask = Task.detached {
+            try await Task.sleep(until: .now + self.dumpLogsAfter, clock: .continuous)
+            guard !Task.isCancelled else {
+                return
+            }
+
+            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            print("!!!!!!!!!!               TEST SEEMS STUCK - DUMPING LOGS                   !!!!!!!!!!")
+            print("!!!!!!!!!!               PID: \(ProcessInfo.processInfo.processIdentifier)                              !!!!!!!!!!")
+            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            self.printAllCapturedLogs()
+        }
         try await super.setUp()
     }
 
@@ -101,7 +125,9 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
                 settings.logging.baseLogger = capture.logger(label: name)
                 settings.swim.logger = settings.logging.baseLogger
 
-                self._logCaptures.append(capture)
+                self.lock.withLockVoid {
+                    self._logCaptures.append(capture)
+                }
             }
 
             settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
@@ -129,6 +155,9 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
     }
 
     override open func tearDown() async throws {
+        self.stuckTestDumpLogsTask?.cancel()
+        self.stuckTestDumpLogsTask = nil
+
         try await super.tearDown()
 
         let testsFailed = self.testRun?.totalFailureCount ?? 0 > 0
@@ -141,9 +170,11 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
             try! await node.shutdown().wait()
         }
 
-        self._nodes = []
-        self._testKits = []
-        self._logCaptures = []
+        self.lock.withLockVoid {
+            self._nodes = []
+            self._testKits = []
+            self._logCaptures = []
+        }
 
         if self.inspectDetectActorLeaks {
             try await Task.sleep(until: .now + .seconds(2), clock: .continuous)
@@ -268,7 +299,9 @@ extension ClusteredActorSystemsXCTestCase {
             fatalError("No such node: [\(node)] in [\(self._nodes)]!")
         }
 
-        return self._logCaptures[index]
+        return self.lock.withLock {
+            self._logCaptures[index]
+        }
     }
 
     public func printCapturedLogs(of node: ClusterSystem) {

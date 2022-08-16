@@ -300,10 +300,13 @@ extension OpLogDistributedReceptionist: LifecycleWatch {
         _ guest: Guest,
         with key: DistributedReception.Key<Guest>
     ) async where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem {
-        self.log.warning("distributed receptionist: checkIn(\(guest), with: \(key)")
+        let id = guest.id
         let key = key.asAnyKey
 
-        let id = guest.id
+        self.log.debug("Receptionist checkIn [\(guest.id)] with key [\(key)]", metadata: [
+            "receptionist/key": "\(key)",
+            "receptionist/guest": "\(guest.id)",
+        ])
 
         guard id._isLocal || (id.uniqueNode == actorSystem.cluster.uniqueNode) else {
             self.log.warning("""
@@ -327,7 +330,9 @@ extension OpLogDistributedReceptionist: LifecycleWatch {
                     "receptionist/key": "\(key)",
                     "receptionist/guest": "\(id)",
                     "receptionist/opLog/maxSeqNr": "\(self.ops.maxSeqNr)",
-                    "receptionist/opLog": "\(self.ops.ops)",
+                    "receptionist/opLog": Logger.MetadataValue.array(
+                        self.ops.ops.map { Logger.MetadataValue.string("\($0)") }
+                    ),
                 ]
             )
 
@@ -368,7 +373,11 @@ extension OpLogDistributedReceptionist: LifecycleWatch {
             // We immediately flush all already-known registrations;
             // as new ones come in, they will be reported to this subscription later on
             for alreadyRegisteredAtSubscriptionTime in self.storage.registrations(forKey: subscription.key) ?? [] {
-                subscription.tryOffer(registration: alreadyRegisteredAtSubscriptionTime)
+                if subscription.tryOffer(registration: alreadyRegisteredAtSubscriptionTime) {
+                    self.log.notice("OFFERED \(alreadyRegisteredAtSubscriptionTime.actorID) TO \(subscription)")
+                } else {
+                    self.log.notice("DROPPED \(alreadyRegisteredAtSubscriptionTime.actorID) TO \(subscription)")
+                }
             }
         }
     }
@@ -438,7 +447,7 @@ extension OpLogDistributedReceptionist {
 
         let timerTaskKey = key.hashValue
         guard self.flushTimerTasks[timerTaskKey] == nil else {
-            self.log.debug("timer exists")
+            self.log.trace("Delayed listing flush timer task already exists (key: \(key))")
             return // timer exists nothing to do
         }
 
@@ -460,7 +469,6 @@ extension OpLogDistributedReceptionist {
 
     func onDelayedListingFlushTick(key: AnyDistributedReceptionKey) {
         self.log.trace("Run delayed listing flush, key: \(key)")
-
         self.notifySubscribers(of: key)
     }
 
@@ -474,12 +482,28 @@ extension OpLogDistributedReceptionist {
         // Sort registrations by version from oldest to newest so that they are processed in order.
         // Otherwise, if we process a newer version (i.e., with bigger sequence number) first, older
         // versions will be dropped because they are considered "seen".
-        let registrations = (self.storage.registrations(forKey: key) ?? []).sorted { l, r in l.version < r.version }
+        let registrations = (self.storage.registrations(forKey: key) ?? []).sorted { l, r in l.version < r.version } // FIXME: use ordered set or Deque now that we have them
+        self.log.notice(
+            "Registrations to flush: \(registrations.count)",
+            metadata: [
+                "registrations": Logger.MetadataValue.array(
+                    registrations.map { Logger.MetadataValue.string("\($0)") }
+                ),
+            ]
+        )
 
         // self.instrumentation.listingPublished(key: key, subscribers: subscriptions.count, registrations: registrations.count) // TODO(distributed): make the instrumentation calls compatible with distributed actor based types
         for subscription in subscriptions {
+            self.log.notice("Offering registrations to subscription: \(subscription))", metadata: [
+                "registrations": "\(subscription.seenActorRegistrations)",
+            ])
+
             for registration in registrations {
-                subscription.tryOffer(registration: registration)
+                if subscription.tryOffer(registration: registration) {
+                    self.log.notice("OFFERED \(registration.actorID) TO \(subscription)")
+                } else {
+                    self.log.notice("DROPPED \(registration.actorID) TO \(subscription)")
+                }
             }
         }
     }
@@ -643,15 +667,8 @@ extension OpLogDistributedReceptionist {
         // we effectively initiate the "first pull"
         let latestAppliedSeqNrFromPeer = self.appliedSequenceNrs[.actorID(receptionistID)]
 
-        let ack = AckOps(
-            appliedUntil: latestAppliedSeqNrFromPeer,
-            observedSeqNrs: self.observedSequenceNrs,
-            peer: self
-        )
-
         Task { [weak self] in
             do {
-//                assert(self.id.path.description.contains("/system/receptionist"), "Receptionist path did not include /system/receptionist, was: \(self.id.fullDescription)")
                 guard let __secretlyKnownToBeLocal = self else { return } // FIXME: we need `local`
                 try await peerReceptionistRef.ackOps(until: latestAppliedSeqNrFromPeer, by: __secretlyKnownToBeLocal)
             } catch {
@@ -702,7 +719,11 @@ extension OpLogDistributedReceptionist {
 
         for subscription in subscriptions {
             for registration in registrations {
-                subscription.tryOffer(registration: registration)
+                if subscription.tryOffer(registration: registration) {
+                    self.log.notice("OFFERED \(registration.actorID) TO \(subscription)")
+                } else {
+                    self.log.notice("DROPPED \(registration.actorID) TO \(subscription)")
+                }
             }
         }
     }

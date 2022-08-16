@@ -14,6 +14,7 @@
 
 import Distributed
 import Logging
+import OrderedCollections
 
 /// A receptionist is a system actor that allows users to register actors under
 /// a key to make them available to other parts of the system, without having to
@@ -180,7 +181,7 @@ internal struct VersionedRegistration: Hashable {
 internal final class DistributedReceptionistStorage {
     typealias ReceptionistOp = OpLogDistributedReceptionist.ReceptionistOp
 
-    internal var _registrations: [AnyDistributedReceptionKey: Set<VersionedRegistration>] = [:]
+    internal var _registrations: [AnyDistributedReceptionKey: OrderedSet<VersionedRegistration>] = [:]
     internal var _subscriptions: [AnyDistributedReceptionKey: Set<AnyDistributedReceptionListingSubscription>] = [:]
 
     /// Per (receptionist) node mapping of which keys are presently known to this receptionist on the given node.
@@ -218,7 +219,7 @@ internal final class DistributedReceptionistStorage {
         return self.addTo(dict: &self._registrations, key: key, value: versionedRegistration)
     }
 
-    func removeRegistration<Guest>(key: AnyDistributedReceptionKey, guest: Guest) -> Set<VersionedRegistration>?
+    func removeRegistration<Guest>(key: AnyDistributedReceptionKey, guest: Guest) -> OrderedSet<VersionedRegistration>?
         where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem
     {
         let address = guest.id
@@ -232,7 +233,7 @@ internal final class DistributedReceptionistStorage {
         return self.removeFrom(dict: &self._registrations, key: key, value: versionedRegistration)
     }
 
-    func registrations(forKey key: AnyDistributedReceptionKey) -> Set<VersionedRegistration>? {
+    func registrations(forKey key: AnyDistributedReceptionKey) -> OrderedSet<VersionedRegistration>? {
         self._registrations[key]
     }
 
@@ -304,7 +305,7 @@ internal final class DistributedReceptionistStorage {
         for key in keys {
             // 1) we remove any registrations that it hosted
             let registrations = self._registrations.removeValue(forKey: key) ?? []
-            let remainingRegistrations = registrations.filter { registration in
+            let remainingRegistrations = registrations._filter { registration in // FIXME(collections): missing type preserving filter on OrderedSet https://github.com/apple/swift-collections/pull/159
                 registration.actorID.uniqueNode != node
             }
             if !remainingRegistrations.isEmpty {
@@ -328,6 +329,16 @@ internal final class DistributedReceptionistStorage {
     }
 
     /// - returns: `true` if the value was a newly inserted value, `false` otherwise
+    private func addTo<Value: Hashable>(dict: inout [AnyDistributedReceptionKey: OrderedSet<Value>], key: AnyDistributedReceptionKey, value: Value) -> Bool {
+        guard !(dict[key]?.contains(value) ?? false) else {
+            return false
+        }
+
+        dict[key, default: []].append(value)
+        return true
+    }
+
+    /// - returns: `true` if the value was a newly inserted value, `false` otherwise
     private func addTo<Value: Hashable>(dict: inout [AnyDistributedReceptionKey: Set<Value>], key: AnyDistributedReceptionKey, value: Value) -> Bool {
         guard !(dict[key]?.contains(value) ?? false) else {
             return false
@@ -335,6 +346,14 @@ internal final class DistributedReceptionistStorage {
 
         dict[key, default: []].insert(value)
         return true
+    }
+
+    private func removeFrom<Value: Hashable>(dict: inout [AnyDistributedReceptionKey: OrderedSet<Value>], key: AnyDistributedReceptionKey, value: Value) -> OrderedSet<Value>? {
+        if dict[key]?.remove(value) != nil, dict[key]?.isEmpty ?? false {
+            dict.removeValue(forKey: key)
+        }
+
+        return dict[key]
     }
 
     private func removeFrom<Value: Hashable>(dict: inout [AnyDistributedReceptionKey: Set<Value>], key: AnyDistributedReceptionKey, value: Value) -> Set<Value>? {
@@ -354,7 +373,7 @@ internal final class DistributedReceptionistStorage {
 // ==== ----------------------------------------------------------------------------------------------------------------
 
 /// Represents a local subscription (for `receptionist.subscribe`) for a specific key.
-internal final class AnyDistributedReceptionListingSubscription: Hashable, @unchecked Sendable {
+internal final class AnyDistributedReceptionListingSubscription: Hashable, @unchecked Sendable, CustomStringConvertible {
     let subscriptionID: ObjectIdentifier
     let key: AnyDistributedReceptionKey
 
@@ -368,7 +387,7 @@ internal final class AnyDistributedReceptionListingSubscription: Hashable, @unch
 
     /// We very carefully only modify this from the owning actor (receptionist).
     // TODO: It would be lovely to be able to express this in the type system as "actor owned" or "actor local" to some actor instance.
-    private var seenActorRegistrations: VersionVector
+    var seenActorRegistrations: VersionVector
 
     init(
         subscriptionID: ObjectIdentifier,
@@ -399,7 +418,9 @@ internal final class AnyDistributedReceptionListingSubscription: Hashable, @unch
     /// version vector, to see if it "advanced it" - if so, it must be a new registration and we have
     /// to emit the value. If it didn't advance the local "seen" version vector, it means we've already
     /// seen this actor in this specific stream, and don't need to emit it again.
-    func tryOffer(registration: VersionedRegistration) {
+    ///
+    /// - Returns: true if the value was successfully offered
+    func tryOffer(registration: VersionedRegistration) -> Bool {
         let oldSeenRegistrations = self.seenActorRegistrations
         self.seenActorRegistrations.merge(other: registration.version)
 
@@ -407,11 +428,12 @@ internal final class AnyDistributedReceptionListingSubscription: Hashable, @unch
         case .same:
             // the seen vector was unaffected by the merge, which means that the
             // incoming registration version was already seen, and thus we don't need to emit it again
-            return
+            return false
         case .happenedAfter:
             // the incoming registration has not yet been seen before,
             // which means that we should emit the actor to the stream.
             self.onNext(registration.actorID)
+            return true
         case .concurrent:
             fatalError("""
             It should not be possible for a version vector to be concurrent with a PAST version of itself before the merge
@@ -434,5 +456,14 @@ internal final class AnyDistributedReceptionListingSubscription: Hashable, @unch
     func hash(into hasher: inout Hasher) {
         hasher.combine(self.subscriptionID)
         hasher.combine(self.key)
+    }
+
+    var description: String {
+        var string = "AnyDistributedReceptionListingSubscription(subscriptionID: \(subscriptionID), key: \(key), , seenActorRegistrations: \(seenActorRegistrations)"
+        #if DEBUG
+        string += ", at: \(self.file):\(self.line)"
+        #endif
+        string += ")"
+        return string
     }
 }
