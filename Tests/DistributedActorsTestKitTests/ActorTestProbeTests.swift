@@ -17,7 +17,6 @@ import DistributedActors
 import XCTest
 
 final class ActorTestProbeTests: SingleClusterSystemXCTestCase {
-
     func test_maybeExpectMessage_shouldReturnTheReceivedMessage() throws {
         let probe = self.testKit.makeTestProbe("p2", expecting: String.self)
 
