@@ -16,18 +16,7 @@ import DistributedActors
 @testable import DistributedActorsTestKit
 import XCTest
 
-class ActorTestProbeTests: XCTestCase {
-    var system: ClusterSystem!
-    var testKit: ActorTestKit!
-
-    override func setUp() async throws {
-        self.system = await ClusterSystem(String(describing: type(of: self)))
-        self.testKit = ActorTestKit(self.system)
-    }
-
-    override func tearDown() async throws {
-        try await self.system.shutdown().wait()
-    }
+final class ActorTestProbeTests: ClusterSystemXCTestCase {
 
     func test_maybeExpectMessage_shouldReturnTheReceivedMessage() throws {
         let probe = self.testKit.makeTestProbe("p2", expecting: String.self)
