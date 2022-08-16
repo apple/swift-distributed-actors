@@ -29,6 +29,36 @@ struct MultiNodeTestKitRunnerBoot {
         try await Self().run()
     }
 
+    struct TestFilter {
+        private let matcher: String?
+
+        init(parse arguments: ArraySlice<String>) {
+            if let filterIdx = arguments.firstIndex(of: "--filter") {
+                let filterValueIdx = arguments.index(after: filterIdx)
+                if filterValueIdx >= arguments.endIndex {
+                    fatalError("No value for `--filter` given! Arguments: \(arguments)")
+                }
+                self.matcher = arguments[filterValueIdx]
+            } else {
+                self.matcher = nil
+            }
+        }
+
+        public func matches(suiteName: String, testName: String?) -> Bool {
+            guard let matcher = self.matcher else {
+                return true // always match if no matcher
+            }
+
+            if suiteName.contains(matcher) {
+                return true
+            } else if let testName, testName.contains(matcher) {
+                return true
+            } else {
+                return false
+            }
+        }
+    }
+
     enum RunResult {
         case signal(Int)
         case exit(Int)
@@ -162,9 +192,10 @@ struct MultiNodeTestKitRunnerBoot {
         print("\(CommandLine.arguments.first ?? "\(Self.self)") COMMAND [OPTIONS]")
         print()
         print("COMMAND is:")
-        print("  test                         to run all crash tests")
-        print("  run SUITE [TEST-NAME]        to run the crash test SUITE.TEST-NAME")
+        print("  test                         to run all multi-node tests")
+        print("       --filter                to filter which tests should be run; Checks against SUITE and TEST name.")
         print("")
+        print("Or an INTERNAL COMMAND:")
         print("For debugging purposes, you can also directly run the test binary directly:")
         print("  \(CommandLine.arguments.first ?? "\(Self.self)") _exec SUITE TEST-NAME NODE-NAME")
     }
@@ -175,27 +206,13 @@ struct MultiNodeTestKitRunnerBoot {
         var failedTests = 0
 
         switch CommandLine.arguments.dropFirst().first {
-        case .some("test") where CommandLine.arguments.contains("--filter"):
-            fatalError("Filtering not implemented yet")
-//            var summary = MultiNodeTestSummary()
-//            defer {
-//                summary.dump()
-//            }
-//            if let suite = CommandLine.arguments.dropFirst(2).first {
-//                for testName in CommandLine.arguments.dropFirst(1) {
-//                    await runAndEval(suite: suite, testName: testName, summary: &summary)
-//                }
-//            } else {
-//                usage()
-//                exit(EXIT_FAILURE)
-//            }
-
         case .some("test"):
             var summary = MultiNodeTestSummary()
+            let filter = TestFilter(parse: CommandLine.arguments.dropFirst())
             defer {
                 summary.dump()
             }
-            await commandTest(summary: &summary)
+            await commandTest(summary: &summary, filter: filter)
 
         case .some("_exec"):
             if let testSuiteName = CommandLine.arguments.dropFirst(2).first,

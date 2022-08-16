@@ -19,7 +19,7 @@ import Foundation
 import NIO
 import XCTest
 
-final class StubDistributedActorTests: ClusterSystemXCTestCase {
+final class StubDistributedActorTests: SingleClusterSystemXCTestCase {
     func test_StubDistributedActor_shouldAlwaysResolveAsRemote() {
         let anyID = system.assignID(StubDistributedActor.self)
 
