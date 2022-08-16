@@ -217,11 +217,11 @@ extension MultiNodeTestConductor {
 
         let error = MultiNodeCheckPointError(
             nodeName: nodeName,
-            message: "Checkpoint \(checkpoint.name) failed, node [\(nodeName)] became [\(change.status)] and therefore unable to reach the checkpoint!"
+            message: "Checkpoint [\(checkpoint.name)] failed, node [\(nodeName)] became [\(change.status)] and therefore unable to reach the checkpoint!"
         )
 
         for (name, cc) in self.nodesAtCheckPoint {
-            self.log.warning("Checkpoint \(checkpoint.name) failing. Node \(nodeName) became at least [.down]. Failing waiting node [\(name)]", metadata: [
+            self.log.warning("Checkpoint [\(checkpoint.name)] failing. Node \(nodeName) became at least [.down]. Failing waiting node [\(name)]", metadata: [
                 "multiNode/checkpoint/error": "\(error)",
             ])
             cc.resume(throwing: error)

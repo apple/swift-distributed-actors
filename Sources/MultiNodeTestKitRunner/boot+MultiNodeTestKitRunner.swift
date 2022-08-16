@@ -125,13 +125,15 @@ struct MultiNodeTestKitRunnerBoot {
     func interpretNodeTestOutput(
         _ result: Result<ProgramOutput, Error>,
         nodeName: String,
+        multiNodeTest: MultiNodeTest,
         expectedFailureRegex: String?,
         grepper: OutputGrepper,
         settings: MultiNodeTestSettings,
         runResult: RunResult
     ) throws -> InterpretedRunResult {
+        print()
         print(String(repeating: "-", count: 120))
-        print("[multi-node] [\(nodeName)] Captured logs:")
+        print("[multi-node] [\(nodeName)](\(multiNodeTest.fullTestName)) Captured logs:")
         defer {
             print(String(repeating: "=", count: 120))
         }
@@ -143,7 +145,7 @@ struct MultiNodeTestKitRunnerBoot {
             case .failure(let error as MultiNodeProgramError):
                 var reason: String = "MultiNode test failed, output was dumped."
                 for line in error.completeOutput {
-                    log("[\(nodeName)] \(line)")
+                    log("[\(nodeName)](\(multiNodeTest.testName)) \(line)")
 
                     if line.contains("Fatal error: ") {
                         reason = line
@@ -153,7 +155,7 @@ struct MultiNodeTestKitRunnerBoot {
             case .success(let logs):
                 if settings.dumpNodeLogs == .always {
                     for line in logs {
-                        print("[multi-node] [\(nodeName)] \(line)")
+                        print("[multi-node] [\(nodeName)](\(multiNodeTest.testName)) \(line)")
                     }
                 }
                 return .passedAsExpected
@@ -175,13 +177,13 @@ struct MultiNodeTestKitRunnerBoot {
         if outputJoined.range(of: expectedFailureRegex, options: .regularExpression) != nil {
             if settings.dumpNodeLogs == .always {
                 for line in outputLines {
-                    log("[\(nodeName)] \(line)")
+                    log("[\(nodeName)](\(multiNodeTest.testName)) \(line)")
                 }
             }
             return .crashedAsExpected
         } else {
             for line in outputLines {
-                log("[\(nodeName)] \(line)")
+                log("[\(nodeName)](\(multiNodeTest.testName)) \(line)")
             }
             return .crashRegexDidNotMatch(regex: expectedFailureRegex, output: outputJoined)
         }
@@ -203,11 +205,9 @@ struct MultiNodeTestKitRunnerBoot {
     func run() async throws {
         signal(SIGPIPE, SIG_IGN)
 
-        var failedTests = 0
-
+        var summary = MultiNodeTestSummary()
         switch CommandLine.arguments.dropFirst().first {
         case .some("test"):
-            var summary = MultiNodeTestSummary()
             let filter = TestFilter(parse: CommandLine.arguments.dropFirst())
             defer {
                 summary.dump()
@@ -241,7 +241,7 @@ struct MultiNodeTestKitRunnerBoot {
             exit(EXIT_FAILURE)
         }
 
-        exit(CInt(failedTests == 0 ? EXIT_SUCCESS : EXIT_FAILURE))
+        exit(CInt(summary.failedTests == 0 ? EXIT_SUCCESS : EXIT_FAILURE))
     }
 
     func makeAllNodesCommandString(nodeNames: OrderedSet<String>, deployNodes: [(String, Int)]) -> String {

@@ -1045,7 +1045,7 @@ extension ClusterSystem {
 
     /// Called during actor deinit/destroy.
     public func resignID(_ id: ActorID) {
-        self.log.warning("Resign actor id", metadata: ["actor/id": "\(id)"])
+        self.log.trace("Resign actor id", metadata: ["actor/id": "\(id)"])
         self.namingLock.withLockVoid {
             self._reservedNames.remove(id)
             if let ref = self._managedRefs.removeValue(forKey: id) {
