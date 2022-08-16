@@ -39,11 +39,7 @@ struct AnyDistributedActor: Sendable, Hashable {
 
     @usableFromInline
     func force<T: DistributedActor>(as _: T.Type) -> T {
-//        if let cast = underlying as? T {
-//            return cast
-//        }
-
-        // FIXME: terrible hack, instead just store the id then?
+        // FIXME: hack, instead just store the id then?
         if let resolved = try? T.resolve(id: underlying.id as! T.ID, using: underlying.actorSystem as! T.ActorSystem) {
             return resolved
         }

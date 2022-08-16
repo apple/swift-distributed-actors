@@ -26,7 +26,6 @@ public final class MultiNodeClusterSingletonTests: MultiNodeTestSuite {
     }
 
     public static func configureMultiNodeTest(settings: inout MultiNodeTestSettings) {
-        settings.initialJoinTimeout = .seconds(5)
         settings.dumpNodeLogs = .always
 
         settings.logCapture.excludeGrep = [
@@ -61,9 +60,12 @@ public final class MultiNodeClusterSingletonTests: MultiNodeTestSuite {
         }
 
         try await multiNode.checkPoint("Hosted singleton") // ----------------------------------------------------------
-
         let reply = try await ref.greet(name: "Hello from \(multiNode.system.name)")
         print("[ON: \(multiNode.system.name)] Got reply: \(reply)")
+
+        try await multiNode.checkPoint("Got reply from singleton") // --------------------------------------------------
+        // Since now all nodes have made a message exchange with the singleton, we can exit this process.
+        // This barrier is important in so that we don't exit the host of the singleton WHILE the others are still getting to talking to it.
     }
 
     distributed actor TheSingleton: ClusterSingleton {

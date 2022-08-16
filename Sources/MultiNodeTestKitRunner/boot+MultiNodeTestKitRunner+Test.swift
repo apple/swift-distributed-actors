@@ -124,8 +124,6 @@ extension MultiNodeTestKitRunnerBoot {
             throw MultiNodeTestNotFound(suite: suite, test: testName)
         }
 
-        print("NODESSSSS: \(multiNodeTest.nodeNames)")
-
         let devNull = try FileHandle(forUpdating: URL(fileURLWithPath: "/dev/null"))
         defer {
             devNull.closeFile()
@@ -178,6 +176,7 @@ extension MultiNodeTestKitRunnerBoot {
                     let testResult = try interpretNodeTestOutput(
                         result,
                         nodeName: nodeName,
+                        multiNodeTest: multiNodeTest,
                         expectedFailureRegex: multiNodeTest.crashRegex,
                         grepper: grepper,
                         settings: settings,

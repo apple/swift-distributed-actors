@@ -27,25 +27,12 @@ public final class MultiNodeConductorTests: MultiNodeTestSuite {
     ///
     /// It also eliminates the possibility of "cheating" and a node peeking
     /// at shared state, since the nodes are properly isolated as if in a real cluster.
-    ///
-    /// ## Distributed execution
-    /// To execute the same test across different physical nodes pass a list ofv
-    /// nodes to use when running the test, e.g.v
-    ///
-    /// ```
-    /// swift package multi-node test --deploy 192.168.0.101:22,192.168.0.102:22,192.168.0.103:22
-    /// ```
-    ///
-    /// Which will evenly spread the test nodes across the passed physical worker nodes.
-    /// Actual network will be used, and it remains possible to kill off nodes and logs
-    /// from all nodes are gathered automatically upon test failures.
     public enum Nodes: String, MultiNodeNodes {
         case first
         case second
     }
 
     public static func configureMultiNodeTest(settings: inout MultiNodeTestSettings) {
-        settings.initialJoinTimeout = .seconds(5)
         settings.dumpNodeLogs = .always
 
         settings.logCapture.excludeGrep = [
