@@ -17,7 +17,7 @@ import DistributedActorsTestKit
 import Foundation
 import XCTest
 
-final class ParentChildActorTests: ClusterSystemXCTestCase {
+final class ParentChildActorTests: SingleClusterSystemXCTestCase {
     typealias ParentRef = _ActorRef<ParentProtocol>
     enum ParentProtocol: _NotActuallyCodableMessage {
         case spawnChild(name: String, behavior: _Behavior<ChildProtocol>)

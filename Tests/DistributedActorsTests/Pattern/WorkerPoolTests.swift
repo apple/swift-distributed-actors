@@ -19,7 +19,7 @@ import Foundation
 import XCTest
 
 // TODO: "ActorGroup" perhaps could be better name?
-final class WorkerPoolTests: ClusterSystemXCTestCase {
+final class WorkerPoolTests: SingleClusterSystemXCTestCase {
     func test_workerPool_registerNewlyStartedActors() async throws {
         let workerKey = DistributedReception.Key(Greeter.self, id: "request-workers")
 

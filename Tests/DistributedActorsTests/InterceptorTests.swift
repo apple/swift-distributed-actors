@@ -56,7 +56,7 @@ final class TerminatedInterceptor<Message: Codable>: _Interceptor<Message> {
     }
 }
 
-final class InterceptorTests: ClusterSystemXCTestCase {
+final class InterceptorTests: SingleClusterSystemXCTestCase {
     func test_remoteCall_interceptor() async throws {
         let local = await setUpNode("local") { settings in
             settings.enabled = true

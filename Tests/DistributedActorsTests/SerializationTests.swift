@@ -20,7 +20,7 @@ import NIO
 import NIOFoundationCompat
 import XCTest
 
-class SerializationTests: ClusterSystemXCTestCase {
+class SerializationTests: SingleClusterSystemXCTestCase {
     override func setUp() async throws {
         _ = await self.setUpNode(String(describing: type(of: self))) { settings in
             settings.serialization.register(HasReceivesSystemMsgs.self)

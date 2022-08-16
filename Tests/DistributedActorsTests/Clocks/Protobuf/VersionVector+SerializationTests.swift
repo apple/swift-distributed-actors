@@ -16,7 +16,7 @@
 import DistributedActorsTestKit
 import XCTest
 
-final class VersionVectorSerializationTests: ClusterSystemXCTestCase {
+final class VersionVectorSerializationTests: SingleClusterSystemXCTestCase {
     var node: UniqueNode {
         self.system.cluster.uniqueNode
     }

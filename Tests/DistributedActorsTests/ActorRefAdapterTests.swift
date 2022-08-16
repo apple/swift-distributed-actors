@@ -17,7 +17,7 @@ import DistributedActorsTestKit
 import Foundation
 import XCTest
 
-class _ActorRefAdapterTests: ClusterSystemXCTestCase {
+class _ActorRefAdapterTests: SingleClusterSystemXCTestCase {
     func test_adaptedRef_shouldConvertMessages() throws {
         let probe = self.testKit.makeTestProbe(expecting: String.self)
         let refProbe = self.testKit.makeTestProbe(expecting: _ActorRef<Int>.self)

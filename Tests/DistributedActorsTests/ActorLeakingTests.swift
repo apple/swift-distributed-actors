@@ -19,7 +19,7 @@ import DistributedActorsTestKit
 import Foundation
 import XCTest
 
-final class ActorLeakingTests: ClusterSystemXCTestCase {
+final class ActorLeakingTests: SingleClusterSystemXCTestCase {
     struct NotEnoughActorsAlive: Error {
         let expected: Int
         let current: Int

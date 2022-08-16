@@ -17,7 +17,7 @@ import DistributedActorsTestKit
 import Foundation
 import XCTest
 
-final class ClusterSystemTests: ClusterSystemXCTestCase {
+final class ClusterSystemTests: SingleClusterSystemXCTestCase {
     let MaxSpecialTreatedValueTypeSizeInBytes = 24
 
     func test_system_spawn_shouldThrowOnDuplicateName() throws {

@@ -20,7 +20,7 @@ import NIO
 import NIOFoundationCompat
 import XCTest
 
-final class TraversalTests: ClusterSystemXCTestCase {
+final class TraversalTests: SingleClusterSystemXCTestCase {
     struct ActorReady: Codable {
         let name: String
     }

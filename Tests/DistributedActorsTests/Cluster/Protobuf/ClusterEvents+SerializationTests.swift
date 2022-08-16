@@ -18,7 +18,7 @@ import Logging
 import NIO
 import XCTest
 
-final class ClusterEventsSerializationTests: ClusterSystemXCTestCase {
+final class ClusterEventsSerializationTests: SingleClusterSystemXCTestCase {
     lazy var context: Serialization.Context! = Serialization.Context(
         log: system.log,
         system: system,

@@ -54,4 +54,5 @@ services:
 
   shell:
     <<: *common
+    privileged: true
     entrypoint: /bin/bash -l

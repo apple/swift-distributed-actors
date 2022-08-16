@@ -19,7 +19,7 @@ import Foundation
 import NIO
 import XCTest
 
-final class DispatcherTests: ClusterSystemXCTestCase {
+final class DispatcherTests: SingleClusterSystemXCTestCase {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Running "on NIO" for fun and profit
 

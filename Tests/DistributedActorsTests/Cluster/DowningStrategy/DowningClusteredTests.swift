@@ -105,16 +105,16 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
             return { event in
                 switch event {
                 case .membershipChange(let change) where change.node == expectedDownNode && change.isRemoval:
-                    pinfo("\(on.cluster.uniqueNode.node): \(change)", file: file, line: line)
+                    pinfo("\(on.cluster.uniqueNode.node): \(change)", file: (file), line: line)
                     return .catchComplete(change)
                 case .membershipChange(let change) where change.node == expectedDownNode:
-                    pinfo("\(on.cluster.uniqueNode.node): \(change)", file: file, line: line)
+                    pinfo("\(on.cluster.uniqueNode.node): \(change)", file: (file), line: line)
                     return .catchContinue(change)
                 case .reachabilityChange(let change) where change.member.uniqueNode == expectedDownNode:
-                    pnote("\(on.cluster.uniqueNode.node): \(change)", file: file, line: line)
+                    pnote("\(on.cluster.uniqueNode.node): \(change)", file: (file), line: line)
                     return .ignore
                 default:
-                    pnote("\(on.cluster.uniqueNode.node): \(event)", file: file, line: line)
+                    pnote("\(on.cluster.uniqueNode.node): \(event)", file: (file), line: line)
                     return .ignore
                 }
             }

@@ -83,7 +83,7 @@ distributed actor Juliet: LifecycleWatch, CustomStringConvertible {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Tests
 
-final class LifecycleWatchTests: ClusterSystemXCTestCase, @unchecked Sendable {
+final class LifecycleWatchTests: SingleClusterSystemXCTestCase, @unchecked Sendable {
     override func configureLogCapture(settings: inout LogCapture.Settings) {
         settings.excludeActorPaths = [
             "/system/cluster",
