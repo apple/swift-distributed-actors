@@ -256,20 +256,20 @@ public distributed actor OpLogDistributedReceptionist: DistributedReceptionist, 
         self.wellKnownName = ActorPath.distributedActorReceptionist.name
         assert(self.id.path.description == "/system/receptionist") // TODO(distributed): remove when we remove paths entirely
 
-        self.eventsListeningTask = Task.detached {
-            try await self.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
-                for try await event in system.cluster.events {
-                    __secretlyKnownToBeLocal.onClusterEvent(event: event)
-                }
+        self.eventsListeningTask = Task { [weak self, system] in
+            for try await event in system.cluster.events {
+                guard let __secretlyKnownToBeLocal = self else { return }
+                __secretlyKnownToBeLocal.onClusterEvent(event: event)
             }
         }
 
         // === timers ------------------
         // periodically gossip to other receptionists with the last seqNr we've seen,
         // and if it happens to be outdated by then this will cause a push from that node.
-        self.slowACKReplicationTimerTask = Task {
-            for await _ in AsyncTimerSequence.repeating(every: self.actorSystem.settings.receptionist.ackPullReplicationIntervalSlow, clock: .continuous) {
-                self.periodicAckTick()
+        self.slowACKReplicationTimerTask = Task { [weak self] in
+            for await _ in AsyncTimerSequence.repeating(every: system.settings.receptionist.ackPullReplicationIntervalSlow, clock: .continuous) {
+                guard let __secretlyKnownToBeLocal = self else { return }
+                __secretlyKnownToBeLocal.periodicAckTick()
             }
         }
 
@@ -445,11 +445,16 @@ extension OpLogDistributedReceptionist {
         // TODO: also flush when a key has seen e.g. 100 changes?
         let flushDelay = actorSystem.settings.receptionist.listingFlushDelay
         self.log.debug("schedule delayed flush")
-        self.flushTimerTasks[timerTaskKey] = Task {
-            defer { self.flushTimerTasks.removeValue(forKey: timerTaskKey) }
+        self.flushTimerTasks[timerTaskKey] = Task { [weak self] in
+            defer {
+                if let __secretlyKnownToBeLocal = self {
+                    __secretlyKnownToBeLocal.flushTimerTasks.removeValue(forKey: timerTaskKey)
+                }
+            }
 
             try await Task.sleep(until: .now + flushDelay, clock: .continuous)
-            self.onDelayedListingFlushTick(key: key)
+            guard let __secretlyKnownToBeLocal = self else { return }
+            __secretlyKnownToBeLocal.onDelayedListingFlushTick(key: key)
         }
     }
 
@@ -639,16 +644,18 @@ extension OpLogDistributedReceptionist {
         // we effectively initiate the "first pull"
         let latestAppliedSeqNrFromPeer = self.appliedSequenceNrs[.actorID(receptionistID)]
 
-//        let ack = AckOps(
-//            appliedUntil: latestAppliedSeqNrFromPeer,
-//            observedSeqNrs: self.observedSequenceNrs,
-//            peer: self
-//        )
-//        // tracelog(.push(to: peerReceptionistRef), message: ack)
-//        peerReceptionistRef.tell(ack)
-        Task {
+        let ack = AckOps(
+            appliedUntil: latestAppliedSeqNrFromPeer,
+            observedSeqNrs: self.observedSequenceNrs,
+            peer: self
+        )
+        // tracelog(.push(to: peerReceptionistRef), message: ack)
+        peerReceptionistRef.tell(ack)
+        Task { [weak self] in
             do {
-                try await peerReceptionistRef.ackOps(until: latestAppliedSeqNrFromPeer, by: self)
+//                assert(self.id.path.description.contains("/system/receptionist"), "Receptionist path did not include /system/receptionist, was: \(self.id.fullDescription)")
+                guard let __secretlyKnownToBeLocal = self else { return } // FIXME: we need `local`
+                try await peerReceptionistRef.ackOps(until: latestAppliedSeqNrFromPeer, by: __secretlyKnownToBeLocal)
             } catch {
                 switch error {
                 case let remoteCallError as RemoteCallError where isIgnorable(remoteCallError):
@@ -1087,44 +1094,3 @@ extension OpLogDistributedReceptionist {
         }
     }
 }
-
-//// ==== ----------------------------------------------------------------------------------------------------------------
-//// MARK: Tracelog
-//
-// extension OpLogDistributedReceptionist {
-//    /// Optional "dump all messages" logging.
-//    ///
-//    /// Enabled by `Settings.traceLogLevel` or `-DSACT_TRACELOG_RECEPTIONIST`
-//    func tracelog(
-//            _ type: TraceLogType, message: Any,
-//            file: String = #filePath, function: String = #function, line: UInt = #line
-//    ) {
-//        if let level = system.settings.receptionist.traceLogLevel {
-//            log.log(
-//                    level: level,
-//                    "[tracelog:receptionist] \(type.description): \(message)",
-//                    file: file, function: function, line: line
-//            )
-//        }
-//    }
-//
-//    internal enum TraceLogType: CustomStringConvertible {
-//        case receive(from: _ActorRef<Message>?)
-//        case push(to: _ActorRef<Message>)
-//
-//        static var receive: TraceLogType {
-//            .receive(from: nil)
-//        }
-//
-//        var description: String {
-//            switch self {
-//            case .receive(nil):
-//                return "RECV"
-//            case .push(let to):
-//                return "PUSH(to:\(to.id))"
-//            case .receive(let .some(from)):
-//                return "RECV(from:\(from.id))"
-//            }
-//        }
-//    }
-// }

@@ -22,7 +22,7 @@ services:
 
   test:
     image: swift-distributed-actors:20.04-main
-    command: /bin/bash -cl "swift test && swift package --disable-sandbox multi-node test"
+    command: /bin/bash -cl "swift test"
     environment:
       - EXPLICIT_TARGET_DEPENDENCY_IMPORT_CHECK=--explicit-target-dependency-import-check error
 

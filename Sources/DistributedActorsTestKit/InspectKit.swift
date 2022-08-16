@@ -141,7 +141,6 @@ internal struct InspectKit {
         }
     }
 
-    #if swift(>=5.8.0) // FIXME: Regex is missing on Swift 5.7.0 nightly docker builds?
     /// Actor names to their counts
     static func actorStats() throws -> ActorStats {
         let (out, err, _) = Self.runCommand(cmd: "\(self.baseDir)/scripts/dump_actors.sh")
@@ -172,7 +171,6 @@ internal struct InspectKit {
 
         return ActorStats(stats: stats)
     }
-    #endif
 }
 
 extension [Substring: InspectKit.ActorStats] {}

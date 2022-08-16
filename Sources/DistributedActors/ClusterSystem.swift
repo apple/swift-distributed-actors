@@ -516,10 +516,9 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
 
         // Release system all actors
         self.initLock.withLockVoid {
-            print("SHUTDOWN")
             self._receptionistStore = nil
             self._downingStrategyStore = nil
-            
+
             // This weird dance is because releasing distributed actors will trigger resignID,
             // which calls into the system, and also uses `namingLock` to find the actor to release.
             // We can't have it acquire the same lock, so we copy the refs out and release the last

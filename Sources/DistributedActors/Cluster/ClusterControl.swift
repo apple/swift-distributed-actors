@@ -114,9 +114,6 @@ public struct ClusterControl {
     }
 
     /// Gracefully
-    ///
-    // TODO: no graceful steps implemented today yet) leave the cluster.
-    // TODO: leave should perhaps return a future or something to await on.
     public func leave() {
         self.ref.tell(.command(.downCommand(self.uniqueNode.node)))
     }
