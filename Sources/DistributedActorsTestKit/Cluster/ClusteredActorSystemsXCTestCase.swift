@@ -24,6 +24,28 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
     public private(set) var _testKits: [ActorTestKit] = []
     public private(set) var _logCaptures: [LogCapture] = []
 
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Actor leak detection
+
+    public static let inspectDetectActorLeaksEnv: Bool = {
+        switch getenv("SACT_INSPECT_ACTOR_LEAKS").map({ String(cString: $0).lowercased() }) {
+        case "true", "y", "yes", "on", "1":
+            return true
+        default:
+            return false
+        }
+    }()
+
+    /// If true, will use ``InspectKit`` to detect actor leaks around tests run in this test suite.
+    open var inspectDetectActorLeaks: Bool {
+        ClusteredActorSystemsXCTestCase.inspectDetectActorLeaksEnv
+    }
+
+    private var actorStatsBefore: InspectKit.ActorStats = .init()
+
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Log capture
+
     /// If `true` automatically captures all logs of all `setUpNode` started systems, and prints them if at least one test failure is encountered.
     /// If `false`, log capture is disabled and the systems will log messages normally.
     ///
@@ -56,6 +78,13 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
     open func nextPort() -> Int {
         defer { self._nextPort += 1 }
         return self._nextPort
+    }
+
+    override open func setUp() async throws {
+        if self.inspectDetectActorLeaks {
+            self.actorStatsBefore = try InspectKit.actorStats()
+        }
+        try await super.setUp()
     }
 
     /// Set up a new node intended to be clustered.
@@ -100,6 +129,8 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
     }
 
     override open func tearDown() async throws {
+        try await super.tearDown()
+
         let testsFailed = self.testRun?.totalFailureCount ?? 0 > 0
         if self.captureLogs, self.alwaysPrintCaptureLogs || testsFailed {
             self.printAllCapturedLogs()
@@ -113,6 +144,15 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
         self._nodes = []
         self._testKits = []
         self._logCaptures = []
+
+        if self.inspectDetectActorLeaks {
+            try await Task.sleep(until: .now + .seconds(2), clock: .continuous)
+
+            let actorStatsAfter = try InspectKit.actorStats()
+            if let error = self.actorStatsBefore.detectLeaks(latest: actorStatsAfter) {
+                print(error.message)
+            }
+        }
     }
 
     public func testKit(_ system: ClusterSystem) -> ActorTestKit {

@@ -201,7 +201,7 @@ final class ActorAskTests: ClusterSystemXCTestCase {
     }
 
     func test_ask_withTerminatedSystem_shouldNotCauseCrash() async throws {
-        let system = await ClusterSystem("AskCrashSystem")
+        let system = await self.setUpNode("AskCrashSystem")
 
         let ref = try system._spawn(
             .unique("responder"),

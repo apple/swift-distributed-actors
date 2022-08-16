@@ -141,8 +141,8 @@ final class DistributedReceptionistTests: ClusterSystemXCTestCase {
         listing.count.shouldEqual(1)
     }
 
-    func test_receptionist_happyPath_lookup() async throws {
-        let (first, second) = await self.setUpPair() { settings in
+    func test_receptionist_happyPath_lookup_only() async throws {
+        let (first, second) = await self.setUpPair { settings in
             settings.enabled = true
         }
 
@@ -154,8 +154,7 @@ final class DistributedReceptionistTests: ClusterSystemXCTestCase {
 
         try await testKit.eventually(within: .seconds(5)) {
             let lookup = await second.receptionist.lookup(.forwarders)
-            lookup.count.shouldEqual(1)
-            guard let first = lookup.first else {
+            guard let first = lookup.first, lookup.count == 1 else {
                 throw TestError("Lookup returned but is empty: \(lookup)")
             }
             first.id.shouldEqual(ref.id)
@@ -163,7 +162,7 @@ final class DistributedReceptionistTests: ClusterSystemXCTestCase {
     }
 
     func test_receptionist_happyPath_lookup_then_listing() async throws {
-        let (first, second) = await self.setUpPair() { settings in
+        let (first, second) = await self.setUpPair { settings in
             settings.enabled = true
         }
 
@@ -175,8 +174,7 @@ final class DistributedReceptionistTests: ClusterSystemXCTestCase {
 
         try await testKit.eventually(within: .seconds(5)) {
             let lookup = await second.receptionist.lookup(.forwarders)
-            lookup.count.shouldEqual(1)
-            guard let first = lookup.first else {
+            guard let first = lookup.first, lookup.count == 1 else {
                 throw TestError("Lookup returned but is empty: \(lookup)")
             }
             first.id.shouldEqual(ref.id)
