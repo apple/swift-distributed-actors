@@ -17,7 +17,7 @@ import DistributedActorsTestKit
 import XCTest
 
 // FIXME: rename
-final class ActorSystemTransportTests: ClusterSystemXCTestCase, @unchecked Sendable {
+final class ActorSystemTransportTests: SingleClusterSystemXCTestCase, @unchecked Sendable {
     func test_system_shouldAssignIdentityAndReadyActor() async throws {
         try runAsyncAndBlock {
             let first = await setUpNode("first")

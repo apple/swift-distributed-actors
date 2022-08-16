@@ -18,7 +18,7 @@ import DistributedActorsTestKit
 import Foundation
 import XCTest
 
-final class DistributedReceptionistTests: ClusterSystemXCTestCase {
+final class DistributedReceptionistTests: SingleClusterSystemXCTestCase {
     let receptionistBehavior = _OperationLogClusterReceptionist(settings: .default).behavior
 
     func test_receptionist_mustHaveWellKnownID() throws {

@@ -236,7 +236,7 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
 // MARK: Printing information
 
 extension ClusteredActorSystemsXCTestCase {
-    public func pinfoMembership(_ system: ClusterSystem, file: StaticString = #filePath, line: UInt = #line) {
+    public func pinfoMembership(_ system: ClusterSystem, file: StaticString = #fileID, line: UInt = #line) {
         let testKit = self.testKit(system)
         let p = testKit.makeTestProbe(expecting: Cluster.Membership.self)
 

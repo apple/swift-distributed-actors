@@ -19,7 +19,7 @@ import Foundation
 import NIO
 import XCTest
 
-final class BehaviorTests: ClusterSystemXCTestCase {
+final class BehaviorTests: SingleClusterSystemXCTestCase {
     public struct TestMessage: Codable {
         let message: String
         let replyTo: _ActorRef<String>

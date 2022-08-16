@@ -17,7 +17,7 @@ import DistributedActorsTestKit
 import Foundation
 import XCTest
 
-final class DeathWatchTests: ClusterSystemXCTestCase {
+final class DeathWatchTests: SingleClusterSystemXCTestCase {
     // MARK: Termination watcher
 
     enum TerminationWatcherMessages {

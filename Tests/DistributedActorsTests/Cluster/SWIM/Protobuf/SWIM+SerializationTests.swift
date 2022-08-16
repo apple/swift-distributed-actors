@@ -17,7 +17,7 @@ import DistributedActorsTestKit
 import SWIM
 import XCTest
 
-final class SWIMSerializationTests: ClusterSystemXCTestCase {
+final class SWIMSerializationTests: SingleClusterSystemXCTestCase {
     func test_serializationOf_ack() async throws {
         let targetNode = await setUpNode("target") { settings in
             settings.enabled = true

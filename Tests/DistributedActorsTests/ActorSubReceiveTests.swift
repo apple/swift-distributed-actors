@@ -17,7 +17,7 @@ import DistributedActorsTestKit
 import Foundation
 import XCTest
 
-final class ActorSubReceiveTests: ClusterSystemXCTestCase {
+final class ActorSubReceiveTests: SingleClusterSystemXCTestCase {
     func test_subReceive_shouldBeAbleToReceiveMessages() throws {
         let p = self.testKit.makeTestProbe(expecting: String.self)
         let refProbe = self.testKit.makeTestProbe(expecting: _ActorRef<String>.self)

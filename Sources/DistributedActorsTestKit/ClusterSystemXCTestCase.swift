@@ -19,7 +19,7 @@ import NIO
 import XCTest
 
 /// Base class to handle the repetitive setUp/tearDown code involved in most `ClusterSystem` requiring tests.
-open class ClusterSystemXCTestCase: ClusteredActorSystemsXCTestCase {
+open class SingleClusterSystemXCTestCase: ClusteredActorSystemsXCTestCase {
     public var system: ClusterSystem {
         guard let node = self._nodes.first else {
             fatalError("No system spawned!")

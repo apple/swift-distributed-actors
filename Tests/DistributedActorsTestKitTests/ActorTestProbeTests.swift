@@ -16,7 +16,7 @@ import DistributedActors
 @testable import DistributedActorsTestKit
 import XCTest
 
-final class ActorTestProbeTests: ClusterSystemXCTestCase {
+final class ActorTestProbeTests: SingleClusterSystemXCTestCase {
 
     func test_maybeExpectMessage_shouldReturnTheReceivedMessage() throws {
         let probe = self.testKit.makeTestProbe("p2", expecting: String.self)
@@ -52,7 +52,7 @@ final class ActorTestProbeTests: ClusterSystemXCTestCase {
         try watchingProbe.expectTerminated(watchedProbe.ref)
     }
 
-    func test_expectMessageAnyOrderSuccess() throws {
+    func test_expectMessageAnyOrderSuccess() async throws {
         let p = self.testKit.makeTestProbe(expecting: String.self)
         let messages = ["test1", "test2", "test3", "test4"]
 

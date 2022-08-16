@@ -24,7 +24,7 @@ import Darwin
 import Glibc
 #endif
 
-final class SupervisionTests: ClusterSystemXCTestCase {
+final class SupervisionTests: SingleClusterSystemXCTestCase {
     enum FaultyError: Error, _NotActuallyCodableMessage {
         case boom(message: String)
     }

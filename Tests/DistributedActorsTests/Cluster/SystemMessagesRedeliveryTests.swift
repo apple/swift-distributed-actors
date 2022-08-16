@@ -17,7 +17,7 @@ import DistributedActorsTestKit
 import Foundation
 import XCTest
 
-final class SystemMessagesRedeliveryTests: ClusterSystemXCTestCase {
+final class SystemMessagesRedeliveryTests: SingleClusterSystemXCTestCase {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: OutboundSystemMessageRedelivery
 
