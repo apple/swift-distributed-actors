@@ -100,12 +100,15 @@ extension MultiNodeTestKitRunnerBoot {
         }
     }
 
-    func commandTest(summary: inout MultiNodeTestSummary) async {
+    func commandTest(summary: inout MultiNodeTestSummary, filter: TestFilter) async {
         for testSuite in MultiNodeTestSuites {
             let suiteStartDate = Date()
             summary.emit("", failed: false)
             summary.emit("[multi-node] TestSuite '\(testSuite.key)' started at \(suiteStartDate)", failed: false)
-            for test in allTestsForSuite(testSuite.key) {
+
+            for test in allTestsForSuite(testSuite.key)
+                where filter.matches(suiteName: testSuite.key, testName: test.0)
+            {
                 await runAndEval(suite: testSuite.key, testName: test.0, summary: &summary)
             }
         }

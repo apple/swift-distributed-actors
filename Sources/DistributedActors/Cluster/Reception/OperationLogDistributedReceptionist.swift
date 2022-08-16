@@ -637,7 +637,6 @@ extension OpLogDistributedReceptionist {
                 return fatalErrorBacktrace("Unable to resolve receptionist: \(receptionistID)")
             }
         }
-        // peerReceptionistRef = system._resolve(context: .init(id: receptionistAddress, system: system))
 
         // Get the latest seqNr of the op that we have applied to our state
         // If we never applied anything, this automatically is `0`, and by sending an `ack(0)`,
@@ -649,8 +648,7 @@ extension OpLogDistributedReceptionist {
             observedSeqNrs: self.observedSequenceNrs,
             peer: self
         )
-        // tracelog(.push(to: peerReceptionistRef), message: ack)
-        peerReceptionistRef.tell(ack)
+
         Task { [weak self] in
             do {
 //                assert(self.id.path.description.contains("/system/receptionist"), "Receptionist path did not include /system/receptionist, was: \(self.id.fullDescription)")
