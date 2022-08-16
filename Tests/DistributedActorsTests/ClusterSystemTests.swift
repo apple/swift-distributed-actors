@@ -76,8 +76,7 @@ final class ClusterSystemTests: SingleClusterSystemXCTestCase {
     }
 
     func test_shutdown_shouldCompleteReturnedHandleWhenDone() async throws {
-        let system2 = await ClusterSystem("ShutdownSystem")
-        let shutdown = try system2.shutdown()
+        let shutdown = try system.shutdown()
         try shutdown.wait(atMost: .seconds(5))
     }
 
