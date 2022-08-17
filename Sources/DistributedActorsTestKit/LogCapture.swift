@@ -204,7 +204,13 @@ struct LogCaptureLogHandler: LogHandler {
     public func log(level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata?, file: String, function: String, line: UInt) {
         let actorPath = self.metadata["actor/path"].map { "\($0)" } ?? ""
 
-        guard self.capture.settings.filterActorPaths.contains(where: { path in actorPath.starts(with: path) }) else {
+        guard self.capture.settings.filterActorPaths.contains(where: { path in
+            if (path == "") { // TODO(swift): rdar://98691039 String.starts(with:) has a bug when given an empty string, so we have to avoid it
+                return true
+            }
+
+            return actorPath.starts(with: path)
+        }) else {
             return // ignore this actor's logs, it was filtered out
         }
         guard !self.capture.settings.excludeActorPaths.contains(actorPath) else {
