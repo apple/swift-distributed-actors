@@ -170,7 +170,6 @@ final class ActorIDTests: ClusteredActorSystemsXCTestCase {
         let system = await self.setUpNode("test_serializing_ActorAddress_skipCustomTag") { settings in
             settings.bindPort = 1234
         }
-        pprint("NODE: \(system.cluster.uniqueNode)")
 
         let serialized = try system.serialization.serialize(a)
         let serializedJson = String(data: serialized.buffer.readData(), encoding: .utf8)!
