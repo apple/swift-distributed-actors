@@ -155,7 +155,7 @@ struct MultiNodeTestKitRunnerBoot {
             case .success(let logs):
                 if settings.dumpNodeLogs == .always {
                     for line in logs {
-                        print("[multi-node] [\(nodeName)](\(multiNodeTest.testName)) \(line)")
+                        log("[\(nodeName)](\(multiNodeTest.testName)) \(line)")
                     }
                 }
                 return .passedAsExpected
