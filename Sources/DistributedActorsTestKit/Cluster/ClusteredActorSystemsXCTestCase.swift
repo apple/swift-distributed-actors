@@ -96,18 +96,18 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
             self.actorStatsBefore = try InspectKit.actorStats()
         }
 
-//        self.stuckTestDumpLogsTask = Task.detached {
-//            try await Task.sleep(until: .now + self.dumpLogsAfter, clock: .continuous)
-//            guard !Task.isCancelled else {
-//                return
-//            }
-//
-//            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-//            print("!!!!!!!!!!               TEST SEEMS STUCK - DUMPING LOGS                   !!!!!!!!!!")
-//            print("!!!!!!!!!!               PID: \(ProcessInfo.processInfo.processIdentifier)                              !!!!!!!!!!")
-//            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-//            self.printAllCapturedLogs()
-//        }
+        self.stuckTestDumpLogsTask = Task.detached {
+            try await Task.sleep(until: .now + self.dumpLogsAfter, clock: .continuous)
+            guard !Task.isCancelled else {
+                return
+            }
+
+            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            print("!!!!!!!!!!               TEST SEEMS STUCK - DUMPING LOGS                   !!!!!!!!!!")
+            print("!!!!!!!!!!               PID: \(ProcessInfo.processInfo.processIdentifier)                              !!!!!!!!!!")
+            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            self.printAllCapturedLogs()
+        }
         try await super.setUp()
     }
 
