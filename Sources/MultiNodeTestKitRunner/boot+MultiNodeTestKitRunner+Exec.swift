@@ -41,8 +41,6 @@ extension MultiNodeTestKitRunnerBoot {
         var multiNodeSettings = MultiNodeTestSettings()
         multiNodeTest.configureMultiNodeTest(&multiNodeSettings)
 
-        startExecRunHardKillTask(name: nodeName, multiNodeSettings)
-
         if let waitBeforeBootstrap = multiNodeSettings.waitBeforeBootstrap {
             await prettyWait(
                 seconds: waitBeforeBootstrap.seconds,
@@ -138,12 +136,4 @@ extension MultiNodeTestKitRunnerBoot {
         return .init(uniqueKeysWithValues: nodeList)
     }
 
-    func startExecRunHardKillTask(name: String, _ multiNodeSettings: MultiNodeTestSettings) {
-        Task.detached {
-            try? await Task.sleep(until: .now + multiNodeSettings.execRunHardTimeout, clock: .continuous)
-
-            log("Timeout (execRunHardTimeout) \(multiNodeSettings.execRunHardTimeout) exceeded, HARD KILL process: \(name)")
-            kill(pid: ProcessInfo.processInfo.processIdentifier)
-        }
-    }
 }
