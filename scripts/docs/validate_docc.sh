@@ -18,7 +18,8 @@ here="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 printf "=> Checking docc: compiling inline snippets (fishy-docs)...\n"
 
-VALIDATE_DOCS=1 swift build --build-tests
+# TODO: workaround until Regex is enabled on Linux toolchains: https://github.com/apple/swift/pull/59623
+VALIDATE_DOCS=1 swift build -Xswiftc -Xfrontend -Xswiftc -enable-experimental-string-processing --build-tests
 
 printf "\033[0;32mokay.\033[0m\n"
 
