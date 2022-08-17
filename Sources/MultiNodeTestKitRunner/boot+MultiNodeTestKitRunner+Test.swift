@@ -16,7 +16,7 @@ import ArgumentParser
 import DistributedActors
 import struct Foundation.Date
 import class Foundation.FileHandle
-import class Foundation.Process
+@preconcurrency import class Foundation.Process
 import class Foundation.ProcessInfo
 import struct Foundation.URL
 import MultiNodeTestKit
@@ -237,7 +237,6 @@ extension MultiNodeTestKitRunnerBoot {
             process.terminate()
         }
     }
-
 }
 
 struct NodeInterpretedRunResult {
