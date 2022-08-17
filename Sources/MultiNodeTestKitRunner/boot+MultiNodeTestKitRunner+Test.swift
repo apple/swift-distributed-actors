@@ -68,13 +68,12 @@ extension MultiNodeTestKitRunnerBoot {
 
     func runAndEval(suite: String, testName: String, summary: inout MultiNodeTestSummary) async {
         let startDate = Date()
-        let startInstant = ContinuousClock.now
         summary.emit("Test '\(suite).\(testName)' started at \(startDate)", failed: false)
 
         do {
             let runResult = try await runMultiNodeTest(suite: suite, testName: testName, binary: CommandLine.arguments.first!)
 
-            let endInstant = ContinuousClock.now
+            let endDate = ContinuousClock.now
             var message = "Test '\(suite).\(testName)' finished: "
             var failed = false
             switch runResult {
@@ -93,10 +92,10 @@ extension MultiNodeTestKitRunnerBoot {
                 message += "FAILED: \(description) "
                 failed = true
             }
-            summary.emit("\(message) (took: \((endInstant - startInstant).prettyDescription))", failed: failed)
+            summary.emit("\(message) (took: \((endDate - startDate).prettyDescription))", failed: failed)
         } catch {
             let endInstant = ContinuousClock.now
-            summary.emitFailed("Test '\(suite).\(testName)' finished: FAILED (took: \((endInstant - startInstant).prettyDescription)), threw error: \(error)")
+            summary.emitFailed("Test '\(suite).\(testName)' finished: FAILED (took: \((endDate - startDate).prettyDescription)), threw error: \(error)")
         }
     }
 
@@ -166,6 +165,15 @@ extension MultiNodeTestKitRunnerBoot {
                     try process.runProcess()
                     log("[exec] \(process.binaryPath!) \(process.arguments?.joined(separator: " ") ?? "")\n  \(nodeName) -> PID: \(process.processIdentifier)")
                     assert(process.processIdentifier != 0)
+
+                    Task.detached {
+                        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+                        print("!!!!!!       MULTI-NODE TEST TEST NODE \(nodeName) SEEMS STUCK - TERMINATE     !!!!!!")
+                        print("!!!!!!       PID: \(ProcessInfo.processInfo.processIdentifier)                 !!!!!!")
+                        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+
+                        process.terminate()
+                    }
 
                     process.waitUntilExit()
                     processOutputPipe.closeFile()
