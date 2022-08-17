@@ -17,6 +17,7 @@ import DistributedActors
 import struct Foundation.Date
 import class Foundation.FileHandle
 import class Foundation.Process
+import class Foundation.ProcessInfo
 import struct Foundation.URL
 import MultiNodeTestKit
 import NIOCore
@@ -73,7 +74,7 @@ extension MultiNodeTestKitRunnerBoot {
         do {
             let runResult = try await runMultiNodeTest(suite: suite, testName: testName, binary: CommandLine.arguments.first!)
 
-            let endDate = ContinuousClock.now
+            let endDate = Date()
             var message = "Test '\(suite).\(testName)' finished: "
             var failed = false
             switch runResult {
@@ -92,10 +93,10 @@ extension MultiNodeTestKitRunnerBoot {
                 message += "FAILED: \(description) "
                 failed = true
             }
-            summary.emit("\(message) (took: \((endDate - startDate).prettyDescription))", failed: failed)
+            summary.emit("\(message) (took: \(endDate.timeIntervalSince(startDate)))", failed: failed)
         } catch {
-            let endInstant = ContinuousClock.now
-            summary.emitFailed("Test '\(suite).\(testName)' finished: FAILED (took: \((endDate - startDate).prettyDescription)), threw error: \(error)")
+            let endDate = Date()
+            summary.emitFailed("Test '\(suite).\(testName)' finished: FAILED (took: \(endDate.timeIntervalSince(startDate))), threw error: \(error)")
         }
     }
 
@@ -164,18 +165,12 @@ extension MultiNodeTestKitRunnerBoot {
 
                     try process.runProcess()
                     log("[exec] \(process.binaryPath!) \(process.arguments?.joined(separator: " ") ?? "")\n  \(nodeName) -> PID: \(process.processIdentifier)")
-                    assert(process.processIdentifier != 0)
+                    assert(process.processIdentifier != 0, "Failed to spawn process")
 
-                    Task.detached {
-                        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-                        print("!!!!!!       MULTI-NODE TEST TEST NODE \(nodeName) SEEMS STUCK - TERMINATE     !!!!!!")
-                        print("!!!!!!       PID: \(ProcessInfo.processInfo.processIdentifier)                 !!!!!!")
-                        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-
-                        process.terminate()
-                    }
-
+                    let testTimeoutTask = startTestTimeoutReaperTask(nodeName: nodeName, process: process, settings: settings)
                     process.waitUntilExit()
+                    testTimeoutTask.cancel()
+
                     processOutputPipe.closeFile()
                     let result: Result<ProgramOutput, Error> = Result {
                         try grepper.result.wait()
@@ -227,23 +222,22 @@ extension MultiNodeTestKitRunnerBoot {
         return .passedAsExpected
     }
 
-    func kill(pid: Int32) {
-        let process = Process()
-        #if os(Linux)
-        process.binaryPath = "/usr/bin/bash"
-        #elseif os(macOS)
-        process.binaryPath = "/usr/bin/local/bash"
-        #else
-        log("WARNING: can't kill process \(pid), not sure how to kill on this platform")
-        return
-        #endif
+    private func startTestTimeoutReaperTask(nodeName: String, process: Process, settings: MultiNodeTestSettings) -> Task<Void, Never> {
+        Task.detached {
+            try? await Task.sleep(until: .now + settings.execRunHardTimeout, clock: .continuous)
+            guard !Task.isCancelled else {
+                return
+            }
 
-        process.arguments = ["-9", "\(pid)"]
-        log("Kill-ing process: \(process.binaryPath!) \(process.arguments?.joined(separator: " ") ?? "")")
+            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            print("!!!!!!       MULTI-NODE TEST TEST NODE \(nodeName) SEEMS STUCK - TERMINATE     !!!!!!")
+            print("!!!!!!       PID: \(ProcessInfo.processInfo.processIdentifier)                 !!!!!!")
+            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 
-        try? process.runProcess()
-        process.waitUntilExit()
+            process.terminate()
+        }
     }
+
 }
 
 struct NodeInterpretedRunResult {
