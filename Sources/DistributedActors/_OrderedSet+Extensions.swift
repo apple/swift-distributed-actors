@@ -20,10 +20,7 @@ extension OrderedSet {
     internal func _filter(
         _ isIncluded: (Element) throws -> Bool
     ) rethrows -> Self {
-        var result: OrderedSet = Self()
-        for element in self where try isIncluded(element) {
-            result.append(element)
-        }
-        return result
+        var set = try self.filter(isIncluded)
+        return OrderedSet(uncheckedUniqueElements: set)
     }
 }
