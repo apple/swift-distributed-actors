@@ -39,6 +39,11 @@ public protocol DistributedReceptionist: DistributedActor {
         // TODO(distributed): should gain a "retain (or not)" version, the receptionist can keep alive actors, but sometimes we don't want that, it depends
     ) async where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem
 
+    func checkIn<Guest>(
+        _ guest: Guest
+        // TODO(distributed): should gain a "retain (or not)" version, the receptionist can keep alive actors, but sometimes we don't want that, it depends
+    ) async where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem
+
     /// Returns a "listing" asynchronous sequence which will emit actor references,
     /// for every distributed actor that the receptionist discovers for the specific key.
     ///
@@ -429,22 +434,19 @@ internal final class AnyDistributedReceptionListingSubscription: Hashable, @unch
             // the seen vector was unaffected by the merge, which means that the
             // incoming registration version was already seen, and thus we don't need to emit it again
             return false
-        case .happenedAfter:
+        case .happenedAfter, .concurrent:
             // the incoming registration has not yet been seen before,
             // which means that we should emit the actor to the stream.
+            print("EMIT: \(registration.actorID)")
             self.onNext(registration.actorID)
             return true
-        case .concurrent:
-            fatalError("""
-            It should not be possible for a version vector to be concurrent with a PAST version of itself before the merge
-               Previously: \(oldSeenRegistrations)
-               Current: \(self.seenActorRegistrations)
-            """)
         case .happenedBefore:
             fatalError("""
             It should not be possible for a *merged* version vector to be in the PAST as compared with itself before the merge
                Previously: \(oldSeenRegistrations)
                Current: \(self.seenActorRegistrations)
+               Registration: \(registration)
+               Self: \(self)
             """)
         }
     }
