@@ -21,6 +21,19 @@ import Distributed
 public enum DistributedReception {}
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: ActorID metadata for easy checking-in
+
+extension ActorMetadataKeys {
+    public var receptionID: Key<String> { "$receptionID" }
+}
+
+extension ActorID {
+    public var hasReceptionID: Bool {
+        self.metadata.receptionID != nil
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: DistributedReception Key
 
 extension DistributedReception {

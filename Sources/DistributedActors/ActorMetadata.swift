@@ -51,7 +51,7 @@ extension ActorMetadataKeys {
 }
 
 extension ActorID {
-    internal var isWellKnown: Bool {
+    public var isWellKnown: Bool {
         self.metadata.wellKnown != nil
     }
 }

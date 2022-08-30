@@ -18,4 +18,5 @@ import MultiNodeTestKit
 let MultiNodeTestSuites: [any MultiNodeTestSuite.Type] = [
     MultiNodeConductorTests.self,
     MultiNodeClusterSingletonTests.self,
+    MultiNodeReceptionistTests.self,
 ]

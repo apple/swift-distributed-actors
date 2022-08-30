@@ -295,6 +295,22 @@ extension OpLogDistributedReceptionist: LifecycleWatch {
         }
     }
 
+    public nonisolated func checkIn<Guest>(
+        _ guest: Guest
+    ) async where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem {
+        guard let keyID: String = guest.id.metadata.receptionID else {
+            fatalError("""
+            Attempted to \(#function) distributed actor without `@ActorID.Metadata(\\.receptionID)` set on ActorID!
+            Please set the metadata during actor initialization.
+            """)
+        }
+        let key = DistributedReception.Key(Guest.self, id: keyID)
+
+        await self.whenLocal { myself in
+            await myself._checkIn(guest, with: key)
+        }
+    }
+
     // 'local' implementation of checkIn
     private func _checkIn<Guest>(
         _ guest: Guest,
@@ -355,7 +371,16 @@ extension OpLogDistributedReceptionist: LifecycleWatch {
     ) async -> DistributedReception.GuestListing<Guest>
         where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem
     {
-        return DistributedReception.GuestListing<Guest>(receptionist: self, key: key, file: file, line: line)
+        DistributedReception.GuestListing<Guest>(receptionist: self, key: key, file: file, line: line)
+    }
+
+    public nonisolated func listing<Guest>(
+        of _: Guest.Type,
+        file: String = #fileID, line: UInt = #line
+    ) async -> DistributedReception.GuestListing<Guest>
+        where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem
+    {
+        DistributedReception.GuestListing<Guest>(receptionist: self, key: Key<Guest>(), file: file, line: line)
     }
 
     // 'local' impl for 'listing'
@@ -374,9 +399,9 @@ extension OpLogDistributedReceptionist: LifecycleWatch {
             // as new ones come in, they will be reported to this subscription later on
             for alreadyRegisteredAtSubscriptionTime in self.storage.registrations(forKey: subscription.key) ?? [] {
                 if subscription.tryOffer(registration: alreadyRegisteredAtSubscriptionTime) {
-                    self.log.notice("OFFERED \(alreadyRegisteredAtSubscriptionTime.actorID) TO \(subscription)")
+                    self.log.debug("Offered \(alreadyRegisteredAtSubscriptionTime.actorID) to subscription \(subscription)")
                 } else {
-                    self.log.notice("DROPPED \(alreadyRegisteredAtSubscriptionTime.actorID) TO \(subscription)")
+                    self.log.warning("Dropped \(alreadyRegisteredAtSubscriptionTime.actorID) on subscription \(subscription)")
                 }
             }
         }

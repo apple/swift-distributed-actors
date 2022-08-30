@@ -122,6 +122,7 @@ struct MultiNodeTestKitRunnerBoot {
             .1
     }
 
+    @MainActor // Main actor only because we want failures to be printed one after another, and not interleaved.
     func interpretNodeTestOutput(
         _ result: Result<ProgramOutput, Error>,
         nodeName: String,
@@ -139,28 +140,36 @@ struct MultiNodeTestKitRunnerBoot {
         }
 
         let expectedFailure = expectedFailureRegex != nil
-
-        if !expectedFailure {
-            switch result {
-            case .failure(let error as MultiNodeProgramError):
-                var reason: String = "MultiNode test failed, output was dumped."
-                for line in error.completeOutput {
-                    log("[\(nodeName)](\(multiNodeTest.testName)) \(line)")
-
-                    if line.contains("Fatal error: ") {
-                        reason = line
-                    }
-                }
-                return .outputError(reason)
-            case .success(let logs):
-                if settings.dumpNodeLogs == .always {
-                    for line in logs {
+        do {
+            var detectedReason: InterpretedRunResult?
+            if !expectedFailure {
+                switch result {
+                case .failure(let error as MultiNodeProgramError):
+                    var reason: String = "MultiNode test failed, output was dumped."
+                    for line in error.completeOutput {
                         log("[\(nodeName)](\(multiNodeTest.testName)) \(line)")
+
+                        if line.contains("Fatal error: "), detectedReason == nil {
+                            detectedReason = .outputError(line)
+                        } else if case .outputError(let reasonLines) = detectedReason {
+                            // keep accumulating lines into the reason, after the "Fatal error:" line.
+                            detectedReason = .outputError("\(reasonLines)\n\(line)")
+                        }
                     }
+                case .success(let logs):
+                    if settings.dumpNodeLogs == .always {
+                        for line in logs {
+                            log("[\(nodeName)](\(multiNodeTest.testName)) \(line)")
+                        }
+                    }
+                    return .passedAsExpected
+                default:
+                    break
                 }
-                return .passedAsExpected
-            default:
-                break
+            }
+
+            if let detectedReason {
+                return detectedReason
             }
         }
 
