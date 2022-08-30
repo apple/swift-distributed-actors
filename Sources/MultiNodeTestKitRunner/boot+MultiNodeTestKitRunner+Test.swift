@@ -176,7 +176,7 @@ extension MultiNodeTestKitRunnerBoot {
                         try grepper.result.wait()
                     }
 
-                    let testResult = try interpretNodeTestOutput(
+                    let testResult = try await interpretNodeTestOutput(
                         result,
                         nodeName: nodeName,
                         multiNodeTest: multiNodeTest,

@@ -122,6 +122,7 @@ struct MultiNodeTestKitRunnerBoot {
             .1
     }
 
+    @MainActor // Main actor only because we want failures to be printed one after another, and not interleaved.
     func interpretNodeTestOutput(
         _ result: Result<ProgramOutput, Error>,
         nodeName: String,
