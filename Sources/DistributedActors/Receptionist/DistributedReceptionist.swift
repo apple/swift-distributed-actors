@@ -437,7 +437,6 @@ internal final class AnyDistributedReceptionListingSubscription: Hashable, @unch
         case .happenedAfter, .concurrent:
             // the incoming registration has not yet been seen before,
             // which means that we should emit the actor to the stream.
-            print("EMIT: \(registration.actorID)")
             self.onNext(registration.actorID)
             return true
         case .happenedBefore:
