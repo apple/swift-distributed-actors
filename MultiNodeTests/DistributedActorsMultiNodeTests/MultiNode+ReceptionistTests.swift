@@ -35,6 +35,7 @@ public final class MultiNodeReceptionistTests: MultiNodeTestSuite {
 
         settings.installPrettyLogger = true
     }
+
     public static func configureActorSystem(settings: inout ClusterSystemSettings) {
         settings.logging.logLevel = .debug
 
@@ -78,7 +79,7 @@ public final class MultiNodeReceptionistTests: MultiNodeTestSuite {
         }
 
         distributed func echo(name: String) -> String {
-            "echo: \(greeting)\(name)! (from node: \(self.id.uniqueNode), id: \(self.id.detailedDescription))"
+            "echo: \(self.greeting)\(name)! (from node: \(self.id.uniqueNode), id: \(self.id.detailedDescription))"
         }
     }
 }

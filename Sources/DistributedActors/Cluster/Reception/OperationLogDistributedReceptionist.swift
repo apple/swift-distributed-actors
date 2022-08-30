@@ -300,9 +300,9 @@ extension OpLogDistributedReceptionist: LifecycleWatch {
     ) async where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem {
         guard let keyID: String = guest.id.metadata.receptionID else {
             fatalError("""
-                       Attempted to \(#function) distributed actor without `@ActorID.Metadata(\\.receptionKey)` set on ActorID!
-                       Please set the metadata during actor initialization.
-                       """)
+            Attempted to \(#function) distributed actor without `@ActorID.Metadata(\\.receptionKey)` set on ActorID!
+            Please set the metadata during actor initialization.
+            """)
         }
         let key = DistributedReception.Key(Guest.self, id: keyID)
 

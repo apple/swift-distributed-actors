@@ -141,7 +141,7 @@ struct MultiNodeTestKitRunnerBoot {
 
         let expectedFailure = expectedFailureRegex != nil
         do {
-            var detectedReason: InterpretedRunResult? = nil
+            var detectedReason: InterpretedRunResult?
             if !expectedFailure {
                 switch result {
                 case .failure(let error as MultiNodeProgramError):
@@ -149,7 +149,7 @@ struct MultiNodeTestKitRunnerBoot {
                     for line in error.completeOutput {
                         log("[\(nodeName)](\(multiNodeTest.testName)) \(line)")
 
-                        if line.contains("Fatal error: ") && detectedReason == nil {
+                        if line.contains("Fatal error: "), detectedReason == nil {
                             detectedReason = .outputError(line)
                         } else if case .outputError(let reasonLines) = detectedReason {
                             // keep accumulating lines into the reason, after the "Fatal error:" line.
