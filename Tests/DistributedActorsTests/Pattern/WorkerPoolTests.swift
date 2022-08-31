@@ -21,7 +21,7 @@ import XCTest
 // TODO: "ActorGroup" perhaps could be better name?
 final class WorkerPoolTests: SingleClusterSystemXCTestCase {
     func test_workerPool_registerNewlyStartedActors() async throws {
-        let workerKey = DistributedReception.Key(Greeter.self, id: "request-workers")
+        let workerKey = DistributedReception.Key(TestWorker.self, id: "request-workers")
 
         let settings = WorkerPoolSettings(selector: .dynamic(workerKey))
         let workers = try await WorkerPool(settings: settings, actorSystem: system)
@@ -30,9 +30,9 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
         let pB: ActorTestProbe<String> = self.testKit.makeTestProbe("pB")
         let pC: ActorTestProbe<String> = self.testKit.makeTestProbe("pC")
 
-        let workerA = await Greeter(probe: pA, actorSystem: self.system, key: workerKey)
-        let workerB = await Greeter(probe: pB, actorSystem: self.system, key: workerKey)
-        let workerC = await Greeter(probe: pC, actorSystem: self.system, key: workerKey)
+        let workerA = await TestWorker(probe: pA, actorSystem: self.system, key: workerKey)
+        let workerB = await TestWorker(probe: pB, actorSystem: self.system, key: workerKey)
+        let workerC = await TestWorker(probe: pC, actorSystem: self.system, key: workerKey)
 
         let workerProbes: [ClusterSystem.ActorID: ActorTestProbe<String>] = [
             workerA.id: pA,
@@ -71,7 +71,7 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
     func test_workerPool_dynamic_removeDeadActors() async throws {
         throw XCTSkip("!!! Skipping test \(#function) !!!") // FIXME(distributed): Pending fix for #831 to be able to terminate worker by setting it to nil
 
-        let workerKey = DistributedReception.Key(Greeter.self, id: "request-workers")
+        let workerKey = DistributedReception.Key(TestWorker.self, id: "request-workers")
 
         let workers = try await WorkerPool(selector: .dynamic(workerKey), actorSystem: system)
 
@@ -79,9 +79,9 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
         let pB: ActorTestProbe<String> = self.testKit.makeTestProbe("pB")
         let pC: ActorTestProbe<String> = self.testKit.makeTestProbe("pC")
 
-        var workerA: Greeter? = await Greeter(probe: pA, actorSystem: self.system, key: workerKey)
-        var workerB: Greeter? = await Greeter(probe: pB, actorSystem: self.system, key: workerKey)
-        var workerC: Greeter? = await Greeter(probe: pC, actorSystem: self.system, key: workerKey)
+        var workerA: TestWorker? = await TestWorker(probe: pA, actorSystem: self.system, key: workerKey)
+        var workerB: TestWorker? = await TestWorker(probe: pB, actorSystem: self.system, key: workerKey)
+        var workerC: TestWorker? = await TestWorker(probe: pC, actorSystem: self.system, key: workerKey)
 
         // !-safe since we initialize workers above
         let workerProbes: [ClusterSystem.ActorID: ActorTestProbe<String>] = [
@@ -119,7 +119,7 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
         // Terminate workerA
         sortedWorkerIDs.removeAll { $0 == workerA!.id }
         workerA = nil
-        try pA.expectMessage("Greeter deinit")
+        try pA.expectMessage("TestWorker deinit")
 
         // The remaining workers should take over
         for i in 0 ... 2 {
@@ -141,13 +141,13 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
 
         // Terminate the rest of the workers
         workerB = nil
-        try pB.expectMessage("Greeter deinit")
+        try pB.expectMessage("TestWorker deinit")
         workerC = nil
-        try pC.expectMessage("Greeter deinit")
+        try pC.expectMessage("TestWorker deinit")
 
         // Register new worker
         let pD: ActorTestProbe<String> = self.testKit.makeTestProbe("pD")
-        let workerD = await Greeter(probe: pD, actorSystem: self.system, key: workerKey)
+        let workerD = await TestWorker(probe: pD, actorSystem: self.system, key: workerKey)
 
         // WorkerPool should wait for D to join then assign work to it
         _ = try await workers.submit(work: "D-only")
@@ -159,9 +159,9 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
         let pB: ActorTestProbe<String> = self.testKit.makeTestProbe("pB")
         let pC: ActorTestProbe<String> = self.testKit.makeTestProbe("pC")
 
-        var workerA: Greeter? = Greeter(probe: pA, actorSystem: self.system)
-        var workerB: Greeter? = Greeter(probe: pB, actorSystem: self.system)
-        var workerC: Greeter? = Greeter(probe: pC, actorSystem: self.system)
+        var workerA: TestWorker? = TestWorker(probe: pA, actorSystem: self.system)
+        var workerB: TestWorker? = TestWorker(probe: pB, actorSystem: self.system)
+        var workerC: TestWorker? = TestWorker(probe: pC, actorSystem: self.system)
 
         // !-safe since we initialize workers above
         let workers = try await WorkerPool(settings: .init(selector: .static([workerA!, workerB!, workerC!])), actorSystem: system)
@@ -188,7 +188,7 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
         // Terminate workerA
         sortedWorkerIDs.removeAll { $0 == workerA!.id }
         workerA = nil
-        try pA.expectMessage("Greeter deinit")
+        try pA.expectMessage("TestWorker deinit")
 
         // The remaining workers should take over
         for i in 0 ... 2 {
@@ -210,9 +210,9 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
 
         // Terminate the rest of the workers
         workerB = nil
-        try pB.expectMessage("Greeter deinit")
+        try pB.expectMessage("TestWorker deinit")
         workerC = nil
-        try pC.expectMessage("Greeter deinit")
+        try pC.expectMessage("TestWorker deinit")
 
         // WorkerPool now throws error on new work submission
         let error = try await shouldThrow {
@@ -227,7 +227,7 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
 
     func test_workerPool_static_throwOnEmptyInitialSet() async throws {
         let error = try await shouldThrow {
-            let _: WorkerPool<Greeter> = try await WorkerPool(selector: .static([]), actorSystem: system)
+            let _: WorkerPool<TestWorker> = try await WorkerPool(selector: .static([]), actorSystem: system)
         }
 
         guard let workerPoolError = error as? WorkerPoolError, case .emptyStaticWorkerPool(let errorMessage) = workerPoolError.underlying.error else {
@@ -237,7 +237,7 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
     }
 }
 
-private distributed actor Greeter: DistributedWorker {
+private distributed actor TestWorker: DistributedWorker {
     typealias ID = ClusterSystem.ActorID
     typealias ActorSystem = ClusterSystem
     typealias WorkItem = String
@@ -250,14 +250,14 @@ private distributed actor Greeter: DistributedWorker {
         self.probe = probe
     }
 
-    init(probe: ActorTestProbe<String>, actorSystem: ActorSystem, key: DistributedReception.Key<Greeter>) async {
+    init(probe: ActorTestProbe<String>, actorSystem: ActorSystem, key: DistributedReception.Key<TestWorker>) async {
         self.actorSystem = actorSystem
         self.probe = probe
         await self.actorSystem.receptionist.checkIn(self, with: key)
     }
 
     deinit {
-        self.probe.tell("Greeter deinit")
+        self.probe.tell("TestWorker deinit")
     }
 
     distributed func submit(work: WorkItem) async throws -> WorkResult {

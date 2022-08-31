@@ -133,10 +133,3 @@ final class DeadLetterTests: SingleClusterSystemXCTestCase {
     }
 }
 
-private distributed actor Greeter {
-    typealias ActorSystem = ClusterSystem
-
-    distributed func greet(name: String) -> String {
-        "hello \(name)!"
-    }
-}
