@@ -126,7 +126,11 @@ extension TestMetrics {
     // MARK: Counter
 
     public func expectCounter(_ metric: Counter) throws -> TestCounter {
-        metric.handler as! TestCounter
+        #if swift(>=5.7)
+            metric._handler as! TestCounter
+        #else
+            metric.handler as! TestCounter
+        #endif
     }
 
     public func expectCounter(_ label: String, _ dimensions: [(String, String)] = []) throws -> TestCounter {
@@ -159,7 +163,11 @@ extension TestMetrics {
     // MARK: Recorder
 
     public func expectRecorder(_ metric: Recorder) throws -> TestRecorder {
-        metric.handler as! TestRecorder
+        #if swift(>=5.7)
+            metric._handler as! TestRecorder
+        #else
+            metric.handler as! TestRecorder
+        #endif
     }
 
     public func expectRecorder(_ label: String, _ dimensions: [(String, String)] = []) throws -> TestRecorder {
@@ -177,7 +185,11 @@ extension TestMetrics {
     // MARK: Timer
 
     public func expectTimer(_ metric: Timer) throws -> TestTimer {
-        metric.handler as! TestTimer
+        #if swift(>=5.7)
+            metric._handler as! TestTimer
+        #else
+            metric.handler as! TestTimer
+        #endif
     }
 
     public func expectTimer(_ label: String, _ dimensions: [(String, String)] = []) throws -> TestTimer {

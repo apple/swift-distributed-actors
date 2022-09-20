@@ -296,8 +296,6 @@ var dependencies: [Package.Dependency] = [
     // ~~~ SSWG APIs ~~~
 
     .package(url: "https://github.com/apple/swift-log.git", from: "1.0.0"),
-    // swift-metrics 1.x and 2.x are almost API compatible, so most clients should use
-    .package(url: "https://github.com/apple/swift-metrics.git", "1.0.0" ..< "3.0.0"),
     .package(url: "https://github.com/apple/swift-service-discovery.git", from: "1.0.0"),
 
     // ~~~ only for GenActors ~~~
@@ -308,8 +306,24 @@ var dependencies: [Package.Dependency] = [
 ]
 
 #if swift(>=5.7)
+// swift-metrics 2.3.2 changed a test API. only pull it in for swift 5.7 to keep backwards compatibility.
 dependencies.append(
-    .package(name: "SwiftSyntax", url: "https://github.com/apple/swift-syntax.git", .revision("swift-DEVELOPMENT-SNAPSHOT-2022-03-13-a"))
+  .package(url: "https://github.com/apple/swift-metrics.git", .upToNextMajor(from: "2.3.2"))
+)
+#else
+// swift-metrics 1.x and 2.x are almost API compatible, so most clients should use
+dependencies.append(
+    .package(url: "https://github.com/apple/swift-metrics.git", "1.0.0" ..< "2.3.2")
+)
+#endif
+
+#if swift(>=5.8)
+dependencies.append(
+    .package(name: "SwiftSyntax", url: "https://github.com/apple/swift-syntax.git", .revision("swift-DEVELOPMENT-SNAPSHOT-2022-09-12-a "))
+)
+#elseif swift(>=5.7)
+dependencies.append(
+    .package(name: "SwiftSyntax", url: "https://github.com/apple/swift-syntax.git", .exact("0.50700.0"))
 )
 #elseif swift(>=5.6)
 dependencies.append(
