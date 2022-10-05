@@ -203,7 +203,7 @@ var dependencies: [Package.Dependency] = [
     .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.0.0"),
 
     // ~~~ MultiNode Testing ~~~
-    .package(name: "MultiNodeTestPlugin", path: "./InternalPlugins/MultiNodeTest/"),
+    .package(name: "MultiNodeTestPlugin", path: "InternalPlugins/MultiNodeTest"),
 
     // ~~~ Command Line ~~~~
     .package(url: "https://github.com/apple/swift-argument-parser", from: "1.0.3"),
