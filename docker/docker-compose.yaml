@@ -40,7 +40,7 @@ services:
 
   integration-tests:
     <<: *common
-    command: /bin/bash -cl "swift package --disable-sandbox multi-node test"
+    command: /bin/bash -cl "MULTI_NODE_TESTS=yes swift package --disable-sandbox multi-node test"
 
   test:
     <<: *common

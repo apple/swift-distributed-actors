@@ -16,7 +16,7 @@ services:
 
   integration-tests:
     image: swift-distributed-actors:20.04-57
-    command: /bin/bash -cl "swift package --disable-sandbox multi-node test"
+    command: /bin/bash -cl "MULTI_NODE_TESTS=yes swift package --disable-sandbox multi-node test"
 
   test:
     image: swift-distributed-actors:20.04-57
