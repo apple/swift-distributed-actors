@@ -23,7 +23,7 @@ import Logging
 /// A _cluster singleton_ is a conceptual distributed actor that is guaranteed to have at-most one
 /// instance within the cluster system among all of its ``Cluster/MemberStatus/up`` members.
 ///
-/// > Note: This guarantee does not extend to _down_ members, because a down member is not part of the cluster anymore, and
+/// > Note: This guarantee does not extend to _down_ members, because a down member is not part of the cluster anymore.
 ///
 /// To create a managed singleton you must use the ``ClusterSingletonPlugin``,
 /// and have the instantiation and lifecycle of the actor be managed by the plugin.
