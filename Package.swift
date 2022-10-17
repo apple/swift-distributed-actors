@@ -48,33 +48,6 @@ var targets: [PackageDescription.Target] = [
     ),
 
     // ==== ----------------------------------------------------------------------------------------------------------------
-    // MARK: MultiNodeTestKit
-
-    .target(
-        name: "MultiNodeTestKit",
-        dependencies: [
-            "DistributedActors",
-            // "DistributedActorsTestKit", // can't depend on it because it'll pull in XCTest, and that crashes in executable then
-            .product(name: "Backtrace", package: "swift-backtrace"),
-            .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
-            .product(name: "Atomics", package: "swift-atomics"),
-            .product(name: "OrderedCollections", package: "swift-collections"),
-        ]
-    ),
-
-    .executableTarget(
-        name: "MultiNodeTestKitRunner",
-        dependencies: [
-            // Depend on tests to run:
-            "DistributedActorsMultiNodeTests",
-
-            // Dependencies:
-            "MultiNodeTestKit",
-            .product(name: "ArgumentParser", package: "swift-argument-parser"),
-        ]
-    ),
-
-    // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Tests
 
     .testTarget(
@@ -92,14 +65,6 @@ var targets: [PackageDescription.Target] = [
             "DistributedActors",
             "DistributedActorsTestKit",
         ]
-    ),
-
-    .target(
-        name: "DistributedActorsMultiNodeTests",
-        dependencies: [
-            "MultiNodeTestKit",
-        ],
-        path: "MultiNodeTests/DistributedActorsMultiNodeTests"
     ),
 
 //    .testTarget(
@@ -179,7 +144,7 @@ var dependencies: [Package.Dependency] = [
 //    .package(name: "swift-cluster-membership", path: "Packages/swift-cluster-membership"), // FIXME: just work in progress
     .package(url: "https://github.com/apple/swift-cluster-membership", branch: "main"),
 
-    .package(url: "https://github.com/apple/swift-nio", from: "2.40.0"),
+    .package(url: "https://github.com/apple/swift-nio", from: "2.43.1"),
     .package(url: "https://github.com/apple/swift-nio-extras", from: "1.2.0"),
     .package(url: "https://github.com/apple/swift-nio-ssl", from: "2.16.1"),
 
@@ -201,9 +166,6 @@ var dependencies: [Package.Dependency] = [
 
     // ~~~ SwiftPM Plugins ~~~
     .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.0.0"),
-
-    // ~~~ MultiNode Testing ~~~
-    .package(name: "MultiNodeTestPlugin", path: "InternalPlugins/MultiNodeTest"),
 
     // ~~~ Command Line ~~~~
     .package(url: "https://github.com/apple/swift-argument-parser", from: "1.0.3"),
@@ -240,6 +202,55 @@ if ProcessInfo.processInfo.environment["VALIDATE_DOCS"] != nil {
             ]
         )
     )
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: MultiNodeTestKit
+
+// TODO: https://github.com/apple/swift-distributed-actors/issues/1064
+//       This is a workaround since when other packages DEPEND ON this package,
+//       they'd fail because we depend on a "local package" and SwiftPM does not understand
+//       that we only use this dependency within the package.
+//       Real solution: Multi node tests must become a real package plugin:
+if ProcessInfo.processInfo.environment["MULTI_NODE_TESTS"] != nil {
+    targets.append(contentsOf: [
+        // MultiNodeTest library
+        .target(
+            name: "MultiNodeTestKit",
+            dependencies: [
+                "DistributedActors",
+                // "DistributedActorsTestKit", // can't depend on it because it'll pull in XCTest, and that crashes in executable then
+                .product(name: "Backtrace", package: "swift-backtrace"),
+                .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
+                .product(name: "Atomics", package: "swift-atomics"),
+                .product(name: "OrderedCollections", package: "swift-collections"),
+            ]
+        ),
+        .executableTarget(
+            name: "MultiNodeTestKitRunner",
+            dependencies: [
+                // Depend on tests to run:
+                "DistributedActorsMultiNodeTests",
+
+                // Dependencies:
+                "MultiNodeTestKit",
+                .product(name: "ArgumentParser", package: "swift-argument-parser"),
+            ]
+        ),
+
+        // MultiNodeTests declared within this project
+        .target(
+            name: "DistributedActorsMultiNodeTests",
+            dependencies: [
+                "MultiNodeTestKit",
+            ],
+            path: "MultiNodeTests/DistributedActorsMultiNodeTests"
+        ),
+    ])
+
+    dependencies.append(contentsOf: [
+        .package(name: "MultiNodeTestPlugin", path: "./InternalPlugins/MultiNodeTest/"),
+    ])
 }
 
 // This is a workaround since current published nightly docker images don't have the latest Swift availabilities yet

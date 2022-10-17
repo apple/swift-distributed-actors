@@ -1327,7 +1327,7 @@ extension ClusterSystem {
         ])
 
         let anyReturn = try await withCheckedThrowingContinuation { cc in
-            Task { [invocation] in
+            Task { [invocation] in // FIXME: make an async stream here since we lost ordering guarantees here
                 var directDecoder = ClusterInvocationDecoder(system: self, invocation: invocation)
                 let directReturnHandler = ClusterInvocationResultHandler(directReturnContinuation: cc)
 
