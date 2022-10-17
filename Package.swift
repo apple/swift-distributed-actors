@@ -216,39 +216,39 @@ if ProcessInfo.processInfo.environment["MULTI_NODE_TESTS"] != nil {
     targets.append(contentsOf: [
         // MultiNodeTest library
         .target(
-                name: "MultiNodeTestKit",
-                dependencies: [
-                    "DistributedActors",
-                    // "DistributedActorsTestKit", // can't depend on it because it'll pull in XCTest, and that crashes in executable then
-                    .product(name: "Backtrace", package: "swift-backtrace"),
-                    .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
-                    .product(name: "Atomics", package: "swift-atomics"),
-                    .product(name: "OrderedCollections", package: "swift-collections"),
-                ]
+            name: "MultiNodeTestKit",
+            dependencies: [
+                "DistributedActors",
+                // "DistributedActorsTestKit", // can't depend on it because it'll pull in XCTest, and that crashes in executable then
+                .product(name: "Backtrace", package: "swift-backtrace"),
+                .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
+                .product(name: "Atomics", package: "swift-atomics"),
+                .product(name: "OrderedCollections", package: "swift-collections"),
+            ]
         ),
         .executableTarget(
-                name: "MultiNodeTestKitRunner",
-                dependencies: [
-                    // Depend on tests to run:
-                    "DistributedActorsMultiNodeTests",
+            name: "MultiNodeTestKitRunner",
+            dependencies: [
+                // Depend on tests to run:
+                "DistributedActorsMultiNodeTests",
 
-                    // Dependencies:
-                    "MultiNodeTestKit",
-                    .product(name: "ArgumentParser", package: "swift-argument-parser"),
-                ]
+                // Dependencies:
+                "MultiNodeTestKit",
+                .product(name: "ArgumentParser", package: "swift-argument-parser"),
+            ]
         ),
 
         // MultiNodeTests declared within this project
         .target(
-                name: "DistributedActorsMultiNodeTests",
-                dependencies: [
-                    "MultiNodeTestKit",
-                ],
-                path: "MultiNodeTests/DistributedActorsMultiNodeTests"
+            name: "DistributedActorsMultiNodeTests",
+            dependencies: [
+                "MultiNodeTestKit",
+            ],
+            path: "MultiNodeTests/DistributedActorsMultiNodeTests"
         ),
     ])
 
-    dependencies.append(contentsOf: [// ~~~ MultiNode Testing ~~~
+    dependencies.append(contentsOf: [
         .package(name: "MultiNodeTestPlugin", path: "./InternalPlugins/MultiNodeTest/"),
     ])
 }
