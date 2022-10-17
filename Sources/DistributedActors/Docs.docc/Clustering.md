@@ -55,11 +55,11 @@ Forming a cluster is the first step towards making use of distributed clusters a
 
 Once a node joins at least one other node of an already established cluster, it will receive information about all other nodes
 which participate in this cluster. This is why often it is not necessary to give all nodes the information about all other nodes in a cluster,
-but only attempt to join one or a few o them. The first join "wins" and the cluster welcome the new node into the ``Cluster/Membership``.
+but only attempt to join one or a few of them. The first join "wins" and the cluster welcome the new node into the ``Cluster/Membership``.
 
 ### Joining existing nodes
 
-In the simplest scenario we already about some existing node that we can join to form a cluster, or become part of a cluster that node already is in.
+In the simplest scenario we already know about some existing node that we can join to form a cluster, or become part of a cluster that node already is in.
 
 This is done using the system's ``ClusterControl`` object, like this:
 
