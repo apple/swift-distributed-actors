@@ -23,8 +23,8 @@ distributed actor Romeo: LifecycleWatch {
         print("\(Self.self) terminated!")
     }
 
-    distributed func watch(_ romeo: Romeo) {
-        watchTermination(of: romeo)
+    distributed func watch(_ juliet: Juliet) {
+        watchTermination(of: juliet)
     }
     
     func terminated(actor id: ActorID) async {
