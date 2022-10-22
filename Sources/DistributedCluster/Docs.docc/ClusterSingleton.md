@@ -109,7 +109,7 @@ Such a proxied call to a distributed actor can take one of three general paths s
 
 The lifecycle of a cluster singleton is managed by the plugin, and not explicitly by the developer. 
 
-The _allocation_ of a singleton within a cluster consists of actually creating a new _instance_ and _activating_ it - by calling the ``ClusterSingleton/activateSingleton()-6cvj7`` method. Which member of the cluster is to perform this allocation is determined automatically at runtime, based on the state of the cluster, and is determined by the ``ClusterSingletonAllocationStrategySettings`` as configured for the singleton.
+The _allocation_ of a singleton within a cluster consists of actually creating a new _instance_ and _activating_ it - by calling the ``activateSingleton()-9fbad`` method. Which member of the cluster is to perform this allocation is determined automatically at runtime, based on the state of the cluster, and is determined by the ``ClusterSingletonAllocationStrategySettings`` as configured for the singleton.
 
 The default allocation strategy is ``ClusterSingletonAllocationStrategySettings/byLeadership`` meaning that a singleton is going to be allocated on the _leader_ node of the cluster. 
 
@@ -151,9 +151,9 @@ distributed actor Boss: ClusterSingleton { /* ... */ }
 
 A singleton instance is created and retained (!) by the singleton plugin when the allocation strategy decides the member should be hosting it.
 
-The allocated singleton instance will get the ``activateSingleton()-9ytjf`` method called before any further calls are delivered to it.
+The allocated singleton instance will get the ``activateSingleton()-9fbad`` method called before any further calls are delivered to it.
 
-Conversely, when the allocation strategy decides that this cluster member is no longer hosting the singleton the ``passivateSingleton()-97w5s`` method will be invoked and the actor will be released. Make sure to not retain the actor or make it perform any decisions which require single-point-of-truth after it has had passivate called on it, as it no longer is guaranteed to be the unique singleton instance anymore.
+Conversely, when the allocation strategy decides that this cluster member is no longer hosting the singleton the ``passivateSingleton()-31z1s`` method will be invoked and the actor will be released. Make sure to not retain the actor or make it perform any decisions which require single-point-of-truth after it has had passivate called on it, as it no longer is guaranteed to be the unique singleton instance anymore.
 
 ## Glossary
 
