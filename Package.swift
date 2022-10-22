@@ -67,13 +67,52 @@ var targets: [PackageDescription.Target] = [
         ]
     ),
 
-//    .testTarget(
-//        name: "CDistributedActorsMailboxTests",
-//        dependencies: [
-//            "CDistributedActorsMailbox",
-//            "DistributedActorsTestKit"
-//        ]
-//    ),
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: MultiNodeTestKit
+
+    // MultiNodeTest plugin and library --------------------------------------------------------------------------------
+    .plugin(
+        name: "MultiNodeTestPlugin",
+        capability: .command(
+            intent: .custom(verb: "multi-node", description: "Run MultiNodeTestKit based tests across multiple processes or physical compute nodes")
+            /* permissions: needs full network access */
+        ),
+        dependencies: []
+    ),
+    .target(
+        name: "MultiNodeTestKit",
+        dependencies: [
+            "DistributedActors",
+            // "DistributedActorsTestKit", // can't depend on it because it'll pull in XCTest, and that crashes in executable then
+            .product(name: "Backtrace", package: "swift-backtrace"),
+            .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
+            .product(name: "Atomics", package: "swift-atomics"),
+            .product(name: "OrderedCollections", package: "swift-collections"),
+        ]
+    ),
+    .executableTarget(
+        name: "MultiNodeTestKitRunner",
+        dependencies: [
+            // Depend on tests to run:
+            "DistributedActorsMultiNodeTests",
+
+            // Dependencies:
+            "MultiNodeTestKit",
+            .product(name: "ArgumentParser", package: "swift-argument-parser"),
+        ]
+    ),
+
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Multi Node Tests
+
+    // MultiNodeTests declared within this project
+    .target(
+        name: "DistributedActorsMultiNodeTests",
+        dependencies: [
+            "MultiNodeTestKit",
+        ],
+        path: "MultiNodeTests/DistributedActorsMultiNodeTests"
+    ),
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Integration Tests - `it_` prefixed
@@ -85,40 +124,10 @@ var targets: [PackageDescription.Target] = [
         ],
         path: "IntegrationTests/tests_01_cluster/it_Clustered_swim_suspension_reachability"
     ),
-//    .target(
-//        name: "it_Clustered_swim_ungraceful_shutdown",
-//        dependencies: [
-//            "DistributedActors",
-//        ],
-//        path: "IntegrationTests/tests_04_cluster/it_Clustered_swim_ungraceful_shutdown"
-//    ),
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Performance / Benchmarks
-
-//    .executableTarget(
-//        name: "DistributedActorsBenchmarks",
-//        dependencies: [
-//            "DistributedActors",
-//            "SwiftBenchmarkTools",
-//            .product(name: "Atomics", package: "swift-atomics"),
-//        ],
-//        exclude: [
-//          "README.md",
-//          "BenchmarkProtos/bench.proto",
-//        ]
-//    ),
-//    .target(
-//        name: "SwiftBenchmarkTools",
-//        dependencies: ["DistributedActors"],
-//        exclude: [
-//          "README_SWIFT.md"
-//        ]
-//    ),
-
-    // ==== ----------------------------------------------------------------------------------------------------------------
-    // MARK: Samples are defined in Samples/Package.swift
-    // ==== ----------------------------------------------------------------------------------------------------------------
+    // TODO: Use new benchmarking infra
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Internals; NOT SUPPORTED IN ANY WAY
@@ -202,55 +211,6 @@ if ProcessInfo.processInfo.environment["VALIDATE_DOCS"] != nil {
             ]
         )
     )
-}
-
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: MultiNodeTestKit
-
-// TODO: https://github.com/apple/swift-distributed-actors/issues/1064
-//       This is a workaround since when other packages DEPEND ON this package,
-//       they'd fail because we depend on a "local package" and SwiftPM does not understand
-//       that we only use this dependency within the package.
-//       Real solution: Multi node tests must become a real package plugin:
-if ProcessInfo.processInfo.environment["MULTI_NODE_TESTS"] != nil {
-    targets.append(contentsOf: [
-        // MultiNodeTest library
-        .target(
-            name: "MultiNodeTestKit",
-            dependencies: [
-                "DistributedActors",
-                // "DistributedActorsTestKit", // can't depend on it because it'll pull in XCTest, and that crashes in executable then
-                .product(name: "Backtrace", package: "swift-backtrace"),
-                .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
-                .product(name: "Atomics", package: "swift-atomics"),
-                .product(name: "OrderedCollections", package: "swift-collections"),
-            ]
-        ),
-        .executableTarget(
-            name: "MultiNodeTestKitRunner",
-            dependencies: [
-                // Depend on tests to run:
-                "DistributedActorsMultiNodeTests",
-
-                // Dependencies:
-                "MultiNodeTestKit",
-                .product(name: "ArgumentParser", package: "swift-argument-parser"),
-            ]
-        ),
-
-        // MultiNodeTests declared within this project
-        .target(
-            name: "DistributedActorsMultiNodeTests",
-            dependencies: [
-                "MultiNodeTestKit",
-            ],
-            path: "MultiNodeTests/DistributedActorsMultiNodeTests"
-        ),
-    ])
-
-    dependencies.append(contentsOf: [
-        .package(name: "MultiNodeTestPlugin", path: "./InternalPlugins/MultiNodeTest/"),
-    ])
 }
 
 // This is a workaround since current published nightly docker images don't have the latest Swift availabilities yet
