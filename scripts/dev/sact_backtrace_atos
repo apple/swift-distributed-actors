@@ -34,10 +34,10 @@
 # 1	 SampleLetItCrash    0x000000010a4aee28	 atos:sact_segfault_sighandler (in SampleLetItCrash) (/Users/ktoso/code/sact/Sources/CMailbox/survive_crash_support.c:31)
 # 2	 libsystem_platform.dylib   0x00007fff7e040b3d	 atos:_sigtramp (in libsystem_platform.dylib) + 29
 # 3	 libsystem_c.dylib          0x00007fffb0c3b6b8	 atos:__global_locale (in libsystem_c.dylib) + 0
-# 4	 SampleLetItCrash    0x000000010a62678d	 atos:closure #1 in static FaultHandlingDungeon.installCrashHandling<A>(reaper:cell:) (in SampleLetItCrash) (/Users/ktoso/code/sact/Sources/DistributedActors/FaultHandling.swift:73)
+# 4	 SampleLetItCrash    0x000000010a62678d	 atos:closure #1 in static FaultHandlingDungeon.installCrashHandling<A>(reaper:cell:) (in SampleLetItCrash) (/Users/ktoso/code/sact/Sources/DistributedCluster/FaultHandling.swift:73)
 # 5	 SampleLetItCrash    0x000000010a626c65	 atos:partial apply for closure #1 in static FaultHandlingDungeon.installCrashHandling<A>(reaper:cell:) (in SampleLetItCrash) (/Users/ktoso/code/sact/<compiler-generated>:0)
-# 6	 SampleLetItCrash    0x000000010a6258e8	 atos:WrappedFailCellClosure.fail(_:sig:sicode:) (in SampleLetItCrash) (/Users/ktoso/code/sact/Sources/DistributedActors/FaultHandling.swift:34)
-# 7	 SampleLetItCrash    0x000000010a628fb0	 atos:closure #2 in static FaultHandlingDungeon.installCrashHandling<A>(reaper:cell:) (in SampleLetItCrash) (/Users/ktoso/code/sact/Sources/DistributedActors/FaultHandling.swift:92)
+# 6	 SampleLetItCrash    0x000000010a6258e8	 atos:WrappedFailCellClosure.fail(_:sig:sicode:) (in SampleLetItCrash) (/Users/ktoso/code/sact/Sources/DistributedCluster/FaultHandling.swift:34)
+# 7	 SampleLetItCrash    0x000000010a628fb0	 atos:closure #2 in static FaultHandlingDungeon.installCrashHandling<A>(reaper:cell:) (in SampleLetItCrash) (/Users/ktoso/code/sact/Sources/DistributedCluster/FaultHandling.swift:92)
 # 8	 SampleLetItCrash    0x000000010a629129	 atos:@objc closure #2 in static FaultHandlingDungeon.installCrashHandling<A>(reaper:cell:) (in SampleLetItCrash) (/Users/ktoso/code/sact/<compiler-generated>:0)
 # 9	 SampleLetItCrash    0x000000010a4af312	 atos:sact_sighandler (in SampleLetItCrash) (/Users/ktoso/code/sact/Sources/CMailbox/survive_crash_support.c:52)
 # 10 libsystem_platform.dylib   0x00007fff7e040b3d	 atos:_sigtramp (in libsystem_platform.dylib) + 29

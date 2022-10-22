@@ -121,7 +121,7 @@ Which will result in an output similar to this:
 ```
 ========================================
 Starting Local Preview Server
-	          http://localhost:8000/documentation/distributedactors
+	          http://localhost:8000/documentation/distributecluster
 ```
 
 ## Integration tests

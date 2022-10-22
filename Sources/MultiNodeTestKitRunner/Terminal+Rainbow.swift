@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import ArgumentParser
-import DistributedActors
+import DistributedCluster
 import struct Foundation.Date
 import class Foundation.FileHandle
 import class Foundation.Process

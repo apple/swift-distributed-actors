@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import DistributedActors
+import DistributedCluster
 import SwiftBenchmarkTools
 
 public let ActorTreeTraversalBenchmarks: [BenchmarkInfo] = [

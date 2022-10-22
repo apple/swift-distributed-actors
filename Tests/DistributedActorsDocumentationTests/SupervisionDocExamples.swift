@@ -14,7 +14,7 @@
 
 // tag::imports[]
 
-import DistributedActors
+import DistributedCluster
 
 // end::imports[]
 

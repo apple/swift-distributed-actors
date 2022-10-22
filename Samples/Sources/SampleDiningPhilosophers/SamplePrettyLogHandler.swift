@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import Distributed
-@testable import DistributedActors
+@testable import DistributedCluster
 import Logging
 
 #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)

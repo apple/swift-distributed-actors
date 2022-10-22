@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import DistributedActors
+import DistributedCluster
 import MultiNodeTestKit
 
 /// Tests of the ``MultiNodeTestConductor`` itself.

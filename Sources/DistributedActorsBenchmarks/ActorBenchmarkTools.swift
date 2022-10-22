@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import Atomics
-import DistributedActors
+import DistributedCluster
 import DistributedActorsConcurrencyHelpers
 import SwiftBenchmarkTools
 

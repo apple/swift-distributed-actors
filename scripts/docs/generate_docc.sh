@@ -42,9 +42,9 @@ fi
 echo "Project version: ${version}"
 
 
-# all our public modules which we want to document, begin with `DistributedActors`
+# all our public modules which we want to document, begin with `DistributedCluster`
 modules=(
-  DistributedActors
+  DistributedCluster
 )
 
 # Build documentation

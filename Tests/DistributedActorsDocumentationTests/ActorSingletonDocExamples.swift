@@ -15,7 +15,7 @@
 // tag::imports[]
 
 import ActorSingletonPlugin
-import DistributedActors
+import DistributedCluster
 
 // end::imports[]
 

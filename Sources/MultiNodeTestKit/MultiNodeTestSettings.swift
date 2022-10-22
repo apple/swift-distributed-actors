@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import Distributed
-import DistributedActors
+import DistributedCluster
 
 public struct MultiNodeTestSettings {
     public init() {}

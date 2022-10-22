@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import DistributedActors
+import DistributedCluster
 import NIO
 import SwiftBenchmarkTools
 import SwiftProtobuf

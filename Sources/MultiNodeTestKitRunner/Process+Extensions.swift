@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import ArgumentParser
-import DistributedActors
+import DistributedCluster
 import class Foundation.FileHandle
 import class Foundation.Process
 import struct Foundation.URL

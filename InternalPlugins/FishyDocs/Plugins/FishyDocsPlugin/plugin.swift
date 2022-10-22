@@ -18,7 +18,7 @@ import PackagePlugin
 @main struct FishyDocsBuildPlugin: BuildToolPlugin {
     func createBuildCommands(context: PluginContext, target: Target) async throws -> [Command] {
         let genSourcesDir = context.pluginWorkDirectory
-        let doccBasePath = "\(context.package.directory)/Sources/DistributedActors/Docs.docc"
+        let doccBasePath = "\(context.package.directory)/Sources/DistributedCluster/Docs.docc"
 
         let mdFiles = try FileManager.default
             .contentsOfDirectory(atPath: doccBasePath)

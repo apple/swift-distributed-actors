@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import Distributed
-import DistributedActors
+import DistributedCluster
 import Logging
 
 distributed actor Philosopher: CustomStringConvertible {

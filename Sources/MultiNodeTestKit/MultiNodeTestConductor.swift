@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import Distributed
-import DistributedActors
+import DistributedCluster
 import Logging
 
 public distributed actor MultiNodeTestConductor: ClusterSingleton, CustomStringConvertible {

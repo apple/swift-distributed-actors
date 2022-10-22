@@ -1,5 +1,5 @@
 import Distributed
-import DistributedActors
+import DistributedCluster
 import class Foundation.Pipe
 //===----------------------------------------------------------------------===//
 //

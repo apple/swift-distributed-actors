@@ -484,7 +484,7 @@ public func shouldThrow<T>(file: StaticString = #filePath, line: UInt = #line, c
 ///
 /// ```
 ///   <unknown>:0: error: -[DistributedActorsTests.ActorLifecycleTests test_beAbleToStop_immediately] :
-///   failed: caught error: The operation couldn’t be completed. (DistributedActors.ActorPathError error 0.)
+///   failed: caught error: The operation couldn’t be completed. (DistributedCluster.ActorPathError error 0.)
 /// ```
 ///
 /// Error report with shouldNotThrow includes more details about the thrown value:

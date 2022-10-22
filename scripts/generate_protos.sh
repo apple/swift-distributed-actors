@@ -55,7 +55,7 @@ for visibility in public default; do
       out_dir=$( dirname "$p" )
       base_name=$( echo basename "$p" | sed "s/.*\///" )
       out_name="${base_name%.*}.pb.swift"
-      dest_dir="../Sources/DistributedActors/${out_dir}/Protobuf"
+      dest_dir="../Sources/DistributedCluster/${out_dir}/Protobuf"
       dest_file="${dest_dir}/${out_name}"
       mkdir -p ${dest_dir}
       command="protoc --swift_out=. ${p} ${swift_opt}"

@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import DistributedActors
+import DistributedCluster
 
 final class DiningPhilosophers {
     private var forks: [Fork] = []

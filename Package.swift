@@ -9,12 +9,26 @@ import PackageDescription
 // targets when the flag is set. We should remove the dependencies and then enable the flag globally though just by passing it.
 var globalSwiftSettings: [SwiftSetting] = []
 
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Products
+
+let products: [PackageDescription.Product] = [
+    .library(
+            name: "DistributedCluster",
+            targets: ["DistributedCluster"]
+    ),
+]
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Targets
+
 var targets: [PackageDescription.Target] = [
     // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: Actors
+    // MARK: Cluster
 
     .target(
-        name: "DistributedActors",
+        name: "DistributedCluster",
         dependencies: [
             "DistributedActorsConcurrencyHelpers",
             "CDistributedActorsMailbox", // TODO(swift): remove mailbox runtime, use Swift actors directly
@@ -41,7 +55,7 @@ var targets: [PackageDescription.Target] = [
     .target(
         name: "DistributedActorsTestKit",
         dependencies: [
-            "DistributedActors",
+            "DistributedCluster",
             "DistributedActorsConcurrencyHelpers",
             .product(name: "Atomics", package: "swift-atomics"),
         ]
@@ -51,9 +65,9 @@ var targets: [PackageDescription.Target] = [
     // MARK: Tests
 
     .testTarget(
-        name: "DistributedActorsTests",
+        name: "DistributedClusterTests",
         dependencies: [
-            "DistributedActors",
+            "DistributedCluster",
             "DistributedActorsTestKit",
             .product(name: "Atomics", package: "swift-atomics"),
         ]
@@ -62,7 +76,7 @@ var targets: [PackageDescription.Target] = [
     .testTarget(
         name: "DistributedActorsTestKitTests",
         dependencies: [
-            "DistributedActors",
+            "DistributedCluster",
             "DistributedActorsTestKit",
         ]
     ),
@@ -117,10 +131,11 @@ var targets: [PackageDescription.Target] = [
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Integration Tests - `it_` prefixed
 
+    // TODO: convert to multi-node test
     .executableTarget(
         name: "it_Clustered_swim_suspension_reachability",
         dependencies: [
-            "DistributedActors",
+            "DistributedCluster",
         ],
         path: "IntegrationTests/tests_01_cluster/it_Clustered_swim_suspension_reachability"
     ),
@@ -180,13 +195,6 @@ var dependencies: [Package.Dependency] = [
     .package(url: "https://github.com/apple/swift-argument-parser", from: "1.0.3"),
 ]
 
-let products: [PackageDescription.Product] = [
-    .library(
-        name: "DistributedActors",
-        targets: ["DistributedActors"]
-    ),
-]
-
 if ProcessInfo.processInfo.environment["VALIDATE_DOCS"] != nil {
     dependencies.append(
         // internal only docc assisting fishy-docs plugin:
@@ -201,7 +209,7 @@ if ProcessInfo.processInfo.environment["VALIDATE_DOCS"] != nil {
         .testTarget(
             name: "DocsTests",
             dependencies: [
-                "DistributedActors",
+                "DistributedCluster",
             ],
             exclude: [
                 "README.md",

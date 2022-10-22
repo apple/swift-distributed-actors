@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import Dispatch
-import DistributedActors
+import DistributedCluster
 import DistributedActorsConcurrencyHelpers
 import class Foundation.ProcessInfo
 import SwiftBenchmarkTools

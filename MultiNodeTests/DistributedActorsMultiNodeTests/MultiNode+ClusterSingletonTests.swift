@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import DistributedActors
+import DistributedCluster
 import MultiNodeTestKit
 
 public final class MultiNodeClusterSingletonTests: MultiNodeTestSuite {

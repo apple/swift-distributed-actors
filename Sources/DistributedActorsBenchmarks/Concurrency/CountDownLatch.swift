@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import DistributedActors
+import DistributedCluster
 import DistributedActorsConcurrencyHelpers
 
 internal class CountDownLatch {

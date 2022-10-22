@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import Distributed
-@testable import DistributedActors
+@testable import DistributedCluster
 import DistributedActorsConcurrencyHelpers
 import Foundation
 import XCTest

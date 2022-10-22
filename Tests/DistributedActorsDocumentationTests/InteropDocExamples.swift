@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import Dispatch
-import DistributedActors
+import DistributedCluster
 @testable import DistributedActorsTestKit
 import NIO
 import XCTest

@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import DistributedActors
+import DistributedCluster
 import DistributedActorsConcurrencyHelpers
 
 /// This is a COPY from the actual actor project, such that we do not need to @testable import the actors.

@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-@testable import DistributedActors
+@testable import DistributedCluster
 @testable import DistributedActorsTestKit
 import Foundation
 import XCTest
