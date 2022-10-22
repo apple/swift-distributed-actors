@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-@testable import DistributedCluster
 import DistributedActorsTestKit
+@testable import DistributedCluster
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Somewhat invasive utilities for testing things depending on ClusterSystem internals

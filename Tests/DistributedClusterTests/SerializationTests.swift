@@ -13,8 +13,8 @@
 //===----------------------------------------------------------------------===//
 //
 
-@testable import DistributedCluster
 import DistributedActorsTestKit
+@testable import DistributedCluster
 import Foundation
 import NIO
 import NIOFoundationCompat

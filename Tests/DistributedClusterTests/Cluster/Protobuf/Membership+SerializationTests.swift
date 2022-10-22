@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-@testable import DistributedCluster
 import DistributedActorsTestKit
+@testable import DistributedCluster
 import Foundation // for pretty printing JSON
 import Logging
 import NIO

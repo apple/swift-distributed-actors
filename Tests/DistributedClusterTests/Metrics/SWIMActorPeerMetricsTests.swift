@@ -13,9 +13,9 @@
 //===----------------------------------------------------------------------===//
 
 @testable import CoreMetrics
-@testable import DistributedCluster
 import DistributedActorsConcurrencyHelpers
 import DistributedActorsTestKit
+@testable import DistributedCluster
 @testable import Metrics
 import NIO
 @testable import SWIM

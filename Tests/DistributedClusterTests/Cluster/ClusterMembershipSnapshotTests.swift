@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-import DistributedCluster
 import DistributedActorsTestKit
+import DistributedCluster
 import XCTest
 
 final class ClusterMembershipSnapshotTests: ClusteredActorSystemsXCTestCase {

@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-import DistributedCluster
 @testable import DistributedActorsTestKit
+import DistributedCluster
 import NIOSSL
 import XCTest
 

@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-@testable import DistributedCluster
 import DistributedActorsTestKit
+@testable import DistributedCluster
 import XCTest
 
 final class BasicClusterSystemLifecycleTests: SingleClusterSystemXCTestCase, @unchecked Sendable {

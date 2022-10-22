@@ -15,9 +15,9 @@
 import Atomics
 @testable import CoreMetrics
 import Distributed
-@testable import DistributedCluster
 import DistributedActorsConcurrencyHelpers // for TimeSource
 import DistributedActorsTestKit
+@testable import DistributedCluster
 import Foundation
 @testable import Metrics
 @testable import SWIM

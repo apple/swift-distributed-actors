@@ -12,9 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-@testable import DistributedCluster
 import DistributedActorsConcurrencyHelpers
 import DistributedActorsTestKit
+@testable import DistributedCluster
 import Foundation
 import NIO
 import XCTest

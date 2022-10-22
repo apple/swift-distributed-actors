@@ -13,8 +13,8 @@
 //===----------------------------------------------------------------------===//
 
 import Distributed
-@testable import DistributedCluster
 import DistributedActorsTestKit
+@testable import DistributedCluster
 import XCTest
 
 distributed actor UnregisterOnMessage {

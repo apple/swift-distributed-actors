@@ -13,8 +13,8 @@
 //===----------------------------------------------------------------------===//
 
 import Dispatch
-@testable import DistributedCluster
 import DistributedActorsTestKit
+@testable import DistributedCluster
 import NIO
 import ServiceDiscovery
 import XCTest

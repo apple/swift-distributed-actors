@@ -14,8 +14,8 @@
 
 import AsyncAlgorithms
 import Distributed
-@testable import DistributedCluster
 import DistributedActorsTestKit
+@testable import DistributedCluster
 import XCTest
 
 final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCase {

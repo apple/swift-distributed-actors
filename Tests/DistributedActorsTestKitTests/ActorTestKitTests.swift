@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-@testable import DistributedCluster
 @testable import DistributedActorsTestKit
+@testable import DistributedCluster
 import XCTest
 
 final class ActorTestKitTests: XCTestCase {

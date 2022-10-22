@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-@testable import DistributedCluster
 import DistributedActorsConcurrencyHelpers
+@testable import DistributedCluster
 import struct Foundation.Date
 @testable import Logging
 import XCTest

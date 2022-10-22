@@ -9,14 +9,13 @@ import PackageDescription
 // targets when the flag is set. We should remove the dependencies and then enable the flag globally though just by passing it.
 var globalSwiftSettings: [SwiftSetting] = []
 
-
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Products
 
 let products: [PackageDescription.Product] = [
     .library(
-            name: "DistributedCluster",
-            targets: ["DistributedCluster"]
+        name: "DistributedCluster",
+        targets: ["DistributedCluster"]
     ),
 ]
 
@@ -96,7 +95,7 @@ var targets: [PackageDescription.Target] = [
     .target(
         name: "MultiNodeTestKit",
         dependencies: [
-            "DistributedActors",
+            "DistributedCluster",
             // "DistributedActorsTestKit", // can't depend on it because it'll pull in XCTest, and that crashes in executable then
             .product(name: "Backtrace", package: "swift-backtrace"),
             .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
