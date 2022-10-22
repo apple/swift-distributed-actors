@@ -71,9 +71,11 @@ system.cluster.join(node: Node(systemName: "JoiningExample", host: "127.0.0.1", 
 > an ``UniqueNode`` is a node that we have contacted and know its exact unique node identifier. Therefore, when reaching 
 > out to a node we know nothing about just yet, we use the `Node` type. 
 
-You can observe <doc:#Cluster-events> in order to see when a node has been successfully joined.
+You can observe ``Cluster/Event``s emitted by `system.cluster.events` (``ClusterControl/events``) in order to see when a node has been successfully joined.
 
-> **TODO:** Pending addition of an async/await based API to await joining the cluster successfully. [#948](https://github.com/apple/swift-distributed-actors/issues/948)
+There is also convenience APIs available on ``ClusterControl`` (`system.cluster`):
+- ``ClusterControl/joined(node:within:)-2cla8`` which allows you to suspend until a specific node becomes ``Cluster/MemberStatus/joining`` in the cluster membership, or
+- ``ClusterControl/waitFor(_:_:within:)-spiq`` which allows you to suspend until a node reaches a specific ``Cluster/MemberStatus``. 
 
 ### Automatic Node Discovery
 
