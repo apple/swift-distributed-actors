@@ -1011,7 +1011,7 @@ extension ClusterSystem {
         }
 
         // Spawn a behavior actor for it:
-        let behavior = InvocationBehavior.behavior(instance: Weak(actor))
+        let behavior = InvocationBehavior.behavior(instance: DistributedActorRef.Weak(actor))
         let ref = self._spawnDistributedActor(behavior, identifiedBy: actor.id)
 
         // Store references
@@ -1073,6 +1073,36 @@ extension ClusterSystem {
             log.debug("Released well-known ActorID explicitly: \(id), it is expected to resignID soon") // TODO: add checking that we indeed have resigned the ID (the actor has terminated), or we can log a warning if it has not.
 
             _ = self._managedWellKnownDistributedActors.removeValue(forKey: wellKnownName)
+        }
+    }
+}
+
+extension ClusterSystem {
+    func _isAssigned(id: ActorID) -> Bool {
+        self.namingLock.withLock {
+            // Are we in the middle of initializing an actor with this ActorID?
+            if self._reservedNames.contains(id) {
+                return true
+            }
+
+            // Do we have a known, managed, distributed actor with this ActorID?
+            if self._managedDistributedActors.get(identifiedBy: id) != nil {
+                return true
+            }
+
+            // Maybe it is a well-known actor? Those we store separately (and with strong ref)?
+            if let wellKnownName = id.metadata.wellKnown {
+                if self._managedWellKnownDistributedActors[wellKnownName] != nil {
+                    return true
+                }
+            }
+
+            // well, maybe it's an ActorRef after all?
+            if self._managedRefs[id] != nil {
+                return true
+            }
+
+            return false
         }
     }
 }

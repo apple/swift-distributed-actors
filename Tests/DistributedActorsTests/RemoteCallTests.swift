@@ -27,8 +27,8 @@ final class RemoteCallTests: ClusteredActorSystemsXCTestCase {
         }
         local.cluster.join(node: remote.cluster.uniqueNode)
 
-        let greeter = Greeter(actorSystem: local)
-        let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
+        let greeter = RemoteCallTestGreeter(actorSystem: local)
+        let remoteGreeterRef = try RemoteCallTestGreeter.resolve(id: greeter.id, using: remote)
 
         let value = try await shouldNotThrow {
             try await remoteGreeterRef.hello()
@@ -45,8 +45,8 @@ final class RemoteCallTests: ClusteredActorSystemsXCTestCase {
         }
         local.cluster.join(node: remote.cluster.uniqueNode)
 
-        let greeter = Greeter(actorSystem: local)
-        let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
+        let greeter = RemoteCallTestGreeter(actorSystem: local)
+        let remoteGreeterRef = try RemoteCallTestGreeter.resolve(id: greeter.id, using: remote)
 
         let error = try await shouldThrow {
             _ = try await remoteGreeterRef.helloThrow(codable: true)
@@ -65,8 +65,8 @@ final class RemoteCallTests: ClusteredActorSystemsXCTestCase {
         }
         local.cluster.join(node: remote.cluster.uniqueNode)
 
-        let greeter = Greeter(actorSystem: local)
-        let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
+        let greeter = RemoteCallTestGreeter(actorSystem: local)
+        let remoteGreeterRef = try RemoteCallTestGreeter.resolve(id: greeter.id, using: remote)
 
         let error = try await shouldThrow {
             _ = try await remoteGreeterRef.helloThrow(codable: false)
@@ -84,8 +84,8 @@ final class RemoteCallTests: ClusteredActorSystemsXCTestCase {
         }
         local.cluster.join(node: remote.cluster.uniqueNode)
 
-        let greeter = Greeter(actorSystem: local)
-        let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
+        let greeter = RemoteCallTestGreeter(actorSystem: local)
+        let remoteGreeterRef = try RemoteCallTestGreeter.resolve(id: greeter.id, using: remote)
 
         try await shouldNotThrow {
             try await remoteGreeterRef.muted()
@@ -99,8 +99,8 @@ final class RemoteCallTests: ClusteredActorSystemsXCTestCase {
         }
         try await self.joinNodes(node: local, with: remote)
 
-        let greeter = Greeter(actorSystem: local)
-        let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
+        let greeter = RemoteCallTestGreeter(actorSystem: local)
+        let remoteGreeterRef = try RemoteCallTestGreeter.resolve(id: greeter.id, using: remote)
 
         let error = try await shouldThrow {
             try await remoteGreeterRef.mutedThrow(codable: true)
@@ -118,8 +118,8 @@ final class RemoteCallTests: ClusteredActorSystemsXCTestCase {
         }
         try await self.joinNodes(node: local, with: remote)
 
-        let greeter = Greeter(actorSystem: local)
-        let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
+        let greeter = RemoteCallTestGreeter(actorSystem: local)
+        let remoteGreeterRef = try RemoteCallTestGreeter.resolve(id: greeter.id, using: remote)
 
         let error = try await shouldThrow {
             try await remoteGreeterRef.mutedThrow(codable: false)
@@ -135,8 +135,8 @@ final class RemoteCallTests: ClusteredActorSystemsXCTestCase {
         let remote = await setUpNode("remote")
         try await self.joinNodes(node: local, with: remote)
 
-        let greeter = Greeter(actorSystem: local)
-        let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
+        let greeter = RemoteCallTestGreeter(actorSystem: local)
+        let remoteGreeterRef = try RemoteCallTestGreeter.resolve(id: greeter.id, using: remote)
 
         let error = try await shouldThrow {
             try await RemoteCall.with(timeout: .milliseconds(200)) {
@@ -157,8 +157,8 @@ final class RemoteCallTests: ClusteredActorSystemsXCTestCase {
         let remote = await setUpNode("remote")
         local.cluster.join(node: remote.cluster.uniqueNode)
 
-        let greeter = Greeter(actorSystem: local)
-        let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
+        let greeter = RemoteCallTestGreeter(actorSystem: local)
+        let remoteGreeterRef = try RemoteCallTestGreeter.resolve(id: greeter.id, using: remote)
 
         let error = try await shouldThrow {
             try await RemoteCall.with(timeout: .milliseconds(200)) {
@@ -179,8 +179,8 @@ final class RemoteCallTests: ClusteredActorSystemsXCTestCase {
         let remote = await setUpNode("remote")
         local.cluster.join(node: remote.cluster.uniqueNode)
 
-        let greeter = Greeter(actorSystem: local)
-        let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
+        let greeter = RemoteCallTestGreeter(actorSystem: local)
+        let remoteGreeterRef = try RemoteCallTestGreeter.resolve(id: greeter.id, using: remote)
 
         let message: String = "hello"
         let value = try await shouldNotThrow {
@@ -202,8 +202,8 @@ final class RemoteCallTests: ClusteredActorSystemsXCTestCase {
         }
         local.cluster.join(node: remote.cluster.uniqueNode)
 
-        let greeter = Greeter(actorSystem: local)
-        let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
+        let greeter = RemoteCallTestGreeter(actorSystem: local)
+        let remoteGreeterRef = try RemoteCallTestGreeter.resolve(id: greeter.id, using: remote)
 
         let error = try await shouldThrow {
             _ = try await remoteGreeterRef.helloThrow(codable: true)
@@ -226,8 +226,8 @@ final class RemoteCallTests: ClusteredActorSystemsXCTestCase {
         }
         local.cluster.join(node: remote.cluster.uniqueNode)
 
-        let greeter = Greeter(actorSystem: local)
-        let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
+        let greeter = RemoteCallTestGreeter(actorSystem: local)
+        let remoteGreeterRef = try RemoteCallTestGreeter.resolve(id: greeter.id, using: remote)
 
         let error = try await shouldThrow {
             _ = try await remoteGreeterRef.helloThrow(codable: true)
@@ -251,8 +251,8 @@ final class RemoteCallTests: ClusteredActorSystemsXCTestCase {
         }
         local.cluster.join(node: remote.cluster.uniqueNode)
 
-        let greeter = Greeter(actorSystem: local)
-        let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
+        let greeter = RemoteCallTestGreeter(actorSystem: local)
+        let remoteGreeterRef = try RemoteCallTestGreeter.resolve(id: greeter.id, using: remote)
 
         let error = try await shouldThrow {
             _ = try await remoteGreeterRef.helloThrow(codable: true)
@@ -271,8 +271,8 @@ final class RemoteCallTests: ClusteredActorSystemsXCTestCase {
         }
         local.cluster.join(node: remote.cluster.uniqueNode)
 
-        let greeter = Greeter(actorSystem: local)
-        let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
+        let greeter = RemoteCallTestGreeter(actorSystem: local)
+        let remoteGreeterRef = try RemoteCallTestGreeter.resolve(id: greeter.id, using: remote)
 
         let error = try await shouldThrow {
             try await RemoteCall.with(timeout: .milliseconds(200)) {
@@ -297,8 +297,8 @@ final class RemoteCallTests: ClusteredActorSystemsXCTestCase {
         }
         local.cluster.join(node: remote.cluster.uniqueNode)
 
-        let greeter = Greeter(actorSystem: local)
-        let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
+        let greeter = RemoteCallTestGreeter(actorSystem: local)
+        let remoteGreeterRef = try RemoteCallTestGreeter.resolve(id: greeter.id, using: remote)
 
         let error = try await shouldThrow {
             _ = try await remoteGreeterRef.helloThrow(codable: true)
@@ -310,7 +310,7 @@ final class RemoteCallTests: ClusteredActorSystemsXCTestCase {
     }
 }
 
-private distributed actor Greeter {
+private distributed actor RemoteCallTestGreeter {
     typealias ActorSystem = ClusterSystem
 
     distributed func hello() async throws -> String {

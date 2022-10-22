@@ -18,19 +18,7 @@ import Distributed
 public struct WeakActorDictionary<Act: DistributedActor>: ExpressibleByDictionaryLiteral
     where Act.ID == ClusterSystem.ActorID
 {
-    var underlying: [ClusterSystem.ActorID: WeakContainer]
-
-    final class WeakContainer {
-        weak var actor: Act?
-
-        init(_ actor: Act) {
-            self.actor = actor
-        }
-
-//        init(idForRemoval id: ClusterSystem.ActorID) {
-//            self.actor = nil
-//        }
-    }
+    var underlying: [ClusterSystem.ActorID: DistributedActorRef.Weak<Act>]
 
     /// Initialize an empty dictionary.
     public init() {
@@ -38,11 +26,12 @@ public struct WeakActorDictionary<Act: DistributedActor>: ExpressibleByDictionar
     }
 
     public init(dictionaryLiteral elements: (Act.ID, Act)...) {
-        self.underlying = [:]
-        self.underlying.reserveCapacity(elements.count)
+        var dict: [ClusterSystem.ActorID: DistributedActorRef.Weak<Act>] = [:]
+        dict.reserveCapacity(elements.count)
         for (id, actor) in elements {
-            self.underlying[id] = .init(actor)
+            dict[id] = .init(actor)
         }
+        self.underlying = dict
     }
 
     /// Insert the passed in actor into the dictionary.
@@ -53,16 +42,16 @@ public struct WeakActorDictionary<Act: DistributedActor>: ExpressibleByDictionar
     ///
     /// - Parameter actor:
     public mutating func insert(_ actor: Act) {
-        self.underlying[actor.id] = WeakContainer(actor)
+        self.underlying[actor.id] = DistributedActorRef.Weak(actor)
     }
 
     public mutating func getActor(identifiedBy id: ClusterSystem.ActorID) -> Act? {
-        guard let container = underlying[id] else {
+        guard let ref = underlying[id] else {
             // unknown id
             return nil
         }
 
-        guard let knownActor = container.actor else {
+        guard let knownActor = ref.actor else {
             // the actor was released -- let's remove the container while we're here
             _ = self.removeActor(identifiedBy: id)
             return nil
@@ -118,15 +107,69 @@ public struct WeakAnyDistributedActorDictionary {
         return knownActor
     }
 }
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Weak distributed actor reference wrapper helpers
 
-final class Weak<Act: DistributedActor> {
-    weak var actor: Act?
+enum DistributedActorRef {
 
-    init(_ actor: Act) {
-        self.actor = actor
+    /// Wrapper class for weak `distributed actor` references.
+    ///
+    /// Allows for weak storage of distributed actor references inside collections,
+    /// although those collections need to be manually cleared from dead references.
+    ///
+    public final class Weak<Act: DistributedActor>: CustomStringConvertible {
+        private weak var weakRef: Act?
+
+        public init(_ actor: Act) {
+            self.weakRef = actor
+        }
+
+        public var actor: Act? {
+            self.weakRef
+        }
+
+        public var description: String {
+            let isLocalStr: String
+            if let actor = self.actor {
+                isLocalStr = "\(__isLocalActor(actor))"
+            } else {
+                isLocalStr = "unknown/released"
+            }
+
+            return "DistributedActorRef.Weak(\(self.actor, orElse: "nil"), isLocal: \(isLocalStr))"
+        }
     }
 
-    init(idForRemoval id: ClusterSystem.ActorID) {
-        self.actor = nil
+    /// Wrapper class for weak `distributed actor` references.
+    ///
+    /// Allows for weak storage of distributed actor references inside collections,
+    /// although those collections need to be manually cleared from dead references.
+    ///
+    public final class WeakWhenLocal<Act: DistributedActor>: CustomStringConvertible {
+        private weak var weakLocalRef: Act?
+        private let remoteRef: Act?
+
+        public init(_ actor: Act) {
+            if __isRemoteActor(actor) {
+                self.remoteRef = actor
+                self.weakLocalRef = nil
+            } else {
+                self.remoteRef = nil
+                self.weakLocalRef = actor
+            }
+
+            assert((self.remoteRef == nil && self.weakLocalRef != nil) ||
+                    (self.remoteRef != nil && self.weakLocalRef == nil),
+                    "Only a single var may hold the actor: remote: \(self.remoteRef, orElse: "nil"), \(self.weakLocalRef, orElse: "nil")")
+        }
+
+        public var actor: Act? {
+            remoteRef ?? weakLocalRef
+        }
+
+        public var description: String {
+            "DistributedActorRef.WeakWhenLocal(\(self.actor, orElse: "nil"), isLocal: \(self.remoteRef == nil))"
+        }
     }
+
 }

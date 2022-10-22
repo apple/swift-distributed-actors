@@ -66,9 +66,9 @@ final class InterceptorTests: SingleClusterSystemXCTestCase {
         }
         local.cluster.join(node: remote.cluster.uniqueNode)
 
-        let otherGreeter = Greeter(actorSystem: local, greeting: "HI!!!")
-        let localGreeter: Greeter = try system.interceptCalls(
-            to: Greeter.self,
+        let otherGreeter = InterceptMe(actorSystem: local, greeting: "HI!!!")
+        let localGreeter: InterceptMe = try system.interceptCalls(
+            to: InterceptMe.self,
             metadata: ActorMetadata(),
             interceptor: GreeterRemoteCallInterceptor(system: local, greeter: otherGreeter)
         )
@@ -88,10 +88,10 @@ final class InterceptorTests: SingleClusterSystemXCTestCase {
         }
         local.cluster.join(node: remote.cluster.uniqueNode)
 
-        let otherGreeter = Greeter(actorSystem: local, greeting: "HI!!!")
-        let localGreeter: Greeter = try shouldNotThrow {
+        let otherGreeter = InterceptMe(actorSystem: local, greeting: "HI!!!")
+        let localGreeter: InterceptMe = try shouldNotThrow {
             try system.interceptCalls(
-                to: Greeter.self,
+                to: InterceptMe.self,
                 metadata: ActorMetadata(),
                 interceptor: GreeterRemoteCallInterceptor(system: local, greeter: otherGreeter)
             )
@@ -238,7 +238,7 @@ final class InterceptorTests: SingleClusterSystemXCTestCase {
     }
 }
 
-private distributed actor Greeter {
+private distributed actor InterceptMe {
     typealias ID = ClusterSystem.ActorID
     typealias ActorSystem = ClusterSystem
 
@@ -286,9 +286,9 @@ private distributed actor Greeter {
 
 private struct GreeterRemoteCallInterceptor: RemoteCallInterceptor {
     let system: ClusterSystem
-    let greeter: Greeter
+    let greeter: InterceptMe
 
-    init(system: ClusterSystem, greeter: Greeter) {
+    init(system: ClusterSystem, greeter: InterceptMe) {
         self.system = system
         self.greeter = greeter
     }

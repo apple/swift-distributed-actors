@@ -53,7 +53,7 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
     // MARK: WorkerPool state
 
     /// The worker pool. Worker will be selected round-robin.
-    private var workers: [Worker.ID: Weak<Worker>] = [:]
+    private var workers: [Worker.ID: DistributedActorRef.Weak<Worker>] = [:]
     private var roundRobinPos = 0
 
     /// Boolean flag to help determine if pool becomes empty because at least one worker has terminated.
@@ -78,7 +78,7 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
             self.newWorkersSubscribeTask = Task {
                 for await worker in await self.actorSystem.receptionist.listing(of: key) {
                     self.actorSystem.log.log(level: self.logLevel, "Got listing member for \(key): \(worker)")
-                    self.workers[worker.id] = Weak(worker)
+                    self.workers[worker.id] = DistributedActorRef.Weak(worker)
                     // Notify those waiting for new worker
                     for (i, continuation) in self.newWorkerContinuations.enumerated().reversed() {
                         continuation.resume()
@@ -89,7 +89,7 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
             }
         case .static(let workers):
             workers.forEach { worker in
-                self.workers[worker.id] = Weak(worker)
+                self.workers[worker.id] = DistributedActorRef.Weak(worker)
                 watchTermination(of: worker)
             }
         }

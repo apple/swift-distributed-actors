@@ -34,7 +34,7 @@ public struct InvocationMessage: Sendable, Codable, CustomStringConvertible {
 
 // FIXME(distributed): remove [#957](https://github.com/apple/swift-distributed-actors/issues/957)
 enum InvocationBehavior {
-    static func behavior(instance weakInstance: Weak<some DistributedActor>) -> _Behavior<InvocationMessage> {
+    static func behavior(instance weakInstance: DistributedActorRef.Weak<some DistributedActor>) -> _Behavior<InvocationMessage> {
         return _Behavior.setup { context in
             return ._receiveMessageAsync { (message) async throws -> _Behavior<InvocationMessage> in
                 guard let instance = weakInstance.actor else {
