@@ -74,8 +74,8 @@ system.cluster.join(node: Node(systemName: "JoiningExample", host: "127.0.0.1", 
 You can observe ``Cluster/Event``s emitted by `system.cluster.events` (``ClusterControl/events``) in order to see when a node has been successfully joined.
 
 There is also convenience APIs available on ``ClusterControl`` (`system.cluster`):
-- ``ClusterControl/joined(node:within:)-2cla8`` which allows you to suspend until a specific node becomes ``Cluster/MemberStatus/joining`` in the cluster membership, or
-- ``ClusterControl/waitFor(_:_:within:)-spiq`` which allows you to suspend until a node reaches a specific ``Cluster/MemberStatus``. 
+- ``ClusterControl/joined(node:within:)-2o4kd`` which allows you to suspend until a specific node becomes ``Cluster/MemberStatus/joining`` in the cluster membership, or
+- ``ClusterControl/waitFor(_:_:within:)-126aq`` which allows you to suspend until a node reaches a specific ``Cluster/MemberStatus``. 
 
 ### Automatic Node Discovery
 
