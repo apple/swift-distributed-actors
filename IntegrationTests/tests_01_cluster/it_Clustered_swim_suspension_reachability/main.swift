@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import DistributedActors
+import DistributedCluster
 
 print("Getting args")
 

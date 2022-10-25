@@ -25,7 +25,7 @@ printf "\033[0;32mokay.\033[0m\n"
 
 printf "=> Checking docc: for unexpected warnings...\n"
 
-module=DistributedActors
+module=DistributedCluster
 docc_warnings=$(swift package generate-documentation --target $module)
 
 if [[ $(echo "$docc_warnings" | grep 'warning:' | wc -l) -gt 0 ]];

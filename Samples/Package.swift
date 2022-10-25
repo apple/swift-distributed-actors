@@ -20,7 +20,7 @@ var targets: [PackageDescription.Target] = [
     .executableTarget(
         name: "SampleDiningPhilosophers",
         dependencies: [
-            .product(name: "DistributedActors", package: "swift-distributed-actors"),
+            .product(name: "DistributedCluster", package: "swift-distributed-actors"),
         ],
         path: "Sources/SampleDiningPhilosophers",
         exclude: [

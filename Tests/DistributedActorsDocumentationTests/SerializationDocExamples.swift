@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 // tag::serialize_manifest_any[]
-import DistributedActors
+import DistributedCluster
 import Foundation
 import NIO
 import NIOFoundationCompat

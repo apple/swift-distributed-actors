@@ -14,7 +14,7 @@
 
 import ArgumentParser
 import Dispatch
-import DistributedActors
+import DistributedCluster
 import struct Foundation.Date
 import class Foundation.FileHandle
 import class Foundation.ProcessInfo

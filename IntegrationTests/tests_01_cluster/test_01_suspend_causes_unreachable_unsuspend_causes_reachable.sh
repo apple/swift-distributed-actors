@@ -44,7 +44,7 @@ echo 'Second member seen .up, good...'
 kill -SIGSTOP ${second_pid}
 jobs
 
-wait_log_exists ${first_logs} 'Event: reachabilityChange(DistributedActors.Cluster.ReachabilityChange.*127.0.0.1:8228, status: up, reachability: unreachable' 50
+wait_log_exists ${first_logs} 'Event: reachabilityChange(DistributedCluster.Cluster.ReachabilityChange.*127.0.0.1:8228, status: up, reachability: unreachable' 50
 echo 'Second member seen .unreachable, good...'
 
 # resume it in the background
@@ -52,7 +52,7 @@ kill -SIGCONT ${second_pid}
 
 # it should become reachable again
 declare -r expected_second_member_unreachable=
-wait_log_exists ${first_logs} 'Event: reachabilityChange(DistributedActors.Cluster.ReachabilityChange.*127.0.0.1:8228, status: up, reachability: reachable' 50
+wait_log_exists ${first_logs} 'Event: reachabilityChange(DistributedCluster.Cluster.ReachabilityChange.*127.0.0.1:8228, status: up, reachability: reachable' 50
 echo 'Second member seen .unreachable, good...'
 
 

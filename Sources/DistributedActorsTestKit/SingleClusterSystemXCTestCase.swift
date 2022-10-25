@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-@testable import DistributedActors
 import DistributedActorsConcurrencyHelpers
+@testable import DistributedCluster
 import Foundation
 import NIO
 import XCTest

@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import ArgumentParser
-import DistributedActors
+import DistributedCluster
 import Foundation
 import Logging
 import MultiNodeTestKit

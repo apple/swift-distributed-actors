@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-@testable import DistributedActors
 @testable import DistributedActorsTestKit
+@testable import DistributedCluster
 import Foundation
 import XCTest
 

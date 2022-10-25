@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import DistributedActors
+import DistributedCluster
 
 var args = CommandLine.arguments
 args.removeFirst()

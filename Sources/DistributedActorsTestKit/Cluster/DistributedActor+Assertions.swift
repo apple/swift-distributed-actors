@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import Distributed
-import DistributedActors
+import DistributedCluster
 import XCTest
 
 public nonisolated func assertRemoteActor<DA: DistributedActor>(_ actor: DA) throws {
