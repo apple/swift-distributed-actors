@@ -45,15 +45,14 @@ extension TimeSpec {
     @usableFromInline
     internal static func + (a: timespec, b: timespec) -> timespec {
         let totalNanos = a.toNanos() + b.toNanos()
-        let seconds = totalNanos / NANOS
         var result = timespec()
-        result.tv_sec = seconds
-        result.tv_nsec = totalNanos % NANOS
+        result.tv_sec = Int(totalNanos / Int64(NANOS))
+        result.tv_nsec = Int(totalNanos % Int64(NANOS))
         return result
     }
 
     @usableFromInline
-    internal func toNanos() -> Int {
-        self.tv_nsec + (self.tv_sec * NANOS)
+    internal func toNanos() -> Int64 {
+        Int64(self.tv_nsec) + (Int64(self.tv_sec) * Int64(NANOS))
     }
 }
