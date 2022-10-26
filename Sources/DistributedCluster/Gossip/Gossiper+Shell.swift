@@ -289,7 +289,7 @@ extension GossipShell {
 
         case .onClusterMember(let atLeastStatus, let resolvePeerOn):
             func resolveInsertPeer(_ context: _ActorContext<Message>, member: Cluster.Member) {
-                guard member.uniqueNode != context.system.cluster.uniqueNode else {
+                guard member.node != context.system.cluster.node else {
                     return // ignore self node
                 }
 

@@ -62,7 +62,7 @@ extension ClusterSystem {
     public func personalDeadLetters<Message: Codable>(type: Message.Type = Message.self, recipient: ActorID) -> _ActorRef<Message> {
         // TODO: rather could we send messages to self._deadLetters with enough info so it handles properly?
 
-        guard recipient.uniqueNode == self.settings.uniqueBindNode else {
+        guard recipient.node == self.settings.bindNode else {
             /// While it should not realistically happen that a dead letter is obtained for a remote reference,
             /// we do allow for construction of such ref. It can be used to signify a ref is known to resolve to
             /// a known to be down cluster node.
@@ -75,10 +75,10 @@ extension ClusterSystem {
         let localRecipient: ActorID
         if recipient.path.segments.first == ActorPath._dead.segments.first {
             // drop the node from the address; and we know the pointed at ref is already dead; do not prefix it again
-            localRecipient = ActorID(local: self.settings.uniqueBindNode, path: recipient.path, incarnation: recipient.incarnation)
+            localRecipient = ActorID(local: self.settings.bindNode, path: recipient.path, incarnation: recipient.incarnation)
         } else {
             // drop the node from the address; and prepend it as known-to-be-dead
-            localRecipient = ActorID(local: self.settings.uniqueBindNode, path: ActorPath._dead.appending(segments: recipient.segments), incarnation: recipient.incarnation)
+            localRecipient = ActorID(local: self.settings.bindNode, path: ActorPath._dead.appending(segments: recipient.segments), incarnation: recipient.incarnation)
         }
         return _ActorRef(.deadLetters(.init(self.log, id: localRecipient, system: self))).adapt(from: Message.self)
     }
@@ -184,7 +184,7 @@ public final class DeadLetterOffice {
 
         let recipientString: String
         if let recipient = deadLetter.recipient {
-            let deadID: ActorID = .init(remote: recipient.uniqueNode, path: recipient.path, incarnation: recipient.incarnation)
+            let deadID: ActorID = .init(remote: recipient.node, path: recipient.path, incarnation: recipient.incarnation)
 
             // should not really happen, as the only way to get a remote ref is to resolve it, and a remote resolve always yields a remote ref
             // thus, it is impossible to resolve a remote address into a dead ref; however keeping this path in case we manually make such mistake

@@ -25,7 +25,7 @@ final class DeadLetterTests: SingleClusterSystemXCTestCase {
     func test_deadLetters_logWithSourcePosition() throws {
         let log = self.logCapture.logger(label: "/dead/letters")
 
-        let id = try ActorID(local: self.system.cluster.uniqueNode, path: ActorPath._user.appending("someone"), incarnation: .random())
+        let id = try ActorID(local: self.system.cluster.node, path: ActorPath._user.appending("someone"), incarnation: .random())
         let office = DeadLetterOffice(log, id: id, system: system)
 
         office.deliver("Hello")
@@ -89,7 +89,7 @@ final class DeadLetterTests: SingleClusterSystemXCTestCase {
         let remote = await setUpNode("remote") { settings in
             settings.enabled = true
         }
-        local.cluster.join(node: remote.cluster.uniqueNode)
+        local.cluster.join(endpoint: remote.cluster.endpoint)
 
         var greeter: Greeter? = Greeter(actorSystem: local)
         let greeterID = greeter!.id

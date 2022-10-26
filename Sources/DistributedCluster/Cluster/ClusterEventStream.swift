@@ -128,7 +128,7 @@ internal distributed actor ClusterEventStreamActor: LifecycleWatch {
 
     static var props: _Props {
         var ps = _Props()
-        ps._knownActorName = "clustEventStream"
+        ps._knownActorName = "clusterEventStream"
         ps._systemActor = true
         ps._wellKnown = true
         return ps

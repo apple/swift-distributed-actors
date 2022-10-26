@@ -211,10 +211,10 @@ extension LifecycleWatchContainer {
     ///
     /// Does NOT immediately handle these `Terminated` signals, they are treated as any other normal signal would,
     /// such that the user can have a chance to handle and react to them.
-    private func receiveNodeTerminated(_ terminatedNode: UniqueNode) {
+    private func receiveNodeTerminated(_ terminatedNode: Cluster.Node) {
         // TODO: remove actors as we notify about them
         for (watched, _) in self.watching {
-            guard watched.uniqueNode == terminatedNode else {
+            guard watched.node == terminatedNode else {
                 continue
             }
 
@@ -246,7 +246,7 @@ extension LifecycleWatchContainer {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: Node termination
+    // MARK: Cluster.Node termination
 
     private func subscribeNodeTerminatedEvents(
         watchedID: ActorID,
@@ -254,15 +254,15 @@ extension LifecycleWatchContainer {
     ) {
         self.nodeDeathWatcher?.tell( // different actor
             .remoteDistributedActorWatched(
-                remoteNode: watchedID.uniqueNode,
+                remoteNode: watchedID.node,
                 watcherID: self.watcherID,
-                nodeTerminated: { [weak self, weak system] uniqueNode in
+                nodeTerminated: { [weak self, weak system] node in
                     guard let self else {
                         return
                     }
 
                     Task {
-                        self.receiveNodeTerminated(uniqueNode)
+                        self.receiveNodeTerminated(node)
                     }
 
                     guard let system = system else {
@@ -270,7 +270,7 @@ extension LifecycleWatchContainer {
                     }
 
                     let myselfRef = system._resolveUntyped(context: .init(id: self.watcherID, system: system))
-                    myselfRef._sendSystemMessage(.nodeTerminated(uniqueNode), file: file, line: line)
+                    myselfRef._sendSystemMessage(.nodeTerminated(node), file: file, line: line)
                 }
             )
         )

@@ -69,7 +69,7 @@ internal enum _SystemMessage: Equatable {
     /// Node has terminated, and all actors of this node shall be considered as terminated.
     /// This system message does _not_ have a direct counter part as `Signal`, and instead results in the sending of multiple
     /// `Signals.Terminated` messages, for every watched actor which was residing on the (now terminated) node.
-    case nodeTerminated(UniqueNode) // TODO: more additional info?
+    case nodeTerminated(Cluster.Node) // TODO: more additional info?
 
     /// Sent by parent to child actor to stop it
     case stop

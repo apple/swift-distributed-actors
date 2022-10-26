@@ -168,18 +168,18 @@ extension SWIM.PingResponse: _ProtobufRepresentable {
 }
 
 extension ClusterMembership.Node: _ProtobufRepresentable {
-    public typealias ProtobufRepresentation = _ProtoUniqueNode
+    public typealias ProtobufRepresentation = _ProtoClusterNode
 
     public func toProto(context: Serialization.Context) throws -> ProtobufRepresentation {
         var proto = ProtobufRepresentation()
-        var protoNode = _ProtoNode()
-        protoNode.protocol = self.protocol
+        var protoEndpoint = _ProtoClusterEndpoint()
+        protoEndpoint.protocol = self.protocol
         if let name = self.name {
-            protoNode.system = name
+            protoEndpoint.system = name
         }
-        protoNode.hostname = self.host
-        protoNode.port = UInt32(self.port)
-        proto.node = protoNode
+        protoEndpoint.hostname = self.host
+        protoEndpoint.port = UInt32(self.port)
+        proto.endpoint = protoEndpoint
         if let uid = self.uid {
             proto.nid = uid
         }
@@ -187,10 +187,10 @@ extension ClusterMembership.Node: _ProtobufRepresentable {
     }
 
     public init(fromProto proto: ProtobufRepresentation, context: Serialization.Context) throws {
-        guard proto.hasNode else {
-            throw SerializationError(.missingField("node", type: String(describing: Node.self)))
+        guard proto.hasEndpoint else {
+            throw SerializationError(.missingField("endpoint", type: String(describing: Cluster.Endpoint.self)))
         }
-        let protoNode: _ProtoNode = proto.node
+        let protoNode: _ProtoClusterEndpoint = proto.endpoint
         let `protocol` = protoNode.protocol
         let name: String?
         if protoNode.protocol != "" {

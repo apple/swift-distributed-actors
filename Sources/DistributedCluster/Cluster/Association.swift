@@ -28,7 +28,7 @@ import NIO
 ///
 /// All interactions with a remote node MUST be driven through an association.
 /// This is important for example if a remote node is terminated, and another node is brought up on the exact same network `Node` --
-/// thus the need to keep a `UniqueNode` of both "sides" of an association -- we want to inform a remote node about our identity,
+/// thus the need to keep a `Cluster.Node` of both "sides" of an association -- we want to inform a remote node about our identity,
 /// and want to confirm if the remote sending side of an association remains the "same exact node", or if it is a new instance on the same address.
 ///
 /// A completed ("associated") `Association` can ONLY be obtained by successfully completing a `HandshakeStateMachine` dance,
@@ -53,10 +53,10 @@ final class Association: CustomStringConvertible, @unchecked Sendable {
 
     /// The address of this node, that was offered to the remote side for this association
     /// This matters in case we have multiple "self" addresses; e.g. we bind to one address, but expose another because NAT
-    let selfNode: UniqueNode
-    var remoteNode: UniqueNode
+    let selfNode: Cluster.Node
+    var remoteNode: Cluster.Node
 
-    init(selfNode: UniqueNode, remoteNode: UniqueNode) {
+    init(selfNode: Cluster.Node, remoteNode: Cluster.Node) {
         self.selfNode = selfNode
         self.remoteNode = remoteNode
         self.lock = Lock()
@@ -246,20 +246,20 @@ extension Association {
     /// Tombstones are slightly lighter than a real association, and are kept for a maximum of `settings.associationTombstoneTTL` TODO: make this setting (!!!)
     /// before being cleaned up.
     struct Tombstone: Hashable {
-        let remoteNode: UniqueNode
+        let remoteNode: Cluster.Node
 
         /// Determines when the Tombstone should be removed from kept tombstones in the ClusterShell.
         /// End of life of the tombstone is calculated as `now + settings.associationTombstoneTTL`.
         let removalDeadline: ContinuousClock.Instant
 
-        init(_ node: UniqueNode, settings: ClusterSystemSettings) {
+        init(_ node: Cluster.Node, settings: ClusterSystemSettings) {
             // TODO: if we made system carry system.time we could always count from that point in time with a TimeAmount; require Clock and settings then
             self.removalDeadline = .fromNow(settings.associationTombstoneTTL)
             self.remoteNode = node
         }
 
         /// Used to create "any" tombstone, for being able to lookup in Set<TombstoneSet>
-        init(_ node: UniqueNode) {
+        init(_ node: Cluster.Node) {
             self.removalDeadline = .now // ANY value here is ok, we do not use it in hash/equals
             self.remoteNode = node
         }

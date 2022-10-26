@@ -20,7 +20,7 @@ final class VersionVectorTests: XCTestCase {
     private typealias VV = VersionVector
     private typealias V = VersionVector.Version
 
-    let node: UniqueNode = .init(protocol: "sact", systemName: "Test", host: "127.0.0.1", port: 7337, nid: .random())
+    let node = Cluster.Node(systemName: "Test", host: "127.0.0.1", port: 7337, nid: .random())
     lazy var replicaA = ReplicaID.actorID(try! ActorPath._user.appending("A").makeLocalID(on: node, incarnation: .random()))
     lazy var replicaB = ReplicaID.actorID(try! ActorPath._user.appending("B").makeLocalID(on: node, incarnation: .random()))
     lazy var replicaC = ReplicaID.actorID(try! ActorPath._user.appending("C").makeLocalID(on: node, incarnation: .random()))

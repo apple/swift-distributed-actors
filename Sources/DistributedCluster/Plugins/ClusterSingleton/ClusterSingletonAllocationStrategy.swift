@@ -15,15 +15,15 @@
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Protocol for singleton allocation strategy
 
-/// Strategy for choosing a `UniqueNode` to allocate singleton.
+/// Strategy for choosing a `Cluster.Node` to allocate singleton.
 public protocol ClusterSingletonAllocationStrategy {
     /// Receives and handles the `Cluster.Event`.
     ///
     /// - Returns: The current `node` after processing `clusterEvent`.
-    func onClusterEvent(_ clusterEvent: Cluster.Event) async -> UniqueNode?
+    func onClusterEvent(_ clusterEvent: Cluster.Event) async -> Cluster.Node?
 
     /// The currently allocated `node` for the singleton.
-    var node: UniqueNode? { get async }
+    var node: Cluster.Node? { get async }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -31,25 +31,25 @@ public protocol ClusterSingletonAllocationStrategy {
 
 /// An `AllocationStrategy` in which selection is based on cluster leadership.
 public final class ClusterSingletonAllocationByLeadership: ClusterSingletonAllocationStrategy {
-    var _node: UniqueNode?
+    var _node: Cluster.Node?
 
     public init(settings: ClusterSingletonSettings, actorSystem: ClusterSystem) {
         // not used...
     }
 
-    public func onClusterEvent(_ clusterEvent: Cluster.Event) async -> UniqueNode? {
+    public func onClusterEvent(_ clusterEvent: Cluster.Event) async -> Cluster.Node? {
         switch clusterEvent {
         case .leadershipChange(let change):
-            self._node = change.newLeader?.uniqueNode
+            self._node = change.newLeader?.node
         case .snapshot(let membership):
-            self._node = membership.leader?.uniqueNode
+            self._node = membership.leader?.node
         default:
             () // ignore other events
         }
         return self._node
     }
 
-    public var node: UniqueNode? {
+    public var node: Cluster.Node? {
         get async {
             self._node
         }

@@ -34,7 +34,7 @@ public struct DowningStrategySettings {
         case .none:
             return nil
         case .timeout(let settings):
-            return TimeoutBasedDowningStrategy(settings, selfNode: clusterSystemSettings.uniqueBindNode)
+            return TimeoutBasedDowningStrategy(settings, selfNode: clusterSystemSettings.bindNode)
         }
     }
 

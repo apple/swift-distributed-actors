@@ -21,9 +21,9 @@ import XCTest
 final class GossipSeenTableTests: XCTestCase {
     typealias SeenTable = Cluster.MembershipGossip.SeenTable
 
-    var nodeA: UniqueNode!
-    var nodeB: UniqueNode!
-    var nodeC: UniqueNode!
+    var nodeA: Cluster.Node!
+    var nodeB: Cluster.Node!
+    var nodeC: Cluster.Node!
 
     lazy var allNodes = [
         self.nodeA!, self.nodeB!, self.nodeC!,
@@ -31,9 +31,9 @@ final class GossipSeenTableTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
-        self.nodeA = UniqueNode(protocol: "sact", systemName: "firstA", host: "127.0.0.1", port: 7111, nid: .random())
-        self.nodeB = UniqueNode(protocol: "sact", systemName: "secondB", host: "127.0.0.1", port: 7222, nid: .random())
-        self.nodeC = UniqueNode(protocol: "sact", systemName: "thirdC", host: "127.0.0.1", port: 7333, nid: .random())
+        self.nodeA = Cluster.Node(systemName: "firstA", host: "127.0.0.1", port: 7111, nid: .random())
+        self.nodeB = Cluster.Node(systemName: "secondB", host: "127.0.0.1", port: 7222, nid: .random())
+        self.nodeC = Cluster.Node(systemName: "thirdC", host: "127.0.0.1", port: 7333, nid: .random())
     }
 
     func test_seenTable_compare_concurrent_eachOtherDontKnown() {

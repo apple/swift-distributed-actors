@@ -30,8 +30,8 @@ class ClusterDocExamples: XCTestCase {
             // system will bind by default on `localhost:7337`
         }
 
-        let otherNode = Node(systemName: "ClusterJoining", host: "localhost", port: 8228)
-        system.cluster.join(node: otherNode) // <2>
+        let otherNode = Endpoint(systemName: "ClusterJoining", host: "localhost", port: 8228)
+        system.cluster.join(endpoint: otherNode) // <2>
 
         // end::joining[]
     }
@@ -39,7 +39,7 @@ class ClusterDocExamples: XCTestCase {
     func example_discovery_joining_seedNodes() {
         class SomeSpecificServiceDiscovery: ServiceDiscovery {
             typealias Service = String
-            typealias Instance = Node
+            typealias Instance = Endpoint
 
             private(set) var defaultLookupTimeout: DispatchTimeInterval = .seconds(3)
 
@@ -87,8 +87,8 @@ class ClusterDocExamples: XCTestCase {
             settings.discovery = ServiceDiscoverySettings(
                 SomeGenericServiceDiscovery( /* configuration */ ), // <1>
                 service: "my-service",
-                mapInstanceToNode: { (instance: SomeGenericServiceDiscovery.Instance) -> Node in // <2>
-                    Node(systemName: "", host: instance.host, port: instance.port)
+                mapInstanceToNode: { (instance: SomeGenericServiceDiscovery.Instance) -> Endpoint in // <2>
+                    Endpoint(systemName: "", host: instance.host, port: instance.port)
                 }
             )
         }

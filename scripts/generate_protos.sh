@@ -68,7 +68,7 @@ done
 popd >> /dev/null
 
 declare -a internal_proto_paths
-internal_proto_paths=( "$root_path/Sources/DistributedActorsBenchmarks/BenchmarkProtos" "$root_path/Tests/DistributedActorsDocumentationTests/DocumentationProtos" )
+internal_proto_paths=( "$root_path/Tests/DistributedActorsDocumentationTests/DocumentationProtos" )
 
 for internal_proto_path in "${internal_proto_paths[@]}"; do
   (

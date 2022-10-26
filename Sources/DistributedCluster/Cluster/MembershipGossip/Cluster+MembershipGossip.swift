@@ -20,7 +20,7 @@ extension Cluster {
     ///
     /// Used to guarantee phrases like "all nodes have seen a node A in status S", upon which the Leader may act.
     struct MembershipGossip: Codable, Equatable {
-        let owner: UniqueNode
+        let owner: Cluster.Node
         /// A table maintaining our perception of other nodes views on the version of membership.
         /// Each row in the table represents what versionVector we know the given node has observed recently.
         /// It may have in the mean time of course observed a new version already.
@@ -36,9 +36,9 @@ extension Cluster {
         /// IMPORTANT: Whenever the membership is updated with an effective change, we MUST move the version forward (!)
         var membership: Cluster.Membership
 
-        init(ownerNode: UniqueNode) {
+        init(ownerNode: Cluster.Node) {
             self.owner = ownerNode
-            // self.seen = Cluster.Gossip.SeenTable(myselfNode: ownerNode, version: VersionVector((.uniqueNode(ownerNode), 1)))
+            // self.seen = Cluster.Gossip.SeenTable(myselfNode: ownerNode, version: VersionVector((.node(ownerNode), 1)))
             self.seen = Cluster.MembershipGossip.SeenTable(myselfNode: ownerNode, version: VersionVector())
 
             // The actual payload
@@ -83,7 +83,7 @@ extension Cluster {
             // 1.2) Protect from zombies: Any nodes that we know are dead or down, we should not accept any information from
             let incomingConcurrentDownMembers = incoming.membership.members(atLeast: .down)
             for pruneFromIncomingBeforeMerge in incomingConcurrentDownMembers
-                where self.membership.uniqueMember(pruneFromIncomingBeforeMerge.uniqueNode) == nil
+                where self.membership.uniqueMember(pruneFromIncomingBeforeMerge.node) == nil
             {
                 _ = incoming.pruneMember(pruneFromIncomingBeforeMerge)
             }
@@ -105,9 +105,9 @@ extension Cluster {
 
             // 3) if any removals happened, we need to prune the removed nodes from the seen table
             for change in changes
-                where change.status.isRemoved && change.member.uniqueNode != self.owner
+                where change.status.isRemoved && change.member.node != self.owner
             {
-                self.seen.prune(change.member.uniqueNode)
+                self.seen.prune(change.member.node)
             }
 
             return .init(causalRelation: causalRelation, effectiveChanges: changes)
@@ -115,8 +115,8 @@ extension Cluster {
 
         /// Remove member from `membership` and prune the seen tables of any trace of the removed node.
         mutating func pruneMember(_ member: Member) -> Cluster.MembershipChange? {
-            self.seen.prune(member.uniqueNode) // always prune is okey
-            let change = self.membership.removeCompletely(member.uniqueNode)
+            self.seen.prune(member.node) // always prune is okey
+            let change = self.membership.removeCompletely(member.node)
             return change
         }
 
@@ -144,7 +144,7 @@ extension Cluster {
             }
 
             let laggingBehindMemberFound = members.contains { member in
-                if let memberSeenVersion = self.seen.version(at: member.uniqueNode) {
+                if let memberSeenVersion = self.seen.version(at: member.node) {
                     switch memberSeenVersion.compareTo(requiredVersion) {
                     case .happenedBefore, .concurrent:
                         return true // found an offending member, it is lagging behind, thus no convergence
@@ -183,17 +183,17 @@ extension Cluster.MembershipGossip {
     /// - node C (we think): has never seen any gossip from either A or B, realistically though it likely has,
     ///   however it has not yet sent a gossip to "us" such that we could have gotten its updated version vector.
     struct SeenTable: Equatable {
-        var underlying: [UniqueNode: VersionVector]
+        var underlying: [Cluster.Node: VersionVector]
 
         init() {
             self.underlying = [:]
         }
 
-        init(myselfNode: UniqueNode, version: VersionVector) {
+        init(myselfNode: Cluster.Node, version: VersionVector) {
             self.underlying = [myselfNode: version]
         }
 
-        var nodes: Dictionary<UniqueNode, VersionVector>.Keys {
+        var nodes: Dictionary<Cluster.Node, VersionVector>.Keys {
             self.underlying.keys
         }
 
@@ -202,7 +202,7 @@ extension Cluster.MembershipGossip {
         /// - Returns: The `node`'s version's relationship to the latest version.
         ///   E.g. `.happenedBefore` if the latest version is known to be more "recent" than the node's observed version.
         /// - SeeAlso: The definition of `VersionVector.CausalRelation` for detailed discussion of all possible relations.
-        func compareVersion(observedOn owner: UniqueNode, to incomingVersion: VersionVector) -> VersionVector.CausalRelation {
+        func compareVersion(observedOn owner: Cluster.Node, to incomingVersion: VersionVector) -> VersionVector.CausalRelation {
             /// We know that the node has seen _at least_ the membership at `nodeVersion`.
             (self.underlying[owner] ?? VersionVector()).compareTo(incomingVersion)
         }
@@ -212,7 +212,7 @@ extension Cluster.MembershipGossip {
         ///
         /// In other words, we gained information and our membership has "moved forward".
         ///
-        mutating func merge(selfOwner: UniqueNode, incoming: SeenTable) {
+        mutating func merge(selfOwner: Cluster.Node, incoming: SeenTable) {
             var ownerVersion = self.version(at: selfOwner) ?? VersionVector()
 
             for incomingNode in incoming.nodes {
@@ -226,7 +226,7 @@ extension Cluster.MembershipGossip {
             self.underlying[selfOwner] = ownerVersion
         }
 
-        // TODO: func haveNotYetSeen(version: VersionVector): [UniqueNode]
+        // TODO: func haveNotYetSeen(version: VersionVector): [Cluster.Node]
 
         /// Increments a specific ReplicaVersion, in the view owned by the `owner`.
         ///
@@ -240,14 +240,14 @@ extension Cluster.MembershipGossip {
         /// To obtain `A | A:2, B:10`, after which we know that our view is "ahead or concurrent" because of the difference
         /// in the A field, meaning we need to gossip with B to converge those two version vectors.
         @discardableResult
-        mutating func incrementVersion(owner: UniqueNode, at node: UniqueNode) -> VersionVector {
+        mutating func incrementVersion(owner: Cluster.Node, at node: Cluster.Node) -> VersionVector {
             if var version = self.underlying[owner] {
-                version.increment(at: .uniqueNode(node))
+                version.increment(at: .node(node))
                 self.underlying[owner] = version
                 return version
             } else {
                 // we treat incrementing from "nothing" as creating a new entry
-                let version = VersionVector((.uniqueNode(node), 1))
+                let version = VersionVector((.node(node), 1))
                 self.underlying[owner] = version
                 return version
             }
@@ -256,7 +256,7 @@ extension Cluster.MembershipGossip {
         /// View a version vector at a specific node.
         /// This "view" represents "our" latest information about what we know that node has observed.
         /// This information may (and most likely is) outdated as the nodes continue to gossip to one another.
-        func version(at node: UniqueNode) -> VersionVector? {
+        func version(at node: Cluster.Node) -> VersionVector? {
             self.underlying[node]
         }
 
@@ -267,9 +267,9 @@ extension Cluster.MembershipGossip {
         /// Performing this operation should be done with great care, as it means that if "the same exact node" were
         /// to "come back" it would be indistinguishable from being a new node. Measures to avoid this from happening
         /// must be taken on the cluster layer, by using and checking for tombstones. // TODO: make a nasty test for this, a simple one we got; See MembershipGossipSeenTableTests
-        mutating func prune(_ nodeToPrune: UniqueNode) {
+        mutating func prune(_ nodeToPrune: Cluster.Node) {
             _ = self.underlying.removeValue(forKey: nodeToPrune)
-            let replicaToPrune: ReplicaID = .uniqueNode(nodeToPrune)
+            let replicaToPrune: ReplicaID = .node(nodeToPrune)
 
             for (key, version) in self.underlying where version.contains(replicaToPrune, 0) {
                 self.underlying[key] = version.pruneReplica(replicaToPrune)

@@ -135,7 +135,7 @@ extension ClusterSystem {
         internal var _location: ActorLocation
 
         /// The unique node on which the actor identified by this identity is located.
-        public var uniqueNode: UniqueNode {
+        public var node: Cluster.Node {
             switch self._location {
             case .local(let node): return node
             case .remote(let node): return node
@@ -182,7 +182,7 @@ extension ClusterSystem {
         public let incarnation: ActorIncarnation
 
         // TODO(distributed): remove this initializer, as it is only for Behavior actors
-        init(local node: UniqueNode, path: ActorPath?, incarnation: ActorIncarnation) {
+        init(local node: Cluster.Node, path: ActorPath?, incarnation: ActorIncarnation) {
             self.context = .init(lifecycle: nil, remoteCallInterceptor: nil)
             self._location = .local(node)
             self.incarnation = incarnation
@@ -193,7 +193,7 @@ extension ClusterSystem {
         }
 
         // TODO(distributed): remove this initializer, as it is only for Behavior actors
-        init(remote node: UniqueNode, path: ActorPath?, incarnation: ActorIncarnation) {
+        init(remote node: Cluster.Node, path: ActorPath?, incarnation: ActorIncarnation) {
             self.context = .init(lifecycle: nil, remoteCallInterceptor: nil)
             self._location = .remote(node)
             self.incarnation = incarnation
@@ -203,7 +203,7 @@ extension ClusterSystem {
             traceLog_DeathWatch("Made ID: \(self)")
         }
 
-        public init<Act>(remote node: UniqueNode, type: Act.Type, incarnation: ActorIncarnation)
+        public init<Act>(remote node: Cluster.Node, type: Act.Type, incarnation: ActorIncarnation)
             where Act: DistributedActor, Act.ActorSystem == ClusterSystem
         {
             self.context = .init(lifecycle: nil, remoteCallInterceptor: nil)
@@ -215,7 +215,7 @@ extension ClusterSystem {
             traceLog_DeathWatch("Made ID: \(self)")
         }
 
-        init<Act>(local node: UniqueNode, type: Act.Type, incarnation: ActorIncarnation,
+        init<Act>(local node: Cluster.Node, type: Act.Type, incarnation: ActorIncarnation,
                   context: DistributedActorContext)
             where Act: DistributedActor, Act.ActorSystem == ClusterSystem
         {
@@ -228,7 +228,7 @@ extension ClusterSystem {
             traceLog_DeathWatch("Made ID: \(self)")
         }
 
-        init<Act>(remote node: UniqueNode, type: Act.Type, incarnation: ActorIncarnation,
+        init<Act>(remote node: Cluster.Node, type: Act.Type, incarnation: ActorIncarnation,
                   context: DistributedActorContext)
             where Act: DistributedActor, Act.ActorSystem == ClusterSystem
         {
@@ -288,7 +288,7 @@ extension ActorID: Hashable {
                 // If we're comparing "well known" actors, we ignore the concrete incarnation,
                 // and compare the well known name instead. This works for example for "$receptionist"
                 // and other well known names, that can be resolved using them, without an incarnation number.
-                if lhsWellKnownName == rhsWellKnownName, lhs.uniqueNode == rhs.uniqueNode {
+                if lhsWellKnownName == rhsWellKnownName, lhs.node == rhs.node {
                     return true
                 }
             } else {
@@ -304,7 +304,7 @@ extension ActorID: Hashable {
         // if they happen to be equal, we don't know yet for sure if it's the same actor or not,
         // as incarnation is just a random ID thus we need to compare the node and path as well
         return lhs.incarnation == rhs.incarnation &&
-            lhs.uniqueNode == rhs.uniqueNode &&
+            lhs.node == rhs.node &&
             lhs.path == rhs.path
     }
 
@@ -314,7 +314,7 @@ extension ActorID: Hashable {
         } else {
             hasher.combine(self.incarnation)
         }
-        hasher.combine(self.uniqueNode)
+        hasher.combine(self.node)
         hasher.combine(self.path)
     }
 }
@@ -323,7 +323,7 @@ extension ActorID: CustomStringConvertible {
     public var description: String {
         var res = ""
         if self._isRemote {
-            res += "\(self.uniqueNode)"
+            res += "\(self.node)"
         }
 
         if let wellKnown = self.metadata.wellKnown {
@@ -352,7 +352,7 @@ extension ActorID: CustomStringConvertible {
     public var detailedDescription: String {
         var res = ""
         if self._isRemote {
-            res += "\(reflecting: self.uniqueNode)"
+            res += "\(reflecting: self.node)"
         }
         res += "\(self.path)"
 
@@ -370,7 +370,7 @@ extension ActorID: CustomStringConvertible {
     /// Prints all information contained in the ID, including `incarnation` and all `metadata`.
     public var fullDescription: String {
         var res = ""
-        res += "\(reflecting: self.uniqueNode)"
+        res += "\(reflecting: self.node)"
         res += "\(self.path)"
         res += "#\(self.incarnation.value)"
 
@@ -389,12 +389,12 @@ extension ActorID: CustomStringConvertible {
 extension ActorID {
     /// Local root (also known as: "/") actor address.
     /// Only to be used by the "/" root "actor"
-    static func _localRoot(on node: UniqueNode) -> ActorID {
+    static func _localRoot(on node: Cluster.Node) -> ActorID {
         ActorPath._root.makeLocalID(on: node, incarnation: .wellKnown)
     }
 
     /// Local dead letters address.
-    static func _deadLetters(on node: UniqueNode) -> ActorID {
+    static func _deadLetters(on node: Cluster.Node) -> ActorID {
         ActorPath._deadLetters.makeLocalID(on: node, incarnation: .wellKnown)
     }
 }
@@ -413,13 +413,13 @@ extension ActorID {
 
     public var _asRemote: Self {
         var remote = self
-        remote._location = .remote(remote.uniqueNode)
+        remote._location = .remote(remote.node)
         return remote
     }
 
     public var _asLocal: Self {
         var local = self
-        local._location = .local(self.uniqueNode)
+        local._location = .local(self.node)
         return local
     }
 }
@@ -452,14 +452,14 @@ extension ActorID: _PathRelationships {
 /// Offers arbitrary ordering for predictable ordered printing of things keyed by addresses.
 extension ActorID: Comparable {
     public static func < (lhs: ActorID, rhs: ActorID) -> Bool {
-        lhs.uniqueNode < rhs.uniqueNode ||
-            (lhs.uniqueNode == rhs.uniqueNode && lhs.path < rhs.path) ||
-            (lhs.uniqueNode == rhs.uniqueNode && lhs.path == rhs.path && lhs.incarnation < rhs.incarnation)
+        lhs.node < rhs.node ||
+            (lhs.node == rhs.node && lhs.path < rhs.path) ||
+            (lhs.node == rhs.node && lhs.path == rhs.path && lhs.incarnation < rhs.incarnation)
     }
 }
 
-extension Optional: Comparable where Wrapped == UniqueNode {
-    public static func < (lhs: UniqueNode?, rhs: UniqueNode?) -> Bool {
+extension Optional: Comparable where Wrapped == Cluster.Node {
+    public static func < (lhs: Cluster.Node?, rhs: Cluster.Node?) -> Bool {
         switch (lhs, rhs) {
         case (.some, .none):
             return false
@@ -478,8 +478,8 @@ extension Optional: Comparable where Wrapped == UniqueNode {
 
 @usableFromInline
 internal enum ActorLocation: Hashable, Sendable {
-    case local(UniqueNode)
-    case remote(UniqueNode)
+    case local(Cluster.Node)
+    case remote(Cluster.Node)
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -577,11 +577,11 @@ extension ActorPath {
     public static let _user: ActorPath = try! ActorPath(root: "user")
     public static let _system: ActorPath = try! ActorPath(root: "system")
 
-    internal func makeLocalID(on node: UniqueNode, incarnation: ActorIncarnation) -> ActorID {
+    internal func makeLocalID(on node: Cluster.Node, incarnation: ActorIncarnation) -> ActorID {
         ActorID(local: node, path: self, incarnation: incarnation)
     }
 
-    internal func makeRemoteID(on node: UniqueNode, incarnation: ActorIncarnation) -> ActorID {
+    internal func makeRemoteID(on node: Cluster.Node, incarnation: ActorIncarnation) -> ActorID {
         ActorID(remote: node, path: self, incarnation: incarnation)
     }
 }
@@ -787,181 +787,6 @@ extension ActorIncarnation {
 extension ActorIncarnation: Comparable {
     public static func < (lhs: ActorIncarnation, rhs: ActorIncarnation) -> Bool {
         lhs.value < rhs.value
-    }
-}
-
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Node
-
-// TODO: Would want to rename; this is really protocol + host + port, and a "cute name for humans" we on purpose do not take the name as part or identity
-/// A `Node` is a triplet of protocol, host and port that a node is bound to.
-///
-/// Unlike `UniqueNode`, it does not carry identity (`NodeID`) of a specific incarnation of an actor system node,
-/// and represents an address of _any_ node that could live under this address. During the handshake process between two nodes,
-/// the remote `Node` that the local side started out to connect with is "upgraded" to a `UniqueNode`, as soon as we discover
-/// the remote side's unique node identifier (`NodeID`).
-///
-/// ### System name / human readable name
-/// The `systemName` is NOT taken into account when comparing nodes. The system name is only utilized for human readability
-/// and debugging purposes and participates neither in hashcode nor equality of a `Node`, as a node specifically is meant
-/// to represent any unique node that can live on specific host & port. System names are useful for human operators,
-/// intending to use some form of naming scheme, e.g. adopted from a cloud provider, to make it easier to map nodes in
-/// actor system logs, to other external systems. TODO: Note also node roles, which we do not have yet... those are dynamic key/value pairs paired to a unique node.
-///
-/// - SeeAlso: For more details on unique node ids, refer to: `UniqueNode`.
-public struct Node: Hashable, Sendable {
-    // TODO: collapse into one String and index into it?
-    public var `protocol`: String
-    public var systemName: String // TODO: some other name, to signify "this is just for humans"?
-    public var host: String
-    public var port: Int
-
-    public init(protocol: String, systemName: String, host: String, port: Int) {
-        precondition(port > 0, "port MUST be > 0")
-        self.protocol = `protocol`
-        self.systemName = systemName
-        self.host = host
-        self.port = port
-    }
-
-    public init(systemName: String, host: String, port: Int) {
-        self.init(protocol: "sact", systemName: systemName, host: host, port: port)
-    }
-
-    public init(host: String, port: Int) {
-        self.init(protocol: "sact", systemName: "", host: host, port: port)
-    }
-}
-
-extension Node: CustomStringConvertible, CustomDebugStringConvertible {
-    public var description: String {
-        "\(self.protocol)://\(self.systemName)@\(self.host):\(self.port)"
-    }
-
-    public var debugDescription: String {
-        self.description
-    }
-}
-
-extension Node: Comparable {
-    // Silly but good enough comparison for deciding "who is lower node"
-    // as we only use those for "tie-breakers" any ordering is fine to be honest here.
-    public static func < (lhs: Node, rhs: Node) -> Bool {
-        "\(lhs)" < "\(rhs)"
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(self.protocol)
-        hasher.combine(self.host)
-        hasher.combine(self.port)
-    }
-
-    public static func == (lhs: Node, rhs: Node) -> Bool {
-        lhs.protocol == rhs.protocol && lhs.host == rhs.host && lhs.port == rhs.port
-    }
-}
-
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: UniqueNode
-
-/// A _unique_ node which includes also the node's unique `UID` which is used to disambiguate
-/// multiple incarnations of a system on the same host/port part -- similar to how an `ActorIncarnation`
-/// is used on the per-actor level.
-///
-/// ### Implementation details
-/// The unique address of a remote node can only be obtained by performing the handshake with it.
-/// Once the remote node accepts our handshake, it offers the other node its unique address.
-/// Only once this address has been obtained can a node communicate with actors located on the remote node.
-public struct UniqueNode: Hashable, Sendable {
-    public typealias ID = UniqueNodeID
-
-    public var node: Node
-    public let nid: UniqueNodeID
-
-    public init(node: Node, nid: UniqueNodeID) {
-        precondition(node.port > 0, "port MUST be > 0")
-        self.node = node
-        self.nid = nid
-    }
-
-    public init(protocol: String, systemName: String, host: String, port: Int, nid: UniqueNodeID) {
-        self.init(node: Node(protocol: `protocol`, systemName: systemName, host: host, port: port), nid: nid)
-    }
-
-    public init(systemName: String, host: String, port: Int, nid: UniqueNodeID) {
-        self.init(protocol: "sact", systemName: systemName, host: host, port: port, nid: nid)
-    }
-
-    public var host: String {
-        set {
-            self.node.host = newValue
-        }
-        get {
-            self.node.host
-        }
-    }
-
-    public var port: Int {
-        set {
-            self.node.port = newValue
-        }
-        get {
-            self.node.port
-        }
-    }
-}
-
-extension UniqueNode: CustomStringConvertible, CustomDebugStringConvertible {
-    public var description: String {
-        "\(self.node)"
-    }
-
-    public var debugDescription: String {
-        let a = self.node
-        return "\(a.protocol)://\(a.systemName):\(self.nid)@\(a.host):\(a.port)"
-    }
-}
-
-extension UniqueNode: Comparable {
-    public static func == (lhs: UniqueNode, rhs: UniqueNode) -> Bool {
-        // we first compare the NodeIDs since they're quicker to compare and for diff systems always would differ, even if on same physical address
-        lhs.nid == rhs.nid && lhs.node == rhs.node
-    }
-
-    // Silly but good enough comparison for deciding "who is lower node"
-    // as we only use those for "tie-breakers" any ordering is fine to be honest here.
-    public static func < (lhs: UniqueNode, rhs: UniqueNode) -> Bool {
-        if lhs.node == rhs.node {
-            return lhs.nid < rhs.nid
-        } else {
-            return lhs.node < rhs.node
-        }
-    }
-}
-
-public struct UniqueNodeID: Hashable, Sendable {
-    let value: UInt64
-
-    public init(_ value: UInt64) {
-        self.value = value
-    }
-}
-
-extension UniqueNodeID: Comparable {
-    public static func < (lhs: UniqueNodeID, rhs: UniqueNodeID) -> Bool {
-        lhs.value < rhs.value
-    }
-}
-
-extension UniqueNodeID: CustomStringConvertible {
-    public var description: String {
-        "\(self.value)"
-    }
-}
-
-extension UniqueNodeID {
-    public static func random() -> UniqueNodeID {
-        UniqueNodeID(UInt64.random(in: 1 ... .max))
     }
 }
 

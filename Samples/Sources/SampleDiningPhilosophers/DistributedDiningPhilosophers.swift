@@ -35,9 +35,9 @@ final class DistributedDiningPhilosophers {
         print("~~~~~~~ started \(systems.count) actor systems ~~~~~~~")
 
         // TODO: Joining to be simplified by having "seed nodes" (that a node should join)
-        systemA.cluster.join(node: systemB.settings.node)
-        systemA.cluster.join(node: systemC.settings.node)
-        systemC.cluster.join(node: systemB.settings.node)
+        systemA.cluster.join(endpoint: systemB.settings.node)
+        systemA.cluster.join(endpoint: systemC.settings.node)
+        systemC.cluster.join(endpoint: systemB.settings.node)
 
         print("waiting for cluster to form...")
         try await self.ensureCluster(systems, within: .seconds(10))

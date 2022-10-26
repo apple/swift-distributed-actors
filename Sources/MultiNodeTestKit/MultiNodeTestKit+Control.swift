@@ -42,7 +42,7 @@ extension MultiNodeTest {
         /// this logger is the same as the actor system's default logger.
         public var log = Logger(label: "multi-node")
 
-        public var _allNodes: [String: Node] = [:]
+        public var _allEndpoints: [String: Cluster.Endpoint] = [:]
 
         public var _conductor: MultiNodeTestConductor?
         public var conductor: MultiNodeTestConductor {
@@ -53,17 +53,17 @@ extension MultiNodeTest {
             self.system.cluster
         }
 
-        public var allNodes: some Collection<Node> {
-            self._allNodes.values
+        public var allNodes: some Collection<Cluster.Endpoint> {
+            self._allEndpoints.values
         }
 
         public init(nodeName: String) {
             self.nodeName = nodeName
         }
 
-        public subscript(_ nid: Nodes) -> Node {
-            guard let node = self._allNodes[nid.rawValue] else {
-                fatalError("No node present for [\(nid.rawValue)], available: \(self._allNodes) (on \(self.system))")
+        public subscript(_ nid: Nodes) -> Cluster.Endpoint {
+            guard let node = self._allEndpoints[nid.rawValue] else {
+                fatalError("No node present for [\(nid.rawValue)], available: \(self._allEndpoints) (on \(self.system))")
             }
 
             return node
@@ -143,7 +143,7 @@ extension MultiNodeTest.Control {
 
         do {
             try await self.conductor.enterCheckPoint(
-                node: self.system.name, // FIXME: should be: self.system.cluster.uniqueNode,
+                node: self.system.name, // FIXME: should be: self.system.cluster.node,
                 checkPoint: checkPoint,
                 waitTime: waitTime ?? .seconds(30)
             )

@@ -203,7 +203,7 @@ func traceLog_Serialization(_ message: @autoclosure () -> String, file: String =
 }
 
 /// INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
-func traceLog_Remote(_ node: UniqueNode, _ message: @autoclosure () -> String, file: String = #fileID, line: UInt = #line) {
+func traceLog_Remote(_ node: Cluster.Node, _ message: @autoclosure () -> String, file: String = #fileID, line: UInt = #line) {
     #if SACT_TRACE_REMOTE
     pprint("SACT_TRACE_REMOTE [\(node)]: \(message())", file: file, line: line)
     #endif

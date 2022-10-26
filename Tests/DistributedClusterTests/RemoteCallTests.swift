@@ -25,7 +25,7 @@ final class RemoteCallTests: ClusteredActorSystemsXCTestCase {
         let remote = await setUpNode("remote") { settings in
             settings.serialization.registerInbound(GreeterCodableError.self)
         }
-        local.cluster.join(node: remote.cluster.uniqueNode)
+        local.cluster.join(endpoint: remote.cluster.endpoint)
 
         let greeter = Greeter(actorSystem: local)
         let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
@@ -43,7 +43,7 @@ final class RemoteCallTests: ClusteredActorSystemsXCTestCase {
         let remote = await setUpNode("remote") { settings in
             settings.serialization.registerInbound(GreeterCodableError.self)
         }
-        local.cluster.join(node: remote.cluster.uniqueNode)
+        local.cluster.join(endpoint: remote.cluster.endpoint)
 
         let greeter = Greeter(actorSystem: local)
         let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
@@ -63,7 +63,7 @@ final class RemoteCallTests: ClusteredActorSystemsXCTestCase {
         let remote = await setUpNode("remote") { settings in
             settings.serialization.registerInbound(GreeterCodableError.self)
         }
-        local.cluster.join(node: remote.cluster.uniqueNode)
+        local.cluster.join(endpoint: remote.cluster.endpoint)
 
         let greeter = Greeter(actorSystem: local)
         let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
@@ -82,7 +82,7 @@ final class RemoteCallTests: ClusteredActorSystemsXCTestCase {
         let remote = await setUpNode("remote") { settings in
             settings.serialization.registerInbound(GreeterCodableError.self)
         }
-        local.cluster.join(node: remote.cluster.uniqueNode)
+        local.cluster.join(endpoint: remote.cluster.endpoint)
 
         let greeter = Greeter(actorSystem: local)
         let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
@@ -155,7 +155,7 @@ final class RemoteCallTests: ClusteredActorSystemsXCTestCase {
     func test_remoteCallVoid_shouldConfigureTimeout() async throws {
         let local = await setUpNode("local")
         let remote = await setUpNode("remote")
-        local.cluster.join(node: remote.cluster.uniqueNode)
+        local.cluster.join(endpoint: remote.cluster.endpoint)
 
         let greeter = Greeter(actorSystem: local)
         let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
@@ -177,7 +177,7 @@ final class RemoteCallTests: ClusteredActorSystemsXCTestCase {
     func test_remoteCallGeneric() async throws {
         let local = await setUpNode("local")
         let remote = await setUpNode("remote")
-        local.cluster.join(node: remote.cluster.uniqueNode)
+        local.cluster.join(endpoint: remote.cluster.endpoint)
 
         let greeter = Greeter(actorSystem: local)
         let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
@@ -200,7 +200,7 @@ final class RemoteCallTests: ClusteredActorSystemsXCTestCase {
             settings.serialization.registerInbound(GreeterCodableError.self)
             settings.serialization.registerInbound(AnotherGreeterCodableError.self)
         }
-        local.cluster.join(node: remote.cluster.uniqueNode)
+        local.cluster.join(endpoint: remote.cluster.endpoint)
 
         let greeter = Greeter(actorSystem: local)
         let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
@@ -224,7 +224,7 @@ final class RemoteCallTests: ClusteredActorSystemsXCTestCase {
             settings.serialization.registerInbound(GreeterCodableError.self)
             settings.serialization.registerInbound(AnotherGreeterCodableError.self)
         }
-        local.cluster.join(node: remote.cluster.uniqueNode)
+        local.cluster.join(endpoint: remote.cluster.endpoint)
 
         let greeter = Greeter(actorSystem: local)
         let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
@@ -249,7 +249,7 @@ final class RemoteCallTests: ClusteredActorSystemsXCTestCase {
             settings.serialization.registerInbound(GreeterCodableError.self)
             settings.serialization.registerInbound(AnotherGreeterCodableError.self)
         }
-        local.cluster.join(node: remote.cluster.uniqueNode)
+        local.cluster.join(endpoint: remote.cluster.endpoint)
 
         let greeter = Greeter(actorSystem: local)
         let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
@@ -269,7 +269,7 @@ final class RemoteCallTests: ClusteredActorSystemsXCTestCase {
         let remote = await setUpNode("remote") { settings in
             settings.remoteCall.codableErrorAllowance = .custom(allowedTypes: [GreeterCodableError.self, AnotherGreeterCodableError.self])
         }
-        local.cluster.join(node: remote.cluster.uniqueNode)
+        local.cluster.join(endpoint: remote.cluster.endpoint)
 
         let greeter = Greeter(actorSystem: local)
         let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
@@ -295,7 +295,7 @@ final class RemoteCallTests: ClusteredActorSystemsXCTestCase {
             settings.serialization.registerInbound(GreeterCodableError.self)
             settings.serialization.registerInbound(AnotherGreeterCodableError.self)
         }
-        local.cluster.join(node: remote.cluster.uniqueNode)
+        local.cluster.join(endpoint: remote.cluster.endpoint)
 
         let greeter = Greeter(actorSystem: local)
         let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)

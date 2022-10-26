@@ -18,7 +18,7 @@ option optimize_for = SPEED;
 option swift_prefix = "_Proto";
 
 message ActorID {
-    UniqueNode         node        = 1;
+    ClusterNode        node        = 1;
     ActorPath          path        = 2;
     uint32             incarnation = 3;
     map<string, bytes> metadata    = 4;
@@ -28,12 +28,12 @@ message ActorPath {
     repeated string segments = 1;
 }
 
-message UniqueNode {
-    Node   node = 1;
-    uint64 nid  = 2;
+message ClusterNode {
+    ClusterEndpoint endpoint = 1;
+    uint64   nid      = 2;
 }
 
-message Node {
+message ClusterEndpoint {
     string protocol = 1;
     string system   = 2;
     string hostname = 3;

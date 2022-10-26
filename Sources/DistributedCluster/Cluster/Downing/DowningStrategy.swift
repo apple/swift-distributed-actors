@@ -146,7 +146,7 @@ internal distributed actor DowningStrategyShell {
         for member in members {
             self.log.info(
                 "Decision to [.down] member [\(member)]!", metadata: self.metadata([
-                    "downing/node": "\(reflecting: member.uniqueNode)",
+                    "downing/node": "\(reflecting: member.node)",
                 ])
             )
             self.actorSystem.cluster.down(member: member)

@@ -51,7 +51,7 @@ public final class MultiNodeReceptionistTests: MultiNodeTestSuite {
         let expectedCount = Nodes.allCases.count
         var discovered: Set<DistributedEcho> = []
         for try await actor in await multiNode.system.receptionist.listing(of: .init(DistributedEcho.self)) {
-            multiNode.log.notice("Discovered \(actor.id) from \(actor.id.uniqueNode)")
+            multiNode.log.notice("Discovered \(actor.id) from \(actor.id.node)")
             discovered.insert(actor)
 
             if discovered.count == expectedCount {
@@ -79,7 +79,7 @@ public final class MultiNodeReceptionistTests: MultiNodeTestSuite {
         }
 
         distributed func echo(name: String) -> String {
-            "echo: \(self.greeting)\(name)! (from node: \(self.id.uniqueNode), id: \(self.id.detailedDescription))"
+            "echo: \(self.greeting)\(name)! (from node: \(self.id.node), id: \(self.id.detailedDescription))"
         }
     }
 }

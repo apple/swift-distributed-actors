@@ -47,7 +47,7 @@ internal protocol _ActorRefProvider: _ActorTreeTraversable {
 
 // TODO: consider if we need abstraction / does it cost us?
 internal struct RemoteActorRefProvider: _ActorRefProvider {
-    private let localNode: UniqueNode
+    private let localNode: Cluster.Node
     private let localProvider: LocalActorRefProvider
 
     let cluster: ClusterShell
@@ -61,7 +61,7 @@ internal struct RemoteActorRefProvider: _ActorRefProvider {
     ) {
         precondition(settings.enabled, "Remote actor provider should only be used when clustering is enabled")
 
-        self.localNode = settings.uniqueBindNode
+        self.localNode = settings.bindNode
         self.cluster = cluster
         self.localProvider = localProvider
     }
@@ -114,7 +114,7 @@ extension RemoteActorRefProvider {
     }
 
     public func _resolveUntyped(context: _ResolveContext<Never>) -> _AddressableActorRef {
-        if self.localNode == context.id.uniqueNode {
+        if self.localNode == context.id.node {
             return self.localProvider._resolveUntyped(context: context)
         } else {
             return _AddressableActorRef(self._resolveAsRemoteRef(context, remoteAddress: context.id._asRemote))

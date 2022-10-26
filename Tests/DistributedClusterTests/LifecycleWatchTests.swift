@@ -150,7 +150,7 @@ final class LifecycleWatchTests: SingleClusterSystemXCTestCase, @unchecked Senda
 
             try await juliet.meetWatch(remoteRomeo, unwatch: false)
 
-            first.cluster.down(node: second.cluster.uniqueNode.node)
+            first.cluster.down(endpoint: second.cluster.node.endpoint)
 
             try pj.expectMessage("Juliet init")
             try pr.expectMessage("Romeo init")

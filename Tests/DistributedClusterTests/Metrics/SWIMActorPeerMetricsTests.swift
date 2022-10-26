@@ -45,8 +45,8 @@ final class ActorMetricsSWIMActorPeerMetricsTests: ClusteredActorSystemsXCTestCa
         }
         let targetNode = await setUpNode("target")
 
-        originNode.cluster.join(node: targetNode.cluster.uniqueNode)
-        try assertAssociated(originNode, withExactly: targetNode.cluster.uniqueNode)
+        originNode.cluster.join(endpoint: targetNode.cluster.endpoint)
+        try assertAssociated(originNode, withExactly: targetNode.cluster.node)
 
         guard let origin = originNode._cluster?._swimShell else {
             throw testKit(originNode).fail("SWIM shell of [\(originNode)] should not be nil")
@@ -93,9 +93,9 @@ final class ActorMetricsSWIMActorPeerMetricsTests: ClusteredActorSystemsXCTestCa
         let targetNode = await setUpNode("target")
         let throughNode = await setUpNode("through")
 
-        originNode.cluster.join(node: throughNode.cluster.uniqueNode)
-        targetNode.cluster.join(node: throughNode.cluster.uniqueNode)
-        try assertAssociated(originNode, withExactly: [targetNode.cluster.uniqueNode, throughNode.cluster.uniqueNode])
+        originNode.cluster.join(endpoint: throughNode.cluster.endpoint)
+        targetNode.cluster.join(endpoint: throughNode.cluster.endpoint)
+        try assertAssociated(originNode, withExactly: [targetNode.cluster.node, throughNode.cluster.node])
 
         guard let origin = originNode._cluster?._swimShell else {
             throw testKit(originNode).fail("SWIM shell of [\(originNode)] should not be nil")

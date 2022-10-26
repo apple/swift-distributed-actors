@@ -65,8 +65,8 @@ final class SWIMActorClusteredTests: ClusteredActorSystemsXCTestCase {
         }
         let secondNode = await self.setUpSecond()
 
-        firstNode.cluster.join(node: secondNode.cluster.uniqueNode)
-        try assertAssociated(firstNode, withExactly: secondNode.cluster.uniqueNode)
+        firstNode.cluster.join(endpoint: secondNode.cluster.endpoint)
+        try assertAssociated(firstNode, withExactly: secondNode.cluster.node)
 
         guard let first = firstNode._cluster?._swimShell else {
             throw testKit(firstNode).fail("SWIM shell of [\(firstNode)] should not be nil")
@@ -118,9 +118,9 @@ final class SWIMActorClusteredTests: ClusteredActorSystemsXCTestCase {
         let secondNode = await self.setUpSecond()
         let thirdNode = await self.setUpThird()
 
-        firstNode.cluster.join(node: secondNode.cluster.uniqueNode.node)
-        thirdNode.cluster.join(node: secondNode.cluster.uniqueNode.node)
-        try assertAssociated(firstNode, withExactly: secondNode.cluster.uniqueNode)
+        firstNode.cluster.join(endpoint: secondNode.cluster.node.endpoint)
+        thirdNode.cluster.join(endpoint: secondNode.cluster.node.endpoint)
+        try assertAssociated(firstNode, withExactly: secondNode.cluster.node)
 
         guard let first = firstNode._cluster?._swimShell else {
             throw testKit(firstNode).fail("SWIM shell of [\(firstNode)] should not be nil")
@@ -137,7 +137,7 @@ final class SWIMActorClusteredTests: ClusteredActorSystemsXCTestCase {
         // FIXME: use a non-responsive test probe instead of real system
         // Down the node so it doesn't respond to ping
         try thirdNode.shutdown()
-        try await self.ensureNodes(.removed, on: secondNode, nodes: thirdNode.cluster.uniqueNode)
+        try await self.ensureNodes(.removed, on: secondNode, nodes: thirdNode.cluster.node)
 
         let originPeer = try SWIMActor.resolve(id: first.id._asRemote, using: secondNode)
         let targetPeer = try SWIMActor.resolve(id: third.id._asRemote, using: secondNode)
@@ -154,9 +154,9 @@ final class SWIMActorClusteredTests: ClusteredActorSystemsXCTestCase {
         let secondNode = await self.setUpSecond()
         let thirdNode = await self.setUpThird()
 
-        firstNode.cluster.join(node: secondNode.cluster.uniqueNode.node)
-        thirdNode.cluster.join(node: secondNode.cluster.uniqueNode.node)
-        try assertAssociated(firstNode, withExactly: secondNode.cluster.uniqueNode)
+        firstNode.cluster.join(endpoint: secondNode.cluster.node.endpoint)
+        thirdNode.cluster.join(endpoint: secondNode.cluster.node.endpoint)
+        try assertAssociated(firstNode, withExactly: secondNode.cluster.node)
 
         guard let first = firstNode._cluster?._swimShell else {
             throw testKit(firstNode).fail("SWIM shell of [\(firstNode)] should not be nil")
@@ -229,8 +229,8 @@ final class SWIMActorClusteredTests: ClusteredActorSystemsXCTestCase {
         let firstNode = await self.setUpFirst()
         let secondNode = await self.setUpSecond()
 
-        firstNode.cluster.join(node: secondNode.cluster.uniqueNode.node)
-        try assertAssociated(firstNode, withExactly: secondNode.cluster.uniqueNode)
+        firstNode.cluster.join(endpoint: secondNode.cluster.node.endpoint)
+        try assertAssociated(firstNode, withExactly: secondNode.cluster.node)
 
         guard let first = firstNode._cluster?._swimShell else {
             throw testKit(firstNode).fail("SWIM shell of [\(firstNode)] should not be nil")
@@ -311,10 +311,10 @@ final class SWIMActorClusteredTests: ClusteredActorSystemsXCTestCase {
         let secondNode = await self.setUpSecond()
         let thirdNode = await self.setUpThird()
 
-        firstNode.cluster.join(node: secondNode.cluster.uniqueNode.node)
-        thirdNode.cluster.join(node: secondNode.cluster.uniqueNode.node)
-        try assertAssociated(firstNode, withExactly: [secondNode.cluster.uniqueNode, thirdNode.cluster.uniqueNode])
-        try assertAssociated(secondNode, withExactly: [firstNode.cluster.uniqueNode, thirdNode.cluster.uniqueNode])
+        firstNode.cluster.join(endpoint: secondNode.cluster.node.endpoint)
+        thirdNode.cluster.join(endpoint: secondNode.cluster.node.endpoint)
+        try assertAssociated(firstNode, withExactly: [secondNode.cluster.node, thirdNode.cluster.node])
+        try assertAssociated(secondNode, withExactly: [firstNode.cluster.node, thirdNode.cluster.node])
 
         guard let first = firstNode._cluster?._swimShell else {
             throw testKit(firstNode).fail("SWIM shell of [\(firstNode)] should not be nil")
@@ -371,9 +371,9 @@ final class SWIMActorClusteredTests: ClusteredActorSystemsXCTestCase {
         let firstNode = await self.setUpFirst()
         let secondNode = await self.setUpSecond()
 
-        firstNode.cluster.join(node: secondNode.cluster.uniqueNode.node)
-        try assertAssociated(firstNode, withExactly: secondNode.cluster.uniqueNode)
-        try assertAssociated(secondNode, withExactly: firstNode.cluster.uniqueNode)
+        firstNode.cluster.join(endpoint: secondNode.cluster.node.endpoint)
+        try assertAssociated(firstNode, withExactly: secondNode.cluster.node)
+        try assertAssociated(secondNode, withExactly: firstNode.cluster.node)
 
         guard let first = firstNode._cluster?._swimShell else {
             throw testKit(firstNode).fail("SWIM shell of [\(firstNode)] should not be nil")
@@ -400,7 +400,7 @@ final class SWIMActorClusteredTests: ClusteredActorSystemsXCTestCase {
         let localNode = await self.setUpFirst()
         let remoteNode = await self.setUpSecond()
 
-        localNode.cluster.join(node: remoteNode.cluster.uniqueNode.node)
+        localNode.cluster.join(endpoint: remoteNode.cluster.node.endpoint)
 
         guard let local = localNode._cluster?._swimShell else {
             throw testKit(localNode).fail("SWIM shell of [\(localNode)] should not be nil")

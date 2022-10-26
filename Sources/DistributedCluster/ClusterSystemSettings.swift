@@ -28,8 +28,8 @@ public struct ClusterSystemSettings {
     }
 
     public static var `default`: ClusterSystemSettings {
-        let defaultNode = Node(systemName: Default.name, host: Default.bindHost, port: Default.bindPort)
-        return ClusterSystemSettings(node: defaultNode)
+        let defaultEndpoint = Cluster.Endpoint(systemName: Default.name, host: Default.bindHost, port: Default.bindPort)
+        return ClusterSystemSettings(endpoint: defaultEndpoint)
     }
 
     public typealias ProtocolName = String
@@ -70,44 +70,44 @@ public struct ClusterSystemSettings {
     /// Hostname used to accept incoming connections from other nodes.
     public var bindHost: String {
         set {
-            self.node.host = newValue
+            self.endpoint.host = newValue
         }
         get {
-            self.node.host
+            self.endpoint.host
         }
     }
 
     /// Port used to accept incoming connections from other nodes.
     public var bindPort: Int {
         set {
-            self.node.port = newValue
+            self.endpoint.port = newValue
         }
         get {
-            self.node.port
+            self.endpoint.port
         }
     }
 
     /// Node representing this node in the cluster.
     /// Note that most of the time `uniqueBindNode` is more appropriate, as it includes this node's unique id.
-    public var node: Node {
+    public var endpoint: Cluster.Endpoint {
         didSet {
-            self.serialization.localNode = self.uniqueBindNode
-            self.metrics.systemName = self.node.systemName
-            self.swim.metrics.systemName = self.node.systemName
+            self.serialization.localNode = self.bindNode
+            self.metrics.systemName = self.endpoint.systemName
+            self.swim.metrics.systemName = self.endpoint.systemName
         }
     }
 
-    /// `NodeID` to be used when exposing `UniqueNode` for node configured by using these settings.
-    public var nid: UniqueNodeID {
+    /// `Cluster.Node.ID` to be used when exposing `Cluster.Node` for node configured by using these settings.
+    public var nid: Cluster.Node.ID {
         didSet {
-            self.serialization.localNode = self.uniqueBindNode
+            self.serialization.localNode = self.bindNode
         }
     }
 
     /// Reflects the `bindAddress` however carries a uniquely assigned UID.
     /// The UID remains the same throughout updates of the `bindAddress` field.
-    public var uniqueBindNode: UniqueNode {
-        UniqueNode(node: self.node, nid: self.nid)
+    public var bindNode: Cluster.Node {
+        .init(endpoint: self.endpoint, nid: self.nid)
     }
 
     /// Time after which a the binding of the server port should fail.
@@ -140,7 +140,7 @@ public struct ClusterSystemSettings {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Cluster protocol versioning
 
-    /// `ProtocolVersion` to be used when exposing `UniqueNode` for node configured by using these settings.
+    /// `ProtocolVersion` to be used when exposing `Cluster.Node` for node configured by using these settings.
     public var protocolVersion: ClusterSystem.Version {
         self._protocolVersion
     }
@@ -252,22 +252,22 @@ public struct ClusterSystemSettings {
     public var threadPoolSize: Int = ProcessInfo.processInfo.activeProcessorCount
 
     public init(name: String, host: String = Default.bindHost, port: Int = Default.bindPort, tls: TLSConfiguration? = nil) {
-        self.init(node: Node(systemName: name, host: host, port: port), tls: tls)
+        self.init(endpoint: Cluster.Endpoint(systemName: name, host: host, port: port), tls: tls)
     }
 
-    public init(node: Node, tls: TLSConfiguration? = nil) {
-        self.node = node
-        self.nid = UniqueNodeID.random()
+    public init(endpoint: Cluster.Endpoint, tls: TLSConfiguration? = nil) {
+        self.endpoint = endpoint
+        self.nid = Cluster.Node.ID.random()
         self.tls = tls
         self.swim = SWIM.Settings()
         self.swim.unreachability = .enabled
-        if node.systemName != "" {
-            self.metrics.systemName = node.systemName
-            self.swim.metrics.systemName = node.systemName
+        if endpoint.systemName != "" {
+            self.metrics.systemName = endpoint.systemName
+            self.swim.metrics.systemName = endpoint.systemName
         }
         self.swim.metrics.labelPrefix = "cluster.swim"
         self.discovery = nil
-        self.serialization.localNode = self.uniqueBindNode
+        self.serialization.localNode = self.bindNode
     }
 }
 
@@ -404,10 +404,10 @@ protocol ClusterSystemInstrumentationProvider {
 /// all the nodes of an existing cluster.
 public struct ServiceDiscoverySettings {
     let implementation: ServiceDiscoveryImplementation
-    private let _subscribe: (@escaping (Result<[Node], Error>) -> Void, @escaping (CompletionReason) -> Void) -> CancellationToken?
+    private let _subscribe: (@escaping (Result<[Cluster.Endpoint], Error>) -> Void, @escaping (CompletionReason) -> Void) -> CancellationToken?
 
     public init<Discovery, S>(_ implementation: Discovery, service: S)
-        where Discovery: ServiceDiscovery, Discovery.Instance == Node,
+        where Discovery: ServiceDiscovery, Discovery.Instance == Cluster.Endpoint,
         S == Discovery.Service
     {
         self.implementation = .dynamic(AnyServiceDiscovery(implementation))
@@ -416,18 +416,18 @@ public struct ServiceDiscoverySettings {
         }
     }
 
-    public init<Discovery, S>(_ implementation: Discovery, service: S, mapInstanceToNode transformer: @escaping (Discovery.Instance) throws -> Node)
+    public init<Discovery, S>(_ implementation: Discovery, service: S, mapInstanceToNode transformer: @escaping (Discovery.Instance) throws -> Cluster.Endpoint)
         where Discovery: ServiceDiscovery,
         S == Discovery.Service
     {
-        let mappedDiscovery: MapInstanceServiceDiscovery<Discovery, Node> = implementation.mapInstance(transformer)
+        let mappedDiscovery: MapInstanceServiceDiscovery<Discovery, Cluster.Endpoint> = implementation.mapInstance(transformer)
         self.implementation = .dynamic(AnyServiceDiscovery(mappedDiscovery))
         self._subscribe = { onNext, onComplete in
             mappedDiscovery.subscribe(to: service, onNext: onNext, onComplete: onComplete)
         }
     }
 
-    public init(static nodes: Set<Node>) {
+    public init(static nodes: Set<Cluster.Endpoint>) {
         self.implementation = .static(nodes)
         self._subscribe = { onNext, _ in
             // Call onNext once and never again since the list of nodes doesn't change
@@ -441,12 +441,12 @@ public struct ServiceDiscoverySettings {
 
     /// Similar to `ServiceDiscovery.subscribe` however it allows the handling of the listings to be generic and handled by the cluster system.
     /// This function is only intended for internal use by the `DiscoveryShell`.
-    func subscribe(onNext nextResultHandler: @escaping (Result<[Node], Error>) -> Void, onComplete completionHandler: @escaping (CompletionReason) -> Void) -> CancellationToken? {
+    func subscribe(onNext nextResultHandler: @escaping (Result<[Cluster.Endpoint], Error>) -> Void, onComplete completionHandler: @escaping (CompletionReason) -> Void) -> CancellationToken? {
         self._subscribe(nextResultHandler, completionHandler)
     }
 
     enum ServiceDiscoveryImplementation {
-        case `static`(Set<Node>)
+        case `static`(Set<Cluster.Endpoint>)
         case dynamic(AnyServiceDiscovery)
     }
 }

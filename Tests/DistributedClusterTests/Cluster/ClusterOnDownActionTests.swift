@@ -25,7 +25,7 @@ final class ClusterOnDownActionTests: ClusteredActorSystemsXCTestCase {
 
         try await self.joinNodes(node: first, with: second)
 
-        second.cluster.down(node: first.cluster.uniqueNode.node)
+        second.cluster.down(endpoint: first.cluster.node.endpoint)
 
         try self.capturedLogs(of: first).awaitLogContaining(self.testKit(first), text: "Self node was marked [.down]!")
 
@@ -43,7 +43,7 @@ final class ClusterOnDownActionTests: ClusteredActorSystemsXCTestCase {
 
         try await self.joinNodes(node: first, with: second)
 
-        second.cluster.down(node: first.cluster.uniqueNode.node)
+        second.cluster.down(endpoint: first.cluster.node.endpoint)
 
         try self.capturedLogs(of: first).awaitLogContaining(self.testKit(first), text: "Self node was marked [.down]!")
 

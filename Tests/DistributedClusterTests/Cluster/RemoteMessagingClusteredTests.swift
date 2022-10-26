@@ -47,9 +47,9 @@ final class RemoteMessagingClusteredTests: ClusteredActorSystemsXCTestCase {
             }
         )
 
-        local.cluster.join(node: remote.cluster.uniqueNode.node)
+        local.cluster.join(endpoint: remote.cluster.node.endpoint)
 
-        try assertAssociated(local, withExactly: remote.settings.uniqueBindNode)
+        try assertAssociated(local, withExactly: remote.settings.bindNode)
 
         let nonCodableResolvedRef = self.resolveRef(local, type: SerializationTestMessage.self, id: nonCodableRefOnRemoteSystem.id, on: remote)
         nonCodableResolvedRef.tell(SerializationTestMessage(serializationBehavior: .succeed))
@@ -78,9 +78,9 @@ final class RemoteMessagingClusteredTests: ClusteredActorSystemsXCTestCase {
                 }
             )
 
-            local.cluster.join(node: remote.cluster.uniqueNode.node)
+            local.cluster.join(endpoint: remote.cluster.node.endpoint)
 
-            try assertAssociated(local, withExactly: remote.settings.uniqueBindNode)
+            try assertAssociated(local, withExactly: remote.settings.bindNode)
 
             let nonCodableResolvedRef = self.resolveRef(local, type: SerializationTestMessage.self, id: refOnRemoteSystem.id, on: remote)
             nonCodableResolvedRef.tell(SerializationTestMessage(serializationBehavior: .failEncoding))
@@ -107,9 +107,9 @@ final class RemoteMessagingClusteredTests: ClusteredActorSystemsXCTestCase {
             }
         )
 
-        local.cluster.join(node: remote.cluster.uniqueNode.node)
+        local.cluster.join(endpoint: remote.cluster.node.endpoint)
 
-        try assertAssociated(local, withExactly: remote.settings.uniqueBindNode)
+        try assertAssociated(local, withExactly: remote.settings.bindNode)
 
         let nonCodableResolvedRef = self.resolveRef(local, type: SerializationTestMessage.self, id: nonCodableRefOnRemoteSystem.id, on: remote)
         nonCodableResolvedRef.tell(SerializationTestMessage(serializationBehavior: .failDecoding))
@@ -168,9 +168,9 @@ final class RemoteMessagingClusteredTests: ClusteredActorSystemsXCTestCase {
             }
         )
 
-        local.cluster.join(node: remote.cluster.uniqueNode.node)
+        local.cluster.join(endpoint: remote.cluster.node.endpoint)
 
-        try assertAssociated(local, withExactly: remote.settings.uniqueBindNode)
+        try assertAssociated(local, withExactly: remote.settings.bindNode)
 
         let remoteRef = self.resolveRef(local, type: EchoTestMessage.self, id: refOnRemoteSystem.id, on: remote)
         remoteRef.tell(EchoTestMessage(string: "test", respondTo: localRef))
@@ -195,9 +195,9 @@ final class RemoteMessagingClusteredTests: ClusteredActorSystemsXCTestCase {
             }
         )
 
-        local.cluster.join(node: remote.cluster.uniqueNode.node)
+        local.cluster.join(endpoint: remote.cluster.node.endpoint)
 
-        try assertAssociated(local, withExactly: remote.settings.uniqueBindNode)
+        try assertAssociated(local, withExactly: remote.settings.bindNode)
 
         let remoteRef = self.resolveRef(local, type: EchoTestMessage.self, id: refOnRemoteSystem.id, on: remote)
 
@@ -238,9 +238,9 @@ final class RemoteMessagingClusteredTests: ClusteredActorSystemsXCTestCase {
             }
         )
 
-        local.cluster.join(node: remote.cluster.uniqueNode.node)
+        local.cluster.join(endpoint: remote.cluster.node.endpoint)
 
-        try assertAssociated(local, withExactly: remote.settings.uniqueBindNode)
+        try assertAssociated(local, withExactly: remote.settings.bindNode)
 
         let remoteRef = self.resolveRef(local, type: EchoTestMessage.self, id: refOnRemoteSystem.id, on: remote)
 
@@ -264,9 +264,9 @@ final class RemoteMessagingClusteredTests: ClusteredActorSystemsXCTestCase {
             settings.serialization.register(SerializationTestMessage.self)
             settings.serialization.register(EchoTestMessage.self)
         }
-        remote.cluster.join(node: local.cluster.uniqueNode.node)
+        remote.cluster.join(endpoint: local.cluster.node.endpoint)
 
-        try assertAssociated(local, withExactly: remote.cluster.uniqueNode)
+        try assertAssociated(local, withExactly: remote.cluster.node)
 
         let thirdSystem = await setUpNode("ClusterAssociationTests") { settings in
             settings.bindPort = 9119
@@ -275,9 +275,9 @@ final class RemoteMessagingClusteredTests: ClusteredActorSystemsXCTestCase {
         }
         defer { try! thirdSystem.shutdown().wait() }
 
-        thirdSystem.cluster.join(node: local.cluster.uniqueNode.node)
-        thirdSystem.cluster.join(node: remote.cluster.uniqueNode.node)
-        try assertAssociated(thirdSystem, withExactly: [local.cluster.uniqueNode, remote.cluster.uniqueNode])
+        thirdSystem.cluster.join(endpoint: local.cluster.node.endpoint)
+        thirdSystem.cluster.join(endpoint: remote.cluster.node.endpoint)
+        try assertAssociated(thirdSystem, withExactly: [local.cluster.node, remote.cluster.node])
         let thirdTestKit = ActorTestKit(thirdSystem)
 
         let localRef: _ActorRef<EchoTestMessage> = try local._spawn(

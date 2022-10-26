@@ -28,13 +28,13 @@ final class ProtobufRoundTripTests: SingleClusterSystemXCTestCase {
     }
 
     let allocator = ByteBufferAllocator()
-    var node: UniqueNode {
-        self.system.cluster.uniqueNode
+    var node: Cluster.Node {
+        self.system.cluster.node
     }
 
     var localActorAddress: ActorID {
         try! ActorPath._user.appending("hello")
-            .makeLocalID(on: self.system.cluster.uniqueNode, incarnation: .wellKnown)
+            .makeLocalID(on: self.system.cluster.node, incarnation: .wellKnown)
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -48,7 +48,7 @@ final class ProtobufRoundTripTests: SingleClusterSystemXCTestCase {
     // MARK: Handshake protocol
 
     func test_roundTrip_Wire_HandshakeOffer() throws {
-        let offer = Wire.HandshakeOffer(version: .init(reserved: 2, major: 3, minor: 5, patch: 5), originNode: self.node, targetNode: self.node.node)
+        let offer = Wire.HandshakeOffer(version: .init(reserved: 2, major: 3, minor: 5, patch: 5), originNode: self.node, targetEndpoint: self.node.endpoint)
         let proto = _ProtoHandshakeOffer(offer)
         let back = try Wire.HandshakeOffer(fromProto: proto)
         back.shouldEqual(offer)

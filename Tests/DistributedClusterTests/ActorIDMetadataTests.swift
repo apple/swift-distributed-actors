@@ -119,7 +119,7 @@ final class ActorIDMetadataTests: ClusteredActorSystemsXCTestCase {
 
         let singleton = await ThereCanBeOnlyOneClusterSingleton(actorSystem: system)
 
-        let madeUpID = ActorID(local: system.cluster.uniqueNode, path: singleton.id.path, incarnation: .wellKnown)
+        let madeUpID = ActorID(local: system.cluster.node, path: singleton.id.path, incarnation: .wellKnown)
         madeUpID.metadata.wellKnown = singleton.id.metadata.wellKnown!
 
         singleton.id.shouldEqual(madeUpID)

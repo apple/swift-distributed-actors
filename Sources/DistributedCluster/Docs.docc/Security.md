@@ -38,7 +38,7 @@ let testCertificateSource1: NIOSSLCertificateSource = .certificate(testCertifica
 let testKeySource1: NIOSSLPrivateKeySource = .privateKey(try NIOSSLPrivateKey(bytes: [UInt8](testKey1.utf8), format: .pem))
 
 let tlsExampleSystem = await ClusterSystem("tls-example") { settings in
-    settings.node.host = "..."
+    settings.endpoint.host = "..."
     settings.tls = TLSConfiguration.makeServerConfiguration(
         certificateChain: [testCertificateSource1],
         privateKey: testKeySource1

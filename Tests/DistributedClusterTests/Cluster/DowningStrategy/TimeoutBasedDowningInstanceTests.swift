@@ -19,16 +19,16 @@ import XCTest
 final class TimeoutBasedDowningInstanceTests: XCTestCase {
     var instance: TimeoutBasedDowningStrategy!
 
-    let selfNode = UniqueNode(node: Node(systemName: "Test", host: "localhost", port: 8888), nid: .random())
+    let selfNode = Cluster.Node(endpoint: Cluster.Endpoint(systemName: "Test", host: "localhost", port: 8888), nid: .random())
     lazy var selfMember = Cluster.Member(node: self.selfNode, status: .up)
 
-    let otherNode = UniqueNode(node: Node(systemName: "Test", host: "localhost", port: 9999), nid: .random())
+    let otherNode = Cluster.Node(endpoint: Cluster.Endpoint(systemName: "Test", host: "localhost", port: 9999), nid: .random())
     lazy var otherMember = Cluster.Member(node: self.otherNode, status: .up)
 
-    let yetAnotherNode = UniqueNode(node: Node(systemName: "Test", host: "localhost", port: 2222), nid: .random())
+    let yetAnotherNode = Cluster.Node(endpoint: Cluster.Endpoint(systemName: "Test", host: "localhost", port: 2222), nid: .random())
     lazy var yetAnotherMember = Cluster.Member(node: self.yetAnotherNode, status: .up)
 
-    let nonMemberNode = UniqueNode(node: Node(systemName: "Test", host: "localhost", port: 1111), nid: .random())
+    let nonMemberNode = Cluster.Node(endpoint: Cluster.Endpoint(systemName: "Test", host: "localhost", port: 1111), nid: .random())
     lazy var nonMember = Cluster.Member(node: self.nonMemberNode, status: .up)
 
     override func setUp() {

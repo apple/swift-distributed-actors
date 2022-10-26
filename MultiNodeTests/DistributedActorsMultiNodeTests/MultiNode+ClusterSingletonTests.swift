@@ -79,7 +79,7 @@ public final class MultiNodeClusterSingletonTests: MultiNodeTestSuite {
         }
 
         distributed func greet(name: String) -> String {
-            "\(self.greeting) \(name)! (from node: \(self.id.uniqueNode), id: \(self.id.detailedDescription))"
+            "\(self.greeting) \(name)! (from node: \(self.id.node), id: \(self.id.detailedDescription))"
         }
     }
 }

@@ -37,8 +37,8 @@ extension Serialization {
         public let allocator: NIO.ByteBufferAllocator
 
         /// Address to be included in serialized actor refs if they are local references.
-        public var localNode: UniqueNode {
-            self.system.cluster.uniqueNode
+        public var localNode: Cluster.Node {
+            self.system.cluster.node
         }
 
         internal init(log: Logger, system: ClusterSystem, allocator: NIO.ByteBufferAllocator) {

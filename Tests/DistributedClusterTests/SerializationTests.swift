@@ -85,7 +85,7 @@ class SerializationTests: SingleClusterSystemXCTestCase {
     }
 
     func test_serialize_actorAddress_usingContext() throws {
-        let node = UniqueNode(systemName: "one", host: "127.0.0.1", port: 1234, nid: UniqueNodeID(11111))
+        let node = Cluster.Node(systemName: "one", host: "127.0.0.1", port: 1234, nid: Cluster.Node.ID(11111))
         let id = try ActorPath(root: "user").appending("hello").makeLocalID(on: node, incarnation: .random())
 
         let encoder = JSONEncoder()
@@ -170,7 +170,7 @@ class SerializationTests: SingleClusterSystemXCTestCase {
         let serializedFormat: String = serialized.buffer.stringDebugDescription()
         pinfo("serialized ref: \(serializedFormat)")
         serializedFormat.shouldContain("sact")
-        serializedFormat.shouldContain("\(remoteCapableSystem.settings.uniqueBindNode.nid)")
+        serializedFormat.shouldContain("\(remoteCapableSystem.settings.bindNode.nid)")
         serializedFormat.shouldContain(remoteCapableSystem.name) // automatically picked up name from system
         serializedFormat.shouldContain("\(remoteCapableSystem.settings.bindHost)")
         serializedFormat.shouldContain("\(remoteCapableSystem.settings.bindPort)")

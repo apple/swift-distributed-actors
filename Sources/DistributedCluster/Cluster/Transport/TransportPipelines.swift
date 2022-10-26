@@ -93,7 +93,7 @@ private final class InitiatingHandshakeHandler: ChannelInboundHandler, Removable
             }
         } catch {
             self.log.debug("Handshake failure, error [\(error)]:\(String(reflecting: type(of: error)))", metadata: metadata)
-            self.cluster.tell(.inbound(.handshakeFailed(self.handshakeOffer.targetNode, error)))
+            self.cluster.tell(.inbound(.handshakeFailed(self.handshakeOffer.targetEndpoint, error)))
             _ = context.close(mode: .all)
         }
     }
@@ -114,9 +114,9 @@ final class ReceivingHandshakeHandler: ChannelInboundHandler, RemovableChannelHa
 
     private let log: Logger
     private let cluster: ClusterShell.Ref
-    private let localNode: UniqueNode
+    private let localNode: Cluster.Node
 
-    init(log: Logger, cluster: ClusterShell.Ref, localNode: UniqueNode) {
+    init(log: Logger, cluster: ClusterShell.Ref, localNode: Cluster.Node) {
         self.log = log
         self.cluster = cluster
         self.localNode = localNode
@@ -415,7 +415,7 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
             self.log.error("Outbound system message queue overflow! MUST abort association, system state integrity cannot be ensured (e.g. terminated signals may have been lost).", metadata: [
                 "recipient": "\(transportEnvelope.recipient)",
             ])
-            self.clusterShell.tell(.command(.downCommand(transportEnvelope.recipient.uniqueNode.node)))
+            self.clusterShell.tell(.command(.downCommand(transportEnvelope.recipient.node.endpoint)))
         }
     }
 
@@ -706,7 +706,7 @@ private final class DumpRawBytesDebugHandler: ChannelInboundHandler {
 // MARK: "Server side" / accepting connections
 
 extension ClusterShell {
-    internal func bootstrapServerSide(system: ClusterSystem, shell: ClusterShell.Ref, bindAddress: UniqueNode, settings: ClusterSystemSettings, serializationPool: _SerializationPool) -> EventLoopFuture<Channel> {
+    internal func bootstrapServerSide(system: ClusterSystem, shell: ClusterShell.Ref, bindNode: Cluster.Node, settings: ClusterSystemSettings, serializationPool: _SerializationPool) -> EventLoopFuture<Channel> {
         let group: EventLoopGroup = settings.eventLoopGroup ?? settings.makeDefaultEventLoopGroup() // TODO: share the loop with client side?
 
         let bootstrap = ServerBootstrap(group: group)
@@ -746,7 +746,7 @@ extension ClusterShell {
                     ("magic validator", ProtocolMagicBytesValidator()),
                     ("framing writer", LengthFieldPrepender(lengthFieldLength: .four, lengthFieldEndianness: .big)),
                     ("framing reader", ByteToMessageHandler(Framing(lengthFieldLength: .four, lengthFieldEndianness: .big))),
-                    ("receiving handshake handler", ReceivingHandshakeHandler(log: log, cluster: shell, localNode: bindAddress)),
+                    ("receiving handshake handler", ReceivingHandshakeHandler(log: log, cluster: shell, localNode: bindNode)),
                     // ("bytes dumper", DumpRawBytesDebugHandler(role: .server, log: log)), // FIXME: only include for debug -DSACT_TRACE_NIO things?
                     ("wire envelope handler", WireEnvelopeHandler(serialization: serializationPool.serialization, log: log)),
                     ("outbound serialization handler", OutboundSerializationHandler(log: log, serializationPool: serializationPool)),
@@ -766,10 +766,10 @@ extension ClusterShell {
             .childChannelOption(ChannelOptions.maxMessagesPerRead, value: 16)
             .childChannelOption(ChannelOptions.recvAllocator, value: AdaptiveRecvByteBufferAllocator())
 
-        return bootstrap.bind(host: bindAddress.node.host, port: Int(bindAddress.node.port)) // TODO: separate setup from using it
+        return bootstrap.bind(host: bindNode.endpoint.host, port: Int(bindNode.endpoint.port)) // TODO: separate setup from using it
     }
 
-    internal func bootstrapClientSide(system: ClusterSystem, shell: ClusterShell.Ref, targetNode: Node, handshakeOffer: Wire.HandshakeOffer, settings: ClusterSystemSettings, serializationPool: _SerializationPool) -> EventLoopFuture<Channel> {
+    internal func bootstrapClientSide(system: ClusterSystem, shell: ClusterShell.Ref, targetNode: Cluster.Endpoint, handshakeOffer: Wire.HandshakeOffer, settings: ClusterSystemSettings, serializationPool: _SerializationPool) -> EventLoopFuture<Channel> {
         let group: EventLoopGroup = settings.eventLoopGroup ?? settings.makeDefaultEventLoopGroup()
 
         // TODO: Implement "setup" inside settings, so that parts of bootstrap can be done there, e.g. by end users without digging into remoting internals

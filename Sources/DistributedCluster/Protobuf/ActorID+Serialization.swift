@@ -22,7 +22,7 @@ extension ActorID: Codable {
             metadataSettings?.encodeCustomMetadata ?? ({ _, _ in () })
 
         var container = encoder.container(keyedBy: ActorCoding.CodingKeys.self)
-        try container.encode(self.uniqueNode, forKey: ActorCoding.CodingKeys.node)
+        try container.encode(self.node, forKey: ActorCoding.CodingKeys.node)
         try container.encode(self.path, forKey: ActorCoding.CodingKeys.path) // TODO: remove as we remove the tree
         try container.encode(self.incarnation, forKey: ActorCoding.CodingKeys.incarnation)
 
@@ -57,7 +57,7 @@ extension ActorID: Codable {
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: ActorCoding.CodingKeys.self)
-        let node = try container.decode(UniqueNode.self, forKey: ActorCoding.CodingKeys.node)
+        let node = try container.decode(Cluster.Node.self, forKey: ActorCoding.CodingKeys.node)
         let path = try container.decodeIfPresent(ActorPath.self, forKey: ActorCoding.CodingKeys.path)
         let incarnation = try container.decode(UInt32.self, forKey: ActorCoding.CodingKeys.incarnation)
 
@@ -108,7 +108,7 @@ extension ActorID: _ProtobufRepresentable {
         let encodeCustomMetadata = metadataSettings.encodeCustomMetadata
 
         var proto = _ProtoActorID()
-        let node = self.uniqueNode
+        let node = self.node
         proto.node = try node.toProto(context: context)
 
         proto.path.segments = self.segments.map(\.value)
@@ -147,11 +147,11 @@ extension ActorID: _ProtobufRepresentable {
     }
 
     public init(fromProto proto: _ProtoActorID, context: Serialization.Context) throws {
-        let uniqueNode: UniqueNode = try .init(fromProto: proto.node, context: context)
+        let node: Cluster.Node = try .init(fromProto: proto.node, context: context)
 
         let path = try ActorPath(proto.path.segments.map { try ActorPathSegment($0) })
 
-        self.init(remote: uniqueNode, path: path, incarnation: ActorIncarnation(proto.incarnation))
+        self.init(remote: node, path: path, incarnation: ActorIncarnation(proto.incarnation))
 
         // Handle well known metadata
         if !proto.metadata.isEmpty {
@@ -185,29 +185,29 @@ extension ActorID: _ProtobufRepresentable {
     }
 }
 
-extension UniqueNode: _ProtobufRepresentable {
-    public typealias ProtobufRepresentation = _ProtoUniqueNode
+extension Cluster.Node: _ProtobufRepresentable {
+    public typealias ProtobufRepresentation = _ProtoClusterNode
 
-    public func toProto(context: Serialization.Context) throws -> _ProtoUniqueNode {
-        var proto = _ProtoUniqueNode()
+    public func toProto(context: Serialization.Context) throws -> _ProtoClusterNode {
+        var proto = _ProtoClusterNode()
         proto.nid = self.nid.value
-        proto.node.protocol = self.node.protocol
-        proto.node.system = self.node.systemName
-        proto.node.hostname = self.node.host
-        proto.node.port = UInt32(self.node.port)
+        proto.endpoint.protocol = self.endpoint.protocol
+        proto.endpoint.system = self.endpoint.systemName
+        proto.endpoint.hostname = self.endpoint.host
+        proto.endpoint.port = UInt32(self.endpoint.port)
 
         return proto
     }
 
-    public init(fromProto proto: _ProtoUniqueNode, context: Serialization.Context) throws {
-        let node = Node(
-            protocol: proto.node.protocol,
-            systemName: proto.node.system,
-            host: proto.node.hostname,
-            port: Int(proto.node.port)
+    public init(fromProto proto: _ProtoClusterNode, context: Serialization.Context) throws {
+        let endpoint = Cluster.Endpoint(
+            protocol: proto.endpoint.protocol,
+            systemName: proto.endpoint.system,
+            host: proto.endpoint.hostname,
+            port: Int(proto.endpoint.port)
         )
 
-        self = .init(node: node, nid: UniqueNodeID(proto.nid))
+        self = .init(endpoint: endpoint, nid: Cluster.Node.ID(proto.nid))
     }
 }
 
@@ -243,34 +243,34 @@ extension _ProtoActorPath {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: _ProtoUniqueNode
+// MARK: _ProtoClusterNode
 
-extension UniqueNode {
-    init(_ proto: _ProtoUniqueNode) throws {
-        guard proto.hasNode else {
-            throw SerializationError(.missingField("address", type: String(describing: UniqueNode.self)))
+extension Cluster.Node {
+    init(_ proto: _ProtoClusterNode) throws {
+        guard proto.hasEndpoint else {
+            throw SerializationError(.missingField("endpoint", type: String(describing: Cluster.Node.self)))
         }
         guard proto.nid != 0 else {
-            throw SerializationError(.missingField("uid", type: String(describing: UniqueNode.self)))
+            throw SerializationError(.missingField("uid", type: String(describing: Cluster.Node.self)))
         }
-        let node = Node(proto.node)
-        let nid = UniqueNodeID(proto.nid)
-        self.init(node: node, nid: nid)
+        let endpoint = Cluster.Endpoint(proto.endpoint)
+        let nid = Cluster.Node.ID(proto.nid)
+        self.init(endpoint: endpoint, nid: nid)
     }
 }
 
-extension _ProtoUniqueNode {
-    init(_ node: UniqueNode) {
-        self.node = _ProtoNode(node.node)
+extension _ProtoClusterNode {
+    init(_ node: Cluster.Node) {
+        self.endpoint = _ProtoClusterEndpoint(node.endpoint)
         self.nid = node.nid.value
     }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: _ProtoNode
+// MARK: _ProtoClusterEndpoint
 
-extension Node {
-    init(_ proto: _ProtoNode) {
+extension Cluster.Endpoint {
+    init(_ proto: _ProtoClusterEndpoint) {
         self.protocol = proto.protocol
         self.systemName = proto.system
         self.host = proto.hostname
@@ -278,11 +278,11 @@ extension Node {
     }
 }
 
-extension _ProtoNode {
-    init(_ node: Node) {
-        self.protocol = node.protocol
-        self.system = node.systemName
-        self.hostname = node.host
-        self.port = UInt32(node.port)
+extension _ProtoClusterEndpoint {
+    init(_ endpoint: Cluster.Endpoint) {
+        self.protocol = endpoint.protocol
+        self.system = endpoint.systemName
+        self.hostname = endpoint.host
+        self.port = UInt32(endpoint.port)
     }
 }

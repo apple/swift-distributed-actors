@@ -37,6 +37,6 @@ message ClusterInbound {
 }
 
 message ClusterRestInPeace {
-    UniqueNode targetNode = 1;
-    UniqueNode fromNode = 2;
+    ClusterNode targetNode = 1;
+    ClusterNode fromNode = 2;
 }

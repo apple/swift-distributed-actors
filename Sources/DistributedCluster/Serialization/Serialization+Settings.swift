@@ -52,15 +52,15 @@ extension Serialization {
         /// - Note: Affects only _outbound_ messages which are `Codable`.
         public var defaultSerializerID: Serialization.SerializerID = .foundationJSON
 
-        /// `UniqueNode` to be included in actor addresses when serializing them.
+        /// `Cluster.Node` to be included in actor addresses when serializing them.
         /// By default this should be equal to the exposed node of the actor system.
         ///
         /// If clustering is not configured on this node, this value SHOULD be `nil`,
         /// as it is not useful to render any address for actors which shall never be reached remotely.
         ///
         /// This is set automatically when modifying the systems cluster settings.
-        internal var localNode: UniqueNode =
-            .init(systemName: "<mock-value-will-be-replaced-during-system-start>", host: "127.0.0.1", port: 7337, nid: UniqueNodeID(0))
+        internal var localNode: Cluster.Node =
+            .init(systemName: "<mock-value-will-be-replaced-during-system-start>", host: "127.0.0.1", port: 7337, nid: Cluster.Node.ID(0))
 
         /// Applied before automatically selecting a serializer based on manifest.
         /// Allows to deserialize incoming messages when "the same" message is now represented on this system differently.

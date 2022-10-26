@@ -32,8 +32,8 @@ For more realistic uses, it is expected that you will configure your cluster sys
 struct Main {
     static func main() async throws {
         let system = await ClusterSystem("FirstSystem") { settings in
-            settings.node.host = "127.0.0.1"
-            settings.node.port = 7337
+            settings.endpoint.host = "127.0.0.1"
+            settings.endpoint.port = 7337
         }
         
         try await system.terminated
@@ -64,7 +64,7 @@ In the simplest scenario we already know about some existing node that we can jo
 This is done using the system's ``ClusterControl`` object, like this:
 
 ```swift
-system.cluster.join(node: Node(systemName: "JoiningExample", host: "127.0.0.1", port: 8228))
+system.cluster.join(endpoint: Cluster.Node(systemName: "JoiningExample", host: "127.0.0.1", port: 8228))
 ```
 
 > Note: The difference between a ``Node`` and ``UniqueNode`` is that a ``Node`` is "some node on that address", while 
@@ -159,7 +159,7 @@ var membership = Cluster.Membership.empty
 
 for await event in system.cluster.events {
     if case .membershipChanged(let change) = event {
-        guard change.node == system.cluster.uniqueNode else {
+        guard change.node == system.cluster.node else {
             continue
         }
         guard change.isUp else {

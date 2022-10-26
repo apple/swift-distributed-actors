@@ -273,8 +273,8 @@ internal struct DeathWatchImpl<Message: Codable> {
     ///
     /// Does NOT immediately handle these `Terminated` signals, they are treated as any other normal signal would,
     /// such that the user can have a chance to handle and react to them.
-    public mutating func receiveNodeTerminated(_ terminatedNode: UniqueNode, myself: _ReceivesSystemMessages) {
-        for watched: _AddressableActorRef in self.watching.keys where watched.id.uniqueNode == terminatedNode {
+    public mutating func receiveNodeTerminated(_ terminatedNode: Cluster.Node, myself: _ReceivesSystemMessages) {
+        for watched: _AddressableActorRef in self.watching.keys where watched.id.node == terminatedNode {
             // we KNOW an actor existed if it is local and not resolved as /dead; otherwise it may have existed
             // for a remote ref we don't know for sure if it existed
             let existenceConfirmed = watched.refType.isLocal && !watched.id.path.starts(with: ._dead)
@@ -296,13 +296,13 @@ internal struct DeathWatchImpl<Message: Codable> {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: Node termination
+    // MARK: Cluster.Node termination
 
     private func subscribeNodeTerminatedEvents(myself: _ActorRef<Message>, watchedID: ActorID, file: String = #filePath, line: UInt = #line) {
         guard watchedID._isRemote else {
             return
         }
-        self.nodeDeathWatcher.tell(.remoteActorWatched(watcher: _AddressableActorRef(myself), remoteNode: watchedID.uniqueNode), file: file, line: line)
+        self.nodeDeathWatcher.tell(.remoteActorWatched(watcher: _AddressableActorRef(myself), remoteNode: watchedID.node), file: file, line: line)
     }
 }
 

@@ -131,7 +131,7 @@ final class ClusterSystemTests: SingleClusterSystemXCTestCase {
 
     func test_resolveUnknownActor_shouldReturnPersonalDeadLetters() throws {
         let path = try ActorPath._user.appending("test").appending("foo").appending("bar")
-        let id = ActorID(local: self.system.cluster.uniqueNode, path: path, incarnation: .random())
+        let id = ActorID(local: self.system.cluster.node, path: path, incarnation: .random())
         let context: _ResolveContext<Never> = _ResolveContext(id: id, system: self.system)
         let ref = self.system._resolve(context: context)
 
@@ -147,16 +147,16 @@ final class ClusterSystemTests: SingleClusterSystemXCTestCase {
         let remote = await setUpNode("remote") { settings in
             settings.enabled = true
         }
-        local.cluster.join(node: remote.cluster.uniqueNode)
+        local.cluster.join(endpoint: remote.cluster.endpoint)
 
-        let remoteAssociationControlState0 = local._cluster!.getEnsureAssociation(with: remote.cluster.uniqueNode)
+        let remoteAssociationControlState0 = local._cluster!.getEnsureAssociation(with: remote.cluster.node)
         guard case ClusterShell.StoredAssociationState.association(let remoteControl0) = remoteAssociationControlState0 else {
-            throw Boom("Expected the association to exist for \(remote.cluster.uniqueNode)")
+            throw Boom("Expected the association to exist for \(remote.cluster.node)")
         }
 
         ClusterShell.shootTheOtherNodeAndCloseConnection(system: local, targetNodeAssociation: remoteControl0)
 
-        // Node should eventually appear in tombstones
+        // Endpoint should eventually appear in tombstones
         try self.testKit(local).eventually(within: .seconds(3)) {
             guard local._cluster?._testingOnly_associationTombstones.isEmpty == false else {
                 throw Boom("Expected tombstone for downed node")

@@ -48,7 +48,7 @@ message SWIMStatus {
 
     Type type                       = 1;
     uint64 incarnation              = 2;
-    repeated UniqueNode suspectedBy = 3;
+    repeated ClusterNode suspectedBy = 3;
 }
 
 message SWIMMember {

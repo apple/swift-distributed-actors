@@ -66,7 +66,14 @@ public protocol MultiNodeNodes: Hashable, CaseIterable {
 public protocol MultiNodeTestControlProtocol {
     var _actorSystem: ClusterSystem? { get set }
     var _conductor: MultiNodeTestConductor? { get set }
-    var _allNodes: [String: Node] { get set }
+    var _allEndpoints: [String: Cluster.Endpoint] { get set }
+    func _allEndpoints(except name: String) -> [Cluster.Endpoint]
+}
+
+extension MultiNodeTestControlProtocol {
+    public func _allEndpoints(except nodeName: String) -> [Cluster.Endpoint] {
+        self._allEndpoints.values.filter { $0.systemName != nodeName }
+    }
 }
 
 public protocol MultiNodeTestSuite {

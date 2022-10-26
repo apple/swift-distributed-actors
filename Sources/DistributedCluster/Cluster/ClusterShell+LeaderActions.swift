@@ -147,7 +147,7 @@ extension ClusterShell {
         state._latestGossip.incrementOwnerVersion()
         state.gossiperControl.update(payload: state._latestGossip)
 
-        self.terminateAssociation(system, state: &state, memberToRemove.uniqueNode)
+        self.terminateAssociation(system, state: &state, memberToRemove.node)
 
         state.log.info(
             "Leader removed member: \(memberToRemove), all nodes are certain to have seen it as [.down] before",

@@ -72,8 +72,8 @@ internal struct HandshakeStateMachine {
             self.settings.protocolVersion
         }
 
-        let remoteNode: Node
-        let localNode: UniqueNode
+        let remoteEndpoint: Cluster.Endpoint
+        let localNode: Cluster.Node
 
         var handshakeReconnectBackoff: BackoffStrategy
 
@@ -84,18 +84,18 @@ internal struct HandshakeStateMachine {
         var channel: Channel?
 
         init(
-            settings: ClusterSystemSettings, localNode: UniqueNode, connectTo remoteNode: Node
+            settings: ClusterSystemSettings, localNode: Cluster.Node, connectTo remoteEndpoint: Cluster.Endpoint
         ) {
-            precondition(localNode.node != remoteNode, "MUST NOT attempt connecting to own bind address. Address: \(remoteNode)")
+            precondition(localNode.endpoint != remoteEndpoint, "MUST NOT attempt connecting to own bind address. Address: \(remoteEndpoint)")
             self.settings = settings
             self.localNode = localNode
-            self.remoteNode = remoteNode
+            self.remoteEndpoint = remoteEndpoint
             self.handshakeReconnectBackoff = settings.handshakeReconnectBackoff // copy since we want to mutate it as the handshakes attempt retries
         }
 
         func makeOffer() -> Wire.HandshakeOffer {
             // TODO: maybe store also at what time we sent the handshake, so we can diagnose if we should reject replies for being late etc
-            Wire.HandshakeOffer(version: self.protocolVersion, originNode: self.localNode, targetNode: self.remoteNode)
+            Wire.HandshakeOffer(version: self.protocolVersion, originNode: self.localNode, targetEndpoint: self.remoteEndpoint)
         }
 
         mutating func onConnectionEstablished(channel: Channel) {
@@ -105,7 +105,7 @@ internal struct HandshakeStateMachine {
         // TODO: call into an connection error?
         // TODO: the remote REJECTING must not trigger backoffs
         mutating func onHandshakeTimeout() -> RetryDirective {
-            self.onConnectionError(HandshakeConnectionError(node: self.remoteNode, message: "Handshake timed out")) // TODO: improve msgs
+            self.onConnectionError(HandshakeConnectionError(endpoint: self.remoteEndpoint, message: "Handshake timed out")) // TODO: improve msgs
         }
 
         mutating func onConnectionError(_: Error) -> RetryDirective {
@@ -119,7 +119,7 @@ internal struct HandshakeStateMachine {
         var description: Swift.String {
             """
             InitiatedState(\
-            remoteNode: \(self.remoteNode), \
+            remoteNode: \(self.remoteEndpoint), \
             localNode: \(self.localNode), \
             channel: \(optional: self.channel)\
             )
@@ -128,7 +128,7 @@ internal struct HandshakeStateMachine {
     }
 
     struct HandshakeConnectionError: Error, Equatable {
-        let node: Node // TODO: allow carrying UniqueNode
+        let endpoint: Cluster.Endpoint // TODO: allow carrying Cluster.Node
         let message: String
     }
 
@@ -151,7 +151,7 @@ internal struct HandshakeStateMachine {
         private let state: ReadOnlyClusterState
 
         let offer: Wire.HandshakeOffer
-        var boundAddress: UniqueNode {
+        var boundAddress: Cluster.Node {
             self.state.selfNode
         }
 
@@ -165,7 +165,7 @@ internal struct HandshakeStateMachine {
         }
 
         func negotiate() -> HandshakeStateMachine.NegotiateDirective {
-            guard self.boundAddress.node == self.offer.targetNode else {
+            guard self.boundAddress.endpoint == self.offer.targetEndpoint else {
                 let error = HandshakeError.targetHandshakeAddressMismatch(self.offer, selfNode: self.boundAddress)
 
                 let rejectedState = RejectedState(fromReceived: self, remoteNode: self.offer.originNode, error: error)
@@ -209,8 +209,8 @@ internal struct HandshakeStateMachine {
     /// This state is used to unlock creating a completed Association.
     internal struct CompletedState {
         let protocolVersion: ClusterSystem.Version
-        var remoteNode: UniqueNode
-        var localNode: UniqueNode
+        var remoteNode: Cluster.Node
+        var localNode: Cluster.Node
 //        let whenCompleted: EventLoopPromise<Wire.HandshakeResponse>
         // let unique association ID?
 
@@ -218,7 +218,7 @@ internal struct HandshakeStateMachine {
         //
         // Since the client is the one who initiates the handshake, once it receives an Accept containing the remote unique node
         // it may immediately transition to the completed state.
-        init(fromInitiated initiated: InitiatedState, remoteNode: UniqueNode) {
+        init(fromInitiated initiated: InitiatedState, remoteNode: Cluster.Node) {
             precondition(initiated.localNode != remoteNode, "Node [\(initiated.localNode)] attempted to create association with itself.")
             self.protocolVersion = initiated.protocolVersion
             self.remoteNode = remoteNode
@@ -227,7 +227,7 @@ internal struct HandshakeStateMachine {
         }
 
         // State Transition used by Server Side on accepting a received Handshake.
-        init(fromReceived received: HandshakeOfferReceivedState, remoteNode: UniqueNode) {
+        init(fromReceived received: HandshakeOfferReceivedState, remoteNode: Cluster.Node) {
             precondition(received.boundAddress != remoteNode, "Node [\(received.boundAddress)] attempted to create association with itself.")
             self.protocolVersion = received.protocolVersion
             self.remoteNode = remoteNode
@@ -247,11 +247,11 @@ internal struct HandshakeStateMachine {
 
     internal struct RejectedState {
         let protocolVersion: ClusterSystem.Version
-        let localNode: UniqueNode
-        let remoteNode: UniqueNode
+        let localNode: Cluster.Node
+        let remoteNode: Cluster.Node
         let error: HandshakeError
 
-        init(fromReceived state: HandshakeOfferReceivedState, remoteNode: UniqueNode, error: HandshakeError) {
+        init(fromReceived state: HandshakeOfferReceivedState, remoteNode: Cluster.Node, error: HandshakeError) {
             self.protocolVersion = state.protocolVersion
             self.localNode = state.boundAddress
             self.remoteNode = remoteNode
@@ -300,12 +300,12 @@ enum HandshakeError: Error {
     /// where the handshake was received at "the wrong node".
     ///
     /// The UID part of the `Node` does not matter for this check, but is included here for debugging purposes.
-    case targetHandshakeAddressMismatch(Wire.HandshakeOffer, selfNode: UniqueNode)
+    case targetHandshakeAddressMismatch(Wire.HandshakeOffer, selfNode: Cluster.Node)
 
     /// Returned when an incoming handshake protocol version does not match what this node can understand.
     case incompatibleProtocolVersion(local: ClusterSystem.Version, remote: ClusterSystem.Version)
 
-    case targetRejectedHandshake(selfNode: UniqueNode, remoteNode: UniqueNode, message: String)
+    case targetRejectedHandshake(selfNode: Cluster.Node, remoteNode: Cluster.Node, message: String)
 
-    case targetAlreadyTombstone(selfNode: UniqueNode, remoteNode: UniqueNode)
+    case targetAlreadyTombstone(selfNode: Cluster.Node, remoteNode: Cluster.Node)
 }

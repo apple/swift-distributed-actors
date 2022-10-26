@@ -41,17 +41,17 @@ extension Cluster {
             .init(members: [])
         }
 
-        /// Members MUST be stored `UniqueNode` rather than plain node, since there may exist "replacements" which we need
+        /// Members MUST be stored `Cluster.Node` rather than plain node, since there may exist "replacements" which we need
         /// to track gracefully -- in order to tell all other nodes that those nodes are now down/leaving/removed, if a
         /// node took their place. This makes lookup by `Node` not nice, but realistically, that lookup is quite rare -- only
-        /// when operator issued moves are induced e.g. "> down 1.1.1.1:3333", since operators do not care about `NodeID` most of the time.
-        internal var _members: [UniqueNode: Cluster.Member]
+        /// when operator issued moves are induced e.g. "> down 1.1.1.1:3333", since operators do not care about `Cluster.Node.ID` most of the time.
+        internal var _members: [Cluster.Node: Cluster.Member]
 
         /// Initialize a membership with the given members.
         public init(members: [Cluster.Member]) {
             self._members = Dictionary(minimumCapacity: members.count)
             for member in members {
-                self._members[member.uniqueNode] = member
+                self._members[member.node] = member
             }
         }
 
@@ -62,19 +62,19 @@ extension Cluster {
         // ==== ------------------------------------------------------------------------------------------------------------
         // MARK: Members
 
-        /// Retrieves a `Member` by its `UniqueNode`.
+        /// Retrieves a `Member` by its `Cluster.Node`.
         ///
         /// This operation is guaranteed to return a member if it was added to the membership UNLESS the member has been `.removed`
         /// and dropped which happens only after an extended period of time. // FIXME: That period of time is not implemented
-        public func uniqueMember(_ node: UniqueNode) -> Cluster.Member? {
+        public func uniqueMember(_ node: Cluster.Node) -> Cluster.Member? {
             self._members[node]
         }
 
         /// Picks "first", in terms of least progressed among its lifecycle member in presence of potentially multiple members
         /// for a non-unique `Node`. In practice, this happens when an existing node is superseded by a "replacement", and the
         /// previous node becomes immediately down.
-        public func member(_ node: Node) -> Cluster.Member? {
-            self._members.values.sorted(by: Cluster.MemberStatus.lifecycleOrdering).first(where: { $0.uniqueNode.node == node })
+        public func member(_ endpoint: Cluster.Endpoint) -> Cluster.Member? {
+            self._members.values.sorted(by: Cluster.MemberStatus.lifecycleOrdering).first(where: { $0.node.endpoint == endpoint })
         }
 
         public func youngestMember() -> Cluster.Member? {
@@ -167,8 +167,8 @@ extension Cluster {
         }
 
         /// Find specific member, identified by its unique node identity.
-        public func member(byUniqueNodeID nid: UniqueNode.ID) -> Cluster.Member? {
-            // TODO: make this O(1) by allowing wrapper type to equality check only on NodeID
+        public func member(byUniqueNodeID nid: Cluster.Node.ID) -> Cluster.Member? {
+            // TODO: make this O(1) by allowing wrapper type to equality check only on Cluster.Node.ID
             self._members.first(where: { $0.key.nid == nid })?.value
         }
 
@@ -192,11 +192,11 @@ extension Cluster {
                 self._leaderNode.flatMap { self.uniqueMember($0) }
             }
             set {
-                self._leaderNode = newValue?.uniqueNode
+                self._leaderNode = newValue?.node
             }
         }
 
-        internal var _leaderNode: UniqueNode?
+        internal var _leaderNode: Cluster.Node?
 
         /// Returns a copy of the membership, though without any leaders assigned.
         public var leaderless: Cluster.Membership {
@@ -207,18 +207,18 @@ extension Cluster {
 
         /// Checks if passed in node is the leader (given the current view of the cluster state by this Membership).
         // TODO: this could take into account roles, if we do them
-        public func isLeader(_ node: UniqueNode) -> Bool {
-            self.leader?.uniqueNode == node
+        public func isLeader(_ node: Cluster.Node) -> Bool {
+            self.leader?.node == node
         }
 
         /// Checks if passed in node is the leader (given the current view of the cluster state by this Membership).
         public func isLeader(_ member: Cluster.Member) -> Bool {
-            self.isLeader(member.uniqueNode)
+            self.isLeader(member.node)
         }
 
-        /// Checks if the membership contains a member representing this ``UniqueNode``.
-        func contains(_ uniqueNode: UniqueNode) -> Bool {
-            self._members[uniqueNode] != nil
+        /// Checks if the membership contains a member representing this ``Cluster.Node``.
+        func contains(_ node: Cluster.Node) -> Bool {
+            self._members[node] != nil
         }
     }
 }
@@ -235,7 +235,7 @@ extension Cluster.Membership: Hashable {
     public func hash(into hasher: inout Hasher) {
         hasher.combine(self._leaderNode)
         for member in self._members.values {
-            hasher.combine(member.uniqueNode)
+            hasher.combine(member.node)
             hasher.combine(member.status)
             hasher.combine(member.reachability)
         }
@@ -250,7 +250,7 @@ extension Cluster.Membership: Hashable {
         }
         for (lNode, lMember) in lhs._members {
             if let rMember = rhs._members[lNode],
-               lMember.uniqueNode != rMember.uniqueNode ||
+               lMember.node != rMember.node ||
                lMember.status != rMember.status ||
                lMember.reachability != rMember.reachability
             {
@@ -266,8 +266,8 @@ extension Cluster.Membership: CustomStringConvertible, CustomDebugStringConverti
     /// Pretty multi-line output of a membership, useful for manual inspection
     public var prettyDescription: String {
         var res = "leader: \(self.leader, orElse: ".none")"
-        for member in self._members.values.sorted(by: { $0.uniqueNode.node.port < $1.uniqueNode.node.port }) {
-            res += "\n  \(reflecting: member.uniqueNode) status [\(member.status.rawValue, leftPadTo: Cluster.MemberStatus.maxStrLen)]"
+        for member in self._members.values.sorted(by: { $0.node.endpoint.port < $1.node.endpoint.port }) {
+            res += "\n  \(reflecting: member.node) status [\(member.status.rawValue, leftPadTo: Cluster.MemberStatus.maxStrLen)]"
         }
         return res
     }
@@ -302,7 +302,7 @@ extension Cluster.Membership {
 
         if let knownUnique = self.uniqueMember(change.node) {
             // it is known uniquely, so we just update its status
-            return self.mark(knownUnique.uniqueNode, as: change.status)
+            return self.mark(knownUnique.node, as: change.status)
         }
 
         if change.isAtLeast(.leaving) {
@@ -311,12 +311,12 @@ extension Cluster.Membership {
             return nil
         }
 
-        if let previousMember = self.member(change.node.node) {
+        if let previousMember = self.member(change.node.endpoint) {
             // we are joining "over" an existing incarnation of a node; causing the existing node to become .down immediately
             if previousMember.status < .down {
-                _ = self.mark(previousMember.uniqueNode, as: .down)
+                _ = self.mark(previousMember.node, as: .down)
             } else {
-                _ = self.removeCompletely(previousMember.uniqueNode) // the replacement event will handle the down notifications
+                _ = self.removeCompletely(previousMember.node) // the replacement event will handle the down notifications
             }
             self._members[change.node] = change.member
 
@@ -324,7 +324,7 @@ extension Cluster.Membership {
             return .init(replaced: previousMember, by: change.member)
         } else {
             // node is normally joining
-            self._members[change.member.uniqueNode] = change.member
+            self._members[change.member.node] = change.member
             return change
         }
     }
@@ -349,11 +349,11 @@ extension Cluster.Membership {
 
         // for single node "cluster" we allow becoming the leader myself eagerly (e.g. useful in testing)
         if self._members.count == 0 {
-            _ = self.join(wannabeLeader.uniqueNode)
+            _ = self.join(wannabeLeader.node)
         }
 
         // we soundness check that the wanna-be leader is already a member
-        guard self._members[wannabeLeader.uniqueNode] != nil else {
+        guard self._members[wannabeLeader.node] != nil else {
             throw Cluster.MembershipError(.nonMemberLeaderSelected(self, wannabeLeader: wannabeLeader))
         }
 
@@ -375,18 +375,18 @@ extension Cluster.Membership {
     /// - Returns: the changed member if the change was a transition (unreachable -> reachable, or back),
     ///            or `nil` if the reachability is the same as already known by the membership.
     public mutating func applyReachabilityChange(_ change: Cluster.ReachabilityChange) -> Cluster.Member? {
-        self.mark(change.member.uniqueNode, reachability: change.member.reachability)
+        self.mark(change.member.node, reachability: change.member.reachability)
     }
 
     /// Returns the change; e.g. if we replaced a node the change `from` will be populated and perhaps a connection should
     /// be closed to that now-replaced node, since we have replaced it with a new node.
-    public mutating func join(_ node: UniqueNode) -> Cluster.MembershipChange? {
+    public mutating func join(_ node: Cluster.Node) -> Cluster.MembershipChange? {
         var change = Cluster.MembershipChange(member: Cluster.Member(node: node, status: .joining))
         change.previousStatus = nil
         return self.applyMembershipChange(change)
     }
 
-    public func joining(_ node: UniqueNode) -> Cluster.Membership {
+    public func joining(_ node: Cluster.Node) -> Cluster.Membership {
         var membership = self
         _ = membership.join(node)
         return membership
@@ -397,7 +397,7 @@ extension Cluster.Membership {
     /// Handles replacement nodes properly, by emitting a "replacement" change, and marking the replaced node as `MemberStatus.down`.
     ///
     /// If the membership not aware of this address the update is treated as a no-op.
-    public mutating func mark(_ node: UniqueNode, as status: Cluster.MemberStatus) -> Cluster.MembershipChange? {
+    public mutating func mark(_ node: Cluster.Node, as status: Cluster.MemberStatus) -> Cluster.MembershipChange? {
         if let existingExactMember = self.uniqueMember(node) {
             guard existingExactMember.status < status else {
                 // this would be a "move backwards" which we do not do; membership only moves forward
@@ -409,11 +409,11 @@ extension Cluster.Membership {
             if status == .up {
                 updatedMember._upNumber = self.youngestMember()?._upNumber ?? 1
             }
-            self._members[existingExactMember.uniqueNode] = updatedMember
+            self._members[existingExactMember.node] = updatedMember
 
             return Cluster.MembershipChange(member: existingExactMember, toStatus: status)
-        } else if let beingReplacedMember = self.member(node.node) {
-            // We did not get a member by exact UniqueNode match, but we got one by Node match...
+        } else if let beingReplacedMember = self.member(node.endpoint) {
+            // We did not get a member by exact Cluster.Node match, but we got one by Node match...
             // this means this new node that we are trying to mark is a "replacement" and the `beingReplacedNode` must be .downed!
 
             // We do not check the "only move forward rule" as this is a NEW node, and is replacing
@@ -421,10 +421,10 @@ extension Cluster.Membership {
             // This still means that the current `.up` one is very likely down already just that we have not noticed _yet_.
 
             // replacement:
-            let replacedNode = Cluster.Member(node: beingReplacedMember.uniqueNode, status: .down)
+            let replacedMember = Cluster.Member(node: beingReplacedMember.node, status: .down)
             let nodeD = Cluster.Member(node: node, status: status)
-            self._members[replacedNode.uniqueNode] = replacedNode
-            self._members[nodeD.uniqueNode] = nodeD
+            self._members[replacedMember.node] = replacedMember
+            self._members[nodeD.node] = nodeD
 
             return Cluster.MembershipChange(replaced: beingReplacedMember, by: nodeD)
         } else {
@@ -436,7 +436,7 @@ extension Cluster.Membership {
     /// Returns new membership while marking an existing member with the specified status.
     ///
     /// If the membership not aware of this node the update is treated as a no-op.
-    public func marking(_ node: UniqueNode, as status: Cluster.MemberStatus) -> Cluster.Membership {
+    public func marking(_ node: Cluster.Node, as status: Cluster.MemberStatus) -> Cluster.Membership {
         var membership = self
         _ = membership.mark(node, as: status)
         return membership
@@ -445,7 +445,7 @@ extension Cluster.Membership {
     /// Mark node with passed in `reachability`
     ///
     /// - Returns: the changed member if the reachability was different than the previously stored one.
-    public mutating func mark(_ node: UniqueNode, reachability: Cluster.MemberReachability) -> Cluster.Member? {
+    public mutating func mark(_ node: Cluster.Node, reachability: Cluster.MemberReachability) -> Cluster.Member? {
         guard var member = self._members.removeValue(forKey: node) else {
             // no such member
             return nil
@@ -468,7 +468,7 @@ extension Cluster.Membership {
     ///
     /// - Warning: When removing nodes from cluster one MUST also prune the seen tables (!) of the gossip.
     ///            Rather than calling this function directly, invoke `Cluster.Gossip.removeMember()` which performs all needed cleanups.
-    public mutating func removeCompletely(_ node: UniqueNode) -> Cluster.MembershipChange? {
+    public mutating func removeCompletely(_ node: Cluster.Node) -> Cluster.MembershipChange? {
         if let member = self._members[node] {
             self._members.removeValue(forKey: node)
             return .init(member: member, toStatus: .removed)
@@ -478,7 +478,7 @@ extension Cluster.Membership {
     }
 
     /// Returns new membership while removing an existing member, identified by the passed in node.
-    public func removingCompletely(_ node: UniqueNode) -> Cluster.Membership {
+    public func removingCompletely(_ node: Cluster.Node) -> Cluster.Membership {
         var membership = self
         _ = membership.removeCompletely(node)
         return membership
@@ -513,7 +513,7 @@ extension Cluster.Membership {
     /// Warning: Leaders are not "merged", they get elected by each node (!).
     ///
     /// - Returns: any membership changes that occurred (and have affected the current membership).
-    public mutating func mergeFrom(incoming: Cluster.Membership, myself: UniqueNode?) -> [Cluster.MembershipChange] {
+    public mutating func mergeFrom(incoming: Cluster.Membership, myself: Cluster.Node?) -> [Cluster.MembershipChange] {
         var changes: [Cluster.MembershipChange] = []
 
         // Set of nodes whose members are currently .down, and not present in the incoming gossip.
@@ -522,13 +522,13 @@ extension Cluster.Membership {
         // if any remain in the set, it means they were removed in the incoming membership
         // since we strongly assume the incoming one is "ahead" (i.e. `self happenedBefore ahead`),
         // we remove these members and emit .removed changes.
-        var downNodesToRemove: Set<UniqueNode> = Set(self.members(withStatus: .down).map(\.uniqueNode))
+        var downNodesToRemove: Set<Cluster.Node> = Set(self.members(withStatus: .down).map(\.node))
 
         // 1) move forward any existing members or new members according to the `ahead` statuses
         for incomingMember in incoming._members.values {
-            downNodesToRemove.remove(incomingMember.uniqueNode)
+            downNodesToRemove.remove(incomingMember.node)
 
-            guard var knownMember = self._members[incomingMember.uniqueNode] else {
+            guard var knownMember = self._members[incomingMember.node] else {
                 // member NOT known locally ----------------------------------------------------------------------------
 
                 // only proceed if the member isn't already on its way out
@@ -538,7 +538,7 @@ extension Cluster.Membership {
                 }
 
                 // it is information about a new member, merge it in
-                self._members[incomingMember.uniqueNode] = incomingMember
+                self._members[incomingMember.node] = incomingMember
 
                 var change = Cluster.MembershipChange(member: incomingMember)
                 change.previousStatus = nil // since "new"
@@ -549,9 +549,9 @@ extension Cluster.Membership {
             // it is a known member ------------------------------------------------------------------------------------
             if let change = knownMember.moveForward(to: incomingMember.status) {
                 if change.status.isRemoved {
-                    self._members.removeValue(forKey: incomingMember.uniqueNode)
+                    self._members.removeValue(forKey: incomingMember.node)
                 } else {
-                    self._members[incomingMember.uniqueNode] = knownMember
+                    self._members[incomingMember.node] = knownMember
                 }
                 changes.append(change)
             }
@@ -626,8 +626,8 @@ extension Cluster.Membership {
 
         // iterate over the original member set, and remove from the `to` set any seen members
         for member in from._members.values {
-            if let toMember = to.uniqueMember(member.uniqueNode) {
-                to._members.removeValue(forKey: member.uniqueNode)
+            if let toMember = to.uniqueMember(member.node) {
+                to._members.removeValue(forKey: member.node)
                 if member.status != toMember.status {
                     entries.append(.init(member: member, toStatus: toMember.status))
                 }
@@ -639,7 +639,7 @@ extension Cluster.Membership {
 
         // any remaining `to` members, are new members
         for member in to._members.values {
-            entries.append(.init(node: member.uniqueNode, previousStatus: nil, toStatus: member.status))
+            entries.append(.init(node: member.node, previousStatus: nil, toStatus: member.status))
         }
 
         return MembershipDiff(changes: entries)
@@ -669,8 +669,8 @@ extension Cluster {
     public struct MembershipError: Error, CustomStringConvertible {
         internal enum _MembershipError: CustomPrettyStringConvertible {
             case nonMemberLeaderSelected(Cluster.Membership, wannabeLeader: Cluster.Member)
-            case notFound(UniqueNode, in: Cluster.Membership)
-            case notFoundAny(Node, in: Cluster.Membership)
+            case notFound(Cluster.Node, in: Cluster.Membership)
+            case notFoundAny(Cluster.Endpoint, in: Cluster.Membership)
             case atLeastStatusRequirementNotMet(expectedAtLeast: Cluster.MemberStatus, found: Cluster.Member)
             case statusRequirementNotMet(expected: Cluster.MemberStatus, found: Cluster.Member)
             case awaitStatusTimedOut(Duration, Error?)
@@ -688,9 +688,9 @@ extension Cluster {
                 case .notFoundAny(let node, let membership):
                     return "[\(node)] is not a member [\(membership)]"
                 case .atLeastStatusRequirementNotMet(let expectedAtLeastStatus, let foundMember):
-                    return "Expected \(reflecting: foundMember.uniqueNode) to be seen as at-least [\(expectedAtLeastStatus)] but was [\(foundMember.status)]"
+                    return "Expected \(reflecting: foundMember.node) to be seen as at-least [\(expectedAtLeastStatus)] but was [\(foundMember.status)]"
                 case .statusRequirementNotMet(let expectedStatus, let foundMember):
-                    return "Expected \(reflecting: foundMember.uniqueNode) to be seen as [\(expectedStatus)] but was [\(foundMember.status)]"
+                    return "Expected \(reflecting: foundMember.node) to be seen as [\(expectedStatus)] but was [\(foundMember.status)]"
                 case .awaitStatusTimedOut(let duration, let lastError):
                     let lastErrorMessage: String
                     if let error = lastError {
