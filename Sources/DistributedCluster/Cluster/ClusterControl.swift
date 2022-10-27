@@ -25,11 +25,12 @@ public struct ClusterControl {
     /// Settings the cluster node is configured with.
     public let settings: ClusterSystemSettings
 
+    let events: ClusterEventStream
+    
     /// Sequence of cluster events.
     ///
     /// This sequence begins with a snapshot of the current cluster state and continues with events representing changes
-    /// since the snapshot.
-    public let events: ClusterEventStream
+    /// since the snapshot.    
     public func events(file: String = #fileID, line: UInt = #line) -> ClusterEventStream {
         var events = self.events
         events.sourceFileLoc = file
