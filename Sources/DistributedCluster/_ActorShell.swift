@@ -834,7 +834,7 @@ extension _ActorShell {
     /// This action is performed concurrently by all actors who have watched remote actors on given node,
     /// and no ordering guarantees are made about which actors will get the Terminated signals first.
     @inlinable
-    func interpretNodeTerminated(_ terminatedNode: UniqueNode) {
+    func interpretNodeTerminated(_ terminatedNode: Cluster.Node) {
         #if SACT_TRACE_ACTOR_SHELL
         self.log.info("Received address terminated: \(terminatedNode)")
         #endif

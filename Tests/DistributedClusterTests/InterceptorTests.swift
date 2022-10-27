@@ -64,7 +64,7 @@ final class InterceptorTests: SingleClusterSystemXCTestCase {
         let remote = await setUpNode("remote") { settings in
             settings.enabled = true
         }
-        local.cluster.join(node: remote.cluster.uniqueNode)
+        local.cluster.join(endpoint: remote.cluster.endpoint)
 
         let otherGreeter = Greeter(actorSystem: local, greeting: "HI!!!")
         let localGreeter: Greeter = try system.interceptCalls(
@@ -86,7 +86,7 @@ final class InterceptorTests: SingleClusterSystemXCTestCase {
         let remote = await setUpNode("remote") { settings in
             settings.enabled = true
         }
-        local.cluster.join(node: remote.cluster.uniqueNode)
+        local.cluster.join(endpoint: remote.cluster.endpoint)
 
         let otherGreeter = Greeter(actorSystem: local, greeting: "HI!!!")
         let localGreeter: Greeter = try shouldNotThrow {

@@ -152,7 +152,7 @@ extension DistributedReception {
 }
 
 /// Represents a registration of an actor with its (local) receptionist,
-/// at the version represented by the `(seqNr, .uniqueNode(actor.<address>.uniqueNode))`.
+/// at the version represented by the `(seqNr, .node(actor.<address>.node))`.
 ///
 /// This allows a local subscriber to definitely compare a registration with its "already seen"
 /// version vector (that contains versions for every node it is receiving updates from),
@@ -162,7 +162,7 @@ internal struct VersionedRegistration: Hashable {
     let actorID: ClusterSystem.ActorID
 
     init(remoteOpSeqNr: UInt64, actor: AnyDistributedActor) {
-        self.version = VersionVector(remoteOpSeqNr, at: .uniqueNode(actor.id.uniqueNode))
+        self.version = VersionVector(remoteOpSeqNr, at: .node(actor.id.node))
         self.actorID = actor.id
     }
 
@@ -192,7 +192,7 @@ internal final class DistributedReceptionistStorage {
     /// Per (receptionist) node mapping of which keys are presently known to this receptionist on the given node.
     /// This is used to perform quicker cleanups upon a node/receptionist crashing, and thus all existing references
     /// on that node should be removed from our storage.
-    private var _registeredKeysByNode: [UniqueNode: Set<AnyDistributedReceptionKey>] = [:]
+    private var _registeredKeysByNode: [Cluster.Node: Set<AnyDistributedReceptionKey>] = [:]
 
     /// Allows for reverse lookups, when an actor terminates, we know from which registrations to remove it from.
     internal var _identityToRegisteredKeys: [ClusterSystem.ActorID: Set<AnyDistributedReceptionKey>] = [:]
@@ -215,7 +215,7 @@ internal final class DistributedReceptionistStorage {
         }
 
         self.addGuestKeyMapping(identity: guest.id, key: key)
-        self.storeRegistrationNodeRelation(key: key, node: guest.id.uniqueNode)
+        self.storeRegistrationNodeRelation(key: key, node: guest.id.node)
 
         let versionedRegistration = VersionedRegistration(
             remoteOpSeqNr: sequenced.sequenceRange.max,
@@ -230,7 +230,7 @@ internal final class DistributedReceptionistStorage {
         let address = guest.id
 
         _ = self.removeFromKeyMappings(guest.id)
-        self.removeSingleRegistrationNodeRelation(key: key, node: address.uniqueNode)
+        self.removeSingleRegistrationNodeRelation(key: key, node: address.node)
 
         let versionedRegistration = VersionedRegistration(
             forRemovalOf: guest.id
@@ -242,13 +242,13 @@ internal final class DistributedReceptionistStorage {
         self._registrations[key]
     }
 
-    private func storeRegistrationNodeRelation(key: AnyDistributedReceptionKey, node: UniqueNode?) {
+    private func storeRegistrationNodeRelation(key: AnyDistributedReceptionKey, node: Cluster.Node?) {
         if let node = node {
             self._registeredKeysByNode[node, default: []].insert(key)
         }
     }
 
-    private func removeSingleRegistrationNodeRelation(key: AnyDistributedReceptionKey, node: UniqueNode?) {
+    private func removeSingleRegistrationNodeRelation(key: AnyDistributedReceptionKey, node: Cluster.Node?) {
         // FIXME: Implement me (!), we need to make the storage a counter
         //        and decrement here by one; once the counter reaches zero we know there is no more relationship
         //        and we can prune this key/node relationship
@@ -298,7 +298,7 @@ internal final class DistributedReceptionistStorage {
     ///   (as they only were interested on things on the now-removed node). This allows us to eagerly and "in batch" give them a listing update
     ///   *once* with all the remote actors removed, rather than trickling in the changes to the Listing one by one (as it would be the case
     ///   if we waited for Terminated signals to trickle in and handle these removals one by one then).
-    func pruneNode(_ node: UniqueNode) -> PrunedNodeDirective {
+    func pruneNode(_ node: Cluster.Node) -> PrunedNodeDirective {
         let prune = PrunedNodeDirective()
 
         guard let keys = self._registeredKeysByNode[node] else {
@@ -311,7 +311,7 @@ internal final class DistributedReceptionistStorage {
             // 1) we remove any registrations that it hosted
             let registrations = self._registrations.removeValue(forKey: key) ?? []
             let remainingRegistrations = registrations._filter { registration in // FIXME(collections): missing type preserving filter on OrderedSet https://github.com/apple/swift-collections/pull/159
-                registration.actorID.uniqueNode != node
+                registration.actorID.node != node
             }
             if !remainingRegistrations.isEmpty {
                 self._registrations[key] = remainingRegistrations

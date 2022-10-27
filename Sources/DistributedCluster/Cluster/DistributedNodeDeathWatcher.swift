@@ -15,7 +15,7 @@
 import Distributed
 import Logging
 
-/// Implements ``LifecycleWatch`` semantics in presence of ``Node`` failures.
+/// Implements ``LifecycleWatch`` semantics in presence of ``Cluster/Endpoint`` failures.
 ///
 /// Depends on a failure detector (e.g. SWIM) to actually detect a node failure, however once detected,
 /// it handles notifying all _local_ actors which have watched at least one actor the terminating node.
@@ -35,22 +35,22 @@ internal actor DistributedNodeDeathWatcher {
 
     private let log: Logger
 
-    private let selfNode: UniqueNode
+    private let selfNode: Cluster.Node
     private var membership: Cluster.Membership = .empty
 
     /// Members which have been `removed`
     // TODO: clear after a few days, or some max count of nodes, use sorted set for this
-    private var nodeTombstones: Set<UniqueNode> = []
+    private var nodeTombstones: Set<Cluster.Node> = []
 
     /// Mapping between remote node, and actors which have watched some actors on given remote node.
-    private var remoteWatchCallbacks: [UniqueNode: Set<WatcherAndCallback>] = [:]
+    private var remoteWatchCallbacks: [Cluster.Node: Set<WatcherAndCallback>] = [:]
 
     private var eventListenerTask: Task<Void, Error>?
 
     init(actorSystem: ActorSystem) async {
         let log = actorSystem.log
         self.log = log
-        self.selfNode = actorSystem.cluster.uniqueNode
+        self.selfNode = actorSystem.cluster.node
         // initialized
 
         let events = actorSystem.cluster.events
@@ -74,9 +74,9 @@ internal actor DistributedNodeDeathWatcher {
     }
 
     func watchActor(
-        on remoteNode: UniqueNode,
+        on remoteNode: Cluster.Node,
         by watcher: ClusterSystem.ActorID,
-        whenTerminated nodeTerminatedFn: @escaping @Sendable (UniqueNode) async -> Void
+        whenTerminated nodeTerminatedFn: @escaping @Sendable (Cluster.Node) async -> Void
     ) {
         guard !self.nodeTombstones.contains(remoteNode) else {
             // the system the watcher is attempting to watch has terminated before the watch has been processed,
@@ -101,7 +101,7 @@ internal actor DistributedNodeDeathWatcher {
         }
     }
 
-    func cleanupTombstone(node: UniqueNode) {
+    func cleanupTombstone(node: Cluster.Node) {
         _ = self.nodeTombstones.remove(node)
     }
 
@@ -144,7 +144,7 @@ extension DistributedNodeDeathWatcher {
     struct WatcherAndCallback: Hashable {
         /// Address of the local watcher which had issued this watch
         let watcherID: ClusterSystem.ActorID
-        let callback: @Sendable (UniqueNode) async -> Void
+        let callback: @Sendable (Cluster.Node) async -> Void
 
         func hash(into hasher: inout Hasher) {
             hasher.combine(self.watcherID)

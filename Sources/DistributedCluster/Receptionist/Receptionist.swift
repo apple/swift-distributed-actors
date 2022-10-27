@@ -139,7 +139,7 @@ public struct Receptionist {
         /// Per (receptionist) node mapping of which keys are presently known to this receptionist on the given node.
         /// This is used to perform quicker cleanups upon a node/receptionist crashing, and thus all existing references
         /// on that node should be removed from our storage.
-        private var _registeredKeysByNode: [UniqueNode: Set<AnyReceptionKey>] = [:]
+        private var _registeredKeysByNode: [Cluster.Node: Set<AnyReceptionKey>] = [:]
 
         /// Allows for reverse lookups, when an actor terminates, we know from which registrations and subscriptions to remove it from.
         internal var _idToKeys: [ActorID: Set<AnyReceptionKey>] = [:]
@@ -150,13 +150,13 @@ public struct Receptionist {
         /// - returns: `true` if the value was a newly inserted value, `false` otherwise
         func addRegistration(key: AnyReceptionKey, ref: _AddressableActorRef) -> Bool {
             self.addRefKeyMapping(id: ref.id, key: key)
-            self.storeRegistrationNodeRelation(key: key, node: ref.id.uniqueNode)
+            self.storeRegistrationNodeRelation(key: key, node: ref.id.node)
             return self.addTo(dict: &self._registrations, key: key, value: ref)
         }
 
         func removeRegistration(key: AnyReceptionKey, ref: _AddressableActorRef) -> Set<_AddressableActorRef>? {
             _ = self.removeFromKeyMappings(ref)
-            self.removeSingleRegistrationNodeRelation(key: key, node: ref.id.uniqueNode)
+            self.removeSingleRegistrationNodeRelation(key: key, node: ref.id.node)
             return self.removeFrom(dict: &self._registrations, key: key, value: ref)
         }
 
@@ -164,13 +164,13 @@ public struct Receptionist {
             self._registrations[key]
         }
 
-        private func storeRegistrationNodeRelation(key: AnyReceptionKey, node: UniqueNode?) {
+        private func storeRegistrationNodeRelation(key: AnyReceptionKey, node: Cluster.Node?) {
             if let node = node {
                 self._registeredKeysByNode[node, default: []].insert(key)
             }
         }
 
-        private func removeSingleRegistrationNodeRelation(key: AnyReceptionKey, node: UniqueNode?) {
+        private func removeSingleRegistrationNodeRelation(key: AnyReceptionKey, node: Cluster.Node?) {
             // FIXME: Implement me (!), we need to make the storage a counter
             //        and decrement here by one; once the counter reaches zero we know there is no more relationship
             //        and we can prune this key/node relationship
@@ -233,7 +233,7 @@ public struct Receptionist {
         ///   (as they only were interested on things on the now-removed node). This allows us to eagerly and "in batch" give them a listing update
         ///   *once* with all the remote actors removed, rather than trickling in the changes to the Listing one by one (as it would be the case
         ///   if we waited for Terminated signals to trickle in and handle these removals one by one then).
-        func pruneNode(_ node: UniqueNode) -> PrunedNodeDirective {
+        func pruneNode(_ node: Cluster.Node) -> PrunedNodeDirective {
             var prune = PrunedNodeDirective()
 
             guard let keys = self._registeredKeysByNode[node] else {
@@ -245,14 +245,14 @@ public struct Receptionist {
             for key in keys {
                 // 1) we remove any registrations that it hosted
                 let registrations: Set<_AddressableActorRef> = self._registrations.removeValue(forKey: key) ?? []
-                let remainingRegistrations = registrations.filter { $0.id.uniqueNode != node }
+                let remainingRegistrations = registrations.filter { $0.id.node != node }
                 if !remainingRegistrations.isEmpty {
                     self._registrations[key] = remainingRegistrations
                 }
 
                 // 2) and remove any of our subscriptions
                 let subs: Set<AnySubscribe> = self._subscriptions.removeValue(forKey: key) ?? []
-                let prunedSubs = subs.filter { $0.id.uniqueNode != node }
+                let prunedSubs = subs.filter { $0.id.node != node }
                 if remainingRegistrations.count != registrations.count {
                     // only if the set of registered actors for this key was actually affected by this prune
                     // we want to mark it as changed and ensure we contact all of such keys subscribers about the change.
@@ -319,7 +319,7 @@ extension ActorID {
         case distributedActors
     }
 
-    static func _receptionist(on node: UniqueNode, for type: ReceptionistType) -> ActorID {
+    static func _receptionist(on node: Cluster.Node, for type: ReceptionistType) -> ActorID {
         switch type {
         case .actorRefs:
             return ActorPath.actorRefReceptionist.makeRemoteID(on: node, incarnation: .wellKnown)

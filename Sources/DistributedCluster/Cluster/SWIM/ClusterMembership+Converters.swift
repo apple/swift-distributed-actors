@@ -18,21 +18,21 @@ import Logging
 import SWIM
 
 extension ClusterMembership.Node {
-    init(uniqueNode: UniqueNode) {
+    init(node: Cluster.Node) {
         self.init(
-            protocol: uniqueNode.node.protocol,
-            name: uniqueNode.node.systemName,
-            host: uniqueNode.host,
-            port: uniqueNode.port,
-            uid: uniqueNode.nid.value
+            protocol: node.endpoint.protocol,
+            name: node.endpoint.systemName,
+            host: node.host,
+            port: node.port,
+            uid: node.nid.value
         )
     }
 
     func swimShell(_ system: ClusterSystem) -> SWIMActor {
-        try! SWIMActor.resolve(id: ._swim(on: self.asUniqueNode!), using: system) // TODO: the ! is not so nice
+        try! SWIMActor.resolve(id: ._swim(on: self.asClusterNode!), using: system) // TODO: the ! is not so nice
     }
 
-    var asUniqueNode: UniqueNode? {
+    var asClusterNode: Cluster.Node? {
         guard let uid = self.uid else {
             return nil
         }
@@ -40,13 +40,13 @@ extension ClusterMembership.Node {
         return .init(protocol: self.protocol, systemName: self.name ?? "", host: self.host, port: self.port, nid: .init(uid))
     }
 
-    var asNode: DistributedCluster.Node {
+    var asNode: DistributedCluster.Cluster.Endpoint {
         .init(protocol: self.protocol, systemName: self.name ?? "", host: self.host, port: self.port)
     }
 }
 
-extension UniqueNode {
+extension Cluster.Node {
     var asSWIMNode: ClusterMembership.Node {
-        .init(protocol: self.node.protocol, name: self.node.systemName, host: self.node.host, port: self.port, uid: self.nid.value)
+        .init(protocol: self.endpoint.protocol, name: self.endpoint.systemName, host: self.endpoint.host, port: self.port, uid: self.nid.value)
     }
 }

@@ -25,7 +25,7 @@ final class SystemMessagesRedeliveryTests: SingleClusterSystemXCTestCase {
         let outbound = OutboundSystemMessageRedelivery()
 
         for i in 1 ... (outbound.settings.redeliveryBatchSize + 5) {
-            switch outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.uniqueNode)) {
+            switch outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.node)) {
             case .send(let envelope):
                 envelope.sequenceNr.shouldEqual(self.seqNr(i))
 
@@ -38,9 +38,9 @@ final class SystemMessagesRedeliveryTests: SingleClusterSystemXCTestCase {
     func test_sysMsg_outbound_ack_shouldCumulativelyAcknowledge() {
         let outbound = OutboundSystemMessageRedelivery()
 
-        _ = outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.uniqueNode)) // 1
-        _ = outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.uniqueNode)) // 2
-        _ = outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.uniqueNode)) // 3
+        _ = outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.node)) // 1
+        _ = outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.node)) // 2
+        _ = outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.node)) // 3
 
         outbound.messagesPendingAcknowledgement.count.shouldEqual(3)
 
@@ -55,9 +55,9 @@ final class SystemMessagesRedeliveryTests: SingleClusterSystemXCTestCase {
     func test_sysMsg_outbound_ack_shouldIgnoreDuplicateACK() {
         let outbound = OutboundSystemMessageRedelivery()
 
-        _ = outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.uniqueNode)) // 1
-        _ = outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.uniqueNode)) // 2
-        _ = outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.uniqueNode)) // 3
+        _ = outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.node)) // 1
+        _ = outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.node)) // 2
+        _ = outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.node)) // 3
 
         let res1 = outbound.acknowledge(self.ack(2))
         guard case .acknowledged = res1 else {
@@ -75,9 +75,9 @@ final class SystemMessagesRedeliveryTests: SingleClusterSystemXCTestCase {
     func test_sysMsg_outbound_ack_shouldRejectACKAboutFutureSeqNrs() {
         let outbound = OutboundSystemMessageRedelivery()
 
-        _ = outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.uniqueNode)) // 1
-        _ = outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.uniqueNode)) // 2
-        _ = outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.uniqueNode)) // 3
+        _ = outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.node)) // 1
+        _ = outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.node)) // 2
+        _ = outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.node)) // 3
 
         let res = outbound.acknowledge(self.ack(4)) // 4 was not sent yet (!)
         guard case .ackWasForFutureSequenceNr(let highestKnownSeqNr) = res else {
@@ -92,13 +92,13 @@ final class SystemMessagesRedeliveryTests: SingleClusterSystemXCTestCase {
     func test_sysMsg_outbound_ack_thenOfferMore_shouldContinueAtRightSequenceNr() {
         let outbound = OutboundSystemMessageRedelivery()
 
-        _ = outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.uniqueNode)) // 1
-        _ = outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.uniqueNode)) // 2
-        _ = outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.uniqueNode)) // 3
+        _ = outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.node)) // 1
+        _ = outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.node)) // 2
+        _ = outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.node)) // 3
 
         _ = outbound.acknowledge(self.ack(1))
 
-        switch outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.uniqueNode)) {
+        switch outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.node)) {
         case .send(let envelope):
             envelope.sequenceNr.shouldEqual(SystemMessageEnvelope.SequenceNr(4)) // continue from where we left off
         case let other:
@@ -107,7 +107,7 @@ final class SystemMessagesRedeliveryTests: SingleClusterSystemXCTestCase {
 
         _ = outbound.acknowledge(self.ack(4))
 
-        switch outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.uniqueNode)) {
+        switch outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.node)) {
         case .send(let envelope):
             envelope.sequenceNr.shouldEqual(SystemMessageEnvelope.SequenceNr(5)) // continue from where we left off
         case let other:
@@ -118,9 +118,9 @@ final class SystemMessagesRedeliveryTests: SingleClusterSystemXCTestCase {
     func test_sysMsg_outbound_nack_shouldCauseAppropriateRedelivery() {
         let outbound = OutboundSystemMessageRedelivery()
 
-        _ = outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.uniqueNode)) // 1
-        _ = outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.uniqueNode)) // 2
-        _ = outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.uniqueNode)) // 3
+        _ = outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.node)) // 1
+        _ = outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.node)) // 2
+        _ = outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.node)) // 3
 
         let res = outbound.negativeAcknowledge(self.nack(1)) // we saw 3 but not 2
         guard case .ensureRedeliveryTick = res else {
@@ -134,9 +134,9 @@ final class SystemMessagesRedeliveryTests: SingleClusterSystemXCTestCase {
     func test_sysMsg_outbound_redeliveryTick_shouldRedeliverPendingMessages() {
         let outbound = OutboundSystemMessageRedelivery()
 
-        _ = outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.uniqueNode)) // 1
-        _ = outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.uniqueNode)) // 2
-        _ = outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.uniqueNode)) // 3
+        _ = outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.node)) // 1
+        _ = outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.node)) // 2
+        _ = outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.node)) // 3
         // none are ACKed
 
         switch outbound.onRedeliveryTick() {
@@ -154,7 +154,7 @@ final class SystemMessagesRedeliveryTests: SingleClusterSystemXCTestCase {
             XCTFail("Expected [.redeliver], was: \(other)")
         }
 
-        _ = outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.uniqueNode)) // 4
+        _ = outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.node)) // 4
         switch outbound.onRedeliveryTick() {
         case .redeliver(let envelopes, _):
             envelopes.count.shouldEqual(2)
@@ -168,13 +168,13 @@ final class SystemMessagesRedeliveryTests: SingleClusterSystemXCTestCase {
         settings.redeliveryBatchSize = 3
         let outbound = OutboundSystemMessageRedelivery(settings: settings)
 
-        _ = outbound.offer(.nodeTerminated(.init(systemName: "S", host: "127.0.0.1", port: 111, nid: .random())), recipient: ._deadLetters(on: self.system.cluster.uniqueNode)) // 1
-        _ = outbound.offer(.nodeTerminated(.init(systemName: "S", host: "127.0.0.1", port: 222, nid: .random())), recipient: ._deadLetters(on: self.system.cluster.uniqueNode)) // 2
-        _ = outbound.offer(.nodeTerminated(.init(systemName: "S", host: "127.0.0.1", port: 333, nid: .random())), recipient: ._deadLetters(on: self.system.cluster.uniqueNode)) // 3
-        _ = outbound.offer(.nodeTerminated(.init(systemName: "S", host: "127.0.0.1", port: 444, nid: .random())), recipient: ._deadLetters(on: self.system.cluster.uniqueNode)) // 4
-        _ = outbound.offer(.nodeTerminated(.init(systemName: "S", host: "127.0.0.1", port: 555, nid: .random())), recipient: ._deadLetters(on: self.system.cluster.uniqueNode)) // 5
-        _ = outbound.offer(.nodeTerminated(.init(systemName: "S", host: "127.0.0.1", port: 666, nid: .random())), recipient: ._deadLetters(on: self.system.cluster.uniqueNode)) // 6
-        _ = outbound.offer(.nodeTerminated(.init(systemName: "S", host: "127.0.0.1", port: 777, nid: .random())), recipient: ._deadLetters(on: self.system.cluster.uniqueNode)) // 7
+        _ = outbound.offer(.nodeTerminated(.init(systemName: "S", host: "127.0.0.1", port: 111, nid: .random())), recipient: ._deadLetters(on: self.system.cluster.node)) // 1
+        _ = outbound.offer(.nodeTerminated(.init(systemName: "S", host: "127.0.0.1", port: 222, nid: .random())), recipient: ._deadLetters(on: self.system.cluster.node)) // 2
+        _ = outbound.offer(.nodeTerminated(.init(systemName: "S", host: "127.0.0.1", port: 333, nid: .random())), recipient: ._deadLetters(on: self.system.cluster.node)) // 3
+        _ = outbound.offer(.nodeTerminated(.init(systemName: "S", host: "127.0.0.1", port: 444, nid: .random())), recipient: ._deadLetters(on: self.system.cluster.node)) // 4
+        _ = outbound.offer(.nodeTerminated(.init(systemName: "S", host: "127.0.0.1", port: 555, nid: .random())), recipient: ._deadLetters(on: self.system.cluster.node)) // 5
+        _ = outbound.offer(.nodeTerminated(.init(systemName: "S", host: "127.0.0.1", port: 666, nid: .random())), recipient: ._deadLetters(on: self.system.cluster.node)) // 6
+        _ = outbound.offer(.nodeTerminated(.init(systemName: "S", host: "127.0.0.1", port: 777, nid: .random())), recipient: ._deadLetters(on: self.system.cluster.node)) // 7
         // none are ACKed
 
         switch outbound.onRedeliveryTick() {
@@ -193,14 +193,14 @@ final class SystemMessagesRedeliveryTests: SingleClusterSystemXCTestCase {
         settings.redeliveryBufferLimit = 5
         let outbound = OutboundSystemMessageRedelivery(settings: settings)
 
-        _ = outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.uniqueNode)) // 1
+        _ = outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.node)) // 1
         _ = outbound.acknowledge(.init(sequenceNr: 1))
-        _ = outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.uniqueNode)) // buffered: 1
-        _ = outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.uniqueNode)) // buffered: 2
-        _ = outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.uniqueNode)) // buffered: 3
-        _ = outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.uniqueNode)) // buffered: 4
-        _ = outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.uniqueNode)) // buffered: 5
-        let res = outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.uniqueNode)) // buffered: 6; oh oh! we'd be over 5 buffered
+        _ = outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.node)) // buffered: 1
+        _ = outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.node)) // buffered: 2
+        _ = outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.node)) // buffered: 3
+        _ = outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.node)) // buffered: 4
+        _ = outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.node)) // buffered: 5
+        let res = outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.node)) // buffered: 6; oh oh! we'd be over 5 buffered
 
         guard case .bufferOverflowMustAbortAssociation(let limit) = res else {
             XCTFail("Expected [.bufferOverflowMustAbortAssociation], was: [\(res)]")

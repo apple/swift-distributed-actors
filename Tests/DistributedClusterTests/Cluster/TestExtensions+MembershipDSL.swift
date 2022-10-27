@@ -21,7 +21,7 @@ import NIO
 
 extension Cluster.MembershipGossip {
     /// First line is Membership DSL, followed by lines of the SeenTable DSL
-    static func parse(_ dsl: String, owner: UniqueNode, nodes: [UniqueNode]) -> Cluster.MembershipGossip {
+    static func parse(_ dsl: String, owner: Cluster.Node, nodes: [Cluster.Node]) -> Cluster.MembershipGossip {
         let dslLines = dsl.split(separator: "\n")
         var gossip = Cluster.MembershipGossip(ownerNode: owner)
         gossip.membership = Cluster.Membership.parse(String(dslLines.first!), nodes: nodes)
@@ -33,10 +33,10 @@ extension Cluster.MembershipGossip {
 extension Cluster.MembershipGossip.SeenTable {
     /// Express seen tables using a DSL
     /// Syntax: each line: `<owner>: <node>@<version>*`
-    static func parse(_ dslString: String, nodes: [UniqueNode], file: StaticString = #file, line: UInt = #line) -> Cluster.MembershipGossip.SeenTable {
+    static func parse(_ dslString: String, nodes: [Cluster.Node], file: StaticString = #file, line: UInt = #line) -> Cluster.MembershipGossip.SeenTable {
         let lines = dslString.split(separator: "\n")
-        func nodeById(id: String.SubSequence) -> UniqueNode {
-            if let found = nodes.first(where: { $0.node.systemName.contains(id) }) {
+        func nodeById(id: String.SubSequence) -> Cluster.Node {
+            if let found = nodes.first(where: { $0.systemName.contains(id) }) {
                 return found
             } else {
                 fatalError("Could not find node containing [\(id)] in \(nodes), for seen table: \(dslString)", file: file, line: line)
@@ -60,7 +60,7 @@ extension Cluster.MembershipGossip.SeenTable {
                 let versionString = parts.dropFirst().first!
                 let atVersion = UInt64(versionString)!
 
-                vv.state[.uniqueNode(atNode)] = atVersion
+                vv.state[.node(atNode)] = atVersion
             }
 
             table.underlying[on] = vv
@@ -71,9 +71,9 @@ extension Cluster.MembershipGossip.SeenTable {
 }
 
 extension VersionVector {
-    static func parse(_ dslString: String, nodes: [UniqueNode], file: StaticString = #file, line: UInt = #line) -> VersionVector {
-        func nodeById(id: String.SubSequence) -> UniqueNode {
-            if let found = nodes.first(where: { $0.node.systemName.contains(id) }) {
+    static func parse(_ dslString: String, nodes: [Cluster.Node], file: StaticString = #file, line: UInt = #line) -> VersionVector {
+        func nodeById(id: String.SubSequence) -> Cluster.Node {
+            if let found = nodes.first(where: { $0.systemName.contains(id) }) {
                 return found
             } else {
                 fatalError("Could not find node containing [\(id)] in \(nodes), for seen table: \(dslString)", file: file, line: line)
@@ -82,7 +82,7 @@ extension VersionVector {
 
         let replicaVersions: [VersionVector.ReplicaVersion] = dslString.split(separator: " ").map { segment in
             let v = segment.split { c in ":@".contains(c) }
-            return (.uniqueNode(nodeById(id: v.first!)), VersionVector.Version(v.dropFirst().first!)!)
+            return (.node(nodeById(id: v.first!)), VersionVector.Version(v.dropFirst().first!)!)
         }
         return VersionVector(replicaVersions)
     }
@@ -96,9 +96,9 @@ extension Cluster.Membership {
     /// ```
     /// <node identifier>[.:]<node status> || [leader:<node identifier>]
     /// ```
-    static func parse(_ dslString: String, nodes: [UniqueNode], file: StaticString = #file, line: UInt = #line) -> Cluster.Membership {
-        func nodeById(id: String.SubSequence) -> UniqueNode {
-            if let found = nodes.first(where: { $0.node.systemName.contains(id) }) {
+    static func parse(_ dslString: String, nodes: [Cluster.Node], file: StaticString = #file, line: UInt = #line) -> Cluster.Membership {
+        func nodeById(id: String.SubSequence) -> Cluster.Node {
+            if let found = nodes.first(where: { $0.systemName.contains(id) }) {
                 return found
             } else {
                 fatalError("Could not find node containing [\(id)] in \(nodes), for seen table: \(dslString)", file: file, line: line)

@@ -190,7 +190,7 @@ class RemotingTLSTests: ClusteredActorSystemsXCTestCase {
         let testKeySource2: NIOSSLPrivateKeySource = .privateKey(try NIOSSLPrivateKey(bytes: [UInt8](testKey2.utf8), format: .pem))
 
         let local = await setUpNode("local") { settings in
-            settings.node.host = "localhost"
+            settings.endpoint.host = "localhost"
             settings.tls = TLSConfiguration.makeServerConfiguration(
                 certificateChain: [testCertificateSource1],
                 privateKey: testKeySource1
@@ -203,7 +203,7 @@ class RemotingTLSTests: ClusteredActorSystemsXCTestCase {
         }
 
         let remote = await setUpNode("remote") { settings in
-            settings.node.host = "localhost"
+            settings.endpoint.host = "localhost"
             settings.tls = TLSConfiguration.makeServerConfiguration(
                 certificateChain: [testCertificateSource2],
                 privateKey: testKeySource2
@@ -215,9 +215,9 @@ class RemotingTLSTests: ClusteredActorSystemsXCTestCase {
             settings.tls?.trustRoots = .certificates([testCertificate1])
         }
 
-        local.cluster.join(node: remote.cluster.uniqueNode.node)
+        local.cluster.join(endpoint: remote.cluster.node.endpoint)
 
-        try assertAssociated(local, withExactly: remote.settings.uniqueBindNode)
+        try assertAssociated(local, withExactly: remote.settings.bindNode)
     }
 
     // FIXME: Test Case '-[DistributedActorsTests.RemotingTLSTests test_boundServer_shouldFailWithSSLEnabledOnHostnameVerificationWithIP]' started.
@@ -228,7 +228,7 @@ class RemotingTLSTests: ClusteredActorSystemsXCTestCase {
         let testKey: NIOSSLPrivateKeySource = .privateKey(try NIOSSLPrivateKey(bytes: [UInt8](testKey1.utf8), format: .pem))
 
         let local = await self.setUpNode("local") { settings in
-            settings.node.host = "127.0.0.1"
+            settings.endpoint.host = "127.0.0.1"
             settings.tls = TLSConfiguration.makeServerConfiguration(
                 certificateChain: [testCertificateSource],
                 privateKey: testKey
@@ -241,7 +241,7 @@ class RemotingTLSTests: ClusteredActorSystemsXCTestCase {
         }
 
         let remote = await setUpNode("remote") { settings in
-            settings.node.host = "127.0.0.1"
+            settings.endpoint.host = "127.0.0.1"
             settings.tls = TLSConfiguration.makeServerConfiguration(
                 certificateChain: [testCertificateSource],
                 privateKey: testKey
@@ -255,12 +255,12 @@ class RemotingTLSTests: ClusteredActorSystemsXCTestCase {
 
         let testKit = ActorTestKit(local)
 
-        local.cluster.join(node: remote.cluster.uniqueNode.node)
+        local.cluster.join(endpoint: remote.cluster.node.endpoint)
 
         sleep(2)
 
         do {
-            let pSystem = testKit.makeTestProbe(expecting: Set<UniqueNode>.self)
+            let pSystem = testKit.makeTestProbe(expecting: Set<Cluster.Node>.self)
             local.cluster.ref.tell(.query(.associatedNodes(pSystem.ref)))
             remote.cluster.ref.tell(.query(.associatedNodes(pSystem.ref)))
             let associatedNodes = try pSystem.expectMessage()
@@ -268,7 +268,7 @@ class RemotingTLSTests: ClusteredActorSystemsXCTestCase {
         }
 
         do {
-            let pRemote = testKit.makeTestProbe(expecting: Set<UniqueNode>.self)
+            let pRemote = testKit.makeTestProbe(expecting: Set<Cluster.Node>.self)
             local.cluster.ref.tell(.query(.associatedNodes(pRemote.ref))) // FIXME: We need to get the Accept back and act on it on the origin side
             remote.cluster.ref.tell(.query(.associatedNodes(pRemote.ref)))
             let associatedNodes = try pRemote.expectMessage()
@@ -281,7 +281,7 @@ class RemotingTLSTests: ClusteredActorSystemsXCTestCase {
         let testCertificateSource: NIOSSLCertificateSource = .certificate(testCertificate)
         let testKey: NIOSSLPrivateKeySource = .privateKey(try NIOSSLPrivateKey(bytes: [UInt8](testKey1.utf8), format: .pem))
         let local = await setUpNode("local") { settings in
-            settings.node.host = "localhost"
+            settings.endpoint.host = "localhost"
             settings.tls = TLSConfiguration.makeServerConfiguration(
                 certificateChain: [testCertificateSource],
                 privateKey: testKey
@@ -294,7 +294,7 @@ class RemotingTLSTests: ClusteredActorSystemsXCTestCase {
         }
 
         let remote = await setUpNode("remote") { settings in
-            settings.node.host = "localhost"
+            settings.endpoint.host = "localhost"
             settings.tls = TLSConfiguration.makeServerConfiguration(
                 certificateChain: [testCertificateSource],
                 privateKey: testKey
@@ -306,9 +306,9 @@ class RemotingTLSTests: ClusteredActorSystemsXCTestCase {
             settings.tls?.trustRoots = .certificates([testCertificate])
         }
 
-        local.cluster.join(node: remote.cluster.uniqueNode.node)
+        local.cluster.join(endpoint: remote.cluster.node.endpoint)
 
-        try assertAssociated(local, withExactly: remote.settings.uniqueBindNode)
+        try assertAssociated(local, withExactly: remote.settings.bindNode)
     }
 
     func test_boundServer_shouldAcceptAssociateWithSSLEnabledAndCorrectPassphrase() async throws {
@@ -352,8 +352,8 @@ class RemotingTLSTests: ClusteredActorSystemsXCTestCase {
             }
         }
 
-        local.cluster.join(node: remote.cluster.uniqueNode.node)
+        local.cluster.join(endpoint: remote.cluster.node.endpoint)
 
-        try assertAssociated(local, withExactly: remote.settings.uniqueBindNode)
+        try assertAssociated(local, withExactly: remote.settings.bindNode)
     }
 }

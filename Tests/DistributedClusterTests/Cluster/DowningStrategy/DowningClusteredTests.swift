@@ -75,7 +75,7 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
             otherNotDownPairSystem = first
         }
 
-        let expectedDownNode = expectedDownSystem.cluster.uniqueNode
+        let expectedDownNode = expectedDownSystem.cluster.node
 
         // we start cluster event probes early, so they get the events one by one as they happen
         let eventsProbeOther = await self.testKit(otherNotDownPairSystem).spawnClusterEventStreamTestProbe()
@@ -86,35 +86,35 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
         case (.leaveSelfNode, .firstLeader): first.cluster.leave()
         case (.leaveSelfNode, .secondNonLeader): second.cluster.leave()
 
-        case (.downSelf, .firstLeader): first.cluster.down(node: first.cluster.uniqueNode.node)
-        case (.downSelf, .secondNonLeader): second.cluster.down(node: second.cluster.uniqueNode.node)
+        case (.downSelf, .firstLeader): first.cluster.down(endpoint: first.cluster.node.endpoint)
+        case (.downSelf, .secondNonLeader): second.cluster.down(endpoint: second.cluster.node.endpoint)
 
         case (.shutdownSelf, .firstLeader): try first.shutdown()
         case (.shutdownSelf, .secondNonLeader): try second.shutdown()
 
-        case (.downFromOtherMember, .firstLeader): second.cluster.down(node: first.cluster.uniqueNode.node)
-        case (.downFromOtherMember, .secondNonLeader): thirdNeverDownSystem.cluster.down(node: second.cluster.uniqueNode.node)
+        case (.downFromOtherMember, .firstLeader): second.cluster.down(endpoint: first.cluster.node.endpoint)
+        case (.downFromOtherMember, .secondNonLeader): thirdNeverDownSystem.cluster.down(endpoint: second.cluster.node.endpoint)
         }
 
         func expectedDownMemberEventsFishing(
             on: ClusterSystem,
             file: StaticString = #filePath, line: UInt = #line
         ) -> (Cluster.Event) -> ActorTestProbe<Cluster.Event>.FishingDirective<Cluster.MembershipChange> {
-            pinfo("Expecting [\(expectedDownSystem)] to become [.down] on [\(on.cluster.uniqueNode.node)], method to stop the node [\(stopMethod)]")
+            pinfo("Expecting [\(expectedDownSystem)] to become [.down] on [\(on.cluster.node.endpoint)], method to stop the node [\(stopMethod)]")
 
             return { event in
                 switch event {
                 case .membershipChange(let change) where change.node == expectedDownNode && change.isRemoval:
-                    pinfo("\(on.cluster.uniqueNode.node): \(change)", file: (file), line: line)
+                    pinfo("\(on.cluster.node.endpoint): \(change)", file: (file), line: line)
                     return .catchComplete(change)
                 case .membershipChange(let change) where change.node == expectedDownNode:
-                    pinfo("\(on.cluster.uniqueNode.node): \(change)", file: (file), line: line)
+                    pinfo("\(on.cluster.node.endpoint): \(change)", file: (file), line: line)
                     return .catchContinue(change)
-                case .reachabilityChange(let change) where change.member.uniqueNode == expectedDownNode:
-                    pnote("\(on.cluster.uniqueNode.node): \(change)", file: (file), line: line)
+                case .reachabilityChange(let change) where change.member.node == expectedDownNode:
+                    pnote("\(on.cluster.node.endpoint): \(change)", file: (file), line: line)
                     return .ignore
                 default:
-                    pnote("\(on.cluster.uniqueNode.node): \(event)", file: (file), line: line)
+                    pnote("\(on.cluster.node.endpoint): \(event)", file: (file), line: line)
                     return .ignore
                 }
             }
@@ -232,16 +232,16 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
         }
         let first = nodes.first!
 
-        var probes: [UniqueNode: ActorTestProbe<Cluster.Event>] = [:]
+        var probes: [Cluster.Node: ActorTestProbe<Cluster.Event>] = [:]
         for remainingNode in nodes {
-            probes[remainingNode.cluster.uniqueNode] = await self.testKit(remainingNode).spawnClusterEventStreamTestProbe()
+            probes[remainingNode.cluster.node] = await self.testKit(remainingNode).spawnClusterEventStreamTestProbe()
         }
 
         pinfo("Joining \(nodes.count) nodes...")
         let joiningStart = ContinuousClock.Instant.now
 
-        nodes.forEach { first.cluster.join(node: $0.cluster.uniqueNode.node) }
-        try await self.ensureNodes(.up, within: .seconds(30), nodes: nodes.map(\.cluster.uniqueNode))
+        nodes.forEach { first.cluster.join(endpoint: $0.cluster.node.endpoint) }
+        try await self.ensureNodes(.up, within: .seconds(30), nodes: nodes.map(\.cluster.node))
 
         let joiningStop = ContinuousClock.Instant.now
         pinfo("Joined \(nodes.count) nodes, took: \((joiningStop - joiningStart).prettyDescription)")
@@ -250,7 +250,7 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
         var remainingNodes = nodes
         remainingNodes.removeFirst(nodesToDown.count)
 
-        pinfo("Downing \(nodesToDown.count) nodes: \(nodesToDown.map(\.cluster.uniqueNode))")
+        pinfo("Downing \(nodesToDown.count) nodes: \(nodesToDown.map(\.cluster.node))")
         for node in nodesToDown {
             try! await node.shutdown().wait()
         }
@@ -259,13 +259,13 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
             on: ClusterSystem,
             file: StaticString = #filePath, line: UInt = #line
         ) -> (Cluster.Event) -> ActorTestProbe<Cluster.Event>.FishingDirective<Cluster.MembershipChange> {
-            pinfo("Expecting \(nodesToDown.map(\.cluster.uniqueNode.node)) to become [.down] on [\(on.cluster.uniqueNode.node)]")
+            pinfo("Expecting \(nodesToDown.map(\.cluster.node.endpoint)) to become [.down] on [\(on.cluster.node.endpoint)]")
             var removalsFound = 0
 
             return { event in
                 switch event {
                 case .membershipChange(let change) where change.isRemoval:
-                    pinfo("\(on.cluster.uniqueNode.node): \(change)", file: file, line: line)
+                    pinfo("\(on.cluster.node.endpoint): \(change)", file: file, line: line)
                     removalsFound += 1
                     if removalsFound == nodesToDown.count {
                         return .catchComplete(change)
@@ -273,7 +273,7 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
                         return .catchContinue(change)
                     }
                 case .membershipChange(let change) where change.isDown:
-                    pinfo("\(on.cluster.uniqueNode.node): \(change)", file: file, line: line)
+                    pinfo("\(on.cluster.node.endpoint): \(change)", file: file, line: line)
                     return .catchContinue(change)
                 default:
                     return .ignore
@@ -282,12 +282,12 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
         }
 
         for remainingNode in remainingNodes {
-            let probe = probes[remainingNode.cluster.uniqueNode]!
+            let probe = probes[remainingNode.cluster.node]!
             let events = try probe.fishFor(Cluster.MembershipChange.self, within: .seconds(60), expectedDownMemberEventsFishing(on: remainingNode))
 
             events.shouldContain(where: { change in change.status.isDown && (change.previousStatus == .joining || change.previousStatus == .up) })
             for expectedDownNode in nodesToDown {
-                events.shouldContain(Cluster.MembershipChange(node: expectedDownNode.cluster.uniqueNode, previousStatus: .down, toStatus: .removed))
+                events.shouldContain(Cluster.MembershipChange(node: expectedDownNode.cluster.node, previousStatus: .down, toStatus: .removed))
             }
         }
     }

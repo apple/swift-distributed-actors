@@ -12,7 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Distributed
 import DistributedCluster
 import Logging
 
@@ -22,7 +21,7 @@ public distributed actor MultiNodeTestConductor: ClusterSingleton, CustomStringC
     typealias NodeName = String
 
     let name: NodeName
-    var allNodes: Set<UniqueNode>
+    var allNodes: Set<Cluster.Node>
     // TODO: also add readyNodes here
 
     lazy var log = Logger(actor: self)
@@ -31,14 +30,14 @@ public distributed actor MultiNodeTestConductor: ClusterSingleton, CustomStringC
 
     // === Checkpoints
     var activeCheckPoint: MultiNode.Checkpoint?
-    var nodesAtCheckPoint: [String /* FIXME: should be UniqueNode*/: CheckedContinuation<MultiNode.Checkpoint, Error>]
-    func setContinuation(node: String /* FIXME: should be UniqueNode*/, cc: CheckedContinuation<MultiNode.Checkpoint, Error>) {
+    var nodesAtCheckPoint: [String /* FIXME: should be Cluster.Node*/: CheckedContinuation<MultiNode.Checkpoint, Error>]
+    func setContinuation(node: String /* FIXME: should be Cluster.Node*/, cc: CheckedContinuation<MultiNode.Checkpoint, Error>) {
         self.nodesAtCheckPoint[node] = cc
     }
 
     private var clusterEventsTask: Task<Void, Never>?
 
-    public init(name: String, allNodes: Set<UniqueNode>, settings: MultiNodeTestSettings, actorSystem: ActorSystem) {
+    public init(name: String, allNodes: Set<Cluster.Node>, settings: MultiNodeTestSettings, actorSystem: ActorSystem) {
         self.actorSystem = actorSystem
         self.settings = settings
         self.allNodes = allNodes
@@ -74,7 +73,7 @@ extension MultiNodeTestConductor {
     /// Used to check if the conductor is responsive.
     public distributed func ping(message: String, from node: String) -> String {
         self.actorSystem.log.info("Conductor received ping: \(message) from \(node) (node.length: \(node.count))")
-        return "pong:\(message) (conductor node: \(self.actorSystem.cluster.uniqueNode))"
+        return "pong:\(message) (conductor node: \(self.actorSystem.cluster.node))"
     }
 }
 
@@ -83,7 +82,7 @@ extension MultiNodeTestConductor {
 
 extension MultiNodeTestConductor {
     /// Helper function which sets a large timeout for this remote call -- the call will suspend until all nodes have arrived at the checkpoint
-    public nonisolated func enterCheckPoint(node: String /* FIXME: should be UniqueNode*/,
+    public nonisolated func enterCheckPoint(node: String /* FIXME: should be Cluster.Node*/,
                                             checkPoint: MultiNode.Checkpoint,
                                             waitTime: Duration) async throws
     {
@@ -96,7 +95,7 @@ extension MultiNodeTestConductor {
     }
 
     /// Reentrant; all nodes will enter the checkpoint and eventually be resumed once all have arrived.
-    internal distributed func _enterCheckPoint(node: String /* FIXME: should be UniqueNode*/,
+    internal distributed func _enterCheckPoint(node: String /* FIXME: should be Cluster.Node*/,
                                                checkPoint: MultiNode.Checkpoint) async throws
     {
         self.actorSystem.log.warning("Conductor received `enterCheckPoint` FROM \(node) INNER RECEIVED")
@@ -114,7 +113,7 @@ extension MultiNodeTestConductor {
         }
     }
 
-    func enterActiveCheckPoint(_ node: String /* FIXME: should be UniqueNode*/, checkPoint: MultiNode.Checkpoint) async throws {
+    func enterActiveCheckPoint(_ node: String /* FIXME: should be Cluster.Node*/, checkPoint: MultiNode.Checkpoint) async throws {
         guard self.nodesAtCheckPoint[node] == nil else {
             throw MultiNodeCheckPointError(
                 nodeName: node,
@@ -180,14 +179,14 @@ extension MultiNodeTestConductor {
     }
 
     var checkpointMissingNodes: Set<String> {
-        var missing = Set(self.allNodes.map(\.node.systemName))
+        var missing = Set(self.allNodes.map(\.endpoint.systemName))
         for node in self.nodesAtCheckPoint.keys {
             missing.remove(node)
         }
         return missing
     }
 
-    func activateCheckPoint(_ node: String /* FIXME: should be UniqueNode*/, checkPoint: MultiNode.Checkpoint) async throws {
+    func activateCheckPoint(_ node: String /* FIXME: should be Cluster.Node*/, checkPoint: MultiNode.Checkpoint) async throws {
         guard self.activeCheckPoint == nil else {
             throw MultiNodeCheckPointError(
                 nodeName: node,
@@ -199,7 +198,7 @@ extension MultiNodeTestConductor {
         try await self.enterActiveCheckPoint(node, checkPoint: checkPoint)
     }
 
-    func enterIllegalCheckpoint(_ node: String /* FIXME: should be UniqueNode*/,
+    func enterIllegalCheckpoint(_ node: String /* FIXME: should be Cluster.Node*/,
                                 active activeCheckPoint: MultiNode.Checkpoint,
                                 entered enteredCheckPoint: MultiNode.Checkpoint) throws
     {
@@ -210,7 +209,7 @@ extension MultiNodeTestConductor {
     }
 
     func checkpointNodeBecameDown(_ change: Cluster.MembershipChange) {
-        let nodeName = change.node.node.systemName
+        let nodeName = change.node.endpoint.systemName
         guard let checkpoint = self.activeCheckPoint else {
             return
         }
@@ -257,11 +256,11 @@ extension MultiNodeTestConductor {
         case .membershipChange(let change):
             if change.status.isAtLeast(.down) {
                 /// If there are nodes waiting on a checkpoint, and they became down, they will never reach the checkpoint!
-                if self.nodesAtCheckPoint.contains(where: { $0.key == change.node.node.systemName }) {
+                if self.nodesAtCheckPoint.contains(where: { $0.key == change.node.endpoint.systemName }) {
                     self.checkpointNodeBecameDown(change)
                 }
 
-                self.allNodes.remove(change.member.uniqueNode)
+                self.allNodes.remove(change.member.node)
             }
         default:
             return

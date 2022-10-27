@@ -25,7 +25,7 @@ extension ClusterSystem {
     func _resolve<Message>(ref: _ActorRef<Message>, onSystem remoteSystem: ClusterSystem) -> _ActorRef<Message> {
         assertBacktrace(ref.id._isLocal, "Expecting passed in `ref` to not have an address defined (yet), as this is what we are going to do in this function.")
 
-        let remoteID = ActorID(remote: remoteSystem.settings.uniqueBindNode, path: ref.path, incarnation: ref.id.incarnation)
+        let remoteID = ActorID(remote: remoteSystem.settings.bindNode, path: ref.path, incarnation: ref.id.incarnation)
 
         let resolveContext = _ResolveContext<Message>(id: remoteID, system: self)
         return self._resolve(context: resolveContext)
@@ -34,10 +34,10 @@ extension ClusterSystem {
     /// Internal utility to create "known remote ref" on known target system.
     /// Real applications should never do this, and instead rely on the `Receptionist` to discover references.
     func _resolveKnownRemote<Message>(_ ref: _ActorRef<Message>, onRemoteSystem remote: ClusterSystem) -> _ActorRef<Message> {
-        self._resolveKnownRemote(ref, onRemoteNode: remote.cluster.uniqueNode)
+        self._resolveKnownRemote(ref, onRemoteNode: remote.cluster.node)
     }
 
-    func _resolveKnownRemote<Message>(_ ref: _ActorRef<Message>, onRemoteNode remoteNode: UniqueNode) -> _ActorRef<Message> {
+    func _resolveKnownRemote<Message>(_ ref: _ActorRef<Message>, onRemoteNode remoteNode: Cluster.Node) -> _ActorRef<Message> {
         guard let shell = self._cluster else {
             fatalError("Actor System must have clustering enabled to allow resolving remote actors")
         }

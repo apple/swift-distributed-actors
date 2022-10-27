@@ -53,7 +53,7 @@ if args.count >= 3 {
     print("parsing port")
     let port = Int(args[2])!
     print("Joining")
-    system.cluster.join(node: Node(systemName: "System", host: host, port: port))
+    system.cluster.join(endpoint: Cluster.Endpoint(systemName: "System", host: host, port: port))
 }
 
 _Thread.sleep(.seconds(120))

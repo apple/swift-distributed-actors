@@ -151,7 +151,7 @@ public class Serialization {
 
         var log = system.log
         // TODO: Dry up setting this metadata
-        log[metadataKey: "node"] = .stringConvertible(systemSettings.uniqueBindNode)
+        log[metadataKey: "node"] = .stringConvertible(systemSettings.bindNode)
         log[metadataKey: "actor/path"] = "/system/serialization" // TODO: this is a fake path, we could use log source: here if it gets merged
         log.logLevel = systemSettings.logging.logLevel
         self.log = log

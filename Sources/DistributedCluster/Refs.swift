@@ -474,7 +474,7 @@ internal struct TheOneWhoHasNoParent: _ReceivesSystemMessages { // FIXME: fix th
     @usableFromInline
     let id: ActorID
 
-    init(local node: UniqueNode) {
+    init(local node: Cluster.Node) {
         self.id = ActorID._localRoot(on: node)
     }
 
@@ -557,7 +557,7 @@ public class _Guardian {
     private var stopping: Bool = false
     weak var system: ClusterSystem?
 
-    init(parent: _ReceivesSystemMessages, name: String, localNode: UniqueNode, system: ClusterSystem) {
+    init(parent: _ReceivesSystemMessages, name: String, localNode: Cluster.Node, system: ClusterSystem) {
         assert(parent.id == ActorID._localRoot(on: localNode), "A Guardian MUST live directly under the `/` path.")
 
         do {

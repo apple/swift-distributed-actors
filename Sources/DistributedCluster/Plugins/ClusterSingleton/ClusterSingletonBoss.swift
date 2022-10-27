@@ -53,9 +53,9 @@ internal distributed actor ClusterSingletonBoss<Act: ClusterSingleton>: ClusterS
     let singletonFactory: ((ClusterSystem) async throws -> Act)?
 
     /// The node that the singleton runs on.
-    private var targetNode: UniqueNode?
-    private var selfNode: UniqueNode {
-        self.actorSystem.cluster.uniqueNode
+    private var targetNode: Cluster.Node?
+    private var selfNode: Cluster.Node {
+        self.actorSystem.cluster.node
     }
 
     /// The target singleton instance we should forward invocations to.
@@ -116,7 +116,7 @@ internal distributed actor ClusterSingletonBoss<Act: ClusterSingleton>: ClusterS
         try await self.updateTargetNode(node: node)
     }
 
-    private func updateTargetNode(node: UniqueNode?) async throws {
+    private func updateTargetNode(node: Cluster.Node?) async throws {
         guard self.targetNode != node else {
             self.log.trace("Skip updating target node. New node is already the same as current targetNode.", metadata: self.metadata())
             return
@@ -138,7 +138,7 @@ internal distributed actor ClusterSingletonBoss<Act: ClusterSingleton>: ClusterS
         }
     }
 
-    private func takeOver(from: UniqueNode?) async throws {
+    private func takeOver(from: Cluster.Node?) async throws {
         guard let singletonFactory = self.singletonFactory else {
             preconditionFailure("Cluster singleton [\(self.settings.name)] cannot run on this node. Please review ClusterSingletonAllocationStrategySettings and/or cluster singleton usage.")
         }
@@ -155,7 +155,7 @@ internal distributed actor ClusterSingletonBoss<Act: ClusterSingleton>: ClusterS
         self.updateSingleton(singleton)
     }
 
-    internal func handOver(to: UniqueNode?) {
+    internal func handOver(to: Cluster.Node?) {
         self.log.debug("Hand over singleton [\(self.settings.name)] to [\(String(describing: to))]", metadata: self.metadata())
 
         guard let instance = self.targetSingleton else {
@@ -181,11 +181,11 @@ internal distributed actor ClusterSingletonBoss<Act: ClusterSingleton>: ClusterS
         }
     }
 
-    private func updateSingleton(node: UniqueNode?) throws {
+    private func updateSingleton(node: Cluster.Node?) throws {
         switch node {
-        case .some(let node) where node == self.actorSystem.cluster.uniqueNode:
+        case .some(let node) where node == self.actorSystem.cluster.node:
             // This must have been a result of an activate() and the singleton must be stored locally
-            precondition(self.targetSingleton?.id.uniqueNode == self.actorSystem.cluster.uniqueNode)
+            precondition(self.targetSingleton?.id.node == self.actorSystem.cluster.node)
             return
         case .some(let otherNode):
             var targetSingletonID = ActorID(remote: otherNode, type: Act.self, incarnation: .wellKnown)
@@ -215,7 +215,7 @@ internal distributed actor ClusterSingletonBoss<Act: ClusterSingleton>: ClusterS
         self.allocationTimeoutTask = nil
 
         if !buffer.isEmpty {
-            self.log.debug("Flushing \(buffer.count) remote calls to [\(Act.self)] on [\(singleton.id.uniqueNode)]", metadata: self.metadata())
+            self.log.debug("Flushing \(buffer.count) remote calls to [\(Act.self)] on [\(singleton.id.node)]", metadata: self.metadata())
             while let (callID, continuation) = self.buffer.take() { // FIXME: the callIDs are not used in the actual call making but could be for better consistency
                 continuation.resume(returning: singleton)
             }
@@ -421,9 +421,9 @@ extension ClusterSingletonBoss {
            let singleton = self.targetSingleton
         {
             assert(
-                singleton.id.uniqueNode == selfNode,
+                singleton.id.node == selfNode,
                 "Target singleton node and targetNode were not the same! TargetNode: \(targetNode)," +
-                    " singleton.id.uniqueNode: \(singleton.id.uniqueNode)"
+                    " singleton.id.node: \(singleton.id.node)"
             )
             return try await singleton.actorSystem.localCall(
                 on: singleton,
@@ -465,9 +465,9 @@ extension ClusterSingletonBoss {
             self.log.trace("ENTER forwardOrStashRemoteCallVoid \(target) -> DIRECT LOCAL CALL")
 
             assert(
-                singleton.id.uniqueNode == selfNode,
+                singleton.id.node == selfNode,
                 "Target singleton node and targetNode were not the same! TargetNode: \(targetNode)," +
-                    " singleton.id.uniqueNode: \(singleton.id.uniqueNode)"
+                    " singleton.id.node: \(singleton.id.node)"
             )
             return try await singleton.actorSystem.localCallVoid(
                 on: singleton,

@@ -42,8 +42,8 @@ internal enum Wire {
     internal struct HandshakeOffer: Equatable, WireMessage {
         internal var version: Version
 
-        internal var originNode: UniqueNode
-        internal var targetNode: Node
+        internal var originNode: Cluster.Node
+        internal var targetEndpoint: Cluster.Endpoint
     }
 
     internal enum HandshakeResponse: WireMessage {
@@ -66,19 +66,19 @@ internal enum Wire {
         /// The node accepting the handshake.
         ///
         /// This will always be the "local" node where the accept is being made.
-        internal let targetNode: UniqueNode
+        internal let targetNode: Cluster.Node
 
         /// In order to avoid confusion with from/to, we name the `origin` the node which an *offer* was sent from,
         /// and we now reply to this handshake to it. This value is carried so the origin can confirm it indeed was
         /// intended for it, and not a previous incarnation of a system on the same network address.
         ///
         /// This will always be the "remote" node, with regards to where the accept is created.
-        internal let originNode: UniqueNode
+        internal let originNode: Cluster.Node
 
         /// MUST be called after the reply is written to the wire; triggers messages being flushed from the association.
         internal var onHandshakeReplySent: (() -> Void)?
 
-        init(version: Version, targetNode: UniqueNode, originNode: UniqueNode, whenHandshakeReplySent: (() -> Void)?) {
+        init(version: Version, targetNode: Cluster.Node, originNode: Cluster.Node, whenHandshakeReplySent: (() -> Void)?) {
             self.version = version
             self.targetNode = targetNode
             self.originNode = originNode
@@ -91,13 +91,13 @@ internal enum Wire {
         internal let version: Version
         internal let reason: String
 
-        internal let targetNode: UniqueNode
-        internal let originNode: UniqueNode
+        internal let targetNode: Cluster.Node
+        internal let originNode: Cluster.Node
 
         /// MUST be called after the reply is written to the wire; triggers messages being flushed from the association.
         internal let onHandshakeReplySent: (() -> Void)?
 
-        init(version: Wire.Version, targetNode: UniqueNode, originNode: UniqueNode, reason: String, whenHandshakeReplySent: (() -> Void)?) {
+        init(version: Wire.Version, targetNode: Cluster.Node, originNode: Cluster.Node, reason: String, whenHandshakeReplySent: (() -> Void)?) {
             self.version = version
             self.targetNode = targetNode
             self.originNode = originNode

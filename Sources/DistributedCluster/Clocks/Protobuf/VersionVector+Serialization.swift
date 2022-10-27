@@ -27,10 +27,10 @@ extension ReplicaID: _ProtobufRepresentable {
             proto.actorID = try actorID.toProto(context: context)
 //        case .actorIdentity(let actorIdentity):
 //            proto.actorIdentity = try actorIdentity.toProto(context: context)
-        case .uniqueNode(let node):
-            proto.uniqueNode = try node.toProto(context: context)
-        case .uniqueNodeID(let nid):
-            proto.uniqueNodeID = nid.value
+        case .node(let node):
+            proto.node = try node.toProto(context: context)
+        case .nodeID(let nid):
+            proto.nodeID = nid.value
         }
         return proto
     }
@@ -47,11 +47,11 @@ extension ReplicaID: _ProtobufRepresentable {
 //        case .actorIdentity(let protoIdentity):
 //            let id = try ClusterSystem.ActorID(fromProto: protoIdentity, context: context)
 //            self = .actorIdentity(id)
-        case .uniqueNode(let protoNode):
-            let node = try UniqueNode(fromProto: protoNode, context: context)
-            self = .uniqueNode(node)
-        case .uniqueNodeID(let nid):
-            self = .uniqueNodeID(nid)
+        case .node(let protoNode):
+            let node = try Cluster.Node(fromProto: protoNode, context: context)
+            self = .node(node)
+        case .nodeID(let nid):
+            self = .nodeID(nid)
         }
     }
 }
@@ -76,7 +76,7 @@ extension VersionVector: _ProtobufRepresentable {
         return proto
     }
 
-    /// Serialize using uniqueNodeID specifically (or crash);
+    /// Serialize using nodeID specifically (or crash);
     /// Used in situations where an enclosing message already has the unique nodes serialized and we can save space by avoiding to serialize them again.
     public func toCompactReplicaNodeIDProto(context: Serialization.Context) throws -> _ProtoVersionVector {
         var proto = _ProtoVersionVector()
@@ -84,10 +84,10 @@ extension VersionVector: _ProtobufRepresentable {
         let replicaVersions: [_ProtoReplicaVersion] = try self.state.map { replicaID, version in
             var replicaVersion = _ProtoReplicaVersion()
             switch replicaID.storage {
-            case .uniqueNode(let node):
-                replicaVersion.replicaID.uniqueNodeID = node.nid.value
-            case .uniqueNodeID(let nid):
-                replicaVersion.replicaID.uniqueNodeID = nid.value
+            case .node(let node):
+                replicaVersion.replicaID.nodeID = node.nid.value
+            case .nodeID(let nid):
+                replicaVersion.replicaID.nodeID = nid.value
             case .actorID:
                 throw SerializationError(.unableToSerialize(hint: "Can't serialize using actor address as replica id! Was: \(replicaID)"))
             }

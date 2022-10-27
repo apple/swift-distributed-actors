@@ -42,7 +42,7 @@ extension ClusterShellState {
         if let level = level {
             self.log.log(
                 level: level,
-                "[tracelog:cluster] \(type.description)(\(self.settings.node.port)): \(message)",
+                "[tracelog:cluster] \(type.description)(\(self.settings.endpoint.port)): \(message)",
                 file: file, function: function, line: line
             )
         }
@@ -82,9 +82,9 @@ extension ClusterShell {
     }
 
     enum TraceLogType: CustomStringConvertible {
-        case send(to: Node)
-        case receive(from: Node)
-        case receiveUnique(from: UniqueNode)
+        case send(to: Cluster.Endpoint)
+        case receive(from: Cluster.Endpoint)
+        case receiveUnique(from: Cluster.Node)
         case gossip(Cluster.MembershipGossip)
 
         var description: String {

@@ -17,17 +17,17 @@ import DistributedActorsTestKit
 import XCTest
 
 final class MembershipTests: XCTestCase {
-    let memberA = Cluster.Member(node: UniqueNode(node: Node(systemName: "nodeA", host: "1.1.1.1", port: 1111), nid: .random()), status: .up)
-    var nodeA: UniqueNode { self.memberA.uniqueNode }
+    let memberA = Cluster.Member(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "nodeA", host: "1.1.1.1", port: 1111), nid: .random()), status: .up)
+    var nodeA: Cluster.Node { self.memberA.node }
 
-    let memberB = Cluster.Member(node: UniqueNode(node: Node(systemName: "nodeB", host: "2.2.2.2", port: 2222), nid: .random()), status: .up)
-    var nodeB: UniqueNode { self.memberB.uniqueNode }
+    let memberB = Cluster.Member(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "nodeB", host: "2.2.2.2", port: 2222), nid: .random()), status: .up)
+    var nodeB: Cluster.Node { self.memberB.node }
 
-    let memberC = Cluster.Member(node: UniqueNode(node: Node(systemName: "nodeC", host: "3.3.3.3", port: 3333), nid: .random()), status: .up)
-    var nodeC: UniqueNode { self.memberC.uniqueNode }
+    let memberC = Cluster.Member(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "nodeC", host: "3.3.3.3", port: 3333), nid: .random()), status: .up)
+    var nodeC: Cluster.Node { self.memberC.node }
 
-    let memberD = Cluster.Member(node: UniqueNode(node: Node(systemName: "nodeD", host: "4.4.4.4", port: 4444), nid: .random()), status: .up)
-    var nodeD: UniqueNode { self.memberD.uniqueNode }
+    let memberD = Cluster.Member(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "nodeD", host: "4.4.4.4", port: 4444), nid: .random()), status: .up)
+    var nodeD: Cluster.Node { self.memberD.node }
 
     lazy var allNodes = [
         nodeA, nodeB, nodeC,
@@ -66,10 +66,10 @@ final class MembershipTests: XCTestCase {
 
     func test_age_ordering() {
         let ms = [
-            Cluster.Member(node: self.memberA.uniqueNode, status: .joining),
-            Cluster.Member(node: self.memberA.uniqueNode, status: .up, upNumber: 1),
-            Cluster.Member(node: self.memberA.uniqueNode, status: .down, upNumber: 4),
-            Cluster.Member(node: self.memberA.uniqueNode, status: .up, upNumber: 2),
+            Cluster.Member(node: self.memberA.node, status: .joining),
+            Cluster.Member(node: self.memberA.node, status: .up, upNumber: 1),
+            Cluster.Member(node: self.memberA.node, status: .down, upNumber: 4),
+            Cluster.Member(node: self.memberA.node, status: .up, upNumber: 2),
         ]
         let ns = ms.sorted(by: Cluster.Member.ageOrdering).map(\._upNumber)
         ns.shouldEqual([nil, 1, 2, 4])
@@ -83,14 +83,14 @@ final class MembershipTests: XCTestCase {
 
     func test_membership_equality() {
         let left: Cluster.Membership = [
-            Cluster.Member(node: self.memberA.uniqueNode, status: .up, upNumber: 1),
-            Cluster.Member(node: self.memberB.uniqueNode, status: .up, upNumber: 1),
-            Cluster.Member(node: self.memberC.uniqueNode, status: .up, upNumber: 1),
+            Cluster.Member(node: self.memberA.node, status: .up, upNumber: 1),
+            Cluster.Member(node: self.memberB.node, status: .up, upNumber: 1),
+            Cluster.Member(node: self.memberC.node, status: .up, upNumber: 1),
         ]
         let right: Cluster.Membership = [
-            Cluster.Member(node: self.memberA.uniqueNode, status: .up, upNumber: 1),
-            Cluster.Member(node: self.memberB.uniqueNode, status: .down, upNumber: 1),
-            Cluster.Member(node: self.memberC.uniqueNode, status: .up, upNumber: 1),
+            Cluster.Member(node: self.memberA.node, status: .up, upNumber: 1),
+            Cluster.Member(node: self.memberB.node, status: .down, upNumber: 1),
+            Cluster.Member(node: self.memberC.node, status: .up, upNumber: 1),
         ]
 
         left.shouldNotEqual(right)
@@ -107,13 +107,13 @@ final class MembershipTests: XCTestCase {
         self.memberA.shouldNotEqual(self.memberB)
 
         // only the node id is different:
-        let one = Cluster.Member(node: UniqueNode(node: Node(systemName: "firstA", host: "1.1.1.1", port: 1111), nid: .init(1)), status: .up)
-        let two = Cluster.Member(node: UniqueNode(node: Node(systemName: "firstA", host: "1.1.1.1", port: 1111), nid: .init(12222)), status: .up)
+        let one = Cluster.Member(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "firstA", host: "1.1.1.1", port: 1111), nid: .init(1)), status: .up)
+        let two = Cluster.Member(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "firstA", host: "1.1.1.1", port: 1111), nid: .init(12222)), status: .up)
         one.shouldNotEqual(two)
 
         // node names do not matter for equality:
-        let three = Cluster.Member(node: UniqueNode(node: Node(systemName: "does", host: "1.1.1.1", port: 1111), nid: .init(1)), status: .up)
-        let four = Cluster.Member(node: UniqueNode(node: Node(systemName: "not matter", host: "1.1.1.1", port: 1111), nid: .init(12222)), status: .up)
+        let three = Cluster.Member(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "does", host: "1.1.1.1", port: 1111), nid: .init(1)), status: .up)
+        let four = Cluster.Member(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "not matter", host: "1.1.1.1", port: 1111), nid: .init(12222)), status: .up)
         three.shouldNotEqual(four)
     }
 
@@ -123,7 +123,7 @@ final class MembershipTests: XCTestCase {
     func test_member_replacement_shouldOfferChange() {
         var membership: Cluster.Membership = [self.memberA, self.memberB]
         let secondReplacement = Cluster.Member(
-            node: UniqueNode(node: Node(systemName: self.nodeB.node.systemName, host: self.nodeB.node.host, port: self.nodeB.node.port), nid: .random()), status: .up
+            node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: self.nodeB.systemName, host: self.nodeB.host, port: self.nodeB.port), nid: .random()), status: .up
         )
 
         let change = membership.applyMembershipChange(Cluster.MembershipChange(member: secondReplacement))!
@@ -135,7 +135,7 @@ final class MembershipTests: XCTestCase {
 
         membership.members(atLeast: .joining).count.shouldEqual(3)
         membership.members(atLeast: .down).count.shouldEqual(1)
-        let memberNode = membership.uniqueMember(change.member.uniqueNode)
+        let memberNode = membership.uniqueMember(change.member.node)
         memberNode?.status.shouldEqual(Cluster.MemberStatus.up)
     }
 
@@ -170,7 +170,7 @@ final class MembershipTests: XCTestCase {
     func test_join_memberReplacement() {
         var membership = self.initialMembership
 
-        let replacesFirstNode = UniqueNode(node: self.nodeA.node, nid: .random())
+        let replacesFirstNode = Cluster.Node(endpoint: self.nodeA.endpoint, nid: .random())
 
         let change = membership.join(replacesFirstNode)!
 
@@ -184,7 +184,7 @@ final class MembershipTests: XCTestCase {
     func test_apply_memberReplacement_withUpNode() throws {
         var membership = self.initialMembership
 
-        let firstReplacement = Cluster.Member(node: UniqueNode(node: self.nodeA.node, nid: .init(111_111)), status: .up)
+        let firstReplacement = Cluster.Member(node: Cluster.Node(endpoint: self.nodeA.endpoint, nid: .init(111_111)), status: .up)
 
         let changeToApply = Cluster.MembershipChange(member: firstReplacement)
         guard let change = membership.applyMembershipChange(changeToApply) else {
@@ -194,13 +194,13 @@ final class MembershipTests: XCTestCase {
         change.isReplacement.shouldBeTrue()
         change.replaced.shouldEqual(self.memberA)
         change.replaced!.status.shouldEqual(self.memberA.status)
-        change.node.shouldEqual(firstReplacement.uniqueNode)
+        change.node.shouldEqual(firstReplacement.node)
         change.status.shouldEqual(firstReplacement.status)
     }
 
     func test_apply_withNodeNotPartOfClusterAnymore_leaving() throws {
         var membership = self.initialMembership
-        _ = membership.removeCompletely(self.memberC.uniqueNode)
+        _ = membership.removeCompletely(self.memberC.node)
 
         let changeToApply = Cluster.MembershipChange(member: self.memberC, toStatus: .leaving)
         if let change = membership.applyMembershipChange(changeToApply) {
@@ -210,7 +210,7 @@ final class MembershipTests: XCTestCase {
 
     func test_apply_withNodeNotPartOfClusterAnymore_down() throws {
         var membership = self.initialMembership
-        _ = membership.removeCompletely(self.memberC.uniqueNode)
+        _ = membership.removeCompletely(self.memberC.node)
 
         let changeToApply = Cluster.MembershipChange(member: self.memberC, toStatus: .down)
         if let change = membership.applyMembershipChange(changeToApply) {
@@ -221,17 +221,17 @@ final class MembershipTests: XCTestCase {
     func test_apply_memberRemoval() throws {
         var membership = self.initialMembership
 
-        let removal = Cluster.Member(node: self.memberA.uniqueNode, status: .removed)
+        let removal = Cluster.Member(node: self.memberA.node, status: .removed)
 
         guard let change = membership.applyMembershipChange(Cluster.MembershipChange(member: removal)) else {
             throw TestError("Expected a change, but didn't get one")
         }
 
         change.isReplacement.shouldBeFalse()
-        change.node.shouldEqual(removal.uniqueNode)
+        change.node.shouldEqual(removal.node)
         change.status.shouldEqual(removal.status)
 
-        membership.uniqueMember(self.memberA.uniqueNode).shouldBeNil()
+        membership.uniqueMember(self.memberA.node).shouldBeNil()
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -241,7 +241,7 @@ final class MembershipTests: XCTestCase {
         self.initialMembership.members(atLeast: .joining).count.shouldEqual(3)
         self.initialMembership.members(atLeast: .up).count.shouldEqual(3)
         var changed = self.initialMembership
-        _ = changed.mark(self.memberA.uniqueNode, as: .down)
+        _ = changed.mark(self.memberA.node, as: .down)
         changed.count(atLeast: .joining).shouldEqual(3)
         changed.count(atLeast: .up).shouldEqual(3)
         changed.count(atLeast: .leaving).shouldEqual(1)
@@ -251,10 +251,10 @@ final class MembershipTests: XCTestCase {
 
     func test_members_listing_filteringByReachability() {
         var changed = self.initialMembership
-        _ = changed.mark(self.memberA.uniqueNode, as: .down)
+        _ = changed.mark(self.memberA.node, as: .down)
 
-        _ = changed.mark(self.memberA.uniqueNode, reachability: .unreachable)
-        _ = changed.mark(self.memberB.uniqueNode, reachability: .unreachable)
+        _ = changed.mark(self.memberA.node, reachability: .unreachable)
+        _ = changed.mark(self.memberB.node, reachability: .unreachable)
 
         // exact status match
 
@@ -295,16 +295,16 @@ final class MembershipTests: XCTestCase {
     // MARK: Marking
 
     func test_mark_shouldOnlyProceedForwardInStatuses() {
-        let member = Cluster.Member(node: UniqueNode(node: Node(systemName: "System", host: "4.4.4.4", port: 1001), nid: .random()), status: .joining)
+        let member = Cluster.Member(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "System", host: "4.4.4.4", port: 1001), nid: .random()), status: .joining)
 
         var membership: Cluster.Membership = [member]
 
         // marking no-member -> no-op
 
-        let noChange = membership.mark(member.uniqueNode, as: .joining)
+        let noChange = membership.mark(member.node, as: .joining)
         noChange.shouldBeNil() // already joining
 
-        let change1 = membership.mark(member.uniqueNode, as: .up)
+        let change1 = membership.mark(member.node, as: .up)
         change1.shouldNotBeNil()
 
         // testing string output as well as field on purpose
@@ -313,38 +313,38 @@ final class MembershipTests: XCTestCase {
         change1?.status.shouldEqual(.up)
         "\(change1!)".shouldContain("1001 :: [joining] -> [     up]")
 
-        membership.mark(member.uniqueNode, as: .joining).shouldBeNil() // can't move "back"
-        membership.mark(member.uniqueNode, as: .up).shouldBeNil() // don't move to "same"
+        membership.mark(member.node, as: .joining).shouldBeNil() // can't move "back"
+        membership.mark(member.node, as: .up).shouldBeNil() // don't move to "same"
 
-        let change2 = membership.mark(member.uniqueNode, as: .down)
+        let change2 = membership.mark(member.node, as: .down)
         change2.shouldNotBeNil()
         change2?.previousStatus.shouldEqual(.up)
         change2?.status.shouldEqual(.down)
         "\(change2!)".shouldContain("1001 :: [     up] -> [   down]")
 
-        membership.mark(member.uniqueNode, as: .joining).shouldBeNil() // can't move "back"
-        membership.mark(member.uniqueNode, as: .up).shouldBeNil() // can't move "back", from down
+        membership.mark(member.node, as: .joining).shouldBeNil() // can't move "back"
+        membership.mark(member.node, as: .up).shouldBeNil() // can't move "back", from down
     }
 
     func test_mark_shouldNotReturnChangeForMarkingAsSameStatus() {
         let member = self.memberA
         var membership: Cluster.Membership = [member]
 
-        let noChange = membership.mark(member.uniqueNode, as: member.status)
+        let noChange = membership.mark(member.node, as: member.status)
         noChange.shouldBeNil()
     }
 
     func test_mark_reachability() {
-        let member = Cluster.Member(node: UniqueNode(node: Node(systemName: "System", host: "4.4.4.4", port: 1001), nid: .random()), status: .joining)
+        let member = Cluster.Member(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "System", host: "4.4.4.4", port: 1001), nid: .random()), status: .joining)
 
         var membership: Cluster.Membership = [member]
-        membership.mark(member.uniqueNode, reachability: .reachable).shouldEqual(nil) // no change
+        membership.mark(member.node, reachability: .reachable).shouldEqual(nil) // no change
 
-        let res1 = membership.mark(member.uniqueNode, reachability: .unreachable)
+        let res1 = membership.mark(member.node, reachability: .unreachable)
         res1!.reachability.shouldEqual(.unreachable)
 
-        membership.mark(member.uniqueNode, reachability: .unreachable).shouldEqual(nil) // no change
-        _ = membership.mark(member.uniqueNode, reachability: .unreachable)
+        membership.mark(member.node, reachability: .unreachable).shouldEqual(nil) // no change
+        _ = membership.mark(member.node, reachability: .unreachable)
     }
 
     // ==== ----------------------------------------------------------------------------------------------------------------
@@ -352,8 +352,8 @@ final class MembershipTests: XCTestCase {
 
     func test_join_overAnExistingNode_replacement() {
         var membership = self.initialMembership
-        let secondReplacement = Cluster.Member(node: UniqueNode(node: self.nodeB.node, nid: .random()), status: .joining)
-        let change = membership.join(secondReplacement.uniqueNode)!
+        let secondReplacement = Cluster.Member(node: Cluster.Node(endpoint: self.nodeB.endpoint, nid: .random()), status: .joining)
+        let change = membership.join(secondReplacement.node)!
         change.isReplacement.shouldBeTrue()
 
         let members = membership.members(atLeast: .joining)
@@ -368,27 +368,27 @@ final class MembershipTests: XCTestCase {
     func test_mark_replacement() throws {
         var membership: Cluster.Membership = [self.memberA]
 
-        let firstReplacement = Cluster.Member(node: UniqueNode(node: self.nodeA.node, nid: .random()), status: .up)
+        let firstReplacement = Cluster.Member(node: Cluster.Node(endpoint: self.nodeA.endpoint, nid: .random()), status: .up)
 
-        guard let change = membership.mark(firstReplacement.uniqueNode, as: firstReplacement.status) else {
+        guard let change = membership.mark(firstReplacement.node, as: firstReplacement.status) else {
             throw TestError("Expected a change")
         }
         change.isReplacement.shouldBeTrue()
         change.replaced.shouldEqual(self.memberA)
         change.previousStatus.shouldEqual(.up)
-        change.node.shouldEqual(firstReplacement.uniqueNode)
+        change.node.shouldEqual(firstReplacement.node)
         change.status.shouldEqual(.up)
     }
 
     func test_mark_status_whenReplacingWithNewNode() {
-        let one = Cluster.Member(node: UniqueNode(node: Node(systemName: "System", host: "1.1.1.1", port: 1001), nid: .random()), status: .joining)
-        var two = Cluster.Member(node: UniqueNode(node: Node(systemName: "System", host: "2.2.2.2", port: 2222), nid: .random()), status: .up)
-        let twoReplacement = Cluster.Member(node: UniqueNode(node: Node(systemName: "System", host: "2.2.2.2", port: 2222), nid: .random()), status: .joining)
+        let one = Cluster.Member(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "System", host: "1.1.1.1", port: 1001), nid: .random()), status: .joining)
+        var two = Cluster.Member(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "System", host: "2.2.2.2", port: 2222), nid: .random()), status: .up)
+        let twoReplacement = Cluster.Member(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "System", host: "2.2.2.2", port: 2222), nid: .random()), status: .joining)
 
         var membership: Cluster.Membership = [one, two]
 
-        let changed = membership.mark(twoReplacement.uniqueNode, as: .joining)!
-        changed.member.uniqueNode.shouldEqual(twoReplacement.uniqueNode)
+        let changed = membership.mark(twoReplacement.node, as: .joining)!
+        changed.member.node.shouldEqual(twoReplacement.node)
         changed.status.isJoining.shouldBeTrue()
 
         two.status = .down
@@ -399,13 +399,13 @@ final class MembershipTests: XCTestCase {
         var existing = self.memberA
         existing.status = .joining
 
-        let replacement = Cluster.Member(node: UniqueNode(node: existing.uniqueNode.node, nid: .random()), status: .up)
+        let replacement = Cluster.Member(node: Cluster.Node(endpoint: existing.node.endpoint, nid: .random()), status: .up)
 
         let change = Cluster.MembershipChange(replaced: existing, by: replacement)
         change.isReplacement.shouldBeTrue()
 
         change.member.shouldEqual(replacement)
-        change.node.shouldEqual(replacement.uniqueNode)
+        change.node.shouldEqual(replacement.node)
         change.previousStatus.shouldEqual(existing.status)
 
         change.replaced!.status.shouldEqual(existing.status) // though we have the replaced member, it will have its own previous status
@@ -489,37 +489,37 @@ final class MembershipTests: XCTestCase {
     }
 
     func test_membershipDiff_shouldIncludeEntry_whenStatusChangedForIt() {
-        let changed = self.initialMembership.marking(self.memberA.uniqueNode, as: .leaving)
+        let changed = self.initialMembership.marking(self.memberA.node, as: .leaving)
 
         let diff = Cluster.Membership._diff(from: self.initialMembership, to: changed)
 
         diff.changes.count.shouldEqual(1)
         let diffEntry = diff.changes.first!
-        diffEntry.node.shouldEqual(self.memberA.uniqueNode)
+        diffEntry.node.shouldEqual(self.memberA.node)
         diffEntry.previousStatus?.shouldEqual(.up)
         diffEntry.status.shouldEqual(.leaving)
     }
 
     func test_membershipDiff_shouldIncludeEntry_whenMemberRemoved() {
-        let changed = self.initialMembership.removingCompletely(self.memberA.uniqueNode)
+        let changed = self.initialMembership.removingCompletely(self.memberA.node)
 
         let diff = Cluster.Membership._diff(from: self.initialMembership, to: changed)
 
         diff.changes.count.shouldEqual(1)
         let diffEntry = diff.changes.first!
-        diffEntry.node.shouldEqual(self.memberA.uniqueNode)
+        diffEntry.node.shouldEqual(self.memberA.node)
         diffEntry.previousStatus?.shouldEqual(.up)
         diffEntry.status.shouldEqual(.removed)
     }
 
     func test_membershipDiff_shouldIncludeEntry_whenMemberAdded() {
-        let changed = self.initialMembership.joining(self.memberD.uniqueNode)
+        let changed = self.initialMembership.joining(self.memberD.node)
 
         let diff = Cluster.Membership._diff(from: self.initialMembership, to: changed)
 
         diff.changes.count.shouldEqual(1)
         let diffEntry = diff.changes.first!
-        diffEntry.node.shouldEqual(self.memberD.uniqueNode)
+        diffEntry.node.shouldEqual(self.memberD.node)
         diffEntry.previousStatus.shouldBeNil()
         diffEntry.status.shouldEqual(.joining)
     }
@@ -540,12 +540,12 @@ final class MembershipTests: XCTestCase {
     func test_mergeForward_fromAhead_membership_withAdditionalMember() {
         var membership = self.initialMembership
         var ahead = membership
-        _ = ahead.join(self.memberD.uniqueNode)!
+        _ = ahead.join(self.memberD.node)!
 
         let changes = membership.mergeFrom(incoming: ahead, myself: nil)
 
         changes.count.shouldEqual(1)
-        membership.shouldEqual(self.initialMembership.joining(self.memberD.uniqueNode))
+        membership.shouldEqual(self.initialMembership.joining(self.memberD.node))
     }
 
     func test_mergeForward_fromAhead_membership_withMemberNowDown() {

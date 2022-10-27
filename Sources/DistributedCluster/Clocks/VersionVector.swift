@@ -245,8 +245,8 @@ internal struct ReplicaID: Hashable {
     internal enum Storage: Hashable {
         case actorID(ActorID)
         // case actorIdentity(ClusterSystem.ActorID)
-        case uniqueNode(UniqueNode)
-        case uniqueNodeID(UniqueNode.ID)
+        case node(Cluster.Node)
+        case nodeID(Cluster.Node.ID)
 
         var isActorID: Bool {
             switch self {
@@ -262,16 +262,16 @@ internal struct ReplicaID: Hashable {
 //            }
 //        }
 
-        var isUniqueNode: Bool {
+        var isNode: Bool {
             switch self {
-            case .uniqueNode: return true
+            case .node: return true
             default: return false
             }
         }
 
-        var isUniqueNodeID: Bool {
+        var isNodeID: Bool {
             switch self {
-            case .uniqueNodeID: return true
+            case .nodeID: return true
             default: return false
             }
         }
@@ -291,28 +291,28 @@ internal struct ReplicaID: Hashable {
         .init(.actorID(id))
     }
 
-    static func uniqueNode(_ uniqueNode: UniqueNode) -> ReplicaID {
-        .init(.uniqueNode(uniqueNode))
+    static func node(_ node: Cluster.Node) -> ReplicaID {
+        .init(.node(node))
     }
 
-    static func uniqueNodeID(_ uniqueNode: UniqueNode) -> ReplicaID {
-        .init(.uniqueNodeID(uniqueNode.nid))
+    static func nodeID(_ node: Cluster.Node) -> ReplicaID {
+        .init(.nodeID(node.nid))
     }
 
-    internal static func uniqueNodeID(_ uniqueNodeID: UInt64) -> ReplicaID {
-        .init(.uniqueNodeID(.init(uniqueNodeID)))
+    internal static func nodeID(_ nodeID: UInt64) -> ReplicaID {
+        .init(.nodeID(.init(nodeID)))
     }
 
-    func ensuringNode(_ node: UniqueNode) -> ReplicaID {
+    func ensuringNode(_ node: Cluster.Node) -> ReplicaID {
         switch self.storage {
         case .actorID(let id):
             return .actorID(id)
-        case .uniqueNode(let existingNode):
+        case .node(let existingNode):
             assert(existingNode.nid == node.nid, "Attempted to ensureNode with non-matching node identifier, was: \(existingNode)], attempted: \(node)")
             return self
-        case .uniqueNodeID(let nid): // drops the nid
+        case .nodeID(let nid): // drops the nid
             assert(nid == node.nid, "Attempted to ensureNode with non-matching node identifier, was: \(nid)], attempted: \(node)")
-            return .uniqueNode(node)
+            return .node(node)
         }
     }
 }
@@ -322,10 +322,10 @@ extension ReplicaID: CustomStringConvertible {
         switch self.storage {
         case .actorID(let id):
             return "actor:\(id)"
-        case .uniqueNode(let node):
-            return "uniqueNode:\(node)"
-        case .uniqueNodeID(let nid):
-            return "uniqueNodeID:\(nid)"
+        case .node(let node):
+            return "node:\(node)"
+        case .nodeID(let nid):
+            return "nodeID:\(nid)"
         }
     }
 }
@@ -335,11 +335,11 @@ extension ReplicaID: Comparable {
         switch (lhs.storage, rhs.storage) {
         case (.actorID(let l), .actorID(let r)):
             return l < r
-        case (.uniqueNode(let l), .uniqueNode(let r)):
+        case (.node(let l), .node(let r)):
             return l < r
-        case (.uniqueNodeID(let l), .uniqueNodeID(let r)):
+        case (.nodeID(let l), .nodeID(let r)):
             return l < r
-        case (.uniqueNode, _), (.uniqueNodeID, _), (.actorID, _):
+        case (.node, _), (.nodeID, _), (.actorID, _):
             return false
         }
     }
@@ -349,17 +349,17 @@ extension ReplicaID: Comparable {
         case (.actorID(let l), .actorID(let r)):
             return l == r
 
-        case (.uniqueNode(let l), .uniqueNode(let r)):
+        case (.node(let l), .node(let r)):
             return l == r
 
-        case (.uniqueNodeID(let l), .uniqueNodeID(let r)):
+        case (.nodeID(let l), .nodeID(let r)):
             return l == r
-        case (.uniqueNode(let l), .uniqueNodeID(let r)):
+        case (.node(let l), .nodeID(let r)):
             return l.nid == r
-        case (.uniqueNodeID(let l), .uniqueNode(let r)):
+        case (.nodeID(let l), .node(let r)):
             return l == r.nid
 
-        case (.uniqueNode, _), (.uniqueNodeID, _), (.actorID, _):
+        case (.node, _), (.nodeID, _), (.actorID, _):
             return false
         }
     }
@@ -368,8 +368,8 @@ extension ReplicaID: Comparable {
 extension ReplicaID: Codable {
     enum DiscriminatorKeys: String, Codable {
         case actorID = "a"
-        case uniqueNode = "N"
-        case uniqueNodeID = "n"
+        case node = "N"
+        case nodeID = "n"
     }
 
     enum CodingKeys: CodingKey {
@@ -383,10 +383,10 @@ extension ReplicaID: Codable {
         switch try container.decode(DiscriminatorKeys.self, forKey: ._case) {
         case .actorID:
             self = try .actorID(container.decode(ActorID.self, forKey: .value))
-        case .uniqueNode:
-            self = try .uniqueNode(container.decode(UniqueNode.self, forKey: .value))
-        case .uniqueNodeID:
-            self = try .uniqueNodeID(container.decode(UInt64.self, forKey: .value))
+        case .node:
+            self = try .node(container.decode(Cluster.Node.self, forKey: .value))
+        case .nodeID:
+            self = try .nodeID(container.decode(UInt64.self, forKey: .value))
         }
     }
 
@@ -396,11 +396,11 @@ extension ReplicaID: Codable {
         case .actorID(let address):
             try container.encode(DiscriminatorKeys.actorID, forKey: ._case)
             try container.encode(address, forKey: .value)
-        case .uniqueNode(let node):
-            try container.encode(DiscriminatorKeys.uniqueNode, forKey: ._case)
+        case .node(let node):
+            try container.encode(DiscriminatorKeys.node, forKey: ._case)
             try container.encode(node, forKey: .value)
-        case .uniqueNodeID(let nid):
-            try container.encode(DiscriminatorKeys.uniqueNodeID, forKey: ._case)
+        case .nodeID(let nid):
+            try container.encode(DiscriminatorKeys.nodeID, forKey: ._case)
             try container.encode(nid.value, forKey: .value)
         }
     }

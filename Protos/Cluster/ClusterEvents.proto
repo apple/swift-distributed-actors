@@ -32,10 +32,10 @@ message ClusterEvent {
 }
 
 message ClusterMembershipChange {
-    UniqueNode node = 1;
+    ClusterNode node               = 1;
 
     ClusterMemberStatus fromStatus = 2;
-    ClusterMemberStatus toStatus = 3;
+    ClusterMemberStatus toStatus   = 3;
 }
 
 message ClusterLeadershipChange {

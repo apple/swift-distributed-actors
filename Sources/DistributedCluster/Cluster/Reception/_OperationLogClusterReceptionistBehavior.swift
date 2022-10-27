@@ -183,7 +183,7 @@ extension _OperationLogClusterReceptionist {
         let key = message._key.asAnyKey
         let ref = message._addressableActorRef
 
-        guard ref.id._isLocal || (ref.id.uniqueNode == context.system.cluster.uniqueNode) else {
+        guard ref.id._isLocal || (ref.id.node == context.system.cluster.node) else {
             context.log.warning("""
             Actor [\(ref)] attempted to register under key [\(key)], with NOT-local receptionist! \
             Actors MUST register with their local receptionist in today's Receptionist implementation.
@@ -388,7 +388,7 @@ extension _OperationLogClusterReceptionist {
             return // this would mean we tried to pull from a "local" receptionist, bail out
         }
 
-        guard self.membership.contains(receptionistAddress.uniqueNode) else {
+        guard self.membership.contains(receptionistAddress.node) else {
             // node is either not known to us yet, OR has been downed and removed
             // avoid talking to it until we see it in membership.
             return
@@ -542,7 +542,7 @@ extension _OperationLogClusterReceptionist {
 
 extension _OperationLogClusterReceptionist {
     private func onTerminated(context: _ActorContext<_ReceptionistMessage>, terminated: _Signals.Terminated) {
-        if terminated.id == ActorID._receptionist(on: terminated.id.uniqueNode, for: .actorRefs) {
+        if terminated.id == ActorID._receptionist(on: terminated.id.node, for: .actorRefs) {
             context.log.debug("Watched receptionist terminated: \(terminated)")
             self.onReceptionistTerminated(context, terminated: terminated)
         } else {
@@ -552,7 +552,7 @@ extension _OperationLogClusterReceptionist {
     }
 
     private func onReceptionistTerminated(_ context: _ActorContext<Message>, terminated: _Signals.Terminated) {
-        self.pruneClusterMember(context, removedNode: terminated.id.uniqueNode)
+        self.pruneClusterMember(context, removedNode: terminated.id.node)
     }
 
     private func onActorTerminated(_ context: _ActorContext<Message>, terminated: _Signals.Terminated) {
@@ -619,7 +619,7 @@ extension _OperationLogClusterReceptionist {
             return // not a new member
         }
 
-        guard change.node != context.system.cluster.uniqueNode else {
+        guard change.node != context.system.cluster.node else {
             return // no need to contact our own node, this would be "us"
         }
 
@@ -639,7 +639,7 @@ extension _OperationLogClusterReceptionist {
         self.replicateOpsBatch(context, to: remoteReceptionist)
     }
 
-    private func pruneClusterMember(_ context: _ActorContext<_OperationLogClusterReceptionist.Message>, removedNode: UniqueNode) {
+    private func pruneClusterMember(_ context: _ActorContext<_OperationLogClusterReceptionist.Message>, removedNode: Cluster.Node) {
         context.log.trace("Pruning cluster member: \(removedNode)")
         let terminatedReceptionistAddress = ActorID._receptionist(on: removedNode, for: .actorRefs)
         let equalityHackPeerRef = _ActorRef<Message>(.deadLetters(.init(context.log, id: terminatedReceptionistAddress, system: nil)))

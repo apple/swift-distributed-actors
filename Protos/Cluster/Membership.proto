@@ -23,19 +23,19 @@ import "Clocks/VersionVector.proto";
 
 message ClusterMembership {
     repeated ClusterMember members = 1;
-    UniqueNode leaderNode = 2;
+    ClusterNode leaderNode = 2;
 }
 
 message ClusterMember {
-    UniqueNode node = 1;
-    ClusterMemberStatus status = 2;
+    ClusterNode node                       = 1;
+    ClusterMemberStatus status             = 2;
     ClusterMemberReachability reachability = 3;
-    uint32 upNumber = 4;
+    uint32 upNumber                        = 4;
 }
 
 enum ClusterMemberReachability {
     CLUSTER_MEMBER_REACHABILITY_UNSPECIFIED = 0;
-    CLUSTER_MEMBER_REACHABILITY_REACHABLE = 1;
+    CLUSTER_MEMBER_REACHABILITY_REACHABLE   = 1;
     CLUSTER_MEMBER_REACHABILITY_UNREACHABLE = 2;
 }
 
@@ -51,13 +51,13 @@ enum ClusterMemberStatus {
 // ==== Membership Gossip ----------------------------------------------------------------------------------------------
 
 message ClusterMembershipGossip {
-    // Membership contains full UniqueNode renderings, and the owner and seen table refer to them by UniqueNode.ID
+    // Membership contains full ClusterNode renderings, and the owner and seen table refer to them by ClusterNode.ID
     // this saves us space (by avoiding to render the unique node explicitly many times for each member/seen-entry).
     ClusterMembership membership = 1;
 
-    // The following fields will use compressed UniqueNode encoding and ONLY serialize them as their uniqueNodeID.
-    // During deserialization the fields can be resolved against the membership to obtain full UniqueNode values if necessary.
-    uint64 ownerUniqueNodeID = 2;
+    // The following fields will use compressed ClusterNode encoding and ONLY serialize them as their nodeID.
+    // During deserialization the fields can be resolved against the membership to obtain full ClusterNode values if necessary.
+    uint64 ownerClusterNodeID = 2;
     ClusterMembershipSeenTable seenTable = 3;
 }
 
@@ -66,6 +66,6 @@ message ClusterMembershipSeenTable {
 }
 
 message ClusterMembershipSeenTableRow {
-    uint64 uniqueNodeID = 1;
+    uint64 nodeID         = 1;
     VersionVector version = 2;
 }

@@ -106,8 +106,8 @@ final class _OpLogClusterReceptionistClusteredTests: ClusteredActorSystemsXCTest
         local._receptionist.register(ref, with: key, replyTo: registeredProbe.ref)
         _ = try registeredProbe.expectMessage()
 
-        local.cluster.join(node: remote.cluster.uniqueNode.node)
-        try assertAssociated(local, withExactly: remote.settings.uniqueBindNode)
+        local.cluster.join(endpoint: remote.cluster.node.endpoint)
+        try assertAssociated(local, withExactly: remote.settings.bindNode)
 
         let listing = try lookupProbe.expectMessage()
         listing.refs.count.shouldEqual(1)
@@ -157,8 +157,8 @@ final class _OpLogClusterReceptionistClusteredTests: ClusteredActorSystemsXCTest
         remote._receptionist.subscribe(remoteLookupProbe.ref, to: key)
         _ = try remoteLookupProbe.expectMessage()
 
-        local.cluster.join(node: remote.cluster.uniqueNode.node)
-        try assertAssociated(local, withExactly: remote.settings.uniqueBindNode)
+        local.cluster.join(endpoint: remote.cluster.node.endpoint)
+        try assertAssociated(local, withExactly: remote.settings.bindNode)
 
         let localListing = try localLookupProbe.expectMessage()
         localListing.refs.count.shouldEqual(4)
@@ -197,8 +197,8 @@ final class _OpLogClusterReceptionistClusteredTests: ClusteredActorSystemsXCTest
         second._receptionist.subscribe(remoteLookupProbe.ref, to: key)
         _ = try remoteLookupProbe.expectMessage()
 
-        first.cluster.join(node: second.cluster.uniqueNode.node)
-        try assertAssociated(first, withExactly: second.settings.uniqueBindNode)
+        first.cluster.join(endpoint: second.cluster.node.endpoint)
+        try assertAssociated(first, withExactly: second.settings.bindNode)
 
         try remoteLookupProbe.eventuallyExpectListing(expected: [refA, refB], within: .seconds(3))
 
@@ -225,8 +225,8 @@ final class _OpLogClusterReceptionistClusteredTests: ClusteredActorSystemsXCTest
         let (first, second) = await setUpPair {
             $0.receptionist.ackPullReplicationIntervalSlow = .milliseconds(200)
         }
-        first.cluster.join(node: second.cluster.uniqueNode.node)
-        try assertAssociated(first, withExactly: second.settings.uniqueBindNode)
+        first.cluster.join(endpoint: second.cluster.node.endpoint)
+        try assertAssociated(first, withExactly: second.settings.bindNode)
 
         let firstKey = _Reception.Key(_ActorRef<String>.self, id: "first")
         let extraKey = _Reception.Key(_ActorRef<String>.self, id: "extra")
@@ -268,8 +268,8 @@ final class _OpLogClusterReceptionistClusteredTests: ClusteredActorSystemsXCTest
         let (first, second) = await setUpPair {
             $0.receptionist.ackPullReplicationIntervalSlow = .milliseconds(200)
         }
-        first.cluster.join(node: second.cluster.uniqueNode.node)
-        try assertAssociated(first, withExactly: second.settings.uniqueBindNode)
+        first.cluster.join(endpoint: second.cluster.node.endpoint)
+        try assertAssociated(first, withExactly: second.settings.bindNode)
 
         let key = _Reception.Key(_ActorRef<String>.self, id: "key")
 
@@ -300,8 +300,8 @@ final class _OpLogClusterReceptionistClusteredTests: ClusteredActorSystemsXCTest
         let (first, second) = await setUpPair {
             $0.receptionist.ackPullReplicationIntervalSlow = .milliseconds(200)
         }
-        first.cluster.join(node: second.cluster.uniqueNode.node)
-        try assertAssociated(first, withExactly: second.settings.uniqueBindNode)
+        first.cluster.join(endpoint: second.cluster.node.endpoint)
+        try assertAssociated(first, withExactly: second.settings.bindNode)
 
         let key = _Reception.Key(_ActorRef<String>.self, id: "key")
 
@@ -340,8 +340,8 @@ final class _OpLogClusterReceptionistClusteredTests: ClusteredActorSystemsXCTest
         let (first, second) = await setUpPair {
             $0.receptionist.ackPullReplicationIntervalSlow = .milliseconds(200)
         }
-        first.cluster.join(node: second.cluster.uniqueNode.node)
-        try assertAssociated(first, withExactly: second.settings.uniqueBindNode)
+        first.cluster.join(endpoint: second.cluster.node.endpoint)
+        try assertAssociated(first, withExactly: second.settings.bindNode)
 
         let key = _Reception.Key(_ActorRef<String>.self, id: "first")
 

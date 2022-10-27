@@ -19,7 +19,7 @@
 /// If a node becomes reachable again before the timeout expires, it will not be considered for downing anymore.
 public final class TimeoutBasedDowningStrategy: DowningStrategy {
     let settings: TimeoutBasedDowningStrategySettings
-    let selfNode: UniqueNode
+    let selfNode: Cluster.Node
 
     var membership: Cluster.Membership
 
@@ -33,7 +33,7 @@ public final class TimeoutBasedDowningStrategy: DowningStrategy {
     // buffer for nodes that will be marked down, if this node becomes the leader
     var _markAsDown: Set<Cluster.Member>
 
-    init(_ settings: TimeoutBasedDowningStrategySettings, selfNode: UniqueNode) {
+    init(_ settings: TimeoutBasedDowningStrategySettings, selfNode: Cluster.Node) {
         self.settings = settings
         self.selfNode = selfNode
         self._unreachable = []

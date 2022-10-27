@@ -221,7 +221,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
     /// - Faults: when configuration closure performs very illegal action, e.g. reusing a serializer identifier
     public convenience init(_ name: String, settings: ClusterSystemSettings) async {
         var settings = settings
-        settings.node.systemName = name
+        settings.endpoint.systemName = name
         await self.init(settings: settings)
     }
 
@@ -230,7 +230,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
     /// - Faults: when configuration closure performs very illegal action, e.g. reusing a serializer identifier
     public init(settings: ClusterSystemSettings) async {
         var settings = settings
-        self.name = settings.node.systemName
+        self.name = settings.endpoint.systemName
 
         // rely on swift-backtrace for pretty backtraces on crashes
         if settings.installSwiftBacktrace {
@@ -248,7 +248,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         self.dispatcher = try! _FixedThreadPool(settings.threadPoolSize)
 
         // initialize top level guardians
-        self._root = TheOneWhoHasNoParent(local: settings.uniqueBindNode)
+        self._root = TheOneWhoHasNoParent(local: settings.bindNode)
         let theOne = self._root
 
         let initializationLock = ReadWriteLock()
@@ -262,7 +262,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         }
 
         if settings.enabled {
-            settings.logging._logger[metadataKey: "cluster/node"] = "\(settings.uniqueBindNode)"
+            settings.logging._logger[metadataKey: "cluster/node"] = "\(settings.bindNode)"
         } else {
             settings.logging._logger[metadataKey: "cluster/node"] = "\(self.name)"
         }
@@ -288,11 +288,11 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         _ = self._serialization.storeIfNilThenLoad(serialization)
 
         // dead letters init
-        self._deadLetters = _ActorRef(.deadLetters(.init(self.log, id: ActorID._deadLetters(on: settings.uniqueBindNode), system: self)))
+        self._deadLetters = _ActorRef(.deadLetters(.init(self.log, id: ActorID._deadLetters(on: settings.bindNode), system: self)))
 
         // actor providers
-        let localUserProvider = LocalActorRefProvider(root: _Guardian(parent: theOne, name: "user", localNode: settings.uniqueBindNode, system: self))
-        let localSystemProvider = LocalActorRefProvider(root: _Guardian(parent: theOne, name: "system", localNode: settings.uniqueBindNode, system: self))
+        let localUserProvider = LocalActorRefProvider(root: _Guardian(parent: theOne, name: "user", localNode: settings.bindNode, system: self))
+        let localSystemProvider = LocalActorRefProvider(root: _Guardian(parent: theOne, name: "system", localNode: settings.bindNode, system: self))
         // TODO: want to reconcile those into one, and allow /dead as well
         var effectiveUserProvider: _ActorRefProvider = localUserProvider
         var effectiveSystemProvider: _ActorRefProvider = localSystemProvider
@@ -384,7 +384,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         await self.settings.plugins.startAll(self)
 
         if settings.enabled {
-            self.log.info("ClusterSystem [\(self.name)] initialized, listening on: \(self.settings.uniqueBindNode): \(self.cluster.ref)")
+            self.log.info("ClusterSystem [\(self.name)] initialized, listening on: \(self.settings.bindNode): \(self.cluster.ref)")
 
             self.log.info("Setting in effect: .autoLeaderElection: \(self.settings.autoLeaderElection)")
             self.log.info("Setting in effect: .downingStrategy: \(self.settings.downingStrategy)")
@@ -491,7 +491,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         self.shutdownSemaphore.wait()
 
         /// Down this node as part of shutting down; it may have enough time to notify other nodes on an best effort basis.
-        self.cluster.down(node: self.settings.node)
+        self.cluster.down(endpoint: self.settings.endpoint)
 
         let pluginsSemaphore = DispatchSemaphore(value: 1)
         Task {
@@ -569,7 +569,7 @@ extension ClusterSystem: CustomStringConvertible {
         var res = "ClusterSystem("
         res.append(self.name)
         if self.settings.enabled {
-            res.append(", \(self.cluster.uniqueNode)")
+            res.append(", \(self.cluster.node)")
         }
         res.append(")")
         return res
@@ -881,9 +881,9 @@ extension ClusterSystem {
         }
 
         // If the actor is not located on this node, immediately resolve as "remote"
-        guard self.cluster.uniqueNode == id.uniqueNode else {
+        guard self.cluster.node == id.node else {
             if self.settings.logging.verboseResolve {
-                self.log.trace("Resolved \(id) as remote, on node: \(id.uniqueNode)")
+                self.log.trace("Resolved \(id) as remote, on node: \(id.node)")
             }
             return nil
         }
@@ -1126,7 +1126,7 @@ extension ClusterSystem {
             return try await interceptor.interceptRemoteCall(on: actor, target: target, invocation: &invocation, throwing: throwing, returning: returning)
         }
 
-        guard __isRemoteActor(actor), actor.id.uniqueNode != self.cluster.uniqueNode else {
+        guard __isRemoteActor(actor), actor.id.node != self.cluster.node else {
             // It actually is a remote call, so redirect it to local call-path.
             // Such calls can happen when we deal with interceptors and proxies;
             // To make their lives easier, we centralize the noticing when a call is local and dispatch it from here.
@@ -1185,7 +1185,7 @@ extension ClusterSystem {
             return try await interceptor.interceptRemoteCallVoid(on: actor, target: target, invocation: &invocation, throwing: throwing)
         }
 
-        guard __isRemoteActor(actor), actor.id.uniqueNode != self.cluster.uniqueNode else {
+        guard __isRemoteActor(actor), actor.id.node != self.cluster.node else {
             // It actually is a remote call, so redirect it to local call-path.
             // Such calls can happen when we deal with interceptors and proxies;
             // To make their lives easier, we centralize the noticing when a call is local and dispatch it from here.
@@ -1318,8 +1318,8 @@ extension ClusterSystem {
         Res: Codable
     {
         precondition(
-            self.cluster.uniqueNode == actor.id.uniqueNode,
-            "Attempted to localCall an actor whose ID was a different node: [\(actor.id)], current node: \(self.cluster.uniqueNode)"
+            self.cluster.node == actor.id.node,
+            "Attempted to localCall an actor whose ID was a different node: [\(actor.id)], current node: \(self.cluster.node)"
         )
         self.log.trace("Execute local call", metadata: [
             "actor/id": "\(actor.id.fullDescription)",
@@ -1363,8 +1363,8 @@ extension ClusterSystem {
         Err: Error
     {
         precondition(
-            self.cluster.uniqueNode == actor.id.uniqueNode,
-            "Attempted to localCall an actor whose ID was a different node: [\(actor.id)], current node: \(self.cluster.uniqueNode)"
+            self.cluster.node == actor.id.node,
+            "Attempted to localCall an actor whose ID was a different node: [\(actor.id)], current node: \(self.cluster.node)"
         )
         self.log.trace("Execute local void call", metadata: [
             "actor/id": "\(actor.id.fullDescription)",
@@ -1462,8 +1462,8 @@ extension ClusterSystem {
         }
 
         // If the actor is not located on this node, immediately resolve as "remote"
-        guard self.cluster.uniqueNode == id.uniqueNode else {
-            self.log.trace("Resolve local failed, ID is for a remote host: \(id.uniqueNode)", metadata: ["actor/id": "\(id)"])
+        guard self.cluster.node == id.node else {
+            self.log.trace("Resolve local failed, ID is for a remote host: \(id.node)", metadata: ["actor/id": "\(id)"])
             return nil
         }
 
@@ -1799,7 +1799,7 @@ public struct RemoteCallError: DistributedActorSystemError, CustomStringConverti
     }
 
     internal init(_ error: _RemoteCallError, file: String = #fileID, line: UInt = #line) {
-        let actorID = ActorID._deadLetters(on: UniqueNode.init(protocol: "dead", systemName: "", host: "", port: 1, nid: .init(0)))
+        let actorID = ActorID._deadLetters(on: Cluster.Node.init(protocol: "dead", systemName: "", host: "", port: 1, nid: .init(0)))
         let target = RemoteCallTarget("<unknown>")
         self.underlying = _Storage(error: error, actorID: actorID, target: target, file: file, line: line)
     }

@@ -35,8 +35,8 @@ extension MultiNodeTestKitRunnerBoot {
                      allNodes multiNodeEndpoints: [MultiNode.Endpoint]) async throws
     {
         var control = multiNodeTest.makeControl(nodeName)
-        control._allNodes = convertAllNodes(allNodes: multiNodeEndpoints)
-        let myNode = control._allNodes[nodeName]! // !-safe, we just prepared this node collection
+        control._allEndpoints = convertAllNodes(allNodes: multiNodeEndpoints)
+        let myNode = control._allEndpoints[nodeName]! // !-safe, we just prepared this node collection
 
         var multiNodeSettings = MultiNodeTestSettings()
         multiNodeTest.configureMultiNodeTest(&multiNodeSettings)
@@ -84,20 +84,20 @@ extension MultiNodeTestKitRunnerBoot {
 
         // join all the other nodes
         print("CLUSTER JOIN ============================================".yellow)
-        let otherNodes = control._allNodes.values.filter { $0.systemName != nodeName }
-        for other in otherNodes {
+        let otherEndpoints = control._allEndpoints(except: nodeName)
+        for other in otherEndpoints {
             log("Prepare cluster: join [\(nodeName)] with \(other)")
-            actorSystem.cluster.join(node: other)
+            actorSystem.cluster.join(endpoint: other)
         }
 
-        var allNodes: Set<UniqueNode> = [actorSystem.cluster.uniqueNode]
-        for other in otherNodes {
-            let joinedOther = try await actorSystem.cluster.joined(node: other, within: multiNodeSettings.initialJoinTimeout)
+        var allNodes: Set<Cluster.Node> = [actorSystem.cluster.node]
+        for other in otherEndpoints {
+            let joinedOther = try await actorSystem.cluster.joined(endpoint: other, within: multiNodeSettings.initialJoinTimeout)
             guard let joinedOther else {
                 fatalError("[multi-node][\(nodeName)] Failed to join \(other)!")
             }
-            print("[multi-node] [\(actorSystem.cluster.uniqueNode)] <= joined => \(joinedOther)")
-            allNodes.insert(joinedOther.uniqueNode)
+            print("[multi-node] [\(actorSystem.cluster.node)] <= joined => \(joinedOther)")
+            allNodes.insert(joinedOther.node)
         }
 
         let conductorSingletonSettings = ClusterSingletonSettings()
@@ -127,9 +127,9 @@ extension MultiNodeTestKitRunnerBoot {
         try actorSystem.shutdown()
     }
 
-    func convertAllNodes(allNodes: [MultiNode.Endpoint]) -> [String: Node] {
+    func convertAllNodes(allNodes: [MultiNode.Endpoint]) -> [String: Cluster.Endpoint] {
         let nodeList = allNodes.map { mn in
-            let n = Node(systemName: mn.name, host: mn.sactHost, port: mn.sactPort)
+            let n = Cluster.Endpoint(systemName: mn.name, host: mn.sactHost, port: mn.sactPort)
 
             return (n.systemName, n)
         }

@@ -324,7 +324,7 @@ extension OpLogDistributedReceptionist: LifecycleWatch {
             "receptionist/guest": "\(guest.id)",
         ])
 
-        guard id._isLocal || (id.uniqueNode == actorSystem.cluster.uniqueNode) else {
+        guard id._isLocal || (id.node == actorSystem.cluster.node) else {
             self.log.warning("""
             Actor [\(guest.id)] attempted to checkIn under key [\(key)], with NOT-local receptionist! \
             Actors MUST checkIn with their local receptionist in today's Receptionist implementation.
@@ -669,7 +669,7 @@ extension OpLogDistributedReceptionist {
             return // this would mean we tried to pull from a "local" receptionist, bail out
         }
 
-        guard self.membership.contains(receptionistID.uniqueNode) else {
+        guard self.membership.contains(receptionistID.node) else {
             // node is either not known to us yet, OR has been downed and removed
             // avoid talking to it until we see it in membership.
             return
@@ -786,7 +786,7 @@ extension OpLogDistributedReceptionist {
 
         if replayer == nil, until == 0 {
             self.log.debug("Received message from \(peer), but no replayer available, create one ad-hoc now", metadata: [
-                "peer": "\(peer.id.uniqueNode)",
+                "peer": "\(peer.id.node)",
             ])
             // TODO: Generally we should trigger a `onNewClusterMember` but seems we got a message before that triggered
             // Seems ordering became less strict here with DA unfortunately...?
@@ -884,7 +884,7 @@ extension OpLogDistributedReceptionist {
 
 extension OpLogDistributedReceptionist {
     public func terminated(actor id: ID) {
-        if id == ActorID._receptionist(on: id.uniqueNode, for: .distributedActors) {
+        if id == ActorID._receptionist(on: id.node, for: .distributedActors) {
             self.log.debug("Watched receptionist terminated: \(id)")
             self.receptionistTerminated(identity: id)
         } else {
@@ -894,7 +894,7 @@ extension OpLogDistributedReceptionist {
     }
 
     private func receptionistTerminated(identity id: ID) {
-        self.pruneClusterMember(removedNode: id.uniqueNode)
+        self.pruneClusterMember(removedNode: id.node)
     }
 
     private func actorTerminated(id: ID) {
@@ -963,7 +963,7 @@ extension OpLogDistributedReceptionist {
             return // not a new member
         }
 
-        guard change.node != actorSystem.cluster.uniqueNode else {
+        guard change.node != actorSystem.cluster.node else {
             return // no need to contact our own node, this would be "us"
         }
 
@@ -983,7 +983,7 @@ extension OpLogDistributedReceptionist {
         self.replicateOpsBatch(to: remoteReceptionist)
     }
 
-    func pruneClusterMember(removedNode: UniqueNode) {
+    func pruneClusterMember(removedNode: Cluster.Node) {
         self.log.trace("Pruning cluster member: \(removedNode)")
         let terminatedReceptionistID = ActorID._receptionist(on: removedNode, for: .distributedActors)
         let equalityHackPeer = try! Self.resolve(id: terminatedReceptionistID, using: actorSystem) // try!-safe because we know the address is correct and remote

@@ -25,7 +25,7 @@ enum HandshakeSide: String {
 extension ClusterShellState {
     static func makeTestMock(side: HandshakeSide, configureSettings: (inout ClusterSystemSettings) -> Void = { _ in () }) -> ClusterShellState {
         var settings = ClusterSystemSettings(
-            node: Node(
+            endpoint: Cluster.Endpoint(
                 systemName: "MockSystem",
                 host: "127.0.0.1",
                 port: 7337
@@ -34,7 +34,7 @@ extension ClusterShellState {
         configureSettings(&settings)
         let log = Logger(label: "handshake-\(side)") // TODO: could be a mock logger we can assert on?
 
-        let node: UniqueNode = .init(systemName: "Test", host: "127.0.0.1", port: 7337, nid: .random())
+        let node = Cluster.Node(systemName: "Test", host: "127.0.0.1", port: 7337, nid: .random())
         return ClusterShellState(
             settings: settings,
             channel: EmbeddedChannel(),

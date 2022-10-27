@@ -17,8 +17,8 @@ import DistributedActorsTestKit
 import XCTest
 
 final class VersionVectorSerializationTests: SingleClusterSystemXCTestCase {
-    var node: UniqueNode {
-        self.system.cluster.uniqueNode
+    var node: Cluster.Node {
+        self.system.cluster.node
     }
 
     lazy var idA = try! ActorID(local: node, path: ActorPath._user.appending("A"), incarnation: .wellKnown)

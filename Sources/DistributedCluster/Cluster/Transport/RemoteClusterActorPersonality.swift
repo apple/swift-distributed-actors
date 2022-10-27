@@ -77,7 +77,7 @@ public final class _RemoteClusterActorPersonality<Message: Codable> {
 
         // Ensure we store as .remote, so printouts work as expected (and include the explicit address)
         var id = id
-        id._location = .remote(id.uniqueNode)
+        id._location = .remote(id.node)
         self.id = id
 
         self.clusterShell = shell
@@ -129,7 +129,7 @@ public final class _RemoteClusterActorPersonality<Message: Codable> {
             return .association(assoc)
         }
 
-        let associationState = self.clusterShell.getEnsureAssociation(with: self.id.uniqueNode)
+        let associationState = self.clusterShell.getEnsureAssociation(with: self.id.node)
         switch associationState {
         case .association(let assoc):
             return .association(self._cachedAssociation.storeIfNilThenLoad(assoc))

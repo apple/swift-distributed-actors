@@ -153,8 +153,8 @@ final class DistributedReceptionistTests: SingleClusterSystemXCTestCase {
         let ref = Forwarder(probe: nil, name: "D", actorSystem: first)
         await first.receptionist.checkIn(ref, with: .forwarders)
 
-        first.cluster.join(node: second.cluster.uniqueNode.node)
-        try await first.cluster.joined(node: second.cluster.uniqueNode, within: .seconds(30))
+        first.cluster.join(endpoint: second.cluster.node.endpoint)
+        try await first.cluster.joined(node: second.cluster.node, within: .seconds(30))
 
         try await testKit.eventually(within: .seconds(5)) {
             let lookup = await second.receptionist.lookup(.forwarders)
@@ -173,8 +173,8 @@ final class DistributedReceptionistTests: SingleClusterSystemXCTestCase {
         let ref = Forwarder(probe: nil, name: "D", actorSystem: first)
         await first.receptionist.checkIn(ref, with: .forwarders)
 
-        first.cluster.join(node: second.cluster.uniqueNode.node)
-        try await first.cluster.joined(node: second.cluster.uniqueNode, within: .seconds(30))
+        first.cluster.join(endpoint: second.cluster.node.endpoint)
+        try await first.cluster.joined(node: second.cluster.node, within: .seconds(30))
 
         try await testKit.eventually(within: .seconds(5)) {
             let lookup = await second.receptionist.lookup(.forwarders)

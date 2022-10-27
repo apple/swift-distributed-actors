@@ -35,10 +35,10 @@ internal distributed actor SWIMActor: SWIMPeer, SWIMAddressablePeer, CustomStrin
 
     nonisolated var swimNode: ClusterMembership.Node {
         .init(
-            protocol: self.id.uniqueNode.node.protocol,
-            host: self.id.uniqueNode.host,
-            port: self.id.uniqueNode.port,
-            uid: self.id.uniqueNode.nid.value
+            protocol: self.id.node.endpoint.protocol,
+            host: self.id.node.host,
+            port: self.id.node.port,
+            uid: self.id.node.nid.value
         )
     }
 
@@ -363,12 +363,12 @@ internal distributed actor SWIMActor: SWIMPeer, SWIMAddressablePeer, CustomStrin
             reachability = .unreachable
         }
 
-        guard let uniqueNode = change.member.node.asUniqueNode else {
-            self.log.warning("Unable to emit failureDetectorReachabilityChanged, for event: \(change), since can't represent member as uniqueNode!")
+        guard let node = change.member.node.asClusterNode else {
+            self.log.warning("Unable to emit failureDetectorReachabilityChanged, for event: \(change), since can't represent member as node!")
             return
         }
 
-        self.clusterRef.tell(.command(.failureDetectorReachabilityChanged(uniqueNode, reachability)))
+        self.clusterRef.tell(.command(.failureDetectorReachabilityChanged(node, reachability)))
     }
 
     private func handleGossipPayloadProcessedDirective(_ directive: SWIM.Instance<SWIMActor, SWIMActor, SWIMActor>.GossipProcessedDirective) {
@@ -503,15 +503,15 @@ internal distributed actor SWIMActor: SWIMPeer, SWIMAddressablePeer, CustomStrin
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Local functions
 
-    func monitor(node: UniqueNode) {
-        guard self.actorSystem.cluster.uniqueNode.node != node.node else {
+    func monitor(node: Cluster.Node) {
+        guard self.actorSystem.cluster.node.endpoint != node.endpoint else {
             return // no need to monitor ourselves, nor a replacement of us (if node is our replacement, we should have been dead already)
         }
 
         self.sendFirstRemotePing(on: node)
     }
 
-    nonisolated func confirmDead(node: UniqueNode) {
+    nonisolated func confirmDead(node: Cluster.Node) {
         Task {
             await self.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
                 let directive = __secretlyKnownToBeLocal.swim.confirmDead(peer: node.asSWIMNode.swimShell(__secretlyKnownToBeLocal.actorSystem))
@@ -526,8 +526,8 @@ internal distributed actor SWIMActor: SWIMPeer, SWIMAddressablePeer, CustomStrin
     }
 
     /// This is effectively joining the SWIM membership of the other member.
-    private func sendFirstRemotePing(on targetUniqueNode: UniqueNode) {
-        let targetNode = ClusterMembership.Node(uniqueNode: targetUniqueNode)
+    private func sendFirstRemotePing(on targetUniqueNode: Cluster.Node) {
+        let targetNode = ClusterMembership.Node(node: targetUniqueNode)
         let targetPeer = targetNode.swimShell(self.actorSystem)
 
         // FIXME: expose addMember after all
@@ -581,7 +581,7 @@ extension SWIMActor {
 }
 
 extension ActorID {
-    static func _swim(on node: UniqueNode) -> ActorID {
+    static func _swim(on node: Cluster.Node) -> ActorID {
         .init(remote: node, path: ActorPath._swim, incarnation: .wellKnown)
     }
 }

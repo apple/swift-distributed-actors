@@ -17,7 +17,7 @@ extension Cluster.MembershipGossip: _ProtobufRepresentable {
 
     public func toProto(context: Serialization.Context) throws -> ProtobufRepresentation {
         var proto = _ProtoClusterMembershipGossip()
-        proto.ownerUniqueNodeID = self.owner.nid.value
+        proto.ownerClusterNodeID = self.owner.nid.value
         proto.membership = try self.membership.toProto(context: context)
 
         // we manually ensure we encode using node identifiers, rather than full unique nodes to save space:
@@ -25,7 +25,7 @@ extension Cluster.MembershipGossip: _ProtobufRepresentable {
         protoSeenTable.rows.reserveCapacity(self.seen.underlying.count)
         for (node, seenVersion) in self.seen.underlying {
             var row = _ProtoClusterMembershipSeenTableRow()
-            row.uniqueNodeID = node.nid.value
+            row.nodeID = node.nid.value
             row.version = try seenVersion.toCompactReplicaNodeIDProto(context: context)
             protoSeenTable.rows.append(row)
         }
@@ -35,8 +35,8 @@ extension Cluster.MembershipGossip: _ProtobufRepresentable {
     }
 
     public init(fromProto proto: ProtobufRepresentation, context: Serialization.Context) throws {
-        guard proto.ownerUniqueNodeID != 0 else {
-            throw SerializationError(.missingField("ownerUniqueNodeID", type: "\(reflecting: Cluster.MembershipGossip.self)"))
+        guard proto.ownerClusterNodeID != 0 else {
+            throw SerializationError(.missingField("ownerNodeID", type: "\(reflecting: Cluster.MembershipGossip.self)"))
         }
         guard proto.hasMembership else {
             throw SerializationError(.missingField("membership", type: "\(reflecting: Cluster.MembershipGossip.self)"))
@@ -47,16 +47,16 @@ extension Cluster.MembershipGossip: _ProtobufRepresentable {
 
         let membership = try Cluster.Membership(fromProto: proto.membership, context: context)
 
-        let ownerID = UniqueNodeID(proto.ownerUniqueNodeID)
-        guard let ownerNode = membership.member(byUniqueNodeID: ownerID)?.uniqueNode else {
-            throw SerializationError(.unableToDeserialize(hint: "Missing member for ownerUniqueNodeID, members: \(membership)"))
+        let ownerID = Cluster.Node.ID(proto.ownerClusterNodeID)
+        guard let ownerNode = membership.member(byUniqueNodeID: ownerID)?.node else {
+            throw SerializationError(.unableToDeserialize(hint: "Missing member for ownerNodeID, members: \(membership)"))
         }
 
         var gossip = Cluster.MembershipGossip(ownerNode: ownerNode)
         gossip.membership = membership
         gossip.seen.underlying.reserveCapacity(proto.seenTable.rows.count)
         for row in proto.seenTable.rows {
-            let nodeID: UniqueNodeID = .init(row.uniqueNodeID)
+            let nodeID: Cluster.Node.ID = .init(row.nodeID)
             guard let member = membership.member(byUniqueNodeID: nodeID) else {
                 throw SerializationError(.unableToDeserialize(hint: "Missing Member for unique node id: \(nodeID), members: \(membership)"))
             }
@@ -68,13 +68,13 @@ extension Cluster.MembershipGossip: _ProtobufRepresentable {
 
                 let replicaID: ReplicaID
                 switch protoReplicaVersion.replicaID.value {
-                case .some(.uniqueNodeID(let id)):
+                case .some(.nodeID(let id)):
                     guard let member = membership.member(byUniqueNodeID: .init(id)) else {
                         continue
                     }
-                    replicaID = .uniqueNode(member.uniqueNode)
-                case .some(.uniqueNode(let protoUniqueNode)):
-                    replicaID = try .uniqueNode(.init(fromProto: protoUniqueNode, context: context))
+                    replicaID = .node(member.node)
+                case .some(.node(let protoUniqueNode)):
+                    replicaID = try .node(.init(fromProto: protoUniqueNode, context: context))
                 case .some(.actorID(let address)):
                     context.log.warning("Unexpected .actorID key in replicaVersion of Cluster.MembershipGossip, which is expected to only use unique node ids as replica versions; was: \(address)")
                     continue
@@ -85,7 +85,7 @@ extension Cluster.MembershipGossip: _ProtobufRepresentable {
                 replicaVersions.append(VersionVector.ReplicaVersion(replicaID: replicaID, version: v))
             }
 
-            gossip.seen.underlying[member.uniqueNode] = VersionVector(replicaVersions)
+            gossip.seen.underlying[member.node] = VersionVector(replicaVersions)
         }
 
         self = gossip

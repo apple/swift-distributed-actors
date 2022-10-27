@@ -26,7 +26,7 @@ extension Cluster.Membership: _ProtobufRepresentable {
             try $0.toProto(context: context)
         }
         if let leader = self.leader {
-            proto.leaderNode = try leader.uniqueNode.toProto(context: context)
+            proto.leaderNode = try leader.node.toProto(context: context)
         }
         return proto
     }
@@ -36,10 +36,10 @@ extension Cluster.Membership: _ProtobufRepresentable {
         self._members.reserveCapacity(proto.members.count)
         for protoMember in proto.members {
             let member = try Cluster.Member(fromProto: protoMember, context: context)
-            self._members[member.uniqueNode] = member
+            self._members[member.node] = member
         }
         if proto.hasLeaderNode {
-            self._leaderNode = try UniqueNode(fromProto: proto.leaderNode, context: context)
+            self._leaderNode = try Cluster.Node(fromProto: proto.leaderNode, context: context)
         } else {
             self._leaderNode = nil
         }
@@ -51,7 +51,7 @@ extension Cluster.Member: _ProtobufRepresentable {
 
     public func toProto(context: Serialization.Context) throws -> ProtobufRepresentation {
         var proto = ProtobufRepresentation()
-        proto.node = try self.uniqueNode.toProto(context: context)
+        proto.node = try self.node.toProto(context: context)
         proto.status = try self.status.toProto(context: context)
         proto.reachability = try self.reachability.toProto(context: context)
         if let number = self._upNumber {
@@ -64,7 +64,7 @@ extension Cluster.Member: _ProtobufRepresentable {
         guard proto.hasNode else {
             throw SerializationError(.missingField("node", type: "\(ProtobufRepresentation.self)"))
         }
-        self.uniqueNode = try .init(fromProto: proto.node, context: context)
+        self.node = try .init(fromProto: proto.node, context: context)
         self.status = try .init(fromProto: proto.status, context: context)
         self.reachability = try .init(fromProto: proto.reachability, context: context)
         self._upNumber = proto.upNumber == 0 ? nil : Int(proto.upNumber)

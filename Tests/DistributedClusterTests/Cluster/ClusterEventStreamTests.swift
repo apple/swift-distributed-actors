@@ -18,8 +18,8 @@ import NIO
 import XCTest
 
 final class ClusterEventStreamTests: SingleClusterSystemXCTestCase, @unchecked Sendable {
-    let memberA = Cluster.Member(node: UniqueNode(node: Node(systemName: "System", host: "1.1.1.1", port: 7337), nid: .random()), status: .up)
-    let memberB = Cluster.Member(node: UniqueNode(node: Node(systemName: "System", host: "2.2.2.2", port: 8228), nid: .random()), status: .up)
+    let memberA = Cluster.Member(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "System", host: "1.1.1.1", port: 7337), nid: .random()), status: .up)
+    let memberB = Cluster.Member(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "System", host: "2.2.2.2", port: 8228), nid: .random()), status: .up)
 
     func test_clusterEventStream_shouldNotCauseDeadLettersOnLocalOnlySystem() throws {
         _ = try self.system._spawn("anything", of: String.self, .setup { context in
@@ -52,13 +52,13 @@ final class ClusterEventStreamTests: SingleClusterSystemXCTestCase, @unchecked S
         }
         switch try p1.expectMessage() {
         case .membershipChange(let change):
-            change.node.shouldEqual(self.memberA.uniqueNode)
+            change.node.shouldEqual(self.memberA.node)
         default:
             throw p1.error("Expected a membershipChange")
         }
         switch try p1.expectMessage() {
         case .membershipChange(let change):
-            change.node.shouldEqual(self.memberB.uniqueNode)
+            change.node.shouldEqual(self.memberB.node)
         default:
             throw p1.error("Expected a membershipChange")
         }
@@ -67,14 +67,14 @@ final class ClusterEventStreamTests: SingleClusterSystemXCTestCase, @unchecked S
 
         switch try p2.expectMessage() {
         case .snapshot(let snapshot):
-            snapshot.uniqueMember(self.memberA.uniqueNode).shouldEqual(self.memberA)
+            snapshot.uniqueMember(self.memberA.node).shouldEqual(self.memberA)
             () // ok
         default:
             throw p2.error("Expected a snapshot first")
         }
         switch try p2.expectMessage() {
         case .membershipChange(let change):
-            change.node.shouldEqual(self.memberB.uniqueNode)
+            change.node.shouldEqual(self.memberB.node)
         default:
             throw p2.error("Expected a membershipChange")
         }

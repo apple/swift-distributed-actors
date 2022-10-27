@@ -17,7 +17,7 @@ import ServiceDiscovery
 
 final class DiscoveryShell {
     enum Message: _NotActuallyCodableMessage {
-        case listing(Set<Node>)
+        case listing(Set<Cluster.Endpoint>)
         case stop(CompletionReason?)
     }
 
@@ -25,7 +25,7 @@ final class DiscoveryShell {
     internal let cluster: ClusterShell.Ref
 
     private var subscription: CancellationToken?
-    internal var previouslyDiscoveredNodes: Set<Node> = []
+    internal var previouslyDiscoveredNodes: Set<Cluster.Endpoint> = []
 
     init(settings: ServiceDiscoverySettings, cluster: ClusterShell.Ref) {
         self.settings = settings
@@ -54,8 +54,8 @@ final class DiscoveryShell {
     private var ready: _Behavior<Message> {
         _Behavior<Message>.receive { context, message in
             switch message {
-            case .listing(let discoveredNodes):
-                self.onUpdatedListing(discoveredNodes: discoveredNodes, context: context)
+            case .listing(let discoveredEndpoints):
+                self.onUpdatedListing(discoveredEndpoints: discoveredEndpoints, context: context)
                 return .same
 
             case .stop(let reason):
@@ -66,20 +66,20 @@ final class DiscoveryShell {
         }
     }
 
-    private func onUpdatedListing(discoveredNodes: Set<Node>, context: _ActorContext<Message>) {
+    private func onUpdatedListing(discoveredEndpoints: Set<Cluster.Endpoint>, context: _ActorContext<Message>) {
         context.log.trace("Service discovery updated listing", metadata: [
-            "listing": Logger.MetadataValue.array(Array(discoveredNodes.map {
+            "listing": Logger.MetadataValue.array(Array(discoveredEndpoints.map {
                 "\($0)"
             })),
         ])
-        for newNode in discoveredNodes.subtracting(self.previouslyDiscoveredNodes) {
+        for newNode in discoveredEndpoints.subtracting(self.previouslyDiscoveredNodes) {
             context.log.trace("Discovered new node, initiating join", metadata: [
                 "node": "\(newNode)",
                 "discovery/implementation": "\(self.settings.implementation)",
             ])
             self.cluster.tell(.command(.handshakeWith(newNode)))
         }
-        self.previouslyDiscoveredNodes = discoveredNodes
+        self.previouslyDiscoveredNodes = discoveredEndpoints
     }
 
     func stop(reason: CompletionReason?, context: _ActorContext<Message>) -> _Behavior<Message> {

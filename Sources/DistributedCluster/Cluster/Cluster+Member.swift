@@ -19,13 +19,13 @@ extension Cluster {
     /// A `Member` is a node that is participating in a clustered system.
     ///
     /// It carries `Cluster.MemberStatus` and reachability information.
-    /// Its identity is the underlying `UniqueNode`, other fields are not taken into account when comparing members.
+    /// Its identity is the underlying `Cluster.Node`, other fields are not taken into account when comparing members.
     public struct Member: Hashable {
         /// Unique node of this cluster member.
-        public let uniqueNode: UniqueNode
+        public let node: Cluster.Node
 
         /// Cluster membership status of this member, signifying the logical state it resides in the membership.
-        /// Note, that a node that is reachable may still become `.down`, e.g. by issuing a manual `cluster.down(node:)` command or similar.
+        /// Note, that a node that is reachable may still become `.down`, e.g. by issuing a manual `cluster.down(endpoint:)` command or similar.
         public var status: Cluster.MemberStatus
 
         /// Reachability signifies the failure detectors assessment about this members "reachability" i.e. if it is responding to health checks or not.
@@ -40,16 +40,16 @@ extension Cluster {
         /// The sequence starts at `1`, and 0 means the node was not moved to up _yet_.
         public var _upNumber: Int?
 
-        public init(node: UniqueNode, status: Cluster.MemberStatus) {
-            self.uniqueNode = node
+        public init(node: Cluster.Node, status: Cluster.MemberStatus) {
+            self.node = node
             self.status = status
             self._upNumber = nil
             self.reachability = .reachable
         }
 
-        internal init(node: UniqueNode, status: Cluster.MemberStatus, upNumber: Int) {
+        internal init(node: Cluster.Node, status: Cluster.MemberStatus, upNumber: Int) {
             assert(!status.isJoining, "Node \(node) was \(status) yet was given upNumber: \(upNumber). This is incorrect, as only at-least .up members may have upNumbers!")
-            self.uniqueNode = node
+            self.node = node
             self.status = status
             self._upNumber = upNumber
             self.reachability = .reachable
@@ -72,11 +72,11 @@ extension Cluster {
         public var asDownIfNotAlready: Member {
             switch self.status {
             case .joining, .up, .leaving:
-                return Member(node: self.uniqueNode, status: .down)
+                return Member(node: self.node, status: .down)
             case .down, .removed:
                 return self
             case ._PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE:
-                return Member(node: self.uniqueNode, status: .down)
+                return Member(node: self.node, status: .down)
             }
         }
 
@@ -114,11 +114,11 @@ extension Cluster {
 
 extension Cluster.Member: Equatable {
     public func hash(into hasher: inout Hasher) {
-        self.uniqueNode.hash(into: &hasher)
+        self.node.hash(into: &hasher)
     }
 
     public static func == (lhs: Cluster.Member, rhs: Cluster.Member) -> Bool {
-        lhs.uniqueNode == rhs.uniqueNode
+        lhs.node == rhs.node
     }
 }
 
@@ -140,17 +140,17 @@ extension Cluster.Member {
     /// An ordering by the members' `node` properties, e.g. 1.1.1.1 is "lower" than 2.2.2.2.
     /// This ordering somewhat unusual, however always consistent and used to select a leader -- see `LowestReachableMember`.
     public static let lowestAddressOrdering: (Cluster.Member, Cluster.Member) -> Bool = { l, r in
-        l.uniqueNode < r.uniqueNode
+        l.node < r.node
     }
 }
 
 extension Cluster.Member: CustomStringConvertible, CustomDebugStringConvertible {
     public var description: String {
-        "Member(\(self.uniqueNode), status: \(self.status), reachability: \(self.reachability))"
+        "Member(\(self.node), status: \(self.status), reachability: \(self.reachability))"
     }
 
     public var debugDescription: String {
-        "Member(\(String(reflecting: self.uniqueNode)), status: \(self.status), reachability: \(self.reachability)\(self._upNumber.map { ", _upNumber: \($0)" } ?? ""))"
+        "Member(\(String(reflecting: self.node)), status: \(self.status), reachability: \(self.reachability)\(self._upNumber.map { ", _upNumber: \($0)" } ?? ""))"
     }
 }
 

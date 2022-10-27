@@ -46,8 +46,8 @@ class _ActorRefAdapterTests: SingleClusterSystemXCTestCase {
     func test_adaptedRef_overNetwork_shouldConvertMessages() async throws {
         let firstSystem = await setUpNode("One-RemoteActorRefAdapterTests") { settings in
             settings.enabled = true
-            settings.node.host = "127.0.0.1"
-            settings.node.port = 1881
+            settings.endpoint.host = "127.0.0.1"
+            settings.endpoint.port = 1881
         }
         let firstTestKit = self.testKit(firstSystem)
         let probe = firstTestKit.makeTestProbe(expecting: String.self)
@@ -55,11 +55,11 @@ class _ActorRefAdapterTests: SingleClusterSystemXCTestCase {
 
         let systemTwo = await setUpNode("Two-RemoteActorRefAdapterTests") { settings in
             settings.enabled = true
-            settings.node.host = "127.0.0.1"
-            settings.node.port = 1991
+            settings.endpoint.host = "127.0.0.1"
+            settings.endpoint.port = 1991
         }
 
-        firstSystem.cluster.join(node: systemTwo.settings.node)
+        firstSystem.cluster.join(endpoint: systemTwo.settings.endpoint)
 
         sleep(2)
 

@@ -25,7 +25,7 @@ import struct NIO.CircularBuffer
 /// which is used to drive re-delivery of system messages. System messages MUST NOT be dropped, and MUST
 /// be delivered in order, thus the re-delivery and local-delivery to the target actors is always done in
 /// sequence and without gaps. Redelivery also survives if a connection is borked and established anew with
-/// the same `UniqueNode`.
+/// the same `Cluster.Node`.
 ///
 /// Sequence numbers start from `1`, since zero is reserved for "no system messages were received/sent yet."
 ///

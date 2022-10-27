@@ -32,8 +32,8 @@ For more realistic uses, it is expected that you will configure your cluster sys
 struct Main {
     static func main() async throws {
         let system = await ClusterSystem("FirstSystem") { settings in
-            settings.node.host = "127.0.0.1"
-            settings.node.port = 7337
+            settings.endpoint.host = "127.0.0.1"
+            settings.endpoint.port = 7337
         }
         
         try await system.terminated
@@ -64,18 +64,24 @@ In the simplest scenario we already know about some existing node that we can jo
 This is done using the system's ``ClusterControl`` object, like this:
 
 ```swift
-system.cluster.join(node: Node(systemName: "JoiningExample", host: "127.0.0.1", port: 8228))
+system.cluster.join(endpoint: Cluster.Node(systemName: "JoiningExample", host: "127.0.0.1", port: 8228))
 ```
 
-> Note: The difference between a ``Node`` and ``UniqueNode`` is that a ``Node`` is "some node on that address", while 
-> an ``UniqueNode`` is a node that we have contacted and know its exact unique node identifier. Therefore, when reaching 
-> out to a node we know nothing about just yet, we use the `Node` type. 
+> Note: The difference between an ``Cluster/Endpoint`` and ``Cluster/Node`` is that an ``Cluster/Endpoint`` only represents
+> where we expect a cluster node to be listening for connections – effectively a `protocol`, `host` and `port` triplet.
+> While a ``Cluster/Node`` is a specific, unique, node that we have connected to and now know its exact unique node identifier.
+> 
+> Therefore, when reaching out to a node we know nothing about just yet, we use the ``Cluster/Endpoint`` type,
+> and the ``Cluster/Node`` in all following interactions.
+> 
+> Furthermore, a ``Cluster/Member`` further enriches a node with information about its cluster membership status 
+> (``Cluster/MemberStatus`` and ``Cluster/MemberReachability``).
 
 You can observe ``Cluster/Event``s emitted by `system.cluster.events` (``ClusterControl/events``) in order to see when a node has been successfully joined.
 
 There is also convenience APIs available on ``ClusterControl`` (`system.cluster`):
-- ``ClusterControl/joined(node:within:)-2o4kd`` which allows you to suspend until a specific node becomes ``Cluster/MemberStatus/joining`` in the cluster membership, or
-- ``ClusterControl/waitFor(_:_:within:)-126aq`` which allows you to suspend until a node reaches a specific ``Cluster/MemberStatus``. 
+- ``ClusterControl/joined(endpoint:within:)`` which allows you to suspend until a specific node becomes ``Cluster/MemberStatus/joining`` in the cluster membership, or
+- ``ClusterControl/waitFor(_:_:within:)-1xiqo`` which allows you to suspend until a node reaches a specific ``Cluster/MemberStatus``. 
 
 ### Automatic Node Discovery
 
@@ -108,7 +114,7 @@ Generally, one should not need to rely on the low-level clustering events emitte
 
 Having that said, some actors (or other parts of your program) may be interested in the raw event stream offered by the cluster system. For example, one can implement a stability report by observing how frequently ``Cluster/ReachabilityChange`` events are emitted, or take it one level further and implement your own ``DowningStrategy`` based on observing those reachability changes.
 
-Events emitted by the cluster, are always expressed in terms of cluster _members_ (``Cluster/Member``), which represent some concrete ``UniqueNode`` which is part of the membership. As soon as a node becomes part of the membership, even while it is only ``Cluster/MemberStatus/joining``, events about it will be emitted by the cluster.
+Events emitted by the cluster, are always expressed in terms of cluster _members_ (``Cluster/Member``), which represent some concrete ``Cluster/Node`` which is part of the membership. As soon as a node becomes part of the membership, even while it is only ``Cluster/MemberStatus/joining``, events about it will be emitted by the cluster.
 
 A cluster member goes through the following phases in its lifecycle:
 
@@ -159,7 +165,7 @@ var membership = Cluster.Membership.empty
 
 for await event in system.cluster.events {
     if case .membershipChanged(let change) = event {
-        guard change.node == system.cluster.uniqueNode else {
+        guard change.node == system.cluster.node else {
             continue
         }
         guard change.isUp else {

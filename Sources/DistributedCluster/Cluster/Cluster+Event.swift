@@ -38,8 +38,8 @@ extension Cluster {
         public internal(set) var member: Member
 
         /// The node which the change concerns.
-        public var node: UniqueNode {
-            self.member.uniqueNode
+        public var node: Cluster.Node {
+            self.member.node
         }
 
         /// Only set if the change is a "replacement", which can happen only if a node joins
@@ -80,7 +80,7 @@ extension Cluster {
             }
         }
 
-        init(node: UniqueNode, previousStatus: MemberStatus?, toStatus: MemberStatus) {
+        init(node: Cluster.Node, previousStatus: MemberStatus?, toStatus: MemberStatus) {
             // FIXME: enable these assertions
 //          assertBacktrace(
 //                !(toStatus == .removed && fromStatus != .down),
@@ -97,8 +97,8 @@ extension Cluster {
 
         /// Use to create a "replacement", when the previousNode and node are different (i.e. they should only differ in ID, not host/port)
         init(replaced: Member, by newMember: Member) {
-            assert(replaced.uniqueNode.host == newMember.uniqueNode.host, "Replacement Cluster.MembershipChange should be for same non-unique node; Was: \(replaced), and \(newMember)")
-            assert(replaced.uniqueNode.port == newMember.uniqueNode.port, "Replacement Cluster.MembershipChange should be for same non-unique node; Was: \(replaced), and \(newMember)")
+            assert(replaced.node.host == newMember.node.host, "Replacement Cluster.MembershipChange should be for same non-unique node; Was: \(replaced), and \(newMember)")
+            assert(replaced.node.port == newMember.node.port, "Replacement Cluster.MembershipChange should be for same non-unique node; Was: \(replaced), and \(newMember)")
             assert(newMember.status != .down, "Attempted to replace a member \(replaced) with a .down member: \(newMember)! This should never happen.")
 
             self.replaced = replaced

@@ -33,8 +33,8 @@ final class MembershipSerializationTests: SingleClusterSystemXCTestCase {
 
     func test_serializationOf_membership() throws {
         let membership: Cluster.Membership = [
-            Cluster.Member(node: UniqueNode(node: Node(systemName: "first", host: "1.1.1.1", port: 7337), nid: .random()), status: .up),
-            Cluster.Member(node: UniqueNode(node: Node(systemName: "second", host: "2.2.2.2", port: 8228), nid: .random()), status: .down),
+            Cluster.Member(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "first", host: "1.1.1.1", port: 7337), nid: .random()), status: .up),
+            Cluster.Member(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "second", host: "2.2.2.2", port: 8228), nid: .random()), status: .down),
         ]
 
         let proto = try membership.toProto(context: self.context)
@@ -49,14 +49,14 @@ final class MembershipSerializationTests: SingleClusterSystemXCTestCase {
     func test_gossip_serialization() throws {
         let members = (1 ... 15).map { id in
             Cluster.Member(
-                node: UniqueNode(
-                    node: Node(systemName: "\(id)", host: "1.1.1.\(id)", port: 1111),
+                node: Cluster.Node(
+                    endpoint: Cluster.Endpoint(systemName: "\(id)", host: "1.1.1.\(id)", port: 1111),
                     nid: .init(UInt64("\(id)\(id)\(id)\(id)")!) // pretend a real-ish looking ID, but be easier to read
                 ),
                 status: .up
             )
         }
-        let nodes = members.map(\.uniqueNode)
+        let nodes = members.map(\.node)
 
         let gossip = Cluster.MembershipGossip.parse(
             """

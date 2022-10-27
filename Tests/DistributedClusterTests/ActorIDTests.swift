@@ -18,7 +18,7 @@ import XCTest
 
 final class ActorIDTests: ClusteredActorSystemsXCTestCase {
     func test_local_actorAddress_shouldPrintNicely() throws {
-        let node: UniqueNode = .init(protocol: "sact", systemName: "\(Self.self)", host: "127.0.0.1", port: 7337, nid: .random())
+        let node = Cluster.Node(systemName: "\(Self.self)", host: "127.0.0.1", port: 7337, nid: .random())
         let id = try ActorID(local: node, path: ActorPath._user.appending("hello"), incarnation: ActorIncarnation(8888))
         "\(id)".shouldEqual("/user/hello")
         "\(id.name)".shouldEqual("hello")
@@ -37,9 +37,9 @@ final class ActorIDTests: ClusteredActorSystemsXCTestCase {
     }
 
     func test_remote_actorAddress_shouldPrintNicely() throws {
-        let localNode: UniqueNode = .init(protocol: "sact", systemName: "\(Self.self)", host: "127.0.0.1", port: 7337, nid: .random())
+        let localNode = Cluster.Node(systemName: "\(Self.self)", host: "127.0.0.1", port: 7337, nid: .random())
         let id = try ActorID(local: localNode, path: ActorPath._user.appending("hello"), incarnation: ActorIncarnation(8888))
-        let remoteNode = UniqueNode(systemName: "system", host: "127.0.0.1", port: 1234, nid: UniqueNodeID(11111))
+        let remoteNode = Cluster.Node(systemName: "system", host: "127.0.0.1", port: 1234, nid: Cluster.Node.ID(11111))
         let remote = ActorID(remote: remoteNode, path: id.path, incarnation: ActorIncarnation(8888))
 
         remote.detailedDescription.shouldEqual("sact://system:11111@127.0.0.1:1234/user/hello#8888[\"$path\": /user/hello]")
@@ -56,7 +56,7 @@ final class ActorIDTests: ClusteredActorSystemsXCTestCase {
     // MARK: Equality & Sorting
 
     func test_equalityOf_idWithSameSegmentsButDifferentIncarnation() throws {
-        let node: UniqueNode = .init(protocol: "sact", systemName: "\(Self.self)", host: "127.0.0.1", port: 7337, nid: .random())
+        let node = Cluster.Node(systemName: "\(Self.self)", host: "127.0.0.1", port: 7337, nid: .random())
         let one = try ActorPath(root: "test").makeChildPath(name: "foo").makeLocalID(on: node, incarnation: .random())
         let two = try ActorPath(root: "test").makeChildPath(name: "foo").makeLocalID(on: node, incarnation: .random())
 
@@ -69,30 +69,30 @@ final class ActorIDTests: ClusteredActorSystemsXCTestCase {
 
     func test_equalityOf_idWithDifferentSystemNameOnly() throws {
         let path = try ActorPath._user.appending("hello")
-        let one = ActorID(local: UniqueNode(systemName: "one", host: "127.0.0.1", port: 1234, nid: UniqueNodeID(11111)), path: path, incarnation: ActorIncarnation(88))
-        let two = ActorID(local: UniqueNode(systemName: "two", host: "127.0.0.1", port: 1234, nid: UniqueNodeID(11111)), path: path, incarnation: ActorIncarnation(88))
+        let one = ActorID(local: Cluster.Node(systemName: "one", host: "127.0.0.1", port: 1234, nid: Cluster.Node.ID(11111)), path: path, incarnation: ActorIncarnation(88))
+        let two = ActorID(local: Cluster.Node(systemName: "two", host: "127.0.0.1", port: 1234, nid: Cluster.Node.ID(11111)), path: path, incarnation: ActorIncarnation(88))
 
         one.shouldEqual(two)
     }
 
     func test_equalityOf_idWithDifferentSystemNameOnly_remote() throws {
         let path = try ActorPath._user.appending("hello")
-        let one = ActorID(remote: UniqueNode(systemName: "one", host: "127.0.0.1", port: 1234, nid: UniqueNodeID(11111)), path: path, incarnation: ActorIncarnation(88))
-        let two = ActorID(remote: UniqueNode(systemName: "two", host: "127.0.0.1", port: 1234, nid: UniqueNodeID(11111)), path: path, incarnation: ActorIncarnation(88))
+        let one = ActorID(remote: Cluster.Node(systemName: "one", host: "127.0.0.1", port: 1234, nid: Cluster.Node.ID(11111)), path: path, incarnation: ActorIncarnation(88))
+        let two = ActorID(remote: Cluster.Node(systemName: "two", host: "127.0.0.1", port: 1234, nid: Cluster.Node.ID(11111)), path: path, incarnation: ActorIncarnation(88))
 
         one.shouldEqual(two)
     }
 
     func test_equalityOf_idWithDifferentSystemNameOnly_local_remote() throws {
         let path = try ActorPath._user.appending("hello")
-        let one = ActorID(local: UniqueNode(systemName: "one", host: "127.0.0.1", port: 1234, nid: UniqueNodeID(11111)), path: path, incarnation: ActorIncarnation(88))
-        let two = ActorID(remote: UniqueNode(systemName: "two", host: "127.0.0.1", port: 1234, nid: UniqueNodeID(11111)), path: path, incarnation: ActorIncarnation(88))
+        let one = ActorID(local: Cluster.Node(systemName: "one", host: "127.0.0.1", port: 1234, nid: Cluster.Node.ID(11111)), path: path, incarnation: ActorIncarnation(88))
+        let two = ActorID(remote: Cluster.Node(systemName: "two", host: "127.0.0.1", port: 1234, nid: Cluster.Node.ID(11111)), path: path, incarnation: ActorIncarnation(88))
 
         one.shouldEqual(two)
     }
 
     func test_equalityOf_idWithDifferentSegmentsButSameUID() throws {
-        let node = UniqueNode(systemName: "one", host: "127.0.0.1", port: 1234, nid: UniqueNodeID(11111))
+        let node = Cluster.Node(systemName: "one", host: "127.0.0.1", port: 1234, nid: Cluster.Node.ID(11111))
         let one = try ActorPath(root: "test").makeChildPath(name: "foo").makeLocalID(on: node, incarnation: .random())
         let one2 = try ActorPath(root: "test").makeChildPath(name: "foo2").makeLocalID(on: node, incarnation: one.incarnation)
 
@@ -100,7 +100,7 @@ final class ActorIDTests: ClusteredActorSystemsXCTestCase {
     }
 
     func test_sortingOf_actorIDs() throws {
-        let node = UniqueNode(systemName: "one", host: "127.0.0.1", port: 1234, nid: UniqueNodeID(11111))
+        let node = Cluster.Node(systemName: "one", host: "127.0.0.1", port: 1234, nid: Cluster.Node.ID(11111))
         var ids: [ActorID] = []
         let a: ActorID = try ActorPath._user.appending("a").makeLocalID(on: node, incarnation: .random())
         let b: ActorID = try ActorPath._user.appending("b").makeLocalID(on: node, incarnation: .random())
@@ -114,7 +114,7 @@ final class ActorIDTests: ClusteredActorSystemsXCTestCase {
     }
 
     func test_sortingOf_sameNode_actorIDs() throws {
-        let node = UniqueNode(systemName: "one", host: "127.0.0.1", port: 1234, nid: UniqueNodeID(11111))
+        let node = Cluster.Node(systemName: "one", host: "127.0.0.1", port: 1234, nid: Cluster.Node.ID(11111))
         var ids: [ActorID] = []
         let a: ActorID = try ActorPath._user.appending("a").makeLocalID(on: node, incarnation: .wellKnown)
         let b: ActorID = try ActorPath._user.appending("b").makeLocalID(on: node, incarnation: .wellKnown)
@@ -128,7 +128,7 @@ final class ActorIDTests: ClusteredActorSystemsXCTestCase {
     }
 
     func test_sortingOf_diffNodes_actorIDs() throws {
-        let node = UniqueNode(systemName: "one", host: "127.0.0.1", port: 1234, nid: UniqueNodeID(11111))
+        let node = Cluster.Node(systemName: "one", host: "127.0.0.1", port: 1234, nid: Cluster.Node.ID(11111))
         var ids: [ActorID] = []
         let a: ActorID = try ActorPath._user.appending("a").makeRemoteID(on: node, incarnation: 1)
         let b: ActorID = try ActorPath._user.appending("a").makeRemoteID(on: node, incarnation: 1)
@@ -145,7 +145,7 @@ final class ActorIDTests: ClusteredActorSystemsXCTestCase {
     // MARK: Coding
 
     func test_encodeDecode_ActorAddress_withoutSerializationContext() async throws {
-        let node = UniqueNode(systemName: "one", host: "127.0.0.1", port: 1234, nid: UniqueNodeID(11111))
+        let node = Cluster.Node(systemName: "one", host: "127.0.0.1", port: 1234, nid: Cluster.Node.ID(11111))
         let a = try ActorPath._user.appending("a").makeRemoteID(on: node, incarnation: 1)
         let addressWithoutTestTag = a
         a.metadata.test = "test-value"
@@ -163,7 +163,7 @@ final class ActorIDTests: ClusteredActorSystemsXCTestCase {
     }
 
     func test_serializing_ActorAddress_skipCustomTag() async throws {
-        let node = UniqueNode(systemName: "one", host: "127.0.0.1", port: 1234, nid: UniqueNodeID(11111))
+        let node = Cluster.Node(systemName: "one", host: "127.0.0.1", port: 1234, nid: Cluster.Node.ID(11111))
         let a = try ActorPath._user.appending("a").makeRemoteID(on: node, incarnation: 1)
         a.metadata.test = "test-value"
 
@@ -182,7 +182,7 @@ final class ActorIDTests: ClusteredActorSystemsXCTestCase {
     }
 
     func test_serializing_ActorAddress_propagateCustomTag() async throws {
-        let node = UniqueNode(systemName: "one", host: "127.0.0.1", port: 1234, nid: UniqueNodeID(11111))
+        let node = Cluster.Node(systemName: "one", host: "127.0.0.1", port: 1234, nid: Cluster.Node.ID(11111))
         let a = try ActorPath._user.appending("a").makeRemoteID(on: node, incarnation: 1)
         a.metadata.test = "test-value"
 

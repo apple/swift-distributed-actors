@@ -20,11 +20,11 @@ import XCTest
 
 // Unit tests of the actions, see `ClusterLeaderActionsClusteredTests` for integration tests
 final class ClusterLeaderActionsTests: XCTestCase {
-    let _nodeA = Node(systemName: "nodeA", host: "1.1.1.1", port: 7337)
-    let _nodeB = Node(systemName: "nodeB", host: "2.2.2.2", port: 8228)
-    let _nodeC = Node(systemName: "nodeC", host: "3.3.3.3", port: 9119)
+    let _endpointA = Cluster.Endpoint(systemName: "nodeA", host: "1.1.1.1", port: 7337)
+    let _endpointB = Cluster.Endpoint(systemName: "nodeB", host: "2.2.2.2", port: 8228)
+    let _endpointC = Cluster.Endpoint(systemName: "nodeC", host: "3.3.3.3", port: 9119)
 
-    var allNodes: [UniqueNode] {
+    var allNodes: [Cluster.Node] {
         [self.nodeA, self.nodeB, self.nodeC]
     }
 
@@ -32,27 +32,27 @@ final class ClusterLeaderActionsTests: XCTestCase {
     var stateB: ClusterShellState!
     var stateC: ClusterShellState!
 
-    var nodeA: UniqueNode {
+    var nodeA: Cluster.Node {
         self.stateA.selfNode
     }
 
-    var nodeB: UniqueNode {
+    var nodeB: Cluster.Node {
         self.stateB.selfNode
     }
 
-    var nodeC: UniqueNode {
+    var nodeC: Cluster.Node {
         self.stateC.selfNode
     }
 
     override func setUp() {
         self.stateA = ClusterShellState.makeTestMock(side: .server) { settings in
-            settings.node = self._nodeA
+            settings.endpoint = self._endpointA
         }
         self.stateB = ClusterShellState.makeTestMock(side: .server) { settings in
-            settings.node = self._nodeB
+            settings.endpoint = self._endpointB
         }
         self.stateC = ClusterShellState.makeTestMock(side: .server) { settings in
-            settings.node = self._nodeC
+            settings.endpoint = self._endpointC
         }
 
         _ = self.stateA.membership.join(self.nodeA)
@@ -79,7 +79,7 @@ final class ClusterLeaderActionsTests: XCTestCase {
 
     func test_leaderActions_removeDownMembers_ifKnownAsDownToAllMembers() {
         // make A the leader
-        let makeFirstTheLeader = Cluster.LeadershipChange(oldLeader: nil, newLeader: self.stateA.membership.member(self.nodeA.node)!)!
+        let makeFirstTheLeader = Cluster.LeadershipChange(oldLeader: nil, newLeader: self.stateA.membership.member(self.nodeA.endpoint)!)!
         _ = self.stateA.applyClusterEvent(.leadershipChange(makeFirstTheLeader))
 
         // time to mark B as .down
@@ -119,7 +119,7 @@ final class ClusterLeaderActionsTests: XCTestCase {
             return
         }
         member.status.isDown.shouldBeTrue()
-        member.uniqueNode.shouldEqual(self.nodeB)
+        member.node.shouldEqual(self.nodeB)
 
         // interpret leader actions would interpret it by removing the member now and tombstone-ing it,
         // see `interpretLeaderActions`

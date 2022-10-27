@@ -23,7 +23,7 @@ final class ClusterMembershipSnapshotTests: ClusteredActorSystemsXCTestCase {
         let testKit: ActorTestKit = self.testKit(system)
         try await testKit.eventually(within: .seconds(5)) {
             await system.cluster.membershipSnapshot.members(atLeast: .joining).shouldContain(
-                Cluster.Member(node: system.cluster.uniqueNode, status: .joining)
+                Cluster.Member(node: system.cluster.node, status: .joining)
             )
         }
     }
@@ -44,10 +44,10 @@ final class ClusterMembershipSnapshotTests: ClusteredActorSystemsXCTestCase {
                 throw testKit.error(line: #line - 1)
             }
 
-            let nodes: [UniqueNode] = snapshot.members(atMost: .up).map(\.uniqueNode)
-            nodes.shouldContain(first.cluster.uniqueNode)
-            nodes.shouldContain(second.cluster.uniqueNode)
-            nodes.shouldContain(third.cluster.uniqueNode)
+            let nodes: [Cluster.Node] = snapshot.members(atMost: .up).map(\.node)
+            nodes.shouldContain(first.cluster.node)
+            nodes.shouldContain(second.cluster.node)
+            nodes.shouldContain(third.cluster.node)
         }
     }
 
@@ -71,7 +71,7 @@ final class ClusterMembershipSnapshotTests: ClusteredActorSystemsXCTestCase {
             // but the snapshot already knows about all of them.
             snapshot.count.shouldBeGreaterThanOrEqual(membership.count)
             membership.members(atLeast: .joining).forEach { mm in
-                if let nm = snapshot.uniqueMember(mm.uniqueNode) {
+                if let nm = snapshot.uniqueMember(mm.node) {
                     nm.status.shouldBeGreaterThanOrEqual(mm.status)
                 }
             }

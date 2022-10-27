@@ -33,17 +33,17 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
         singletonSettings.allocationStrategy = .byLeadership
 
         let first = await self.setUpNode("first") { settings in
-            settings.node.port = 7111
+            settings.endpoint.port = 7111
             settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
             settings += ClusterSingletonPlugin()
         }
         let second = await self.setUpNode("second") { settings in
-            settings.node.port = 8222
+            settings.endpoint.port = 8222
             settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
             settings += ClusterSingletonPlugin()
         }
         let third = await self.setUpNode("third") { settings in
-            settings.node.port = 9333
+            settings.endpoint.port = 9333
             settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
             settings += ClusterSingletonPlugin()
         }
@@ -60,11 +60,11 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
             TheSingleton(greeting: "Hello-3", actorSystem: actorSystem)
         }
 
-        first.cluster.join(node: second.cluster.uniqueNode.node)
-        third.cluster.join(node: first.cluster.uniqueNode.node)
+        first.cluster.join(endpoint: second.cluster.node.endpoint)
+        third.cluster.join(endpoint: first.cluster.node.endpoint)
 
         // `first` will be the leader (lowest address) and runs the singleton
-        try await self.ensureNodes(.up, on: first, within: .seconds(10), nodes: second.cluster.uniqueNode, third.cluster.uniqueNode)
+        try await self.ensureNodes(.up, on: first, within: .seconds(10), nodes: second.cluster.node, third.cluster.node)
 
         try await self.assertSingletonRequestReply(first, singleton: ref1, greetingName: "Alice", expectedPrefix: "Hello-1 Alice!")
         try await self.assertSingletonRequestReply(second, singleton: ref2, greetingName: "Bob", expectedPrefix: "Hello-1 Bob!")
@@ -76,7 +76,7 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
         singletonSettings.allocationStrategy = .byLeadership
 
         let first = await self.setUpNode("first") { settings in
-            settings.node.port = 7111
+            settings.endpoint.port = 7111
             settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 1) // just myself
             settings.plugins.install(plugin: ClusterSingletonPlugin())
         }
@@ -110,17 +110,17 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
         singletonSettings.allocationTimeout = .seconds(15)
 
         let first = await self.setUpNode("first") { settings in
-            settings.node.port = 7111
+            settings.endpoint.port = 7111
             settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
             settings += ClusterSingletonPlugin()
         }
         let second = await self.setUpNode("second") { settings in
-            settings.node.port = 8222
+            settings.endpoint.port = 8222
             settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
             settings += ClusterSingletonPlugin()
         }
         let third = await self.setUpNode("third") { settings in
-            settings.node.port = 9333
+            settings.endpoint.port = 9333
             settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
             settings += ClusterSingletonPlugin()
         }
@@ -153,8 +153,8 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
         try await withThrowingTaskGroup(of: TaskType.self) { group in
             group.addTask {
                 // Set up the cluster
-                first.cluster.join(node: second.cluster.uniqueNode.node)
-                third.cluster.join(node: first.cluster.uniqueNode.node)
+                first.cluster.join(endpoint: second.cluster.node.endpoint)
+                third.cluster.join(endpoint: first.cluster.node.endpoint)
 
                 // `first` will be the leader (lowest address) and runs the singleton.
                 //
@@ -187,22 +187,22 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
         singletonSettings.allocationTimeout = .seconds(15)
 
         let first = await self.setUpNode("first") { settings in
-            settings.node.port = 7111
+            settings.endpoint.port = 7111
             settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
             settings += ClusterSingletonPlugin()
         }
         let second = await self.setUpNode("second") { settings in
-            settings.node.port = 8222
+            settings.endpoint.port = 8222
             settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
             settings += ClusterSingletonPlugin()
         }
         let third = await self.setUpNode("third") { settings in
-            settings.node.port = 9333
+            settings.endpoint.port = 9333
             settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
             settings += ClusterSingletonPlugin()
         }
         let fourth = await self.setUpNode("fourth") { settings in
-            settings.node.port = 7444
+            settings.endpoint.port = 7444
             settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
             settings += ClusterSingletonPlugin()
         }
@@ -222,19 +222,19 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
             TheSingleton(greeting: "Hello-4", actorSystem: actorSystem)
         }
 
-        first.cluster.join(node: second.cluster.uniqueNode.node)
-        third.cluster.join(node: first.cluster.uniqueNode.node)
+        first.cluster.join(endpoint: second.cluster.node.endpoint)
+        third.cluster.join(endpoint: first.cluster.node.endpoint)
 
         // `first` will be the leader (lowest address) and runs the singleton
-        try await self.ensureNodes(.up, on: first, within: .seconds(10), nodes: second.cluster.uniqueNode, third.cluster.uniqueNode)
-        pinfo("Nodes up: \([first.cluster.uniqueNode, second.cluster.uniqueNode, third.cluster.uniqueNode])")
+        try await self.ensureNodes(.up, on: first, within: .seconds(10), nodes: second.cluster.node, third.cluster.node)
+        pinfo("Nodes up: \([first.cluster.node, second.cluster.node, third.cluster.node])")
 
         try await self.assertSingletonRequestReply(first, singleton: ref1, greetingName: "Alice", expectedPrefix: "Hello-1 Alice!")
         try await self.assertSingletonRequestReply(second, singleton: ref2, greetingName: "Bob", expectedPrefix: "Hello-1 Bob!")
         try await self.assertSingletonRequestReply(third, singleton: ref3, greetingName: "Charlie", expectedPrefix: "Hello-1 Charlie!")
         pinfo("All three nodes communicated with singleton")
 
-        let firstNode = first.cluster.uniqueNode
+        let firstNode = first.cluster.node
         first.cluster.leave()
 
         // Make sure that `second` and `third` see `first` as down and become leader-less
@@ -245,11 +245,11 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
             try self.assertLeaderNode(on: second, is: nil)
             try self.assertLeaderNode(on: third, is: nil)
         }
-        pinfo("Node \(firstNode) left cluster...")
+        pinfo("Endpoint \(firstNode) left cluster...")
 
         // `fourth` will become the new leader and singleton
-        pinfo("Node \(fourth.cluster.uniqueNode) joining cluster...")
-        fourth.cluster.join(node: second.cluster.uniqueNode.node)
+        pinfo("Endpoint \(fourth.cluster.node) joining cluster...")
+        fourth.cluster.join(endpoint: second.cluster.node.endpoint)
         let start = ContinuousClock.Instant.now
 
         // No leader so singleton is not available, messages sent should be stashed
@@ -278,8 +278,8 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
         let ref2Task = requestReplyTask(singleton: ref2, greetingName: "Bob")
         let ref3Task = requestReplyTask(singleton: ref2, greetingName: "Charlie")
 
-        try await self.ensureNodes(.up, on: second, within: .seconds(10), nodes: third.cluster.uniqueNode, fourth.cluster.uniqueNode)
-        pinfo("Fourth node joined, will become leader; Members now: \([fourth.cluster.uniqueNode, second.cluster.uniqueNode, third.cluster.uniqueNode])")
+        try await self.ensureNodes(.up, on: second, within: .seconds(10), nodes: third.cluster.node, fourth.cluster.node)
+        pinfo("Fourth node joined, will become leader; Members now: \([fourth.cluster.node, second.cluster.node, third.cluster.node])")
 
         ref2Task.cancel()
         ref3Task.cancel()
@@ -322,12 +322,12 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
         singletonSettings.allocationTimeout = .milliseconds(100)
 
         let first = await self.setUpNode("first") { settings in
-            settings.node.port = 7111
+            settings.endpoint.port = 7111
             settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
             settings += ClusterSingletonPlugin()
         }
         let second = await self.setUpNode("second") { settings in
-            settings.node.port = 8222
+            settings.endpoint.port = 8222
             settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
             settings += ClusterSingletonPlugin()
         }
@@ -341,14 +341,14 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
             TheSingleton(greeting: "Hello-2", actorSystem: actorSystem)
         }
 
-        first.cluster.join(node: second.cluster.uniqueNode.node)
+        first.cluster.join(endpoint: second.cluster.node.endpoint)
 
         // `first` will be the leader (lowest address) and runs the singleton
-        try await self.ensureNodes(.up, on: first, nodes: second.cluster.uniqueNode)
+        try await self.ensureNodes(.up, on: first, nodes: second.cluster.node)
 
         try await self.assertSingletonRequestReply(second, singleton: ref2, greetingName: "Bob", expectedPrefix: "Hello-1 Bob!")
 
-        let firstNode = first.cluster.uniqueNode
+        let firstNode = first.cluster.node
         first.cluster.leave()
 
         try await self.assertMemberStatus(on: second, node: firstNode, is: .down, within: .seconds(10))
@@ -385,7 +385,7 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
             } catch {
                 throw TestError(
                     """
-                    Received no reply from singleton [\(singleton)] while sending from [\(system.cluster.uniqueNode.node)], \
+                    Received no reply from singleton [\(singleton)] while sending from [\(system.cluster.node.endpoint)], \
                     perhaps request was lost. Sent greeting [\(greetingName)] and expected prefix: [\(expectedPrefix)] (attempts: \(attempts))
                     """)
             }
@@ -404,7 +404,7 @@ distributed actor TheSingleton: ClusterSingleton {
     }
 
     distributed func greet(name: String) -> String {
-        "\(self.greeting) \(name)! (from node: \(self.id.uniqueNode), id: \(self.id.detailedDescription))"
+        "\(self.greeting) \(name)! (from node: \(self.id.node), id: \(self.id.detailedDescription))"
     }
 }
 

@@ -144,15 +144,15 @@ extension Wire.HandshakeOffer {
         guard proto.hasOriginNode else {
             throw SerializationError(.missingField("originNode", type: String(reflecting: Wire.HandshakeOffer.self)))
         }
-        guard proto.hasTargetNode else {
-            throw SerializationError(.missingField("targetNode", type: String(reflecting: Wire.HandshakeOffer.self)))
+        guard proto.hasTargetEndpoint else {
+            throw SerializationError(.missingField("targetEndpoint", type: String(reflecting: Wire.HandshakeOffer.self)))
         }
         guard proto.hasVersion else {
             throw SerializationError(.missingField("version", type: String(reflecting: Wire.HandshakeOffer.self)))
         }
 
-        self.originNode = try UniqueNode(proto.originNode)
-        self.targetNode = Node(proto.targetNode)
+        self.originNode = try Cluster.Node(proto.originNode)
+        self.targetEndpoint = Cluster.Endpoint(proto.targetEndpoint)
         self.version = Wire.Version(reserved: UInt8(proto.version.reserved), major: UInt8(proto.version.major), minor: UInt8(proto.version.minor), patch: UInt8(proto.version.patch))
     }
 }
@@ -160,8 +160,8 @@ extension Wire.HandshakeOffer {
 extension _ProtoHandshakeOffer {
     init(_ offer: Wire.HandshakeOffer) {
         self.version = _ProtoProtocolVersion(offer.version)
-        self.originNode = _ProtoUniqueNode(offer.originNode)
-        self.targetNode = _ProtoNode(offer.targetNode)
+        self.originNode = _ProtoClusterNode(offer.originNode)
+        self.targetEndpoint = _ProtoClusterEndpoint(offer.targetEndpoint)
     }
 
     init(serializedData data: Data) throws {
@@ -174,8 +174,8 @@ extension _ProtoHandshakeOffer {
         guard proto.hasOriginNode else {
             throw SerializationError(.missingField("hasOriginNode", type: String(reflecting: Wire.HandshakeOffer.self)))
         }
-        guard proto.hasTargetNode else {
-            throw SerializationError(.missingField("targetNode", type: String(reflecting: Wire.HandshakeOffer.self)))
+        guard proto.hasTargetEndpoint else {
+            throw SerializationError(.missingField("targetEndpoint", type: String(reflecting: Wire.HandshakeOffer.self)))
         }
 
         self = proto

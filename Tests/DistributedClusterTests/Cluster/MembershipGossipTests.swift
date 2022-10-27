@@ -19,20 +19,20 @@ import XCTest
 
 /// Tests of just the datatype
 final class MembershipGossipTests: XCTestCase {
-    var nodeA: UniqueNode!
-    var nodeB: UniqueNode!
-    var nodeC: UniqueNode!
-    var fourthNode: UniqueNode!
+    var nodeA: Cluster.Node!
+    var nodeB: Cluster.Node!
+    var nodeC: Cluster.Node!
+    var fourthNode: Cluster.Node!
     lazy var allNodes = [
         self.nodeA!, self.nodeB!, self.nodeC!, self.fourthNode!,
     ]
 
     override func setUp() {
         super.setUp()
-        self.nodeA = UniqueNode(protocol: "sact", systemName: "firstA", host: "127.0.0.1", port: 7111, nid: .random())
-        self.nodeB = UniqueNode(protocol: "sact", systemName: "secondB", host: "127.0.0.1", port: 7222, nid: .random())
-        self.nodeC = UniqueNode(protocol: "sact", systemName: "thirdC", host: "127.0.0.1", port: 7333, nid: .random())
-        self.fourthNode = UniqueNode(protocol: "sact", systemName: "fourthD", host: "127.0.0.1", port: 7444, nid: .random())
+        self.nodeA = Cluster.Node(systemName: "firstA", host: "127.0.0.1", port: 7111, nid: .random())
+        self.nodeB = Cluster.Node(systemName: "secondB", host: "127.0.0.1", port: 7222, nid: .random())
+        self.nodeC = Cluster.Node(systemName: "thirdC", host: "127.0.0.1", port: 7333, nid: .random())
+        self.fourthNode = Cluster.Node(systemName: "fourthD", host: "127.0.0.1", port: 7444, nid: .random())
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -185,7 +185,7 @@ final class MembershipGossipTests: XCTestCase {
             C: A@5 B@5  C@6
             """,
             owner: self.nodeB, nodes: self.allNodes
-        ) // TODO: this will be rejected since owner is the downe node (!) add another test with third sending the same info
+        ) // TODO: this will be rejected since owner is the downed node (!) add another test with third sending the same info
 
         let gossipBeforeMerge = gossip
         let directive = gossip.mergeForward(incoming: incomingOldGossip)
@@ -196,7 +196,7 @@ final class MembershipGossipTests: XCTestCase {
         )
 
         gossip.membership.members(atLeast: .joining).shouldNotContain(removedMember)
-        gossip.seen.nodes.shouldNotContain(removedMember.uniqueNode)
+        gossip.seen.nodes.shouldNotContain(removedMember.node)
 
         gossip.seen.shouldEqual(gossipBeforeMerge.seen)
         gossip.membership.shouldEqual(gossipBeforeMerge.membership)
@@ -518,12 +518,12 @@ final class MembershipGossipTests: XCTestCase {
     }
 
     func test_gossip_eventuallyConverges() {
-        func makeRandomGossip(owner node: UniqueNode) -> Cluster.MembershipGossip {
+        func makeRandomGossip(owner node: Cluster.Node) -> Cluster.MembershipGossip {
             var gossip = Cluster.MembershipGossip(ownerNode: node)
             _ = gossip.membership.join(node)
             _ = gossip.membership.mark(node, as: .joining)
             var vv = VersionVector()
-            vv.state[.uniqueNode(node)] = VersionVector.Version(node.port)
+            vv.state[.node(node)] = VersionVector.Version(node.port)
             gossip.seen.underlying[node] = .init(vv)
 
             // know just enough that we're not alone and thus need to communicate:

@@ -212,7 +212,7 @@ extension ActorIncarnation: Codable {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Codable Node Address
 
-extension Node: Codable {
+extension Cluster.Endpoint: Codable {
     // FIXME: encode as authority/URI with optimized parser here, this will be executed many many times...
     public func encode(to encoder: Encoder) throws {
         var container = encoder.unkeyedContainer()
@@ -234,17 +234,17 @@ extension Node: Codable {
     }
 }
 
-extension UniqueNode: Codable {
+extension Cluster.Node: Codable {
     // FIXME: encode as authority/URI with optimized parser here, this will be executed many many times...
     public func encode(to encoder: Encoder) throws {
         var container = encoder.unkeyedContainer()
-        try container.encode(self.node.protocol)
+        try container.encode(self.endpoint.protocol)
         // ://
-        try container.encode(self.node.systemName)
+        try container.encode(self.endpoint.systemName)
         // @
-        try container.encode(self.node.host)
+        try container.encode(self.endpoint.host)
         // :
-        try container.encode(self.node.port)
+        try container.encode(self.endpoint.port)
         // #
         try container.encode(self.nid.value)
     }
@@ -255,8 +255,8 @@ extension UniqueNode: Codable {
         let systemName = try container.decode(String.self)
         let host = try container.decode(String.self)
         let port = try container.decode(Int.self)
-        self.node = Node(protocol: `protocol`, systemName: systemName, host: host, port: port)
-        self.nid = try UniqueNodeID(container.decode(UInt64.self))
+        self.endpoint = Cluster.Endpoint(protocol: `protocol`, systemName: systemName, host: host, port: port)
+        self.nid = try Cluster.Node.ID(container.decode(UInt64.self))
     }
 }
 
