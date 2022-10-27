@@ -166,44 +166,6 @@ final class InterceptorTests: SingleClusterSystemXCTestCase {
         }
     }
 
-    func test_interceptor_shouldInterceptSignals() throws {
-        let p: ActorTestProbe<_Signals.Terminated> = self.testKit.makeTestProbe()
-
-        let spyOnTerminationSignals: _Interceptor<String> = TerminatedInterceptor(probe: p)
-
-        let spawnSomeStoppers = _Behavior<String>.setup { context in
-            let one: _ActorRef<String> = try context._spawnWatch(
-                "stopperOne",
-                .receiveMessage { _ in
-                    .stop
-                }
-            )
-            one.tell("stop")
-
-            let two: _ActorRef<String> = try context._spawnWatch(
-                "stopperTwo",
-                .receiveMessage { _ in
-                    .stop
-                }
-            )
-            two.tell("stop")
-
-            return .same
-        }
-
-        let _: _ActorRef<String> = try system._spawn(
-            "theWallsHaveEarsForTermination",
-            .intercept(behavior: spawnSomeStoppers, with: spyOnTerminationSignals)
-        )
-
-        // either of the two child actors can cause the death pact, depending on which one was scheduled first,
-        // so we have to check that the message we get is from one of them and afterwards we should not receive
-        // any additional messages
-        let terminated = try p.expectMessage()
-        (terminated.id.name == "stopperOne" || terminated.id.name == "stopperTwo").shouldBeTrue()
-        try p.expectNoMessage(for: .milliseconds(500))
-    }
-
     class SignalToStringInterceptor<Message: Codable>: _Interceptor<Message> {
         let probe: ActorTestProbe<String>
 
