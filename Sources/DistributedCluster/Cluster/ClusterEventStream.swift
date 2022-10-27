@@ -25,6 +25,9 @@ public struct ClusterEventStream: AsyncSequence {
 
     private let actor: ClusterEventStreamActor?
 
+    internal var sourceFileLoc: String = ""
+    internal var sourceLineLoc: UInt = 0
+
     internal init(_ system: ClusterSystem, customName: String? = nil) {
         var props = ClusterEventStreamActor.props
         if let customName = customName {
@@ -69,11 +72,16 @@ public struct ClusterEventStream: AsyncSequence {
         }
     }
 
-    private func subscribe(_ oid: ObjectIdentifier, eventHandler: @escaping (Cluster.Event) -> Void) async {
+    private func subscribe(
+        _ oid: ObjectIdentifier,
+        subscriberFile subLocFile: String,
+        subscriberLine subLocLine: UInt,
+        eventHandler: @escaping (Cluster.Event) -> Void
+    ) async {
         guard let actor = self.actor else { return }
 
         await actor.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
-            __secretlyKnownToBeLocal.subscribe(oid, eventHandler: eventHandler)
+            __secretlyKnownToBeLocal.subscribe(oid, subscriberFile: subLocFile, subscriberLine: subLocLine, eventHandler: eventHandler)
         }
     }
 
@@ -94,17 +102,19 @@ public struct ClusterEventStream: AsyncSequence {
     }
 
     public func makeAsyncIterator() -> AsyncIterator {
-        AsyncIterator(self)
+        AsyncIterator(self, subscriberFile: self.sourceFileLoc, subscriberLine: self.sourceLineLoc)
     }
 
     public class AsyncIterator: AsyncIteratorProtocol {
         var underlying: AsyncStream<Cluster.Event>.Iterator!
 
-        init(_ eventStream: ClusterEventStream) {
+        init(_ eventStream: ClusterEventStream,
+             subscriberFile subLocFile: String, subscriberLine subLocLine: UInt)
+        {
             let id = ObjectIdentifier(self)
             self.underlying = AsyncStream<Cluster.Event> { continuation in
                 Task {
-                    await eventStream.subscribe(id) { event in
+                    await eventStream.subscribe(id, subscriberFile: subLocFile, subscriberLine: subLocLine) { event in
                         continuation.yield(event)
                     }
                 }
@@ -128,7 +138,7 @@ internal distributed actor ClusterEventStreamActor: LifecycleWatch {
 
     static var props: _Props {
         var ps = _Props()
-        ps._knownActorName = "clustEventStream"
+        ps._knownActorName = "clusterEventStream"
         ps._systemActor = true
         ps._wellKnown = true
         return ps
@@ -145,7 +155,44 @@ internal distributed actor ClusterEventStreamActor: LifecycleWatch {
     private var snapshot = Cluster.Membership.empty
 
     private var subscribers: [ActorID: _ActorRef<Cluster.Event>] = [:]
-    private var asyncSubscribers: [ObjectIdentifier: (Cluster.Event) -> Void] = [:]
+    private var asyncSubscribers: [SubscriberID: (Cluster.Event) -> Void] = [:]
+
+    struct SubscriberID: Hashable, CustomStringConvertible {
+        let oid: ObjectIdentifier
+        let file: String
+        let line: UInt
+
+        init(oid: ObjectIdentifier, file: String, line: UInt) {
+            self.oid = oid
+            self.file = file
+            self.line = line
+        }
+
+        init(forRemovalOf oid: ObjectIdentifier) {
+            self.oid = oid
+            self.file = ""
+            self.line = 0
+        }
+
+        var description: String {
+            if self.line > 0 {
+                return "SubscriberID(oid: \(self.oid), loc: \(self.file):\(self.line))"
+            } else {
+                return "SubscriberID(oid: \(self.oid))"
+            }
+        }
+
+        func hash(into hasher: inout Hasher) {
+            hasher.combine(self.oid)
+        }
+
+        static func == (lhs: SubscriberID, rhs: SubscriberID) -> Bool {
+            if lhs.oid != rhs.oid {
+                return false
+            }
+            return true
+        }
+    }
 
     private lazy var log = Logger(actor: self)
 
@@ -167,14 +214,17 @@ internal distributed actor ClusterEventStreamActor: LifecycleWatch {
         }
     }
 
-    func subscribe(_ oid: ObjectIdentifier, eventHandler: @escaping (Cluster.Event) -> Void) {
-        self.asyncSubscribers[oid] = eventHandler
+    func subscribe(_ oid: ObjectIdentifier,
+                   subscriberFile subLocFile: String, subscriberLine subLocLine: UInt,
+                   eventHandler: @escaping (Cluster.Event) -> Void)
+    {
+        self.asyncSubscribers[.init(oid: oid, file: subLocFile, line: subLocLine)] = eventHandler
         self.log.trace("Successfully added async subscriber [\(oid)], offering membership snapshot")
         eventHandler(.snapshot(self.snapshot))
     }
 
     func unsubscribe(_ oid: ObjectIdentifier) {
-        if self.asyncSubscribers.removeValue(forKey: oid) != nil {
+        if self.asyncSubscribers.removeValue(forKey: .init(forRemovalOf: oid)) != nil {
             self.log.trace("Successfully removed async subscriber [\(oid)]")
         } else {
             self.log.warning("Received async `.unsubscribe` for non-subscriber [\(oid)]")

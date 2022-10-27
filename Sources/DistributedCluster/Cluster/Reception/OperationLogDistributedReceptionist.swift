@@ -257,7 +257,7 @@ public distributed actor OpLogDistributedReceptionist: DistributedReceptionist, 
         assert(self.id.path.description == "/system/receptionist") // TODO(distributed): remove when we remove paths entirely
 
         self.eventsListeningTask = Task { [weak self, system] in
-            for try await event in system.cluster.events {
+            for try await event in system.cluster.events() {
                 guard let __secretlyKnownToBeLocal = self else { return }
                 __secretlyKnownToBeLocal.onClusterEvent(event: event)
             }

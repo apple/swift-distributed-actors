@@ -117,7 +117,7 @@ A cluster member goes through the following phases in its lifecycle:
 You can listen to cluster events by subscribing to their async sequence available on the cluster control object, like this:
 
 ```swift
-for await event in system.cluster.events {
+for await event in system.cluster.events() {
     switch event {
     case .snapshot(let membership):
         // handle a snapshot of the current state of the cluster, 
@@ -157,7 +157,7 @@ by applying all the incoming events one by one:
 ```swift
 var membership = Cluster.Membership.empty
 
-for await event in system.cluster.events {
+for await event in system.cluster.events() {
     if case .membershipChanged(let change) = event {
         guard change.node == system.cluster.uniqueNode else {
             continue
