@@ -15,7 +15,7 @@
 import Distributed
 import Logging
 
-/// Implements ``LifecycleWatch`` semantics in presence of ``Node`` failures.
+/// Implements ``LifecycleWatch`` semantics in presence of ``Cluster/Endpoint`` failures.
 ///
 /// Depends on a failure detector (e.g. SWIM) to actually detect a node failure, however once detected,
 /// it handles notifying all _local_ actors which have watched at least one actor the terminating node.

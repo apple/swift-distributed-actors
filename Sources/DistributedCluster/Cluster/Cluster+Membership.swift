@@ -24,7 +24,7 @@ extension Cluster {
     /// Leaving the cluster may be graceful or triggered by a failure detector.
     ///
     /// ### Replacement (Unique)Nodes
-    /// A node (or member) is referred to as a "replacement" if it shares _the same_ protocol+host+address (i.e. ``Node``),
+    /// A node (or member) is referred to as a "replacement" if it shares _the same_ protocol+host+address (i.e. ``Cluster/Endpoint``),
     /// with another member; It MAY join "over" an existing node and will immediately cause the previous node to be marked ``Cluster/MemberStatus/down``
     /// upon such transition. Such situations can take place when an actor system node is killed and started on the same host+port immediately,
     /// and attempts to connect to the same cluster as its previous "incarnation". Such situation is called a replacement, and by the assumption
