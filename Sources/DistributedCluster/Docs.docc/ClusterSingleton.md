@@ -133,11 +133,11 @@ let boss = try await system.singleton.host(name: "boss", settings: bossSingleton
 }
 
 actor CustomSingletonAllocationStrategy: ClusterSingletonAllocationStrategy {
-    func onClusterEvent(_ clusterEvent: Cluster.Event) async -> UniqueNode? {
+    func onClusterEvent(_ clusterEvent: Cluster.Event) async -> Cluster.Node? {
         fatalError()
     }
 
-    var node: UniqueNode? { 
+    var node: Cluster.Node? { 
         get async {
             fatalError()
         }
