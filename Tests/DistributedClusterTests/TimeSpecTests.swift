@@ -38,7 +38,7 @@ class TimeSpecTests: XCTestCase {
     }
 
     func test_timeSpecShouldBeCreatedProperlyFromDuration() {
-        self.total.toNanos().shouldEqual(Int(self.totalDuration.nanoseconds))
+        self.total.toNanos().shouldEqual(Int64(self.totalDuration.nanoseconds))
         self.total.tv_sec.shouldEqual(Int(self.totalDuration.nanoseconds) / NANOS)
         self.total.tv_nsec.shouldEqual(Int(self.totalDuration.nanoseconds) % NANOS)
     }
