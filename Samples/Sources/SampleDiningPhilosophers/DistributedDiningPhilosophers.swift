@@ -35,9 +35,9 @@ final class DistributedDiningPhilosophers {
         print("~~~~~~~ started \(systems.count) actor systems ~~~~~~~")
 
         // TODO: Joining to be simplified by having "seed nodes" (that a node should join)
-        systemA.cluster.join(endpoint: systemB.settings.node)
-        systemA.cluster.join(endpoint: systemC.settings.node)
-        systemC.cluster.join(endpoint: systemB.settings.node)
+        systemA.cluster.join(endpoint: systemB.settings.endpoint)
+        systemA.cluster.join(endpoint: systemC.settings.endpoint)
+        systemC.cluster.join(endpoint: systemB.settings.endpoint)
 
         print("waiting for cluster to form...")
         try await self.ensureCluster(systems, within: .seconds(10))
@@ -71,7 +71,7 @@ final class DistributedDiningPhilosophers {
     }
 
     private func ensureCluster(_ systems: [ClusterSystem], within: Duration) async throws {
-        let nodes = Set(systems.map(\.settings.uniqueBindNode))
+        let nodes = Set(systems.map(\.settings.bindNode))
 
         try await withThrowingTaskGroup(of: Void.self) { group in
             for system in systems {
