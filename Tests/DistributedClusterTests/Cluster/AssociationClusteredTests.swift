@@ -296,7 +296,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
         try self.capturedLogs(of: second)
             .awaitLogContaining(
                 self.testKit(second),
-                text: "Handshake rejected by [sact://first@127.0.0.1:9001], reason: Endpoint already leaving cluster."
+                text: "Handshake rejected by [sact://first@127.0.0.1:9001], reason: Node already leaving cluster."
             )
     }
 
