@@ -30,6 +30,12 @@ public struct ClusterControl {
     /// This sequence begins with a snapshot of the current cluster state and continues with events representing changes
     /// since the snapshot.
     public let events: ClusterEventStream
+    public func events(file: String = #fileID, line: UInt = #line) -> ClusterEventStream {
+        var events = self.events
+        events.sourceFileLoc = file
+        events.sourceLineLoc = line
+        return events
+    }
 
     /// Offers a snapshot of membership, which may be used to perform ad-hoc tests against the membership.
     /// Note that this view may be immediately outdated after checking if, if e.g. a membership change is just being processed.
@@ -232,7 +238,9 @@ public struct ClusterControl {
     ///         If the expected status is `.down` or `.removed`, and the node is already known to have been removed from the cluster
     ///         a synthesized `Cluster/MemberStatus/removed` (and `.unreachable`) member is returned.
     @discardableResult
-    public func waitFor(_ node: UniqueNode, _ status: Cluster.MemberStatus, within: Duration) async throws -> Cluster.Member {
+    public func waitFor(_ node: UniqueNode, _ status: Cluster.MemberStatus, within: Duration,
+                        file: String = #fileID, line: UInt = #line) async throws -> Cluster.Member
+    {
         try await self.waitForMembershipEventually(within: within) { membership in
             if status == .down || status == .removed {
                 if let cluster = self.cluster, cluster.getExistingAssociationTombstone(with: node) != nil {
@@ -245,11 +253,11 @@ public struct ClusterControl {
                     // so we're seeing an already removed member, this can indeed happen and is okey
                     return Cluster.Member(node: node, status: .removed).asUnreachable
                 }
-                throw Cluster.MembershipError(.notFound(node, in: membership))
+                throw Cluster.MembershipError(.notFound(node, in: membership), file: file, line: line)
             }
 
             if status != foundMember.status {
-                throw Cluster.MembershipError(.statusRequirementNotMet(expected: status, found: foundMember))
+                throw Cluster.MembershipError(.statusRequirementNotMet(expected: status, found: foundMember), file: file, line: line)
             }
             return foundMember
         }
@@ -266,17 +274,19 @@ public struct ClusterControl {
     ///         If the expected status is `.down` or `.removed`, and the node is already known to have been removed from the cluster
     ///         a synthesized `Cluster/MemberStatus/removed` (and `.unreachable`) member is returned.
     @discardableResult
-    public func waitFor(_ node: Node, _ status: Cluster.MemberStatus, within: Duration) async throws -> Cluster.Member? {
+    public func waitFor(_ node: Node, _ status: Cluster.MemberStatus, within: Duration,
+                        file: String = #fileID, line: UInt = #line) async throws -> Cluster.Member?
+    {
         try await self.waitForMembershipEventually(Cluster.Member?.self, within: within) { membership in
             guard let foundMember = membership.member(node) else {
                 if status == .down || status == .removed {
                     return nil
                 }
-                throw Cluster.MembershipError(.notFoundAny(node, in: membership))
+                throw Cluster.MembershipError(.notFoundAny(node, in: membership), file: file, line: line)
             }
 
             if status != foundMember.status {
-                throw Cluster.MembershipError(.statusRequirementNotMet(expected: status, found: foundMember))
+                throw Cluster.MembershipError(.statusRequirementNotMet(expected: status, found: foundMember), file: file, line: line)
             }
             return foundMember
         }
@@ -293,7 +303,9 @@ public struct ClusterControl {
     ///         If the expected status is at least `.down` or `.removed`, and either a tombstone exists for the node or the associated
     ///         membership is not found, the `Cluster.Member` returned would have `.removed` status and *unreachable*.
     @discardableResult
-    public func waitFor(_ node: UniqueNode, atLeast atLeastStatus: Cluster.MemberStatus, within: Duration) async throws -> Cluster.Member {
+    public func waitFor(_ node: UniqueNode, atLeast atLeastStatus: Cluster.MemberStatus, within: Duration,
+                        file: String = #fileID, line: UInt = #line) async throws -> Cluster.Member
+    {
         try await self.waitForMembershipEventually(within: within) { membership in
             if atLeastStatus == .down || atLeastStatus == .removed {
                 if let cluster = self.cluster, cluster.getExistingAssociationTombstone(with: node) != nil {
@@ -306,11 +318,11 @@ public struct ClusterControl {
                     // so we're seeing an already removed member, this can indeed happen and is okey
                     return Cluster.Member(node: node, status: .removed).asUnreachable
                 }
-                throw Cluster.MembershipError(.notFound(node, in: membership))
+                throw Cluster.MembershipError(.notFound(node, in: membership), file: file, line: line)
             }
 
             if atLeastStatus <= foundMember.status {
-                throw Cluster.MembershipError(.atLeastStatusRequirementNotMet(expectedAtLeast: atLeastStatus, found: foundMember))
+                throw Cluster.MembershipError(.atLeastStatusRequirementNotMet(expectedAtLeast: atLeastStatus, found: foundMember), file: file, line: line)
             }
             return foundMember
         }
@@ -319,6 +331,7 @@ public struct ClusterControl {
     private func waitForMembershipEventually<T>(_: T.Type = T.self,
                                                 within: Duration,
                                                 interval: Duration = .milliseconds(100),
+                                                file: String = #fileID, line: UInt = #line,
                                                 _ block: (Cluster.Membership) async throws -> T) async throws -> T
     {
         let deadline = ContinuousClock.Instant.fromNow(within)
@@ -335,6 +348,6 @@ public struct ClusterControl {
             }
         }
 
-        throw Cluster.MembershipError(.awaitStatusTimedOut(within, lastError))
+        throw Cluster.MembershipError(.awaitStatusTimedOut(within, lastError), file: file, line: line)
     }
 }

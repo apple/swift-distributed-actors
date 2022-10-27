@@ -71,6 +71,10 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
         try await self.assertSingletonRequestReply(third, singleton: ref3, greetingName: "Charlie", expectedPrefix: "Hello-1 Charlie!")
     }
 
+    override var alwaysPrintCaptureLogs: Bool {
+        true
+    }
+
     func test_singleton_lifecycle() async throws {
         var singletonSettings = ClusterSingletonSettings()
         singletonSettings.allocationStrategy = .byLeadership

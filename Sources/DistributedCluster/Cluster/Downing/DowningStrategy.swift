@@ -95,7 +95,7 @@ internal distributed actor DowningStrategyShell {
         self.eventsListeningTask = Task { [weak self] in
             guard let __secretlyKnownToBeLocal = self else { return } // FIXME(local): we really need `local` here
 
-            for await event in system.cluster.events {
+            for await event in system.cluster.events() {
                 try __secretlyKnownToBeLocal.receiveClusterEvent(event)
             }
         }

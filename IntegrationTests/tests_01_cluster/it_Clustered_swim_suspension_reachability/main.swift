@@ -42,7 +42,7 @@ let system = await ClusterSystem("System") { settings in
 }
 
 Task {
-    for await event in system.cluster.events {
+    for await event in system.cluster.events() {
         system.log.info("Event: \(event)")
     }
 }

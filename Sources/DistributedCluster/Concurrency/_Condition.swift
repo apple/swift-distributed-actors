@@ -41,18 +41,18 @@ public final class _Condition {
     }
 
     @inlinable
-    public func wait(_ mutex: _Mutex) {
+    public func wait(_ mutex: _Mutex, file: String = #fileID, line: UInt = #line) {
         let error = pthread_cond_wait(&self.condition, &mutex.mutex)
 
         switch error {
         case 0:
             return
         case EPERM:
-            fatalError("Wait failed, mutex is not owned by this thread")
+            fatalError("[\(file):\(line)] Wait failed, mutex is not owned by this thread")
         case EINVAL:
-            fatalError("Wait failed, condition is not valid")
+            fatalError("[\(file):\(line)] Wait failed, condition is not valid")
         default:
-            fatalError("Wait failed with unspecified error: \(error)")
+            fatalError("[\(file):\(line)] Wait failed with unspecified error: \(error)")
         }
     }
 
