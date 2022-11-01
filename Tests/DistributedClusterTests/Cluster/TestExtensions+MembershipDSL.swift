@@ -114,7 +114,7 @@ extension Cluster.Membership {
                 // this is hacky, but good enough for our testing tools
                 let actualNodeId = elements.dropFirst().first!
                 let leaderNode = nodeById(id: actualNodeId.dropLast(1))
-                let leaderMember = membership.uniqueMember(leaderNode)!
+                let leaderMember = membership.member(leaderNode)!
                 membership.leader = leaderMember
             } else {
                 let node = nodeById(id: nodeId)

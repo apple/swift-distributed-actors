@@ -65,8 +65,8 @@ extension Cluster {
             let causalRelation: VersionVector.CausalRelation = self.version.compareTo(incoming.version)
 
             // 1.1) Protect the node from any gossip from a .down node (!), it cannot and MUST NOT be trusted.
-            let incomingGossipOwnerKnownLocally = self.membership.uniqueMember(incoming.owner)
-            guard let incomingOwnerMember = incoming.membership.uniqueMember(incoming.owner) else {
+            let incomingGossipOwnerKnownLocally = self.membership.member(incoming.owner)
+            guard let incomingOwnerMember = incoming.membership.member(incoming.owner) else {
                 return .init(causalRelation: causalRelation, effectiveChanges: [])
             }
             switch incomingGossipOwnerKnownLocally {
@@ -83,7 +83,7 @@ extension Cluster {
             // 1.2) Protect from zombies: Any nodes that we know are dead or down, we should not accept any information from
             let incomingConcurrentDownMembers = incoming.membership.members(atLeast: .down)
             for pruneFromIncomingBeforeMerge in incomingConcurrentDownMembers
-                where self.membership.uniqueMember(pruneFromIncomingBeforeMerge.node) == nil
+                where self.membership.member(pruneFromIncomingBeforeMerge.node) == nil
             {
                 _ = incoming.pruneMember(pruneFromIncomingBeforeMerge)
             }

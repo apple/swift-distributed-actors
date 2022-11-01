@@ -1037,6 +1037,7 @@ extension ClusterSystem {
 
             log.trace("Actor ready, well-known as: \(wellKnownName)", metadata: [
                 "actor/id": "\(actor.id)",
+                "actor/type": "\(type(of: actor))",
             ])
 
             self._managedWellKnownDistributedActors[wellKnownName] = actor

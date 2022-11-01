@@ -276,7 +276,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
         let testKit = self.testKit(first)
         try await testKit.eventually(within: .seconds(3)) {
             let snapshot: Cluster.Membership = await first.cluster.membershipSnapshot
-            if let selfMember = snapshot.uniqueMember(first.cluster.node) {
+            if let selfMember = snapshot.member(first.cluster.node) {
                 if selfMember.status == .down {
                     () // good
                 } else {
@@ -376,7 +376,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
             first.cluster.ref.tell(.query(.currentMembership(firstProbe.ref)))
             let firstMembership = try firstProbe.expectMessage()
 
-            guard let selfMember = firstMembership.uniqueMember(first.cluster.node) else {
+            guard let selfMember = firstMembership.member(first.cluster.node) else {
                 throw self.testKit(second).error("No self member in membership! Wanted: \(first.cluster.node)", line: #line - 1)
             }
             guard selfMember.status == .down else {
@@ -394,7 +394,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
             // although this may be a best effort since the first can just shut down if it wanted to,
             // this scenario assumes a graceful leave though:
 
-            guard let firstMemberObservedOnSecond = secondMembership.uniqueMember(first.cluster.node) else {
+            guard let firstMemberObservedOnSecond = secondMembership.member(first.cluster.node) else {
                 throw self.testKit(second).error("\(second) does not know about the \(first.cluster.node) at all...!", line: #line - 1)
             }
 

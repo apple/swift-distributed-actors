@@ -86,11 +86,8 @@ extension MultiNodeTestConductor {
                                             checkPoint: MultiNode.Checkpoint,
                                             waitTime: Duration) async throws
     {
-        self.actorSystem.log.warning("CHECKPOINT FROM [\(node)]")
         try await RemoteCall.with(timeout: waitTime) {
-            self.actorSystem.log.warning("CHECKPOINT FROM [\(node)] INNER (\(__isRemoteActor(self)))")
             try await self._enterCheckPoint(node: node, checkPoint: checkPoint)
-            self.actorSystem.log.warning("CHECKPOINT FROM [\(node)] DONE")
         }
     }
 

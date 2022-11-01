@@ -245,7 +245,7 @@ public struct ClusterControl {
                 }
             }
 
-            guard let foundMember = membership.uniqueMember(node) else {
+            guard let foundMember = membership.member(node) else {
                 if status == .down || status == .removed {
                     // so we're seeing an already removed member, this can indeed happen and is okey
                     return Cluster.Member(node: node, status: .removed).asUnreachable
@@ -273,7 +273,7 @@ public struct ClusterControl {
     @discardableResult
     public func waitFor(_ endpoint: Cluster.Endpoint, _ status: Cluster.MemberStatus, within: Duration) async throws -> Cluster.Member? {
         try await self.waitForMembershipEventually(Cluster.Member?.self, within: within) { membership in
-            guard let foundMember = membership.member(endpoint) else {
+            guard let foundMember = membership.anyMember(forEndpoint: endpoint) else {
                 if status == .down || status == .removed {
                     return nil
                 }
@@ -306,7 +306,7 @@ public struct ClusterControl {
                 }
             }
 
-            guard let foundMember = membership.uniqueMember(node) else {
+            guard let foundMember = membership.member(node) else {
                 if atLeastStatus == .down || atLeastStatus == .removed {
                     // so we're seeing an already removed member, this can indeed happen and is okey
                     return Cluster.Member(node: node, status: .removed).asUnreachable

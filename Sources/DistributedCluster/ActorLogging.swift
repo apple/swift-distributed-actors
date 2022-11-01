@@ -103,6 +103,14 @@ struct ActorOriginLogHandler: LogHandler {
         return formatter
     }
 
+    public static func _createSimpleFormatter() -> DateFormatter {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "H:m:ss.SSSS"
+        formatter.locale = Locale(identifier: "en_US")
+        formatter.calendar = Calendar(identifier: .gregorian)
+        return formatter
+    }
+
     private let context: LoggingContext
 
     private var targetLogger: Logger

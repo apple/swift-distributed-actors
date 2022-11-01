@@ -71,7 +71,7 @@ final class ClusterMembershipSnapshotTests: ClusteredActorSystemsXCTestCase {
             // but the snapshot already knows about all of them.
             snapshot.count.shouldBeGreaterThanOrEqual(membership.count)
             membership.members(atLeast: .joining).forEach { mm in
-                if let nm = snapshot.uniqueMember(mm.node) {
+                if let nm = snapshot.member(mm.node) {
                     nm.status.shouldBeGreaterThanOrEqual(mm.status)
                 }
             }

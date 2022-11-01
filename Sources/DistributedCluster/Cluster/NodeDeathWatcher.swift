@@ -203,10 +203,14 @@ enum NodeDeathWatcherShell {
                     }
 
                 case .membershipChange(let change) where change.isAtLeast(.down):
-                    context.log.trace("Node down: \(change)!")
+                    context.log.trace("Node down: \(change)!", metadata: [
+                        "node": "\(reflecting: change.node)",
+                    ])
                     instance.handleAddressDown(change)
                 case .membershipChange(let change):
-                    context.log.trace("Node change: \(change)!")
+                    context.log.trace("Node change: \(change)!", metadata: [
+                        "node": "\(reflecting: change.node)",
+                    ])
                     instance.onMembershipChanged(change)
 
                 default:

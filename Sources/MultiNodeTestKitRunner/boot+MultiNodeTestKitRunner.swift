@@ -124,7 +124,7 @@ struct MultiNodeTestKitRunnerBoot {
 
     @MainActor // Main actor only because we want failures to be printed one after another, and not interleaved.
     func interpretNodeTestOutput(
-        _ result: Result<ProgramOutput, Error>,
+        _ programResult: Result<ProgramOutput, Error>,
         nodeName: String,
         multiNodeTest: MultiNodeTest,
         expectedFailureRegex: String?,
@@ -143,7 +143,7 @@ struct MultiNodeTestKitRunnerBoot {
         do {
             var detectedReason: InterpretedRunResult?
             if !expectedFailure {
-                switch result {
+                switch programResult {
                 case .failure(let error as MultiNodeProgramError):
                     var reason: String = "MultiNode test failed, output was dumped."
                     for line in error.completeOutput {
@@ -156,13 +156,18 @@ struct MultiNodeTestKitRunnerBoot {
                             detectedReason = .outputError("\(reasonLines)\n\(line)")
                         }
                     }
-                case .success(let logs):
+                case .success(let result):
                     if settings.dumpNodeLogs == .always {
-                        for line in logs {
+                        for line in result.logs {
                             log("[\(nodeName)](\(multiNodeTest.testName)) \(line)")
                         }
                     }
-                    return .passedAsExpected
+
+                    if result.expectedExit {
+                        return .crashedAsExpected
+                    } else {
+                        return .passedAsExpected
+                    }
                 default:
                     break
                 }
@@ -181,7 +186,8 @@ struct MultiNodeTestKitRunnerBoot {
             return .unexpectedRunResult(runResult)
         }
 
-        let outputLines = try result.get()
+        let result = try programResult.get()
+        let outputLines = result.logs
         let outputJoined = outputLines.joined(separator: "\n")
         if outputJoined.range(of: expectedFailureRegex, options: .regularExpression) != nil {
             if settings.dumpNodeLogs == .always {

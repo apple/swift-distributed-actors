@@ -79,7 +79,7 @@ final class ClusterLeaderActionsTests: XCTestCase {
 
     func test_leaderActions_removeDownMembers_ifKnownAsDownToAllMembers() {
         // make A the leader
-        let makeFirstTheLeader = Cluster.LeadershipChange(oldLeader: nil, newLeader: self.stateA.membership.member(self.nodeA.endpoint)!)!
+        let makeFirstTheLeader = Cluster.LeadershipChange(oldLeader: nil, newLeader: self.stateA.membership.anyMember(forEndpoint: self.nodeA.endpoint)!)!
         _ = self.stateA.applyClusterEvent(.leadershipChange(makeFirstTheLeader))
 
         // time to mark B as .down
@@ -99,8 +99,8 @@ final class ClusterLeaderActionsTests: XCTestCase {
         self.gossip(from: self.stateA, to: &self.stateC)
 
         // first and second now know that second is down
-        self.stateA.membership.uniqueMember(self.nodeB)!.status.shouldEqual(.down)
-        self.stateC.membership.uniqueMember(self.nodeB)!.status.shouldEqual(.down)
+        self.stateA.membership.member(self.nodeB)!.status.shouldEqual(.down)
+        self.stateC.membership.member(self.nodeB)!.status.shouldEqual(.down)
 
         // we gossiped to C, and it knows, but we don't know yet if it knows (if it has received the information)
         self.stateA.latestGossip.converged().shouldBeFalse()
@@ -124,7 +124,7 @@ final class ClusterLeaderActionsTests: XCTestCase {
         // interpret leader actions would interpret it by removing the member now and tombstone-ing it,
         // see `interpretLeaderActions`
         _ = self.stateA.membership.removeCompletely(self.nodeB)
-        self.stateA.latestGossip.membership.uniqueMember(self.nodeB).shouldBeNil()
+        self.stateA.latestGossip.membership.member(self.nodeB).shouldBeNil()
 
         // once we (leader) have performed removal and talk to others, they should also remove and prune seen tables
         //

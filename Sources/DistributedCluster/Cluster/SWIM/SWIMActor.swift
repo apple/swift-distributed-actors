@@ -355,6 +355,13 @@ internal distributed actor SWIMActor: SWIMPeer, SWIMAddressablePeer, CustomStrin
             )
         }
 
+        /// If SWIM claims we are dead, ignore this; we should be informed about this in high-level gossip soon enough.
+        if change.status == .dead,
+           change.member.node.asClusterNode == self.id.node
+        {
+            return
+        }
+
         let reachability: Cluster.MemberReachability
         switch change.status {
         case .alive, .suspect:

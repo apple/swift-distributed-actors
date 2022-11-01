@@ -32,9 +32,20 @@ extension MultiNodeTest {
             }
         }
 
+        /// The "current" cluster system on which this code is executing.
         public var system: ClusterSystem {
             precondition(self._actorSystem != nil, "Actor system already released!")
             return self._actorSystem!
+        }
+
+        /// The "current" endpoint on which this code is executing.
+        public var endpoint: Cluster.Endpoint {
+            self.system.cluster.endpoint
+        }
+
+        /// The "current" node on which this code is executing.
+        public var node: Cluster.Node {
+            self.system.cluster.node
         }
 
         /// Logger specific to this concrete node in a multi-node test.
@@ -53,8 +64,15 @@ extension MultiNodeTest {
             self.system.cluster
         }
 
-        public var allNodes: some Collection<Cluster.Endpoint> {
+        public var allEndpoints: some Collection<Cluster.Endpoint> {
             self._allEndpoints.values
+        }
+
+        public func endpoint(_ node: Nodes) -> Cluster.Endpoint {
+            guard let endpoint = _allEndpoints[node.rawValue] else {
+                fatalError("No such node: \(node) known to cluster control. Known nodes: \(self._allEndpoints.keys)")
+            }
+            return endpoint
         }
 
         public init(nodeName: String) {
@@ -75,6 +93,9 @@ extension MultiNodeTest {
 // MARK: Run pieces of code on specific node
 
 extension MultiNodeTest.Control {
+    /// Returns `true` if the multi-node execution is currently running on the same
+    /// `node` as is passed to this function. This allows for executing pieces of code,
+    /// only on a specific node in the multi-node test execution.
     public func on(_ node: Nodes) -> Bool {
         return node.rawValue == self.system.name
     }

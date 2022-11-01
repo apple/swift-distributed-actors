@@ -173,7 +173,7 @@ final class MembershipGossipTests: XCTestCase {
 
         // while we just removed it:
         gossip.converged().shouldBeTrue() // soundness check
-        let removedMember: Cluster.Member = gossip.membership.uniqueMember(self.nodeB)!
+        let removedMember: Cluster.Member = gossip.membership.member(self.nodeB)!
         _ = gossip.pruneMember(removedMember)
         gossip.incrementOwnerVersion()
 

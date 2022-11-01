@@ -67,7 +67,7 @@ final class ClusterEventStreamTests: SingleClusterSystemXCTestCase, @unchecked S
 
         switch try p2.expectMessage() {
         case .snapshot(let snapshot):
-            snapshot.uniqueMember(self.memberA.node).shouldEqual(self.memberA)
+            snapshot.member(self.memberA.node).shouldEqual(self.memberA)
             () // ok
         default:
             throw p2.error("Expected a snapshot first")
