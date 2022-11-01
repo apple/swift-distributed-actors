@@ -102,6 +102,7 @@ struct ActorOriginLogHandler: LogHandler {
         formatter.calendar = Calendar(identifier: .gregorian)
         return formatter
     }
+
     public static func _createSimpleFormatter() -> DateFormatter {
         let formatter = DateFormatter()
         formatter.dateFormat = "H:m:ss.SSSS"
