@@ -60,10 +60,17 @@ final class AggressiveNodeReplacementClusteredTests: ClusteredActorSystemsXCTest
             // On purpose: do NOT wait for it to shut down completely.
         }
 
-        let membership: Cluster.Membership = await system.cluster.membershipSnapshot
+        let membership: Cluster.Membership = await main.cluster.membershipSnapshot
 
         // 3 still can happen, since we can have the "down" second and the "joining/up" second.
-        membership.count.shouldBeLessThanOrEqual(3)
+        membership.count(atMost: .up).shouldBeLessThanOrEqual(3)
+
+        // Verify we indeed saw 4 replacements:
+        try self.capturedLogs(of: main).shouldContain(grep: "which replaces the previously known: [Member(sact://second-0:")
+        try self.capturedLogs(of: main).shouldContain(grep: "which replaces the previously known: [Member(sact://second-1:")
+        try self.capturedLogs(of: main).shouldContain(grep: "which replaces the previously known: [Member(sact://second-2:")
+        try self.capturedLogs(of: main).shouldContain(grep: "which replaces the previously known: [Member(sact://second-3:")
+        // 4 is not replaced
     }
 
     distributed actor ServiceActor {

@@ -98,6 +98,14 @@ extension Cluster {
                 .count
         }
 
+        /// More efficient than using ``members(atMost:)`` followed by a `.count`
+        public func count(atMost status: Cluster.MemberStatus) -> Int {
+            self._members.values
+                .lazy
+                .filter { member in member.status <= status }
+                .count
+        }
+
         /// More efficient than using `members(withStatus:)` followed by a `.count`
         public func count(withStatus status: Cluster.MemberStatus) -> Int {
             self._members.values
@@ -153,6 +161,13 @@ extension Cluster {
             }
         }
 
+        /// Returns all members that are part of this membership, and have the any ``Cluster/MemberStatus`` that is *at most*
+        /// the passed in `status` passed in and `reachability` status. See ``Cluster/MemberStatus`` to learn more about the meaning of "at most".
+        ///
+        /// - Parameters:
+        ///   - statuses: statuses for which to check the members for
+        ///   - reachability: optional reachability that is the members will be filtered by
+        /// - Returns: array of members matching those checks. Can be empty.
         public func members(atMost status: Cluster.MemberStatus, reachability: Cluster.MemberReachability? = nil) -> [Cluster.Member] {
             if status == .removed, reachability == nil {
                 return Array(self._members.values)
