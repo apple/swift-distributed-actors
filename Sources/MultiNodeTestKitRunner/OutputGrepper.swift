@@ -65,7 +65,19 @@ internal struct OutputGrepper {
     }
 }
 
-typealias ProgramOutput = [String]
+struct ProgramOutput: Sendable {
+    let logs: [String]
+    var expectedExit: Bool = false
+
+    init(logs: [String]) {
+        self.logs = logs
+    }
+
+    init(logs: [String], expectedExit: Bool) {
+        self.logs = logs
+        self.expectedExit = expectedExit
+    }
+}
 
 private final class GrepHandler: ChannelInboundHandler {
     typealias InboundIn = String
@@ -109,15 +121,21 @@ private final class GrepHandler: ChannelInboundHandler {
             line.lowercased().contains("precondition failed") ||
             line.lowercased().contains("assertion failed")
         {
-            self.promise.fail(MultiNodeProgramError(message: line, completeOutput: self.logs))
-            self.logs = []
-            context.close(promise: nil)
+            if line.contains("MULTI-NODE-EXPECTED-EXIT") {
+                self.promise.succeed(.init(logs: logs, expectedExit: true))
+                context.close(promise: nil)
+                return
+             } else {
+                self.promise.fail(MultiNodeProgramError(message: line, completeOutput: self.logs))
+                self.logs = []
+                context.close(promise: nil)
+            }
         }
     }
 
     func userInboundEventTriggered(context: ChannelHandlerContext, event: Any) {
         if case .some(.inputClosed) = event as? ChannelEvent {
-            self.promise.succeed(self.logs)
+            self.promise.succeed(.init(logs: self.logs))
             context.close(promise: nil)
         }
     }

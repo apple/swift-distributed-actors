@@ -156,9 +156,9 @@ struct MultiNodeTestKitRunnerBoot {
                             detectedReason = .outputError("\(reasonLines)\n\(line)")
                         }
                     }
-                case .success(let logs):
+                case .success(let result):
                     if settings.dumpNodeLogs == .always {
-                        for line in logs {
+                        for line in result.logs {
                             log("[\(nodeName)](\(multiNodeTest.testName)) \(line)")
                         }
                     }
@@ -181,7 +181,8 @@ struct MultiNodeTestKitRunnerBoot {
             return .unexpectedRunResult(runResult)
         }
 
-        let outputLines = try result.get()
+        let result = try result.get()
+        let outputLines = result.logs
         let outputJoined = outputLines.joined(separator: "\n")
         if outputJoined.range(of: expectedFailureRegex, options: .regularExpression) != nil {
             if settings.dumpNodeLogs == .always {
