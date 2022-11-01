@@ -115,10 +115,13 @@ extension LogCapture {
     public func printLogs() {
         for log in self.logs {
             var metadataString: String = ""
-            var actorPath: String = ""
+            var actorIdentifier: String = ""
             if var metadata = log.metadata {
-                if let path = metadata.removeValue(forKey: "actor/path") {
-                    actorPath = "[\(path)]"
+                if let id = metadata.removeValue(forKey: "actor/id") {
+                    actorIdentifier = "[\(id)]"
+                    _ = metadata.removeValue(forKey: "actor/path") // discard it
+                } else if let path = metadata.removeValue(forKey: "actor/path") {
+                    actorIdentifier = "[\(path)]"
                 }
 
                 metadata.removeValue(forKey: "label")
@@ -148,10 +151,10 @@ extension LogCapture {
                     metadataString = String(metadataString.dropLast(1))
                 }
             }
-            let date = ActorOriginLogHandler._createFormatter().string(from: log.date)
+            let date = ActorOriginLogHandler._createSimpleFormatter().string(from: log.date)
             let file = log.file.split(separator: "/").last ?? ""
             let line = log.line
-            print("[captured] [\(self.captureLabel)] [\(date)] [\(file):\(line)]\(actorPath) [\(log.level)] \(log.message)\(metadataString)")
+            print("[captured] [\(self.captureLabel)] \(date) \(log.level) \(actorIdentifier) [\(file):\(line)] \(log.message)\(metadataString)")
         }
     }
 
