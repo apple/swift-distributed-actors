@@ -94,7 +94,7 @@ extension MultiNodeTest {
 
 extension MultiNodeTest.Control {
     /// Returns `true` if the multi-node execution is currently running on the same
-    /// `node` as is passed to this function. This allows for executing pieces of code, 
+    /// `node` as is passed to this function. This allows for executing pieces of code,
     /// only on a specific node in the multi-node test execution.
     public func on(_ node: Nodes) -> Bool {
         return node.rawValue == self.system.name
