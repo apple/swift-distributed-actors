@@ -223,6 +223,23 @@ extension Cluster {
     }
 }
 
+extension Cluster.Membership: Sequence {
+    public struct Iterator: IteratorProtocol {
+        public typealias Element = Cluster.Member
+        internal var it: Dictionary<Cluster.Node, Cluster.Member>.Values.Iterator
+
+        public mutating func next() -> Cluster.Member? {
+            it.next()
+        }
+
+
+    }
+
+    public func makeIterator() -> Iterator {
+        .init(it: self._members.values.makeIterator())
+    }
+}
+
 // Implementation notes: Membership/Member equality
 //
 // Membership equality is special, as it manually DOES take into account the Member's states (status, reachability),
@@ -619,7 +636,7 @@ extension Cluster.Membership {
     // TODO: diffing is not super well tested, may lose up numbers
     static func _diff(from: Cluster.Membership, to: Cluster.Membership) -> MembershipDiff {
         var entries: [Cluster.MembershipChange] = []
-        entries.reserveCapacity(max(from._members.count, to._members.count))
+        entries.reserveCapacity(Swift.max(from._members.count, to._members.count))
 
         // TODO: can likely be optimized more
         var to = to
