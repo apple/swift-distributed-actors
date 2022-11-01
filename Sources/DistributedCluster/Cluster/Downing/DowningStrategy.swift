@@ -145,8 +145,9 @@ internal distributed actor DowningStrategyShell {
     func markAsDown(members: Set<Cluster.Member>) {
         for member in members {
             self.log.info(
-                "Decision to [.down] member [\(member)]!", metadata: self.metadata([
+                "Decide to [.down] member [\(member)]!", metadata: self.metadata([
                     "downing/node": "\(reflecting: member.node)",
+                    "member/status/previous": "\(member.status)",
                 ])
             )
             self.actorSystem.cluster.down(member: member)

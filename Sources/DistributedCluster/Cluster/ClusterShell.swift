@@ -489,7 +489,8 @@ extension ClusterShell {
                 return self.retryHandshake(context, state, initiated: initiated)
 
             case .failureDetectorReachabilityChanged(let node, let reachability):
-                guard let member = state.membership.uniqueMember(node) else {
+                context.log.warning("XXX: BUG??? Trying to mark \(node) as \(reachability)...")
+                guard let member = state.membership.member(node) else {
                     return .same // reachability change of unknown node
                 }
                 switch reachability {
@@ -505,8 +506,8 @@ extension ClusterShell {
             case .shutdown(let receptacle):
                 return self.onShutdownCommand(context, state: state, signalOnceUnbound: receptacle)
 
-            case .downCommand(let node):
-                if let member = state.membership.member(node) {
+            case .downCommand(let endpoint):
+                if let member = state.membership.anyMember(forEndpoint: endpoint) {
                     return self.ready(state: self.onDownCommand(context, state: state, member: member))
                 } else {
                     return self.ready(state: state)
@@ -1173,7 +1174,7 @@ extension ClusterShell {
             ]
         )
 
-        guard let myselfMember = state.membership.uniqueMember(myselfNode) else {
+        guard let myselfMember = state.membership.member(myselfNode) else {
             state.log.error("Unable to find Cluster.Member for \(myselfNode) self node! This should not happen, please file an issue.")
             return .same
         }

@@ -113,7 +113,6 @@ final class TimeoutBasedDowningInstanceTests: XCTestCase {
     func test_onTimeout_whenNotCurrentlyLeader_shouldInsertMemberAddressIntoMarkAsDown() throws {
         let member = Cluster.Member(node: self.otherNode, status: .up)
         self.instance.isLeader.shouldBeFalse()
-        self.instance._unreachable.insert(member)
         let directive = self.instance.onTimeout(member)
 
         guard case .none = directive.underlying else {
@@ -126,7 +125,6 @@ final class TimeoutBasedDowningInstanceTests: XCTestCase {
     func test_onTimeout_whenCurrentlyLeader_shouldReturnMarkAsDown() throws {
         let member = Cluster.Member(node: self.otherNode, status: .up)
         _ = try self.instance.membership.applyLeadershipChange(to: self.selfMember)
-        self.instance._unreachable.insert(member)
         let directive = self.instance.onTimeout(member)
 
         guard case .markAsDown(let node) = directive.underlying else {
@@ -169,7 +167,6 @@ final class TimeoutBasedDowningInstanceTests: XCTestCase {
 
     func test_onMemberRemoved_whenMemberWasUnreachable_shouldReturnCancelTimer() throws {
         let member = Cluster.Member(node: self.otherNode, status: .up)
-        self.instance._unreachable.insert(member)
         let directive = self.instance.onMemberRemoved(member)
 
         guard case .cancelTimer = directive.underlying else {
@@ -201,7 +198,6 @@ final class TimeoutBasedDowningInstanceTests: XCTestCase {
 
     func test_onMemberReachable_whenMemberWasUnreachable_shouldReturnCancelTimer() throws {
         let member = Cluster.Member(node: self.otherNode, status: .up)
-        self.instance._unreachable.insert(member)
         let directive = self.instance.onMemberReachable(.init(member: member.asUnreachable))
 
         guard case .cancelTimer = directive.underlying else {
@@ -236,6 +232,5 @@ final class TimeoutBasedDowningInstanceTests: XCTestCase {
         guard case .startTimer = self.instance.onMemberUnreachable(.init(member: member.asUnreachable)).underlying else {
             throw TestError("Expected directive to be .startTimer")
         }
-        self.instance._unreachable.shouldContain(member.asUnreachable)
     }
 }

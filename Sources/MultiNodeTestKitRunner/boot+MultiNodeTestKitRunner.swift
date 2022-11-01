@@ -124,7 +124,7 @@ struct MultiNodeTestKitRunnerBoot {
 
     @MainActor // Main actor only because we want failures to be printed one after another, and not interleaved.
     func interpretNodeTestOutput(
-        _ result: Result<ProgramOutput, Error>,
+        _ programResult: Result<ProgramOutput, Error>,
         nodeName: String,
         multiNodeTest: MultiNodeTest,
         expectedFailureRegex: String?,
@@ -143,7 +143,7 @@ struct MultiNodeTestKitRunnerBoot {
         do {
             var detectedReason: InterpretedRunResult?
             if !expectedFailure {
-                switch result {
+                switch programResult {
                 case .failure(let error as MultiNodeProgramError):
                     var reason: String = "MultiNode test failed, output was dumped."
                     for line in error.completeOutput {
@@ -162,7 +162,12 @@ struct MultiNodeTestKitRunnerBoot {
                             log("[\(nodeName)](\(multiNodeTest.testName)) \(line)")
                         }
                     }
-                    return .passedAsExpected
+
+                    if result.expectedExit {
+                        return .crashedAsExpected
+                    } else {
+                        return .passedAsExpected
+                    }
                 default:
                     break
                 }
@@ -183,6 +188,7 @@ struct MultiNodeTestKitRunnerBoot {
 
         let result = try result.get()
         let outputLines = result.logs
+        let outputLines = try programResult.get().logs
         let outputJoined = outputLines.joined(separator: "\n")
         if outputJoined.range(of: expectedFailureRegex, options: .regularExpression) != nil {
             if settings.dumpNodeLogs == .always {

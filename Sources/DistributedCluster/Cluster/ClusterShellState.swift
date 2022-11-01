@@ -48,7 +48,7 @@ internal struct ClusterShellState: ReadOnlyClusterState {
 
     let selfNode: Cluster.Node
     var selfMember: Cluster.Member {
-        if let member = self.membership.uniqueMember(self.selfNode) {
+        if let member = self.membership.member(self.selfNode) {
             return member
         } else {
             fatalError("""
@@ -391,7 +391,7 @@ extension ClusterShellState {
         }
 
         let change: Cluster.MembershipChange?
-        if let replacedMember = self.membership.member(handshake.remoteNode.endpoint) {
+        if let replacedMember = self.membership.anyMember(forEndpoint: handshake.remoteNode.endpoint) {
             change = self.membership.applyMembershipChange(Cluster.MembershipChange(replaced: replacedMember, by: Cluster.Member(node: handshake.remoteNode, status: .joining)))
         } else {
             change = self.membership.applyMembershipChange(Cluster.MembershipChange(member: Cluster.Member(node: handshake.remoteNode, status: .joining)))

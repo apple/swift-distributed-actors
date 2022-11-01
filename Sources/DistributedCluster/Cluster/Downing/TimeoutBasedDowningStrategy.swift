@@ -27,16 +27,12 @@ public final class TimeoutBasedDowningStrategy: DowningStrategy {
         self.membership.isLeader(self.selfNode)
     }
 
-    // unreachable members will be marked down after the timeout expires
-    var _unreachable: Set<Cluster.Member>
-
     // buffer for nodes that will be marked down, if this node becomes the leader
     var _markAsDown: Set<Cluster.Member>
 
     init(_ settings: TimeoutBasedDowningStrategySettings, selfNode: Cluster.Node) {
         self.settings = settings
         self.selfNode = selfNode
-        self._unreachable = []
         self._markAsDown = []
         self.membership = .empty
     }
@@ -55,11 +51,9 @@ public final class TimeoutBasedDowningStrategy: DowningStrategy {
             if change.isAtLeast(.down) {
                 // it was marked as down by someone, we don't need to track it anymore
                 _ = self._markAsDown.remove(change.member)
-                _ = self._unreachable.remove(change.member)
                 return .cancelTimer(member: change.member)
             } else if let replaced = change.replaced {
                 _ = self._markAsDown.remove(replaced)
-                _ = self._unreachable.remove(replaced)
                 return .markAsDown(members: [replaced])
             }
 
@@ -81,13 +75,13 @@ public final class TimeoutBasedDowningStrategy: DowningStrategy {
     }
 
     public func onTimeout(_ member: Cluster.Member) -> DowningStrategyDirective {
-        guard let nodeToDown = self._unreachable.remove(member) else {
-            return .none // perhaps we removed it already for other reasons (e.g. node replacement)
+        guard let memberToDown = self.membership.member(member.node) else {
+            return .none
         }
         if self.isLeader {
-            return .markAsDown(members: [nodeToDown])
+            return .markAsDown(members: [memberToDown])
         } else {
-            self._markAsDown.insert(nodeToDown)
+            self._markAsDown.insert(memberToDown)
             return .none
         }
     }
@@ -95,8 +89,6 @@ public final class TimeoutBasedDowningStrategy: DowningStrategy {
     func onMemberUnreachable(_ change: Cluster.ReachabilityChange) -> DowningStrategyDirective {
         _ = self.membership.applyReachabilityChange(change)
         let member = change.member
-
-        self._unreachable.insert(member)
 
         return .startTimer(member: member, delay: self.settings.downUnreachableMembersAfter)
     }
@@ -106,11 +98,7 @@ public final class TimeoutBasedDowningStrategy: DowningStrategy {
         let member = change.member
 
         _ = self._markAsDown.remove(member)
-        if self._unreachable.remove(member) != nil {
-            return .cancelTimer(member: member)
-        }
-
-        return .none
+        return .cancelTimer(member: member)
     }
 
     func onLeaderChange(to leader: Cluster.Member?) throws -> DowningStrategyDirective {
@@ -127,11 +115,7 @@ public final class TimeoutBasedDowningStrategy: DowningStrategy {
     func onMemberRemoved(_ member: Cluster.Member) -> DowningStrategyDirective {
         self._markAsDown.remove(member)
 
-        if self._unreachable.remove(member) != nil {
-            return .cancelTimer(member: member)
-        }
-
-        return .none
+        return .cancelTimer(member: member)
     }
 }
 
