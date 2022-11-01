@@ -489,7 +489,6 @@ extension ClusterShell {
                 return self.retryHandshake(context, state, initiated: initiated)
 
             case .failureDetectorReachabilityChanged(let node, let reachability):
-                context.log.warning("XXX: BUG??? Trying to mark \(node) as \(reachability)...")
                 guard let member = state.membership.member(node) else {
                     return .same // reachability change of unknown node
                 }

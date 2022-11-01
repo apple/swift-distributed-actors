@@ -12,6 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Logging
+
 /// The `TimeoutBasedDowningStrategy` marks nodes that have been unreachable as `.down` after a configurable timeout.
 ///
 /// Only the node that is currently the currently assigned leader can make the decision to mark another node as down.

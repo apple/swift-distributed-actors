@@ -79,7 +79,7 @@ final class ClusterLeaderActionsTests: XCTestCase {
 
     func test_leaderActions_removeDownMembers_ifKnownAsDownToAllMembers() {
         // make A the leader
-        let makeFirstTheLeader = Cluster.LeadershipChange(oldLeader: nil, newLeader: self.stateA.membership.anyMember(self.nodeA.endpoint)!)!
+        let makeFirstTheLeader = Cluster.LeadershipChange(oldLeader: nil, newLeader: self.stateA.membership.anyMember(forEndpoint: self.nodeA.endpoint)!)!
         _ = self.stateA.applyClusterEvent(.leadershipChange(makeFirstTheLeader))
 
         // time to mark B as .down

@@ -186,9 +186,8 @@ struct MultiNodeTestKitRunnerBoot {
             return .unexpectedRunResult(runResult)
         }
 
-        let result = try result.get()
+        let result = try programResult.get()
         let outputLines = result.logs
-        let outputLines = try programResult.get().logs
         let outputJoined = outputLines.joined(separator: "\n")
         if outputJoined.range(of: expectedFailureRegex, options: .regularExpression) != nil {
             if settings.dumpNodeLogs == .always {

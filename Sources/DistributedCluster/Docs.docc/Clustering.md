@@ -81,7 +81,7 @@ You can observe ``Cluster/Event``s emitted by `system.cluster.events` (``Cluster
 
 There is also convenience APIs available on ``ClusterControl`` (`system.cluster`):
 - ``ClusterControl/joined(endpoint:within:)`` which allows you to suspend until a specific node becomes ``Cluster/MemberStatus/joining`` in the cluster membership, or
-- ``ClusterControl/waitFor(_:_:within:)-1xiqo`` which allows you to suspend until a node reaches a specific ``Cluster/MemberStatus``. 
+- ``ClusterControl/waitFor(_:_:within:)-21893`` which allows you to suspend until a node reaches a specific ``Cluster/MemberStatus``. 
 
 ### Automatic Node Discovery
 

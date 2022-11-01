@@ -78,12 +78,12 @@ extension Cluster {
 
 extension Cluster.Node: CustomStringConvertible, CustomDebugStringConvertible {
     public var description: String {
-        "\(self.endpoint)"
+        self.debugDescription
     }
 
     public var debugDescription: String {
-        let a = self.endpoint
-        return "\(a.protocol)://\(a.systemName):\(self.nid)@\(a.host):\(a.port)"
+        let e = self.endpoint
+        return "\(e.protocol)://\(e.systemName):\(self.nid)@\(e.host):\(e.port)"
     }
 }
 
