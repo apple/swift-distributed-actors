@@ -90,7 +90,7 @@ extension Cluster {
             self._members.count
         }
 
-        /// More efficient than using ``members(atLeast:)`` followed by a `.count`
+        /// More efficient than using ``members(atLeast:reachability:)`` followed by a `.count`
         public func count(atLeast status: Cluster.MemberStatus) -> Int {
             self._members.values
                 .lazy
@@ -98,7 +98,7 @@ extension Cluster {
                 .count
         }
 
-        /// More efficient than using ``members(atMost:)`` followed by a `.count`
+        /// More efficient than using ``members(atMost:reachability:)`` followed by a `.count`
         public func count(atMost status: Cluster.MemberStatus) -> Int {
             self._members.values
                 .lazy
