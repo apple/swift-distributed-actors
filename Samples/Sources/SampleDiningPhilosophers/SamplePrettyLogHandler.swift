@@ -106,7 +106,7 @@ struct SamplePrettyLogHandler: LogHandler {
 
         let file = file.split(separator: "/").last ?? ""
         let line = line
-        print("\(self.timestamp()) [\(file):\(line)] [\(nodeInfo)\(Self.CONSOLE_BOLD)\(label)\(Self.CONSOLE_RESET)] [\(level)] \(message)\(metadataString)")
+        print("\(self.timestamp()) \(level) [\(nodeInfo)\(Self.CONSOLE_BOLD)\(label)\(Self.CONSOLE_RESET)][\(file):\(line)] \(message)\(metadataString)")
     }
 
     internal func prettyPrint(metadata: Logger.MetadataValue) -> String {
