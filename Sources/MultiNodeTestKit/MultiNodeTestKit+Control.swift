@@ -70,7 +70,7 @@ extension MultiNodeTest {
 
         public func endpoint(_ node: Nodes) -> Cluster.Endpoint {
             guard let endpoint = _allEndpoints[node.rawValue] else {
-                fatalError("No such node: \(node) known to cluster control. Known nodes: \(_allEndpoints.keys)")
+                fatalError("No such node: \(node) known to cluster control. Known nodes: \(self._allEndpoints.keys)")
             }
             return endpoint
         }
@@ -93,7 +93,6 @@ extension MultiNodeTest {
 // MARK: Run pieces of code on specific node
 
 extension MultiNodeTest.Control {
-
     /// Runs a piece of code only on the specified `node`.
     public func on(_ node: Nodes) -> Bool {
         return node.rawValue == self.system.name

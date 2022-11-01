@@ -229,10 +229,8 @@ extension Cluster.Membership: Sequence {
         internal var it: Dictionary<Cluster.Node, Cluster.Member>.Values.Iterator
 
         public mutating func next() -> Cluster.Member? {
-            it.next()
+            self.it.next()
         }
-
-
     }
 
     public func makeIterator() -> Iterator {

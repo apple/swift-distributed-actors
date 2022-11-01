@@ -125,7 +125,7 @@ private final class GrepHandler: ChannelInboundHandler {
                 self.promise.succeed(.init(logs: logs, expectedExit: true))
                 context.close(promise: nil)
                 return
-             } else {
+            } else {
                 self.promise.fail(MultiNodeProgramError(message: line, completeOutput: self.logs))
                 self.logs = []
                 context.close(promise: nil)

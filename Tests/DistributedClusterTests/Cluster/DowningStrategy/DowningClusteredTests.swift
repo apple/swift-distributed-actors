@@ -222,8 +222,7 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
 
     func test_many_nonLeaders_shouldPropagateToOtherNodes() async throws {
         if Int.random(in: 10 ... 100) > 0 {
-            pinfo("SKIPPING FLAKY TEST, REVISIT IT SOON") // FIXME: https://github.com/apple/swift-distributed-actors/issues/712
-            return
+            throw XCTSkip("SKIPPING FLAKY TEST, REVISIT IT SOON") // FIXME: https://github.com/apple/swift-distributed-actors/issues/712
         }
 
         var nodes: [ClusterSystem] = []
