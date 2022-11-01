@@ -61,11 +61,11 @@ extension Cluster {
 
 extension Cluster.Endpoint: CustomStringConvertible, CustomDebugStringConvertible {
     public var description: String {
-        self.debugDescription
+        "\(self.protocol)://\(self.systemName)@\(self.host):\(self.port)"
     }
 
     public var debugDescription: String {
-        "\(self.protocol)://\(self.systemName)@\(self.host):\(self.port)"
+        self.description
     }
 }
 
