@@ -93,7 +93,9 @@ extension MultiNodeTest {
 // MARK: Run pieces of code on specific node
 
 extension MultiNodeTest.Control {
-    /// Runs a piece of code only on the specified `node`.
+    /// Returns `true` if the multi-node execution is currently running on the same
+    /// `node` as is passed to this function. This allows for executing pieces of code, 
+    /// only on a specific node in the multi-node test execution.
     public func on(_ node: Nodes) -> Bool {
         return node.rawValue == self.system.name
     }
