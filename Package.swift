@@ -39,11 +39,13 @@ var targets: [PackageDescription.Target] = [
             .product(name: "NIOSSL", package: "swift-nio-ssl"),
             .product(name: "NIOExtras", package: "swift-nio-extras"),
             .product(name: "SwiftProtobuf", package: "swift-protobuf"),
-            .product(name: "Logging", package: "swift-log"),
-            .product(name: "Metrics", package: "swift-metrics"),
             .product(name: "ServiceDiscovery", package: "swift-service-discovery"),
             .product(name: "Backtrace", package: "swift-backtrace"),
             .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
+            // Observability
+            .product(name: "Logging", package: "swift-log"),
+            .product(name: "Metrics", package: "swift-metrics"),
+            .product(name: "Tracing", package: "swift-distributed-tracing"),
         ]
     ),
 
@@ -182,7 +184,8 @@ var dependencies: [Package.Dependency] = [
     .package(url: "https://github.com/apple/swift-collections", from: "1.0.1"),
 
     // ~~~ Observability ~~~
-    .package(url: "https://github.com/apple/swift-log", from: "1.0.0"),
+    .package(url: "https://github.com/apple/swift-log", from: "1.4.0"),
+    .package(url: "https://github.com/apple/swift-distributed-tracing", branch: "main"),
     // swift-metrics 1.x and 2.x are almost API compatible, so most clients should use
     .package(url: "https://github.com/apple/swift-metrics", "1.0.0" ..< "3.0.0"),
     .package(url: "https://github.com/apple/swift-service-discovery", from: "1.0.0"),
