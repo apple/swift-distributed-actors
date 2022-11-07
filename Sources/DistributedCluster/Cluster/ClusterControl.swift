@@ -162,7 +162,20 @@ public struct ClusterControl {
     ///
     /// - Returns `Cluster.Member` for the joined node.
     @discardableResult
+    @available(*, deprecated, renamed: "up(within:)")
     public func joined(within: Duration) async throws -> Cluster.Member {
+        try await self.waitFor(self.node, .up, within: within)
+    }
+
+    /// Wait, within the given duration, until this actor system has joined the cluster and become ``Cluster/MemberStatus/up``.
+    ///
+    /// - Parameters
+    ///   - node: The node to be joined by this system.
+    ///   - within: Duration to wait for.
+    ///
+    /// - Returns `Cluster.Member` for the joined node.
+    @discardableResult
+    public func up(within: Duration) async throws -> Cluster.Member {
         try await self.waitFor(self.node, .up, within: within)
     }
 
@@ -205,6 +218,22 @@ public struct ClusterControl {
             }
             // loop explicitly to propagate any error that might have been thrown
             for try await _ in group {}
+        }
+    }
+
+    /// Wait, within the given duration, for the cluster to have at least `nodes` members of the specified status.
+    ///
+    /// - Parameters
+    ///   - nodes: The _least_ (inclusive) number of nodes (including this node) to be part of the cluster membership
+    ///   - status: The expected member status.
+    ///   - within: Duration to wait for.
+    public func waitFor(countAtLeast: Int, _ status: Cluster.MemberStatus, within: Duration) async throws {
+        try await self.waitForMembershipEventually(within: within) { membership in
+            if membership.count(withStatus: status) >= countAtLeast {
+                return membership
+            } else {
+                throw Cluster.MembershipError(.countRequirementNotMet(expected: countAtLeast, expectedStatus: status))
+            }
         }
     }
 

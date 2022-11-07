@@ -13,8 +13,8 @@
 //===----------------------------------------------------------------------===//
 
 import Distributed
-import InstrumentationBaggage
 import struct Foundation.Data
+import InstrumentationBaggage
 
 /// Representation of the distributed invocation in the Behavior APIs.
 /// This needs to be removed eventually as we remove behaviors.

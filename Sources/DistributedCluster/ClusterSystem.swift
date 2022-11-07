@@ -1153,7 +1153,7 @@ extension ClusterSystem {
         let baggage = Baggage.current ?? .topLevel
         // TODO: we can enrich this with actor and system information here if not already present.
 
-        return try await InstrumentationSystem.tracer.withSpan("\(target)", baggage: baggage, ofKind: .client) { span in
+        return try await InstrumentationSystem.tracer.withSpan("\(target)", baggage: baggage, ofKind: .client) { _ in
             let reply: RemoteCallReply<Res> = try await self.withCallID(on: actor.id, target: target) { callID in
                 var invocation = InvocationMessage(
                     callID: callID,
@@ -1226,7 +1226,7 @@ extension ClusterSystem {
         let baggage = Baggage.current ?? .topLevel
         // TODO: we can enrich this with actor and system information here if not already present.
 
-        return try await InstrumentationSystem.tracer.withSpan("\(target)", baggage: baggage, ofKind: .client) { span in
+        return try await InstrumentationSystem.tracer.withSpan("\(target)", baggage: baggage, ofKind: .client) { _ in
             let reply: RemoteCallReply<_Done> = try await self.withCallID(on: actor.id, target: target) { callID in
                 var invocation = InvocationMessage(
                     callID: callID,
@@ -1255,8 +1255,10 @@ extension ClusterSystem {
     ) async throws -> Reply
         where Reply: AnyRemoteCallReply
     {
+        // Make an UUID for the remote call (so we can accept a reply for it)
         let callID = UUID()
 
+        // Prepare timeout handling
         let timeout = RemoteCall.timeout ?? self.settings.remoteCall.defaultTimeout
         let timeoutTask: Task<Void, Error> = Task.detached {
             try await Task.sleep(nanoseconds: UInt64(timeout.nanoseconds))
@@ -1295,6 +1297,7 @@ extension ClusterSystem {
             timeoutTask.cancel()
         }
 
+        /// Call the body which should perform the actual call!
         let reply: any AnyRemoteCallReply = try await withCheckedThrowingContinuation { continuation in
             self.inFlightCallLock.withLock {
                 self._inFlightCalls[callID] = continuation // this is to be resumed from an incoming reply or timeout
@@ -1445,7 +1448,7 @@ extension ClusterSystem {
                     throw DeadLetterError(recipient: recipient)
                 }
 
-                try await InstrumentationSystem.tracer.withSpan("\(target)", baggage: baggage, ofKind: .server) { span in
+                try await InstrumentationSystem.tracer.withSpan("\(target)", baggage: baggage, ofKind: .server) { _ in
                     try await executeDistributedTarget(
                         on: actor,
                         target: target,
