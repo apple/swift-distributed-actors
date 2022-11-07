@@ -64,7 +64,7 @@ var dependencies: [Package.Dependency] = [
     .package(name: "swift-distributed-actors", path: "../"),
 
     // ~~~~~~~ only for samples ~~~~~~~
-    .package(url: "https://github.com/slashmo/opentelemetry-swift", branch: "main"),
+    .package(url: "https://github.com/slashmo/opentelemetry-swift", from: "0.3.0"),
 ]
 
 let package = Package(

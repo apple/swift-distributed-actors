@@ -185,7 +185,7 @@ var dependencies: [Package.Dependency] = [
 
     // ~~~ Observability ~~~
     .package(url: "https://github.com/apple/swift-log", from: "1.4.0"),
-    .package(url: "https://github.com/apple/swift-distributed-tracing", branch: "main"),
+    .package(url: "https://github.com/apple/swift-distributed-tracing", from: "0.3.0"),
     // swift-metrics 1.x and 2.x are almost API compatible, so most clients should use
     .package(url: "https://github.com/apple/swift-metrics", "1.0.0" ..< "3.0.0"),
     .package(url: "https://github.com/apple/swift-service-discovery", from: "1.0.0"),

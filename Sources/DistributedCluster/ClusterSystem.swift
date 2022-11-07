@@ -1162,9 +1162,7 @@ extension ClusterSystem {
                     arguments: arguments
                 )
 
-                if let baggage {
-                    InstrumentationSystem.instrument.inject(baggage, into: &invocation, using: .invocationMessage)
-                }
+                InstrumentationSystem.instrument.inject(baggage, into: &invocation, using: .invocationMessage)
 
                 recipient.sendInvocation(invocation)
             }
@@ -1235,9 +1233,7 @@ extension ClusterSystem {
                     arguments: arguments
                 )
 
-                if let baggage {
-                    InstrumentationSystem.instrument.inject(baggage, into: &invocation, using: .invocationMessage)
-                }
+                InstrumentationSystem.instrument.inject(baggage, into: &invocation, using: .invocationMessage)
 
                 recipient.sendInvocation(invocation)
             }
