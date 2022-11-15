@@ -300,7 +300,11 @@ extension ClusteredActorSystemsXCTestCase {
         }
 
         return self.lock.withLock {
-            self._logCaptures[index]
+            if _logCaptures.count > index {
+                return self._logCaptures[index]
+            } else {
+                fatalError("Attempt to get logs but no logs captured for index \(index)!")
+            }
         }
     }
 
