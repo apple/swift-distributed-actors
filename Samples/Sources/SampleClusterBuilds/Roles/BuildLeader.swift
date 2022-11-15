@@ -12,14 +12,15 @@
 //
 //===----------------------------------------------------------------------===//
 
+import DequeModule
 import DistributedCluster
 import Logging
-import DequeModule
+import Tracing
 
 distributed actor BuildLeader: ClusterSingleton, LifecycleWatch {
     static let singletonName = "BuildLeader"
 
-    lazy var log: Logger = Logger(actor: self)
+    lazy var log = Logger(actor: self)
 
     var initialTasks: Int
     var remainingTasks: Deque<BuildTask>
@@ -58,12 +59,16 @@ distributed actor BuildLeader: ClusterSingleton, LifecycleWatch {
             "tasks/remaining": "\(self.remainingTasks.count)",
             "workers/count": "\(totalWorkers.count)",
         ])
+
+        let span = InstrumentationSystem.tracer.startSpan("all-\(self.remainingTasks.count)-builds", baggage: .current ?? .topLevel)
+        defer { span.end() }
+
         /// Keep searching for available workers until we have processed all BuildTasks.
         for try await availableWorker in availableWorkers {
             guard let buildTask = self.remainingTasks.popFirst() else {
                 break // no more tasks!
             }
-            
+
             self.workerAssignment[availableWorker.id] = buildTask
             log.notice("Schedule work [\(buildTask.id)] on [\(availableWorker)]!", metadata: [
                 "tasks/remaining": "\(self.remainingTasks.count)",
@@ -74,11 +79,13 @@ distributed actor BuildLeader: ClusterSingleton, LifecycleWatch {
             ])
 
             Task {
-                do {
-                    let result = try await availableWorker.work(on: buildTask, reportLogs: nil)
-                    self.builtTaskCompleted(result, by: availableWorker)
-                } catch {
-                    self.builtTaskCompleted(.failed, by: availableWorker)
+                await Baggage.$current.withValue(span.baggage) {
+                    do {
+                        let result = try await availableWorker.work(on: buildTask, reportLogs: nil)
+                        self.builtTaskCompleted(result, by: availableWorker)
+                    } catch {
+                        self.builtTaskCompleted(.failed, by: availableWorker)
+                    }
                 }
             }
         }
@@ -94,7 +101,7 @@ distributed actor BuildLeader: ClusterSingleton, LifecycleWatch {
 
         log.notice("Task [\(assignedTask.id)] was completed [\(result)] by [\(worker)]!")
         switch result {
-        case.successful:
+        case .successful:
             break
         case .rejected, .failed:
             log.notice("Task [\(assignedTask.id)] was [\(result)], so we must schedule it again...")
@@ -117,7 +124,6 @@ distributed actor BuildLeader: ClusterSingleton, LifecycleWatch {
     func stats() -> BuildStats {
         .init(total: self.initialTasks, processed: self.initialTasks - remainingTasks.count)
     }
-
 }
 
 struct BuildStats: Sendable, Codable, CustomStringConvertible {
@@ -134,7 +140,7 @@ struct BuildStats: Sendable, Codable, CustomStringConvertible {
     }
 
     var description: String {
-        "BuildStats(total: \(total), processed: \(processed), complete: \(complete))"
+        "BuildStats(total: \(self.total), processed: \(self.processed), complete: \(self.complete))"
     }
 }
 
@@ -142,7 +148,6 @@ struct BuildStats: Sendable, Codable, CustomStringConvertible {
 // MARK: Maintaining worker statuses
 
 extension BuildLeader {
-
     func discoverBuildWorkers() async {
         log.notice("Discovering \(BuildWorker.self) actors...")
         for await worker in await self.actorSystem.receptionist.listing(of: BuildWorker.self) {
@@ -177,6 +182,5 @@ extension BuildLeader {
             self.log.warning("Worker [\(id)] was working on [\(interruptedTask)], re-scheduling this task...")
             self.remainingTasks.append(interruptedTask)
         }
-
     }
 }

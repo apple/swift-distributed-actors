@@ -138,13 +138,14 @@ final class DistributedProgressTests: ClusteredActorSystemsXCTestCase, @unchecke
 
     func test_progress_stream_local() async throws {
         let system = await self.setUpNode("single")
-        try await impl_progress_stream_cluster(first: system, second: system)
+        try await self.impl_progress_stream_cluster(first: system, second: system)
     }
+
     func test_progress_stream_cluster() async throws {
         let (first, second) = await self.setUpPair()
         try await joinNodes(node: first, with: second)
 
-        try await impl_progress_stream_cluster(first: first, second: second)
+        try await self.impl_progress_stream_cluster(first: first, second: second)
     }
 
     func impl_progress_stream_cluster(first: ClusterSystem, second: ClusterSystem) async throws {

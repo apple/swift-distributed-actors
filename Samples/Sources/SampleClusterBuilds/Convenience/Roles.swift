@@ -26,8 +26,8 @@ extension ClusterSystem {
     var isBuildLeader: Bool {
         self.cluster.endpoint.port == 7330
     }
+
     var isBuildWorker: Bool {
         self.cluster.endpoint.port > 7330
-
     }
 }

@@ -76,7 +76,7 @@ public struct SamplePrettyLogHandler: LogHandler {
         let label: String
         if let id = effectiveMetadata.removeValue(forKey: "actor/id")?.description {
             if id.contains("[$wellKnown") {
-                label = String(id[id.firstIndex(of: "[")!..<id.endIndex])
+                label = String(id[id.firstIndex(of: "[")! ..< id.endIndex])
             } else {
                 label = id
             }

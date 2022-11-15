@@ -14,6 +14,7 @@
 
 import DistributedCluster
 import Logging
+import Tracing
 
 distributed actor BuildWorker: CustomStringConvertible {
     lazy var log = Logger(actor: self)
@@ -27,7 +28,7 @@ distributed actor BuildWorker: CustomStringConvertible {
 
         self.receptionID = "*" // default key for "all of this type"
         await actorSystem.receptionist.checkIn(self)
-        log.notice("Build worker initialized on \(actorSystem.cluster.node)")
+        self.log.notice("Build worker initialized on \(actorSystem.cluster.node)")
     }
 
     distributed func work(on task: BuildTask, reportLogs log: LogCollector? = nil) async -> BuildResult {
@@ -39,17 +40,25 @@ distributed actor BuildWorker: CustomStringConvertible {
         self.activeBuildTask = task
         defer { self.activeBuildTask = nil }
 
-        log?.log(line: "Starting build \(task)...")
-        await noisySleep(for: .seconds(1))
-
-        for i in 1...5 {
-            log?.log(line: "Building file \(i)/5")
+        await InstrumentationSystem.tracer.withSpan("build") { _ in
+            log?.log(line: "Starting build \(task)...")
             await noisySleep(for: .seconds(1))
+
+            for i in 1 ... 5 {
+                await InstrumentationSystem.tracer.withSpan("build-step-\(i)") { _ in
+                    log?.log(line: "Building file \(i)/5")
+                    await noisySleep(for: .seconds(1))
+                }
+            }
         }
 
-        for i in 1...5 {
-            log?.log(line: "Testing \(i)/5")
-            await noisySleep(for: .seconds(1))
+        await InstrumentationSystem.tracer.withSpan("all-tests") { _ in
+            for i in 1 ... 5 {
+                await InstrumentationSystem.tracer.withSpan("test-step-\(i)") { _ in
+                    log?.log(line: "Testing \(i)/5")
+                    await noisySleep(for: .seconds(1))
+                }
+            }
         }
 
         return .successful

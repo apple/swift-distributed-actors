@@ -36,7 +36,7 @@ struct ClusterBuilds {
 
             // Try joining this seed node automatically; once we have joined at least once node, we'll learn about others.
             settings.discovery = ServiceDiscoverySettings(static: [
-                Main.Config.seedEndpoint
+                Main.Config.seedEndpoint,
             ])
         }
         self.system.cluster.join(endpoint: Main.Config.seedEndpoint)
@@ -46,23 +46,24 @@ struct ClusterBuilds {
         var singletonSettings = ClusterSingletonSettings()
         singletonSettings.allocationStrategy = .byLeadership
 
-        let buildTasks: [BuildTask] = (0..<tasks).map { _ in BuildTask() }
+        // Pretend we have some work to do:
+        let buildTasks: [BuildTask] = (0 ..< tasks).map { _ in BuildTask() }
 
         // anyone can host the singleton, but by default, it'll be on the build leader (7330) various strategies are possible.
-        let ref = try await system.singleton.host(name: BuildLeader.singletonName) { actorSystem in
-            return await BuildLeader(buildTasks: buildTasks, actorSystem: actorSystem)
+        try await system.singleton.host(name: BuildLeader.singletonName) { actorSystem in
+            await BuildLeader(buildTasks: buildTasks, actorSystem: actorSystem)
         }
 
         // all nodes, except the build-leader node contain a few workers:
-        if system.isBuildWorker {
-            func makeWorker() async {
-                let worker = await BuildWorker(actorSystem: self.system)
-                workers[worker.id] = worker
-            }
-
-            for _ in 0..<Main.Config.workersPerNode {
+        if self.system.isBuildWorker {
+            for _ in 0 ..< Main.Config.workersPerNode {
                 await makeWorker()
             }
         }
+    }
+
+    private mutating func makeWorker() async {
+        let worker = await BuildWorker(actorSystem: self.system)
+        self.workers[worker.id] = worker
     }
 }

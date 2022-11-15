@@ -16,7 +16,6 @@ import Distributed
 import DistributedActorsConcurrencyHelpers
 import Logging
 
-
 class TEST {
     class Thing {
         func change() {}
@@ -38,7 +37,6 @@ class TEST {
         }
     }
 }
-
 
 public distributed actor DistributedProgress<Steps: DistributedProgressSteps> {
     public typealias ActorSystem = ClusterSystem

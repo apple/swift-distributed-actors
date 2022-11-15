@@ -15,9 +15,9 @@
 import _PrettyLogHandler
 import Distributed
 import DistributedCluster
+import struct Foundation.UUID
 import Logging
 import NIO
-import struct Foundation.UUID
 import OpenTelemetry
 import OtlpGRPCSpanExporting
 import Tracing
@@ -30,6 +30,7 @@ struct BuildTask: Sendable, Codable, Hashable {
     init() {
         self.id = .init()
     }
+
     init(id: BuildTaskID) {
         self.id = id
     }

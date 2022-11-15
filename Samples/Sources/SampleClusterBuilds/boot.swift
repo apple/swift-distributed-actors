@@ -23,7 +23,6 @@ import Tracing
 
 @main
 enum Main {
-
     enum Config {
         // "seed" node that all others will join (and learn about other nodes in the cluster automatically)
         static let seedEndpoint = Cluster.Endpoint(host: "127.0.0.1", port: 7330) // just a convention, leader can be decided in various ways
@@ -65,7 +64,6 @@ enum Main {
 
         let otel = OTel(serviceName: nodeName, eventLoopGroup: group, processor: processor)
         InstrumentationSystem.bootstrap(otel.tracer())
-
 
         var app = await ClusterBuilds(name: nodeName, port: port)
         try! await app.run(tasks: Main.Config.totalBuildTasks)

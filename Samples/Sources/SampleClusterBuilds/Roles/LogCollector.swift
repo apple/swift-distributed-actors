@@ -15,8 +15,5 @@
 import DistributedCluster
 
 distributed actor LogCollector {
-
-    nonisolated func log(line: String) {
-
-    }
+    nonisolated func log(line: String) {}
 }
