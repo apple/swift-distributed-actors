@@ -136,15 +136,24 @@ final class DistributedProgressTests: ClusteredActorSystemsXCTestCase, @unchecke
         try p.expectMessage("done")
     }
 
-    func test_progress_stream() async throws {
+    func test_progress_stream_local() async throws {
         let system = await self.setUpNode("single")
+        try await impl_progress_stream_cluster(first: system, second: system)
+    }
+    func test_progress_stream_cluster() async throws {
+        let (first, second) = await self.setUpPair()
+        try await joinNodes(node: first, with: second)
 
-        let pb = self.testKit(system).makeTestProbe(expecting: String.self)
-        let pw = self.testKit(system).makeTestProbe(expecting: String.self)
-        let p = self.testKit(system).makeTestProbe(expecting: String.self)
+        try await impl_progress_stream_cluster(first: first, second: second)
+    }
 
-        let builder = Builder(probe: pb, actorSystem: system)
-        let watcher = BuildWatcher(probe: pw, builder: builder, actorSystem: system)
+    func impl_progress_stream_cluster(first: ClusterSystem, second: ClusterSystem) async throws {
+        let pb = self.testKit(first).makeTestProbe(expecting: String.self)
+        let pw = self.testKit(second).makeTestProbe(expecting: String.self)
+        let p = self.testKit(first).makeTestProbe(expecting: String.self)
+
+        let builder = Builder(probe: pb, actorSystem: first)
+        let watcher = BuildWatcher(probe: pw, builder: builder, actorSystem: second)
 
         Task {
             try await watcher.runBuild_streamSteps()
