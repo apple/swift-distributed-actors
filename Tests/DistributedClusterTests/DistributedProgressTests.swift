@@ -81,14 +81,14 @@ distributed actor BuildWatcher: CustomStringConvertible {
         let progress = try await self.builder.build()
 
         try await progress.completed()
-        probe.tell("completed")
+        self.probe.tell("completed")
     }
 
     distributed func runBuild_streamSteps() async throws {
         let progress = try await self.builder.build()
 
         for try await step in try await progress.steps() {
-            probe.tell("received-step:\(step)")
+            self.probe.tell("received-step:\(step)")
         }
     }
 

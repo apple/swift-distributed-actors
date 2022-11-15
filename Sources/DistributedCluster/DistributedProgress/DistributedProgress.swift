@@ -29,10 +29,10 @@ public distributed actor DistributedProgress<Steps: DistributedProgressSteps> {
 
     func to(step: Steps) async throws {
         // TODO: checks that we don't move backwards...
-        log.notice("Move to step: \(step)")
+        self.log.notice("Move to step: \(step)")
         self.step = step
 
-        for sub in subscribers {
+        for sub in self.subscribers {
             try await sub.currentStep(step)
         }
 
@@ -108,7 +108,7 @@ public distributed actor DistributedProgress<Steps: DistributedProgressSteps> {
                 return
             }
 
-            try await ensureSubscription()
+            try await self.ensureSubscription()
 
             await withCheckedContinuation { (cc: CheckedContinuation<Void, Never>) in
                 self._completedCC = cc
@@ -121,7 +121,7 @@ public distributed actor DistributedProgress<Steps: DistributedProgressSteps> {
                 return nil // last step was already emitted
             }
 
-            try await ensureSubscription()
+            try await self.ensureSubscription()
 
             return await withCheckedContinuation { (cc: CheckedContinuation<Steps, Never>) in
                 self._nextCC = cc
@@ -168,7 +168,6 @@ public distributed actor DistributedProgress<Steps: DistributedProgressSteps> {
 // MARK: Progress AsyncSequence
 
 extension DistributedProgress.Box {
-
     public func steps(file: String = #file, line: UInt = #line) async throws -> DistributedProgressAsyncSequence<Steps> {
         try await self.ensureSubscription()
 
@@ -198,7 +197,7 @@ public struct DistributedProgressAsyncSequence<Steps: DistributedProgressSteps>:
         }
 
         public func next() async throws -> Steps? {
-            try await box.nextStep()
+            try await self.box.nextStep()
         }
     }
 }
@@ -210,6 +209,7 @@ public protocol DistributedProgressSteps: Codable, Sendable, Equatable, CaseIter
     static var count: Int { get }
     static var last: Self { get }
 }
+
 extension DistributedProgressSteps {
     public static var count: Int {
         precondition(count > 0, "\(Self.self) cannot have zero steps (cases)!")
