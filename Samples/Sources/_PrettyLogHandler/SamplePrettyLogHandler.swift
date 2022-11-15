@@ -74,7 +74,14 @@ public struct SamplePrettyLogHandler: LogHandler {
             nodeInfo += "\(node)"
         }
         let label: String
-        if let path = effectiveMetadata.removeValue(forKey: "actor/path")?.description {
+        if let id = effectiveMetadata.removeValue(forKey: "actor/id")?.description {
+            if id.contains("[$wellKnown") {
+                label = String(id[id.firstIndex(of: "[")!..<id.endIndex])
+            } else {
+                label = id
+            }
+            effectiveMetadata.removeValue(forKey: "actor/path")
+        } else if let path = effectiveMetadata.removeValue(forKey: "actor/path")?.description {
             label = path
         } else {
             label = ""

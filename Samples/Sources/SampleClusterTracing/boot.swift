@@ -24,9 +24,6 @@ import Tracing
 /*
  * Sample showcasing a long traced interaction.
  */
-
-typealias DefaultDistributedActorSystem = ClusterSystem
-
 @main enum Main {
     static func main() async throws {
         print("===-----------------------------------------------------===")

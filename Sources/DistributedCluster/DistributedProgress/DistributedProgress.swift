@@ -16,6 +16,30 @@ import Distributed
 import DistributedActorsConcurrencyHelpers
 import Logging
 
+
+class TEST {
+    class Thing {
+        func change() {}
+    }
+
+    class State {
+        let mutable: Thing
+        init(mutable: Thing) {
+            self.mutable = mutable
+        }
+    }
+
+    func test(state: State) {
+        Task {
+            state.mutable.change() // data-rade (!)
+        }
+        Task {
+            state.mutable.change() // data-rade (!)
+        }
+    }
+}
+
+
 public distributed actor DistributedProgress<Steps: DistributedProgressSteps> {
     public typealias ActorSystem = ClusterSystem
     lazy var log = Logger(actor: self)

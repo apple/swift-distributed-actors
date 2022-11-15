@@ -148,12 +148,12 @@ internal class ClusterShell {
             return
         }
 
-        system.log.warning("Terminate existing association [\(reflecting: remoteNode)].")
+        system.log.info("Terminate existing association [\(reflecting: remoteNode)].")
 
         // notify the failure detector, that we shall assume this node as dead from here on.
         // it's gossip will also propagate the information through the cluster
         traceLog_Remote(system.cluster.node, "Finish terminate association [\(remoteNode)]: Notifying SWIM, .confirmDead")
-        system.log.warning("Confirm .dead to underlying SWIM, node: \(reflecting: remoteNode)")
+        system.log.debug("Confirm .dead to underlying SWIM, node: \(reflecting: remoteNode)")
         self._swimShell.confirmDead(node: remoteNode)
 
         // it is important that we first check the contains; as otherwise we'd re-add a .down member for what was already removed (!)
@@ -1059,7 +1059,7 @@ extension ClusterShell {
             // the change was a replacement and thus we need to down the old member (same host:port as the new one),
             // and terminate its association.
 
-            state.log.info("Accepted handshake from [\(reflecting: directive.handshake.remoteNode)] which replaces the previously known: [\(reflecting: replacedMember)].")
+            state.log.debug("Accepted handshake from [\(reflecting: directive.handshake.remoteNode)] which replaces the previously known: [\(reflecting: replacedMember)].")
 
             // We MUST be careful to first terminate the association and then store the new one in 2)
             self.terminateAssociation(context.system, state: &state, replacedMember.node)

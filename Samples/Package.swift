@@ -37,8 +37,17 @@ var targets: [PackageDescription.Target] = [
             .product(name: "OpenTelemetry", package: "opentelemetry-swift"),
             .product(name: "OtlpGRPCSpanExporting", package: "opentelemetry-swift"),
             "_PrettyLogHandler",
-        ],
-        path: "Sources/SampleClusterTracing"
+        ]
+    ),
+
+    .executableTarget(
+        name: "SampleClusterBuilds",
+        dependencies: [
+            .product(name: "DistributedCluster", package: "swift-distributed-actors"),
+            .product(name: "OpenTelemetry", package: "opentelemetry-swift"),
+            .product(name: "OtlpGRPCSpanExporting", package: "opentelemetry-swift"),
+            "_PrettyLogHandler",
+        ]
     ),
 
     .target(

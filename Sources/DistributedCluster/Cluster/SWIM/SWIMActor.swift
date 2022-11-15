@@ -338,7 +338,7 @@ internal distributed actor SWIMActor: SWIMPeer, SWIMAddressablePeer, CustomStrin
         // Log the transition
         switch change.status {
         case .unreachable:
-            self.log.info(
+            self.log.debug(
                 """
                 Node \(change.member.node) determined [.unreachable]! \
                 The node is not yet marked [.down], a downing strategy or other Cluster.Event subscriber may act upon this information.
@@ -347,7 +347,7 @@ internal distributed actor SWIMActor: SWIMPeer, SWIMAddressablePeer, CustomStrin
                 ]
             )
         default:
-            self.log.info(
+            self.log.debug(
                 "Node \(change.member.node) determined [.\(change.status)] (was \(optional: change.previousStatus)).",
                 metadata: [
                     "swim/member": "\(change.member)",

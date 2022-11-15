@@ -744,11 +744,7 @@ extension OpLogDistributedReceptionist {
 
         for subscription in subscriptions {
             for registration in registrations {
-                if subscription.tryOffer(registration: registration) {
-                    self.log.notice("OFFERED \(registration.actorID) TO \(subscription)")
-                } else {
-                    self.log.notice("DROPPED \(registration.actorID) TO \(subscription)")
-                }
+                subscription.tryOffer(registration: registration)
             }
         }
     }
