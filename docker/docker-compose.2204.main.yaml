@@ -3,31 +3,31 @@ version: "3"
 services:
 
   runtime-setup:
-    image: swift-distributed-actors:20.04-main
+    image: swift-distributed-actors:22.04-main
     build:
       args:
-        base_image: "swiftlang/swift:nightly-main-focal"
+        base_image: "swiftlang/swift:nightly-main-jammy"
 
   unit-tests:
-    image: swift-distributed-actors:20.04-main
+    image: swift-distributed-actors:22.04-main
     environment:
       - EXPLICIT_TARGET_DEPENDENCY_IMPORT_CHECK=--explicit-target-dependency-import-check error
 
   unit-tests-until-failure:
-    image: swift-distributed-actors:20.04-main
+    image: swift-distributed-actors:22.04-main
 
   integration-tests:
-    image: swift-distributed-actors:20.04-main
+    image: swift-distributed-actors:22.04-main
     command: /bin/bash -cl "swift package --disable-sandbox multi-node test"
 
   test:
-    image: swift-distributed-actors:20.04-main
+    image: swift-distributed-actors:22.04-main
     command: /bin/bash -cl "swift test"
     environment:
       - EXPLICIT_TARGET_DEPENDENCY_IMPORT_CHECK=--explicit-target-dependency-import-check error
 
   bench:
-    image: swift-distributed-actors:20.04-main
+    image: swift-distributed-actors:22.04-main
 
   shell:
-    image: swift-distributed-actors:20.04-main
+    image: swift-distributed-actors:22.04-main
