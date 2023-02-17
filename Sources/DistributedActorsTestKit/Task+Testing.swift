@@ -13,23 +13,47 @@
 //===----------------------------------------------------------------------===//
 
 extension Task {
-    /// Use only for testing, creates a timeout task and a task to execute the `body` which it then races against each other.
-    /// If the body never returns, the created task is leaked.
-    internal static func withTimeout(
+    internal static func cancelAfter(
         timeout: Duration,
-        timeoutError: @escaping @Sendable @autoclosure () -> Error,
+        timeoutError: @escaping @autoclosure @Sendable () -> Error,
         body: @escaping @Sendable () async throws -> Success
     ) async -> Task<Success, any Error> {
-        let timeoutTask = Task<Success, any Error> {
-            try await Task<Never, Never>.sleep(until: .now + timeout, clock: .continuous)
-            throw timeoutError()
-        }
+        Self.cancelAfter(timeout: timeout, timeoutError: { (_, _) in timeoutError() }, body: body)
+    }
 
-        let valueTask = Task<Success, any Error> {
-            return try await body()
-        }
+    /// Use only for testing, creates a timeout task and a task to execute the `body` which it then races against each other.
+    internal static func cancelAfter(
+        timeout: Duration,
+        timeoutError: @escaping @Sendable (ContinuousClock.Instant, ContinuousClock.Duration) -> Error,
+        body: @escaping @Sendable () async throws -> Success
+    ) -> Task<Success, any Error> {
+        let start = ContinuousClock.now
+        return Task<Success, Error> {
+            try await withThrowingTaskGroup(of: Success.self) { group in
+                group.addTask {
+                    try await body()
+                }
 
-        defer { timeoutTask.cancel() }
-        return await .select(valueTask, timeoutTask)
+                group.addTask(priority: .high) {
+                    try? await Task<Never, Never>.sleep(until: start + timeout, clock: .continuous)
+                    throw _SimpleTimeoutError(clock: .continuous, start: start)
+                }
+
+                defer {
+                    group.cancelAll()
+                }
+                return try await group.next()! // return or throw the first one; the group will wait for the other one
+            }
+        }
+    }
+
+    public struct _SimpleTimeoutError<Clock: _Concurrency.Clock>: Error {
+        public let start: Clock.Instant
+        public let elapsed: Clock.Duration
+
+        public init(clock: Clock, start: Clock.Instant) {
+            self.start = start
+            self.elapsed = start.duration(to: clock.now)
+        }
     }
 }

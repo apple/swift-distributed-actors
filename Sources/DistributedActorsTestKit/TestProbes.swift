@@ -818,7 +818,7 @@ extension ActorTestProbe {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
         let timeout = timeout ?? self.expectationTimeout
 
-        let task = await Task<Void, Error>.withTimeout(
+        let task = await Task<Void, Error>.cancelAfter(
             timeout: timeout,
             timeoutError: callSite.error("Expected [\(actor)] to terminate within \(timeout.prettyDescription)")
         ) {
