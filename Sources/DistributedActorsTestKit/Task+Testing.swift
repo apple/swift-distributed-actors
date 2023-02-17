@@ -13,7 +13,6 @@
 //===----------------------------------------------------------------------===//
 
 extension Task {
-
     internal static func cancelAfter(
         timeout: Duration,
         timeoutError: @escaping @autoclosure @Sendable () -> Error,
