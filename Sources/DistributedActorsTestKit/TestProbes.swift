@@ -818,8 +818,7 @@ extension ActorTestProbe {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
         let timeout = timeout ?? self.expectationTimeout
 
-        let task = await Task<Void, Error>.withTimeout(
-            timeout: timeout,
+        let task = await Task<Void, Error>.cancelAfter(timeout: timeout,
             timeoutError: callSite.error("Expected [\(actor)] to terminate within \(timeout.prettyDescription)")
         ) {
             _ = try await self._internal.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
