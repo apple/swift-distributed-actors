@@ -161,7 +161,7 @@ var targets: [PackageDescription.Target] = [
 ]
 
 var dependencies: [Package.Dependency] = [
-    .package(url: "https://github.com/apple/swift-atomics", from: "1.0.2"),
+    .package(url: "https://github.com/apple/swift-atomics", from: "1.1.0"),
 
     // .package(url: "https://github.com/apple/swift-cluster-membership", from: "0.3.0"),
 //    .package(name: "swift-cluster-membership", path: "Packages/swift-cluster-membership"), // FIXME: just work in progress
