@@ -118,16 +118,16 @@ func test(lo: LocalGreeter, di: DistributedGreeter) async throws {
     
     // "local only" actor
     _ = lo.name // <1.1> ok 
-    await lo.hello("Caplin") // <2.2> ok
+    await lo.hello("Caplin") // <1.2> ok
   
     // distributed actor
-    di.name // ❌ <1.2> error: access to property 'name' is only permitted within distributed actor
+    di.name // ❌ <2.1> error: access to property 'name' is only permitted within distributed actor
     try await di.notDistributedHello() // ❌ <2.2> error: only `distributed func` can be called on potentially remote distributed actor 
     try await di.hello() // ok 
 } 
 ```
 
-We can see that accesses `<1.1>`, to a stored constant property, and `<2.1>` to a member function, were allowed under the 
+We can see that accesses `<1.1>`, to a stored constant property, and `<1.2>` to a member function, were allowed under the 
 `actor`-isolation model, however are not permitted when the target of those is a `distributed actor` (`<2.1>` and `<2.2>`).  
 This is because a distributed actor may be located on a remote host, and we are not able to implement such calls for 
 not-distributed functions. Distributed members guarantee that all their parameters and return values conform to the actor system's
