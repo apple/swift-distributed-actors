@@ -72,6 +72,7 @@ public struct LeaderElectionContext {
 /// actor coordination, the result of such election is going to be provided asynchronously.
 ///
 /// A change in leadership will result in a `Cluster.LeadershipChange` event being emitted in the system's cluster event stream.
+@available(*, deprecated, message: "This API predates async/await and should not be used in new code. Call ")
 public struct LeaderElectionResult: _AsyncResult {
     public typealias Value = Cluster.LeadershipChange?
     let future: EventLoopFuture<Cluster.LeadershipChange?>
@@ -162,7 +163,10 @@ extension Leadership {
                         context.log.trace("The leadership change that was decided on by \(self.election) results in no change from current leadership state.")
                         return self.ready
                     }
-                    context.system.cluster.ref.tell(.requestMembershipChange(.leadershipChange(changed)))
+                    guard let leader = changed.newLeader else {
+                        return self.ready
+                    }
+                    context.system.cluster.assumeLeader(leader)
                     return self.ready
 
                 case .success(.none):
@@ -260,9 +264,9 @@ extension Leadership {
                 // Clear current leader and trigger `Cluster.LeadershipChange`
                 let change = try! membership.applyLeadershipChange(to: nil) // try!-safe, because changing leader to nil is safe
                 context.log.trace("Removing leader [\(currentLeader)]")
-                return .init(context.loop.next().makeSucceededFuture(change))
+                return LeaderElectionResult(context.loop.next().makeSucceededFuture(change))
             } else {
-                return .init(context.loop.next().makeSucceededFuture(nil))
+                return LeaderElectionResult(context.loop.next().makeSucceededFuture(nil))
             }
         }
 

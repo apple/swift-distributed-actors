@@ -96,7 +96,7 @@ internal final class GossipShell<Gossip: Codable, Acknowledgement: Codable> {
         context.log.trace("Received gossip [\(identifier.gossipIdentifier)]", metadata: [
             "gossip/identity": "\(identifier.gossipIdentifier)",
             "gossip/origin": "\(origin.id)",
-            "gossip/incoming": Logger.MetadataValue.pretty(payload),
+            "gossip/incoming": "\(pretty: payload)",
         ])
 
         let logic = self.getEnsureLogic(context, identifier: identifier)

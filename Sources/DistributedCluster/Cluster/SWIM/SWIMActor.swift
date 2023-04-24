@@ -43,7 +43,7 @@ internal distributed actor SWIMActor: SWIMPeer, SWIMAddressablePeer, CustomStrin
     }
 
     private lazy var log: Logger = {
-        var log = Logger(actor: self)
+        var log = Logger(clusterActor: self)
         log.logLevel = self.settings.logger.logLevel
         return log
     }()

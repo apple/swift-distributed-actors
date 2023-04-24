@@ -55,6 +55,7 @@ public struct ClusterControl {
     }
 
     private let _membershipSnapshotHolder: MembershipHolder
+
     private actor MembershipHolder {
         var membership: Cluster.Membership
 
@@ -89,6 +90,24 @@ public struct ClusterControl {
     /// The endpoint value representing _this_ node in the cluster.
     public var endpoint: Cluster.Endpoint {
         self.node.endpoint
+    }
+
+    /// The member representing _this_ node in the cluster.
+    ///
+    /// Its ``MemberStatus`` is based on the current membership snapshot, so if changes are happening to the membership
+    /// beware that this view may be out of date and it may be useful to observe a stream of cluster events if you
+    /// intend to use the member long-term. Specifically, it is not advised to store a member for long term use purposes,
+    /// exactly because its status may be changing over time -- subscribe to the cluster event stream instead, or always
+    /// query the ``membershipSnapshot`` instead in such situations.
+    public var member: Cluster.Member {
+        get async {
+            let membership = await membershipSnapshot
+            guard let member = membership.member(self.node) else {
+                fatalError("Unexpected: self.membership must always contain member for the current node, but didn't! Node: \(self.node), membership: \(membership)")
+            }
+
+            return member
+        }
     }
 
     /// Instructs the cluster to join the actor system located listening on the passed in host-port pair.
@@ -181,7 +200,7 @@ public struct ClusterControl {
     /// Wait, within the given duration, until the passed in node has joined the cluster and become ``Cluster/MemberStatus/up``.
     ///
     /// - Parameters
-    ///   - node: The node to be joined by this system.
+    ///   - endpoint: The endpoint to be joined by this system.
     ///   - within: Duration to wait for.
     ///
     /// - Returns `Cluster.Member` for the joined node.
@@ -212,7 +231,7 @@ public struct ClusterControl {
     ///
     /// - Parameters
     ///   - nodes: The nodes to be joined by this system.
-    ///   - status: The minimum expected member status.
+    ///   - atLeastStatus: The minimum expected member status.
     ///   - within: Duration to wait for.
     public func waitFor(_ nodes: some Collection<Cluster.Node>, atLeast atLeastStatus: Cluster.MemberStatus, within: Duration) async throws {
         try await withThrowingTaskGroup(of: Void.self) { group in
@@ -263,7 +282,7 @@ public struct ClusterControl {
     /// Wait, within the given duration, for this actor system to be a member of the node's cluster and have the specified status.
     ///
     /// - Parameters
-    ///   - node: The node to be joined by this system.
+    ///   - endpoint: The endpoint to be joined by this system.
     ///   - status: The expected member status.
     ///   - within: Duration to wait for.
     ///

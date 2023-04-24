@@ -55,6 +55,32 @@ extension DistributedReception {
             self.id = id
         }
 
+        /// Derive the reception key from the distributed actor.
+        /// If it has associated metadata in its `ID`, this information is used in the key.
+        ///
+        /// E.g.
+        ///
+        /// ```
+        /// distributed actor Echo {
+        ///   @ActorID.Metadata(\.receptionID)
+        ///   let receptionID: String
+        ///
+        ///   init(...) {
+        ///      self.receptionID = "echos"
+        ///   }
+        /// }
+        ///
+        /// func testKey(echo: Echo) {
+        ///   let key = DistributedReception.Key(echo)
+        /// }
+        /// ```
+        public init?(_ guest: Guest) {
+            guard let receptionID = guest.metadata.receptionID else {
+                return nil
+            }
+            self.id = receptionID
+        }
+
         public init(stringLiteral value: StringLiteralType) {
             self.id = value
         }
