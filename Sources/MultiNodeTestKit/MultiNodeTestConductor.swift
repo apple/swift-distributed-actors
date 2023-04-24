@@ -24,7 +24,7 @@ public distributed actor MultiNodeTestConductor: ClusterSingleton, CustomStringC
     var allNodes: Set<Cluster.Node>
     // TODO: also add readyNodes here
 
-    lazy var log = Logger(actor: self)
+    lazy var log = Logger(clusterActor: self)
 
     let settings: MultiNodeTestSettings
 

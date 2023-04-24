@@ -156,7 +156,7 @@ internal distributed actor ClusterEventStreamActor: LifecycleWatch {
     private var subscribers: [ActorID: _ActorRef<Cluster.Event>] = [:]
     private var asyncSubscribers: [ObjectIdentifier: (Cluster.Event) -> Void] = [:]
 
-    private lazy var log = Logger(actor: self)
+    private lazy var log = Logger(clusterActor: self)
 
     internal init(actorSystem: ActorSystem) {
         self.actorSystem = actorSystem

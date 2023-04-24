@@ -24,7 +24,7 @@ import XCTest
 
 distributed actor Romeo: LifecycleWatch, CustomStringConvertible {
     let probe: ActorTestProbe<String>
-    lazy var log = Logger(actor: self)
+    lazy var log = Logger(clusterActor: self)
 
     init(probe: ActorTestProbe<String>, actorSystem: ActorSystem) {
         self.actorSystem = actorSystem
@@ -54,7 +54,7 @@ distributed actor Romeo: LifecycleWatch, CustomStringConvertible {
 
 distributed actor Juliet: LifecycleWatch, CustomStringConvertible {
     let probe: ActorTestProbe<String>
-    lazy var log = Logger(actor: self)
+    lazy var log = Logger(clusterActor: self)
 
     init(probe: ActorTestProbe<String>, actorSystem: ActorSystem) {
         self.actorSystem = actorSystem

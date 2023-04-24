@@ -82,7 +82,7 @@ internal distributed actor DowningStrategyShell {
 
     let strategy: DowningStrategy
 
-    private lazy var log = Logger(actor: self)
+    private lazy var log = Logger(clusterActor: self)
 
     /// `Task` for subscribing to cluster events.
     private var eventsListeningTask: Task<Void, Error>?

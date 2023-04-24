@@ -4,7 +4,7 @@ The cluster system offers a number of built-in observability capabilities about 
 
 ## Logging
 
-TODO: Explain `Logger(actor: self)` pattern
+TODO: Explain `Logger(clusterActor: self)` pattern
 
 ## Metrics
 
