@@ -398,6 +398,15 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         await self.init("ClusterSystem")
     }
 
+    /// Creates a `ClusterSystem` using the passed in optional settings.
+    public convenience init(settings: ClusterSystemSettings?) async {
+        if let settings {
+            await self.init(settings: settings)
+        } else {
+            await self.init()
+        }
+    }
+
     /// Parks the current thread (usually "main thread") until the system is terminated,
     /// of the optional timeout is exceeded.
     ///
