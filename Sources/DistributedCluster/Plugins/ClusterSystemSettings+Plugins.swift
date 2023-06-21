@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2019-2022 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019-2023 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -69,11 +69,18 @@ extension PluginsSettings {
     /// - Parameter plugin: plugin to install in the actor system
     public mutating func install<P: _Plugin>(plugin: P) {
         precondition(
-            !self.plugins.contains(where: { $0.key == plugin.key.asAny }),
+            !self.isInstalled(plugin: plugin),
             "Attempted to add plugin \(plugin.key) but key already used! Plugin [\(plugin)], installed plugins: \(self.plugins)."
         )
 
         return self.plugins.append(BoxedPlugin(plugin))
+    }
+
+    /// Returns `true` if the given plugin is installed in the settings.
+    ///
+    /// - Parameter plugin: plugin to check if it is installed
+    public func isInstalled<P: _Plugin>(plugin: P) -> Bool {
+        self.plugins.contains(where: { $0.key == plugin.key.asAny })
     }
 
     @available(*, deprecated, message: "use settings.install(plugin:) instead")
@@ -84,6 +91,6 @@ extension PluginsSettings {
 
 extension ClusterSystemSettings {
     public static func += <P: _Plugin>(settings: inout ClusterSystemSettings, plugin: P) {
-        settings.plugins.add(plugin)
+        settings.plugins.install(plugin: plugin)
     }
 }
