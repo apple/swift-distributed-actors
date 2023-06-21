@@ -42,11 +42,12 @@ import NIO // Future
 /// If a new member is selected as leader, a ``Cluster/Event`` carrying ``Cluster/LeadershipChange`` will be emitted.
 /// Other actors may subscribe to `ClusterSystem.cluster.events` in order to receive and react to such changes,
 /// e.g. if an actor should only perform its duties if it is residing on the current leader node.
-public protocol LeaderElection {
+public protocol LegacyLeaderElection {
     /// Select a member to become a leader out of the existing `Membership`.
     ///
     /// Decisions about electing/selecting a leader may be performed asynchronously.
     mutating func runElection(context: LeaderElectionContext, membership: Cluster.Membership) -> LeaderElectionResult
+
 }
 
 public struct LeaderElectionContext {
@@ -72,6 +73,7 @@ public struct LeaderElectionContext {
 /// actor coordination, the result of such election is going to be provided asynchronously.
 ///
 /// A change in leadership will result in a `Cluster.LeadershipChange` event being emitted in the system's cluster event stream.
+@available(*, deprecated, message: "This API predates async/await and should not be used in new code. Call ")
 public struct LeaderElectionResult: _AsyncResult {
     public typealias Value = Cluster.LeadershipChange?
     let future: EventLoopFuture<Cluster.LeadershipChange?>
@@ -102,9 +104,9 @@ extension Leadership {
         static let naming: _ActorNaming = "leadership"
 
         private var membership: Cluster.Membership // FIXME: we need to ensure the membership is always up to date -- we need the initial snapshot or a diff from a zero state etc.
-        private var election: LeaderElection
+        private var election: LegacyLeaderElection
 
-        init(_ election: LeaderElection) {
+        init(_ election: LegacyLeaderElection) {
             self.election = election
             self.membership = .empty
         }
@@ -162,7 +164,10 @@ extension Leadership {
                         context.log.trace("The leadership change that was decided on by \(self.election) results in no change from current leadership state.")
                         return self.ready
                     }
-                    context.system.cluster.ref.tell(.requestMembershipChange(.leadershipChange(changed)))
+                    guard let leader = changed.newLeader else {
+                        return self.ready
+                    }
+                    context.system.cluster.assumeLeader(leader)
                     return self.ready
 
                 case .success(.none):
@@ -223,7 +228,7 @@ extension Leadership {
     /// fulfilling this role whenever the minimum number of nodes exist. This may be useful when operation would
     /// potentially be unsafe given less than `minimumNrOfMembers` nodes.
     ///
-    public struct LowestReachableMember: LeaderElection {
+    public struct LowestReachableMember: LegacyLeaderElection {
         // TODO: In situations which need strong guarantees, this leadership election scheme does NOT provide strong enough
         // guarantees, and you should consider using another scheme or consensus based modes.
         let minimumNumberOfMembersToDecide: Int
@@ -260,9 +265,9 @@ extension Leadership {
                 // Clear current leader and trigger `Cluster.LeadershipChange`
                 let change = try! membership.applyLeadershipChange(to: nil) // try!-safe, because changing leader to nil is safe
                 context.log.trace("Removing leader [\(currentLeader)]")
-                return .init(context.loop.next().makeSucceededFuture(change))
+                return LeaderElectionResult(context.loop.next().makeSucceededFuture(change))
             } else {
-                return .init(context.loop.next().makeSucceededFuture(nil))
+                return LeaderElectionResult(context.loop.next().makeSucceededFuture(nil))
             }
         }
 
@@ -327,7 +332,7 @@ extension ClusterSystemSettings {
 
         private let underlying: _LeadershipSelectionSettings
 
-        func make(_: ClusterSystemSettings) -> LeaderElection? {
+        func make(_: ClusterSystemSettings) -> LegacyLeaderElection? {
             switch self.underlying {
             case .none:
                 return nil

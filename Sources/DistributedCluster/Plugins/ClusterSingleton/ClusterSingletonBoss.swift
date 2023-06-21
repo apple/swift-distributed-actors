@@ -73,7 +73,7 @@ internal distributed actor ClusterSingletonBoss<Act: ClusterSingleton>: ClusterS
     /// `Task` for subscribing to cluster events
     private var clusterEventsSubscribeTask: Task<Void, Error>?
 
-    private lazy var log = Logger(actor: self)
+    private lazy var log = Logger(clusterActor: self)
 
     init(
         settings: ClusterSingletonSettings,

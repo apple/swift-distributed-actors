@@ -35,7 +35,6 @@ distributed actor StringForwarder: CustomStringConvertible {
         self.probe = probe
     }
 
-//    distributed func forward(message: String) {
     distributed func forward(message: String) -> String {
         self.probe.tell("forwarded:\(message)")
         return "echo:\(message)"

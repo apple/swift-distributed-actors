@@ -272,7 +272,6 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         self.metrics = ClusterSystemMetrics(settings.metrics)
 
         self._receptionistRef = ManagedAtomicLazyReference()
-//        self._receptionistStore = ManagedAtomicLazyReference()
         self._serialization = ManagedAtomicLazyReference()
         self._clusterStore = ManagedAtomicLazyReference()
         self._clusterControlStore = ManagedAtomicLazyReference()
@@ -1568,7 +1567,7 @@ public struct ClusterInvocationResultHandler: DistributedTargetInvocationResultH
             directReturnContinuation.resume(returning: ())
 
         case .remoteCall(let system, let callID, let channel, let recipient):
-            system.log.debug("Result handler, onReturnVoid", metadata: [
+            system.log.trace("Result handler, onReturnVoid", metadata: [
                 "call/id": "\(callID)",
             ])
 

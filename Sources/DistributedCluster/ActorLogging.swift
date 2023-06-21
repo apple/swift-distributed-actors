@@ -72,12 +72,24 @@ internal final class LoggingContext {
 /// Specialized `Logger` factory, populating the logger with metadata about its "owner" actor (or system),
 /// such as it's path or node on which it resides.
 ///
-/// The preferred way of obtaining a logger for an actor or system is `context.log` or `system.log`, rather than creating new ones.
+/// The preferred way of obtaining a logger for a cluster actor is `Logger(clusterActor:)` and as follows for the ClusterSystem: `system.log`, rather than creating new ones.
+///
+/// These factories use the configured `baseLogger` of the cluster system which allows for easy testing, mocking, and configuring all loggers used within a system.
 extension Logger {
-    /// Create a logger specific to this actor.
+    /// See ``Logger(clusterActor:)``.
+    @available(*, deprecated, renamed: "Logger(clusterActor:)")
     public init<Act: DistributedActor>(actor: Act) where Act.ActorSystem == ClusterSystem {
+        self = Logger(clusterActor: actor)
+    }
+
+    /// Create a logger specific to this cluster actor, based off the `ClusterSystem.settings.logging.baseLogger`.
+    ///
+    /// The logger will include `actor/id` for easily identifying which actor is logging.
+    ///
+    /// The logger does NOT retain the actor, only its id.
+    public init<Act: DistributedActor>(clusterActor actor: Act) where Act.ActorSystem == ClusterSystem {
         var log = actor.actorSystem.settings.logging.baseLogger
-        log[metadataKey: "actor/path"] = "\(actor.id.path)"
+        log[metadataKey: "actor/path"] = "\(actor.id.path)" // TODO: remove paths or make them optional here?
         log[metadataKey: "actor/id"] = "\(actor.id)"
         self = log
     }

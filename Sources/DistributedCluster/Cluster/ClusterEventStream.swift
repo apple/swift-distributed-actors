@@ -85,7 +85,16 @@ public struct ClusterEventStream: AsyncSequence {
         }
     }
 
-    func publish(_ event: Cluster.Event, file: String = #filePath, line: UInt = #line) async {
+    /// Emit a cluster event.
+    ///
+    /// Emitting an event only applies locally, and therefore should really only be used by the cluster shell itself
+    /// which is the source of all such events.
+    ///
+    /// - Parameters:
+    ///   - event: the event to be emitted
+    ///   - file: source file location
+    ///   - line: source line location
+    internal func publish(_ event: Cluster.Event, file: String = #filePath, line: UInt = #line) async {
         guard let actor = self.actor else { return }
 
         await actor.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
@@ -147,7 +156,7 @@ internal distributed actor ClusterEventStreamActor: LifecycleWatch {
     private var subscribers: [ActorID: _ActorRef<Cluster.Event>] = [:]
     private var asyncSubscribers: [ObjectIdentifier: (Cluster.Event) -> Void] = [:]
 
-    private lazy var log = Logger(actor: self)
+    private lazy var log = Logger(clusterActor: self)
 
     internal init(actorSystem: ActorSystem) {
         self.actorSystem = actorSystem

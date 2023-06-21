@@ -18,7 +18,7 @@ import Logging
 
 distributed actor Fork: CustomStringConvertible {
     private lazy var log: Logger = {
-        var l = Logger(actor: self)
+        var l = Logger(clusterActor: self)
         l[metadataKey: "name"] = "\(self.name)"
         return l
     }()
