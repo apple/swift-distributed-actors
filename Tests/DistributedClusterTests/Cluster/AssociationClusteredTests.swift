@@ -93,7 +93,10 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
         try await second.cluster.joined(endpoint: first.cluster.endpoint, within: .seconds(3))
 
         try assertAssociated(first, withExactly: second.cluster.node)
+        try await assertMemberStatus(on: first, node: second.cluster.node, atLeast: .up, within: .seconds(3))
+
         try assertAssociated(second, withExactly: first.cluster.node)
+        try await assertMemberStatus(on: second, node: first.cluster.node, atLeast: .up, within: .seconds(3))
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
