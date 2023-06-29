@@ -86,6 +86,16 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
         try assertAssociated(second, withExactly: first.cluster.node)
     }
 
+    func test_clusterControl_joined_shouldCauseJoiningAttempt() async throws {
+        let (first, second) = await setUpPair()
+
+        try await first.cluster.joined(endpoint: second.cluster.endpoint, within: .seconds(3))
+        try await second.cluster.joined(endpoint: first.cluster.endpoint, within: .seconds(3))
+
+        try assertAssociated(first, withExactly: second.cluster.node)
+        try assertAssociated(second, withExactly: first.cluster.node)
+    }
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Joining into existing cluster
 

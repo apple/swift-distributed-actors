@@ -86,6 +86,17 @@ public struct ClusterControl {
         self.settings.bindNode
     }
 
+    /// The cluster member value representing _this_ node in the cluster.
+    public var member: Cluster.Member {
+        get async {
+            let snapshot = await self.membershipSnapshot
+            guard let myself = snapshot.member(self.node) else {
+                fatalError("Membership must always have a member for 'self' node, but did not for \(self.node): \(snapshot)")
+            }
+            return myself
+        }
+    }
+
     /// The endpoint value representing _this_ node in the cluster.
     public var endpoint: Cluster.Endpoint {
         self.node.endpoint
@@ -163,7 +174,13 @@ public struct ClusterControl {
     /// - Returns `Cluster.Member` for the joined node.
     @discardableResult
     public func joined(within: Duration) async throws -> Cluster.Member {
-        try await self.waitFor(self.node, .up, within: within)
+        // waiting to be "joined" means having passed the "joining" member status
+        let myself = await self.member
+        if myself.status > .joining {
+            return myself
+        }
+
+        return try await self.waitFor(self.node, .up, within: within)
     }
 
     /// Wait, within the given duration, until the passed in node has joined the cluster and become ``Cluster/MemberStatus/up``.
@@ -175,19 +192,33 @@ public struct ClusterControl {
     /// - Returns `Cluster.Member` for the joined node.
     @discardableResult
     public func joined(node: Cluster.Node, within: Duration) async throws -> Cluster.Member {
-        try await self.waitFor(node, .up, within: within)
+        // waiting to be "joined" means having passed the "joining" member status
+        if let member = await self.membershipSnapshot.member(node),
+           member.status > .joining {
+                return member
+        }
+
+        self.join(node: node) // kick off the joining process in case we're not trying to already
+        return try await self.waitFor(node, .up, within: within)
     }
 
-    /// Wait, within the given duration, until the passed in node has joined the cluster and become ``Cluster/MemberStatus/up``.
+    /// Wait, within the given duration, until the passed in endpoint has joined the cluster and become ``Cluster/MemberStatus/up``.
     ///
     /// - Parameters
-    ///   - node: The node to be joined by this system.
+    ///   - endpoint: The endpoint to be joined by this system.
     ///   - within: Duration to wait for.
     ///
     /// - Returns `Cluster.Member` for the joined node.
     @discardableResult
     public func joined(endpoint: Cluster.Endpoint, within: Duration) async throws -> Cluster.Member? {
-        try await self.waitFor(self.node, .up, within: within)
+        // waiting to be "joined" means having passed the "joining" member status
+        if let member = await self.membershipSnapshot.anyMember(forEndpoint: endpoint),
+           member.status > .joining {
+            return member
+        }
+        
+        self.join(endpoint: endpoint) // kick off the joining process in case we're not trying to already
+        return try await self.waitFor(endpoint, .up, within: within)
     }
 
     /// Wait, within the given duration, for this actor system to be a member of all the nodes' respective cluster and have the specified status.
@@ -212,7 +243,7 @@ public struct ClusterControl {
     ///
     /// - Parameters
     ///   - nodes: The nodes to be joined by this system.
-    ///   - status: The minimum expected member status.
+    ///   - atLeastStatus: The minimum expected member status.
     ///   - within: Duration to wait for.
     public func waitFor(_ nodes: some Collection<Cluster.Node>, atLeast atLeastStatus: Cluster.MemberStatus, within: Duration) async throws {
         try await withThrowingTaskGroup(of: Void.self) { group in
@@ -263,7 +294,7 @@ public struct ClusterControl {
     /// Wait, within the given duration, for this actor system to be a member of the node's cluster and have the specified status.
     ///
     /// - Parameters
-    ///   - node: The node to be joined by this system.
+    ///   - endpoint: The node to be joined by this system.
     ///   - status: The expected member status.
     ///   - within: Duration to wait for.
     ///
