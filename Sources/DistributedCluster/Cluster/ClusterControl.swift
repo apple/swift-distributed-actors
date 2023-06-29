@@ -194,8 +194,9 @@ public struct ClusterControl {
     public func joined(node: Cluster.Node, within: Duration) async throws -> Cluster.Member {
         // waiting to be "joined" means having passed the "joining" member status
         if let member = await self.membershipSnapshot.member(node),
-           member.status > .joining {
-                return member
+           member.status > .joining
+        {
+            return member
         }
 
         self.join(node: node) // kick off the joining process in case we're not trying to already
@@ -213,10 +214,11 @@ public struct ClusterControl {
     public func joined(endpoint: Cluster.Endpoint, within: Duration) async throws -> Cluster.Member? {
         // waiting to be "joined" means having passed the "joining" member status
         if let member = await self.membershipSnapshot.anyMember(forEndpoint: endpoint),
-           member.status > .joining {
+           member.status > .joining
+        {
             return member
         }
-        
+
         self.join(endpoint: endpoint) // kick off the joining process in case we're not trying to already
         return try await self.waitFor(endpoint, .up, within: within)
     }
