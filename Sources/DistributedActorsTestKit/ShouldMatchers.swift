@@ -15,9 +15,6 @@
 import Foundation
 import XCTest
 
-// bear with me; we need testing facilities for the async things.
-// Yeah, I know about https://github.com/Quick/Nimble
-
 /// Used to determine if "pretty printing" errors should be done or not.
 /// Pretty errors help tremendously to quickly spot exact errors and track them back to source locations,
 /// e.g. on CI or when testing in command line and developing in a separate IDE or editor.
