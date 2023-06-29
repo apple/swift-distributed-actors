@@ -345,7 +345,7 @@ public struct ClusterControl {
                 throw Cluster.MembershipError(.notFound(node, in: membership))
             }
 
-            if atLeastStatus <= foundMember.status {
+            if atLeastStatus < foundMember.status {
                 throw Cluster.MembershipError(.atLeastStatusRequirementNotMet(expectedAtLeast: atLeastStatus, found: foundMember))
             }
             return foundMember
