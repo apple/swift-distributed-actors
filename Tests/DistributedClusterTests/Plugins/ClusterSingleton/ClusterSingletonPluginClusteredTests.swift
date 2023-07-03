@@ -16,11 +16,13 @@ import AsyncAlgorithms
 import Distributed
 import DistributedActorsTestKit
 @testable import DistributedCluster
+import Logging
 import XCTest
 
 final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCase {
     override func configureLogCapture(settings: inout LogCapture.Settings) {
         settings.excludeActorPaths = [
+            "/system/swim",
             "/system/cluster/swim",
             "/system/cluster",
             "/system/cluster/gossip",
@@ -96,9 +98,7 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
 
         // pretend we're handing over to somewhere else:
         let boss = await first.singleton._boss(name: name, type: LifecycleTestSingleton.self)!
-        await boss.whenLocal { __secretlyKnownToBeLocal in
-            __secretlyKnownToBeLocal.handOver(to: nil)
-        }
+        await boss.whenLocal { await $0.handOver(to: nil) }
 
         try probe.expectMessage(prefix: "passivate")
         try probe.expectMessage(prefix: "deinit")
@@ -261,8 +261,15 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
                         attempt += 1
                         let message = "\(greetingName) (\(attempt))"
                         group.addTask {
-                            pnote("  Sending: \(message) -> \(singleton) (it may be terminated/not-re-pointed yet)")
-                            return try await singleton.greet(name: message)
+                            pnote("  Sending: '\(message)' -> [\(singleton)] (it may be terminated/not-re-pointed yet)")
+                            do {
+                                let value = try await singleton.greet(name: message)
+                                pinfo("    Passed '\(message)' -> [\(singleton)]: reply: \(value)")
+                                return value
+                            } catch {
+                                pinfo("    Failed '\(message)' -> [\(singleton)]: error: \(error)")
+                                throw error
+                            }
                         }
                     }
 

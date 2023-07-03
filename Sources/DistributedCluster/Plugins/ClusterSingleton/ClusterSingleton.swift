@@ -30,7 +30,7 @@ import Logging
 ///
 /// To host a distributed cluster singleton, use the ``ClusterSingletonPlugin/host(_:name:settings:makeInstance:)`` method.
 ///
-public protocol ClusterSingleton: DistributedActor where ActorSystem == ClusterSystem {
+public protocol ClusterSingleton: Codable, DistributedActor where ActorSystem == ClusterSystem {
     /// The singleton is now active, and should perform its duties.
     ///
     /// Invoked by the cluster singleton boss when after it has created this instance of the singleton
