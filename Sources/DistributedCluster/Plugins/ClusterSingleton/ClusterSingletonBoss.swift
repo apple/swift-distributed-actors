@@ -137,8 +137,6 @@ internal distributed actor ClusterSingletonBoss<Act: ClusterSingleton>: ClusterS
                 await self.handOver(to: node)
             }
 
-            // TODO: await here for the handover?
-
             // Update `singleton` regardless
             try await self.updateSingleton(node: node)
         }
