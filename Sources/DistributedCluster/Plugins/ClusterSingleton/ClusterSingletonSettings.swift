@@ -35,6 +35,16 @@ public struct ClusterSingletonSettings {
     /// we stop stashing calls and throw error.
     public var allocationTimeout: Duration = .seconds(30)
 
+    // Backoff configuration when trying to obtain an active singleton reference on a new node.
+    public var locateActiveSingletonBackoff: LocateActiveSingletonBackoffSettings = .init()
+    public struct LocateActiveSingletonBackoffSettings {
+        var initialInterval: Duration = .milliseconds(300)
+        var multiplier: Double = ExponentialBackoffStrategy.Defaults.multiplier
+        var capInterval: Duration = ExponentialBackoffStrategy.Defaults.capInterval
+        var randomFactor: Double = ExponentialBackoffStrategy.Defaults.randomFactor
+        var maxAttempts: Int = 5
+    }
+
     public init() {}
 }
 

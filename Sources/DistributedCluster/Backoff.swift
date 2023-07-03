@@ -146,8 +146,6 @@ public struct ConstantBackoffStrategy: BackoffStrategy {
 ///
 /// - SeeAlso: Also used to configure `_SupervisionStrategy`.
 public struct ExponentialBackoffStrategy: BackoffStrategy {
-    // TODO: clock + limit "max total wait time" etc
-
     /// Default values for the backoff parameters.
     public enum Defaults {
         public static let initialInterval: Duration = .milliseconds(200)
@@ -206,6 +204,39 @@ public struct ExponentialBackoffStrategy: BackoffStrategy {
             self.prepareNextInterval()
             return randomizedInterval
         }
+    }
+
+    /// Attempt to execute the passed `operation` at most `maxAttempts` times while applying the expected backoff strategy.
+    ///
+    /// - Parameters:
+    ///   - operation: The operation to run, potentially multiple times until successful or maxAttempts were made
+    /// - Throws: the last error thrown by `operation`
+    public func attempt<Value>(_ operation: () async throws -> Value) async throws -> Value {
+        var backoff = self
+        var lastError: Error? = nil
+        defer {
+            pprint("RETURNING NOW singleton")
+        }
+
+        do {
+            return try await operation()
+        } catch {
+            pprint("FAILED ONCE singleton::::: \(error)")
+            lastError = error
+
+            while let backoffDuration = backoff.next() {
+                try await Task.sleep(for: backoffDuration)
+                do {
+                    return try await operation()
+                } catch {
+                    lastError = error
+                    // and try again, if remaining tries are left...
+                }
+            }
+        }
+
+        // If we ended up here, there must have been an error thrown and stored, re-throw it
+        throw lastError!
     }
 
     private mutating func prepareNextInterval() {

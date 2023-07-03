@@ -220,6 +220,10 @@ public final class DeadLetterOffice {
                 return metadata
             }()
         )
+
+        pinfo("ALL ACTORS: \(self.system?.cluster.node)")
+        self.system?._printTree()
+        print("\n\n======")
     }
 
     private func specialHandled(_ message: _SystemMessage, recipient: ActorID?) -> Bool {
