@@ -137,7 +137,7 @@ internal distributed actor ClusterSingletonBoss<Act: ClusterSingleton>: ClusterS
                 await self.handOver(to: node)
             }
 
-            // TODO await here for the handover?
+            // TODO: await here for the handover?
 
             // Update `singleton` regardless
             try await self.updateSingleton(node: node)
@@ -204,7 +204,8 @@ internal distributed actor ClusterSingletonBoss<Act: ClusterSingleton>: ClusterS
                 multiplier: settings.locateActiveSingletonBackoff.multiplier,
                 capInterval: settings.locateActiveSingletonBackoff.capInterval,
                 randomFactor: settings.locateActiveSingletonBackoff.randomFactor,
-                maxAttempts: settings.locateActiveSingletonBackoff.maxAttempts).attempt {
+                maxAttempts: settings.locateActiveSingletonBackoff.maxAttempts
+            ).attempt {
                 // confirm tha the boss is hosting the singleton, if not we may have to wait and try again
                 do {
                     guard ((try? await targetSingletonBoss.hasActiveSingleton()) ?? false) else {
@@ -237,7 +238,7 @@ internal distributed actor ClusterSingletonBoss<Act: ClusterSingleton>: ClusterS
             self.log.debug("Was checked for active singleton. Active on different node.")
             return false
         }
-            self.log.debug("Was checked for active singleton. Active on this node.")
+        self.log.debug("Was checked for active singleton. Active on this node.")
         return true
     }
 
@@ -461,7 +462,8 @@ extension ClusterSingletonBoss {
 
             var invocation = invocation // can't be inout param
             if targetNode == selfNode,
-               let singleton = self.targetSingleton {
+               let singleton = self.targetSingleton
+            {
                 assert(
                     singleton.id.node == selfNode,
                     "Target singleton node and targetNode were not the same! TargetNode: \(targetNode)," +
@@ -483,11 +485,13 @@ extension ClusterSingletonBoss {
                 returning: returning
             )
         } catch {
-            log.warning("Failed forwarding call to \(target)",
+            log.warning(
+                "Failed forwarding call to \(target)",
                 metadata: [
                     "remoteCall/target": "\(target)",
                     "remoteCall/invocation": "\(invocation)",
-                ])
+                ]
+            )
             throw error // FIXME: if dead letter then keep stashed?
         }
     }

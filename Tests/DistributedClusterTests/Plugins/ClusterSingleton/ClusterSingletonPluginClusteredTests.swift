@@ -16,8 +16,8 @@ import AsyncAlgorithms
 import Distributed
 import DistributedActorsTestKit
 @testable import DistributedCluster
-import XCTest
 import Logging
+import XCTest
 
 final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCase {
     override func configureLogCapture(settings: inout LogCapture.Settings) {

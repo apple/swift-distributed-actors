@@ -213,7 +213,7 @@ public struct ExponentialBackoffStrategy: BackoffStrategy {
     /// - Throws: the last error thrown by `operation`
     public func attempt<Value>(_ operation: () async throws -> Value) async throws -> Value {
         var backoff = self
-        var lastError: Error? = nil
+        var lastError: Error?
         defer {
             pprint("RETURNING NOW singleton")
         }
