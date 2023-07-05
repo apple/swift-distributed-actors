@@ -214,9 +214,6 @@ public struct ExponentialBackoffStrategy: BackoffStrategy {
     public func attempt<Value>(_ operation: () async throws -> Value) async throws -> Value {
         var backoff = self
         var lastError: Error?
-        defer {
-            pprint("RETURNING NOW singleton")
-        }
 
         do {
             return try await operation()
