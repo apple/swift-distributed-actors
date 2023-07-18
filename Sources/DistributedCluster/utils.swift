@@ -79,12 +79,12 @@ private func _createTimeFormatter() -> DateFormatter {
 }
 
 /// Short for "pretty print", useful for debug tracing
-func pprint(_ message: String, file: String = #fileID, line: UInt = #line) {
+func pprint(_ message: String, function: String = #function, file: String = #fileID, line: UInt = #line) {
     print("""
     [pprint]\
     [\(_createTimeFormatter().string(from: Date()))] \
-    [\(file):\(line)]\
-    [\(_hackyPThreadThreadId())]: \
+    [\(file):\(line)] \
+    (\(function)) \
     \(message)
     """)
 }

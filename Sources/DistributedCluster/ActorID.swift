@@ -429,7 +429,7 @@ extension ActorID: _PathRelationships {
         self.path.segments
     }
 
-    func makeChildAddress(name: String, incarnation: ActorIncarnation) throws -> ActorID {
+    func makeChildID(name: String, incarnation: ActorIncarnation) throws -> ActorID {
         switch self._location {
         case .local(let node):
             return try .init(local: node, path: self.makeChildPath(name: name), incarnation: incarnation)
@@ -765,7 +765,6 @@ public struct ActorIncarnation: Equatable, Hashable, ExpressibleByIntegerLiteral
 extension ActorIncarnation {
     /// To be used ONLY by special actors whose existence is wellKnown and identity never-changing.
     /// Examples: `/system/deadLetters` or `/system/cluster`.
-    @available(*, deprecated, message: "Useful only with behavior actors, will be removed entirely")
     internal static let wellKnown: ActorIncarnation = .init(0)
 
     public static func random() -> ActorIncarnation {

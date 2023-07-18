@@ -75,6 +75,7 @@ internal distributed actor SWIMActor: SWIMPeer, SWIMAddressablePeer, CustomStrin
 
     /// Initialize timers and other after-initialized tasks
     private func onStart() {
+        precondition(self.id.incarnation == 0 || self.id.isWellKnown, "SWIM was not well known!? Was: \(self.id.detailedDescription)")
         guard self.settings.initialContactPoints.isEmpty else {
             fatalError(
                 """
@@ -520,11 +521,11 @@ internal distributed actor SWIMActor: SWIMPeer, SWIMAddressablePeer, CustomStrin
 
     nonisolated func confirmDead(node: Cluster.Node) {
         Task {
-            await self.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
-                let directive = __secretlyKnownToBeLocal.swim.confirmDead(peer: node.asSWIMNode.swimShell(__secretlyKnownToBeLocal.actorSystem))
+            await self.whenLocal { myself in
+                let directive = myself.swim.confirmDead(peer: node.asSWIMNode.swimShell(myself.actorSystem))
                 switch directive {
                 case .applied(let change):
-                    __secretlyKnownToBeLocal.log.warning("Confirmed node .dead: \(change)", metadata: __secretlyKnownToBeLocal.swim.metadata(["swim/change": "\(change)"]))
+                    myself.log.warning("Confirmed node .dead: \(change)", metadata: myself.swim.metadata(["swim/change": "\(change)"]))
                 case .ignored:
                     return
                 }

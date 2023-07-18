@@ -29,7 +29,11 @@ extension ClusterMembership.Node {
     }
 
     func swimShell(_ system: ClusterSystem) -> SWIMActor {
-        try! SWIMActor.resolve(id: ._swim(on: self.asClusterNode!), using: system) // TODO: the ! is not so nice
+        do {
+            return try SWIMActor.resolve(id: ._swim(on: self.asClusterNode!), using: system)
+        } catch {
+            fatalError("Failed to resolve \(ActorID._swim(on: self.asClusterNode!).detailedDescription): \(error), tree: \n\(system._treeString())")
+        }
     }
 
     var asClusterNode: Cluster.Node? {

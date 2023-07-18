@@ -699,7 +699,7 @@ public final class _ActorShell<Message: Codable>: _ActorContext<Message>, Abstra
 
             let naming = _ActorNaming(unchecked: .prefixed(prefix: "$sub-\(id.id)", suffixScheme: .letters))
             let name = naming.makeName(&self.namingContext)
-            let adaptedAddress = try self.id.makeChildAddress(name: name, incarnation: .random()) // TODO: actor name to BE the identity
+            let adaptedAddress = try self.id.makeChildID(name: name, incarnation: .random()) // TODO: actor name to BE the identity
             let ref = SubReceiveAdapter(SubMessage.self, owner: self.myself, id: adaptedAddress, identifier: identifier)
 
             self._children.insert(ref) // TODO: separate adapters collection?
@@ -749,7 +749,7 @@ public final class _ActorShell<Message: Codable>: _ActorContext<Message>, Abstra
             if let adapter: _ActorRefAdapter<Message> = self.messageAdapter {
                 return .init(.adapter(adapter))
             } else {
-                let adaptedAddress = try self.id.makeChildAddress(name: _ActorNaming.adapter.makeName(&self.namingContext), incarnation: .wellKnown)
+                let adaptedAddress = try self.id.makeChildID(name: _ActorNaming.adapter.makeName(&self.namingContext), incarnation: .wellKnown)
                 let adapter = _ActorRefAdapter(fromType: fromType, to: self.myself, id: adaptedAddress)
 
                 self.messageAdapter = adapter

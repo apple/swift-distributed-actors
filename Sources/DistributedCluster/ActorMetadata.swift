@@ -48,6 +48,11 @@ extension ActorMetadataKeys {
     /// **WARNING:** Do not use this mechanism for "normal" actors, as it makes their addresses "guessable",
     /// which is bad from a security and system independence stand point. Please use the cluster receptionist instead.
     public var wellKnown: Key<String> { "$wellKnown" }
+
+    /// Determine name/path for actor creation
+    internal var knownActorName: Key<String> { "$wellKnownName" }
+
+    internal var _props: Key<_PropsShuttle> { "$props" }
 }
 
 extension ActorID {
@@ -101,6 +106,33 @@ public final class ActorMetadata: CustomStringConvertible, CustomDebugStringConv
         return self._storage.isEmpty
     }
 
+    public func remove<Value: Sendable & Codable>(forKey key: ActorMetadataKeys.Key<Value>) -> Value? {
+        self.lock.wait()
+        defer { lock.signal() }
+
+        guard let v = self._storage.removeValue(forKey: key.id) else {
+            return nil
+        }
+        return v as? Value
+    }
+
+    func copy() -> ActorMetadata {
+        self.lock.wait()
+        defer { lock.signal() }
+
+        let c = ActorMetadata()
+        for (k, v) in self._storage {
+            c._storage[k] = v
+        }
+        return c
+    }
+
+    func clear() {
+        self.lock.wait()
+        defer { lock.signal() }
+        self._storage = [:]
+    }
+
     public subscript<Value>(dynamicMember dynamicMember: KeyPath<ActorMetadataKeys, ActorMetadataKeys.Key<Value>>) -> Value? {
         get {
             self.lock.wait()
@@ -120,7 +152,7 @@ public final class ActorMetadata: CustomStringConvertible, CustomDebugStringConv
             let key = ActorMetadataKeys.__instance[keyPath: dynamicMember]
             let id = key.id
             if let existing = self._storage[id] {
-                fatalError("Existing ActorID metadata, cannot be replaced. Was: [\(existing)], newValue: [\(optional: newValue))]")
+                fatalError("Existing ActorID metadata, cannot be replaced. Was: [\(existing)], newValue: [\(optional: newValue)]")
             }
             self._storage[id] = newValue
         }
@@ -141,7 +173,7 @@ public final class ActorMetadata: CustomStringConvertible, CustomDebugStringConv
             self.lock.wait()
             defer { lock.signal() }
             if let existing = self._storage[id] {
-                fatalError("Existing ActorID [\(id)] metadata, cannot be replaced. Was: [\(existing)], newValue: [\(optional: newValue))]")
+                fatalError("Existing ActorID [\(id)] metadata, cannot be replaced. Was: [\(existing)], newValue: [\(optional: newValue)]")
             }
             self._storage[id] = newValue
         }
