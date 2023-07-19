@@ -17,7 +17,6 @@ import DistributedActorsTestKit
 import XCTest
 
 final class ClusterSingletonPluginTests: SingleClusterSystemXCTestCase {
-
     func test_singletonPlugin_clusterDisabled() async throws {
         // Singleton should work just fine without clustering
         let test = await setUpNode("test") { settings in
@@ -86,7 +85,6 @@ final class ClusterSingletonPluginTests: SingleClusterSystemXCTestCase {
         init(actorSystem: ActorSystem) {
             self.actorSystem = actorSystem
         }
-
 
         distributed func greet() {
             print("Hello!")

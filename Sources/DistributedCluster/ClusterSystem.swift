@@ -714,7 +714,8 @@ extension ClusterSystem: _ActorRefFactory {
 
     // Reserve an actor address.
     internal func _reserveName<Act>(type: Act.Type, props: _Props,
-                                    file: String = #fileID, line: UInt = #line) throws -> ActorID where Act: DistributedActor {
+                                    file: String = #fileID, line: UInt = #line) throws -> ActorID where Act: DistributedActor
+    {
         let incarnation: ActorIncarnation = props._wellKnown ? .wellKnown : .random()
         guard let provider = (props._systemActor ? self.systemProvider : self.userProvider) else {
             fatalError("Unable to obtain system/user actor provider") // TODO(distributed): just throw here instead
@@ -748,7 +749,7 @@ extension ClusterSystem: _ActorRefFactory {
     public func _spawnDistributedActor<Message>(
         _ behavior: _Behavior<Message>, identifiedBy id: ClusterSystem.ActorID
     ) -> _ActorRef<Message> where Message: Codable {
-        var props = id.metadata._props?.props ?? _Props()  // ?? _Props.forSpawn
+        var props = id.metadata._props?.props ?? _Props() // ?? _Props.forSpawn
         props._distributedActor = true
 
         let provider: _ActorRefProvider
@@ -784,7 +785,7 @@ extension ClusterSystem: _ActorTreeTraversable {
 
     internal func _treeString() -> String {
         var ids = [String]()
-        self._traverseAllVoid { context, ref in
+        self._traverseAllVoid { _, ref in
             ids.append("\(ref.id.detailedDescription)")
             return .continue
         }
@@ -987,7 +988,7 @@ extension ClusterSystem {
         var id = try! self._reserveName(type: Act.self, props: props)
 
         let lifecycleContainer: LifecycleWatchContainer?
-        if Act.self is (any (LifecycleWatch).Type) {
+        if Act.self is (any(LifecycleWatch).Type) {
             lifecycleContainer = LifecycleWatchContainer(watcherID: id.withoutLifecycle, actorSystem: self)
         } else {
             lifecycleContainer = nil
@@ -1119,7 +1120,7 @@ extension ClusterSystem {
     {
         /// Prepare a distributed actor context base, such that the reserved ID will contain the interceptor in the context.
         let baseContext = DistributedActorContext(lifecycle: nil, remoteCallInterceptor: interceptor)
-         var id = self._assignID(Act.self, baseContext: baseContext)
+        var id = self._assignID(Act.self, baseContext: baseContext)
         assert(id.context.remoteCallInterceptor != nil)
         id = id._asRemote // Not strictly necessary?
 

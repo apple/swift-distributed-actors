@@ -91,7 +91,7 @@ public struct _Props: @unchecked Sendable {
     }
 
     func consume() -> _Props {
-        let c = deepCopy()
+        let c = self.deepCopy()
         self.metadata.clear()
         return c
     }
@@ -130,6 +130,7 @@ struct _PropsShuttle: @unchecked Sendable, Codable {
     init(from decoder: Decoder) throws {
         fatalError()
     }
+
     public func encode(to encoder: Encoder) throws {
         fatalError()
     }
