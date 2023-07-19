@@ -1013,9 +1013,9 @@ extension ClusterSystem {
             id.metadata.wellKnown = wellKnownName
             id.metadata._props = _PropsShuttle(props: props)
         }
-        if let wellKnownName = props.metadata.remove(forKey: ActorMetadataKeys.__instance.wellKnown) {
-            id.metadata.wellKnown = wellKnownName
-        }
+//        if let wellKnownName = props.metadata.remove(forKey: ActorMetadataKeys.__instance.wellKnown) {
+//            id.metadata.wellKnown = wellKnownName
+//        }
 
         self.log.trace("Assign identity", metadata: [
             "actor/type": "\(actorType)",

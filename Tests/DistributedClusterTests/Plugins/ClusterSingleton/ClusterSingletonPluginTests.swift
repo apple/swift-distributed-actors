@@ -55,7 +55,6 @@ final class ClusterSingletonPluginTests: SingleClusterSystemXCTestCase {
         pinfo("singleton actual   id: \(try await singleton.actualID())")
         pinfo("singleton(greeter) id: \(greeterID)")
 
-//        singletonID.detailedDescription.shouldContain("test-singleton")
         try await singleton.actualID().detailedDescription.shouldContain("test-singleton")
         // if this were true we would have crashed by a duplicate name already, but let's make sure:
         singletonID.shouldNotEqual(greeterID)

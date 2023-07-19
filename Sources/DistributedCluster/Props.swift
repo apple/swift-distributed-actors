@@ -99,7 +99,7 @@ public struct _Props: @unchecked Sendable {
     /// Since metadata is mutable storage, we sometimes may need to perform a deep copy of Props if we want to have
     /// separate metadata storage from the original copy.
     func deepCopy() -> _Props {
-        var p = _Props(metadata: self.metadata.copy(), metrics: self.metrics)
+        var p = _Props(metadata: ActorMetadata(), metrics: self.metrics)
         p.supervision = self.supervision
         p.dispatcher = self.dispatcher
         p._systemActor = self._systemActor
