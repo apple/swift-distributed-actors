@@ -646,13 +646,12 @@ extension ClusterSystem: _ActorRefFactory {
         try behavior.validateAsInitial()
 
         let incarnation: ActorIncarnation = props._wellKnown ? .wellKnown : .random()
-
         // TODO: lock inside provider, not here
         // FIXME: protect the naming context access and name reservation; add a test
         let id: ActorID = try self.withNamingContext { namingContext in
             let name = naming.makeName(&namingContext)
 
-            return try provider.rootAddress.makeChildAddress(name: name, incarnation: incarnation)
+            return try provider.rootAddress.makeChildID(name: name, incarnation: incarnation)
             // FIXME: reserve the name, atomically
             // provider.reserveName(name) -> ActorID
         }
@@ -682,7 +681,7 @@ extension ClusterSystem: _ActorRefFactory {
     // Actual spawn implementation, minus the leading "$" check on names;
     internal func _spawn<Message>(
         using provider: _ActorRefProvider,
-        _ behavior: _Behavior<Message>, id: ActorID, props: _Props = _Props(),
+        _ behavior: _Behavior<Message>, id: ActorID, props: _Props,
         startImmediately: Bool = true
     ) throws -> _ActorRef<Message>
         where Message: Codable
@@ -705,14 +704,18 @@ extension ClusterSystem: _ActorRefFactory {
 
         return try provider._spawn(
             system: self,
-            behavior: behavior, id: id,
-            dispatcher: dispatcher, props: props,
+            behavior: behavior,
+            id: id,
+            dispatcher: dispatcher,
+            props: props,
             startImmediately: startImmediately
         )
     }
 
     // Reserve an actor address.
-    internal func _reserveName<Act>(type: Act.Type, props: _Props) throws -> ActorID where Act: DistributedActor {
+    internal func _reserveName<Act>(type: Act.Type, props: _Props,
+                                    file: String = #fileID, line: UInt = #line) throws -> ActorID where Act: DistributedActor
+    {
         let incarnation: ActorIncarnation = props._wellKnown ? .wellKnown : .random()
         guard let provider = (props._systemActor ? self.systemProvider : self.userProvider) else {
             fatalError("Unable to obtain system/user actor provider") // TODO(distributed): just throw here instead
@@ -731,22 +734,22 @@ extension ClusterSystem: _ActorRefFactory {
                 name = naming.makeName(&namingContext)
             }
 
-            let address = try provider.rootAddress.makeChildAddress(name: name, incarnation: incarnation)
-            guard self._reservedNames.insert(address).inserted else {
+            let id = try provider.rootAddress.makeChildID(name: name, incarnation: incarnation)
+            guard self._reservedNames.insert(id).inserted else {
                 fatalError("""
-                Attempted to reserve duplicate actor address: \(address.detailedDescription), 
+                Attempted to reserve duplicate actor address: \(id.detailedDescription), 
                 reserved: \(self._reservedNames.map(\.detailedDescription))
                 """)
             }
 
-            return address
+            return id
         }
     }
 
     public func _spawnDistributedActor<Message>(
         _ behavior: _Behavior<Message>, identifiedBy id: ClusterSystem.ActorID
     ) -> _ActorRef<Message> where Message: Codable {
-        var props = _Props.forSpawn
+        var props = id.metadata._props?.props ?? _Props() // ?? _Props.forSpawn
         props._distributedActor = true
 
         let provider: _ActorRefProvider
@@ -756,7 +759,12 @@ extension ClusterSystem: _ActorRefFactory {
             provider = self.userProvider
         }
 
-        return try! self._spawn(using: provider, behavior, id: id, props: props) // try!-safe, since the naming must have been correct
+        do {
+            return try self._spawn(using: provider, behavior, id: id, props: props)
+            // try!-safe, since the naming must have been correct
+        } catch {
+            fatalError("Failed to _spawn DistributedActor, id: \(id.fullDescription); props: \(id.metadata._props?.props), error: \(error)")
+        }
     }
 }
 
@@ -770,9 +778,18 @@ extension ClusterSystem: _ActorTreeTraversable {
     /// the print completes already have terminated, or may not print actors which started just after a visit at certain parent.
     internal func _printTree() {
         self._traverseAllVoid { context, ref in
-            print("\(String(repeating: "  ", count: context.depth))- /\(ref.id.name) - \(ref) @ incarnation:\(ref.id.incarnation)")
+            print("\(_hackyPThreadThreadId()): \(String(repeating: "  ", count: context.depth))- /\(ref.id.name) - \(ref) @ incarnation:\(ref.id.incarnation)")
             return .continue
         }
+    }
+
+    internal func _treeString() -> String {
+        var ids = [String]()
+        self._traverseAllVoid { _, ref in
+            ids.append("\(ref.id.detailedDescription)")
+            return .continue
+        }
+        return ids.joined(separator: "\n")
     }
 
     func _traverse<T>(context: _TraversalContext<T>, _ visit: (_TraversalContext<T>, _AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
@@ -958,10 +975,11 @@ extension ClusterSystem {
         return self._assignID(actorType, baseContext: nil)
     }
 
-    internal func _assignID<Act>(_ actorType: Act.Type, baseContext: DistributedActorContext?) -> ClusterSystem.ActorID
+    internal func _assignID<Act>(_ actorType: Act.Type, baseContext: DistributedActorContext?,
+                                 file: String = #fileID, line: UInt = #line) -> ClusterSystem.ActorID
         where Act: DistributedActor
     {
-        let props = _Props.forSpawn // task-local read for any properties this actor should have
+        let props = _Props.forSpawn.consume() // task-local read for any properties this actor should have
 
         if let designatedActorID = props._designatedActorID {
             return designatedActorID
@@ -993,17 +1011,18 @@ extension ClusterSystem {
 
         if let wellKnownName = props._wellKnownName {
             id.metadata.wellKnown = wellKnownName
+            id.metadata._props = _PropsShuttle(props: props)
         }
+//        if let wellKnownName = props.metadata.remove(forKey: ActorMetadataKeys.__instance.wellKnown) {
+//            id.metadata.wellKnown = wellKnownName
+//        }
 
         self.log.trace("Assign identity", metadata: [
             "actor/type": "\(actorType)",
             "actor/id": "\(id)",
+            "id": "\(id.fullDescription)",
         ])
 
-//        return self.namingLock.withLock {
-//            self._reservedNames.insert(id)
-//            return id
-//        }
         return id
     }
 
@@ -1103,7 +1122,7 @@ extension ClusterSystem {
         let baseContext = DistributedActorContext(lifecycle: nil, remoteCallInterceptor: interceptor)
         var id = self._assignID(Act.self, baseContext: baseContext)
         assert(id.context.remoteCallInterceptor != nil)
-        id = id._asRemote // FIXME(distributed): not strictly necessary ???
+        id = id._asRemote // Not strictly necessary?
 
         var props = _Props()
         props._designatedActorID = id
@@ -1700,7 +1719,7 @@ public struct GenericRemoteCallError: Error, Codable {
 
 public struct ClusterSystemError: DistributedActorSystemError, CustomStringConvertible {
     internal enum _ClusterSystemError {
-        case duplicateActorPath(path: ActorPath)
+        case duplicateActorPath(path: ActorPath, existing: ActorID)
         case shuttingDown(String)
     }
 

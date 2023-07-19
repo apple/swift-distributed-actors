@@ -254,7 +254,10 @@ public distributed actor OpLogDistributedReceptionist: DistributedReceptionist, 
 
         // === listen to cluster events ------------------
         self.wellKnownName = ActorPath.distributedActorReceptionist.name
-        assert(self.id.path.description == "/system/receptionist") // TODO(distributed): remove when we remove paths entirely
+        assert(
+            self.id.path.description == "/system/receptionist",
+            "\(Self.self) expects to be on well known path: /system/receptionist, but was: \(self.id.fullDescription)"
+        ) // TODO(distributed): remove when we remove paths entirely
 
         self.eventsListeningTask = Task { [weak self, system] in
             for try await event in system.cluster.events {

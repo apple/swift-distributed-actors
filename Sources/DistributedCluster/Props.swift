@@ -48,8 +48,12 @@ public struct _Props: @unchecked Sendable {
 
     /// Sets the ``ActorMetadataKeys/wellKnown`` key to this name during spawning.
     internal var _wellKnownName: String? {
-        willSet {
+        get {
+            self.metadata.wellKnown
+        }
+        set {
             self._wellKnown = newValue != nil
+            self.metadata.wellKnown = newValue
         }
     }
 
@@ -60,7 +64,14 @@ public struct _Props: @unchecked Sendable {
     /// INTERNAL API: Allows to request the actor system to spawn this actor under a specific name
     /// Used only with 'distributed actor' as a way to pass path to the `assignIdentity` call.
     /// // TODO(distributed): We should instead allow for an explicit way to pass params to the transport.
-    internal var _knownActorName: String?
+    internal var _knownActorName: String? {
+        get {
+            self.metadata.knownActorName
+        }
+        set {
+            self.metadata.knownActorName = newValue
+        }
+    }
 
     /// Makes `DistributedActor.resolve` use the designated ID, rather than assigning one.
     internal var _designatedActorID: ActorID?
@@ -79,9 +90,50 @@ public struct _Props: @unchecked Sendable {
         self.metrics = metrics
     }
 
+    func consume() -> _Props {
+        let c = self.deepCopy()
+        self.metadata.clear()
+        return c
+    }
+
+    /// Since metadata is mutable storage, we sometimes may need to perform a deep copy of Props if we want to have
+    /// separate metadata storage from the original copy.
+    func deepCopy() -> _Props {
+        var p = _Props(metadata: ActorMetadata(), metrics: self.metrics)
+        p.supervision = self.supervision
+        p.dispatcher = self.dispatcher
+        p._systemActor = self._systemActor
+        p._designatedActorID = self._designatedActorID
+        if p._knownActorName == nil {
+            p._knownActorName = self._knownActorName
+        }
+        p._wellKnownName = self._wellKnownName
+        p._wellKnown = self._wellKnown
+        return p
+    }
+
     /// Allows for passing properties to creating a distributed actor.
     @TaskLocal
     internal static var forSpawn: _Props = .init()
+}
+
+/// INTERNAL: Used for shuttling the Props into the ID while performing assignID.
+/// These props must be used during `_spawn` which happens on `actorReady`.
+///
+/// This is somewhat of a relict of ActorRef infrastructure and should eventually be removed.
+struct _PropsShuttle: @unchecked Sendable, Codable {
+    let props: _Props
+    init(props: _Props) {
+        self.props = props.deepCopy()
+    }
+
+    init(from decoder: Decoder) throws {
+        fatalError()
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        fatalError()
+    }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------

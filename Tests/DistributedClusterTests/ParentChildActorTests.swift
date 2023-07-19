@@ -63,7 +63,7 @@ final class ParentChildActorTests: SingleClusterSystemXCTestCase {
                     }
                     probe.tell(.spawned(child: kid))
                 } catch let error as _ActorContextError {
-                    if case .duplicateActorPath(let path) = error.underlying.error {
+                    if case .duplicateActorPath(let path, let existing) = error.underlying.error {
                         probe.tell(.spawnFailed(path: path))
                     } else {
                         throw error
@@ -77,7 +77,7 @@ final class ParentChildActorTests: SingleClusterSystemXCTestCase {
                     }
                     probe.tell(.spawned(child: kid))
                 } catch let error as _ActorContextError {
-                    if case .duplicateActorPath(let path) = error.underlying.error {
+                    if case .duplicateActorPath(let path, let existing) = error.underlying.error {
                         probe.tell(.spawnFailed(path: path))
                     } else {
                         throw error
@@ -134,7 +134,7 @@ final class ParentChildActorTests: SingleClusterSystemXCTestCase {
                         }
                         probe.tell(.spawned(child: kid))
                     } catch let error as _ActorContextError {
-                        if case .duplicateActorPath(let path) = error.underlying.error {
+                        if case .duplicateActorPath(let path, let existing) = error.underlying.error {
                             probe.tell(.spawnFailed(path: path))
                         } else {
                             throw error

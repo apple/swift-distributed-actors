@@ -38,4 +38,55 @@ final class ClusterSingletonPluginTests: SingleClusterSystemXCTestCase {
         let proxyReply = try await proxyRef.greet(name: "Charlene")
         proxyReply.shouldStartWith(prefix: "Hello Charlene!")
     }
+
+    func test_singleton_nestedSingleton() async throws {
+        let system = await setUpNode("test") { settings in
+            settings += ClusterSingletonPlugin()
+        }
+
+        let singleton = try await system.singleton.host(name: "test-singleton") { actorSystem in
+            SingletonWhichCreatesDistributedActorDuringInit(actorSystem: actorSystem)
+        }
+
+        let singletonID = singleton.id
+        let greeterID = try await singleton.getGreeter().id
+
+        pinfo("singleton proxy    id: \(singletonID)")
+        pinfo("singleton actual   id: \(try await singleton.actualID())")
+        pinfo("singleton(greeter) id: \(greeterID)")
+
+        try await singleton.actualID().detailedDescription.shouldContain("test-singleton")
+        // if this were true we would have crashed by a duplicate name already, but let's make sure:
+        singletonID.shouldNotEqual(greeterID)
+    }
+
+    distributed actor SingletonWhichCreatesDistributedActorDuringInit: ClusterSingleton {
+        typealias ActorSystem = ClusterSystem
+
+        private let greeter: Greeter
+
+        init(actorSystem: ActorSystem) {
+            self.actorSystem = actorSystem
+            self.greeter = Greeter(actorSystem: actorSystem)
+        }
+
+        distributed func actualID() -> ActorSystem.ActorID {
+            self.id
+        }
+
+        distributed func getGreeter() -> Greeter {
+            return self.greeter
+        }
+    }
+
+    distributed actor Greeter {
+        typealias ActorSystem = ClusterSystem
+        init(actorSystem: ActorSystem) {
+            self.actorSystem = actorSystem
+        }
+
+        distributed func greet() {
+            print("Hello!")
+        }
+    }
 }

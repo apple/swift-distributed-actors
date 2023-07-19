@@ -71,6 +71,19 @@ public class _Children {
         }
     }
 
+    public func findID(named name: String) -> ActorID? {
+        self.rwLock.withReaderLock {
+            switch self.container[name] {
+            case .some(.cell(let child)):
+                return child.asAddressable.id
+            case .some(.adapter(let adapter)):
+                return adapter.id
+            case .none:
+                return nil
+            }
+        }
+    }
+
     internal func insert<T, R: _ActorShell<T>>(_ childCell: R) {
         self.rwLock.withWriterLockVoid {
             self.container[childCell.id.name] = .cell(childCell)
@@ -315,7 +328,7 @@ extension _ActorShell {
         try self.validateUniqueName(name) // FIXME: reserve name
 
         let incarnation: ActorIncarnation = props._wellKnown ? .wellKnown : .random()
-        let id: ActorID = try self.id.makeChildAddress(name: name, incarnation: incarnation)
+        let id: ActorID = try self.id.makeChildID(name: name, incarnation: incarnation)
 
         let dispatcher: MessageDispatcher
         switch props.dispatcher {
@@ -372,9 +385,9 @@ extension _ActorShell {
     }
 
     private func validateUniqueName(_ name: String) throws {
-        if children.contains(name: name) {
+        if let existing = children.findID(named: name) {
             let childPath: ActorPath = try self.id.path.makeChildPath(name: name)
-            throw _ActorContextError(.duplicateActorPath(path: childPath))
+            throw _ActorContextError(.duplicateActorPath(path: childPath, existing: existing))
         }
     }
 }
@@ -392,7 +405,7 @@ public struct _ActorContextError: Error, CustomStringConvertible {
         /// wellKnownly exist.
         case attemptedStoppingNonChildActor(ref: _AddressableActorRef)
         /// It is not allowed to spawn
-        case duplicateActorPath(path: ActorPath)
+        case duplicateActorPath(path: ActorPath, existing: ActorID)
         /// It is not allowed to spawn new actors when the system is stopping
         case alreadyStopping(String)
     }

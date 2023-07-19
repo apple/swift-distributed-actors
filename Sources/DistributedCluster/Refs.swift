@@ -638,8 +638,8 @@ public class _Guardian {
                 throw _ActorContextError(.alreadyStopping("system: \(self.system?.name ?? "<nil>")"))
             }
 
-            if self._children.contains(name: path.name) {
-                throw ClusterSystemError(.duplicateActorPath(path: path))
+            if let existing = self._children.findID(named: path.name) {
+                throw ClusterSystemError(.duplicateActorPath(path: path, existing: existing))
             }
 
             let cell = try spawn()
