@@ -50,7 +50,7 @@ final class LifecycleWatchContainer {
     }
 
     func clear() {
-        _lock.wait()
+        self._lock.wait()
         defer {
             _lock.signal()
         }
@@ -79,7 +79,7 @@ extension LifecycleWatchContainer {
         defer {
             self._lock.signal()
         }
-        
+
         traceLog_DeathWatch("issue watch: \(watcheeID) (from \(self.watcherID))")
 
         let watcherID: ActorID = self.watcherID
