@@ -50,10 +50,10 @@ final class LifecycleWatchContainer {
     }
 
     func clear() {
-//        _lock.wait()
-//        defer {
-//            _lock.signal()
-//        }
+        _lock.wait()
+        defer {
+            _lock.signal()
+        }
 
         traceLog_DeathWatch("Clear LifecycleWatchContainer owned by \(self.watcherID)")
         self.watching = [:]
@@ -75,6 +75,11 @@ extension LifecycleWatchContainer {
         @_implicitSelfCapture whenTerminated: @escaping @Sendable (ClusterSystem.ActorID) async -> Void,
         file: String = #filePath, line: UInt = #line
     ) {
+        self._lock.wait()
+        defer {
+            self._lock.signal()
+        }
+        
         traceLog_DeathWatch("issue watch: \(watcheeID) (from \(self.watcherID))")
 
         let watcherID: ActorID = self.watcherID
@@ -87,7 +92,7 @@ extension LifecycleWatchContainer {
         let addressableWatchee = self.system._resolveUntyped(context: .init(id: watcheeID, system: self.system))
         let addressableWatcher = self.system._resolveUntyped(context: .init(id: watcherID, system: self.system))
 
-        if self.isWatching(watcheeID) {
+        if self.isWatching0(watcheeID) {
             // While we bail out early here, we DO override whichever value was set as the customized termination message.
             // This is to enable being able to keep updating the context associated with a watched actor, e.g. if how
             // we should react to its termination has changed since the last time watch() was invoked.
@@ -119,6 +124,11 @@ extension LifecycleWatchContainer {
         watchee: Watchee,
         file: String = #filePath, line: UInt = #line
     ) -> Watchee where Watchee: DistributedActor, Watchee.ActorSystem == ClusterSystem {
+        self._lock.wait()
+        defer {
+            _lock.signal()
+        }
+
         traceLog_DeathWatch("issue unwatch: watchee: \(watchee) (from \(self.watcherID)")
         let watcheeID = watchee.id
         let watcherID = self.watcherID
@@ -144,7 +154,17 @@ extension LifecycleWatchContainer {
     /// - Returns `true` if the passed in actor ref is being watched
     @usableFromInline
     internal func isWatching(_ identity: ClusterSystem.ActorID) -> Bool {
-        return self.watching[identity] != nil
+        self._lock.wait()
+        defer {
+            _lock.signal()
+        }
+
+        return self.isWatching0(identity)
+    }
+
+    @usableFromInline
+    internal func isWatching0(_ identity: ClusterSystem.ActorID) -> Bool {
+        self.watching[identity] != nil
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -218,16 +238,6 @@ extension LifecycleWatchContainer {
                 continue
             }
 
-            // we KNOW an actor existed if it is local and not resolved as /dead; otherwise it may have existed
-            // for a remote ref we don't know for sure if it existed
-            // let existenceConfirmed = watched.refType.isLocal && !watched.id.path.starts(with: ._dead)
-            let existenceConfirmed = true // TODO: implement support for existence confirmed or drop it?
-
-//            let address = watcherID
-//
-//            let ref = system._resolveUntyped(context: .init(id: id, system: system))
-//            ref._sendSystemMessage(.terminated(ref: watched, existenceConfirmed: existenceConfirmed, idTerminated: true), file: #filePath, line: #line)
-            // fn(watched)
             self.receiveTerminated(watched)
         }
     }
