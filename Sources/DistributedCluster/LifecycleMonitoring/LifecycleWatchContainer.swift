@@ -198,20 +198,24 @@ extension LifecycleWatchContainer {
 
     /// Performs cleanup of references to the dead actor.
     internal func receiveTerminated(_ terminated: _Signals.Terminated) {
-        self.receiveTerminated(terminated.id)
+        self.receiveTerminated0(terminated.id)
     }
 
-    internal func receiveTerminated(_ terminatedIdentity: ClusterSystem.ActorID) {
+    internal func receiveTerminated(_ terminatedID: ClusterSystem.ActorID) {
         self._lock.wait()
         defer {
             _lock.signal()
         }
 
+        self.receiveTerminated0(terminatedID)
+    }
+
+    private func receiveTerminated0(_ terminatedID: ClusterSystem.ActorID) {
         // we remove the actor from both sets;
         // 1) we don't need to watch it anymore, since it has just terminated,
-        let removedOnTerminationFn = self.watching.removeValue(forKey: terminatedIdentity)
+        let removedOnTerminationFn = self.watching.removeValue(forKey: terminatedID)
         // 2) we don't need to refer to it, since sending it .terminated notifications would be pointless.
-        _ = self.watchedBy.removeValue(forKey: terminatedIdentity)
+        _ = self.watchedBy.removeValue(forKey: terminatedID)
 
         guard let onTermination = removedOnTerminationFn else {
             // if we had no stored/removed termination message, it means this actor was NOT watched actually.
@@ -220,8 +224,8 @@ extension LifecycleWatchContainer {
         }
 
         Task {
-            // TODO(distributed): we should surface the additional information (node terminated, existence confirmed) too
-            await onTermination(terminatedIdentity)
+            // TODO(distributed): we could surface the additional information (node terminated, existence confirmed) too
+            await onTermination(terminatedID)
         }
     }
 
@@ -232,13 +236,15 @@ extension LifecycleWatchContainer {
     /// Does NOT immediately handle these `Terminated` signals, they are treated as any other normal signal would,
     /// such that the user can have a chance to handle and react to them.
     private func receiveNodeTerminated(_ terminatedNode: Cluster.Node) {
-        // TODO: remove actors as we notify about them
-        for (watched, _) in self.watching {
-            guard watched.node == terminatedNode else {
-                continue
-            }
+        self._lock.wait()
+        defer {
+            _lock.signal()
+        }
 
-            self.receiveTerminated(watched)
+        let terminatedIDs = self.watching.keys.filter { $0.node == terminatedNode }
+        for terminatedID in terminatedIDs {
+            self.receiveTerminated0(terminatedID)
+            self.watching.removeValue(forKey: terminatedID)
         }
     }
 

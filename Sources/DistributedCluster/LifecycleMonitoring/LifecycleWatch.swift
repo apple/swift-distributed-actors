@@ -135,10 +135,6 @@ extension LifecycleWatch {
 extension LifecycleWatch {
     /// Function invoked by the actor transport when a distributed termination is detected.
     public func _receiveActorTerminated(id: ID) async {
-        guard let watch = self.context.lifecycle else {
-            return
-        }
-
-        watch.receiveTerminated(id)
+        self.context.lifecycle?.receiveTerminated(id)
     }
 }
