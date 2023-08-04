@@ -50,10 +50,10 @@ final class LifecycleWatchContainer {
     }
 
     func clear() {
-//        _lock.wait()
-//        defer {
-//            _lock.signal()
-//        }
+        self._lock.wait()
+        defer {
+            _lock.signal()
+        }
 
         traceLog_DeathWatch("Clear LifecycleWatchContainer owned by \(self.watcherID)")
         self.watching = [:]
@@ -75,6 +75,11 @@ extension LifecycleWatchContainer {
         @_implicitSelfCapture whenTerminated: @escaping @Sendable (ClusterSystem.ActorID) async -> Void,
         file: String = #filePath, line: UInt = #line
     ) {
+        self._lock.wait()
+        defer {
+            self._lock.signal()
+        }
+
         traceLog_DeathWatch("issue watch: \(watcheeID) (from \(self.watcherID))")
 
         let watcherID: ActorID = self.watcherID
@@ -87,7 +92,7 @@ extension LifecycleWatchContainer {
         let addressableWatchee = self.system._resolveUntyped(context: .init(id: watcheeID, system: self.system))
         let addressableWatcher = self.system._resolveUntyped(context: .init(id: watcherID, system: self.system))
 
-        if self.isWatching(watcheeID) {
+        if self.isWatching0(watcheeID) {
             // While we bail out early here, we DO override whichever value was set as the customized termination message.
             // This is to enable being able to keep updating the context associated with a watched actor, e.g. if how
             // we should react to its termination has changed since the last time watch() was invoked.
@@ -119,6 +124,11 @@ extension LifecycleWatchContainer {
         watchee: Watchee,
         file: String = #filePath, line: UInt = #line
     ) -> Watchee where Watchee: DistributedActor, Watchee.ActorSystem == ClusterSystem {
+        self._lock.wait()
+        defer {
+            _lock.signal()
+        }
+
         traceLog_DeathWatch("issue unwatch: watchee: \(watchee) (from \(self.watcherID)")
         let watcheeID = watchee.id
         let watcherID = self.watcherID
@@ -144,7 +154,17 @@ extension LifecycleWatchContainer {
     /// - Returns `true` if the passed in actor ref is being watched
     @usableFromInline
     internal func isWatching(_ identity: ClusterSystem.ActorID) -> Bool {
-        return self.watching[identity] != nil
+        self._lock.wait()
+        defer {
+            _lock.signal()
+        }
+
+        return self.isWatching0(identity)
+    }
+
+    @usableFromInline
+    internal func isWatching0(_ identity: ClusterSystem.ActorID) -> Bool {
+        self.watching[identity] != nil
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -178,20 +198,24 @@ extension LifecycleWatchContainer {
 
     /// Performs cleanup of references to the dead actor.
     internal func receiveTerminated(_ terminated: _Signals.Terminated) {
-        self.receiveTerminated(terminated.id)
+        self.receiveTerminated0(terminated.id)
     }
 
-    internal func receiveTerminated(_ terminatedIdentity: ClusterSystem.ActorID) {
+    internal func receiveTerminated(_ terminatedID: ClusterSystem.ActorID) {
         self._lock.wait()
         defer {
             _lock.signal()
         }
 
+        self.receiveTerminated0(terminatedID)
+    }
+
+    private func receiveTerminated0(_ terminatedID: ClusterSystem.ActorID) {
         // we remove the actor from both sets;
         // 1) we don't need to watch it anymore, since it has just terminated,
-        let removedOnTerminationFn = self.watching.removeValue(forKey: terminatedIdentity)
+        let removedOnTerminationFn = self.watching.removeValue(forKey: terminatedID)
         // 2) we don't need to refer to it, since sending it .terminated notifications would be pointless.
-        _ = self.watchedBy.removeValue(forKey: terminatedIdentity)
+        _ = self.watchedBy.removeValue(forKey: terminatedID)
 
         guard let onTermination = removedOnTerminationFn else {
             // if we had no stored/removed termination message, it means this actor was NOT watched actually.
@@ -200,8 +224,8 @@ extension LifecycleWatchContainer {
         }
 
         Task {
-            // TODO(distributed): we should surface the additional information (node terminated, existence confirmed) too
-            await onTermination(terminatedIdentity)
+            // TODO(distributed): we could surface the additional information (node terminated, existence confirmed) too
+            await onTermination(terminatedID)
         }
     }
 
@@ -212,23 +236,15 @@ extension LifecycleWatchContainer {
     /// Does NOT immediately handle these `Terminated` signals, they are treated as any other normal signal would,
     /// such that the user can have a chance to handle and react to them.
     private func receiveNodeTerminated(_ terminatedNode: Cluster.Node) {
-        // TODO: remove actors as we notify about them
-        for (watched, _) in self.watching {
-            guard watched.node == terminatedNode else {
-                continue
-            }
+        self._lock.wait()
+        defer {
+            _lock.signal()
+        }
 
-            // we KNOW an actor existed if it is local and not resolved as /dead; otherwise it may have existed
-            // for a remote ref we don't know for sure if it existed
-            // let existenceConfirmed = watched.refType.isLocal && !watched.id.path.starts(with: ._dead)
-            let existenceConfirmed = true // TODO: implement support for existence confirmed or drop it?
-
-//            let address = watcherID
-//
-//            let ref = system._resolveUntyped(context: .init(id: id, system: system))
-//            ref._sendSystemMessage(.terminated(ref: watched, existenceConfirmed: existenceConfirmed, idTerminated: true), file: #filePath, line: #line)
-            // fn(watched)
-            self.receiveTerminated(watched)
+        let terminatedIDs = self.watching.keys.filter { $0.node == terminatedNode }
+        for terminatedID in terminatedIDs {
+            self.receiveTerminated0(terminatedID)
+            self.watching.removeValue(forKey: terminatedID)
         }
     }
 

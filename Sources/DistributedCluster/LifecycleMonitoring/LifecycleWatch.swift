@@ -71,7 +71,7 @@ extension LifecycleWatch {
         }
 
         watch.termination(of: watchee.id, whenTerminated: { id in
-            try? await self.terminated(actor: id)
+            await self.terminated(actor: id)
         }, file: file, line: line)
 
         return watchee
@@ -135,10 +135,6 @@ extension LifecycleWatch {
 extension LifecycleWatch {
     /// Function invoked by the actor transport when a distributed termination is detected.
     public func _receiveActorTerminated(id: ID) async {
-        guard let watch = self.context.lifecycle else {
-            return
-        }
-
-        watch.receiveTerminated(id)
+        self.context.lifecycle?.receiveTerminated(id)
     }
 }
