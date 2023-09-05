@@ -66,7 +66,7 @@ extension DispatchWorkItem: Cancelable {
 extension DispatchQueue: Scheduler, @unchecked Sendable {
     func scheduleOnce(delay: Duration, _ f: @escaping () -> Void) -> Cancelable {
         let workItem = DispatchWorkItem(block: f)
-        self.asyncAfter(deadline: .now() + Dispatch.DispatchTimeInterval.nanoseconds(Int(delay.nanoseconds)), execute: workItem)
+        self.asyncAfter(deadline: .init(nowDelayedBy: delay), execute: workItem)
         return workItem
     }
 
@@ -76,7 +76,7 @@ extension DispatchQueue: Scheduler, @unchecked Sendable {
                 await f()
             }
         }
-        self.asyncAfter(deadline: .now() + Dispatch.DispatchTimeInterval.nanoseconds(Int(delay.nanoseconds)), execute: workItem)
+        self.asyncAfter(deadline: .init(nowDelayedBy: delay), execute: workItem)
         return workItem
     }
 
@@ -91,13 +91,13 @@ extension DispatchQueue: Scheduler, @unchecked Sendable {
 
         func sched() {
             if !cancellable.isCanceled {
-                let nextDeadline = DispatchTime.now() + Dispatch.DispatchTimeInterval.nanoseconds(Int(interval.nanoseconds))
+                let nextDeadline = DispatchTime(nowDelayedBy: interval)
                 f()
                 self.asyncAfter(deadline: nextDeadline, execute: sched)
             }
         }
 
-        self.asyncAfter(deadline: .now() + Dispatch.DispatchTimeInterval.nanoseconds(Int(initialDelay.nanoseconds)), execute: sched)
+        self.asyncAfter(deadline: .init(nowDelayedBy: initialDelay), execute: sched)
 
         return cancellable
     }
@@ -107,7 +107,7 @@ extension DispatchQueue: Scheduler, @unchecked Sendable {
 
         @Sendable func sched() {
             if !cancellable.isCanceled {
-                let nextDeadline = DispatchTime.now() + Dispatch.DispatchTimeInterval.nanoseconds(Int(interval.nanoseconds))
+                let nextDeadline = DispatchTime(nowDelayedBy: interval)
                 Task {
                     await f()
                     self.asyncAfter(deadline: nextDeadline, execute: sched)
@@ -115,7 +115,7 @@ extension DispatchQueue: Scheduler, @unchecked Sendable {
             }
         }
 
-        self.asyncAfter(deadline: .now() + Dispatch.DispatchTimeInterval.nanoseconds(Int(initialDelay.nanoseconds)), execute: sched)
+        self.asyncAfter(deadline: .init(nowDelayedBy: initialDelay), execute: sched)
 
         return cancellable
     }
@@ -124,5 +124,11 @@ extension DispatchQueue: Scheduler, @unchecked Sendable {
         self.schedule(initialDelay: initialDelay, interval: interval) {
             receiver.tell(message)
         }
+    }
+}
+
+extension Dispatch.DispatchTime {
+    fileprivate init(nowDelayedBy delay: Duration) {
+        self.init(uptimeNanoseconds: DispatchTime.now().uptimeNanoseconds + UInt64(delay.nanoseconds))
     }
 }
