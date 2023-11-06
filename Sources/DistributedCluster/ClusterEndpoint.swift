@@ -73,7 +73,7 @@ extension Cluster.Endpoint: Comparable {
     // Silly but good enough comparison for deciding "who is lower node"
     // as we only use those for "tie-breakers" any ordering is fine to be honest here.
     public static func < (lhs: Cluster.Endpoint, rhs: Cluster.Endpoint) -> Bool {
-        "\(lhs)" < "\(rhs)"
+        "\(lhs.protocol)\(lhs.host)\(lhs.port)" < "\(rhs.protocol)\(rhs.host)\(rhs.port)"
     }
 
     public func hash(into hasher: inout Hasher) {
