@@ -19,9 +19,9 @@ import NIO
 import XCTest
 
 final class LeadershipTests: XCTestCase {
-    let memberA = Cluster.Member(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "System", host: "1.1.1.1", port: 7337), nid: .random()), status: .up)
-    let memberB = Cluster.Member(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "System", host: "2.2.2.2", port: 8228), nid: .random()), status: .up)
-    let memberC = Cluster.Member(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "System", host: "3.3.3.3", port: 9119), nid: .random()), status: .up)
+    let memberA = Cluster.Member(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "C", host: "1.1.1.1", port: 7337), nid: .random()), status: .up)
+    let memberB = Cluster.Member(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "B", host: "2.2.2.2", port: 8228), nid: .random()), status: .up)
+    let memberC = Cluster.Member(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "A", host: "3.3.3.3", port: 9119), nid: .random()), status: .up)
     let newMember = Cluster.Member(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "System", host: "4.4.4.4", port: 1001), nid: .random()), status: .up)
 
     let fakeContext = LeaderElectionContext(log: NoopLogger.make(), eventLoop: EmbeddedEventLoop())
