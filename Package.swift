@@ -167,31 +167,31 @@ var dependencies: [Package.Dependency] = [
 //    .package(name: "swift-cluster-membership", path: "Packages/swift-cluster-membership"), // FIXME: just work in progress
     .package(url: "https://github.com/apple/swift-cluster-membership", branch: "main"),
 
-    .package(url: "https://github.com/apple/swift-nio", from: "2.43.1"),
-    .package(url: "https://github.com/apple/swift-nio-extras", from: "1.2.0"),
-    .package(url: "https://github.com/apple/swift-nio-ssl", from: "2.16.1"),
+    .package(url: "https://github.com/apple/swift-nio", from: "2.61.1"),
+    .package(url: "https://github.com/apple/swift-nio-extras", from: "1.20.0"),
+    .package(url: "https://github.com/apple/swift-nio-ssl", from: "2.25.0"),
 
-    .package(url: "https://github.com/apple/swift-protobuf", from: "1.7.0"),
+    .package(url: "https://github.com/apple/swift-protobuf", from: "1.25.1"),
 
     // ~~~ backtraces ~~~
     // TODO: optimally, library should not pull swift-backtrace
     .package(url: "https://github.com/swift-server/swift-backtrace", from: "1.1.1"),
 
     // ~~~ Swift libraries ~~~
-    .package(url: "https://github.com/apple/swift-async-algorithms", from: "0.0.3"),
-    .package(url: "https://github.com/apple/swift-collections", from: "1.0.1"),
+    .package(url: "https://github.com/apple/swift-async-algorithms", from: "1.0.0-beta"),
+    .package(url: "https://github.com/apple/swift-collections", from: "1.0.5"),
 
     // ~~~ Observability ~~~
     .package(url: "https://github.com/apple/swift-log", from: "1.0.0"),
     // swift-metrics 1.x and 2.x are almost API compatible, so most clients should use
     .package(url: "https://github.com/apple/swift-metrics", "1.0.0" ..< "3.0.0"),
-    .package(url: "https://github.com/apple/swift-service-discovery", from: "1.0.0"),
+    .package(url: "https://github.com/apple/swift-service-discovery", from: "1.3.0"),
 
     // ~~~ SwiftPM Plugins ~~~
     .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.0.0"),
 
     // ~~~ Command Line ~~~~
-    .package(url: "https://github.com/apple/swift-argument-parser", from: "1.0.3"),
+    .package(url: "https://github.com/apple/swift-argument-parser", from: "1.2.3"),
 ]
 
 if ProcessInfo.processInfo.environment["VALIDATE_DOCS"] != nil {
