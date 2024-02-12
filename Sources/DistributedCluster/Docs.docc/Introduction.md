@@ -81,7 +81,7 @@ distributed actor WebSocketWorker {
 
 Distributed actors gain most of their features from the fact that they can be interacted with "the same way" (only by asynchronous and throwing `distributed func` calls), regardless where they are "located". This means that if one is passed an instance of a `distributed actor Greeter` we do not know (by design and on purpose!) if it is really a local instance, or actually only a reference to a remote distributed actor, located on some other host.
 
-This capability along with strong isolation guarantees, enables a concept called [location transparency](https://en.wikipedia.org/wiki/Location_transparency), which is a programming style in which we describe network resources by some form of identity, and not their actual location. In distributed actors, this means that practically speaking, we do not have to know "where" a distributed actor is located. Or in some more advanced patterns, it may actually be "moving" form one host to another, while we still only refer to it using some abstract identifier. 
+This capability along with strong isolation guarantees, enables a concept called [location transparency](https://en.wikipedia.org/wiki/Location_transparency), which is a programming style in which we describe network resources by some form of identity, and not their actual location. In distributed actors, this means that practically speaking, we do not have to know "where" a distributed actor is located. Or in some more advanced patterns, it may actually be "moving" from one host to another, while we still only refer to it using some abstract identifier. 
 
 ## Distributed actor isolation
 
