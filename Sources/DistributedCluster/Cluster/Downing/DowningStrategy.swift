@@ -93,10 +93,10 @@ internal distributed actor DowningStrategyShell {
         self.strategy = strategy
         self.actorSystem = system
         self.eventsListeningTask = Task { [weak self] in
-            guard let __secretlyKnownToBeLocal = self else { return } // FIXME(local): we really need `local` here
-
-            for await event in system.cluster.events {
-                try __secretlyKnownToBeLocal.receiveClusterEvent(event)
+            try await self?.whenLocal { __secretlyKnownToBeLocal in
+                for await event in system.cluster.events {
+                    try __secretlyKnownToBeLocal.receiveClusterEvent(event)
+                }
             }
         }
     }
@@ -120,16 +120,14 @@ internal distributed actor DowningStrategyShell {
         case .startTimer(let member, let delay):
             self.log.trace("Start timer for member: \(member), delay: \(delay)")
             self.memberTimerTasks[member] = Task { [weak self] in
-                guard let __secretlyKnownToBeLocal = self else { return } // FIXME(local): we really need `local` here
-                defer { __secretlyKnownToBeLocal.memberTimerTasks.removeValue(forKey: member) }
-
-                try await Task.sleep(until: .now + delay, clock: .continuous)
-
-                guard !Task.isCancelled else {
-                    return
+                try await self?.whenLocal { __secretlyKnownToBeLocal in
+                    defer { __secretlyKnownToBeLocal.memberTimerTasks.removeValue(forKey: member) }
+                    
+                    try await Task.sleep(until: .now + delay, clock: .continuous)
+                    
+                    guard !Task.isCancelled else { return }
+                    __secretlyKnownToBeLocal.onTimeout(member: member)
                 }
-
-                __secretlyKnownToBeLocal.onTimeout(member: member)
             }
         case .cancelTimer(let member):
             self.log.trace("Cancel timer for member: \(member)")
