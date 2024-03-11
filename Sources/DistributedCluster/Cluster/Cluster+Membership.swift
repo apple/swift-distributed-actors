@@ -703,6 +703,7 @@ extension Cluster {
             case notFoundAny(Cluster.Endpoint, in: Cluster.Membership)
             case atLeastStatusRequirementNotMet(expectedAtLeast: Cluster.MemberStatus, found: Cluster.Member)
             case statusRequirementNotMet(expected: Cluster.MemberStatus, found: Cluster.Member)
+            case countRequirementNotMet(expected: Int, expectedStatus: Cluster.MemberStatus)
             case awaitStatusTimedOut(Duration, Error?)
 
             var prettyDescription: String {
@@ -721,6 +722,8 @@ extension Cluster {
                     return "Expected \(reflecting: foundMember.node) to be seen as at-least [\(expectedAtLeastStatus)] but was [\(foundMember.status)]"
                 case .statusRequirementNotMet(let expectedStatus, let foundMember):
                     return "Expected \(reflecting: foundMember.node) to be seen as [\(expectedStatus)] but was [\(foundMember.status)]"
+                case .countRequirementNotMet(let count, let expectedStatus):
+                    return "Expected \(count) nodes to be seen as [\(expectedStatus)], but did not find enough"
                 case .awaitStatusTimedOut(let duration, let lastError):
                     let lastErrorMessage: String
                     if let error = lastError {

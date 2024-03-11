@@ -527,9 +527,9 @@ extension OpLogDistributedReceptionist {
 
             for registration in registrations {
                 if subscription.tryOffer(registration: registration) {
-                    self.log.notice("OFFERED \(registration.actorID) TO \(subscription)")
+                    self.log.trace("Offered \(registration.actorID) to \(subscription)")
                 } else {
-                    self.log.notice("DROPPED \(registration.actorID) TO \(subscription)")
+                    self.log.trace("Dropped \(registration.actorID) to \(subscription)")
                 }
             }
         }
