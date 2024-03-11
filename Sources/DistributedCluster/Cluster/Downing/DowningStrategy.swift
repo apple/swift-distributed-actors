@@ -93,9 +93,9 @@ internal distributed actor DowningStrategyShell {
         self.strategy = strategy
         self.actorSystem = system
         self.eventsListeningTask = Task { [weak self] in
-            try await self?.whenLocal { __secretlyKnownToBeLocal in
+            try await self?.whenLocal { myself in
                 for await event in system.cluster.events {
-                    try __secretlyKnownToBeLocal.receiveClusterEvent(event)
+                    try myself.receiveClusterEvent(event)
                 }
             }
         }
@@ -120,13 +120,13 @@ internal distributed actor DowningStrategyShell {
         case .startTimer(let member, let delay):
             self.log.trace("Start timer for member: \(member), delay: \(delay)")
             self.memberTimerTasks[member] = Task { [weak self] in
-                try await self?.whenLocal { __secretlyKnownToBeLocal in
-                    defer { __secretlyKnownToBeLocal.memberTimerTasks.removeValue(forKey: member) }
+                try await self?.whenLocal { myself in
+                    defer { myself.memberTimerTasks.removeValue(forKey: member) }
                     
                     try await Task.sleep(until: .now + delay, clock: .continuous)
                     
                     guard !Task.isCancelled else { return }
-                    __secretlyKnownToBeLocal.onTimeout(member: member)
+                    myself.onTimeout(member: member)
                 }
             }
         case .cancelTimer(let member):
