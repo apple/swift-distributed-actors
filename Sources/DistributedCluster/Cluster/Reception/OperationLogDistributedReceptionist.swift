@@ -485,12 +485,12 @@ extension OpLogDistributedReceptionist {
         let flushDelay = actorSystem.settings.receptionist.listingFlushDelay
         self.log.debug("schedule delayed flush")
         self.flushTimerTasks[timerTaskKey] = Task { [weak self] in
-          try await self?.whenLocal { myself in
-            defer { myself.flushTimerTasks.removeValue(forKey: timerTaskKey) }
-              
-            try await Task.sleep(until: .now + flushDelay, clock: .continuous)
-            myself.onDelayedListingFlushTick(key: key)
-          }
+            try await self?.whenLocal { myself in
+                defer { myself.flushTimerTasks.removeValue(forKey: timerTaskKey) }
+
+                try await Task.sleep(until: .now + flushDelay, clock: .continuous)
+                myself.onDelayedListingFlushTick(key: key)
+            }
         }
     }
 
