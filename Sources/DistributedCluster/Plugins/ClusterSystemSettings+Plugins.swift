@@ -21,6 +21,7 @@ public struct PluginsSettings {
     }
 
     internal var plugins: [BoxedPlugin] = []
+    internal var actorLifecycleHooks: [PluginActorLifecycleHook] = []
 
     public init() {}
 
@@ -72,7 +73,9 @@ extension PluginsSettings {
             !self.isInstalled(plugin: plugin),
             "Attempted to add plugin \(plugin.key) but key already used! Plugin [\(plugin)], installed plugins: \(self.plugins)."
         )
-
+        if let plugin = plugin as? PluginActorLifecycleHook {
+            self.actorLifecycleHooks.append(plugin)
+        }
         return self.plugins.append(BoxedPlugin(plugin))
     }
 

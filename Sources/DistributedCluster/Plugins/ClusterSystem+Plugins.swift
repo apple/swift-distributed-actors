@@ -114,3 +114,9 @@ internal struct AnyPluginKey: Hashable, CustomStringConvertible {
         }
     }
 }
+
+/// Way to hook into ClusterSystem's actor lifecycle events, specifically to `ready` and `resign`.
+public protocol PluginActorLifecycleHook {
+    func actorReady<Act: DistributedActor>(_ actor: Act) where Act: DistributedActor, Act.ID == ClusterSystem.ActorID
+    func resignID(_ id: ClusterSystem.ActorID)
+}
