@@ -25,7 +25,7 @@ public struct PluginsSettings {
 
     public init() {}
 
-    /// Adds a `_Plugin`.
+    /// Adds a `Plugin`.
     ///
     /// - Note: A plugin that depends on others should be added *after* its dependencies.
     /// - Faults, when plugin of the exact same `PluginKey` is already included in the settings.

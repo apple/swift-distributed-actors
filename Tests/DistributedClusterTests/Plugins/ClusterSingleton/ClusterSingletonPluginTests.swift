@@ -79,7 +79,7 @@ final class ClusterSingletonPluginTests: SingleClusterSystemXCTestCase {
         await fulfillment(of: [hookFulfillment])
     }
     
-    actor TestClusterHookPlugin: _Plugin, PluginActorLifecycleHook {
+    actor TestClusterHookPlugin: Plugin, PluginActorLifecycleHook {
         nonisolated var key: Key { "$testClusterHook" }
         
         let onActorReady: (any DistributedActor) async throws -> ()
