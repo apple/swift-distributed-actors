@@ -30,12 +30,12 @@ public struct PluginsSettings {
     /// - Note: A plugin that depends on others should be added *after* its dependencies.
     /// - Faults, when plugin of the exact same `PluginKey` is already included in the settings.
     @available(*, deprecated, message: "use settings.install(plugin:) instead")
-    public mutating func add<P: _Plugin>(_ plugin: P) {
+    public mutating func add<P: Plugin>(_ plugin: P) {
         self.install(plugin: plugin)
     }
 
     /// Returns `Plugin` identified by `key`.
-    public subscript<P: _Plugin>(_ key: _PluginKey<P>) -> P? {
+    public subscript<P: Plugin>(_ key: PluginKey<P>) -> P? {
         self.plugins.first { $0.key == key.asAny }?.unsafeUnwrapAs(P.self)
     }
 
@@ -68,7 +68,7 @@ extension PluginsSettings {
     /// and stopped as the system is shut down.
     ///
     /// - Parameter plugin: plugin to install in the actor system
-    public mutating func install<P: _Plugin>(plugin: P) {
+    public mutating func install<P: Plugin>(plugin: P) {
         precondition(
             !self.isInstalled(plugin: plugin),
             "Attempted to add plugin \(plugin.key) but key already used! Plugin [\(plugin)], installed plugins: \(self.plugins)."
@@ -82,18 +82,18 @@ extension PluginsSettings {
     /// Returns `true` if the given plugin is installed in the settings.
     ///
     /// - Parameter plugin: plugin to check if it is installed
-    public func isInstalled<P: _Plugin>(plugin: P) -> Bool {
+    public func isInstalled<P: Plugin>(plugin: P) -> Bool {
         self.plugins.contains(where: { $0.key == plugin.key.asAny })
     }
 
     @available(*, deprecated, message: "use settings.install(plugin:) instead")
-    public static func += <P: _Plugin>(plugins: inout PluginsSettings, plugin: P) {
+    public static func += <P: Plugin>(plugins: inout PluginsSettings, plugin: P) {
         plugins.add(plugin)
     }
 }
 
 extension ClusterSystemSettings {
-    public static func += <P: _Plugin>(settings: inout ClusterSystemSettings, plugin: P) {
+    public static func += <P: Plugin>(settings: inout ClusterSystemSettings, plugin: P) {
         settings.plugins.install(plugin: plugin)
     }
 }

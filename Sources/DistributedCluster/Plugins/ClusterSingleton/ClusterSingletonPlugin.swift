@@ -101,7 +101,7 @@ public actor ClusterSingletonPlugin {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Plugin protocol conformance
 
-extension ClusterSingletonPlugin: _Plugin {
+extension ClusterSingletonPlugin: Plugin {
     static let pluginKey: Key = "$clusterSingleton"
 
     public nonisolated var key: Key {
