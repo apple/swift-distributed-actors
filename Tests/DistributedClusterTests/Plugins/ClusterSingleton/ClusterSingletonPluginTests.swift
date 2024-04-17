@@ -61,40 +61,45 @@ final class ClusterSingletonPluginTests: SingleClusterSystemXCTestCase {
     }
     
     func test_plugin_hooks() async throws {
-        let actorId = "actorHookId"
+        let actorID = "actorHookID"
         let hookFulfillment = self.expectation(description: "actor-hook")
-        let plugin = TestClusterHookPlugin { actor in
+        let plugin = TestActorLifecyclePlugin { actor in
             /// There are multiple internal actors fired, we only checking for `ActorWithId`
-            guard let actor = actor as? ActorWithId else { return }
-            let id = try? await actor.getId()
-            XCTAssertEqual(id, actorId, "Expected \(actorId) as an id")
-            hookFulfillment.fulfill()
+            guard let actor = actor as? ActorWithID else { return }
+            Task {
+                let id = try? await actor.getID()
+                XCTAssertEqual(id, actorID, "Expected \(actorID) as an ID")
+                hookFulfillment.fulfill()
+            }
         }
         let testNode = await setUpNode("test-hook") { settings in
             settings.enabled = false
             settings += plugin
         }
 
-        let _ = ActorWithId(actorSystem: testNode, id: actorId)
+        let _ = ActorWithID(actorSystem: testNode, customID: actorID)
         await fulfillment(of: [hookFulfillment])
     }
     
-    actor TestClusterHookPlugin: Plugin, PluginActorLifecycleHook {
-        nonisolated var key: Key { "$testClusterHook" }
+    final class TestActorLifecyclePlugin: ActorLifecyclePlugin {
+        var key: Key { "$testClusterHook" }
         
-        let onActorReady: (any DistributedActor) async throws -> ()
-        
+        let onActorReady: (any DistributedActor) -> ()
+        let _lock: _Mutex = .init()
+
         init(
-            onActorReady: @escaping (any DistributedActor) async throws -> Void
+            onActorReady: @escaping (any DistributedActor) -> Void
         ) {
             self.onActorReady = onActorReady
         }
         
-        nonisolated func actorReady<Act>(_ actor: Act) where Act: DistributedActor, Act.ID == DistributedCluster.ClusterSystem.ActorID {
-            Task { try await self.onActorReady(actor) }
+        func onActorReady<Act: DistributedActor>(_ actor: Act) where Act.ID == ClusterSystem.ActorID {
+            _lock.lock()
+            self.onActorReady(actor)
+            _lock.unlock()
         }
         
-        nonisolated func resignID(_ id: DistributedCluster.ClusterSystem.ActorID) {
+        func onResignID(_ id: ClusterSystem.ActorID) {
             
         }
         
@@ -132,19 +137,19 @@ final class ClusterSingletonPluginTests: SingleClusterSystemXCTestCase {
         }
     }
     
-    distributed actor ActorWithId {
-        let customId: String
+    distributed actor ActorWithID {
+        let customID: String
         
         init(
             actorSystem: ActorSystem,
-            id: String
+            customID: String
         ) {
             self.actorSystem = actorSystem
-            self.customId = id
+            self.customID = customID
         }
         
-        distributed func getId() -> String { 
-            self.customId
+        distributed func getID() -> String {
+            self.customID
         }
     }
 }

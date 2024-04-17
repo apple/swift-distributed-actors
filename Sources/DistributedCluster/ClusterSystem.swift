@@ -1051,7 +1051,7 @@ extension ClusterSystem {
         }
       
         for hook in self.settings.plugins.actorLifecycleHooks {
-            hook.actorReady(actor)
+            hook.onActorReady(actor)
         }
     }
 
@@ -1097,7 +1097,7 @@ extension ClusterSystem {
         }
         
         for hook in self.settings.plugins.actorLifecycleHooks {
-            hook.resignID(id)
+            hook.onResignID(id)
         }
     }
 
