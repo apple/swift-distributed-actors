@@ -115,7 +115,12 @@ internal struct AnyPluginKey: Hashable, CustomStringConvertible {
     }
 }
 
-/// Way to hook into ClusterSystem's actor lifecycle events, specifically to `ready` and `resign`.
+/// Kind of `ClusterSystem` plugin which will be invoked during an actor's `actorReady`
+/// and `resignID` lifecycle hooks.
+///
+/// The ready hook is allowed to modify the ID, e.g. by adding additional metadata to it.
+/// The plugin should carefully manage retaining actors and document if it does have strong references to them,
+/// and how end-users should go about releasing them.
 public protocol PluginActorLifecycleHook {
     func actorReady<Act: DistributedActor>(_ actor: Act) where Act: DistributedActor, Act.ID == ClusterSystem.ActorID
     func resignID(_ id: ClusterSystem.ActorID)
