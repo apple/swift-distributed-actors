@@ -706,7 +706,9 @@ extension OpLogDistributedReceptionist {
                     // while interacting with them. timedOut is also expected to happen sometimes.
                     ()
                 default:
-                    log.error("Error: \(error)")
+                    try await self?.whenLocal { myself in
+                        myself.log.error("Error: \(error)")
+                    }
                 }
             }
 
