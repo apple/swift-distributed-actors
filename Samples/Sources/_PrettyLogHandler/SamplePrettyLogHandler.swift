@@ -29,7 +29,7 @@ import WASILibc
 #endif
 
 /// Logger that prints "pretty" for showcasing the cluster nicely in sample applications.
-struct SamplePrettyLogHandler: LogHandler {
+public struct SamplePrettyLogHandler: LogHandler {
     static let CONSOLE_RESET = "\u{001B}[0;0m"
     static let CONSOLE_BOLD = "\u{001B}[1m"
 
@@ -52,8 +52,7 @@ struct SamplePrettyLogHandler: LogHandler {
         }
     }
 
-    // internal for testing only
-    internal init(label: String) {
+    public init(label: String) {
         self.label = label
     }
 
