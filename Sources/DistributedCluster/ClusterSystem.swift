@@ -464,6 +464,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         public func wait() async throws {
             // TODO: implement without blocking the internal task;
             try await Task.detached {
+                print("BLOCKING ON receptacle")
                 if let error = self.receptacle.wait() {
                     throw error
                 }
@@ -1049,6 +1050,10 @@ extension ClusterSystem {
         if let wellKnownName = actor.id.metadata.wellKnown {
             self._managedWellKnownDistributedActors[wellKnownName] = actor
         }
+
+//        if let receptionID = actor.id.metadata.receptionID {
+//          self.receptionist.checkIn(actor)
+//        }
     }
 
     /// Advertise to the cluster system that a "well known" distributed actor has become ready.

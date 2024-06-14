@@ -109,9 +109,16 @@ var targets: [PackageDescription.Target] = [
             // Depend on tests to run:
             "DistributedActorsMultiNodeTests",
 
-            // Dependencies:
             "MultiNodeTestKit",
             .product(name: "ArgumentParser", package: "swift-argument-parser"),
+        ]
+    ),
+
+    .executableTarget(
+        name: "Clusterd",
+        dependencies: [
+            "DistributedCluster",
+           .product(name: "ArgumentParser", package: "swift-argument-parser"),
         ]
     ),
 
