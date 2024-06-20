@@ -21,11 +21,39 @@ var targets: [PackageDescription.Target] = [
         name: "SampleDiningPhilosophers",
         dependencies: [
             .product(name: "DistributedCluster", package: "swift-distributed-actors"),
+            "_PrettyLogHandler",
         ],
         path: "Sources/SampleDiningPhilosophers",
         exclude: [
             "dining-philosopher-fsm.graffle",
             "dining-philosopher-fsm.svg",
+        ]
+    ),
+
+    .executableTarget(
+        name: "SampleClusterTracing",
+        dependencies: [
+            .product(name: "DistributedCluster", package: "swift-distributed-actors"),
+            .product(name: "OpenTelemetry", package: "opentelemetry-swift"),
+            .product(name: "OtlpGRPCSpanExporting", package: "opentelemetry-swift"),
+            "_PrettyLogHandler",
+        ]
+    ),
+
+    .executableTarget(
+        name: "SampleClusterBuilds",
+        dependencies: [
+            .product(name: "DistributedCluster", package: "swift-distributed-actors"),
+            .product(name: "OpenTelemetry", package: "opentelemetry-swift"),
+            .product(name: "OtlpGRPCSpanExporting", package: "opentelemetry-swift"),
+            "_PrettyLogHandler",
+        ]
+    ),
+
+    .target(
+        name: "_PrettyLogHandler",
+        dependencies: [
+            .product(name: "DistributedCluster", package: "swift-distributed-actors"),
         ]
     ),
 
@@ -45,6 +73,7 @@ var dependencies: [Package.Dependency] = [
     .package(name: "swift-distributed-actors", path: "../"),
 
     // ~~~~~~~ only for samples ~~~~~~~
+    .package(url: "https://github.com/slashmo/opentelemetry-swift", from: "0.3.0"),
 ]
 
 let package = Package(
@@ -58,10 +87,13 @@ let package = Package(
     ],
     products: [
         /* ---  samples --- */
-
         .executable(
             name: "SampleDiningPhilosophers",
             targets: ["SampleDiningPhilosophers"]
+        ),
+        .executable(
+            name: "SampleClusterTracing",
+            targets: ["SampleClusterTracing"]
         ),
     ],
 
