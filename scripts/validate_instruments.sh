@@ -18,17 +18,21 @@ here="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 printf "=> Checking instruments package definitions\n"
 
-if [[ "$(uname)" == 'Darwin' ]]; then
-    if [[ "$(swift --version | grep 'version 5.3' | wc -l)" -eq '1' ]]; then
-        printf '   * Generating Instruments/GenActorInstruments...'
-
-        swift run --package-path="Instruments/GenActorInstruments" \
-            ActorInstrumentsPackageDefinition --output .build/GenActorInstruments-soundness.instrpkg
-
-          printf " \033[0;32mokay.\033[0m\n"
-    else
-        echo '   * Skipping, requires Swift 5.3+'
-    fi
-else
-    echo '   * Skipping, requires Darwin...'
+if [[ "$(uname)" != 'Darwin' ]]; then
+  echo ' * Skipping, requires Darwin...'
+  exit 0
 fi
+
+CURRENT_VERSION=$(swift --version 2>&1 | head -1 | sed "s/^.*swiftlang-\([^ ]*\).*/\1/")
+MIN_VERSION="5.3"
+printf -v versions '%s\n%s' "$CURRENT_VERSION" "$MIN_VERSION"
+if [[ $versions = "$(sort -V <<< "$versions")" ]]; then
+  echo ' * Skipping, requires Swift 5.3+'
+  exit 0
+fi
+
+printf ' * Generating Instruments/GenActorInstruments...'
+swift run --package-path="Instruments/GenActorInstruments" \
+ActorInstrumentsPackageDefinition --output .build/GenActorInstruments-soundness.instrpkg
+
+printf " \033[0;32mokay.\033[0m\n"
