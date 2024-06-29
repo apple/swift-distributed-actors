@@ -33,7 +33,7 @@ extension Cluster {
     /// intending to use some form of naming scheme, e.g. adopted from a cloud provider, to make it easier to map nodes in
     /// actor system logs, to other external systems.
     ///
-    /// - SeeAlso: For more details on unique node ids, refer to: ``Cluster.Node``.
+    /// - SeeAlso: For more details on unique node ids, refer to: ``Cluster/Node-struct``.
     public struct Endpoint: Hashable, Sendable {
         // TODO: collapse into one String and index into it?
         public var `protocol`: String

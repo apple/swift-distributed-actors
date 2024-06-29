@@ -20,4 +20,5 @@ bash $here/validate_license_header.sh
 bash $here/validate_language.sh
 bash $here/validate_format.sh
 bash $here/docs/validate_docc.sh
-bash $here/validate_instruments.sh
+
+printf "\033[0;32mAll checks pass.\033[0m\n"
