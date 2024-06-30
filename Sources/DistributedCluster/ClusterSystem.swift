@@ -232,11 +232,6 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         var settings = settings
         self.name = settings.endpoint.systemName
 
-        // rely on swift-backtrace for pretty backtraces on crashes
-        if settings.installSwiftBacktrace {
-            Backtrace.install()
-        }
-
         // TODO: we should not rely on NIO for futures
         let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: settings.threadPoolSize)
         settings.eventLoopGroup = eventLoopGroup
