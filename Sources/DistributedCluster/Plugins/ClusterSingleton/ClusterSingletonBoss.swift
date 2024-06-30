@@ -464,7 +464,7 @@ extension ClusterSingletonBoss {
             {
                 assert(
                     singleton.id.node == selfNode,
-                    "Target singleton node and targetNode were not the same! TargetNode: \(targetNode)," +
+                    "Target singleton node and targetNode were not the same! TargetNode: \(targetNode?.debugDescription ?? "UNKNOWN TARGET NODE")," +
                         " singleton.id.node: \(singleton.id.node)"
                 )
                 return try await singleton.actorSystem.localCall(
@@ -518,7 +518,7 @@ extension ClusterSingletonBoss {
 
             assert(
                 singleton.id.node == selfNode,
-                "Target singleton node and targetNode were not the same! TargetNode: \(targetNode)," +
+                "Target singleton node and targetNode were not the same! TargetNode: \(targetNode?.debugDescription ?? "UNKNOWN TARGET NODE")," +
                     " singleton.id.node: \(singleton.id.node)"
             )
             return try await singleton.actorSystem.localCallVoid(

@@ -758,7 +758,7 @@ extension ClusterSystem: _ActorRefFactory {
             return try self._spawn(using: provider, behavior, id: id, props: props)
             // try!-safe, since the naming must have been correct
         } catch {
-            fatalError("Failed to _spawn DistributedActor, id: \(id.fullDescription); props: \(id.metadata._props?.props), error: \(error)")
+            fatalError("Failed to _spawn DistributedActor, id: \(id.fullDescription); props: \(id.metadata._props?.props ?? _Props()), error: \(error)")
         }
     }
 }
