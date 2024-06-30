@@ -16,7 +16,7 @@ import ArgumentParser
 import DistributedCluster
 import struct Foundation.Date
 import class Foundation.FileHandle
-@preconcurrency import class Foundation.Process
+import class Foundation.Process
 import class Foundation.ProcessInfo
 import struct Foundation.URL
 import MultiNodeTestKit
