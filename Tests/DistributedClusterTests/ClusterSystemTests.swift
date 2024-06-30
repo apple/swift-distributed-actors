@@ -87,9 +87,9 @@ final class ClusterSystemTests: SingleClusterSystemXCTestCase {
         let shutdown2 = try system2.shutdown()
         let shutdown3 = try system2.shutdown()
 
-        try await shutdown1.wait(atMost: .seconds(5))
-        try await shutdown2.wait(atMost: .milliseconds(1))
-        try await shutdown3.wait(atMost: .milliseconds(1))
+        try shutdown1.wait(atMost: .seconds(5))
+        try shutdown2.wait(atMost: .milliseconds(1))
+        try shutdown3.wait(atMost: .milliseconds(1))
     }
 
     func test_shutdown_selfSendingActorShouldNotDeadlockSystem() async throws {
