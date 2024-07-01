@@ -533,7 +533,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
             self.namingLock.withLock {
                 self._managedWellKnownDistributedActors = [:] // release
             }
-            knownActors = [:] // release the references outside namingLock
+            knownActors.removeAll()
         }
 
         self._associationTombstoneCleanupTask?.cancel()
