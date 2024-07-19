@@ -19,4 +19,5 @@ let MultiNodeTestSuites: [any MultiNodeTestSuite.Type] = [
     MultiNodeConductorTests.self,
     MultiNodeClusterSingletonTests.self,
     MultiNodeReceptionistTests.self,
+    MultiNodeSimpleGossipTests.self,
 ]
