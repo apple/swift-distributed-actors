@@ -59,6 +59,53 @@ final class ClusterSingletonPluginTests: SingleClusterSystemXCTestCase {
         // if this were true we would have crashed by a duplicate name already, but let's make sure:
         singletonID.shouldNotEqual(greeterID)
     }
+    
+    func test_plugin_hooks() async throws {
+        let actorID = "actorHookID"
+        let hookFulfillment = self.expectation(description: "actor-hook")
+        let plugin = TestActorLifecyclePlugin { actor in
+            /// There are multiple internal actors fired, we only checking for `ActorWithId`
+            guard let actor = actor as? ActorWithID else { return }
+            Task {
+                let id = try? await actor.getID()
+                XCTAssertEqual(id, actorID, "Expected \(actorID) as an ID")
+                hookFulfillment.fulfill()
+            }
+        }
+        let testNode = await setUpNode("test-hook") { settings in
+            settings.enabled = false
+            settings += plugin
+        }
+
+        let _ = ActorWithID(actorSystem: testNode, customID: actorID)
+        await fulfillment(of: [hookFulfillment])
+    }
+    
+    final class TestActorLifecyclePlugin: ActorLifecyclePlugin {
+        var key: Key { "$testClusterHook" }
+        
+        let onActorReady: (any DistributedActor) -> ()
+        let _lock: _Mutex = .init()
+
+        init(
+            onActorReady: @escaping (any DistributedActor) -> Void
+        ) {
+            self.onActorReady = onActorReady
+        }
+        
+        func onActorReady<Act: DistributedActor>(_ actor: Act) where Act.ID == ClusterSystem.ActorID {
+            _lock.lock()
+            self.onActorReady(actor)
+            _lock.unlock()
+        }
+        
+        func onResignID(_ id: ClusterSystem.ActorID) {
+            
+        }
+        
+        func start(_ system: ClusterSystem) async throws {}
+        func stop(_ system: ClusterSystem) async {}
+    }
 
     distributed actor SingletonWhichCreatesDistributedActorDuringInit: ClusterSingleton {
         typealias ActorSystem = ClusterSystem
@@ -87,6 +134,22 @@ final class ClusterSingletonPluginTests: SingleClusterSystemXCTestCase {
 
         distributed func greet() {
             print("Hello!")
+        }
+    }
+    
+    distributed actor ActorWithID {
+        let customID: String
+        
+        init(
+            actorSystem: ActorSystem,
+            customID: String
+        ) {
+            self.actorSystem = actorSystem
+            self.customID = customID
+        }
+        
+        distributed func getID() -> String {
+            self.customID
         }
     }
 }
