@@ -36,6 +36,7 @@ public struct MultiNodeTest {
     public let crashRegex: String?
     public let runTest: (any MultiNodeTestControlProtocol) async throws -> Void
     public let configureActorSystem: (inout ClusterSystemSettings) -> Void
+    public let startNode: (ClusterSystemSettings) async throws -> ClusterSystem
     public let configureMultiNodeTest: (inout MultiNodeTestSettings) -> Void
     public let makeControl: (String) -> any MultiNodeTestControlProtocol
 
@@ -51,6 +52,7 @@ public struct MultiNodeTest {
         }
 
         self.configureActorSystem = TestSuite.configureActorSystem
+        self.startNode = TestSuite.startNode
         self.configureMultiNodeTest = TestSuite.configureMultiNodeTest
 
         self.makeControl = { nodeName -> Control<TestSuite.Nodes> in
@@ -80,6 +82,7 @@ public protocol MultiNodeTestSuite {
     init()
     associatedtype Nodes: MultiNodeNodes
     static func configureActorSystem(settings: inout ClusterSystemSettings)
+//    static func startNode(settings: ClusterSystemSettings) -> ClusterSystem
     static func configureMultiNodeTest(settings: inout MultiNodeTestSettings)
 }
 
@@ -88,8 +91,8 @@ extension MultiNodeTestSuite {
         "\(Self.self)".split(separator: ".").last.map(String.init) ?? ""
     }
 
-    public func configureActorSystem(settings: inout ClusterSystemSettings) {
-        // do nothing by default
+    public static func startNode(settings: ClusterSystemSettings) async throws -> ClusterSystem {
+      await ClusterSystem(settings: settings)
     }
 
     var nodeNames: [String] {
