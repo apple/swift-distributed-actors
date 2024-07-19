@@ -27,7 +27,7 @@ final class ClusterSystemTests: SingleClusterSystemXCTestCase {
             let _: _ActorRef<String> = try system._spawn("test", .ignore)
         }
 
-        guard let systemError = error as? ClusterSystemError, case .duplicateActorPath(let path, let existing) = systemError.underlying.error else {
+        guard let systemError = error as? ClusterSystemError, case .duplicateActorPath(let path, _) = systemError.underlying.error else {
             XCTFail("Expected ClusterSystemError.duplicateActorPath, but was: \(error)")
             return
         }
@@ -87,9 +87,9 @@ final class ClusterSystemTests: SingleClusterSystemXCTestCase {
         let shutdown2 = try system2.shutdown()
         let shutdown3 = try system2.shutdown()
 
-        try await shutdown1.wait(atMost: .seconds(5))
-        try await shutdown2.wait(atMost: .milliseconds(1))
-        try await shutdown3.wait(atMost: .milliseconds(1))
+        try shutdown1.wait(atMost: .seconds(5))
+        try shutdown2.wait(atMost: .milliseconds(1))
+        try shutdown3.wait(atMost: .milliseconds(1))
     }
 
     func test_shutdown_selfSendingActorShouldNotDeadlockSystem() async throws {

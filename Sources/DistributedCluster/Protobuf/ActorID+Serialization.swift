@@ -105,7 +105,6 @@ extension ActorID: _ProtobufRepresentable {
 
     public func toProto(context: Serialization.Context) throws -> _ProtoActorID {
         let metadataSettings = context.system.settings.actorMetadata
-        let encodeCustomMetadata = metadataSettings.encodeCustomMetadata
 
         var proto = _ProtoActorID()
         let node = self.node

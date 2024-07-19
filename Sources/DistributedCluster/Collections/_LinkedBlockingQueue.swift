@@ -17,14 +17,14 @@ import NIO
 /// Not intended for general use.
 public final class _LinkedBlockingQueue<A>: @unchecked Sendable {
     @usableFromInline
-    final class Node<A>: @unchecked Sendable {
+    final class Node<T>: @unchecked Sendable {
         @usableFromInline
-        var item: A?
+        var item: T?
         @usableFromInline
-        var next: Node<A>?
+        var next: Node<T>?
 
         @usableFromInline
-        init(_ item: A?) {
+        init(_ item: T?) {
             self.item = item
         }
     }
