@@ -58,7 +58,7 @@ A good patch is:
 
 We require that your commit messages match our template. The easiest way to do that is to get git to help you by explicitly using the template. To do that, `cd` to the root of our repository and run:
 
-    git config commit.template dev/git.commit.template
+    git config commit.template scripts/dev/git.commit.template
 
 ### Run `./scripts/soundness.sh`
 
@@ -67,8 +67,6 @@ that enforces additional checks, like license headers and formatting style.
 
 Please make sure to `./scripts/soundness.sh` before pushing a change upstream, otherwise it is likely the PR validation will fail
 on minor changes such as a missing `self.` or similar formatting issues.
-
-> The script also executes the above mentioned `generate_linux_tests.rb`.
 
 For frequent contributors, we recommend adding the script as a [git pre-push hook](https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks), which you can do via executing the following command in the project root directory: 
 
