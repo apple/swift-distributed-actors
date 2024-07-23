@@ -393,6 +393,13 @@ internal final class AnyDistributedReceptionListingSubscription: Hashable, @unch
     /// We very carefully only modify this from the owning actor (receptionist).
     // TODO: It would be lovely to be able to express this in the type system as "actor owned" or "actor local" to some actor instance.
     var seenActorRegistrations: VersionVector
+//    {
+//      willSet {
+//        print("SETTING seenActorRegistrations = \(newValue)")
+//        print("                           WAS = \(seenActorRegistrations)")
+//        if seenActorRegistrations.isEmpty { fatalError("WHERE") }
+//      }
+//    }
 
     init(
         subscriptionID: ObjectIdentifier,
@@ -425,21 +432,28 @@ internal final class AnyDistributedReceptionListingSubscription: Hashable, @unch
     /// seen this actor in this specific stream, and don't need to emit it again.
     ///
     /// - Returns: true if the value was successfully offered
-    func tryOffer(registration: VersionedRegistration) -> Bool {
+    func tryOffer(registration: VersionedRegistration, log: Logger? = nil) -> Bool {
         let oldSeenRegistrations = self.seenActorRegistrations
+        log?.debug("OLD SEEN: \(oldSeenRegistrations)")
+        log?.debug("registration: \(registration)")
+        log?.debug("registration version: \(registration.version)")
         self.seenActorRegistrations.merge(other: registration.version)
+        log?.debug("SEEN NOW: \(self.seenActorRegistrations)")
 
         switch self.seenActorRegistrations.compareTo(oldSeenRegistrations) {
         case .same:
+          log?.debug("->>> SAME")
             // the seen vector was unaffected by the merge, which means that the
             // incoming registration version was already seen, and thus we don't need to emit it again
             return false
         case .happenedAfter, .concurrent:
+          log?.debug("->>> happenedAfter || concurrent")
             // the incoming registration has not yet been seen before,
             // which means that we should emit the actor to the stream.
             self.onNext(registration.actorID)
             return true
         case .happenedBefore:
+          log?.debug("->>> happenedBefore")
             fatalError("""
             It should not be possible for a *merged* version vector to be in the PAST as compared with itself before the merge
                Previously: \(oldSeenRegistrations)
@@ -460,7 +474,9 @@ internal final class AnyDistributedReceptionListingSubscription: Hashable, @unch
     }
 
     var description: String {
-        var string = "AnyDistributedReceptionListingSubscription(subscriptionID: \(subscriptionID), key: \(key), , seenActorRegistrations: \(seenActorRegistrations)"
+        var string = "\(Self.self)("
+        // string += "subscriptionID: \(subscriptionID), key: \(key), seenActorRegistrations: \(seenActorRegistrations)"
+        string += "type: \(key.guestType), id: \(key.id)"
         #if DEBUG
         string += ", at: \(self.file):\(self.line)"
         #endif

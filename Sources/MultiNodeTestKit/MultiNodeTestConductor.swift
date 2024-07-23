@@ -159,7 +159,6 @@ extension MultiNodeTestConductor {
                 self.log.warning("Checkpoint failed, informing node [\(node)]", metadata: [
                     "checkPoint/node": "\(node)",
                     "checkPoint/error": "\(checkPointError)",
-                    "checkPoint/error": "\(checkPointError)",
                 ])
                 cc.resume(throwing: checkPointError)
 
