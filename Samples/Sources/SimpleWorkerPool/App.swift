@@ -24,15 +24,16 @@ struct App {
         // ...
     }
     let workerSystem = await ClusterSystem("worker") { settings in
-      settings.bindPort = 9999
+      settings.bindPort = .random(in: 8000...9999)
     }
     let anotherWorkerSystem = await ClusterSystem("worker") { settings in
-      settings.bindPort = 9999
+      settings.bindPort = .random(in: 8000...9999)
     }
 
     workerSystem.log.warning("Joining...")
     try await leaderSystem.cluster.joined(endpoint: workerSystem.settings.endpoint, within: .seconds(10))
     try await workerSystem.cluster.joined(endpoint: leaderSystem.settings.endpoint, within: .seconds(10))
+    try anotherWorkerSystem.cluster.join(endpoint: leaderSystem.settings.endpoint) // no need to wait at all
     workerSystem.log.warning("Joined!")
 
     var workers: [Worker] = []
