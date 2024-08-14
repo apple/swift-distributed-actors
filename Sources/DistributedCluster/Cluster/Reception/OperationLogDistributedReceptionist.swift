@@ -749,10 +749,16 @@ extension OpLogDistributedReceptionist {
 
         for subscription in subscriptions {
             for registration in registrations {
-                if subscription.tryOffer(registration: registration) {
-                    self.log.notice("OFFERED \(registration.actorID) TO \(subscription)")
+                if subscription.tryOffer(registration: registration, log: log) {
+//                    self.log.notice("OFFERED \(registration.actorID) subscription", metadata: [
+//                      "peer": "\(registration.actorID)",
+//                      "subscription": "\(subscription)",
+//                    ])
                 } else {
-                    self.log.notice("DROPPED \(registration.actorID) TO \(subscription)")
+//                    self.log.notice("DROPPED \(registration.actorID) from subscription", metadata: [
+//                      "peer": "\(registration.actorID)",
+//                      "subscription": "\(subscription)",
+//                    ])
                 }
             }
         }
@@ -943,6 +949,12 @@ extension OpLogDistributedReceptionist {
             }
 
         case .membershipChange(let change):
+            // FIXME: more proper ignoring the 'clusterd' node
+            if change.node.endpoint.host == "127.0.0.1" &&
+                 change.node.endpoint.port == 3137 {
+              return // skip the Clusterd node
+            }
+
             guard let effectiveChange = self.membership.applyMembershipChange(change) else {
                 return
             }

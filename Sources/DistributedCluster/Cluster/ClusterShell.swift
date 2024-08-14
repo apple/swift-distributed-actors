@@ -148,12 +148,12 @@ internal class ClusterShell {
             return
         }
 
-        system.log.warning("Terminate existing association [\(reflecting: remoteNode)].")
+        system.log.notice("Terminate existing association [\(reflecting: remoteNode)].")
 
         // notify the failure detector, that we shall assume this node as dead from here on.
         // it's gossip will also propagate the information through the cluster
         traceLog_Remote(system.cluster.node, "Finish terminate association [\(remoteNode)]: Notifying SWIM, .confirmDead")
-        system.log.warning("Confirm .dead to underlying SWIM, node: \(reflecting: remoteNode)")
+        system.log.debug("Confirm .dead to underlying SWIM, node: \(reflecting: remoteNode)")
         self._swimShell.confirmDead(node: remoteNode)
 
         // it is important that we first check the contains; as otherwise we'd re-add a .down member for what was already removed (!)

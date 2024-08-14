@@ -22,7 +22,6 @@ var targets: [PackageDescription.Target] = [
         dependencies: [
             .product(name: "DistributedCluster", package: "swift-distributed-actors"),
         ],
-        path: "Sources/SampleDiningPhilosophers",
         exclude: [
             "dining-philosopher-fsm.graffle",
             "dining-philosopher-fsm.svg",
@@ -33,8 +32,14 @@ var targets: [PackageDescription.Target] = [
         name: "SimpleGossip",
         dependencies: [
             .product(name: "DistributedCluster", package: "swift-distributed-actors"),
-        ],
-        path: "Sources/SimpleGossip"
+        ]
+    ),
+
+    .executableTarget(
+        name: "SimpleWorkerPool",
+        dependencies: [
+            .product(name: "DistributedCluster", package: "swift-distributed-actors"),
+        ]
     ),
 
     /* --- tests --- */

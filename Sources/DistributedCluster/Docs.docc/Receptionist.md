@@ -74,7 +74,7 @@ Once that actor is deinitialized, that task should be cancelled as well, which w
 
 ```swift
 distributed actor Boss: LifecycleWatch { 
-    var workers: WeakActorDictionary<Worker> = [:]
+    var workers: WeakLocalRefDictionary<Worker> = [:]
     
     var listingTask: Task<Void, Never>?
     

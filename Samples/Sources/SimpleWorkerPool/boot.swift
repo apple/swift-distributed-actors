@@ -24,7 +24,7 @@ typealias DefaultDistributedActorSystem = ClusterSystem
     print("===-----------------------------------------------------===")
     print("|                 Gossip Sample App                       |")
     print("|                                                         |")
-    print("| USAGE: swift run SimpleGossip <greeting>?               |")
+    print("| USAGE: swift run SimpleWorkerPool                            |")
     print("===-----------------------------------------------------===")
 
     LoggingSystem.bootstrap(SamplePrettyLogHandler.init)
@@ -33,6 +33,6 @@ typealias DefaultDistributedActorSystem = ClusterSystem
 
     let greeting = CommandLine.arguments.dropFirst().first
 
-    try! await App(port: 0).run(greeting: greeting, for: duration)
+    try! await App().run(greeting: greeting, for: duration)
   }
 }
