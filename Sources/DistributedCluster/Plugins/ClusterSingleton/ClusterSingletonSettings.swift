@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 /// Settings for a `ClusterSingleton`.
-public struct ClusterSingletonSettings {
+public struct ClusterSingletonSettings: Sendable {
     /// Unique name for the singleton, used to identify the conceptual singleton in the cluster.
     /// E.g. there is always one "boss" instance in the cluster, regardless where it is incarnated.
     ///
@@ -37,7 +37,7 @@ public struct ClusterSingletonSettings {
 
     // Backoff configuration when trying to obtain an active singleton reference on a new node.
     public var locateActiveSingletonBackoff: LocateActiveSingletonBackoffSettings = .init()
-    public struct LocateActiveSingletonBackoffSettings {
+    public struct LocateActiveSingletonBackoffSettings: Sendable {
         var initialInterval: Duration = .milliseconds(300)
         var multiplier: Double = ExponentialBackoffStrategy.Defaults.multiplier
         var capInterval: Duration = ExponentialBackoffStrategy.Defaults.capInterval
@@ -49,7 +49,7 @@ public struct ClusterSingletonSettings {
 }
 
 /// Singleton node allocation strategies.
-public struct ClusterSingletonAllocationStrategySettings {
+public struct ClusterSingletonAllocationStrategySettings: Sendable {
     private enum AllocationStrategy {
         /// Singletons will run on the cluster leader. *All* nodes are potential candidates.
         case byLeadership
