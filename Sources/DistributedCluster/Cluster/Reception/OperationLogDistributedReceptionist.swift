@@ -400,15 +400,15 @@ extension OpLogDistributedReceptionist: LifecycleWatch {
                 "subscription/callSite": "\(file):\(line)",
             ])
 
-            // We immediately flush all already-known registrations;
-            // as new ones come in, they will be reported to this subscription later on
-            for alreadyRegisteredAtSubscriptionTime in self.storage.registrations(forKey: subscription.key) ?? [] {
-                if subscription.tryOffer(registration: alreadyRegisteredAtSubscriptionTime) {
-                    self.log.debug("Offered \(alreadyRegisteredAtSubscriptionTime.actorID) to subscription \(subscription)")
-                } else {
-                    self.log.warning("Dropped \(alreadyRegisteredAtSubscriptionTime.actorID) on subscription \(subscription)")
-                }
-            }
+//            // We immediately flush all already-known registrations;
+//            // as new ones come in, they will be reported to this subscription later on
+//            for alreadyRegisteredAtSubscriptionTime in self.storage.registrations(forKey: subscription.key) ?? [] {
+//                if subscription.tryOffer(registration: alreadyRegisteredAtSubscriptionTime) {
+//                    self.log.debug("Offered \(alreadyRegisteredAtSubscriptionTime.actorID) to subscription \(subscription)")
+//                } else {
+//                    self.log.warning("Dropped \(alreadyRegisteredAtSubscriptionTime.actorID) on subscription \(subscription)")
+//                }
+//            }
         }
     }
 
@@ -510,7 +510,7 @@ extension OpLogDistributedReceptionist {
         // Otherwise, if we process a newer version (i.e., with bigger sequence number) first, older
         // versions will be dropped because they are considered "seen".
         let registrations = (self.storage.registrations(forKey: key) ?? []).sorted { l, r in l.version < r.version } // FIXME: use ordered set or Deque now that we have them
-        self.log.notice(
+        self.log.debug(
             "Registrations to flush: \(registrations.count)",
             metadata: [
                 "registrations": Logger.MetadataValue.array(
@@ -521,15 +521,15 @@ extension OpLogDistributedReceptionist {
 
         // self.instrumentation.listingPublished(key: key, subscribers: subscriptions.count, registrations: registrations.count) // TODO(distributed): make the instrumentation calls compatible with distributed actor based types
         for subscription in subscriptions {
-            self.log.notice("Offering registrations to subscription: \(subscription))", metadata: [
+            self.log.debug("Offering registrations to subscription: \(subscription))", metadata: [
                 "registrations": "\(subscription.seenActorRegistrations)",
             ])
 
             for registration in registrations {
-                if subscription.tryOffer(registration: registration) {
-                    self.log.notice("OFFERED \(registration.actorID) TO \(subscription)")
+                if subscription.tryOffer(registration: registration, log: self.log) {
+                    self.log.debug("Applied registration \(registration.actorID) to subscription \(subscription)")
                 } else {
-                    self.log.notice("DROPPED \(registration.actorID) TO \(subscription)")
+                    self.log.debug("Dropped registration \(registration.actorID) to subscription \(subscription)")
                 }
             }
         }
@@ -749,10 +749,16 @@ extension OpLogDistributedReceptionist {
 
         for subscription in subscriptions {
             for registration in registrations {
-                if subscription.tryOffer(registration: registration) {
-                    self.log.notice("OFFERED \(registration.actorID) TO \(subscription)")
+                if subscription.tryOffer(registration: registration, log: log) {
+//                    self.log.notice("OFFERED \(registration.actorID) subscription", metadata: [
+//                      "peer": "\(registration.actorID)",
+//                      "subscription": "\(subscription)",
+//                    ])
                 } else {
-                    self.log.notice("DROPPED \(registration.actorID) TO \(subscription)")
+//                    self.log.notice("DROPPED \(registration.actorID) from subscription", metadata: [
+//                      "peer": "\(registration.actorID)",
+//                      "subscription": "\(subscription)",
+//                    ])
                 }
             }
         }
@@ -943,6 +949,12 @@ extension OpLogDistributedReceptionist {
             }
 
         case .membershipChange(let change):
+            // FIXME: more proper ignoring the 'clusterd' node
+            if change.node.endpoint.host == "127.0.0.1" &&
+                 change.node.endpoint.port == 3137 {
+              return // skip the Clusterd node
+            }
+
             guard let effectiveChange = self.membership.applyMembershipChange(change) else {
                 return
             }

@@ -74,7 +74,8 @@ internal final class LoggingContext {
 ///
 /// The preferred way of obtaining a logger for an actor or system is `context.log` or `system.log`, rather than creating new ones.
 extension Logger {
-    /// Create a logger specific to this actor.
+    /// Create a logger specific to this distributed actor, it will contain metadata for the actor's ID,
+    /// and default log level as configured by the actor's default log level (see ``LoggingSettings/baseLogger``).
     public init<Act: DistributedActor>(actor: Act) where Act.ActorSystem == ClusterSystem {
         var log = actor.actorSystem.settings.logging.baseLogger
         log[metadataKey: "actor/path"] = "\(actor.id.path)"
@@ -93,7 +94,6 @@ extension Logger {
     }
 }
 
-// TODO: implement logging infrastructure - pipe as messages to dedicated logging actor
 struct ActorOriginLogHandler: LogHandler {
     public static func _createFormatter() -> DateFormatter {
         let formatter = DateFormatter()

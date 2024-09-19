@@ -348,12 +348,14 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         let lazyReceptionist = try! self._prepareSystemActor(Receptionist.naming, receptionistBehavior, props: ._wellKnown)
         _ = self._receptionistRef.storeIfNilThenLoad(Box(lazyReceptionist.ref))
 
-        await _Props.$forSpawn.withValue(OpLogDistributedReceptionist.props) {
-            let receptionist = await OpLogDistributedReceptionist(
-                settings: self.settings.receptionist,
-                system: self
-            )
-            self._receptionistStore = receptionist
+        if !self._isClusterd {
+            await _Props.$forSpawn.withValue(OpLogDistributedReceptionist.props) {
+                let receptionist = await OpLogDistributedReceptionist(
+                    settings: self.settings.receptionist,
+                    system: self
+                )
+                self._receptionistStore = receptionist
+            }
         }
 
         // downing strategy (automatic downing)
@@ -384,13 +386,13 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         await self.settings.plugins.startAll(self)
 
         if settings.enabled {
-            self.log.info("ClusterSystem [\(self.name)] initialized, listening on: \(self.settings.bindNode): \(self.cluster.ref)")
+            self.log.notice("ClusterSystem [\(self.name)] initialized, listening on: \(self.settings.bindNode): \(self.cluster.ref)")
 
-            self.log.info("Setting in effect: .autoLeaderElection: \(self.settings.autoLeaderElection)")
-            self.log.info("Setting in effect: .downingStrategy: \(self.settings.downingStrategy)")
-            self.log.info("Setting in effect: .onDownAction: \(self.settings.onDownAction)")
+            self.log.notice("Setting in effect: .autoLeaderElection: \(self.settings.autoLeaderElection)")
+            self.log.notice("Setting in effect: .downingStrategy: \(self.settings.downingStrategy)")
+            self.log.notice("Setting in effect: .onDownAction: \(self.settings.onDownAction)")
         } else {
-            self.log.info("ClusterSystem [\(self.name)] initialized; Cluster disabled, not listening for connections.")
+            self.log.notice("ClusterSystem [\(self.name)] initialized; Cluster disabled, not listening for connections.")
         }
     }
 
@@ -481,6 +483,11 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
     /// Returns `true` if the system was already successfully terminated (i.e. awaiting ``terminated`` would resume immediately).
     public var isTerminated: Bool {
         self.shutdownFlag.load(ordering: .relaxed) > 0
+    }
+
+    internal var _isClusterd: Bool {
+        self.cluster.endpoint.host == "127.0.0.1" &&
+            self.cluster.endpoint.port == 3137
     }
 
     /// Forcefully stops this actor system and all actors that live within it.
@@ -1039,7 +1046,7 @@ extension ClusterSystem {
         }
 
         // Spawn a behavior actor for it:
-        let behavior = InvocationBehavior.behavior(instance: Weak(actor))
+        let behavior = InvocationBehavior.behavior(instance: WeakLocalRef(actor))
         let ref = self._spawnDistributedActor(behavior, identifiedBy: actor.id)
 
         // Store references
@@ -1049,6 +1056,10 @@ extension ClusterSystem {
         if let wellKnownName = actor.id.metadata.wellKnown {
             self._managedWellKnownDistributedActors[wellKnownName] = actor
         }
+
+//        if let receptionID = actor.id.metadata.receptionID {
+//          self.receptionist.checkIn(actor)
+//        }
     }
 
     /// Advertise to the cluster system that a "well known" distributed actor has become ready.
@@ -1614,9 +1625,11 @@ public struct ClusterInvocationResultHandler: DistributedTargetInvocationResultH
                 case .all: // compiler gets confused if this is grouped together with above
                     reply = .init(callID: callID, error: codableError)
                 default:
+                  print("ERROR: \(error)")
                     reply = .init(callID: callID, error: GenericRemoteCallError(errorType: errorType))
                 }
             } else {
+              print("ERROR: \(error)")
                 reply = .init(callID: callID, error: GenericRemoteCallError(errorType: errorType))
             }
             try await channel.writeAndFlush(TransportEnvelope(envelope: Payload(payload: .message(reply)), recipient: recipient))

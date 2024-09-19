@@ -393,6 +393,13 @@ internal final class AnyDistributedReceptionListingSubscription: Hashable, @unch
     /// We very carefully only modify this from the owning actor (receptionist).
     // TODO: It would be lovely to be able to express this in the type system as "actor owned" or "actor local" to some actor instance.
     var seenActorRegistrations: VersionVector
+//    {
+//      willSet {
+//        print("SETTING seenActorRegistrations = \(newValue)")
+//        print("                           WAS = \(seenActorRegistrations)")
+//        if seenActorRegistrations.isEmpty { fatalError("WHERE") }
+//      }
+//    }
 
     init(
         subscriptionID: ObjectIdentifier,
@@ -425,7 +432,7 @@ internal final class AnyDistributedReceptionListingSubscription: Hashable, @unch
     /// seen this actor in this specific stream, and don't need to emit it again.
     ///
     /// - Returns: true if the value was successfully offered
-    func tryOffer(registration: VersionedRegistration) -> Bool {
+    func tryOffer(registration: VersionedRegistration, log: Logger? = nil) -> Bool {
         let oldSeenRegistrations = self.seenActorRegistrations
         self.seenActorRegistrations.merge(other: registration.version)
 
@@ -460,7 +467,9 @@ internal final class AnyDistributedReceptionListingSubscription: Hashable, @unch
     }
 
     var description: String {
-        var string = "AnyDistributedReceptionListingSubscription(subscriptionID: \(subscriptionID), key: \(key), , seenActorRegistrations: \(seenActorRegistrations)"
+        var string = "\(Self.self)("
+        // string += "subscriptionID: \(subscriptionID), key: \(key), seenActorRegistrations: \(seenActorRegistrations)"
+        string += "type: \(key.guestType), id: \(key.id)"
         #if DEBUG
         string += ", at: \(self.file):\(self.line)"
         #endif

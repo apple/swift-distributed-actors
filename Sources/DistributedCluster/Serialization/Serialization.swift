@@ -262,8 +262,9 @@ extension Serialization {
 
     internal func makeCodableSerializer<Message: Codable>(_ type: Message.Type, manifest: Manifest) throws -> AnySerializer {
         switch manifest.serializerID {
-        case .doNotSerialize:
-            throw SerializationError(.noNeedToEnsureSerializer)
+//        case .doNotSerialize:
+//          fatalError("message type \(type)")
+//            throw SerializationError(.noNeedToEnsureSerializer)
 
         case Serialization.SerializerID.specializedWithTypeHint:
             guard let make = self.settings.specializedSerializerMakers[manifest] else {
@@ -279,7 +280,8 @@ extension Serialization {
             serializer.setSerializationContext(self.context)
             return serializer
 
-        case Serialization.SerializerID.foundationJSON:
+        case Serialization.SerializerID.foundationJSON,
+            .doNotSerialize:
             let serializer = JSONCodableSerializer<Message>()
             serializer.setSerializationContext(self.context)
             return serializer
@@ -812,6 +814,7 @@ public struct SerializationError: Error, CustomStringConvertible {
 
     internal init(_ error: _SerializationError, file: String = #fileID, line: UInt = #line) {
         self.underlying = _Storage(error: error, file: file, line: line)
+      print("ERROR: \(self)")
     }
 
     public var description: String {

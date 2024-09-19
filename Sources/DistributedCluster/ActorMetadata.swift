@@ -183,14 +183,14 @@ public final class ActorMetadata: CustomStringConvertible, CustomDebugStringConv
         self.lock.wait()
         let copy = self._storage
         self.lock.signal()
-        return "\(copy)"
+        return "\(Array(copy).sorted(by: { $0.0 < $1.0 }))"
     }
 
     public var debugDescription: String {
         self.lock.wait()
         let copy = self._storage
         self.lock.signal()
-        return "\(Self.self)(\(copy))"
+        return "\(Array(copy).sorted(by: { $0.0 < $1.0 }))"
     }
 }
 
