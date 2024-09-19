@@ -58,7 +58,7 @@ final class LifecycleWatchContainer {
         traceLog_DeathWatch("Clear LifecycleWatchContainer owned by \(self.watcherID)")
         self.watching = [:]
         self.watchedBy = [:]
-        for watched in self.watching.values { // FIXME: something off
+        for _ in self.watching.values { // FIXME: something off
             self.nodeDeathWatcher?.tell(.removeWatcher(watcherID: self.watcherID))
         }
     }

@@ -384,7 +384,7 @@ extension SubReceiveAdapter {
         return c.result
     }
 
-    func _resolve<Message>(context: _ResolveContext<Message>) -> _ActorRef<Message> {
+    func _resolve<M>(context: _ResolveContext<M>) -> _ActorRef<M> {
         guard context.selectorSegments.first == nil,
               self.id.incarnation == context.id.incarnation
         else {
@@ -392,7 +392,7 @@ extension SubReceiveAdapter {
         }
 
         switch self.myself {
-        case let myself as _ActorRef<Message>:
+        case let myself as _ActorRef<M>:
             return myself
         default:
             return context.personalDeadLetters

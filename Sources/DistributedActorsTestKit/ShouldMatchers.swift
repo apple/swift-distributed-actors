@@ -29,13 +29,6 @@ public struct TestMatchers<T> {
         self.it = it
         self.callSite = callSite
     }
-
-    func toBe<T>(_ expected: T.Type) {
-        if !(self.it is T) {
-            let error = self.callSite.notEqualError(got: self.it, expected: expected)
-            XCTFail("\(error)", file: self.callSite.file, line: self.callSite.line)
-        }
-    }
 }
 
 extension TestMatchers where T: Equatable {
