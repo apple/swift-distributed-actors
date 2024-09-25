@@ -1049,7 +1049,6 @@ extension ClusterSystem {
         if let wellKnownName = actor.id.metadata.wellKnown {
             self._managedWellKnownDistributedActors[wellKnownName] = actor
         }
-      
         for hook in self.settings.plugins.actorLifecycleHooks {
             hook.onActorReady(actor)
         }
@@ -1095,7 +1094,6 @@ extension ClusterSystem {
 
             // Well-known actors are held strongly and should be released using `releaseWellKnownActorID`
         }
-        
         for hook in self.settings.plugins.actorLifecycleHooks {
             hook.onResignID(id)
         }

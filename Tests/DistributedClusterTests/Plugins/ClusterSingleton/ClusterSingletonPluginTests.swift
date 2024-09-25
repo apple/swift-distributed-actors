@@ -59,7 +59,7 @@ final class ClusterSingletonPluginTests: SingleClusterSystemXCTestCase {
         // if this were true we would have crashed by a duplicate name already, but let's make sure:
         singletonID.shouldNotEqual(greeterID)
     }
-    
+
     func test_plugin_hooks() async throws {
         let actorID = "actorHookID"
         let hookFulfillment = self.expectation(description: "actor-hook")
@@ -77,14 +77,14 @@ final class ClusterSingletonPluginTests: SingleClusterSystemXCTestCase {
             settings += plugin
         }
 
-        let _ = ActorWithID(actorSystem: testNode, customID: actorID)
+        let id = ActorWithID(actorSystem: testNode, customID: actorID)
         await fulfillment(of: [hookFulfillment])
     }
-    
+
     final class TestActorLifecyclePlugin: ActorLifecyclePlugin {
         var key: Key { "$testClusterHook" }
-        
-        let onActorReady: (any DistributedActor) -> ()
+
+        let onActorReady: (any DistributedActor) -> Void
         let _lock: _Mutex = .init()
 
         init(
@@ -92,17 +92,14 @@ final class ClusterSingletonPluginTests: SingleClusterSystemXCTestCase {
         ) {
             self.onActorReady = onActorReady
         }
-        
+
         func onActorReady<Act: DistributedActor>(_ actor: Act) where Act.ID == ClusterSystem.ActorID {
-            _lock.lock()
+            self._lock.lock()
             self.onActorReady(actor)
-            _lock.unlock()
+            self._lock.unlock()
         }
-        
-        func onResignID(_ id: ClusterSystem.ActorID) {
-            
-        }
-        
+
+        func onResignID(_ id: ClusterSystem.ActorID) {}
         func start(_ system: ClusterSystem) async throws {}
         func stop(_ system: ClusterSystem) async {}
     }
@@ -136,10 +133,10 @@ final class ClusterSingletonPluginTests: SingleClusterSystemXCTestCase {
             print("Hello!")
         }
     }
-    
+
     distributed actor ActorWithID {
         let customID: String
-        
+
         init(
             actorSystem: ActorSystem,
             customID: String
@@ -147,7 +144,7 @@ final class ClusterSingletonPluginTests: SingleClusterSystemXCTestCase {
             self.actorSystem = actorSystem
             self.customID = customID
         }
-        
+
         distributed func getID() -> String {
             self.customID
         }
