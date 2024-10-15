@@ -48,27 +48,27 @@ extension MultiNodeTestKitRunnerBoot {
             )
         }
 
-        let actorSystem = await ClusterSystem(nodeName) { settings in
-            settings.bindHost = myNode.host
-            settings.bindPort = myNode.port
+        var settings = ClusterSystemSettings(name: nodeName)
+        settings.bindHost = myNode.host
+        settings.bindPort = myNode.port
 
-            /// By default get better backtraces in case we crash:
-            settings.installSwiftBacktrace = true
+        /// By default get better backtraces in case we crash:
+        settings.installSwiftBacktrace = true
 
-            /// Configure a nicer logger, that pretty prints metadata and also includes source location of logs
-            if multiNodeSettings.installPrettyLogger {
-                settings.logging.baseLogger = Logger(label: nodeName, factory: { label in
-                    PrettyMultiNodeLogHandler(nodeName: label, settings: multiNodeSettings.logCapture)
-                })
-            }
-
-            // we use the singleton to implement a simple Coordinator
-            // TODO: if the node hosting the coordinator dies we'd potentially have some races at hand
-            //       there's a few ways to solve this... but for now this is good enough.
-            settings += ClusterSingletonPlugin()
-
-            multiNodeTest.configureActorSystem(&settings)
+        /// Configure a nicer logger, that pretty prints metadata and also includes source location of logs
+        if multiNodeSettings.installPrettyLogger {
+            settings.logging.baseLogger = Logger(label: nodeName, factory: { label in
+                PrettyMultiNodeLogHandler(nodeName: label, settings: multiNodeSettings.logCapture)
+            })
         }
+
+        // we use the singleton to implement a simple Coordinator
+        // TODO: if the node hosting the coordinator dies we'd potentially have some races at hand
+        //       there's a few ways to solve this... but for now this is good enough.
+        settings += ClusterSingletonPlugin()
+        multiNodeTest.configureActorSystem(&settings)
+
+        let actorSystem = try await multiNodeTest.startNode(settings)
         control._actorSystem = actorSystem
 
         let signalQueue = DispatchQueue(label: "multi.node.\(multiNodeTest.testSuiteName).\(multiNodeTest.testName).\(nodeName).SignalHandlerQueue")

@@ -404,6 +404,7 @@ protocol ClusterSystemInstrumentationProvider {
 /// all the nodes of an existing cluster.
 public struct ServiceDiscoverySettings {
     let implementation: ServiceDiscoveryImplementation
+    private let _initializeClusterd: ((ClusterSystem) -> Void)?
     private let _subscribe: (@escaping (Result<[Cluster.Endpoint], Error>) -> Void, @escaping (CompletionReason) -> Void) -> CancellationToken?
 
     public init<Discovery, S>(_ implementation: Discovery, service: S)
@@ -414,6 +415,7 @@ public struct ServiceDiscoverySettings {
         self._subscribe = { onNext, onComplete in
             implementation.subscribe(to: service, onNext: onNext, onComplete: onComplete)
         }
+        self._initializeClusterd = .none
     }
 
     public init<Discovery, S>(_ implementation: Discovery, service: S, mapInstanceToNode transformer: @escaping (Discovery.Instance) throws -> Cluster.Endpoint)
@@ -425,6 +427,36 @@ public struct ServiceDiscoverySettings {
         self._subscribe = { onNext, onComplete in
             mappedDiscovery.subscribe(to: service, onNext: onNext, onComplete: onComplete)
         }
+        self._initializeClusterd = .none
+    }
+
+    init(clusterdEndpoint: Cluster.Endpoint) {
+        self.implementation = .clusterDaemon(clusterdEndpoint)
+
+        self._initializeClusterd = { system in
+            system.log.info("Joining [clusterd] at \(clusterdEndpoint)")
+            system.cluster.join(endpoint: clusterdEndpoint)
+        }
+        self._subscribe = { _, _ in
+            return nil
+        }
+    }
+
+    /// Locate the default `ClusterD` process and use it for discovering cluster nodes.
+    ///
+    ///
+    public static var clusterd: Self {
+        get {
+            Self.clusterd(endpoint: nil)
+        }
+    }
+
+    public static func clusterd(endpoint: Cluster.Endpoint?) -> Self {
+        ServiceDiscoverySettings(clusterdEndpoint: endpoint ?? ClusterDaemon.defaultEndpoint)
+    }
+
+    public static func seed(nodes: Set<Cluster.Endpoint>) -> Self {
+        .init(static: nodes)
     }
 
     public init(static nodes: Set<Cluster.Endpoint>) {
@@ -437,6 +469,7 @@ public struct ServiceDiscoverySettings {
             // No cancellation token
             return nil
         }
+        self._initializeClusterd = .none
     }
 
     /// Similar to `ServiceDiscovery.subscribe` however it allows the handling of the listings to be generic and handled by the cluster system.
@@ -445,8 +478,13 @@ public struct ServiceDiscoverySettings {
         self._subscribe(nextResultHandler, completionHandler)
     }
 
+    func initializeClusterd(_ system: ClusterSystem) {
+        self._initializeClusterd?(system)
+    }
+
     enum ServiceDiscoveryImplementation {
         case `static`(Set<Cluster.Endpoint>)
+        case clusterDaemon(Cluster.Endpoint)
         case dynamic(AnyServiceDiscovery)
     }
 }

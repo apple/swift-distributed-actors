@@ -34,6 +34,12 @@ final class DiscoveryShell {
 
     var behavior: _Behavior<Message> {
         .setup { context in
+            // FIXME: should have a behavior to bridge the async world...
+            context.log.info("Initializing discovery: \(self.settings.implementation)")
+            // Try to initialise clusterd if needed
+            self.settings.initializeClusterd(context.system)
+            context.log.info("Initializing discovery, done.")
+
             self.subscription = self.settings.subscribe(onNext: { result in
                 switch result {
                 case .success(let instances):
