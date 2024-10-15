@@ -25,7 +25,7 @@ extension ActorTestProbe where Message == _Reception.Listing<_ActorRef<String>> 
     public func eventuallyExpectListing(
         expected: Set<_ActorRef<String>>, within timeout: Duration,
         verbose: Bool = false,
-        file: StaticString = #fileID, line: UInt = #line, column: UInt = #column
+        file: StaticString = #filePath, line: UInt = #line, column: UInt = #column
     ) throws {
         do {
             let listing = try self.fishForMessages(within: timeout, file: file, line: line) {

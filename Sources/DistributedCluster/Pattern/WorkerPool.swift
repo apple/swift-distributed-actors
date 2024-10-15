@@ -79,7 +79,7 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
             self.newWorkersSubscribeTask = Task {
                 for await worker in await self.actorSystem.receptionist.listing(of: key) {
                     self.workers.append(WeakLocalRef(worker))
-                    self.workers.sort(by: { $0.id < $1.id })
+
                     // Notify those waiting for new worker
                     log.log(level: self.logLevel, "Updated workers for \(key)", metadata: [
                         "workers": "\(self.workers)",
@@ -94,7 +94,7 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
             }
         case .static(let workers):
             self.workers.reserveCapacity(workers.count)
-            workers.sorted(by: { $0.id < $1.id }).forEach { worker in
+            workers.forEach { worker in
                 self.workers.append(WeakLocalRef(worker))
                 watchTermination(of: worker)
             }
@@ -190,7 +190,6 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
     public func terminated(actor id: Worker.ID) {
         log.debug("Worker terminated: \(id)", metadata: ["worker": "\(id)"])
         self.workers.remove(WeakLocalRef<Worker>(forRemoval: id))
-        self.workers.sort(by: { $0.id < $1.id })
         self.hasTerminatedWorkers = true
         self.roundRobinPos = 0 // FIXME: naively reset the round robin counter; we should do better than that
     }

@@ -32,19 +32,15 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
         let pC: ActorTestProbe<String> = self.testKit.makeTestProbe("pC")
 
         let workerA = await Greeter(probe: pA, actorSystem: self.system, key: workerKey)
-        try await Task.sleep(for: .seconds(1))
         let workerB = await Greeter(probe: pB, actorSystem: self.system, key: workerKey)
-        try await Task.sleep(for: .seconds(1))
         let workerC = await Greeter(probe: pC, actorSystem: self.system, key: workerKey)
-        try await Task.sleep(for: .seconds(1))
 
         let workerProbes: [ClusterSystem.ActorID: ActorTestProbe<String>] = [
             workerA.id: pA,
             workerB.id: pB,
             workerC.id: pC,
         ]
-        // Workers are sorted by id then selected round-robin
-        let sortedWorkerIDs = Array(workerProbes.keys).sorted()
+        let workerIDs = [workerA.id, workerB.id, workerC.id]
 
         // Wait for all workers to be registered with the receptionist
         let finished = expectation(description: "all workers available")
@@ -60,26 +56,22 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
         wait(for: [finished], timeout: 3.0)
 
         // Submit work with all workers available
-        var selected = 0
         for i in 0 ... 7 {
             _ = try await workers.submit(work: "\(i)")
 
             // We are submitting more work than there are workers
-            let workerID = sortedWorkerIDs[selected]
+            let workerID = workerIDs[i % workerIDs.count]
             guard let probe = workerProbes[workerID] else {
                 throw testKit.fail("Missing test probe for worker \(workerID)")
             }
             try probe.expectMessage("work:\(i) at \(workerID)")
-            selected = sortedWorkerIDs.index(after: i) % workerProbes.count
         }
     }
 
     func test_workerPool_dynamic_removeDeadActors() async throws {
-        throw XCTSkip("!!! Skipping test \(#function) !!!") // FIXME(distributed): Pending fix for #831 to be able to terminate worker by setting it to nil
-
         let workerKey = DistributedReception.Key(Greeter.self, id: "request-workers")
 
-        let workers = try await WorkerPool(selector: .dynamic(workerKey), actorSystem: system)
+        let workers = try await WorkerPool(settings: .init(selector: .dynamic(workerKey), strategy: .simpleRoundRobin), actorSystem: system)
 
         let pA: ActorTestProbe<String> = self.testKit.makeTestProbe("pA")
         let pB: ActorTestProbe<String> = self.testKit.makeTestProbe("pB")
@@ -95,8 +87,7 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
             workerB!.id: pB,
             workerC!.id: pC,
         ]
-        // Workers are sorted by id then selected round-robin
-        var sortedWorkerIDs = Array(workerProbes.keys).sorted()
+        var workerIDs = [workerA!.id, workerB!.id, workerC!.id]
 
         // Wait for all workers to be registered with the receptionist
         let finished = expectation(description: "all workers available")
@@ -115,7 +106,7 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
         for i in 0 ... 2 {
             _ = try await workers.submit(work: "all-available-\(i)")
 
-            let workerID = sortedWorkerIDs[i]
+            let workerID = workerIDs[i % workerIDs.count]
             guard let probe = workerProbes[workerID] else {
                 throw testKit.fail("Missing test probe for worker \(workerID)")
             }
@@ -123,7 +114,7 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
         }
 
         // Terminate workerA
-        sortedWorkerIDs.removeAll { $0 == workerA!.id }
+        workerIDs.removeAll { $0 == workerA!.id }
         workerA = nil
         try pA.expectMessage("Greeter deinit")
 
@@ -133,7 +124,7 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
 
             // We cannot be certain how round-robin position gets reset after A's termination,
             // so we don't enforce index check here.
-            let maybeGotItResults = try sortedWorkerIDs.compactMap {
+            let maybeGotItResults = try workerIDs.compactMap {
                 guard let probe = workerProbes[$0] else {
                     throw testKit.fail("Missing test probe for worker \($0)")
                 }
@@ -169,10 +160,13 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
         var workerB: Greeter? = Greeter(probe: pB, actorSystem: self.system)
         var workerC: Greeter? = Greeter(probe: pC, actorSystem: self.system)
 
+        var workers = [workerA!, workerB!, workerC!]
+        let workerIDs = workers.map(\.id)
+
         // !-safe since we initialize workers above
-        let workers = try await WorkerPool(
+        let workerPool = try await WorkerPool(
             settings: .init(
-                selector: .static([workerA!, workerB!, workerC!]),
+                selector: .static(workers),
                 strategy: .simpleRoundRobin
             ),
             actorSystem: system
@@ -183,34 +177,30 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
             workerB!.id: pB,
             workerC!.id: pC,
         ]
-        // Workers are sorted by id then selected round-robin
-        var sortedWorkerIDs = Array(workerProbes.keys).sorted()
 
         // Submit work with all workers available
-        var selected = 0
         for i in 0 ... 2 {
-            _ = try await workers.submit(work: "all-available-\(i)")
+            _ = try await workerPool.submit(work: "all-available-\(i)")
 
-            let workerID = sortedWorkerIDs[selected]
+            let workerID = workerIDs[i % workerIDs.count]
             guard let probe = workerProbes[workerID] else {
                 throw testKit.fail("Missing test probe for worker \(workerID)")
             }
             try probe.expectMessage("work:all-available-\(i) at \(workerID)")
-            selected = sortedWorkerIDs.index(after: i) % workerProbes.count
         }
 
         // Terminate workerA
-        sortedWorkerIDs.removeAll { $0 == workerA!.id }
+        workers.removeFirst()
         workerA = nil
         try pA.expectMessage("Greeter deinit")
 
         // The remaining workers should take over
         for i in 0 ... 2 {
-            _ = try await workers.submit(work: "after-A-dead-\(i)")
+            _ = try await workerPool.submit(work: "after-A-dead-\(i)")
 
             // We cannot be certain how round-robin position gets reset after A's termination,
             // so we don't enforce index check here.
-            let maybeGotItResults = try sortedWorkerIDs.compactMap {
+            let maybeGotItResults = try workerIDs.compactMap {
                 guard let probe = workerProbes[$0] else {
                     throw testKit.fail("Missing test probe for worker \($0)")
                 }
@@ -223,14 +213,16 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
         }
 
         // Terminate the rest of the workers
+        workers.removeFirst()
         workerB = nil
         try pB.expectMessage("Greeter deinit")
+        workers.removeFirst()
         workerC = nil
         try pC.expectMessage("Greeter deinit")
 
         // WorkerPool now throws error on new work submission
         let error = try await shouldThrow {
-            _ = try await workers.submit(work: "after-all-dead")
+            _ = try await workerPool.submit(work: "after-all-dead")
         }
 
         guard let workerPoolError = error as? WorkerPoolError, case .staticPoolExhausted(let errorMessage) = workerPoolError.underlying.error else {
