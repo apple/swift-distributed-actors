@@ -17,13 +17,14 @@ import DistributedActorsTestKit
 @testable import DistributedCluster
 import Foundation
 import XCTest
+//import OrderedCollections
 
 // TODO: "ActorGroup" perhaps could be better name?
 final class WorkerPoolTests: SingleClusterSystemXCTestCase {
     func test_workerPool_registerNewlyStartedActors() async throws {
         let workerKey = DistributedReception.Key(Greeter.self, id: "request-workers")
 
-        let settings = WorkerPoolSettings(selector: .dynamic(workerKey))
+        let settings = WorkerPoolSettings(selector: .dynamic(workerKey), strategy: .simpleRoundRobin)
         let workers = try await WorkerPool(settings: settings, actorSystem: system)
 
         let pA: ActorTestProbe<String> = self.testKit.makeTestProbe("pA")
@@ -31,8 +32,11 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
         let pC: ActorTestProbe<String> = self.testKit.makeTestProbe("pC")
 
         let workerA = await Greeter(probe: pA, actorSystem: self.system, key: workerKey)
+        try await Task.sleep(for: .seconds(1))
         let workerB = await Greeter(probe: pB, actorSystem: self.system, key: workerKey)
+        try await Task.sleep(for: .seconds(1))
         let workerC = await Greeter(probe: pC, actorSystem: self.system, key: workerKey)
+        try await Task.sleep(for: .seconds(1))
 
         let workerProbes: [ClusterSystem.ActorID: ActorTestProbe<String>] = [
             workerA.id: pA,
@@ -46,7 +50,7 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
         let finished = expectation(description: "all workers available")
         Task {
             while true {
-                if try await workers.size() == workerProbes.count {
+                if try await workers.size == workerProbes.count {
                     break
                 }
                 try await Task.sleep(nanoseconds: 100_000_000)
@@ -56,15 +60,17 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
         wait(for: [finished], timeout: 3.0)
 
         // Submit work with all workers available
+        var selected = 0
         for i in 0 ... 7 {
             _ = try await workers.submit(work: "\(i)")
 
             // We are submitting more work than there are workers
-            let workerID = sortedWorkerIDs[i % workerProbes.count]
+            let workerID = sortedWorkerIDs[selected]
             guard let probe = workerProbes[workerID] else {
                 throw testKit.fail("Missing test probe for worker \(workerID)")
             }
             try probe.expectMessage("work:\(i) at \(workerID)")
+            selected = sortedWorkerIDs.index(after: i) % workerProbes.count
         }
     }
 
@@ -96,7 +102,7 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
         let finished = expectation(description: "all workers available")
         Task {
             while true {
-                if try await workers.size() == workerProbes.count {
+                if try await workers.size == workerProbes.count {
                     break
                 }
                 try await Task.sleep(nanoseconds: 100_000_000)
@@ -164,7 +170,13 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
         var workerC: Greeter? = Greeter(probe: pC, actorSystem: self.system)
 
         // !-safe since we initialize workers above
-        let workers = try await WorkerPool(settings: .init(selector: .static([workerA!, workerB!, workerC!])), actorSystem: system)
+        let workers = try await WorkerPool(
+            settings: .init(
+                selector: .static([workerA!, workerB!, workerC!]),
+                strategy: .simpleRoundRobin
+            ),
+            actorSystem: system
+        )
 
         let workerProbes: [ClusterSystem.ActorID: ActorTestProbe<String>] = [
             workerA!.id: pA,
@@ -175,14 +187,16 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
         var sortedWorkerIDs = Array(workerProbes.keys).sorted()
 
         // Submit work with all workers available
+        var selected = 0
         for i in 0 ... 2 {
             _ = try await workers.submit(work: "all-available-\(i)")
 
-            let workerID = sortedWorkerIDs[i]
+            let workerID = sortedWorkerIDs[selected]
             guard let probe = workerProbes[workerID] else {
                 throw testKit.fail("Missing test probe for worker \(workerID)")
             }
             try probe.expectMessage("work:all-available-\(i) at \(workerID)")
+            selected = sortedWorkerIDs.index(after: i) % workerProbes.count
         }
 
         // Terminate workerA
