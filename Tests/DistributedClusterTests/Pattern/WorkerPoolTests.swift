@@ -17,7 +17,6 @@ import DistributedActorsTestKit
 @testable import DistributedCluster
 import Foundation
 import XCTest
-//import OrderedCollections
 
 // TODO: "ActorGroup" perhaps could be better name?
 final class WorkerPoolTests: SingleClusterSystemXCTestCase {

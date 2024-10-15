@@ -38,8 +38,8 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
     public typealias ActorSystem = ClusterSystem
     public typealias WorkItem = Worker.WorkItem
     public typealias WorkResult = Worker.WorkResult
-  
-    lazy var log: Logger = Logger(actor: self)
+
+    lazy var log = Logger(actor: self)
 
     // Don't store `WorkerPoolSettings` or `Selector` because it would cause `WorkerPool`
     // to hold on to `Worker` references and prevent them from getting terminated.
@@ -73,7 +73,7 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
         self.logLevel = settings.logLevel
         self.strategy = settings.strategy
         self.actorSystem = system
-        
+
         switch settings.selector {
         case .dynamic(let key):
             self.newWorkersSubscribeTask = Task {
@@ -83,7 +83,7 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
                     // Notify those waiting for new worker
                     log.log(level: self.logLevel, "Updated workers for \(key)", metadata: [
                         "workers": "\(self.workers)",
-                        "newWorkerContinuations": "\(self.newWorkerContinuations.count)"
+                        "newWorkerContinuations": "\(self.newWorkerContinuations.count)",
                     ])
                     for (i, continuation) in self.newWorkerContinuations.enumerated().reversed() {
                         continuation.resume()
@@ -106,12 +106,12 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
     }
 
     public distributed func submit(work: WorkItem) async throws -> WorkResult {
-        log.log(level: self.logLevel, "Incoming work, selecting worker", metadata: [
+        self.log.log(level: self.logLevel, "Incoming work, selecting worker", metadata: [
             "workers/count": "\(self.size)",
             "worker/item": "\(work)",
         ])
         let worker = try await self.selectWorker(for: work)
-        log.log(level: self.logLevel, "Selected worker, submitting [\(work)] to [\(worker)]", metadata: [
+        self.log.log(level: self.logLevel, "Selected worker, submitting [\(work)] to [\(worker)]", metadata: [
             "worker": "\(worker.id)",
             "workers/count": "\(self.size)",
         ])
@@ -129,9 +129,9 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
         if self.workers.isEmpty {
             switch (self.hasTerminatedWorkers, self.whenAllWorkersTerminated) {
             case (false, _), // if we never received any workers yet, wait for some to show up.
-                (true, .awaitNewWorkers):
-                log.log(level: self.logLevel, "Worker pool is empty, waiting for new worker.")
-                
+                 (true, .awaitNewWorkers):
+                self.log.log(level: self.logLevel, "Worker pool is empty, waiting for new worker.")
+
                 try await _withClusterCancellableCheckedContinuation(of: Void.self) { cccc in
                     self.newWorkerContinuations.append(cccc)
                     let log = self.log
@@ -147,28 +147,28 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
                 throw error
             }
         }
-        
+
         guard let selected = nextWorker() else {
             switch self.whenAllWorkersTerminated {
             case .awaitNewWorkers:
                 // try again
-                return try await selectWorker(for: work)
+                return try await self.selectWorker(for: work)
             case .throw(let error):
                 throw error
             }
         }
-        
+
         guard let selectedWorker = selected.actor else {
-            log.debug("Selected actor has deallocated: \(selected.id)!")
+            self.log.debug("Selected actor has deallocated: \(selected.id)!")
             // remove this actor from the pool
             self.terminated(actor: selected.id)
             // and, try again
-            return try await selectWorker(for: work)
+            return try await self.selectWorker(for: work)
         }
-        
+
         return selectedWorker
     }
-    
+
     private func removeWorkerWaitContinuation(_ cccc: ClusterCancellableCheckedContinuation<Void>) {
         self.newWorkerContinuations.remove(cccc)
     }
@@ -176,7 +176,7 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
     private func nextWorker() -> WeakLocalRef<Worker>? {
         switch self.strategy {
         case .random:
-            return workers.shuffled().first
+            return self.workers.shuffled().first
         case .simpleRoundRobin:
             if self.roundRobinPos >= self.size {
                 self.roundRobinPos = 0 // loop around from zero
@@ -188,7 +188,7 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
     }
 
     public func terminated(actor id: Worker.ID) {
-        log.debug("Worker terminated: \(id)", metadata: ["worker": "\(id)"])
+        self.log.debug("Worker terminated: \(id)", metadata: ["worker": "\(id)"])
         self.workers.remove(WeakLocalRef<Worker>(forRemoval: id))
         self.hasTerminatedWorkers = true
         self.roundRobinPos = 0 // FIXME: naively reset the round robin counter; we should do better than that
@@ -216,11 +216,10 @@ extension WorkerPool {
     /// using this key to the pool. On the other hand, static configurations could restrict the set
     /// of members to be statically provided etc.
     public enum Selector {
-        
         /// Instructs the `WorkerPool` to subscribe to given receptionist key, and add/remove
         /// any actors which register/leave with the receptionist using this key.
         case dynamic(DistributedReception.Key<Worker>)
-        
+
         /// Instructs the `WorkerPool` to use only the specified actors for routing.
         ///
         /// The actors will be removed from the pool if they terminate and will not be replaced automatically.
@@ -232,11 +231,11 @@ extension WorkerPool {
         /// or gracefully shutting down your application.
         case `static`([Worker])
     }
-    
+
     public enum Strategy {
         /// Simple random selection on every target worker selection.
         case random
-        
+
         /// Round-robin strategy which attempts to go "around" known workers one-by-one
         /// giving them equal amounts of work. This strategy is NOT strict, and when new
         /// workers arrive at the pool it may result in submitting work to previously notified
@@ -295,7 +294,7 @@ public struct WorkerPoolSettings<Worker: DistributedWorker> where Worker.ActorSy
 
     /// Configures how to select / discover actors for the pool.
     var selector: WorkerPool<Worker>.Selector
-    
+
     /// Configures how the "next" worker is determined for submitting a work request.
     /// Generally random strategies or a form of round robin are preferred, but we
     /// could implement more sophisticated workload balancing/estimating strategies as well.
@@ -314,7 +313,7 @@ public struct WorkerPoolSettings<Worker: DistributedWorker> where Worker.ActorSy
     public init(selector: WorkerPool<Worker>.Selector, strategy: WorkerPool<Worker>.Strategy = .random) {
         self.selector = selector
         self.strategy = strategy
-        
+
         switch selector {
         case .dynamic:
             self.whenAllWorkersTerminated = .awaitNewWorkers

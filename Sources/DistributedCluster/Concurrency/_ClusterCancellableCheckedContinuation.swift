@@ -18,20 +18,19 @@ import NIOConcurrencyHelpers
 /// A checked continuation that offers easier APIs for working with cancellation,
 /// as well as has its unique identity.
 internal final class ClusterCancellableCheckedContinuation<Success>: Hashable, @unchecked Sendable where Success: Sendable {
-    
     private struct _State: Sendable {
         var cancelled: Bool = false
         var onCancel: (@Sendable (ClusterCancellableCheckedContinuation<Success>) -> Void)?
         var continuation: CheckedContinuation<Success, any Error>?
     }
-    
+
     private let state: NIOLockedValueBox<_State> = .init(_State())
-    
+
     fileprivate init() {}
-    
+
     func setContinuation(_ continuation: CheckedContinuation<Success, any Error>) -> Bool {
         var alreadyCancelled = false
-        state.withLockedValue { state in
+        self.state.withLockedValue { state in
             if state.cancelled {
                 alreadyCancelled = true
             } else {
@@ -43,15 +42,15 @@ internal final class ClusterCancellableCheckedContinuation<Success>: Hashable, @
         }
         return !alreadyCancelled
     }
-    
+
     /// Register a cancellation handler, or call it immediately if the continuation was already cancelled.
     @Sendable
     func onCancel(handler: @Sendable @escaping (ClusterCancellableCheckedContinuation<Success>) -> Void) {
-        var alreadyCancelled: Bool = state.withLockedValue { state in
+        var alreadyCancelled: Bool = self.state.withLockedValue { state in
             if state.cancelled {
                 return true
             }
-            
+
             state.onCancel = handler
             return false
         }
@@ -59,11 +58,11 @@ internal final class ClusterCancellableCheckedContinuation<Success>: Hashable, @
             handler(self)
         }
     }
-    
+
     private func withContinuation(cancelled: Bool = false, _ operation: (CheckedContinuation<Success, any Error>) -> Void) {
         var safeContinuation: CheckedContinuation<Success, any Error>?
         var safeOnCancel: (@Sendable (ClusterCancellableCheckedContinuation<Success>) -> Void)?
-        state.withLockedValue { (state: inout _State) -> Void in
+        self.state.withLockedValue { (state: inout _State) -> Void in
             state.cancelled = state.cancelled || cancelled
             safeContinuation = state.continuation
             safeOnCancel = state.onCancel
@@ -77,25 +76,25 @@ internal final class ClusterCancellableCheckedContinuation<Success>: Hashable, @
             safeOnCancel?(self)
         }
     }
-    
+
     func resume(returning value: Success) {
-        withContinuation {
+        self.withContinuation {
             $0.resume(returning: value)
         }
     }
-    
+
     func resume(throwing error: any Error) {
-        withContinuation {
+        self.withContinuation {
             $0.resume(throwing: error)
         }
     }
-    
+
     var isCancelled: Bool {
-        state.withLockedValue { $0.cancelled }
+        self.state.withLockedValue { $0.cancelled }
     }
-    
+
     func cancel() {
-        withContinuation(cancelled: true) {
+        self.withContinuation(cancelled: true) {
             $0.resume(throwing: CancellationError())
         }
     }
@@ -106,15 +105,16 @@ extension ClusterCancellableCheckedContinuation where Success == Void {
         self.resume(returning: ())
     }
 }
+
 extension ClusterCancellableCheckedContinuation {
     static func == (lhs: ClusterCancellableCheckedContinuation, rhs: ClusterCancellableCheckedContinuation) -> Bool {
         return ObjectIdentifier(lhs) == ObjectIdentifier(rhs)
     }
+
     func hash(into hasher: inout Hasher) {
         hasher.combine(ObjectIdentifier(self))
     }
 }
-
 
 func _withClusterCancellableCheckedContinuation<Success>(
     of successType: Success.Type = Success.self,

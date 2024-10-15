@@ -19,7 +19,7 @@ public struct WeakLocalRefDictionary<Act: DistributedActor>: ExpressibleByDictio
     where Act.ID == ClusterSystem.ActorID
 {
     var underlying: [ClusterSystem.ActorID: WeakLocalRef<Act>]
-    
+
     /// Initialize an empty dictionary.
     public init() {
         self.underlying = [:]
@@ -129,14 +129,14 @@ public struct WeakAnyDistributedActorDictionary {
 /// in the expected way.
 final class WeakLocalRef<Act: DistributedActor>: Hashable where Act.ID == ClusterSystem.ActorID {
     let id: Act.ID
-    
+
     private weak var weakLocalRef: Act?
     private let strongRemoteRef: Act?
-    
+
     var actor: Act? {
         self.strongRemoteRef ?? self.weakLocalRef
     }
-    
+
     init(_ actor: Act) {
         if isDistributedKnownRemote(actor) {
             self.weakLocalRef = nil
@@ -147,18 +147,18 @@ final class WeakLocalRef<Act: DistributedActor>: Hashable where Act.ID == Cluste
         }
         self.id = actor.id
     }
-    
+
     init(forRemoval id: ClusterSystem.ActorID) {
         self.weakLocalRef = nil
         self.strongRemoteRef = nil
         self.id = id
     }
-    
+
     func hash(into hasher: inout Hasher) {
-        hasher.combine(id)
+        hasher.combine(self.id)
     }
-    
-    static func ==(lhs: WeakLocalRef<Act>, rhs: WeakLocalRef<Act>) -> Bool {
+
+    static func == (lhs: WeakLocalRef<Act>, rhs: WeakLocalRef<Act>) -> Bool {
         if lhs === rhs {
             return true
         }
