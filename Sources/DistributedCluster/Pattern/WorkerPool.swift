@@ -69,10 +69,10 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
     public init(settings: WorkerPoolSettings<Worker>, actorSystem system: ActorSystem) async throws {
         try settings.validate()
 
+        self.actorSystem = system
         self.whenAllWorkersTerminated = settings.whenAllWorkersTerminated
         self.logLevel = settings.logLevel
         self.strategy = settings.strategy
-        self.actorSystem = system
 
         switch settings.selector {
         case .dynamic(let key):
