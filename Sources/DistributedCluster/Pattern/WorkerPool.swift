@@ -46,9 +46,11 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
     private var whenAllWorkersTerminated: AllWorkersTerminatedDirective {
         self.settings.whenAllWorkersTerminated
     }
+
     private var logLevel: Logger.Level {
         self.settings.logLevel
     }
+
     private var strategy: WorkerPool<Worker>.Strategy {
         self.settings.strategy
     }
@@ -249,19 +251,20 @@ extension WorkerPool {
             .init(underlying: .static(workers.map(WeakLocalRef.init)))
         }
     }
-    
+
     public struct Strategy {
         enum _Strategy {
             case random
             case simpleRoundRobin
         }
+
         let underlying: _Strategy
-        
+
         /// Simple random selection on every target worker selection.
         public static var random: Strategy {
             .init(underlying: .random)
         }
-        
+
         /// Round-robin strategy which attempts to go "around" known workers one-by-one
         /// giving them equal amounts of work. This strategy is NOT strict, and when new
         /// workers arrive at the pool it may result in submitting work to previously notified
