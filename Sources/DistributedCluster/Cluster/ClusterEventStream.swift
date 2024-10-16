@@ -26,11 +26,7 @@ public struct ClusterEventStream: AsyncSequence {
     private let actor: ClusterEventStreamActor?
 
     internal init(_ system: ClusterSystem, customName: String? = nil) {
-        var props = ClusterEventStreamActor.props(customName: customName)
-//        if let customName = customName {
-//            props._knownActorName =
-//        }
-
+        let props = ClusterEventStreamActor.props(customName: customName)
         self.actor = _Props.$forSpawn.withValue(props) {
             ClusterEventStreamActor(actorSystem: system)
         }

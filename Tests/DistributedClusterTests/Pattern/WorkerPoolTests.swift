@@ -53,7 +53,7 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
             }
             finished.fulfill()
         }
-        wait(for: [finished], timeout: 3.0)
+        await fulfillment(of: [finished], timeout: 3.0)
 
         // Submit work with all workers available
         for i in 0 ... 7 {
@@ -103,7 +103,7 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
             }
             finished.fulfill()
         }
-        wait(for: [finished], timeout: 3.0)
+        await fulfillment(of: [finished], timeout: 3.0)
 
         // Submit work with all workers available
         for i in 0 ... 2 {
