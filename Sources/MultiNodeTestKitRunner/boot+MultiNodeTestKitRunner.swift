@@ -145,7 +145,6 @@ struct MultiNodeTestKitRunnerBoot {
             if !expectedFailure {
                 switch programResult {
                 case .failure(let error as MultiNodeProgramError):
-                    var reason: String = "MultiNode test failed, output was dumped."
                     for line in error.completeOutput {
                         log("[\(nodeName)](\(multiNodeTest.testName)) \(line)")
 

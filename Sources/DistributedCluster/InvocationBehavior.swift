@@ -37,7 +37,7 @@ enum InvocationBehavior {
     static func behavior(instance weakInstance: Weak<some DistributedActor>) -> _Behavior<InvocationMessage> {
         return _Behavior.setup { context in
             return ._receiveMessageAsync { (message) async throws -> _Behavior<InvocationMessage> in
-                guard let instance = weakInstance.actor else {
+                guard let _ = weakInstance.actor else {
                     context.log.warning("Received message \(message) while distributed actor instance was released! Stopping...")
                     context.system.personalDeadLetters(type: InvocationMessage.self, recipient: context.id).tell(message)
                     return .stop
@@ -57,8 +57,8 @@ enum InvocationBehavior {
                 if let terminated = signal as? _Signals.Terminated {
                     if let watcher = instance as? (any LifecycleWatch) {
                         Task {
-                            await instance.whenLocal { __secretlyKnownToBeLocalK in
-                                let __secretlyKnownToBeLocal: any LifecycleWatch = __secretlyKnownToBeLocalK as! any LifecycleWatch
+                            await watcher.whenLocal { __secretlyKnownToBeLocalK in
+                                let __secretlyKnownToBeLocal: any LifecycleWatch = __secretlyKnownToBeLocalK
                                 await __secretlyKnownToBeLocal._receiveActorTerminated(id: terminated.id)
                             }
                         }
