@@ -43,9 +43,17 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
 
     // Don't store `WorkerPoolSettings` or `Selector` because it would cause `WorkerPool`
     // to hold on to `Worker` references and prevent them from getting terminated.
-    private var whenAllWorkersTerminated: AllWorkersTerminatedDirective
-    private var logLevel: Logger.Level
-    private let strategy: WorkerPool<Worker>.Strategy
+    private var whenAllWorkersTerminated: AllWorkersTerminatedDirective {
+        self.settings.whenAllWorkersTerminated
+    }
+    private var logLevel: Logger.Level {
+        self.settings.logLevel
+    }
+    private var strategy: WorkerPool<Worker>.Strategy {
+        self.settings.strategy
+    }
+
+    private let settings: WorkerPoolSettings<Worker>
 
     /// `Task` for subscribing to receptionist listing in case of `Selector.dynamic` mode.
     private var newWorkersSubscribeTask: Task<Void, Error>?
@@ -70,11 +78,9 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
         try settings.validate()
 
         self.actorSystem = system
-        self.whenAllWorkersTerminated = settings.whenAllWorkersTerminated
-        self.logLevel = settings.logLevel
-        self.strategy = settings.strategy
+        self.settings = settings
 
-        switch settings.selector {
+        switch settings.selector.underlying {
         case .dynamic(let key):
             self.newWorkersSubscribeTask = Task {
                 for await worker in await self.actorSystem.receptionist.listing(of: key) {
@@ -94,9 +100,9 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
             }
         case .static(let workers):
             self.workers.reserveCapacity(workers.count)
-            workers.forEach { worker in
-                self.workers.append(WeakLocalRef(worker))
-                watchTermination(of: worker)
+            self.workers = .init(workers)
+            workers.compactMap(\.actor).forEach { actor in
+                watchTermination(of: actor)
             }
         }
     }
@@ -174,7 +180,7 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
     }
 
     private func nextWorker() -> WeakLocalRef<Worker>? {
-        switch self.strategy {
+        switch self.strategy.underlying {
         case .random:
             return self.workers.shuffled().first
         case .simpleRoundRobin:
@@ -215,10 +221,20 @@ extension WorkerPool {
     /// E.g. the `dynamic` mode uses a receptionist key, and will add any workers which register
     /// using this key to the pool. On the other hand, static configurations could restrict the set
     /// of members to be statically provided etc.
-    public enum Selector {
+    public struct Selector {
+        enum _Selector {
+            case dynamic(DistributedReception.Key<Worker>)
+            /// Array should contain WeakLocalRers not to create strong references to local actors
+            case `static`([WeakLocalRef<Worker>])
+        }
+
+        let underlying: _Selector
+
         /// Instructs the `WorkerPool` to subscribe to given receptionist key, and add/remove
         /// any actors which register/leave with the receptionist using this key.
-        case dynamic(DistributedReception.Key<Worker>)
+        public static func dynamic(_ key: DistributedReception.Key<Worker>) -> Selector {
+            .init(underlying: .dynamic(key))
+        }
 
         /// Instructs the `WorkerPool` to use only the specified actors for routing.
         ///
@@ -229,13 +245,23 @@ extension WorkerPool {
         /// The worker pool will terminate itself if all of its static workers have terminated.
         /// You may death-watch the worker pool in order to react to this situation, e.g. by spawning a replacement pool,
         /// or gracefully shutting down your application.
-        case `static`([Worker])
+        public static func `static`(_ workers: [Worker]) -> Selector {
+            .init(underlying: .static(workers.map(WeakLocalRef.init)))
+        }
     }
-
-    public enum Strategy {
+    
+    public struct Strategy {
+        enum _Strategy {
+            case random
+            case simpleRoundRobin
+        }
+        let underlying: _Strategy
+        
         /// Simple random selection on every target worker selection.
-        case random
-
+        public static var random: Strategy {
+            .init(underlying: .random)
+        }
+        
         /// Round-robin strategy which attempts to go "around" known workers one-by-one
         /// giving them equal amounts of work. This strategy is NOT strict, and when new
         /// workers arrive at the pool it may result in submitting work to previously notified
@@ -243,7 +269,9 @@ extension WorkerPool {
         ///
         /// We could consider implementing a strict round robin strategy which remains strict even
         /// as new workers arrive in the pool.
-        case simpleRoundRobin
+        public static var simpleRoundRobin: Strategy {
+            .init(underlying: .simpleRoundRobin)
+        }
     }
 }
 
@@ -314,7 +342,7 @@ public struct WorkerPoolSettings<Worker: DistributedWorker> where Worker.ActorSy
         self.selector = selector
         self.strategy = strategy
 
-        switch selector {
+        switch selector.underlying {
         case .dynamic:
             self.whenAllWorkersTerminated = .awaitNewWorkers
         case .static:
@@ -325,7 +353,7 @@ public struct WorkerPoolSettings<Worker: DistributedWorker> where Worker.ActorSy
 
     @discardableResult
     public func validate() throws -> WorkerPoolSettings {
-        switch self.selector {
+        switch self.selector.underlying {
         case .static(let workers) where workers.isEmpty:
             throw WorkerPoolError(.emptyStaticWorkerPool("Illegal empty collection passed to `.static` worker pool!"))
         case .static(let workers):
