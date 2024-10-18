@@ -17,12 +17,13 @@ import DistributedActorsTestKit
 @testable import DistributedCluster
 import NIO
 import ServiceDiscovery
-import XCTest
+import Testing
 
 final class ClusterDiscoveryTests: SingleClusterSystemXCTestCase {
     let A = Cluster.Member(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "A", host: "1.1.1.1", port: 7337), nid: .random()), status: .up)
     let B = Cluster.Member(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "B", host: "2.2.2.2", port: 8228), nid: .random()), status: .up)
 
+    @Test
     func test_discovery_shouldInitiateJoinsToNewlyDiscoveredNodes() throws {
         let discovery = TestTriggeredServiceDiscovery<String, Cluster.Endpoint>()
         let settings = ServiceDiscoverySettings(discovery, service: "example")
@@ -63,6 +64,7 @@ final class ClusterDiscoveryTests: SingleClusterSystemXCTestCase {
         node3.shouldEqual(self.B.node.endpoint)
     }
 
+    @Test
     func test_discovery_shouldInitiateJoinsToStaticNodes() throws {
         let nodes = Set([self.A, self.B].map(\.node.endpoint))
         let settings = ServiceDiscoverySettings(static: Set(nodes))
@@ -77,6 +79,7 @@ final class ClusterDiscoveryTests: SingleClusterSystemXCTestCase {
         }
     }
 
+    @Test
     func test_discovery_shouldHandleMappingsWhenDiscoveryHasItsOwnTypes() throws {
         struct ExampleK8sService: Hashable {
             let name: String
@@ -112,6 +115,7 @@ final class ClusterDiscoveryTests: SingleClusterSystemXCTestCase {
         try clusterProbe.expectNoMessage(for: .milliseconds(300)) // i.e. it should not send another join for `A` we already did that
     }
 
+    @Test
     func test_discovery_stoppingActor_shouldCancelSubscription() throws {
         let discovery = TestTriggeredServiceDiscovery<String, Cluster.Endpoint>()
         let settings = ServiceDiscoverySettings(discovery, service: "example")

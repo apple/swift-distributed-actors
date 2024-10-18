@@ -16,7 +16,7 @@ import DistributedActorsConcurrencyHelpers
 @testable import DistributedCluster
 import Foundation
 import NIO
-import XCTest
+import Testing
 
 /// Base class to handle the repetitive setUp/tearDown code involved in most `ClusterSystem` requiring tests.
 open class SingleClusterSystemXCTestCase: ClusteredActorSystemsXCTestCase {
@@ -44,13 +44,9 @@ open class SingleClusterSystemXCTestCase: ClusteredActorSystemsXCTestCase {
         return handler
     }
 
-    override open func setUp() async throws {
-        try await super.setUp()
+    override init() async throws {
+        try await super.init()
         _ = await self.setUpNode(String(describing: type(of: self)))
-    }
-
-    override open func tearDown() async throws {
-        try await super.tearDown()
     }
 
     override open func setUpNode(_ name: String, _ modifySettings: ((inout ClusterSystemSettings) -> Void)? = nil) async -> ClusterSystem {

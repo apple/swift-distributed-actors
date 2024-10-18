@@ -137,7 +137,7 @@ func pnote(_ message: String, file: StaticString = #fileID, line: UInt = #line) 
 }
 
 /// Like [pprint] but green, use for notable "good" output.
-func pinfo(_ message: String, file: StaticString = #fileID, line: UInt = #line) {
+func pinfo(_ message: String, file: String = #fileID, line: Int = #line) {
     print("""
     \(CONSOLE_GREEN)\
     [\(_createTimeFormatter().string(from: Date()))] \
@@ -145,6 +145,7 @@ func pinfo(_ message: String, file: StaticString = #fileID, line: UInt = #line) 
     \(CONSOLE_RESET)
     """)
 }
+
 
 internal func _hackyPThreadThreadId() -> String {
     #if os(macOS)

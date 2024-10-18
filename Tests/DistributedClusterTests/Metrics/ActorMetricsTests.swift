@@ -19,13 +19,13 @@ import DistributedActorsTestKit
 import Foundation
 @testable import Metrics
 import NIO
-import XCTest
+import Testing
 
 final class ActorMetricsTests: ClusteredActorSystemsXCTestCase {
     var metrics: TestMetrics! = TestMetrics()
 
-    override func setUp() {
-        super.setUp()
+    override init() async throws {
+        try await super.init()
         MetricsSystem.bootstrapInternal(self.metrics)
     }
 
@@ -35,9 +35,8 @@ final class ActorMetricsTests: ClusteredActorSystemsXCTestCase {
         MetricsSystem.bootstrapInternal(NOOPMetricsHandler.instance)
     }
 
+    @Test(.enabled { "!!! Skipping test \(#function) !!!"; return false }) // FIXME(distributed): this crashes the cluster with a message on setup
     func test_serialization_reportsMetrics() async throws {
-        throw XCTSkip("!!! Skipping test \(#function) !!!") // FIXME(distributed): this crashes the cluster with a message on setup
-
         let first = await setUpNode("first")
         let second = await setUpNode("second")
 
@@ -57,6 +56,7 @@ final class ActorMetricsTests: ClusteredActorSystemsXCTestCase {
         gauge.lastValue?.shouldEqual(6)
     }
 
+    @Test
     func test_mailboxCount_reportsMetrics() async throws {
         let first = await setUpNode("first")
 

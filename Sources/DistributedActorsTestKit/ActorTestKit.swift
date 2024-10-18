@@ -67,7 +67,7 @@ extension ActorTestKit {
     public func makeTestProbe<Message: Codable>(
         _ naming: _ActorNaming? = nil,
         expecting type: Message.Type = Message.self,
-        file: StaticString = #filePath, line: UInt = #line
+        sourceLocation: SourceLocation = #_sourceLocation
     ) -> ActorTestProbe<Message> {
         self.makeProbesLock.lock()
         defer { self.makeProbesLock.unlock() }
@@ -101,7 +101,7 @@ extension ActorTestKit {
     /// - Hint: Use `fishForMessages` and `fishFor` to filter expectations for specific events.
     public func spawnClusterEventStreamTestProbe(
         _ naming: _ActorNaming? = nil,
-        file: String = #filePath, line: UInt = #line, column: UInt = #column
+        sourceLocation: SourceLocation = #_sourceLocation
     ) async -> ActorTestProbe<Cluster.Event> {
         let eventStream = self.system.cluster.events
         let p = self.makeTestProbe(naming ?? _ActorNaming.prefixed(with: "\(ClusterEventStream.self)-subscriberProbe"), expecting: Cluster.Event.self)
@@ -478,6 +478,11 @@ extension ActorTestKit {
         let callSite = CallSiteInfo(sourceLocation: sourceLocation, function: #function)
         let fullMessage: String = message ?? "<no message>"
         return callSite.error(fullMessage, failTest: true)
+    }
+    
+    public func fail(_ message: String? = nil, file: String = #fileID, filePath: String = #filePath, line: Int = #line, column: Int = #column) -> Error {
+        let sourceLocation = SourceLocation(fileID: file, filePath: filePath, line: line, column: column)
+        return self.fail(message, sourceLocation: sourceLocation)
     }
 }
 

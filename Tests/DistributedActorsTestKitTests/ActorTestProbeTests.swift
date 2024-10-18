@@ -17,6 +17,8 @@ import DistributedCluster
 import Testing
 
 final class ActorTestProbeTests: SingleClusterSystemXCTestCase {
+    
+    @Test
     func test_maybeExpectMessage_shouldReturnTheReceivedMessage() throws {
         let probe = self.testKit.makeTestProbe("p2", expecting: String.self)
 
@@ -25,6 +27,7 @@ final class ActorTestProbeTests: SingleClusterSystemXCTestCase {
         try probe.maybeExpectMessage().shouldEqual("one")
     }
 
+    @Test
     func test_maybeExpectMessage_shouldReturnNilIfTimeoutExceeded() throws {
         let probe = self.testKit.makeTestProbe("p2", expecting: String.self)
 
@@ -33,6 +36,7 @@ final class ActorTestProbeTests: SingleClusterSystemXCTestCase {
         try probe.maybeExpectMessage().shouldEqual("one")
     }
 
+    @Test
     func test_expectNoMessage() throws {
         let p = self.testKit.makeTestProbe("p3", expecting: String.self)
 
@@ -40,6 +44,7 @@ final class ActorTestProbeTests: SingleClusterSystemXCTestCase {
         p.stop()
     }
 
+    @Test
     func test_shouldBeWatchable() throws {
         let watchedProbe = self.testKit.makeTestProbe(expecting: Never.self)
         let watchingProbe = self.testKit.makeTestProbe(expecting: Never.self)
@@ -51,6 +56,7 @@ final class ActorTestProbeTests: SingleClusterSystemXCTestCase {
         try watchingProbe.expectTerminated(watchedProbe.ref)
     }
 
+    @Test
     func test_expectMessageAnyOrderSuccess() async throws {
         let p = self.testKit.makeTestProbe(expecting: String.self)
         let messages = ["test1", "test2", "test3", "test4"]

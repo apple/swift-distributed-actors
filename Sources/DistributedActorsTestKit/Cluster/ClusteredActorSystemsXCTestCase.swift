@@ -21,7 +21,7 @@ import Testing
 ///
 /// Systems started using `setUpNode` are automatically terminated upon test completion, and logs are automatically
 /// captured and only printed when a test failure occurs.
-open class ClusteredActorSystemsXCTestCase: XCTestCase {
+open class ClusteredActorSystemsXCTestCase {
     internal let lock = DistributedActorsConcurrencyHelpers.Lock()
     public private(set) var _nodes: [ClusterSystem] = []
     public private(set) var _testKits: [ActorTestKit] = []
@@ -91,7 +91,7 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
         return self._nextPort
     }
 
-    override open func setUp() async throws {
+    public init() async throws {
         if self.inspectDetectActorLeaks {
             self.actorStatsBefore = try InspectKit.actorStats()
         }
@@ -108,7 +108,6 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
             print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
             self.printAllCapturedLogs()
         }
-        try await super.setUp()
     }
 
     /// Set up a new node intended to be clustered.
@@ -153,21 +152,23 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
         let second = await self.setUpNode("second", modifySettings)
         return (first, second)
     }
+    
+    deinit { self.tearDown() }
 
-    override open func tearDown() async throws {
+    func tearDown() {
         self.stuckTestDumpLogsTask?.cancel()
         self.stuckTestDumpLogsTask = nil
 
-        try await super.tearDown()
+//        try await super.tearDown()
 
-        let testsFailed = self.testRun?.totalFailureCount ?? 0 > 0
+        let testsFailed = false //self.testRun?.totalFailureCount ?? 0 > 0
         if self.captureLogs, self.alwaysPrintCaptureLogs || testsFailed {
             self.printAllCapturedLogs()
         }
 
         for node in self._nodes {
             node.log.warning("======================== TEST TEAR DOWN: SHUTDOWN ========================")
-            try! await node.shutdown().wait()
+            try! node.shutdown().wait()
         }
 
         self.lock.withLockVoid {
@@ -177,11 +178,13 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
         }
 
         if self.inspectDetectActorLeaks {
-            try await Task.sleep(until: .now + .seconds(2), clock: .continuous)
-
-            let actorStatsAfter = try InspectKit.actorStats()
-            if let error = self.actorStatsBefore.detectLeaks(latest: actorStatsAfter) {
-                print(error.message)
+            Task {
+                try await Task.sleep(until: .now + .seconds(2), clock: .continuous)
+                
+                let actorStatsAfter = try InspectKit.actorStats()
+                if let error = self.actorStatsBefore.detectLeaks(latest: actorStatsAfter) {
+                    print(error.message)
+                }
             }
         }
     }
@@ -199,7 +202,7 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
     public func joinNodes(
         node: ClusterSystem, with other: ClusterSystem,
         ensureWithin: Duration? = nil, ensureMembers maybeExpectedStatus: Cluster.MemberStatus? = nil,
-        file: StaticString = #filePath, line: UInt = #line
+        sourceLocation: SourceLocation = #_sourceLocation
     ) async throws {
         node.cluster.join(endpoint: other.cluster.node.endpoint)
 
@@ -208,30 +211,30 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
 
         if let expectedStatus = maybeExpectedStatus {
             if let specificTimeout = ensureWithin {
-                try await self.ensureNodes(expectedStatus, on: node, within: specificTimeout, nodes: other.cluster.node, file: file, line: line)
+                try await self.ensureNodes(expectedStatus, on: node, within: specificTimeout, nodes: other.cluster.node, sourceLocation: sourceLocation)
             } else {
-                try await self.ensureNodes(expectedStatus, on: node, nodes: other.cluster.node, file: file, line: line)
+                try await self.ensureNodes(expectedStatus, on: node, nodes: other.cluster.node, sourceLocation: sourceLocation)
             }
         }
     }
 
     public func ensureNodes(
         _ status: Cluster.MemberStatus, on system: ClusterSystem? = nil, within: Duration = .seconds(20), nodes: Cluster.Node...,
-        file: StaticString = #filePath, line: UInt = #line
+        sourceLocation: SourceLocation = #_sourceLocation
     ) async throws {
-        try await self.ensureNodes(status, on: system, within: within, nodes: nodes, file: file, line: line)
+        try await self.ensureNodes(status, on: system, within: within, nodes: nodes, sourceLocation: sourceLocation)
     }
 
     public func ensureNodes(
         atLeast status: Cluster.MemberStatus, on system: ClusterSystem? = nil, within: Duration = .seconds(20), nodes: Cluster.Node...,
-        file: StaticString = #filePath, line: UInt = #line
+        sourceLocation: SourceLocation = #_sourceLocation
     ) async throws {
-        try await self.ensureNodes(atLeast: status, on: system, within: within, nodes: nodes, file: file, line: line)
+        try await self.ensureNodes(atLeast: status, on: system, within: within, nodes: nodes, sourceLocation: sourceLocation)
     }
 
     public func ensureNodes(
         _ status: Cluster.MemberStatus, on system: ClusterSystem? = nil, within: Duration = .seconds(20), nodes: [Cluster.Node],
-        file: StaticString = #filePath, line: UInt = #line
+        sourceLocation: SourceLocation = #_sourceLocation
     ) async throws {
         guard let onSystem = system ?? self._nodes.first(where: { !$0.isShuttingDown }) else {
             fatalError("Must at least have 1 system present to use [\(#function)]")
@@ -241,13 +244,13 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
         do {
             try await onSystem.cluster.waitFor(Set(nodes), status, within: within)
         } catch {
-            throw testKit.error("\(error)", file: file, line: line)
+            throw testKit.error("\(error)", sourceLocation: sourceLocation)
         }
     }
 
     public func ensureNodes(
         atLeast status: Cluster.MemberStatus, on system: ClusterSystem? = nil, within: Duration = .seconds(20), nodes: [Cluster.Node],
-        file: StaticString = #filePath, line: UInt = #line
+        sourceLocation: SourceLocation = #_sourceLocation
     ) async throws {
         guard let onSystem = system ?? self._nodes.first(where: { !$0.isShuttingDown }) else {
             fatalError("Must at least have 1 system present to use [\(#function)]")
@@ -258,7 +261,7 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
             // all members on onMember should have reached this status (e.g. up)
             try await onSystem.cluster.waitFor(Set(nodes), atLeast: status, within: within)
         } catch {
-            throw testKit.error("\(error)", file: file, line: line)
+            throw testKit.error("\(error)", sourceLocation: sourceLocation)
         }
     }
 }
@@ -267,7 +270,7 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
 // MARK: Printing information
 
 extension ClusteredActorSystemsXCTestCase {
-    public func pinfoMembership(_ system: ClusterSystem, file: StaticString = #fileID, line: UInt = #line) {
+    public func pinfoMembership(_ system: ClusterSystem, sourceLocation: SourceLocation = #_sourceLocation) {
         let testKit = self.testKit(system)
         let p = testKit.makeTestProbe(expecting: Cluster.Membership.self)
 
@@ -284,8 +287,8 @@ extension ClusteredActorSystemsXCTestCase {
             \(info)
             END OF MEMBERSHIP === ------------------------------------------------------------------------------ 
             """,
-            file: file,
-            line: line
+            file: sourceLocation.fileID,
+            line: sourceLocation.line
         )
     }
 }
@@ -324,22 +327,24 @@ extension ClusteredActorSystemsXCTestCase {
     public func assertAssociated(
         _ system: ClusterSystem, withAtLeast node: Cluster.Node,
         timeout: Duration? = nil, interval: Duration? = nil,
-        verbose: Bool = false, file: StaticString = #filePath, line: UInt = #line, column: UInt = #column
+        verbose: Bool = false,
+        sourceLocation: SourceLocation = #_sourceLocation
     ) throws {
         try self.assertAssociated(
             system, withAtLeast: [node], timeout: timeout, interval: interval,
-            verbose: verbose, file: file, line: line, column: column
+            verbose: verbose, sourceLocation: sourceLocation
         )
     }
 
     public func assertAssociated(
         _ system: ClusterSystem, withExactly node: Cluster.Node,
         timeout: Duration? = nil, interval: Duration? = nil,
-        verbose: Bool = false, file: StaticString = #filePath, line: UInt = #line, column: UInt = #column
+        verbose: Bool = false,
+        sourceLocation: SourceLocation = #_sourceLocation
     ) throws {
         try self.assertAssociated(
             system, withExactly: [node], timeout: timeout, interval: interval,
-            verbose: verbose, file: file, line: line, column: column
+            verbose: verbose, sourceLocation: sourceLocation
         )
     }
 
@@ -353,19 +358,20 @@ extension ClusteredActorSystemsXCTestCase {
         withExactly exactlyNodes: [Cluster.Node] = [],
         withAtLeast atLeastNodes: [Cluster.Node] = [],
         timeout: Duration? = nil, interval: Duration? = nil,
-        verbose: Bool = false, file: StaticString = #filePath, line: UInt = #line, column: UInt = #column
+        verbose: Bool = false,
+        sourceLocation: SourceLocation = #_sourceLocation
     ) throws {
         // FIXME: this is a weak workaround around not having "extensions" (unique object per actor system)
         // FIXME: this can be removed once issue #458 lands
 
         let testKit = self.testKit(system)
 
-        let probe = testKit.makeTestProbe(.prefixed(with: "probe-assertAssociated"), expecting: Set<Cluster.Node>.self, file: file, line: line)
+        let probe = testKit.makeTestProbe(.prefixed(with: "probe-assertAssociated"), expecting: Set<Cluster.Node>.self, sourceLocation: sourceLocation)
         defer { probe.stop() }
 
-        try testKit.eventually(within: timeout ?? .seconds(8), file: file, line: line, column: column) {
+        try testKit.eventually(within: timeout ?? .seconds(8), sourceLocation: sourceLocation) {
             system.cluster.ref.tell(.query(.associatedNodes(probe.ref))) // TODO: ask would be nice here
-            let associatedNodes = try probe.expectMessage(file: file, line: line)
+            let associatedNodes = try probe.expectMessage(sourceLocation: sourceLocation)
 
             if verbose {
                 pprint("                   Self: \(String(reflecting: system.settings.bindNode))")
@@ -428,7 +434,7 @@ extension ClusteredActorSystemsXCTestCase {
         on system: ClusterSystem, node: Cluster.Node,
         is expectedStatus: Cluster.MemberStatus,
         within: Duration,
-        file: StaticString = #filePath, line: UInt = #line
+        sourceLocation: SourceLocation = #_sourceLocation
     ) async throws {
         let testKit = self.testKit(system)
 
@@ -437,18 +443,17 @@ extension ClusteredActorSystemsXCTestCase {
         } catch let error as Cluster.MembershipError {
             switch error.underlying.error {
             case .notFound:
-                throw testKit.error("Expected [\(system.cluster.node)] to know about [\(node)] member", file: file, line: line)
+                throw testKit.error("Expected [\(system.cluster.node)] to know about [\(node)] member", sourceLocation: sourceLocation)
             case .statusRequirementNotMet(_, let foundMember):
                 throw testKit.error(
                     """
                     Expected \(reflecting: foundMember.node) on \(reflecting: system.cluster.node) \
                     to be seen as: [\(expectedStatus)], but was [\(foundMember.status)]
                     """,
-                    file: file,
-                    line: line
+                    sourceLocation: sourceLocation
                 )
             default:
-                throw testKit.error(error.description, file: file, line: line)
+                throw testKit.error(error.description, sourceLocation: sourceLocation)
             }
         }
     }
@@ -457,7 +462,7 @@ extension ClusteredActorSystemsXCTestCase {
         on system: ClusterSystem, node: Cluster.Node,
         atLeast expectedAtLeastStatus: Cluster.MemberStatus,
         within: Duration,
-        file: StaticString = #filePath, line: UInt = #line
+        sourceLocation: SourceLocation = #_sourceLocation
     ) async throws {
         let testKit = self.testKit(system)
 
@@ -466,18 +471,17 @@ extension ClusteredActorSystemsXCTestCase {
         } catch let error as Cluster.MembershipError {
             switch error.underlying.error {
             case .notFound:
-                throw testKit.error("Expected [\(system.cluster.node)] to know about [\(node)] member", file: file, line: line)
+                throw testKit.error("Expected [\(system.cluster.node)] to know about [\(node)] member", sourceLocation: sourceLocation)
             case .atLeastStatusRequirementNotMet(_, let foundMember):
                 throw testKit.error(
                     """
                     Expected \(reflecting: foundMember.node) on \(reflecting: system.cluster.node) \
                     to be seen as at-least: [\(expectedAtLeastStatus)], but was [\(foundMember.status)]
                     """,
-                    file: file,
-                    line: line
+                    sourceLocation: sourceLocation
                 )
             default:
-                throw testKit.error(error.description, file: file, line: line)
+                throw testKit.error(error.description, sourceLocation: sourceLocation)
             }
         }
     }
@@ -504,7 +508,7 @@ extension ClusteredActorSystemsXCTestCase {
     /// An error is thrown but NOT failing the test; use in pair with `testKit.eventually` to achieve the expected behavior.
     public func assertLeaderNode(
         on system: ClusterSystem, is expectedNode: Cluster.Node?,
-        file: StaticString = #filePath, line: UInt = #line
+        sourceLocation: SourceLocation = #_sourceLocation
     ) throws {
         let testKit = self.testKit(system)
         let p = testKit.makeTestProbe(expecting: Cluster.Membership.self)

@@ -15,13 +15,13 @@
 import DistributedActorsTestKit
 @testable import DistributedCluster
 import Foundation
-import XCTest
+import Testing
 
-final class ActorMemoryTests: XCTestCase {
+struct ActorMemoryTests {
     // Tests which measure how much memory actors take
 
     // TODO: we could use malloc hooking to get an idea about this in allocation tests; more interesting since over time as well based on ops
-
+    @Test
     func test_osx_actorShell_instanceSize() {
         #if os(OSX)
         class_getInstanceSize(_ActorShell<Int>.self).shouldEqual(624)

@@ -15,9 +15,11 @@
 import DistributedActorsTestKit
 @testable import DistributedCluster
 import Foundation
-import XCTest
+import Testing
 
 final class MailboxTests: SingleClusterSystemXCTestCase {
+    
+    @Test
     func test_sendMessage_shouldDropMessagesWhenFull() {
         let mailbox: _Mailbox<Int> = _Mailbox(system: self.system, capacity: 2)
 

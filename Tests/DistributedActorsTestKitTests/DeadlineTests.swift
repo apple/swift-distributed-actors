@@ -15,9 +15,11 @@
 @testable import DistributedActorsTestKit
 @testable import DistributedCluster
 import Foundation
-import XCTest
+import Testing
 
-class DeadlineTests: XCTestCase {
+struct DeadlineTests {
+    
+    @Test
     func test_deadline_nowIsNotPastNow() {
         let now = ContinuousClock.Instant.now
         let beforeDeadline = now - .seconds(100)
@@ -30,6 +32,7 @@ class DeadlineTests: XCTestCase {
         now.isBefore(.distantFuture).shouldBeTrue()
     }
 
+    @Test
     func test_deadline_hasTimeLeft() {
         let now = ContinuousClock.Instant.now
         let beforeDeadline = now - .seconds(100)
@@ -42,19 +45,21 @@ class DeadlineTests: XCTestCase {
         now.hasTimeLeft(until: .distantFuture).shouldBeFalse()
     }
 
+    @Test
     func test_deadline_subtracting() {
         let older = ContinuousClock.Instant.now
         Thread.sleep(until: Date().addingTimeInterval(0.02))
         let newer = ContinuousClock.Instant.now
 
-        XCTAssertLessThan(older - newer, .nanoseconds(0))
-        XCTAssertGreaterThan(newer - older, .nanoseconds(0))
+        #expect(older - newer < .nanoseconds(0))
+        #expect(newer - older > .nanoseconds(0))
     }
 
+    @Test
     func test_fromNow() {
         let now = ContinuousClock.Instant.now
         let deadline = ContinuousClock.Instant.fromNow(.seconds(3))
 
-        XCTAssert(now < deadline)
+        #expect(now < deadline)
     }
 }

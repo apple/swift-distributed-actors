@@ -16,7 +16,7 @@ import DistributedActorsConcurrencyHelpers
 @testable import DistributedCluster
 import struct Foundation.Date
 @testable import Logging
-import XCTest
+import Testing
 
 /// Testing only utility: Captures all log statements for later inspection.
 ///
@@ -66,9 +66,9 @@ public final class LogCapture {
     public func awaitLogContaining(
         _ testKit: ActorTestKit, text: String,
         within: Duration = .seconds(3),
-        file: StaticString = #filePath, line: UInt = #line
+        sourceLocation: SourceLocation = #_sourceLocation
     ) throws -> CapturedLogMessage {
-        try testKit.eventually(within: within, file: file, line: line) {
+        try testKit.eventually(within: within, sourceLocation: sourceLocation) {
             let logs = self.logs
             guard let found = logs.first(where: { log in "\(log)".contains(text) }) else {
                 throw TestError("Logs did not contain [\(text)].")
@@ -104,13 +104,13 @@ extension LogCapture {
 // MARK: XCTest integrations and helpers
 
 extension LogCapture {
-    public func printIfFailed(_ testRun: XCTestRun?) {
-        if let failureCount = testRun?.failureCount, failureCount > 0 {
-            print("------------------------------------------------------------------------------------------------------------------------")
-            self.printLogs()
-            print("========================================================================================================================")
-        }
-    }
+//    public func printIfFailed(_ testRun: XCTestRun?) {
+//        if let failureCount = testRun?.failureCount, failureCount > 0 {
+//            print("------------------------------------------------------------------------------------------------------------------------")
+//            self.printLogs()
+//            print("========================================================================================================================")
+//        }
+//    }
 
     public func printLogs() {
         for log in self.logs {
@@ -271,10 +271,10 @@ extension LogCapture {
         expectedFile: String? = nil,
         expectedLine: Int = -1,
         failTest: Bool = true,
-        file: StaticString = #filePath, line: UInt = #line, column: UInt = #column
+        sourceLocation: SourceLocation = #_sourceLocation
     ) throws -> CapturedLogMessage {
         precondition(prefix != nil || message != nil || grep != nil || level != nil || level != nil || expectedFile != nil, "At least one query parameter must be not `nil`!")
-        let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
+        let callSite = CallSiteInfo(sourceLocation: sourceLocation, function: #function)
 
         let found = self.logs.lazy
             .filter { log in
@@ -335,11 +335,11 @@ extension LogCapture {
             let message = """
             Did not find expected log, matching query: 
                 [\(query)]
-            in captured logs at \(file):\(line)
+            in captured logs at \(sourceLocation.fileID):\(sourceLocation.line)
             """
             let callSiteError = callSite.error(message)
             if failTest {
-                Issue.record(message, file: callSite.file, line: callSite.line)
+                Issue.record(.init(rawValue: message), sourceLocation: sourceLocation)
             }
             throw callSiteError
         }

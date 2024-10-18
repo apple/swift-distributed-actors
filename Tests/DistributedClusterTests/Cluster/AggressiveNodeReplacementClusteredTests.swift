@@ -15,7 +15,7 @@
 import DistributedActorsTestKit
 @testable import DistributedCluster
 import NIO
-import XCTest
+import Testing
 
 final class AggressiveNodeReplacementClusteredTests: ClusteredActorSystemsXCTestCase {
     override func configureLogCapture(settings: inout LogCapture.Settings) {
@@ -25,6 +25,7 @@ final class AggressiveNodeReplacementClusteredTests: ClusteredActorSystemsXCTest
         ]
     }
 
+    @Test
     func test_join_replacement_repeatedly_shouldConsistentlyReplaceOldNode() async throws {
         let main = await setUpNode("main") { settings in
             settings.bindPort += 100
