@@ -34,7 +34,7 @@ class CMPSCLinkedQueueTests: XCTestCase {
         c_sact_mpsc_linked_queue_enqueue(q, p)
         let res = c_sact_mpsc_linked_queue_dequeue(q)
 
-        XCTAssertEqual(p, res)
+        #expect(p == res)
     }
 
     func testDestroy() {

@@ -543,7 +543,7 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         let suspendResult = try suspendProbe.expectMessage()
         switch suspendResult {
         case .success(1): ()
-        default: XCTFail("Expected success(1), got \(suspendResult)")
+        default: Issue.record("Expected success(1), got \(suspendResult)")
         }
 
         try p.expectMessage("another test")

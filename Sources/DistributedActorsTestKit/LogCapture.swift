@@ -339,7 +339,7 @@ extension LogCapture {
             """
             let callSiteError = callSite.error(message)
             if failTest {
-                XCTFail(message, file: callSite.file, line: callSite.line)
+                Issue.record(message, file: callSite.file, line: callSite.line)
             }
             throw callSiteError
         }

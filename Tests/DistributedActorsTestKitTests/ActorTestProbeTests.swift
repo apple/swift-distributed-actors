@@ -14,7 +14,7 @@
 
 @testable import DistributedActorsTestKit
 import DistributedCluster
-import XCTest
+import Testing
 
 final class ActorTestProbeTests: SingleClusterSystemXCTestCase {
     func test_maybeExpectMessage_shouldReturnTheReceivedMessage() throws {

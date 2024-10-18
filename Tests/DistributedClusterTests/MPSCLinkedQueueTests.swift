@@ -26,7 +26,7 @@ class MPSCLinkedQueueTests: XCTestCase {
         let q = MPSCLinkedQueue<Int>()
         q.enqueue(1)
 
-        XCTAssertEqual(1, q.dequeue()!)
+        #expect(1 == q.dequeue()!)
     }
 
     func test_concurrentEnqueueDequeue() throws {

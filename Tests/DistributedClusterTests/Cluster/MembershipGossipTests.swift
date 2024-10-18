@@ -575,7 +575,7 @@ final class MembershipGossipTests: XCTestCase {
 
         let allConverged = gossips.allSatisfy { $1.converged() }
         guard allConverged else {
-            XCTFail("""
+            Issue.record("""
             Gossips among \(gossips.count) members did NOT converge after \(gossipSend) (individual) sends.
             \(gossips.values.map { "\($0)" }.joined(separator: "\n"))
             """)

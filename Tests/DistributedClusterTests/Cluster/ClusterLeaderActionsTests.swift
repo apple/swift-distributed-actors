@@ -115,7 +115,7 @@ final class ClusterLeaderActionsTests: XCTestCase {
         let hopefullyRemovalActions = self.stateA.collectLeaderActions()
         hopefullyRemovalActions.count.shouldEqual(1)
         guard case .some(.removeMember(let member)) = hopefullyRemovalActions.first else {
-            XCTFail("Expected a member removal action, but did not get one, actions: \(hopefullyRemovalActions)")
+            Issue.record("Expected a member removal action, but did not get one, actions: \(hopefullyRemovalActions)")
             return
         }
         member.status.isDown.shouldBeTrue()

@@ -15,7 +15,7 @@
 import DistributedActorsConcurrencyHelpers
 @testable import DistributedCluster
 import Foundation
-import XCTest
+import Testing
 
 /// Convenience class for building multi-node (yet same-process) tests with many actor systems involved.
 ///

@@ -28,7 +28,7 @@ final class ClusterSystemTests: SingleClusterSystemXCTestCase {
         }
 
         guard let systemError = error as? ClusterSystemError, case .duplicateActorPath(let path, _) = systemError.underlying.error else {
-            XCTFail("Expected ClusterSystemError.duplicateActorPath, but was: \(error)")
+            Issue.record("Expected ClusterSystemError.duplicateActorPath, but was: \(error)")
             return
         }
 

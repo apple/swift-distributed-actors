@@ -34,7 +34,7 @@ class HeapTests: XCTestCase {
         h.append(1)
         h.append(3)
         h.append(2)
-        XCTAssertEqual(3, h.removeRoot())
+        #expect(3 == h.removeRoot())
         XCTAssertTrue(h.checkHeapProperty())
     }
 
@@ -52,15 +52,15 @@ class HeapTests: XCTestCase {
         var minHeapInputPtr = input.count - 1
         var maxHeapInputPtr = 0
         while let maxE = maxHeap.removeRoot(), let minE = minHeap.removeRoot() {
-            XCTAssertEqual(maxE, input[maxHeapInputPtr], "\(maxHeap.debugDescription)")
-            XCTAssertEqual(minE, input[minHeapInputPtr])
+            #expect(maxE == input[maxHeapInputPtr], "\(maxHeap.debugDescription)")
+            #expect(minE == input[minHeapInputPtr])
             maxHeapInputPtr += 1
             minHeapInputPtr -= 1
             XCTAssertTrue(minHeap.checkHeapProperty(), "\(minHeap.debugDescription)")
             XCTAssertTrue(maxHeap.checkHeapProperty())
         }
-        XCTAssertEqual(-1, minHeapInputPtr)
-        XCTAssertEqual(input.count, maxHeapInputPtr)
+        #expect(-1 == minHeapInputPtr)
+        #expect(input.count == maxHeapInputPtr)
     }
 
     func testSortedAsc() throws {
@@ -75,13 +75,13 @@ class HeapTests: XCTestCase {
         var minHeapInputPtr = 0
         var maxHeapInputPtr = input.count - 1
         while let maxE = maxHeap.removeRoot(), let minE = minHeap.removeRoot() {
-            XCTAssertEqual(maxE, input[maxHeapInputPtr])
-            XCTAssertEqual(minE, input[minHeapInputPtr])
+            #expect(maxE == input[maxHeapInputPtr])
+            #expect(minE == input[minHeapInputPtr])
             maxHeapInputPtr -= 1
             minHeapInputPtr += 1
         }
-        XCTAssertEqual(input.count, minHeapInputPtr)
-        XCTAssertEqual(-1, maxHeapInputPtr)
+        #expect(input.count == minHeapInputPtr)
+        #expect(-1 == maxHeapInputPtr)
     }
 
     func testSortedCustom() throws {
@@ -104,13 +104,13 @@ class HeapTests: XCTestCase {
         var minHeapInputPtr = 0
         var maxHeapInputPtr = input.count - 1
         while let maxE = maxHeap.removeRoot(), let minE = minHeap.removeRoot() {
-            XCTAssertEqual(maxE, input[maxHeapInputPtr])
-            XCTAssertEqual(minE, input[minHeapInputPtr])
+            #expect(maxE == input[maxHeapInputPtr])
+            #expect(minE == input[minHeapInputPtr])
             maxHeapInputPtr -= 1
             minHeapInputPtr += 1
         }
-        XCTAssertEqual(input.count, minHeapInputPtr)
-        XCTAssertEqual(-1, maxHeapInputPtr)
+        #expect(input.count == minHeapInputPtr)
+        #expect(-1 == maxHeapInputPtr)
     }
 
     func testAddAndRemoveRandomNumbers() throws {
@@ -127,8 +127,8 @@ class HeapTests: XCTestCase {
             XCTAssertTrue(maxHeap.checkHeapProperty(), maxHeap.debugDescription)
             XCTAssertTrue(minHeap.checkHeapProperty(), maxHeap.debugDescription)
 
-            XCTAssertEqual(Array(minHeap.sorted()), Array(minHeap))
-            XCTAssertEqual(Array(maxHeap.sorted().reversed()), Array(maxHeap))
+            #expect(Array(minHeap.sorted()) == Array(minHeap))
+            #expect(Array(maxHeap.sorted().reversed()) == Array(maxHeap))
         }
 
         for _ in 0 ..< N / 2 {
@@ -142,8 +142,8 @@ class HeapTests: XCTestCase {
             XCTAssertTrue(minHeap.checkHeapProperty())
             XCTAssertTrue(maxHeap.checkHeapProperty())
 
-            XCTAssertEqual(Array(minHeap.sorted()), Array(minHeap))
-            XCTAssertEqual(Array(maxHeap.sorted().reversed()), Array(maxHeap))
+            #expect(Array(minHeap.sorted()) == Array(minHeap))
+            #expect(Array(maxHeap.sorted().reversed()) == Array(maxHeap))
         }
 
         maxHeapLast = UInt8.max
@@ -168,8 +168,8 @@ class HeapTests: XCTestCase {
             XCTAssertTrue(maxHeap.checkHeapProperty())
         }
 
-        XCTAssertEqual(0, minHeap.underestimatedCount)
-        XCTAssertEqual(0, maxHeap.underestimatedCount)
+        #expect(0 == minHeap.underestimatedCount)
+        #expect(0 == maxHeap.underestimatedCount)
     }
 
     func testRemoveElement() throws {

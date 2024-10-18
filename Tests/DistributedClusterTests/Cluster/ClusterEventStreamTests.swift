@@ -122,7 +122,7 @@ final class ClusterEventStreamTests: SingleClusterSystemXCTestCase, @unchecked S
                 Set(members).shouldEqual(Set([self.memberA, self.memberB]))
                 return
             default:
-                return XCTFail("Expected a snapshot with all the data to be the first received event")
+                return Issue.record("Expected a snapshot with all the data to be the first received event")
             }
         }
     }

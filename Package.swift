@@ -1,4 +1,4 @@
-// swift-tools-version:5.10
+// swift-tools-version:6.0
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import class Foundation.ProcessInfo
@@ -7,7 +7,9 @@ import PackageDescription
 // Workaround: Since we cannot include the flat just as command line options since then it applies to all targets,
 // and ONE of our dependencies currently produces one warning, we have to use this workaround to enable it in _our_
 // targets when the flag is set. We should remove the dependencies and then enable the flag globally though just by passing it.
-var globalSwiftSettings: [SwiftSetting] = []
+var globalSwiftSettings: [SwiftSetting] = [
+    .swiftLanguageMode(.v5)
+]
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Products

@@ -30,7 +30,7 @@ final class SystemMessagesRedeliveryTests: SingleClusterSystemXCTestCase {
                 envelope.sequenceNr.shouldEqual(self.seqNr(i))
 
             case let other:
-                XCTFail("Expected [.send], was: [\(other)] on i:\(i)")
+                Issue.record("Expected [.send], was: [\(other)] on i:\(i)")
             }
         }
     }
@@ -46,7 +46,7 @@ final class SystemMessagesRedeliveryTests: SingleClusterSystemXCTestCase {
 
         let res = outbound.acknowledge(self.ack(2))
         guard case .acknowledged = res else {
-            XCTFail("Expected [.acknowledged], was: [\(res)]")
+            Issue.record("Expected [.acknowledged], was: [\(res)]")
             return
         }
         outbound.messagesPendingAcknowledgement.count.shouldEqual(1)
@@ -61,12 +61,12 @@ final class SystemMessagesRedeliveryTests: SingleClusterSystemXCTestCase {
 
         let res1 = outbound.acknowledge(self.ack(2))
         guard case .acknowledged = res1 else {
-            XCTFail("Expected [.acknowledged], was: [\(res1)]")
+            Issue.record("Expected [.acknowledged], was: [\(res1)]")
             return
         }
         let res2 = outbound.acknowledge(self.ack(2))
         guard case .acknowledged = res2 else {
-            XCTFail("Expected [.acknowledged], was: [\(res2)]")
+            Issue.record("Expected [.acknowledged], was: [\(res2)]")
             return
         }
         outbound.messagesPendingAcknowledgement.count.shouldEqual(1)
@@ -81,7 +81,7 @@ final class SystemMessagesRedeliveryTests: SingleClusterSystemXCTestCase {
 
         let res = outbound.acknowledge(self.ack(4)) // 4 was not sent yet (!)
         guard case .ackWasForFutureSequenceNr(let highestKnownSeqNr) = res else {
-            XCTFail("Expected [.ackWasForFutureSequenceNr], was: [\(res)]")
+            Issue.record("Expected [.ackWasForFutureSequenceNr], was: [\(res)]")
             return
         }
         highestKnownSeqNr.shouldEqual(self.seqNr(3))
@@ -102,7 +102,7 @@ final class SystemMessagesRedeliveryTests: SingleClusterSystemXCTestCase {
         case .send(let envelope):
             envelope.sequenceNr.shouldEqual(SystemMessageEnvelope.SequenceNr(4)) // continue from where we left off
         case let other:
-            XCTFail("Expected [.send], was: \(other)")
+            Issue.record("Expected [.send], was: \(other)")
         }
 
         _ = outbound.acknowledge(self.ack(4))
@@ -111,7 +111,7 @@ final class SystemMessagesRedeliveryTests: SingleClusterSystemXCTestCase {
         case .send(let envelope):
             envelope.sequenceNr.shouldEqual(SystemMessageEnvelope.SequenceNr(5)) // continue from where we left off
         case let other:
-            XCTFail("Expected [.send], was: \(other)")
+            Issue.record("Expected [.send], was: \(other)")
         }
     }
 
@@ -124,7 +124,7 @@ final class SystemMessagesRedeliveryTests: SingleClusterSystemXCTestCase {
 
         let res = outbound.negativeAcknowledge(self.nack(1)) // we saw 3 but not 2
         guard case .ensureRedeliveryTick = res else {
-            XCTFail("Expected [.ensureRedeliveryTick], was: [\(res)]")
+            Issue.record("Expected [.ensureRedeliveryTick], was: [\(res)]")
             return
         }
         // TODO: expose .metrics which are actual Metrics and write tests against them
@@ -143,7 +143,7 @@ final class SystemMessagesRedeliveryTests: SingleClusterSystemXCTestCase {
         case .redeliver(let envelopes, _):
             envelopes.count.shouldEqual(3)
         case let other:
-            XCTFail("Expected [.redeliver], was: \(other)")
+            Issue.record("Expected [.redeliver], was: \(other)")
         }
 
         _ = outbound.acknowledge(self.ack(2))
@@ -151,7 +151,7 @@ final class SystemMessagesRedeliveryTests: SingleClusterSystemXCTestCase {
         case .redeliver(let envelopes, _):
             envelopes.count.shouldEqual(1)
         case let other:
-            XCTFail("Expected [.redeliver], was: \(other)")
+            Issue.record("Expected [.redeliver], was: \(other)")
         }
 
         _ = outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.node)) // 4
@@ -159,7 +159,7 @@ final class SystemMessagesRedeliveryTests: SingleClusterSystemXCTestCase {
         case .redeliver(let envelopes, _):
             envelopes.count.shouldEqual(2)
         case let other:
-            XCTFail("Expected [.redeliver], was: \(other)")
+            Issue.record("Expected [.redeliver], was: \(other)")
         }
     }
 
@@ -184,7 +184,7 @@ final class SystemMessagesRedeliveryTests: SingleClusterSystemXCTestCase {
             "\(envelopes.dropFirst(1).first, orElse: "")".shouldContain("@127.0.0.1:222)")
             "\(envelopes.dropFirst(2).first, orElse: "")".shouldContain("@127.0.0.1:333)")
         case let other:
-            XCTFail("Expected [.redeliver], was: \(other)")
+            Issue.record("Expected [.redeliver], was: \(other)")
         }
     }
 
@@ -203,7 +203,7 @@ final class SystemMessagesRedeliveryTests: SingleClusterSystemXCTestCase {
         let res = outbound.offer(.start, recipient: ._deadLetters(on: self.system.cluster.node)) // buffered: 6; oh oh! we'd be over 5 buffered
 
         guard case .bufferOverflowMustAbortAssociation(let limit) = res else {
-            XCTFail("Expected [.bufferOverflowMustAbortAssociation], was: [\(res)]")
+            Issue.record("Expected [.bufferOverflowMustAbortAssociation], was: [\(res)]")
             return
         }
 
