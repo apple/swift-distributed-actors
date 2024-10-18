@@ -14,8 +14,9 @@
 
 import DistributedActorsTestKit
 @testable import DistributedCluster
-import XCTest
+import Testing
 
+@Suite(.serialized)
 final class VersionVectorSerializationTests: SingleClusterSystemXCTestCase {
     var node: Cluster.Node {
         self.system.cluster.node
@@ -27,6 +28,7 @@ final class VersionVectorSerializationTests: SingleClusterSystemXCTestCase {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: VersionVector
 
+    @Test
     func test_serializationOf_VersionVector() throws {
         let vv = VersionVector([(.actorID(self.idA), 2), (.actorID(self.idB), 5)])
 
@@ -38,6 +40,7 @@ final class VersionVectorSerializationTests: SingleClusterSystemXCTestCase {
         "\(deserialized)".shouldContain("actor:sact://VersionVectorSerializationTests@127.0.0.1:9001/user/B: 5")
     }
 
+    @Test
     func test_serializationOf_VersionVector_empty() throws {
         let vv = VersionVector()
 
@@ -49,7 +52,7 @@ final class VersionVectorSerializationTests: SingleClusterSystemXCTestCase {
 
     // ==== -----------------------------------------------------------------------------------------------------------
     // MARK: VersionDot
-
+    @Test
     func test_serializationOf_VersionDot() throws {
         let dot = VersionDot(.actorID(self.idA), 2)
 

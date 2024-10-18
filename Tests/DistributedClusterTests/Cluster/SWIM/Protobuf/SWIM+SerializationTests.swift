@@ -15,9 +15,12 @@
 import DistributedActorsTestKit
 @testable import DistributedCluster
 import SWIM
-import XCTest
+import Testing
 
+@Suite(.serialized)
 final class SWIMSerializationTests: SingleClusterSystemXCTestCase {
+    
+    @Test
     func test_serializationOf_ack() async throws {
         let targetNode = await setUpNode("target") { settings in
             settings.enabled = true
@@ -33,6 +36,7 @@ final class SWIMSerializationTests: SingleClusterSystemXCTestCase {
         try self.shared_serializationRoundtrip(pingReq)
     }
 
+    @Test
     func test_serializationOf_nack() async throws {
         let targetNode = await setUpNode("target") { settings in
             settings.enabled = true

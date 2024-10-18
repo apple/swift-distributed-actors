@@ -15,7 +15,8 @@
 import Distributed
 import DistributedActorsTestKit
 @testable import DistributedCluster
-import XCTest
+import Testing
+import Foundation
 
 extension ActorMetadataKeys {
     var exampleUserID: Key<String> { "user-id" }
@@ -46,6 +47,7 @@ distributed actor ThereCanBeOnlyOneClusterSingleton: ExampleClusterSingleton {
     }
 }
 
+@Suite(.serialized)
 final class ActorIDMetadataTests: ClusteredActorSystemsXCTestCase {
     distributed actor Example: CustomStringConvertible {
         typealias ActorSystem = ClusterSystem
@@ -67,6 +69,7 @@ final class ActorIDMetadataTests: ClusteredActorSystemsXCTestCase {
         }
     }
 
+    @Test
     func test_metadata_shouldBeStoredInID() async throws {
         let system = await setUpNode("first")
         let userID = "user-1234"
@@ -75,6 +78,7 @@ final class ActorIDMetadataTests: ClusteredActorSystemsXCTestCase {
         example.metadata.exampleUserID.shouldEqual(userID)
     }
 
+    @Test
     func test_metadata_beUsableInDescription() async throws {
         let system = await setUpNode("first")
         let userID = "user-1234"
@@ -84,6 +88,7 @@ final class ActorIDMetadataTests: ClusteredActorSystemsXCTestCase {
         try await example.assertThat(userID: userID)
     }
 
+    @Test
     func test_metadata_initializedInline() async throws {
         let system = await setUpNode("first")
         let singleton = await ThereCanBeOnlyOneClusterSingleton(actorSystem: system)
@@ -91,6 +96,7 @@ final class ActorIDMetadataTests: ClusteredActorSystemsXCTestCase {
         singleton.metadata.exampleClusterSingletonID.shouldEqual("singer-1234")
     }
 
+    @Test
     func test_metadata_wellKnown_coding() async throws {
         let system = await setUpNode("first")
         let singleton = await ThereCanBeOnlyOneClusterSingleton(actorSystem: system)
@@ -103,6 +109,7 @@ final class ActorIDMetadataTests: ClusteredActorSystemsXCTestCase {
         back.metadata.wellKnown.shouldEqual("singer-1234")
     }
 
+    @Test
     func test_metadata_wellKnown_proto() async throws {
         let system = await setUpNode("first")
         let singleton = await ThereCanBeOnlyOneClusterSingleton(actorSystem: system)
@@ -114,6 +121,7 @@ final class ActorIDMetadataTests: ClusteredActorSystemsXCTestCase {
         back.metadata.wellKnown.shouldEqual(singleton.id.metadata.wellKnown)
     }
 
+    @Test
     func test_metadata_wellKnown_equality() async throws {
         let system = await setUpNode("first")
 
@@ -129,6 +137,7 @@ final class ActorIDMetadataTests: ClusteredActorSystemsXCTestCase {
         set.count.shouldEqual(1)
     }
 
+    @Test
     func test_metadata_userDefined_coding() async throws {
         let system = await setUpNode("first")
         let singleton = await ThereCanBeOnlyOneClusterSingleton(actorSystem: system)

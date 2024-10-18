@@ -15,12 +15,13 @@
 import DistributedActorsTestKit
 @testable import DistributedCluster
 import Foundation
-import XCTest
+import Testing
 
+@Suite(.serialized)
 class ActorLifecycleTests: SingleClusterSystemXCTestCase {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: starting actors
-
+    @Test
     func test_spawn_shouldNotAllowStartingWith_Same() throws {
         // since there is no previous behavior to stay "same" name at the same time:
 
@@ -34,6 +35,7 @@ class ActorLifecycleTests: SingleClusterSystemXCTestCase {
         """)
     }
 
+    @Test
     func test_spawn_shouldNotAllowStartingWith_Unhandled() throws {
         // the purpose of unhandled is to combine with things that can handle, and if we start a raw unhandled
         // it always will be unhandled until we use some signal to make it otherwise... weird edge case which
@@ -49,6 +51,7 @@ class ActorLifecycleTests: SingleClusterSystemXCTestCase {
         "\(ex)".shouldEqual("notAllowedAsInitial(DistributedCluster._Behavior<Swift.String>.unhandled)")
     }
 
+    @Test
     func test_spawn_shouldNotAllowIllegalActorNames() throws {
         func check(illegalName: String, expectedError: String) throws {
             let err = try shouldThrow {
@@ -87,6 +90,7 @@ class ActorLifecycleTests: SingleClusterSystemXCTestCase {
         ) // ka-pi-ba-ra
     }
 
+    @Test
     func test_spawn_shouldThrowFromMultipleActorsWithTheSamePathBeingSpawned() throws {
         let p = self.testKit.makeTestProbe(expecting: String.self)
         let spawner: _Behavior<String> = .receive { context, name in

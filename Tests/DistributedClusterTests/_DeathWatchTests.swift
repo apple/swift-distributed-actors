@@ -15,8 +15,9 @@
 import DistributedActorsTestKit
 @testable import DistributedCluster
 import Foundation
-import XCTest
+import Testing
 
+@Suite(.serialized)
 final class DeathWatchTests: SingleClusterSystemXCTestCase {
     // MARK: Termination watcher
 
@@ -36,6 +37,7 @@ final class DeathWatchTests: SingleClusterSystemXCTestCase {
         }
     }
 
+    @Test
     func test_watch_shouldTriggerTerminatedWhenWatchedActorStops() throws {
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
         let stoppableRef: _ActorRef<StoppableRefMessage> = try system._spawn("stopMePlz0", self.stopOnAnyMessage(probe: p.ref))
@@ -52,6 +54,7 @@ final class DeathWatchTests: SingleClusterSystemXCTestCase {
         try p.expectTerminated(stoppableRef)
     }
 
+    @Test
     func test_watchWith_shouldTriggerCustomMessageWhenWatchedActorStops() throws {
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
         let stoppableRef: _ActorRef<StoppableRefMessage> = try system._spawn("stopMePlz0", self.stopOnAnyMessage(probe: p.ref))
@@ -80,6 +83,7 @@ final class DeathWatchTests: SingleClusterSystemXCTestCase {
         // most notably, NOT the `signal:...` message
     }
 
+    @Test
     func test_watchWith_calledMultipleTimesShouldCarryTheLatestMessage() throws {
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
         let stoppableRef: _ActorRef<StoppableRefMessage> = try system._spawn("stopMePlz0", self.stopOnAnyMessage(probe: p.ref))
@@ -110,6 +114,7 @@ final class DeathWatchTests: SingleClusterSystemXCTestCase {
         // most notably, NOT the `signal:...` message
     }
 
+    @Test
     func test_watchWith_calledMultipleTimesShouldAllowGettingBackToSignalDelivery() throws {
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
         let stoppableRef: _ActorRef<StoppableRefMessage> = try system._spawn("stopMePlz0", self.stopOnAnyMessage(probe: p.ref))
@@ -140,6 +145,7 @@ final class DeathWatchTests: SingleClusterSystemXCTestCase {
         // most notably, NOT the `signal:...` message
     }
 
+    @Test
     func test_watch_fromMultipleActors_shouldTriggerTerminatedWhenWatchedActorStops() throws {
         let p = self.testKit.makeTestProbe("p", expecting: String.self)
         let p1 = self.testKit.makeTestProbe("p1", expecting: String.self)
@@ -165,6 +171,7 @@ final class DeathWatchTests: SingleClusterSystemXCTestCase {
         _Thread.sleep(.milliseconds(1000))
     }
 
+    @Test
     func test_watch_fromMultipleActors_shouldNotifyOfTerminationOnlyCurrentWatchers() throws {
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe("p")
         let p1: ActorTestProbe<String> = self.testKit.makeTestProbe("p1")
@@ -212,6 +219,7 @@ final class DeathWatchTests: SingleClusterSystemXCTestCase {
         try p3_partnerOfNotActuallyWatching.expectNoMessage(for: .milliseconds(1000)) // make su
     }
 
+    @Test
     func test_minimized_deathPact_shouldTriggerForWatchedActor() throws {
         let probe = self.testKit.makeTestProbe("pp", expecting: String.self)
 
@@ -247,6 +255,7 @@ final class DeathWatchTests: SingleClusterSystemXCTestCase {
         try probe.expectTerminated(romeo)
     }
 
+    @Test
     func test_minimized_deathPact_shouldNotTriggerForActorThatWasWatchedButIsNotAnymoreWhenTerminatedArrives() throws {
         // Tests a very specific situation where romeo watches juliet, juliet terminates and sends .terminated
         // yet during that time, romeo unwatches her. This means that the .terminated message could arrive at
@@ -303,6 +312,7 @@ final class DeathWatchTests: SingleClusterSystemXCTestCase {
         try probe.expectNoMessage(for: .milliseconds(100))
     }
 
+    @Test
     func test_watch_anAlreadyStoppedActorRefShouldReplyWithTerminated() throws {
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe("alreadyDeadWatcherProbe")
 
@@ -321,7 +331,7 @@ final class DeathWatchTests: SingleClusterSystemXCTestCase {
     }
 
     // MARK: Death pact
-
+    @Test
     func test_deathPact_shouldMakeWatcherKillItselfWhenWatcheeStops() throws {
         let romeo = try system._spawn(
             "romeo",
@@ -358,6 +368,7 @@ final class DeathWatchTests: SingleClusterSystemXCTestCase {
         try p.expectTerminatedInAnyOrder([juliet.asAddressable, romeo.asAddressable])
     }
 
+    @Test
     func test_deathPact_shouldMakeWatcherKillItselfWhenWatcheeThrows() throws {
         let romeo = try system._spawn(
             "romeo",
@@ -398,7 +409,7 @@ final class DeathWatchTests: SingleClusterSystemXCTestCase {
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Watching child actors
-
+    @Test
     func test_ensureOnlySingleTerminatedSignal_emittedByWatchedChildDies() throws {
         let p: ActorTestProbe<_Signals.Terminated> = self.testKit.makeTestProbe()
         let pp: ActorTestProbe<String> = self.testKit.makeTestProbe()
@@ -443,7 +454,7 @@ final class DeathWatchTests: SingleClusterSystemXCTestCase {
 //        p.watch(system.deadLetters)
 //        try p.expectTerminated(system.deadLetters)
 //    }
-
+    @Test
     func test_sendingToStoppedRef_shouldNotCrash() throws {
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
         let stoppableRef: _ActorRef<StoppableRefMessage> = try system._spawn("stopMePlz2", self.stopOnAnyMessage(probe: p.ref))

@@ -29,13 +29,13 @@ final class ActorMetricsTests: ClusteredActorSystemsXCTestCase {
         MetricsSystem.bootstrapInternal(self.metrics)
     }
 
-    override func tearDown() async throws {
-        try await super.tearDown()
+    override func tearDown() {
+        super.tearDown()
         self.metrics = nil
         MetricsSystem.bootstrapInternal(NOOPMetricsHandler.instance)
     }
 
-    @Test(.enabled { "!!! Skipping test \(#function) !!!"; return false }) // FIXME(distributed): this crashes the cluster with a message on setup
+    @Test(.disabled("!!! Skipping test \(#function) !!!")) // FIXME(distributed): this crashes the cluster with a message on setup
     func test_serialization_reportsMetrics() async throws {
         let first = await setUpNode("first")
         let second = await setUpNode("second")

@@ -19,18 +19,19 @@ import DistributedActorsTestKit
 @testable import Metrics
 import NIO
 @testable import SWIM
-import XCTest
+import Testing
 
+@Suite(.serialized)
 final class ActorMetricsSWIMActorPeerMetricsTests: ClusteredActorSystemsXCTestCase {
     var metrics: TestMetrics! = TestMetrics()
 
-    override func setUp() {
+    override init() async throws {
         MetricsSystem.bootstrapInternal(self.metrics)
-        super.setUp()
+        try await super.init()
     }
 
-    override func tearDown() async throws {
-        try await super.tearDown()
+    override func tearDown() {
+        super.tearDown()
         self.metrics = nil
         MetricsSystem.bootstrapInternal(NOOPMetricsHandler.instance)
     }
@@ -39,6 +40,7 @@ final class ActorMetricsSWIMActorPeerMetricsTests: ClusteredActorSystemsXCTestCa
         settings.filterActorPaths = ["/user/swim"]
     }
 
+    @Test
     func test_swimPeer_ping_shouldRemoteMetrics() async throws {
         let originNode = await setUpNode("origin") { settings in
             settings.swim.probeInterval = .seconds(30) // Don't let gossip interfere with the test
@@ -86,6 +88,7 @@ final class ActorMetricsSWIMActorPeerMetricsTests: ClusteredActorSystemsXCTestCa
         counter.totalValue.shouldEqual(1)
     }
 
+    @Test
     func test_swimPeer_pingRequest_shouldRemoteMetrics() async throws {
         let originNode = await setUpNode("origin") { settings in
             settings.swim.probeInterval = .seconds(30) // Don't let gossip interfere with the test

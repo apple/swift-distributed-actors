@@ -17,7 +17,7 @@ import DistributedActorsTestKit
 @testable import DistributedCluster
 import Foundation
 import Logging
-import XCTest
+import Testing
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Romeo
@@ -82,7 +82,7 @@ distributed actor Juliet: LifecycleWatch, CustomStringConvertible {
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Tests
-
+@Suite(.serialized)
 final class LifecycleWatchTests: SingleClusterSystemXCTestCase, @unchecked Sendable {
     override func configureLogCapture(settings: inout LogCapture.Settings) {
         settings.excludeActorPaths = [
@@ -96,6 +96,7 @@ final class LifecycleWatchTests: SingleClusterSystemXCTestCase, @unchecked Senda
         ]
     }
 
+    @Test
     func test_watch_shouldTriggerTerminatedWhenWatchedActorDeinits() async throws {
         let pj = self.testKit.makeTestProbe(expecting: String.self)
         let pr = self.testKit.makeTestProbe(expecting: String.self)
@@ -114,6 +115,7 @@ final class LifecycleWatchTests: SingleClusterSystemXCTestCase, @unchecked Senda
         try pj.expectMessage(prefix: "Received terminated: /user/Romeo")
     }
 
+    @Test
     func test_watchThenUnwatch_shouldTriggerTerminatedWhenWatchedActorDeinits() async throws {
         let pj = self.testKit.makeTestProbe(expecting: String.self)
         let pr = self.testKit.makeTestProbe(expecting: String.self)
@@ -132,6 +134,7 @@ final class LifecycleWatchTests: SingleClusterSystemXCTestCase, @unchecked Senda
         try pj.expectNoMessage(for: .milliseconds(300))
     }
 
+    @Test
     func test_watch_shouldTriggerTerminatedWhenNodeTerminates() async throws {
         try await shouldNotThrow {
             let pj = self.testKit.makeTestProbe(expecting: String.self)

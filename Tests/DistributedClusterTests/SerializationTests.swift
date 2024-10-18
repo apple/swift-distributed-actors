@@ -18,10 +18,12 @@ import DistributedActorsTestKit
 import Foundation
 import NIO
 import NIOFoundationCompat
-import XCTest
+import Testing
 
+@Suite(.serialized)
 class SerializationTests: SingleClusterSystemXCTestCase {
-    override func setUp() async throws {
+    override init() async throws {
+        try await super.init()
         _ = await self.setUpNode(String(describing: type(of: self))) { settings in
             settings.serialization.register(HasReceivesSystemMsgs.self)
             settings.serialization.register(HasStringRef.self)
@@ -34,6 +36,7 @@ class SerializationTests: SingleClusterSystemXCTestCase {
         }
     }
 
+    @Test
     func test_soundness_roundTripBetweenFoundationDataAndNioByteBuffer() throws {
         let allocator = ByteBufferAllocator()
         var buf = allocator.buffer(capacity: 5)
@@ -50,6 +53,7 @@ class SerializationTests: SingleClusterSystemXCTestCase {
         buf.shouldEqual(out)
     }
 
+    @Test
     func test_serialize_Int_withData() throws {
         let value = 6
 
@@ -60,6 +64,7 @@ class SerializationTests: SingleClusterSystemXCTestCase {
         deserialized.shouldEqual(value)
     }
 
+    @Test
     func test_serialize_Bool_withData() throws {
         let value = true
 
@@ -72,7 +77,7 @@ class SerializationTests: SingleClusterSystemXCTestCase {
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Codable round-trip tests for of simple Swift Distributed Actors types
-
+    @Test
     func test_serialize_actorPath() throws {
         let path = try ActorPath(root: "user") / ActorPathSegment("hello")
         let encoded = try JSONEncoder().encode(path)
@@ -84,6 +89,7 @@ class SerializationTests: SingleClusterSystemXCTestCase {
         pathAgain.shouldEqual(path)
     }
 
+    @Test
     func test_serialize_actorAddress_usingContext() throws {
         let node = Cluster.Node(systemName: "one", host: "127.0.0.1", port: 1234, nid: Cluster.Node.ID(11111))
         let id = try ActorPath(root: "user").appending("hello").makeLocalID(on: node, incarnation: .random())
@@ -112,7 +118,7 @@ class SerializationTests: SingleClusterSystemXCTestCase {
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Actor ref serialization and resolve
-
+    @Test
     func test_serialize_actorRef_inMessage() throws {
         let p = self.testKit.makeTestProbe(expecting: String.self)
 
@@ -143,6 +149,7 @@ class SerializationTests: SingleClusterSystemXCTestCase {
         try p.expectMessage("got:hello")
     }
 
+    @Test
     func test_serialize_actorRef_inMessage_forRemoting() async throws {
         let remoteCapableSystem = await self.setUpNode("remoteCapableSystem") { settings in
             settings.enabled = true
@@ -186,6 +193,7 @@ class SerializationTests: SingleClusterSystemXCTestCase {
         try p.expectMessage("got:hello")
     }
 
+    @Test
     func test_deserialize_alreadyDeadActorRef_shouldDeserializeAsDeadLetters_forSystemDefinedMessageType() throws {
         let p = self.testKit.makeTestProbe(expecting: Never.self)
         let stoppedRef: _ActorRef<String> = try system._spawn("dead-on-arrival", .stop)
@@ -209,6 +217,7 @@ class SerializationTests: SingleClusterSystemXCTestCase {
         }
     }
 
+    @Test
     func test_deserialize_alreadyDeadActorRef_shouldDeserializeAsDeadLetters_forUserDefinedMessageType() throws {
         let stoppedRef: _ActorRef<InterestingMessage> = try system._spawn("dead-on-arrival", .stop) // stopped
         let hasRef = HasInterestingMessageRef(containedInterestingRef: stoppedRef)
@@ -229,12 +238,14 @@ class SerializationTests: SingleClusterSystemXCTestCase {
         }
     }
 
+    @Test
     func test_serialize_shouldNotSerializeNotRegisteredType() throws {
         _ = try shouldThrow {
             try system.serialization.serialize(NotCodableHasInt(containedInt: 1337))
         }
     }
 
+    @Test
     func test_serialize_receivesSystemMessages_inMessage() throws {
         let p = self.testKit.makeTestProbe(expecting: String.self)
 
@@ -277,7 +288,7 @@ class SerializationTests: SingleClusterSystemXCTestCase {
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Error envelope serialization
-
+    @Test
     func test_serialize_errorEnvelope_stringDescription() throws {
         let description = "BOOM!!!"
         let errorEnvelope = ErrorEnvelope(description: description)
@@ -297,6 +308,7 @@ class SerializationTests: SingleClusterSystemXCTestCase {
         bestEffortStringError.representation.shouldEqual(description)
     }
 
+    @Test
     func test_serialize_errorEnvelope_notCodableError() throws {
         let notCodableError: NotCodableTestingError = .errorTwo
         let errorEnvelope = ErrorEnvelope(notCodableError)
@@ -316,6 +328,7 @@ class SerializationTests: SingleClusterSystemXCTestCase {
         bestEffortStringError.representation.shouldContain(String(reflecting: NotCodableTestingError.self))
     }
 
+    @Test
     func test_serialize_errorEnvelope_codableError() throws {
         let codableError: CodableTestingError = .errorB
         let errorEnvelope = ErrorEnvelope(codableError)
@@ -337,7 +350,7 @@ class SerializationTests: SingleClusterSystemXCTestCase {
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: PList coding
-
+    @Test
     func test_plist_binary() throws {
         let test = PListBinCodableTest(name: "foo", items: ["bar", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz"])
 
@@ -350,6 +363,7 @@ class SerializationTests: SingleClusterSystemXCTestCase {
         back.shouldEqual(test)
     }
 
+    @Test
     func test_plist_xml() throws {
         let test = PListXMLCodableTest(name: "foo", items: ["bar", "baz"])
 
@@ -362,6 +376,7 @@ class SerializationTests: SingleClusterSystemXCTestCase {
         back.shouldEqual(test)
     }
 
+    @Test
     func test_plist_throws_whenWrongFormat() async throws {
         let test = PListXMLCodableTest(name: "foo", items: ["bar", "baz"])
 

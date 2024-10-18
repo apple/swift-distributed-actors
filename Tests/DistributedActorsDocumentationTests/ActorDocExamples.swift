@@ -19,9 +19,9 @@ import DistributedCluster
 // end::imports[]
 
 @testable import DistributedActorsTestKit
-import XCTest
+import Testing
 
-class ActorDocExamples: XCTestCase {
+struct ActorDocExamples {
     // tag::message_greetings[]
     enum Greetings: _NotActuallyCodableMessage {
         case greet(name: String)
@@ -29,7 +29,7 @@ class ActorDocExamples: XCTestCase {
     }
 
     // end::message_greetings[]
-
+    @Test
     func example_receive_behavior() throws {
         // tag::receive_behavior[]
         let behavior: _Behavior<Greetings> = .receive { _, message in // <1>
@@ -40,6 +40,7 @@ class ActorDocExamples: XCTestCase {
         _ = behavior // silence not-used warning
     }
 
+    @Test
     func example_receiveMessage_behavior() throws {
         // tag::receiveMessage_behavior[]
         let behavior: _Behavior<Greetings> = .receiveMessage { message in // <1>
@@ -50,6 +51,7 @@ class ActorDocExamples: XCTestCase {
         _ = behavior // silence not-used warning
     }
 
+    @Test
     func example_spawn_tell() throws {
         // tag::spawn[]
         let system = ClusterSystem("ExampleSystem") // <1>
@@ -70,6 +72,7 @@ class ActorDocExamples: XCTestCase {
         // end::tell_1[]
     }
 
+    @Test
     func example_stop_myself() throws {
         // tag::stop_myself_1[]
         enum LineByLineData {
@@ -112,6 +115,7 @@ class ActorDocExamples: XCTestCase {
         // end::stop_myself_refactored[]
     }
 
+    @Test
     func example_stop_myself_refactored() throws {
         func readData() -> X.LineByLineData {
             fatalError("undefined")
@@ -133,6 +137,7 @@ class ActorDocExamples: XCTestCase {
         _ = lineHandling // silence not-used warning
     }
 
+    @Test
     func example_props() throws {
         // tag::props_example[]
         let props = _Props()
@@ -140,6 +145,7 @@ class ActorDocExamples: XCTestCase {
         _ = props // silence not-used warning
     }
 
+    @Test
     func example_props_inline() throws {
         let behavior: _Behavior<String> = .ignore
         let system = ClusterSystem("ExampleSystem")
@@ -154,6 +160,7 @@ class ActorDocExamples: XCTestCase {
         _ = worker // silence not-used warning
     }
 
+    @Test
     func example_receptionist_register() {
         // tag::receptionist_register[]
         let key = _Reception.Key(_ActorRef<String>.self, id: "my-actor") // <1>
@@ -171,6 +178,7 @@ class ActorDocExamples: XCTestCase {
         _ = behavior
     }
 
+    @Test
     func example_receptionist_lookup() {
         let key = _Reception.Key(_ActorRef<String>.self, id: "my-actor")
         let system = ClusterSystem("LookupExample")
@@ -188,6 +196,7 @@ class ActorDocExamples: XCTestCase {
         // end::receptionist_lookup[]
     }
 
+    @Test
     func example_receptionist_subscribe() {
         let key = _Reception.Key(_ActorRef<String>.self, id: "my-actor")
         // tag::receptionist_subscribe[]
@@ -206,6 +215,7 @@ class ActorDocExamples: XCTestCase {
         _ = behavior
     }
 
+    @Test
     func example_context_receptionist_subscribe() {
         let key = _Reception.Key(_ActorRef<String>.self, id: "my-actor")
         // tag::context_receptionist_subscribe[]
@@ -224,6 +234,7 @@ class ActorDocExamples: XCTestCase {
         _ = behavior
     }
 
+    @Test
     func example_ask_outside() throws {
         let system = ClusterSystem("ExampleSystem")
 
@@ -248,6 +259,7 @@ class ActorDocExamples: XCTestCase {
         // end::ask_outside[]
     }
 
+    @Test
     func example_ask_inside() throws {
         let system = ClusterSystem("ExampleSystem")
 

@@ -16,8 +16,9 @@ import DistributedActorsTestKit
 @testable import DistributedCluster
 import Foundation
 import NIOSSL
-import XCTest
+import Testing
 
+@Suite(.serialized)
 final class GossiperShellTests: SingleClusterSystemXCTestCase {
     func peerBehavior<T: Codable>() -> _Behavior<GossipShell<T, String>.Message> {
         .receiveMessage { msg in
@@ -27,7 +28,7 @@ final class GossiperShellTests: SingleClusterSystemXCTestCase {
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: test_down_beGossipedToOtherNodes
-
+    @Test
     func test_down_beGossipedToOtherNodes() throws {
         let p = self.testKit.makeTestProbe(expecting: [_AddressableActorRef].self)
 
@@ -96,7 +97,7 @@ final class GossiperShellTests: SingleClusterSystemXCTestCase {
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: test_unidirectional_yetEmitsAck_shouldWarn
-
+    @Test
     func test_unidirectional_yetReceivesAckRef_shouldWarn() throws {
         let p = self.testKit.makeTestProbe(expecting: String.self)
 

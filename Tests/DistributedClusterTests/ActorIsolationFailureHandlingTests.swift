@@ -15,8 +15,9 @@
 import DistributedActorsTestKit
 @testable import DistributedCluster
 import Foundation
-import XCTest
+import Testing
 
+@Suite(.serialized)
 final class ActorIsolationFailureHandlingTests: SingleClusterSystemXCTestCase {
     private enum SimpleTestError: Error {
         case simpleError(reason: String)
@@ -64,6 +65,7 @@ final class ActorIsolationFailureHandlingTests: SingleClusterSystemXCTestCase {
         }
     }
 
+    @Test
     func test_worker_crashOnlyWorkerOnPlainErrorThrow() throws {
         let pm: ActorTestProbe<SimpleProbeMessage> = self.testKit.makeTestProbe("testProbe-boss-1")
         let pw: ActorTestProbe<Int> = self.testKit.makeTestProbe("testProbeForWorker-1")

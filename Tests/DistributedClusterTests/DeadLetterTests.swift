@@ -16,12 +16,13 @@ import Distributed
 import DistributedActorsTestKit
 @testable import DistributedCluster
 @testable import Logging
-import XCTest
+import Testing
 
+@Suite(.serialized)
 final class DeadLetterTests: SingleClusterSystemXCTestCase {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: DeadLetterOffice tests
-
+    @Test
     func test_deadLetters_logWithSourcePosition() throws {
         let log = self.logCapture.logger(label: "/dead/letters")
 
@@ -35,7 +36,7 @@ final class DeadLetterTests: SingleClusterSystemXCTestCase {
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: ClusterSystem integrated tests
-
+    @Test
     func test_sendingToTerminatedActor_shouldResultInDeadLetter() throws {
         let ref: _ActorRef<String> = try self.system._spawn(
             "ludwig",
@@ -55,6 +56,7 @@ final class DeadLetterTests: SingleClusterSystemXCTestCase {
         try self.logCapture.awaitLogContaining(self.testKit, text: "/user/ludwig")
     }
 
+    @Test
     func test_askingTerminatedActor_shouldResultInDeadLetter() async throws {
         let ref: _ActorRef<String> = try self.system._spawn(
             "ludwig",
@@ -68,7 +70,7 @@ final class DeadLetterTests: SingleClusterSystemXCTestCase {
         ref.tell("terminate please")
         try p.expectTerminated(ref)
 
-        sleep(1)
+        try await Task.sleep(for: .seconds(1))
 
         let answer = ref.ask(for: String.self, timeout: .milliseconds(100)) { replyTo in
             "This is a question, reply to \(replyTo)"
@@ -82,6 +84,7 @@ final class DeadLetterTests: SingleClusterSystemXCTestCase {
         try self.logCapture.awaitLogContaining(self.testKit, text: "/user/ludwig")
     }
 
+    @Test
     func test_remoteCallTerminatedTarget_shouldResultInDeadLetter() async throws {
         let local = await setUpNode("local") { settings in
             settings.enabled = true
@@ -113,6 +116,7 @@ final class DeadLetterTests: SingleClusterSystemXCTestCase {
         try self.capturedLogs(of: local).awaitLogContaining(self.testKit, text: "was not delivered to")
     }
 
+    @Test
     func test_resolveTerminatedTarget_shouldResultInDeadLetter() async throws {
         var greeter: Greeter? = Greeter(actorSystem: self.system)
         let greeterID = greeter!.id

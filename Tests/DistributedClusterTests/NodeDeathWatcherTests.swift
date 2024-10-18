@@ -15,9 +15,12 @@
 import DistributedActorsTestKit
 @testable import DistributedCluster
 import Foundation
-import XCTest
+import Testing
 
+@Suite(.serialized)
 final class NodeDeathWatcherTests: ClusteredActorSystemsXCTestCase {
+    
+    @Test
     func test_nodeDeath_shouldFailAllRefsOnSpecificAddress() async throws {
         let first = await setUpNode("first") { settings in
             settings.swim.probeInterval = .milliseconds(100)

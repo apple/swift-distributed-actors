@@ -15,9 +15,12 @@
 import DistributedActorsTestKit
 @testable import DistributedCluster
 import Foundation
-import XCTest
+import Testing
 
+@Suite(.serialized)
 final class BehaviorCanonicalizeTests: SingleClusterSystemXCTestCase {
+    
+    @Test
     func test_canonicalize_nestedSetupBehaviors() throws {
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe("canonicalizeProbe1")
 
@@ -45,6 +48,7 @@ final class BehaviorCanonicalizeTests: SingleClusterSystemXCTestCase {
         try p.expectMessage("received:ping")
     }
 
+    @Test
     func test_canonicalize_doesSurviveDeeplyNestedSetups() throws {
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe("canonicalizeProbe2")
 
@@ -71,6 +75,7 @@ final class BehaviorCanonicalizeTests: SingleClusterSystemXCTestCase {
         try p.expectMessage("received:ping")
     }
 
+    @Test
     func test_canonicalize_unwrapInterceptBehaviors() throws {
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe("canonicalizeProbe3")
 
@@ -98,6 +103,7 @@ final class BehaviorCanonicalizeTests: SingleClusterSystemXCTestCase {
         try p.expectMessage("received:ping")
     }
 
+    @Test
     func test_canonicalize_orElse_shouldThrowOnTooDeeplyNestedBehaviors() throws {
         let p: ActorTestProbe<Int> = self.testKit.makeTestProbe()
         var behavior: _Behavior<Int> = .receiveMessage { message in
@@ -121,6 +127,7 @@ final class BehaviorCanonicalizeTests: SingleClusterSystemXCTestCase {
         try p.expectTerminated(ref)
     }
 
+    @Test
     func test_canonicalize_orElse_executeNestedSetupOnBecome() throws {
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
@@ -163,6 +170,7 @@ final class BehaviorCanonicalizeTests: SingleClusterSystemXCTestCase {
         try p.expectMessage("got:B")
     }
 
+    @Test
     func test_startBehavior_shouldThrowOnTooDeeplyNestedBehaviorSetups() throws {
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe("startBehaviorProbe")
 
@@ -185,6 +193,7 @@ final class BehaviorCanonicalizeTests: SingleClusterSystemXCTestCase {
         try p.expectNoMessage(for: .milliseconds(50))
     }
 
+    @Test
     func test_stopWithoutPostStop_shouldUsePreviousBehavior() throws {
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
@@ -206,6 +215,7 @@ final class BehaviorCanonicalizeTests: SingleClusterSystemXCTestCase {
         try p.expectTerminated(ref)
     }
 
+    @Test
     func test_stopWithPostStop_shouldUseItForPostStopSignalHandling() throws {
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
@@ -224,6 +234,7 @@ final class BehaviorCanonicalizeTests: SingleClusterSystemXCTestCase {
         try p.expectTerminated(ref)
     }
 
+    @Test
     func test_setup_returningSameShouldThrow() throws {
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 

@@ -17,8 +17,9 @@ import DistributedActorsTestKit
 import Foundation
 import NIO
 import SwiftProtobuf
-import XCTest
+import Testing
 
+@Suite(.serialized)
 final class ProtobufRoundTripTests: SingleClusterSystemXCTestCase {
     func check<Value: _ProtobufRepresentable & Equatable>(_ value: Value) throws {
         let context = Serialization.Context(log: self.system.log, system: self.system, allocator: self.system.serialization.allocator)
@@ -39,14 +40,14 @@ final class ProtobufRoundTripTests: SingleClusterSystemXCTestCase {
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Core actor types
-
+    @Test
     func test_roundTrip_ActorID() throws {
         try self.check(self.localActorAddress)
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Handshake protocol
-
+    @Test
     func test_roundTrip_Wire_HandshakeOffer() throws {
         let offer = Wire.HandshakeOffer(version: .init(reserved: 2, major: 3, minor: 5, patch: 5), originNode: self.node, targetEndpoint: self.node.endpoint)
         let proto = _ProtoHandshakeOffer(offer)

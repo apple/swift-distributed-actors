@@ -16,15 +16,14 @@ import DistributedActorsTestKit
 @testable import DistributedCluster
 import Foundation
 import NIOSSL
-import XCTest
+import Testing
 
+@Suite(.serialized)
 final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: leader decision: .joining -> .up
-
+    @Test(.disabled("!!! Skipping known flaky test \(#function) !!!")) // FIXME(distributed): revisit and fix https://github.com/apple/swift-distributed-actors/issues/945
     func test_singleLeader() async throws {
-        throw XCTSkip("!!! Skipping known flaky test \(#function) !!!") // FIXME(distributed): revisit and fix https://github.com/apple/swift-distributed-actors/issues/945
-
         let first = await setUpNode("first") { settings in
             settings.endpoint.port = 7111
             settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 1)
@@ -60,6 +59,7 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
         }
     }
 
+    @Test
     func test_joining_to_up_decisionByLeader() async throws {
         let first = await setUpNode("first") { settings in
             settings.endpoint.port = 7111
@@ -94,6 +94,7 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
         try await self.assertMemberStatus(on: third, node: third.cluster.node, is: .up, within: .seconds(10))
     }
 
+    @Test
     func test_joining_to_up_earlyYetStillLettingAllNodesKnowAboutLatestMembershipStatus() async throws {
         // This showcases a racy situation, where we allow a leader elected when at least 2 nodes joined
         // yet we actually join 3 nodes -- meaning that the joining up is _slightly_ racy:
@@ -136,6 +137,7 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
         try await self.ensureNodes(.up, within: .seconds(10), nodes: first.cluster.node, second.cluster.node, third.cluster.node, fourth.cluster.node)
     }
 
+    @Test
     func test_up_ensureAllSubscribersGetMovingUpEvents() async throws {
         // it shall perform its duties. This tests however quickly shows that lack of letting the "third" node,
         // via gossip or some other way about the ->up of other nodes once it joins the "others", it'd be stuck waiting for
@@ -212,7 +214,7 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: .down -> removal
-
+    @Test
     func test_down_to_removed_ensureRemovalHappensWhenAllHaveSeenDown() async throws {
         let first = await setUpNode("first") { settings in
             settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
@@ -283,6 +285,7 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
         }
     }
 
+    @Test
     func test_ensureDownAndRemovalSpreadsToAllMembers() async throws {
         let first = await setUpNode("first") { settings in
             settings.swim.probeInterval = .milliseconds(300)

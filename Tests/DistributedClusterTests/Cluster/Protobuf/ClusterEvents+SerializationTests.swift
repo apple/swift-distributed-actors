@@ -16,8 +16,9 @@ import DistributedActorsTestKit
 @testable import DistributedCluster
 import Logging
 import NIO
-import XCTest
+import Testing
 
+@Suite(.serialized)
 final class ClusterEventsSerializationTests: SingleClusterSystemXCTestCase {
     lazy var context: Serialization.Context! = Serialization.Context(
         log: system.log,
@@ -25,6 +26,7 @@ final class ClusterEventsSerializationTests: SingleClusterSystemXCTestCase {
         allocator: system.settings.serialization.allocator
     )
 
+    @Test
     func test_serializationOf_membershipChange() throws {
         let change = Cluster.MembershipChange(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "first", host: "1.1.1.1", port: 7337), nid: .random()), previousStatus: .leaving, toStatus: .removed)
         let event = Cluster.Event.membershipChange(change)
@@ -35,6 +37,7 @@ final class ClusterEventsSerializationTests: SingleClusterSystemXCTestCase {
         back.shouldEqual(event)
     }
 
+    @Test
     func test_serializationOf_leadershipChange() throws {
         let old = Cluster.Member(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "first", host: "1.1.1.1", port: 7337), nid: .random()), status: .joining)
         let new = Cluster.Member(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "first", host: "1.2.2.1", port: 2222), nid: .random()), status: .up)

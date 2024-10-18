@@ -16,7 +16,7 @@ import Distributed
 import DistributedActorsTestKit
 @testable import DistributedCluster
 import Foundation
-import XCTest
+import Testing
 
 final class ShoutingInterceptor: _Interceptor<String> {
     let probe: ActorTestProbe<String>?
@@ -56,7 +56,10 @@ final class TerminatedInterceptor<Message: Codable>: _Interceptor<Message> {
     }
 }
 
+@Suite(.serialized)
 final class InterceptorTests: SingleClusterSystemXCTestCase {
+    
+    @Test
     func test_remoteCall_interceptor() async throws {
         let local = await setUpNode("local") { settings in
             settings.enabled = true
@@ -79,6 +82,7 @@ final class InterceptorTests: SingleClusterSystemXCTestCase {
         value.shouldEqual("HI!!!")
     }
 
+    @Test
     func test_remoteCallVoid_interceptor() async throws {
         let local = await setUpNode("local") { settings in
             settings.enabled = true
@@ -104,7 +108,7 @@ final class InterceptorTests: SingleClusterSystemXCTestCase {
     }
 
     // Legacy interceptor API tests -----------------------------------------------------------------------------------
-
+    @Test
     func test_interceptor_shouldConvertMessages() throws {
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
@@ -129,6 +133,7 @@ final class InterceptorTests: SingleClusterSystemXCTestCase {
         }
     }
 
+    @Test
     func test_interceptor_shouldSurviveDeeplyNestedInterceptors() throws {
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
         let i: ActorTestProbe<String> = self.testKit.makeTestProbe()
@@ -179,6 +184,7 @@ final class InterceptorTests: SingleClusterSystemXCTestCase {
         }
     }
 
+    @Test
     func test_interceptor_shouldRemainWhenReturningStoppingWithPostStop() throws {
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 

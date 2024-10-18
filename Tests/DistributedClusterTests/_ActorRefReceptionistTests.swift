@@ -16,11 +16,13 @@ import Distributed
 import DistributedActorsTestKit
 @testable import DistributedCluster
 import Foundation
-import XCTest
+import Testing
 
+@Suite(.serialized)
 final class _ActorRefReceptionistTests: SingleClusterSystemXCTestCase {
     let receptionistBehavior = _OperationLogClusterReceptionist(settings: .default).behavior
 
+    @Test
     func test_receptionist_shouldRespondWithRegisteredRefsForKey() throws {
         let receptionist = SystemReceptionist(ref: try system._spawn("test-receptionist", self.receptionistBehavior))
         let probe: ActorTestProbe<String> = self.testKit.makeTestProbe()
@@ -58,6 +60,7 @@ final class _ActorRefReceptionistTests: SingleClusterSystemXCTestCase {
         try probe.expectMessagesInAnyOrder(["forwardedA:test", "forwardedB:test"])
     }
 
+    @Test
     func test_receptionist_shouldRespondWithEmptyRefForUnknownKey() throws {
         let receptionist = SystemReceptionist(ref: try system._spawn("test-receptionist", self.receptionistBehavior))
         let lookupProbe: ActorTestProbe<_Reception.Listing<_ActorRef<String>>> = self.testKit.makeTestProbe()
@@ -81,6 +84,7 @@ final class _ActorRefReceptionistTests: SingleClusterSystemXCTestCase {
         listing.refs.count.shouldEqual(0)
     }
 
+    @Test
     func test_receptionist_shouldNotRegisterTheSameRefTwice() throws {
         let receptionist = SystemReceptionist(ref: try system._spawn("test-receptionist", self.receptionistBehavior))
         let lookupProbe: ActorTestProbe<_Reception.Listing<_ActorRef<String>>> = self.testKit.makeTestProbe()
@@ -99,6 +103,7 @@ final class _ActorRefReceptionistTests: SingleClusterSystemXCTestCase {
         listing.refs.count.shouldEqual(1)
     }
 
+    @Test
     func test_receptionist_shouldRemoveAndAddNewSingletonRef() throws {
         let receptionist = SystemReceptionist(ref: try system._spawn("test-receptionist", self.receptionistBehavior))
         let lookupProbe: ActorTestProbe<_Reception.Listing<_ActorRef<String>>> = self.testKit.makeTestProbe()
@@ -133,6 +138,7 @@ final class _ActorRefReceptionistTests: SingleClusterSystemXCTestCase {
         }
     }
 
+    @Test
     func test_receptionist_shouldReplyWithRegistered() throws {
         let receptionist = SystemReceptionist(ref: try system._spawn("test-receptionist", self.receptionistBehavior))
         let probe: ActorTestProbe<_Reception.Registered<_ActorRef<String>>> = self.testKit.makeTestProbe()
@@ -154,6 +160,7 @@ final class _ActorRefReceptionistTests: SingleClusterSystemXCTestCase {
         registered.ref.shouldEqual(ref)
     }
 
+    @Test
     func test_receptionist_shouldUnregisterTerminatedRefs() throws {
         let receptionist = SystemReceptionist(ref: try system._spawn("test-receptionist", self.receptionistBehavior))
         let lookupProbe: ActorTestProbe<_Reception.Listing<_ActorRef<String>>> = self.testKit.makeTestProbe()
@@ -182,6 +189,7 @@ final class _ActorRefReceptionistTests: SingleClusterSystemXCTestCase {
         }
     }
 
+    @Test
     func test_receptionist_shouldContinuouslySendUpdatesForSubscriptions() throws {
         let receptionist = SystemReceptionist(ref: try system._spawn("test-receptionist", self.receptionistBehavior))
         let lookupProbe: ActorTestProbe<_Reception.Listing<_ActorRef<String>>> = self.testKit.makeTestProbe()
@@ -217,7 +225,7 @@ final class _ActorRefReceptionistTests: SingleClusterSystemXCTestCase {
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Delayed flush
-
+    @Test
     func test_delayedFlush_shouldEmitEvenWhenAllPeersRemoved() throws {
         let receptionist = SystemReceptionist(ref: try system._spawn("test-receptionist", self.receptionistBehavior))
         let lookupProbe: ActorTestProbe<_Reception.Listing<_ActorRef<String>>> = self.testKit.makeTestProbe()

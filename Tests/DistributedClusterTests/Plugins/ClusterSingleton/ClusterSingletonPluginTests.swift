@@ -14,9 +14,12 @@
 
 import DistributedActorsTestKit
 @testable import DistributedCluster
-import XCTest
+import Testing
 
+@Suite(.serialized)
 final class ClusterSingletonPluginTests: SingleClusterSystemXCTestCase {
+    
+    @Test
     func test_singletonPlugin_clusterDisabled() async throws {
         // Singleton should work just fine without clustering
         let test = await setUpNode("test") { settings in
@@ -39,6 +42,7 @@ final class ClusterSingletonPluginTests: SingleClusterSystemXCTestCase {
         proxyReply.shouldStartWith(prefix: "Hello Charlene!")
     }
 
+    @Test
     func test_singleton_nestedSingleton() async throws {
         let system = await setUpNode("test") { settings in
             settings += ClusterSingletonPlugin()

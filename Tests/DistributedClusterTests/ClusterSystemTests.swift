@@ -15,11 +15,13 @@
 import DistributedActorsTestKit
 @testable import DistributedCluster
 import Foundation
-import XCTest
+import Testing
 
+@Suite(.serialized)
 final class ClusterSystemTests: SingleClusterSystemXCTestCase {
     let MaxSpecialTreatedValueTypeSizeInBytes = 24
 
+    @Test
     func test_system_spawn_shouldThrowOnDuplicateName() throws {
         let _: _ActorRef<String> = try system._spawn("test", .ignore)
 
@@ -36,6 +38,7 @@ final class ClusterSystemTests: SingleClusterSystemXCTestCase {
         path.shouldEqual(expected)
     }
 
+    @Test
     func test_system_spawn_shouldNotThrowOnNameReUse() throws {
         let p: ActorTestProbe<Int> = self.testKit.makeTestProbe()
         // re-using a name of an actor that has been stopped is fine
@@ -51,6 +54,7 @@ final class ClusterSystemTests: SingleClusterSystemXCTestCase {
         }
     }
 
+    @Test
     func test_shutdown_shouldStopAllActors() async throws {
         let system2 = await ClusterSystem("ShutdownSystem")
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
@@ -75,13 +79,14 @@ final class ClusterSystemTests: SingleClusterSystemXCTestCase {
         try p.expectNoMessage(for: .milliseconds(200))
     }
 
+    @Test
     func test_shutdown_shouldCompleteReturnedHandleWhenDone() async throws {
         let shutdown = try system.shutdown()
         try shutdown.wait(atMost: .seconds(5))
     }
 
+    @Test(.disabled("Needs to be re-enabled"))
     func test_shutdown_shouldReUseReceptacleWhenCalledMultipleTimes() async throws {
-        throw XCTSkip("Needs to be re-enabled") // FIXME: re-enable this test
         let system2 = await ClusterSystem("ShutdownSystem")
         let shutdown1 = try system2.shutdown()
         let shutdown2 = try system2.shutdown()
@@ -92,6 +97,7 @@ final class ClusterSystemTests: SingleClusterSystemXCTestCase {
         try shutdown3.wait(atMost: .milliseconds(1))
     }
 
+    @Test
     func test_shutdown_selfSendingActorShouldNotDeadlockSystem() async throws {
         let system2 = await ClusterSystem("ShutdownSystem")
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
@@ -109,6 +115,7 @@ final class ClusterSystemTests: SingleClusterSystemXCTestCase {
         try p.expectTerminated(selfSender)
     }
 
+    @Test
     func test_terminated_triggerOnceSystemIsShutdown() async throws {
         let system2 = await ClusterSystem("ShutdownSystem") {
             $0.enabled = false // no clustering
@@ -121,6 +128,7 @@ final class ClusterSystemTests: SingleClusterSystemXCTestCase {
         try await system2.terminated // should be terminated after shutdown()
     }
 
+    @Test
     func test_shutdownWait_triggerOnceSystemIsShutdown() async throws {
         let system2 = await ClusterSystem("ShutdownSystem") {
             $0.enabled = false // no clustering
@@ -129,6 +137,7 @@ final class ClusterSystemTests: SingleClusterSystemXCTestCase {
         try await system2.shutdown().wait()
     }
 
+    @Test
     func test_resolveUnknownActor_shouldReturnPersonalDeadLetters() throws {
         let path = try ActorPath._user.appending("test").appending("foo").appending("bar")
         let id = ActorID(local: self.system.cluster.node, path: path, incarnation: .random())
@@ -139,6 +148,7 @@ final class ClusterSystemTests: SingleClusterSystemXCTestCase {
         ref.id.incarnation.shouldEqual(id.incarnation)
     }
 
+    @Test
     func test_cleanUpAssociationTombstones() async throws {
         let local = await setUpNode("local") { settings in
             settings.enabled = true

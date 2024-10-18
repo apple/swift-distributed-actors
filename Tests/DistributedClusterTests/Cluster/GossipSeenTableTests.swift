@@ -15,27 +15,22 @@
 import DistributedActorsTestKit
 @testable import DistributedCluster
 import NIO
-import XCTest
+import Testing
 
 /// Tests of just the datatype
-final class GossipSeenTableTests: XCTestCase {
+@Suite(.serialized)
+final class GossipSeenTableTests {
     typealias SeenTable = Cluster.MembershipGossip.SeenTable
 
-    var nodeA: Cluster.Node!
-    var nodeB: Cluster.Node!
-    var nodeC: Cluster.Node!
+    let nodeA: Cluster.Node = Cluster.Node(systemName: "firstA", host: "127.0.0.1", port: 7111, nid: .random())
+    let nodeB: Cluster.Node = Cluster.Node(systemName: "secondB", host: "127.0.0.1", port: 7222, nid: .random())
+    let nodeC: Cluster.Node = Cluster.Node(systemName: "thirdC", host: "127.0.0.1", port: 7333, nid: .random())
 
     lazy var allNodes = [
-        self.nodeA!, self.nodeB!, self.nodeC!,
+        self.nodeA, self.nodeB, self.nodeC,
     ]
 
-    override func setUp() {
-        super.setUp()
-        self.nodeA = Cluster.Node(systemName: "firstA", host: "127.0.0.1", port: 7111, nid: .random())
-        self.nodeB = Cluster.Node(systemName: "secondB", host: "127.0.0.1", port: 7222, nid: .random())
-        self.nodeC = Cluster.Node(systemName: "thirdC", host: "127.0.0.1", port: 7333, nid: .random())
-    }
-
+    @Test
     func test_seenTable_compare_concurrent_eachOtherDontKnown() {
         let table = Cluster.MembershipGossip.SeenTable.parse(
             """
@@ -59,7 +54,7 @@ final class GossipSeenTableTests: XCTestCase {
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: increments
-
+    @Test
     func test_incrementVersion() {
         var table = Cluster.MembershipGossip.SeenTable(myselfNode: self.nodeA, version: .init())
         table.version(at: self.nodeA).shouldEqual(VersionVector.parse("", nodes: self.allNodes))
@@ -81,7 +76,7 @@ final class GossipSeenTableTests: XCTestCase {
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: merge
-
+    @Test
     func test_seenTable_merge_notYetSeenInformation() {
         var table = Cluster.MembershipGossip.SeenTable.parse(
             """
@@ -102,7 +97,8 @@ final class GossipSeenTableTests: XCTestCase {
         table.version(at: self.nodeB)
             .shouldEqual(VersionVector.parse("B:2", nodes: self.allNodes))
     }
-
+    
+    @Test
     func test_seenTable_merge_sameInformation() {
         // a situation in which the two nodes have converged, so their versions are .same
 
@@ -122,6 +118,7 @@ final class GossipSeenTableTests: XCTestCase {
         table.version(at: self.nodeB).shouldEqual(VersionVector.parse("A:1 B:2", nodes: self.allNodes))
     }
 
+    @Test
     func test_seenTable_merge_aheadInformation() {
         // the incoming gossip is "ahead" and has some more information
 
@@ -139,6 +136,7 @@ final class GossipSeenTableTests: XCTestCase {
         table.version(at: self.nodeB).shouldEqual(VersionVector.parse("A:1 B:2", nodes: self.allNodes))
     }
 
+    @Test
     func test_seenTable_merge_behindInformation() {
         // the incoming gossip is "behind"
 
@@ -157,6 +155,7 @@ final class GossipSeenTableTests: XCTestCase {
         table.version(at: self.nodeB).shouldEqual(VersionVector.parse("B:2", nodes: self.allNodes))
     }
 
+    @Test
     func test_seenTable_merge_concurrentInformation() {
         // the incoming gossip is "concurrent"
 
@@ -182,6 +181,7 @@ final class GossipSeenTableTests: XCTestCase {
         table.version(at: self.nodeB).shouldEqual(incoming.seen.version(at: self.nodeB))
     }
 
+    @Test
     func test_seenTable_merge_concurrentInformation_unknownMember() {
         // the incoming gossip is "concurrent", and has a table entry for a node we don't know
 
@@ -208,7 +208,7 @@ final class GossipSeenTableTests: XCTestCase {
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Prune
-
+    @Test
     func test_prune_removeNodeFromSeenTable() {
         var table = Cluster.MembershipGossip.SeenTable(myselfNode: self.nodeA, version: .init())
         table.incrementVersion(owner: self.nodeA, at: self.nodeA)

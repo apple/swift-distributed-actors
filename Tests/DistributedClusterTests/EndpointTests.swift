@@ -15,12 +15,12 @@
 import DistributedActorsTestKit
 @testable import DistributedCluster
 import Foundation
-import XCTest
+import Testing
 
-final class EndpointTests: XCTestCase {
+struct EndpointTests {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Endpoint
-
+    @Test
     func test_nodes_equal_whenHostPortMatch() {
         let alpha = Cluster.Endpoint(systemName: "SystemNameAlpha", host: "111.111.11.1", port: 1111)
         let beta = Cluster.Endpoint(systemName: "SystemNameBeta", host: "111.111.11.1", port: 1111)
@@ -31,7 +31,7 @@ final class EndpointTests: XCTestCase {
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Cluster.Node
-
+    @Test
     func test_node_shouldRenderProperly() {
         let endpoint = Cluster.Endpoint(systemName: "SystemName", host: "188.121.122.3", port: 1111)
         let node = Cluster.Node(endpoint: endpoint, nid: Cluster.Node.ID(2222))
@@ -40,6 +40,7 @@ final class EndpointTests: XCTestCase {
         "\(String(reflecting: node))".shouldEqual("sact://SystemName:2222@188.121.122.3:1111")
     }
 
+    @Test
     func test_node_comparison_equal() {
         let two = Cluster.Node(endpoint: Cluster.Endpoint(systemName: "SystemName", host: "188.121.122.3", port: 1111), nid: Cluster.Node.ID(2222))
         let anotherTwo = two
@@ -48,6 +49,7 @@ final class EndpointTests: XCTestCase {
         two.shouldBeLessThanOrEqual(anotherTwo)
     }
 
+    @Test
     func test_node_comparison_lessThan() {
         let two = Cluster.Node(endpoint: Cluster.Endpoint(systemName: "SystemName", host: "188.121.122.3", port: 1111), nid: Cluster.Node.ID(2222))
         let three = Cluster.Node(endpoint: Cluster.Endpoint(systemName: "SystemName", host: "188.121.122.3", port: 1111), nid: Cluster.Node.ID(3333))

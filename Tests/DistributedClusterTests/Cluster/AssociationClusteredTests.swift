@@ -15,8 +15,9 @@
 import DistributedActorsTestKit
 @testable import DistributedCluster
 import NIO
-import XCTest
+import Testing
 
+@Suite(.serialized)
 final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
     override func configureLogCapture(settings: inout LogCapture.Settings) {
         settings.excludeActorPaths = [
@@ -27,7 +28,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Happy path, accept association
-
+    @Test
     func test_boundServer_shouldAcceptAssociate() async throws {
         let (first, second) = await setUpPair()
 
@@ -37,6 +38,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
         try assertAssociated(second, withExactly: first.cluster.node)
     }
 
+    @Test
     func test_boundServer_shouldAcceptAssociate_raceFromBothNodes() async throws {
         let (first, second) = await setUpPair()
         let n3 = await setUpNode("node-3")
@@ -63,6 +65,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
         try assertAssociated(second, withAtLeast: first.cluster.node)
     }
 
+    @Test
     func test_handshake_shouldNotifyOnSuccess() async throws {
         let (first, second) = await setUpPair()
 
@@ -72,6 +75,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
         try assertAssociated(second, withExactly: first.cluster.node)
     }
 
+    @Test
     func test_handshake_shouldNotifySuccessWhenAlreadyConnected() async throws {
         let (first, second) = await setUpPair()
 
@@ -86,6 +90,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
         try assertAssociated(second, withExactly: first.cluster.node)
     }
 
+    @Test
     func test_clusterControl_joined_shouldCauseJoiningAttempt() async throws {
         let (first, second) = await setUpPair()
 
@@ -101,7 +106,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Joining into existing cluster
-
+    @Test
     func test_association_sameAddressNodeJoin_shouldOverrideExistingNode() async throws {
         let (first, second) = await setUpPair()
 
@@ -138,6 +143,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
         try assertAssociated(secondReplacement, withExactly: [first.cluster.node])
     }
 
+    @Test
     func test_association_shouldAllowSendingToSecondReference() async throws {
         let (first, second) = await setUpPair()
 
@@ -165,6 +171,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
         try probeOnSecond.expectMessage("forwarded:HELLO")
     }
 
+    @Test
     func test_ignore_attemptToSelfJoinANode() async throws {
         let alone = await setUpNode("alone")
 
@@ -181,7 +188,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Concurrently initiated handshakes to same node should both get completed
-
+    @Test
     func test_association_shouldEstablishSingleAssociationForConcurrentlyInitiatedHandshakes_incoming_outgoing() async throws {
         let (first, second) = await setUpPair()
 
@@ -207,7 +214,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Retry handshakes
-
+    @Test
     func test_handshake_shouldKeepTryingUntilOtherNodeBindsPort() async throws {
         let first = await setUpNode("first")
 
@@ -226,6 +233,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
         try assertAssociated(second, withExactly: first.cluster.node)
     }
 
+    @Test
     func test_handshake_shouldStopTryingWhenMaxAttemptsExceeded() async throws {
         let first = await setUpNode("first") { settings in
             settings.handshakeReconnectBackoff = Backoff.exponential(
@@ -245,6 +253,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
         try logs.awaitLogContaining(self.testKit(first), text: "Giving up on handshake with node [sact://second@127.0.0.1:9011]")
     }
 
+    @Test
     func test_handshake_shouldNotAssociateWhenRejected() async throws {
         let first = await setUpNode("first") { settings in
             settings._protocolVersion.major += 1 // handshake will be rejected on major version difference
@@ -257,6 +266,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
         try assertNotAssociated(system: second, node: first.cluster.node)
     }
 
+    @Test
     func test_handshake_shouldNotifyOnRejection() async throws {
         let first = await setUpNode("first") { settings in
             settings._protocolVersion.major += 1 // handshake will be rejected on major version difference
@@ -277,7 +287,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Leaving/down rejecting handshakes
-
+    @Test
     func test_handshake_shouldRejectIfNodeIsLeavingOrDown() async throws {
         let first = await setUpNode("first") { settings in
             settings.onDownAction = .none // don't shutdown this node (keep process alive)
@@ -315,7 +325,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: second control caching
-
+    @Test
     func test_cachedSecondControlsWithSameNodeID_shouldNotOverwriteEachOther() async throws {
         let (first, second) = await setUpPair()
         second.cluster.join(endpoint: first.cluster.node.endpoint)
@@ -333,6 +343,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
         first._cluster?._testingOnly_associations.count.shouldEqual(2)
     }
 
+    @Test
     func test_sendingMessageToNotYetAssociatedNode_mustCauseAssociationAttempt() async throws {
         let first = await setUpNode("first")
         let second = await setUpNode("second")
@@ -369,7 +380,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Change membership on Down detected
-
+    @Test
     func test_down_self_shouldChangeMembershipSelfToBeDown() async throws {
         let (first, second) = await setUpPair { settings in
             settings.onDownAction = .none // as otherwise we can't inspect if we really changed the status to .down, as we might shutdown too quickly :-)

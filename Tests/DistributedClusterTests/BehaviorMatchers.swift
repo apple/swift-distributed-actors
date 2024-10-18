@@ -14,7 +14,7 @@
 
 import DistributedActorsTestKit
 @testable import DistributedCluster
-import XCTest
+import Testing
 
 /// Internal testing extensions allowing inspecting behavior internals
 extension _Behavior {

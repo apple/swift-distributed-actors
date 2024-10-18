@@ -16,10 +16,13 @@ import Distributed
 import DistributedActorsTestKit
 @testable import DistributedCluster
 import Foundation
-import XCTest
+import Testing
 
 // TODO: "ActorGroup" perhaps could be better name?
+@Suite(.serialized)
 final class WorkerPoolTests: SingleClusterSystemXCTestCase {
+    
+    @Test
     func test_workerPool_registerNewlyStartedActors() async throws {
         let workerKey = DistributedReception.Key(Greeter.self, id: "request-workers")
 
@@ -43,17 +46,15 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
         let sortedWorkerIDs = Array(workerProbes.keys).sorted()
 
         // Wait for all workers to be registered with the receptionist
-        let finished = expectation(description: "all workers available")
-        Task {
+        try await confirmation("all workers available") { finished in
             while true {
                 if try await workers.size() == workerProbes.count {
                     break
                 }
                 try await Task.sleep(nanoseconds: 100_000_000)
             }
-            finished.fulfill()
+            finished()
         }
-        await fulfillment(of: [finished], timeout: 3.0)
 
         // Submit work with all workers available
         for i in 0 ... 7 {
@@ -68,9 +69,8 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
         }
     }
 
+    @Test(.disabled("!!! Skipping test \(#function) !!!")) // FIXME(distributed): Pending fix for #831 to be able to terminate worker by setting it to nil
     func test_workerPool_dynamic_removeDeadActors() async throws {
-        throw XCTSkip("!!! Skipping test \(#function) !!!") // FIXME(distributed): Pending fix for #831 to be able to terminate worker by setting it to nil
-
         let workerKey = DistributedReception.Key(Greeter.self, id: "request-workers")
 
         let workers = try await WorkerPool(selector: .dynamic(workerKey), actorSystem: system)
@@ -93,17 +93,15 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
         var sortedWorkerIDs = Array(workerProbes.keys).sorted()
 
         // Wait for all workers to be registered with the receptionist
-        let finished = expectation(description: "all workers available")
-        Task {
+        try await confirmation("all workers available") { finished in
             while true {
                 if try await workers.size() == workerProbes.count {
                     break
                 }
                 try await Task.sleep(nanoseconds: 100_000_000)
             }
-            finished.fulfill()
+            finished()
         }
-        await fulfillment(of: [finished], timeout: 3.0)
 
         // Submit work with all workers available
         for i in 0 ... 2 {
@@ -154,6 +152,7 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
         try pD.expectMessage("work:D-only at \(workerD.id)")
     }
 
+    @Test
     func test_workerPool_static_removeDeadActors_throwErrorWhenNoWorkers() async throws {
         let pA: ActorTestProbe<String> = self.testKit.makeTestProbe("pA")
         let pB: ActorTestProbe<String> = self.testKit.makeTestProbe("pB")
@@ -225,6 +224,7 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
         errorMessage.shouldContain("Static worker pool exhausted, all workers have terminated")
     }
 
+    @Test
     func test_workerPool_static_throwOnEmptyInitialSet() async throws {
         let error = try await shouldThrow {
             let _: WorkerPool<Greeter> = try await WorkerPool(selector: .static([]), actorSystem: system)

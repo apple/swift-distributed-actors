@@ -14,9 +14,10 @@
 
 import DistributedActorsTestKit
 @testable import DistributedCluster
-import XCTest
+import Testing
 
 // "Get down!"
+@Suite(.serialized)
 final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
     override func configureLogCapture(settings: inout LogCapture.Settings) {
         settings.excludeActorPaths = [
@@ -98,7 +99,7 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
 
         func expectedDownMemberEventsFishing(
             on: ClusterSystem,
-            file: StaticString = #filePath, line: UInt = #line
+            file: String = #fileID, line: Int = #line
         ) -> (Cluster.Event) -> ActorTestProbe<Cluster.Event>.FishingDirective<Cluster.MembershipChange> {
             pinfo("Expecting [\(expectedDownSystem)] to become [.down] on [\(on.cluster.node.endpoint)], method to stop the node [\(stopMethod)]")
 
@@ -135,7 +136,7 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Stop by: cluster.leave() immediate
-
+    @Test
     func test_stopLeader_by_leaveSelfNode_shouldPropagateToOtherNodes() async throws {
         try await self.shared_stoppingNode_shouldPropagateToOtherNodesAsDown(stopMethod: .leaveSelfNode, stopNode: .firstLeader) { settings in
             settings.onDownAction = .gracefulShutdown(delay: .seconds(0))
@@ -145,6 +146,7 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
         }
     }
 
+    @Test
     func test_stopMember_by_leaveSelfNode_shouldPropagateToOtherNodes() async throws {
         try await self.shared_stoppingNode_shouldPropagateToOtherNodesAsDown(stopMethod: .leaveSelfNode, stopNode: .secondNonLeader) { settings in
             settings.onDownAction = .gracefulShutdown(delay: .seconds(0))
@@ -156,7 +158,7 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Stop by: cluster.down(selfNode)
-
+    @Test
     func test_stopLeader_by_downSelf_shouldPropagateToOtherNodes() async throws {
         try await self.shared_stoppingNode_shouldPropagateToOtherNodesAsDown(stopMethod: .downSelf, stopNode: .firstLeader) { settings in
             settings.onDownAction = .gracefulShutdown(delay: .seconds(0))
@@ -165,7 +167,8 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
             settings.downingStrategy = self.downingStrategy
         }
     }
-
+    
+    @Test
     func test_stopMember_by_downSelf_shouldPropagateToOtherNodes() async throws {
         try await self.shared_stoppingNode_shouldPropagateToOtherNodesAsDown(stopMethod: .downSelf, stopNode: .secondNonLeader) { settings in
             settings.onDownAction = .gracefulShutdown(delay: .seconds(0))
@@ -177,7 +180,7 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Stop by system.shutdown()
-
+    @Test
     func test_stopLeader_by_downByMember_shouldPropagateToOtherNodes() async throws {
         try await self.shared_stoppingNode_shouldPropagateToOtherNodesAsDown(stopMethod: .downFromOtherMember, stopNode: .firstLeader) { settings in
             settings.onDownAction = .gracefulShutdown(delay: .seconds(0))
@@ -187,6 +190,7 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
         }
     }
 
+    @Test
     func test_stopMember_by_downByMember_shouldPropagateToOtherNodes() async throws {
         try await self.shared_stoppingNode_shouldPropagateToOtherNodesAsDown(stopMethod: .downFromOtherMember, stopNode: .secondNonLeader) { settings in
             settings.onDownAction = .gracefulShutdown(delay: .seconds(0))
@@ -198,7 +202,7 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Stop by: otherSystem.cluster.down(theNode)
-
+    @Test
     func test_stopLeader_by_shutdownSelf_shouldPropagateToOtherNodes() async throws {
         try await self.shared_stoppingNode_shouldPropagateToOtherNodesAsDown(stopMethod: .shutdownSelf, stopNode: .firstLeader) { settings in
             settings.onDownAction = .gracefulShutdown(delay: .seconds(0))
@@ -208,6 +212,7 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
         }
     }
 
+    @Test
     func test_stopMember_by_shutdownSelf_shouldPropagateToOtherNodes() async throws {
         try await self.shared_stoppingNode_shouldPropagateToOtherNodesAsDown(stopMethod: .shutdownSelf, stopNode: .secondNonLeader) { settings in
             settings.onDownAction = .gracefulShutdown(delay: .seconds(0))
@@ -219,12 +224,8 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: "Mass" Downing
-
+    @Test(.disabled(if: Int.random(in: 10 ... 100) > 0, "SKIPPING FLAKY TEST, REVISIT IT SOON")) // FIXME: https://github.com/apple/swift-distributed-actors/issues/712
     func test_many_nonLeaders_shouldPropagateToOtherNodes() async throws {
-        if Int.random(in: 10 ... 100) > 0 {
-            throw XCTSkip("SKIPPING FLAKY TEST, REVISIT IT SOON") // FIXME: https://github.com/apple/swift-distributed-actors/issues/712
-        }
-
         var nodes: [ClusterSystem] = []
         for i in (1 ... 7) {
             nodes[i] = await setUpNode("node-\(i)")
@@ -256,7 +257,7 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
 
         func expectedDownMemberEventsFishing(
             on: ClusterSystem,
-            file: StaticString = #filePath, line: UInt = #line
+            file: String = #fileID, line: Int = #line
         ) -> (Cluster.Event) -> ActorTestProbe<Cluster.Event>.FishingDirective<Cluster.MembershipChange> {
             pinfo("Expecting \(nodesToDown.map(\.cluster.node.endpoint)) to become [.down] on [\(on.cluster.node.endpoint)]")
             var removalsFound = 0

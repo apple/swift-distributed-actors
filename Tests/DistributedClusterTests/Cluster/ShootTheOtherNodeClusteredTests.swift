@@ -15,7 +15,7 @@
 import DistributedActorsTestKit
 @testable import DistributedCluster
 import NIO
-import XCTest
+import Testing
 
 final class ShootTheOtherNodeClusteredTests: ClusteredActorSystemsXCTestCase {
     override func configureLogCapture(settings: inout LogCapture.Settings) {
@@ -28,6 +28,7 @@ final class ShootTheOtherNodeClusteredTests: ClusteredActorSystemsXCTestCase {
         settings.minimumLogLevel = .info
     }
 
+    @Test
     func test_shootOtherNodeShouldTerminateIt() async throws {
         let (local, remote) = await setUpPair()
 

@@ -17,12 +17,13 @@ import DistributedActorsTestKit
 @testable import DistributedCluster
 import Foundation
 import NIO
-import XCTest
+import Testing
 
+@Suite(.serialized)
 final class DispatcherTests: SingleClusterSystemXCTestCase {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Running "on NIO" for fun and profit
-
+    @Test
     func test_runOn_nioEventLoop() throws {
         let p = self.testKit.makeTestProbe(expecting: String.self)
         let behavior: _Behavior<String> = .receive { context, message in
@@ -42,6 +43,7 @@ final class DispatcherTests: SingleClusterSystemXCTestCase {
         dispatcher.dropFirst("Dispatcher: ".count).shouldStartWith(prefix: "nio:")
     }
 
+    @Test
     func test_runOn_nioEventLoopGroup() throws {
         let p = self.testKit.makeTestProbe(expecting: String.self)
         let behavior: _Behavior<String> = .receive { context, message in
@@ -63,7 +65,7 @@ final class DispatcherTests: SingleClusterSystemXCTestCase {
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Grand Central Dispatch
-
+    @Test
     func test_runOn_dispatchQueue() throws {
         let p = self.testKit.makeTestProbe(expecting: String.self)
         let behavior: _Behavior<String> = .receive { context, message in

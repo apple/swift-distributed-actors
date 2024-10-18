@@ -14,16 +14,19 @@
 
 import DistributedActorsTestKit
 import Foundation
-import XCTest
-
+import Testing
 @testable import DistributedCluster
 
+@Suite(.serialized)
 final class TimersTests: SingleClusterSystemXCTestCase {
+    
+    @Test
     func testTimerKey_shouldPrintNicely() {
         _TimerKey("Hello").description.shouldEqual("_TimerKey(Hello)")
         _TimerKey("Hello", isSystemTimer: true).description.shouldEqual("_TimerKey(Hello, isSystemTimer: true)")
     }
 
+    @Test
     func test_startSingleTimer_shouldSendSingleMessage() throws {
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
@@ -40,6 +43,7 @@ final class TimersTests: SingleClusterSystemXCTestCase {
         try p.expectNoMessage(for: .milliseconds(10))
     }
 
+    @Test
     func test_startPeriodicTimer_shouldSendPeriodicMessage() throws {
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
@@ -65,6 +69,7 @@ final class TimersTests: SingleClusterSystemXCTestCase {
         try p.expectNoMessage(for: .milliseconds(10))
     }
 
+    @Test
     func test_periodicTimer_shouldStopWhenCanceled() throws {
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
@@ -89,6 +94,7 @@ final class TimersTests: SingleClusterSystemXCTestCase {
         try p.expectNoMessage(for: .milliseconds(100))
     }
 
+    @Test
     func test_singleTimer_shouldStopWhenCanceled() throws {
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
@@ -110,6 +116,7 @@ final class TimersTests: SingleClusterSystemXCTestCase {
         try p.expectNoMessage(for: .milliseconds(10))
     }
 
+    @Test
     func test_timers_cancelAllShouldStopAllTimers() throws {
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
@@ -129,6 +136,7 @@ final class TimersTests: SingleClusterSystemXCTestCase {
         try p.expectNoMessage(for: .milliseconds(100))
     }
 
+    @Test
     func test_timers_cancelAllShouldNotStopSystemTimers() throws {
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 

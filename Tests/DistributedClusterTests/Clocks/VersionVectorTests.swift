@@ -14,9 +14,11 @@
 
 import DistributedActorsTestKit
 @testable import DistributedCluster
-import XCTest
+import Testing
 
-final class VersionVectorTests: XCTestCase {
+@Suite(.serialized)
+class VersionVectorTests {
+    
     private typealias VV = VersionVector
     private typealias V = VersionVector.Version
 
@@ -28,6 +30,7 @@ final class VersionVectorTests: XCTestCase {
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: VersionVector tests
 
+    @Test
     func test_VersionVector_init_default_canModify() throws {
         var vv = VV()
         vv.isEmpty.shouldBeTrue()
@@ -46,6 +49,7 @@ final class VersionVectorTests: XCTestCase {
         vv[self.replicaB].shouldEqual(1) // New replica gets added with version 1
     }
 
+    @Test
     func test_VersionVector_init_fromVersionVector_canModify() throws {
         let sourceVV = VV([(replicaA, V(1)), (replicaB, V(2))])
         var vv = VV(sourceVV)
@@ -65,6 +69,7 @@ final class VersionVectorTests: XCTestCase {
         vv[self.replicaC].shouldEqual(1) // New replica gets added with version 1
     }
 
+    @Test
     func test_VersionVector_init_fromArrayOfReplicaVersionTuples_canModify() throws {
         var vv = VV([(replicaA, V(1)), (replicaB, V(2))])
         vv.isNotEmpty.shouldBeTrue()
@@ -83,6 +88,7 @@ final class VersionVectorTests: XCTestCase {
         vv[self.replicaC].shouldEqual(1) // New replica gets added with version 1
     }
 
+    @Test
     func test_VersionVector_merge_shouldMutate() throws {
         var vv1 = VV([(replicaA, V(2)), (replicaB, V(3))])
         let vv2 = VV([(replicaA, V(1)), (replicaB, V(4)), (replicaC, V(5))])
@@ -100,6 +106,7 @@ final class VersionVectorTests: XCTestCase {
         vv2[self.replicaC].shouldEqual(5)
     }
 
+    @Test
     func test_VersionVector_contains() throws {
         let emptyVV = VV()
         emptyVV.contains(self.replicaA, 0).shouldBeTrue() // This is no version basically; always included
@@ -114,6 +121,7 @@ final class VersionVectorTests: XCTestCase {
         vv.contains(self.replicaC, V(2)).shouldBeFalse() // "C" not in vv
     }
 
+    @Test
     func test_VersionVector_comparisonOperators() throws {
         // Two empty version vectors should be considered equal instead of less than
         (VV() < VV()).shouldBeFalse()
@@ -155,6 +163,7 @@ final class VersionVectorTests: XCTestCase {
         (vvX == vvY).shouldBeFalse()
     }
 
+    @Test
     func test_VersionVector_compareTo() throws {
         guard case .happenedBefore = VV().compareTo(VV([(self.replicaA, V(2))])) else {
             throw shouldNotHappen("An empty version vector is always before a non-empty one")
@@ -193,7 +202,7 @@ final class VersionVectorTests: XCTestCase {
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Dot tests
-
+    @Test
     func test_Dot_sort_shouldBeByReplicaThenByVersion() throws {
         let dot1 = VersionDot(replicaB, V(2))
         let dot2 = VersionDot(replicaA, V(3))

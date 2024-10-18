@@ -16,8 +16,9 @@ import DistributedActorsTestKit
 @testable import DistributedCluster
 import Foundation
 import NIOSSL
-import XCTest
+import Testing
 
+@Suite(.serialized)
 class RemotingTLSTests: ClusteredActorSystemsXCTestCase {
     let testCert1 = """
     -----BEGIN CERTIFICATE-----
@@ -180,6 +181,7 @@ class RemotingTLSTests: ClusteredActorSystemsXCTestCase {
     -----END ENCRYPTED PRIVATE KEY-----
     """
 
+    @Test
     func test_boundServer_shouldAcceptAssociateWithSSLEnabled() async throws {
         let testCertificate1 = try NIOSSLCertificate(bytes: [UInt8](testCert1.utf8), format: .pem)
         let testCertificateSource1: NIOSSLCertificateSource = .certificate(testCertificate1)
@@ -222,6 +224,7 @@ class RemotingTLSTests: ClusteredActorSystemsXCTestCase {
 
     // FIXME: Test Case '-[DistributedActorsTests.RemotingTLSTests test_boundServer_shouldFailWithSSLEnabledOnHostnameVerificationWithIP]' started.
     //          Exited with signal code 2
+    @Test
     func ignore_boundServer_shouldFailWithSSLEnabledOnHostnameVerificationWithIP() async throws {
         let testCertificate = try NIOSSLCertificate(bytes: [UInt8](testCert1.utf8), format: .pem)
         let testCertificateSource: NIOSSLCertificateSource = .certificate(testCertificate)
@@ -276,6 +279,7 @@ class RemotingTLSTests: ClusteredActorSystemsXCTestCase {
         }
     }
 
+    @Test
     func test_boundServer_shouldAcceptAssociateWithSSLEnabledOnNoHostnameVerificationWithIP() async throws {
         let testCertificate = try NIOSSLCertificate(bytes: [UInt8](testCert1.utf8), format: .pem)
         let testCertificateSource: NIOSSLCertificateSource = .certificate(testCertificate)
@@ -311,6 +315,7 @@ class RemotingTLSTests: ClusteredActorSystemsXCTestCase {
         try assertAssociated(local, withExactly: remote.settings.bindNode)
     }
 
+    @Test
     func test_boundServer_shouldAcceptAssociateWithSSLEnabledAndCorrectPassphrase() async throws {
         let tmpKeyFile = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("key-\(NSUUID().uuidString).pem")
         defer {

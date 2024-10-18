@@ -44,7 +44,7 @@ open class SingleClusterSystemXCTestCase: ClusteredActorSystemsXCTestCase {
         return handler
     }
 
-    override init() async throws {
+    override public init() async throws {
         try await super.init()
         _ = await self.setUpNode(String(describing: type(of: self)))
     }

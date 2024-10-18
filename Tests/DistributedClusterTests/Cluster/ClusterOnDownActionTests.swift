@@ -15,9 +15,11 @@
 import DistributedActorsTestKit
 @testable import DistributedCluster
 import NIOSSL
-import XCTest
+import Testing
 
+@Suite(.serialized)
 final class ClusterOnDownActionTests: ClusteredActorSystemsXCTestCase {
+    @Test
     func test_onNodeDowned_performShutdown() async throws {
         let (first, second) = await self.setUpPair { settings in
             settings.onDownAction = .gracefulShutdown(delay: .milliseconds(300))
@@ -35,7 +37,8 @@ final class ClusterOnDownActionTests: ClusteredActorSystemsXCTestCase {
             }
         }
     }
-
+    
+    @Test
     func test_onNodeDowned_configuredNoop_doNothing() async throws {
         let (first, second) = await setUpPair { settings in
             settings.onDownAction = .none

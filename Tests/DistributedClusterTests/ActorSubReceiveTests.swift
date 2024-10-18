@@ -15,9 +15,12 @@
 import DistributedActorsTestKit
 @testable import DistributedCluster
 import Foundation
-import XCTest
+import Testing
 
+@Suite(.serialized)
 final class ActorSubReceiveTests: SingleClusterSystemXCTestCase {
+    
+    @Test
     func test_subReceive_shouldBeAbleToReceiveMessages() throws {
         let p = self.testKit.makeTestProbe(expecting: String.self)
         let refProbe = self.testKit.makeTestProbe(expecting: _ActorRef<String>.self)
@@ -40,6 +43,8 @@ final class ActorSubReceiveTests: SingleClusterSystemXCTestCase {
     }
 
     struct TestSubReceiveType<Value>: Codable {}
+    
+    @Test
     func test_subReceive_notCrashWhenTypeIncludesSpecialChar() throws {
         let p = self.testKit.makeTestProbe(expecting: String.self)
         let refProbe = self.testKit.makeTestProbe(expecting: _ActorRef<TestSubReceiveType<Void>>.self)
@@ -64,6 +69,7 @@ final class ActorSubReceiveTests: SingleClusterSystemXCTestCase {
         try p.expectMessage("subreceive:\(TestSubReceiveType<Void>())")
     }
 
+    @Test
     func test_subReceiveId_fromGenericType_shouldNotBlowUp() throws {
         let p = self.testKit.makeTestProbe(expecting: String.self)
         let refProbe = self.testKit.makeTestProbe(expecting: _ActorRef<Set<String>>.self)
@@ -85,6 +91,7 @@ final class ActorSubReceiveTests: SingleClusterSystemXCTestCase {
         try p.expectMessage("subreceive:2")
     }
 
+    @Test
     func test_subReceive_shouldBeAbleToModifyActorState() throws {
         let p = self.testKit.makeTestProbe(expecting: Int.self)
         let refProbe = self.testKit.makeTestProbe(expecting: _ActorRef<IncrementAndGet>.self)
@@ -129,6 +136,7 @@ final class ActorSubReceiveTests: SingleClusterSystemXCTestCase {
         }
     }
 
+    @Test
     func test_subReceive_shouldBeWatchable() throws {
         let p = self.testKit.makeTestProbe(expecting: Never.self)
         let refProbe = self.testKit.makeTestProbe(expecting: _ActorRef<String>.self)
@@ -152,6 +160,7 @@ final class ActorSubReceiveTests: SingleClusterSystemXCTestCase {
         try p.expectTerminated(subRef)
     }
 
+    @Test
     func test_subReceive_shouldShareLifetimeWithParent() throws {
         let p = self.testKit.makeTestProbe(expecting: Never.self)
         let refProbe = self.testKit.makeTestProbe(expecting: _ActorRef<String>.self)
@@ -200,10 +209,12 @@ final class ActorSubReceiveTests: SingleClusterSystemXCTestCase {
         _ = try refProbe.expectMessage() // this means the actor was restarted
     }
 
+    @Test
     func test_subReceive_shouldTriggerSupervisionOnError() throws {
         try self.shared_subReceive_shouldTriggerSupervisionOnFailure(failureMode: .throwing)
     }
 
+    @Test
     func test_subReceive_shouldBeReplacedIfRegisteredAgainUnderSameKey() throws {
         struct TestMessage: Codable {
             let replyTo: _ActorRef<String>

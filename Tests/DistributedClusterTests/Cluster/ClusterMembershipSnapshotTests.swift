@@ -14,9 +14,12 @@
 
 import DistributedActorsTestKit
 import DistributedCluster
-import XCTest
+import Testing
 
+@Suite(.serialized)
 final class ClusterMembershipSnapshotTests: ClusteredActorSystemsXCTestCase {
+    
+    @Test
     func test_membershipSnapshot_initialShouldContainSelfNode() async throws {
         let system = await setUpNode("first")
 
@@ -28,6 +31,7 @@ final class ClusterMembershipSnapshotTests: ClusteredActorSystemsXCTestCase {
         }
     }
 
+    @Test
     func test_membershipSnapshot_shouldBeUpdated() async throws {
         let (first, second) = await self.setUpPair()
         try await self.joinNodes(node: first, with: second)
@@ -51,6 +55,7 @@ final class ClusterMembershipSnapshotTests: ClusteredActorSystemsXCTestCase {
         }
     }
 
+    @Test
     func test_membershipSnapshot_beInSyncWithEvents() async throws {
         let first = await setUpNode("first")
         let second = await setUpNode("second")

@@ -15,7 +15,7 @@
 import Distributed
 import DistributedActorsTestKit
 @testable import DistributedCluster
-import XCTest
+import Testing
 
 distributed actor UnregisterOnMessage {
     typealias ActorSystem = ClusterSystem
@@ -52,6 +52,7 @@ extension DistributedReception.Key {
     }
 }
 
+@Suite(.serialized)
 final class OpLogDistributedReceptionistClusteredTests: ClusteredActorSystemsXCTestCase {
     override func configureLogCapture(settings: inout LogCapture.Settings) {
         settings.excludeActorPaths = [
@@ -81,7 +82,7 @@ final class OpLogDistributedReceptionistClusteredTests: ClusteredActorSystemsXCT
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Sync
-
+    @Test
     func test_shouldReplicateRegistrations() async throws {
         let (first, second) = await self.setUpPair()
         let testKit = self.testKit(first)
@@ -120,48 +121,47 @@ final class OpLogDistributedReceptionistClusteredTests: ClusteredActorSystemsXCT
         }.value
     }
 
+    @Test
     func test_shouldSyncPeriodically() async throws {
-        try runAsyncAndBlock {
-            // Don't join the nodes just yet
-            let (local, remote) = await self.setUpPair {
-                $0.receptionist.ackPullReplicationIntervalSlow = .seconds(1)
-            }
-
-            let probe = self.testKit(local).makeTestProbe(expecting: String.self)
-            let subscriberProbe = self.testKit(local).makeTestProbe(expecting: StringForwarder.self)
-
-            // Create on local
-            let key = DistributedReception.Key(StringForwarder.self, id: "test")
-            let forwarder = StringForwarder(probe: probe, actorSystem: local)
-
-            // Subscribe on remote
-            let remoteSubscriberTask = Task {
-                for try await found in await remote.receptionist.listing(of: key) {
-                    subscriberProbe.tell(found)
-                }
-            }
-            defer { remoteSubscriberTask.cancel() }
-
-            // Register on local
-            await local.receptionist.checkIn(forwarder, with: key)
-
-            // Join the nodes
-            local.cluster.join(endpoint: remote.cluster.node.endpoint)
-            try assertAssociated(local, withExactly: remote.settings.bindNode)
-
-            // The remote node discovers the actor
-            try await Task {
-                let found = try subscriberProbe.expectMessage()
-
-                // we expect only one actor
-                try subscriberProbe.expectNoMessage(for: .milliseconds(200))
-
-                // check if we can interact with it
-                let echo = try await found.forward(message: "test")
-                echo.shouldEqual("echo:test")
-                try probe.expectMessage("forwarded:test")
-            }.value
+        // Don't join the nodes just yet
+        let (local, remote) = await self.setUpPair {
+            $0.receptionist.ackPullReplicationIntervalSlow = .seconds(1)
         }
+
+        let probe = self.testKit(local).makeTestProbe(expecting: String.self)
+        let subscriberProbe = self.testKit(local).makeTestProbe(expecting: StringForwarder.self)
+
+        // Create on local
+        let key = DistributedReception.Key(StringForwarder.self, id: "test")
+        let forwarder = StringForwarder(probe: probe, actorSystem: local)
+
+        // Subscribe on remote
+        let remoteSubscriberTask = Task {
+            for try await found in await remote.receptionist.listing(of: key) {
+                subscriberProbe.tell(found)
+            }
+        }
+        defer { remoteSubscriberTask.cancel() }
+
+        // Register on local
+        await local.receptionist.checkIn(forwarder, with: key)
+
+        // Join the nodes
+        local.cluster.join(endpoint: remote.cluster.node.endpoint)
+        try assertAssociated(local, withExactly: remote.settings.bindNode)
+
+        // The remote node discovers the actor
+        try await Task {
+            let found = try subscriberProbe.expectMessage()
+
+            // we expect only one actor
+            try subscriberProbe.expectNoMessage(for: .milliseconds(200))
+
+            // check if we can interact with it
+            let echo = try await found.forward(message: "test")
+            echo.shouldEqual("echo:test")
+            try probe.expectMessage("forwarded:test")
+        }.value
     }
 
 //    func test_shouldMergeEntriesOnSync() throws {

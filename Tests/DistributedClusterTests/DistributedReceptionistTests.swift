@@ -16,11 +16,13 @@ import Distributed
 import DistributedActorsTestKit
 @testable import DistributedCluster
 import Foundation
-import XCTest
+import Testing
 
+@Suite(.serialized)
 final class DistributedReceptionistTests: SingleClusterSystemXCTestCase {
     let receptionistBehavior = _OperationLogClusterReceptionist(settings: .default).behavior
 
+    @Test
     func test_receptionist_mustHaveWellKnownID() throws {
         let opLogReceptionist = system.receptionist
         let id = opLogReceptionist.id
@@ -29,30 +31,30 @@ final class DistributedReceptionistTests: SingleClusterSystemXCTestCase {
         id.incarnation.shouldEqual(.wellKnown)
     }
 
-    func test_receptionist_shouldRespondWithRegisteredRefsForKey() throws {
-        try runAsyncAndBlock {
-            let receptionist = system.receptionist
-            let probe: ActorTestProbe<String> = self.testKit.makeTestProbe()
+    @Test
+    func test_receptionist_shouldRespondWithRegisteredRefsForKey() async throws {
+        let receptionist = system.receptionist
+        let probe: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
-            let forwarderA = Forwarder(probe: probe, name: "A", actorSystem: system)
-            let forwarderB = Forwarder(probe: probe, name: "B", actorSystem: system)
+        let forwarderA = Forwarder(probe: probe, name: "A", actorSystem: system)
+        let forwarderB = Forwarder(probe: probe, name: "B", actorSystem: system)
 
-            await receptionist.checkIn(forwarderA, with: .forwarders)
-            await receptionist.checkIn(forwarderB, with: .forwarders)
+        await receptionist.checkIn(forwarderA, with: .forwarders)
+        await receptionist.checkIn(forwarderB, with: .forwarders)
 
-            let listing = await receptionist.lookup(.forwarders)
-            listing.count.shouldEqual(2)
-            for forwarder in listing {
-                try await forwarder.forward(message: "test")
-            }
-
-            try probe.expectMessagesInAnyOrder([
-                "\(forwarderA.id) A forwarded: test",
-                "\(forwarderB.id) B forwarded: test",
-            ])
+        let listing = await receptionist.lookup(.forwarders)
+        listing.count.shouldEqual(2)
+        for forwarder in listing {
+            try await forwarder.forward(message: "test")
         }
+
+        try probe.expectMessagesInAnyOrder([
+            "\(forwarderA.id) A forwarded: test",
+            "\(forwarderB.id) B forwarded: test",
+        ])
     }
 
+    @Test
     func test_receptionist_listing_shouldRespondWithRegisteredRefsForKey() async throws {
         let receptionist = system.receptionist
         let probe: ActorTestProbe<String> = self.testKit.makeTestProbe()
@@ -83,6 +85,7 @@ final class DistributedReceptionistTests: SingleClusterSystemXCTestCase {
         ])
     }
 
+    @Test
     func test_receptionist_listing_shouldEndAfterTaskIsCancelled() async throws {
         let receptionist = self.system.receptionist
         let probeA: ActorTestProbe<String> = self.testKit.makeTestProbe()
@@ -120,20 +123,19 @@ final class DistributedReceptionistTests: SingleClusterSystemXCTestCase {
         try probeB.expectNoMessage(for: .milliseconds(500))
     }
 
-    func test_receptionist_shouldRespondWithEmptyRefForUnknownKey() throws {
-        try runAsyncAndBlock {
-            let receptionist = system.receptionist
+    @Test
+    func test_receptionist_shouldRespondWithEmptyRefForUnknownKey() async throws {
+        let receptionist = system.receptionist
 
-            let ref = Forwarder(probe: nil, name: "C", actorSystem: system)
-            await receptionist.checkIn(ref, with: .forwarders)
+        let ref = Forwarder(probe: nil, name: "C", actorSystem: system)
+        await receptionist.checkIn(ref, with: .forwarders)
 
-            let listing = await receptionist.lookup(.unknown)
-            listing.count.shouldEqual(0)
-        }
+        let listing = await receptionist.lookup(.unknown)
+        listing.count.shouldEqual(0)
     }
 
     // ==== ----------------------------------------------------------------------------------------------------------------
-
+    @Test
     func test_receptionist_shouldNotRegisterTheSameRefTwice() async throws {
         let ref = Forwarder(probe: nil, name: "D", actorSystem: system)
 
@@ -145,6 +147,7 @@ final class DistributedReceptionistTests: SingleClusterSystemXCTestCase {
         listing.count.shouldEqual(1)
     }
 
+    @Test
     func test_receptionist_happyPath_lookup_only() async throws {
         let (first, second) = await self.setUpPair { settings in
             settings.enabled = true
@@ -165,6 +168,7 @@ final class DistributedReceptionistTests: SingleClusterSystemXCTestCase {
         }
     }
 
+    @Test
     func test_receptionist_happyPath_lookup_then_listing() async throws {
         let (first, second) = await self.setUpPair { settings in
             settings.enabled = true
@@ -191,6 +195,7 @@ final class DistributedReceptionistTests: SingleClusterSystemXCTestCase {
         }
     }
 
+    @Test
     func test_receptionist_shouldRemoveAndAddNewSingletonRef() async throws {
         var old: Forwarder? = Forwarder(probe: nil, name: "old", actorSystem: system)
         let new = Forwarder(probe: nil, name: "new", actorSystem: system)

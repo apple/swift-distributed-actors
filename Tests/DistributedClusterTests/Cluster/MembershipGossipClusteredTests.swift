@@ -16,8 +16,9 @@ import DistributedActorsTestKit
 @testable import DistributedCluster
 import Foundation
 import NIOSSL
-import XCTest
+import Testing
 
+@Suite(.serialized)
 final class MembershipGossipClusteredTests: ClusteredActorSystemsXCTestCase {
     override func configureLogCapture(settings: inout LogCapture.Settings) {
         settings.filterActorPaths = [
@@ -36,7 +37,7 @@ final class MembershipGossipClusteredTests: ClusteredActorSystemsXCTestCase {
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Marking .down
-
+    @Test
     func test_down_beGossipedToOtherNodes() async throws {
         let strategy = ClusterSystemSettings.LeadershipSelectionSettings.lowestReachable(minNumberOfMembers: 3)
         let first = await setUpNode("first") { settings in
@@ -76,7 +77,7 @@ final class MembershipGossipClusteredTests: ClusteredActorSystemsXCTestCase {
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: SWIM + joining
-
+    @Test
     func test_join_swimDiscovered_thirdNode() async throws {
         let first = await setUpNode("first") { settings in
             settings.endpoint.port = 7111

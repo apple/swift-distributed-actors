@@ -15,12 +15,14 @@
 import DistributedActorsTestKit
 @testable import DistributedCluster
 import NIO
-import XCTest
+import Testing
 
+@Suite(.serialized)
 final class ClusterEventStreamTests: SingleClusterSystemXCTestCase, @unchecked Sendable {
     let memberA = Cluster.Member(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "System", host: "1.1.1.1", port: 7337), nid: .random()), status: .up)
     let memberB = Cluster.Member(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "System", host: "2.2.2.2", port: 8228), nid: .random()), status: .up)
 
+    @Test
     func test_clusterEventStream_shouldNotCauseDeadLettersOnLocalOnlySystem() throws {
         _ = try self.system._spawn("anything", of: String.self, .setup { context in
             context.log.info("Hello there!")
@@ -31,6 +33,7 @@ final class ClusterEventStreamTests: SingleClusterSystemXCTestCase, @unchecked S
         self.logCapture.grep("Dead letter").shouldBeEmpty()
     }
 
+    @Test
     func test_clusterEventStream_shouldCollapseEventsAndOfferASnapshotToLateSubscribers() async throws {
         let p1 = self.testKit.makeTestProbe(expecting: Cluster.Event.self)
         let p2 = self.testKit.makeTestProbe(expecting: Cluster.Event.self)
@@ -80,6 +83,7 @@ final class ClusterEventStreamTests: SingleClusterSystemXCTestCase, @unchecked S
         }
     }
 
+    @Test
     func test_clusterEventStream_collapseManyEventsIntoSnapshot() async throws {
         let p1 = self.testKit.makeTestProbe(expecting: Cluster.Event.self)
 
@@ -105,6 +109,7 @@ final class ClusterEventStreamTests: SingleClusterSystemXCTestCase, @unchecked S
         try p1.expectNoMessage(for: .milliseconds(100))
     }
 
+    @Test
     func test_clusterEventStream_collapseManyEventsIntoSnapshot_async() async throws {
         let eventStream = ClusterEventStream(system, customName: "testClusterEvents")
 
@@ -122,7 +127,7 @@ final class ClusterEventStreamTests: SingleClusterSystemXCTestCase, @unchecked S
                 Set(members).shouldEqual(Set([self.memberA, self.memberB]))
                 return
             default:
-                return Issue.record("Expected a snapshot with all the data to be the first received event")
+                Issue.record("Expected a snapshot with all the data to be the first received event")
             }
         }
     }

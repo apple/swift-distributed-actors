@@ -17,8 +17,9 @@ import Distributed
 import DistributedActorsTestKit
 @testable import DistributedCluster
 import Logging
-import XCTest
+import Testing
 
+@Suite(.serialized)
 final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCase {
     override func configureLogCapture(settings: inout LogCapture.Settings) {
         settings.excludeActorPaths = [
@@ -30,6 +31,7 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
         ]
     }
 
+    @Test
     func test_singletonByClusterLeadership_happyPath() async throws {
         var singletonSettings = ClusterSingletonSettings()
         singletonSettings.allocationStrategy = .byLeadership
@@ -73,6 +75,7 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
         try await self.assertSingletonRequestReply(third, singleton: ref3, greetingName: "Charlie", expectedPrefix: "Hello-1 Charlie!")
     }
 
+    @Test
     func test_singleton_lifecycle() async throws {
         var singletonSettings = ClusterSingletonSettings()
         singletonSettings.allocationStrategy = .byLeadership
@@ -104,6 +107,7 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
         try probe.expectMessage(prefix: "deinit")
     }
 
+    @Test
     func test_singletonByClusterLeadership_stashMessagesIfNoLeader() async throws {
         var singletonSettings = ClusterSingletonSettings()
         singletonSettings.allocationStrategy = .byLeadership
@@ -181,6 +185,7 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
         }
     }
 
+    @Test
     func test_singletonByClusterLeadership_withLeaderChange() async throws {
         var singletonSettings = ClusterSingletonSettings()
         singletonSettings.allocationStrategy = .byLeadership
@@ -323,6 +328,7 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
         pinfo("Nodes communicated successfully with singleton on [fourth]")
     }
 
+    @Test
     func test_remoteCallShouldFailAfterAllocationTimedOut() async throws {
         var singletonSettings = ClusterSingletonSettings()
         singletonSettings.allocationStrategy = .byLeadership

@@ -14,8 +14,9 @@
 
 import DistributedActorsTestKit
 @testable import DistributedCluster
-import XCTest
+import Testing
 
+@Suite(.serialized)
 final class _OpLogClusterReceptionistClusteredTests: ClusteredActorSystemsXCTestCase {
     override func configureLogCapture(settings: inout LogCapture.Settings) {
         settings.excludeActorPaths = [
@@ -42,7 +43,7 @@ final class _OpLogClusterReceptionistClusteredTests: ClusteredActorSystemsXCTest
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Sync
-
+    @Test
     func test_shouldReplicateRegistrations() async throws {
         let (local, remote) = await setUpPair()
         let testKit: ActorTestKit = self.testKit(local)
@@ -80,6 +81,7 @@ final class _OpLogClusterReceptionistClusteredTests: ClusteredActorSystemsXCTest
         try probe.expectMessage("received:test")
     }
 
+    @Test
     func test_shouldSyncPeriodically() async throws {
         let (local, remote) = await setUpPair {
             $0.receptionist.ackPullReplicationIntervalSlow = .seconds(1)
@@ -119,6 +121,7 @@ final class _OpLogClusterReceptionistClusteredTests: ClusteredActorSystemsXCTest
         try probe.expectMessage("received:test")
     }
 
+    @Test
     func test_shouldMergeEntriesOnSync() async throws {
         let (local, remote) = await setUpPair {
             $0.receptionist.ackPullReplicationIntervalSlow = .seconds(1)
@@ -213,14 +216,17 @@ final class _OpLogClusterReceptionistClusteredTests: ClusteredActorSystemsXCTest
         try remoteLookupProbe.eventuallyExpectListing(expected: [], within: .seconds(3))
     }
 
+    @Test
     func test_clusterReceptionist_shouldRemoveRemoteRefs_whenTheyStop() async throws {
         try await self.shared_clusterReceptionist_shouldRemoveRemoteRefsStop(killActors: .sendStop)
     }
 
+    @Test
     func test_clusterReceptionist_shouldRemoveRemoteRefs_whenNodeDies() async throws {
         try await self.shared_clusterReceptionist_shouldRemoveRemoteRefsStop(killActors: .shutdownNode)
     }
 
+    @Test
     func test_clusterReceptionist_shouldRemoveRefFromAllListingsItWasRegisteredWith_ifTerminates() async throws {
         let (first, second) = await setUpPair {
             $0.receptionist.ackPullReplicationIntervalSlow = .milliseconds(200)
@@ -264,6 +270,7 @@ final class _OpLogClusterReceptionistClusteredTests: ClusteredActorSystemsXCTest
         try expectListingOnAllProbes(expected: [])
     }
 
+    @Test
     func test_clusterReceptionist_shouldRemoveActorsOfTerminatedNodeFromListings_onNodeCrash() async throws {
         let (first, second) = await setUpPair {
             $0.receptionist.ackPullReplicationIntervalSlow = .milliseconds(200)
@@ -296,6 +303,7 @@ final class _OpLogClusterReceptionistClusteredTests: ClusteredActorSystemsXCTest
         try p1.eventuallyExpectListing(expected: [firstRef], within: .seconds(5))
     }
 
+    @Test
     func test_clusterReceptionist_shouldRemoveManyRemoteActorsFromListingInBulk() async throws {
         let (first, second) = await setUpPair {
             $0.receptionist.ackPullReplicationIntervalSlow = .milliseconds(200)
@@ -335,7 +343,7 @@ final class _OpLogClusterReceptionistClusteredTests: ClusteredActorSystemsXCTest
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Multi node / streaming
-
+    @Test
     func test_clusterReceptionist_shouldStreamAllRegisteredActorsInChunks() async throws {
         let (first, second) = await setUpPair {
             $0.receptionist.ackPullReplicationIntervalSlow = .milliseconds(200)
@@ -363,6 +371,7 @@ final class _OpLogClusterReceptionistClusteredTests: ClusteredActorSystemsXCTest
         try p2.eventuallyExpectListing(expected: allRefs, within: .seconds(10))
     }
 
+    @Test
     func test_clusterReceptionist_shouldSpreadInformationAmongManyNodes() async throws {
         let (first, second) = await setUpPair {
             $0.receptionist.ackPullReplicationIntervalSlow = .milliseconds(200)

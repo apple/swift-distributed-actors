@@ -15,13 +15,15 @@
 import DistributedActorsTestKit
 @testable import DistributedCluster
 import Foundation
-import XCTest
+import Testing
 
+@Suite(.serialized)
 final class ActorAskTests: SingleClusterSystemXCTestCase {
     struct TestMessage: Codable {
         let replyTo: _ActorRef<String>
     }
 
+    @Test
     func test_ask_forSimpleType() async throws {
         let behavior: _Behavior<TestMessage> = .receiveMessage {
             $0.replyTo.tell("received")
@@ -37,6 +39,7 @@ final class ActorAskTests: SingleClusterSystemXCTestCase {
         result.shouldEqual("received")
     }
 
+    @Test
     func test_ask_shouldSucceedIfResponseIsReceivedBeforeTimeout() async throws {
         let behavior: _Behavior<TestMessage> = .receiveMessage {
             $0.replyTo.tell("received")
@@ -52,6 +55,7 @@ final class ActorAskTests: SingleClusterSystemXCTestCase {
         result.shouldEqual("received")
     }
 
+    @Test
     func test_ask_shouldFailIfResponseIsNotReceivedBeforeTimeout() async throws {
         let behavior: _Behavior<TestMessage> = .receiveMessage { _ in
             .stop
@@ -70,6 +74,7 @@ final class ActorAskTests: SingleClusterSystemXCTestCase {
         }
     }
 
+    @Test
     func test_ask_shouldCompleteWithFirstResponse() async throws {
         let behavior: _Behavior<TestMessage> = .receiveMessage {
             $0.replyTo.tell("received:1")
@@ -90,6 +95,7 @@ final class ActorAskTests: SingleClusterSystemXCTestCase {
         let replyTo: _ActorRef<String>
     }
 
+    @Test
     func test_askResult_shouldBePossibleTo_contextAwaitOn() throws {
         let p = testKit.makeTestProbe(expecting: String.self)
 
@@ -148,14 +154,17 @@ final class ActorAskTests: SingleClusterSystemXCTestCase {
         try p.expectMessage("Hello there", within: .seconds(3))
     }
 
+    @Test
     func test_askResult_shouldBePossibleTo_contextOnResultAsyncOn_withNormalTimeout() throws {
         try self.shared_askResult_shouldBePossibleTo_contextOnResultAsyncOn(withTimeout: .seconds(1))
     }
 
+    @Test
     func test_askResult_shouldBePossibleTo_contextOnResultAsyncOn_withInfiniteTimeout() throws {
         try self.shared_askResult_shouldBePossibleTo_contextOnResultAsyncOn(withTimeout: .effectivelyInfinite)
     }
 
+    @Test
     func test_askResult_whenContextAwaitedOn_shouldRespectTimeout() throws {
         let p = testKit.makeTestProbe(expecting: String.self)
 
@@ -184,6 +193,7 @@ final class ActorAskTests: SingleClusterSystemXCTestCase {
         message.shouldContain("DistributedCluster.TimeoutError(message: \"AskResponse<String> timed out after 100ms\", timeout: 0.1 seconds))")
     }
 
+    @Test
     func test_ask_onDeadLetters_shouldPutMessageIntoDeadLetters() async throws {
         let ref = system.deadLetters.adapt(from: AnswerMePlease.self)
 
@@ -200,6 +210,7 @@ final class ActorAskTests: SingleClusterSystemXCTestCase {
         }
     }
 
+    @Test
     func test_ask_withTerminatedSystem_shouldNotCauseCrash() async throws {
         let system = await self.setUpNode("AskCrashSystem")
 

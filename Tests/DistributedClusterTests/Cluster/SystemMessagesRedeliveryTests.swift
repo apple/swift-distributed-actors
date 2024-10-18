@@ -15,12 +15,14 @@
 import DistributedActorsTestKit
 @testable import DistributedCluster
 import Foundation
-import XCTest
+import Testing
 
+@Suite(.serialized)
 final class SystemMessagesRedeliveryTests: SingleClusterSystemXCTestCase {
+    
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: OutboundSystemMessageRedelivery
-
+    @Test
     func test_sysMsg_outbound_passThroughWhenNoGapsReported() {
         let outbound = OutboundSystemMessageRedelivery()
 
@@ -35,6 +37,7 @@ final class SystemMessagesRedeliveryTests: SingleClusterSystemXCTestCase {
         }
     }
 
+    @Test
     func test_sysMsg_outbound_ack_shouldCumulativelyAcknowledge() {
         let outbound = OutboundSystemMessageRedelivery()
 
@@ -52,6 +55,7 @@ final class SystemMessagesRedeliveryTests: SingleClusterSystemXCTestCase {
         outbound.messagesPendingAcknowledgement.count.shouldEqual(1)
     }
 
+    @Test
     func test_sysMsg_outbound_ack_shouldIgnoreDuplicateACK() {
         let outbound = OutboundSystemMessageRedelivery()
 
@@ -72,6 +76,7 @@ final class SystemMessagesRedeliveryTests: SingleClusterSystemXCTestCase {
         outbound.messagesPendingAcknowledgement.count.shouldEqual(1)
     }
 
+    @Test
     func test_sysMsg_outbound_ack_shouldRejectACKAboutFutureSeqNrs() {
         let outbound = OutboundSystemMessageRedelivery()
 
@@ -89,6 +94,7 @@ final class SystemMessagesRedeliveryTests: SingleClusterSystemXCTestCase {
         outbound.messagesPendingAcknowledgement.count.shouldEqual(3) // still 3, the ACK was ignored, good
     }
 
+    @Test
     func test_sysMsg_outbound_ack_thenOfferMore_shouldContinueAtRightSequenceNr() {
         let outbound = OutboundSystemMessageRedelivery()
 
@@ -115,6 +121,7 @@ final class SystemMessagesRedeliveryTests: SingleClusterSystemXCTestCase {
         }
     }
 
+    @Test
     func test_sysMsg_outbound_nack_shouldCauseAppropriateRedelivery() {
         let outbound = OutboundSystemMessageRedelivery()
 
@@ -131,6 +138,7 @@ final class SystemMessagesRedeliveryTests: SingleClusterSystemXCTestCase {
         outbound.messagesPendingAcknowledgement.count.shouldEqual(2) // 2, since 1 was implicitly ACKed by the NACK
     }
 
+    @Test
     func test_sysMsg_outbound_redeliveryTick_shouldRedeliverPendingMessages() {
         let outbound = OutboundSystemMessageRedelivery()
 
@@ -163,6 +171,7 @@ final class SystemMessagesRedeliveryTests: SingleClusterSystemXCTestCase {
         }
     }
 
+    @Test
     func test_sysMsg_outbound_redelivery_shouldBeLimitedToConfiguredBatchAtMost() {
         var settings: OutboundSystemMessageRedeliverySettings = .default
         settings.redeliveryBatchSize = 3
@@ -188,6 +197,7 @@ final class SystemMessagesRedeliveryTests: SingleClusterSystemXCTestCase {
         }
     }
 
+    @Test
     func test_sysMsg_outbound_exceedSendBufferLimit() {
         var settings = OutboundSystemMessageRedeliverySettings()
         settings.redeliveryBufferLimit = 5
@@ -214,7 +224,7 @@ final class SystemMessagesRedeliveryTests: SingleClusterSystemXCTestCase {
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: InboundSystemMessages
-
+    @Test
     func test_inbound_shouldAcceptMessagesInOrder() throws {
         let inboundSystemMessages = InboundSystemMessages()
 
@@ -223,6 +233,7 @@ final class SystemMessagesRedeliveryTests: SingleClusterSystemXCTestCase {
         }
     }
 
+    @Test
     func test_inbound_shouldDetectGap() throws {
         let inbound = InboundSystemMessages()
 
@@ -238,6 +249,7 @@ final class SystemMessagesRedeliveryTests: SingleClusterSystemXCTestCase {
         inbound.onDelivery(self.msg(seqNr: 4)).shouldEqual(.accept(self.ack(4))) // accepted 4
     }
 
+    @Test
     func test_inbound_shouldacceptRedeliveriesOfAlreadyAcceptedSeqNr() throws {
         let inbound = InboundSystemMessages()
 
@@ -253,7 +265,7 @@ final class SystemMessagesRedeliveryTests: SingleClusterSystemXCTestCase {
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Serialization
-
+    @Test
     func test_redelivery_systemMessage_serialization() async throws {
         let system = await ClusterSystem("\(type(of: self))")
         defer {

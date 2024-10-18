@@ -29,7 +29,8 @@
 import CoreMetrics
 import DistributedCluster
 @testable import Metrics
-import XCTest
+import Testing
+import Foundation
 
 /// Taken directly from swift-metrics's own test package.
 ///

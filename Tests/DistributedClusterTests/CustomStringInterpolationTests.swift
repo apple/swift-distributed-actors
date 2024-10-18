@@ -14,15 +14,18 @@
 
 import DistributedActorsTestKit
 @testable import DistributedCluster
-import XCTest
+import Testing
 
-class CustomStringInterpolationTests: XCTestCase {
+struct CustomStringInterpolationTests {
+    
+    @Test
     func test_leftPadTo_whenValueShorterThanPadTo() {
         let padded = "\("hello world", leftPadTo: 16)"
         padded.count.shouldEqual(16)
         padded.shouldEqual("     hello world")
     }
 
+    @Test
     func test_leftPadTo_whenValueLongerThanPadTo() {
         let phrase = "hello world"
         let padded = "\(phrase, leftPadTo: 4)"
@@ -30,6 +33,7 @@ class CustomStringInterpolationTests: XCTestCase {
         padded.shouldEqual(phrase)
     }
 
+    @Test
     func test_leftPadTo_whenValueEqualThanPadTo() {
         let phrase = "hello world"
         let padded = "\(phrase, leftPadTo: phrase.count)"

@@ -13,9 +13,11 @@
 //===----------------------------------------------------------------------===//
 
 @testable import DistributedCluster
-import XCTest
+import Testing
 
-final class FixedThreadPoolTests: XCTestCase {
+struct FixedThreadPoolTests {
+    
+    @Test
     func test_pool_shouldProperlyShutdownAllThreads() throws {
         let pool = try _FixedThreadPool(4)
         pool.runningWorkers.load(ordering: .relaxed).shouldEqual(4)

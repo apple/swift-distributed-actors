@@ -14,9 +14,11 @@
 
 import DistributedActorsTestKit
 @testable import DistributedCluster
-import XCTest
+import Testing
 
-class BlockingReceptacleTests: XCTestCase {
+struct BlockingReceptacleTests {
+    
+    @Test
     func test_blockingReceptacle_singleThreadedOfferWait() {
         let receptacle: BlockingReceptacle<String> = BlockingReceptacle()
 
@@ -25,6 +27,7 @@ class BlockingReceptacleTests: XCTestCase {
         res.shouldEqual("hello")
     }
 
+    @Test
     func test_blockingReceptacle_twoThreads() throws {
         let receptacle: BlockingReceptacle<String> = BlockingReceptacle()
 
@@ -36,6 +39,7 @@ class BlockingReceptacleTests: XCTestCase {
         res.shouldEqual("hello")
     }
 
+    @Test
     func test_blockingReceptacle_manyWaiters() throws {
         let receptacle: BlockingReceptacle<String> = BlockingReceptacle()
 

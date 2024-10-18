@@ -15,9 +15,12 @@
 import DistributedActorsTestKit
 @testable import DistributedCluster
 import Foundation
-import XCTest
+import Testing
 
+@Suite(.serialized)
 class _ActorRefAdapterTests: SingleClusterSystemXCTestCase {
+    
+    @Test
     func test_adaptedRef_shouldConvertMessages() throws {
         let probe = self.testKit.makeTestProbe(expecting: String.self)
         let refProbe = self.testKit.makeTestProbe(expecting: _ActorRef<Int>.self)
@@ -43,6 +46,7 @@ class _ActorRefAdapterTests: SingleClusterSystemXCTestCase {
         }
     }
 
+    @Test
     func test_adaptedRef_overNetwork_shouldConvertMessages() async throws {
         let firstSystem = await setUpNode("One-RemoteActorRefAdapterTests") { settings in
             settings.enabled = true
@@ -84,6 +88,7 @@ class _ActorRefAdapterTests: SingleClusterSystemXCTestCase {
         }
     }
 
+    @Test
     func test_adaptedRef_shouldBeWatchable() throws {
         let probe = self.testKit.makeTestProbe(expecting: _ActorRef<String>.self)
 
@@ -105,6 +110,7 @@ class _ActorRefAdapterTests: SingleClusterSystemXCTestCase {
         try probe.expectTerminated(adaptedRef)
     }
 
+    @Test
     func test_adapter_shouldAllowDroppingMessages() throws {
         let probe = self.testKit.makeTestProbe(expecting: _ActorRef<String>.self)
 
@@ -147,6 +153,7 @@ class _ActorRefAdapterTests: SingleClusterSystemXCTestCase {
         case message(String)
     }
 
+    @Test
     func test_adaptedRef_shouldShareTheSameLifecycleAsItsActor() throws {
         let probe = self.testKit.makeTestProbe(expecting: String.self)
         let receiveRefProbe = self.testKit.makeTestProbe(expecting: _ActorRef<String>.self)
@@ -189,6 +196,7 @@ class _ActorRefAdapterTests: SingleClusterSystemXCTestCase {
         try probe.expectTerminatedInAnyOrder([ref.asAddressable, adaptedRef.asAddressable])
     }
 
+    @Test
     func test_adaptedRef_newAdapterShouldReplaceOld() throws {
         let probe = self.testKit.makeTestProbe(expecting: String.self)
         let receiveRefProbe = self.testKit.makeTestProbe(expecting: _ActorRef<String>.self)
@@ -232,6 +240,7 @@ class _ActorRefAdapterTests: SingleClusterSystemXCTestCase {
         try probe.expectMessage("received:adapter-1:test")
     }
 
+    @Test
     func test_adaptedRef_useSpecificEnoughAdapterMostRecentlySet() throws {
         class TopExample: _NotActuallyCodableMessage {}
         class BottomExample: TopExample {}

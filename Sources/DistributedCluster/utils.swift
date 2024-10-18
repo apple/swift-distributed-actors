@@ -79,7 +79,7 @@ private func _createTimeFormatter() -> DateFormatter {
 }
 
 /// Short for "pretty print", useful for debug tracing
-func pprint(_ message: String, function: String = #function, file: String = #fileID, line: UInt = #line) {
+func pprint(_ message: String, function: String = #function, file: String = #fileID, line: Int = #line) {
     print("""
     [pprint]\
     [\(_createTimeFormatter().string(from: Date()))] \
@@ -89,7 +89,7 @@ func pprint(_ message: String, function: String = #function, file: String = #fil
     """)
 }
 
-func pprint(_ message: String, metadata: [String: Any], file: String = #fileID, line: UInt = #line) {
+func pprint(_ message: String, metadata: [String: Any], file: String = #fileID, line: Int = #line) {
     print("""
     [pprint]\
     [\(_createTimeFormatter().string(from: Date()))] \
@@ -100,7 +100,7 @@ func pprint(_ message: String, metadata: [String: Any], file: String = #fileID, 
     """)
 }
 
-func pprint(_ message: StaticString, file: String = #fileID, line: UInt = #line) {
+func pprint(_ message: StaticString, file: String = #fileID, line: Int = #line) {
     print("""
     [pprint]\
     [\(_createTimeFormatter().string(from: Date()))] \
@@ -110,7 +110,7 @@ func pprint(_ message: StaticString, file: String = #fileID, line: UInt = #line)
     """)
 }
 
-func pprint(_ message: StaticString, metadata: [String: Any], file: String = #fileID, line: UInt = #line) {
+func pprint(_ message: StaticString, metadata: [String: Any], file: String = #fileID, line: Int = #line) {
     print("""
     [pprint]\
     [\(_createTimeFormatter().string(from: Date()))] \
@@ -127,7 +127,7 @@ internal let CONSOLE_YELLOW = "\u{001B}[0;33m"
 internal let CONSOLE_GREEN = "\u{001B}[0;32m"
 
 /// Like [pprint] but yellow, use for things that are better not to miss.
-func pnote(_ message: String, file: StaticString = #fileID, line: UInt = #line) {
+func pnote(_ message: String, file: String = #fileID, line: Int = #line) {
     print("""
     \(CONSOLE_YELLOW)\
     [\(_createTimeFormatter().string(from: Date()))] \

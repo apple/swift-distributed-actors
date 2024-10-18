@@ -17,9 +17,12 @@ import DistributedActorsTestKit
 @testable import DistributedCluster
 import Foundation
 import NIO
-import XCTest
+import Testing
 
+@Suite(.serialized)
 final class StubDistributedActorTests: SingleClusterSystemXCTestCase {
+    
+    @Test
     func test_StubDistributedActor_shouldAlwaysResolveAsRemote() {
         let anyID = system.assignID(StubDistributedActor.self)
 

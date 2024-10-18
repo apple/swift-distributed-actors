@@ -18,15 +18,16 @@ import DistributedActorsTestKit
 import Foundation
 import NIO
 import NIOFoundationCompat
-import XCTest
+import Testing
 
+@Suite(.serialized)
 final class TraversalTests: SingleClusterSystemXCTestCase {
     struct ActorReady: Codable {
         let name: String
     }
 
-    override func setUp() {
-        super.setUp()
+    override init() async throws {
+        try await super.init()
 
         // we use the probe to make sure all actors are started before we start asserting on the tree
         let probe = self.testKit.makeTestProbe(expecting: ActorReady.self)
@@ -63,10 +64,12 @@ final class TraversalTests: SingleClusterSystemXCTestCase {
         try! probe.expectNoMessage(for: .milliseconds(300))
     }
 
+    @Test
     func test_printTree_shouldPrintActorTree() throws {
         self.system._printTree()
     }
 
+    @Test
     func test_traverse_shouldAllowImplementingCollect() {
         let found: _TraversalResult<String> = self.system._traverseAll { _, ref in
             if ref.id.name.contains("inner") {
@@ -88,6 +91,7 @@ final class TraversalTests: SingleClusterSystemXCTestCase {
         }
     }
 
+    @Test
     func test_traverse_shouldHaveRightDepthInContext() {
         let _: _TraversalResult<String> = self.system._traverseAll { context, ref in
             if ref.id.name == "hello" {

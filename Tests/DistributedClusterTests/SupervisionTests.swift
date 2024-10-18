@@ -16,7 +16,7 @@ import DistributedActorsTestKit
 @testable import DistributedCluster
 import Foundation
 import NIO
-import XCTest
+import Testing
 
 #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
 import Darwin
@@ -423,7 +423,7 @@ final class SupervisionTests: SingleClusterSystemXCTestCase {
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Stopping supervision
-
+    @Test
     func test_stopSupervised_throws_shouldStop() throws {
         try self.sharedTestLogic_isolatedFailureHandling_shouldStopActorOnFailure(
             runName: "throws",
@@ -433,6 +433,7 @@ final class SupervisionTests: SingleClusterSystemXCTestCase {
         )
     }
 
+    @Test
     func test_stopSupervised_throwsInAwaitResult_shouldStop() throws {
         try self.sharedTestLogic_isolatedFailureHandling_shouldStopActorOnFailure(
             runName: "throws",
@@ -444,7 +445,7 @@ final class SupervisionTests: SingleClusterSystemXCTestCase {
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Restarting supervision
-
+    @Test
     func test_restartSupervised_throws_shouldRestart() throws {
         try self.sharedTestLogic_restartSupervised_shouldRestart(
             runName: "throws",
@@ -454,6 +455,7 @@ final class SupervisionTests: SingleClusterSystemXCTestCase {
         )
     }
 
+    @Test
     func test_restartAtMostWithin_throws_shouldRestartNoMoreThanAllowedWithinPeriod() throws {
         try self.sharedTestLogic_restartAtMostWithin_throws_shouldRestartNoMoreThanAllowedWithinPeriod(
             runName: "throws",
@@ -463,6 +465,7 @@ final class SupervisionTests: SingleClusterSystemXCTestCase {
         )
     }
 
+    @Test
     func test_restartSupervised_throwsInAwaitResult_shouldRestart() throws {
         try self.sharedTestLogic_restartSupervised_shouldRestart(
             runName: "throws",
@@ -474,7 +477,7 @@ final class SupervisionTests: SingleClusterSystemXCTestCase {
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Escalating supervision
-
+    @Test
     func test_escalateSupervised_throws_shouldKeepEscalatingThrough_watchingParents() throws {
         let pt = self.testKit.makeTestProbe("pt", expecting: _ActorRef<String>.self)
         let pm = self.testKit.makeTestProbe("pm", expecting: _ActorRef<String>.self)
@@ -553,6 +556,7 @@ final class SupervisionTests: SingleClusterSystemXCTestCase {
         try pt.expectNoTerminationSignal(for: .milliseconds(200))
     }
 
+    @Test
     func test_escalateSupervised_throws_shouldKeepEscalatingThrough_nonWatchingParents() throws {
         let pt = self.testKit.makeTestProbe("pt", expecting: _ActorRef<String>.self)
         let pm = self.testKit.makeTestProbe("pm", expecting: _ActorRef<String>.self)
@@ -631,6 +635,7 @@ final class SupervisionTests: SingleClusterSystemXCTestCase {
         try pt.expectNoTerminationSignal(for: .milliseconds(200))
     }
 
+    @Test
     func test_escalateSupervised_throws_shouldKeepEscalatingUntilNonEscalatingParent() throws {
         let pt = self.testKit.makeTestProbe("pt", expecting: _ActorRef<String>.self)
         let pm = self.testKit.makeTestProbe("pm", expecting: _ActorRef<String>.self)
@@ -703,11 +708,12 @@ final class SupervisionTests: SingleClusterSystemXCTestCase {
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Restarting supervision with Backoff
-
+    @Test
     func test_restart_throws_shouldHandleFailureWhenInterpretingStart() throws {
         try self.sharedTestLogic_restart_shouldHandleFailureWhenInterpretingStart(failureMode: .throwing)
     }
 
+    @Test
     func test_restartSupervised_throws_shouldRestartWithConstantBackoff() throws {
         try self.sharedTestLogic_restartSupervised_shouldRestartWithConstantBackoff(
             runName: "throws",
@@ -717,6 +723,7 @@ final class SupervisionTests: SingleClusterSystemXCTestCase {
         )
     }
 
+    @Test
     func test_restartSupervised_throws_shouldRestartWithExponentialBackoff() throws {
         try self.sharedTestLogic_restartSupervised_shouldRestartWithExponentialBackoff(
             runName: "throws",
@@ -726,17 +733,19 @@ final class SupervisionTests: SingleClusterSystemXCTestCase {
         )
     }
 
+    @Test
     func test_restart_throws_shouldHandleFailureWhenInterpretingStartAfterFailure() throws {
         try self.sharedTestLogic_restart_shouldHandleFailureWhenInterpretingStartAfterFailure(failureMode: .throwing)
     }
 
+    @Test
     func test_restart_throws_shouldFailAfterMaxFailuresInSetup() throws {
         try self.sharedTestLogic_restart_shouldFailAfterMaxFailuresInSetup(failureMode: .throwing)
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Composite handler tests
-
+    @Test
     func test_compositeSupervisor_shouldHandleUsingTheRightHandler() throws {
         let probe = self.testKit.makeTestProbe(expecting: WorkerMessages.self)
 
@@ -820,6 +829,7 @@ final class SupervisionTests: SingleClusterSystemXCTestCase {
         try parentProbe.expectTerminated(parentRef)
     }
 
+    @Test
     func test_throwInSignalHandling_shouldRestart() throws {
         try self.sharedTestLogic_failInSignalHandling_shouldRestart(failBy: .throwing)
     }
@@ -840,6 +850,7 @@ final class SupervisionTests: SingleClusterSystemXCTestCase {
         }
     }
 
+    @Test
     func test_supervisor_shouldOnlyHandle_throwsOfSpecifiedErrorType() throws {
         let p = self.testKit.makeTestProbe(expecting: PleaseReplyError.self)
 
@@ -862,6 +873,7 @@ final class SupervisionTests: SingleClusterSystemXCTestCase {
         try p.expectNoMessage(for: .milliseconds(50))
     }
 
+    @Test
     func test_supervisor_shouldOnlyHandle_anyThrows() throws {
         let p = self.testKit.makeTestProbe(expecting: PleaseReplyError.self)
 
@@ -907,6 +919,7 @@ final class SupervisionTests: SingleClusterSystemXCTestCase {
         try p.expectTerminated(ref)
     }
 
+    @Test
     func test_supervisor_throws_shouldCausePreRestartSignalBeforeRestarting() throws {
         try self.sharedTestLogic_supervisor_shouldCausePreRestartSignalBeforeRestarting(failBy: .throwing)
     }
@@ -946,14 +959,17 @@ final class SupervisionTests: SingleClusterSystemXCTestCase {
         try p.expectTerminated(ref)
     }
 
+    @Test
     func test_supervisor_throws_shouldFailIrrecoverablyIfFailingToHandle_PreRestartSignal() throws {
         try self.sharedTestLogic_supervisor_shouldFailIrrecoverablyIfFailingToHandle_PreRestartSignal(failBy: .throwing, backoff: nil)
     }
 
+    @Test
     func test_supervisor_throws_shouldFailIrrecoverablyIfFailingToHandle_PreRestartSignal_withBackoff() throws {
         try self.sharedTestLogic_supervisor_shouldFailIrrecoverablyIfFailingToHandle_PreRestartSignal(failBy: .throwing, backoff: Backoff.constant(.milliseconds(10)))
     }
 
+    @Test
     func test_supervisedActor_shouldNotRestartedWhenCrashingInPostStop() throws {
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
@@ -1009,6 +1025,7 @@ final class SupervisionTests: SingleClusterSystemXCTestCase {
         try p.expectMessage("crashing:test2")
     }
 
+    @Test
     func test_supervisor_throws_shouldRestartWhenFailingInDispatchedClosure() throws {
         try self.sharedTestLogic_supervisor_shouldRestartWhenFailingInDispatchedClosure(failBy: .throwing)
     }
@@ -1044,10 +1061,12 @@ final class SupervisionTests: SingleClusterSystemXCTestCase {
         try p.expectMessage("starting")
     }
 
+    @Test
     func test_supervisor_awaitResult_shouldInvokeSupervisionOnThrow() throws {
         try self.sharedTestLogic_supervisor_awaitResult_shouldInvokeSupervisionWhenFailing(failBy: .throwing)
     }
 
+    @Test
     func test_supervisor_awaitResultThrowing_shouldInvokeSupervisionOnFailure() throws {
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
         let elg = MultiThreadedEventLoopGroup(numberOfThreads: 1)

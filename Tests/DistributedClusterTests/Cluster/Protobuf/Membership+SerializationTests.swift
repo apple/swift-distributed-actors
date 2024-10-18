@@ -17,8 +17,9 @@ import DistributedActorsTestKit
 import Foundation // for pretty printing JSON
 import Logging
 import NIO
-import XCTest
+import Testing
 
+@Suite(.serialized)
 final class MembershipSerializationTests: SingleClusterSystemXCTestCase {
     lazy var context: Serialization.Context! = Serialization.Context(
         log: system.log,
@@ -26,11 +27,12 @@ final class MembershipSerializationTests: SingleClusterSystemXCTestCase {
         allocator: system.settings.serialization.allocator
     )
 
-    override func tearDown() async throws {
-        try await super.tearDown()
+    override func tearDown() {
+        super.tearDown()
         self.context = nil
     }
 
+    @Test
     func test_serializationOf_membership() throws {
         let membership: Cluster.Membership = [
             Cluster.Member(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "first", host: "1.1.1.1", port: 7337), nid: .random()), status: .up),
@@ -45,7 +47,7 @@ final class MembershipSerializationTests: SingleClusterSystemXCTestCase {
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Measuring serialization sizes
-
+    @Test
     func test_gossip_serialization() throws {
         let members = (1 ... 15).map { id in
             Cluster.Member(

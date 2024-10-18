@@ -17,14 +17,16 @@ import DistributedActorsTestKit
 @testable import DistributedCluster
 import Foundation
 import NIO
-import XCTest
+import Testing
 
+@Suite(.serialized)
 final class BehaviorTests: SingleClusterSystemXCTestCase {
     public struct TestMessage: Codable {
         let message: String
         let replyTo: _ActorRef<String>
     }
 
+    @Test
     func test_setup_executesImmediatelyOnStartOfActor() throws {
         let p = self.testKit.makeTestProbe("testActor-1", expecting: String.self)
 
@@ -40,6 +42,7 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         try p.expectMessage(message)
     }
 
+    @Test
     func test_single_actor_should_wakeUp_on_new_message_lockstep() throws {
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe("testActor-2")
 
@@ -53,6 +56,7 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         }
     }
 
+    @Test
     func test_two_actors_should_wakeUp_on_new_message_lockstep() throws {
         let p = self.testKit.makeTestProbe("testActor-2", expecting: String.self)
 
@@ -75,6 +79,7 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         }
     }
 
+    @Test
     func test_receive_shouldReceiveManyMessagesInExpectedOrder() throws {
         let p = self.testKit.makeTestProbe("testActor-3", expecting: Int.self)
 
@@ -109,6 +114,7 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         }
     }
 
+    @Test
     func test_receiveSpecificSignal_shouldReceiveAsExpected() throws {
         let p: ActorTestProbe<_Signals.Terminated> = self.testKit.makeTestProbe("probe-specificSignal-1")
         let _: _ActorRef<String> = try system._spawn(
@@ -127,6 +133,7 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         // receiveSignalType was invoked successfully
     }
 
+    @Test
     func test_receiveSpecificSignal_shouldNotReceiveOtherSignals() throws {
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe("probe-specificSignal-2")
         let ref: _ActorRef<String> = try system._spawn(
@@ -175,6 +182,7 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         self.firstBehavior(probe).orElse(self.secondBehavior(probe))
     }
 
+    @Test
     func test_orElse_shouldExecuteFirstBehavior() throws {
         let p: ActorTestProbe<OrElseMessage> = self.testKit.makeTestProbe()
         let ref: _ActorRef<OrElseMessage> = try system._spawn(.anonymous, self.combinedBehavior(p.ref))
@@ -183,6 +191,7 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         try p.expectMessage(.first)
     }
 
+    @Test
     func test_orElse_shouldExecuteSecondBehavior() throws {
         let p: ActorTestProbe<OrElseMessage> = self.testKit.makeTestProbe()
         let ref: _ActorRef<OrElseMessage> = try system._spawn(.anonymous, self.combinedBehavior(p.ref))
@@ -191,6 +200,7 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         try p.expectMessage(.second)
     }
 
+    @Test
     func test_orElse_shouldNotExecuteSecondBehaviorOnIgnore() throws {
         let p: ActorTestProbe<OrElseMessage> = self.testKit.makeTestProbe()
         let ref: _ActorRef<OrElseMessage> = try system._spawn(.anonymous, self.combinedBehavior(p.ref))
@@ -199,6 +209,7 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         try p.expectNoMessage(for: .milliseconds(100))
     }
 
+    @Test
     func test_orElse_shouldProperlyHandleDeeplyNestedBehaviors() throws {
         let p: ActorTestProbe<Int> = self.testKit.makeTestProbe()
         var behavior: _Behavior<Int> = .receiveMessage { message in
@@ -226,6 +237,7 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         try p.expectMessage(255)
     }
 
+    @Test
     func test_orElse_shouldProperlyApplyTerminatedToSecondBehaviorBeforeCausingDeathPactError() throws {
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
         let first: _Behavior<Never> = .setup { context in
@@ -264,6 +276,7 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         try p.expectTerminated(ref) // due to death pact, since none of the signal handlers handled Terminated
     }
 
+    @Test
     func test_orElse_shouldCanonicalizeNestedSetupInAlternative() throws {
         let p: ActorTestProbe<OrElseMessage> = self.testKit.makeTestProbe()
 
@@ -289,6 +302,7 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         try p.expectNoMessage(for: .milliseconds(10))
     }
 
+    @Test
     func test_stoppedWithPostStop_shouldTriggerPostStopCallback() throws {
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
@@ -301,6 +315,7 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         try p.expectMessage("postStop")
     }
 
+    @Test
     func test_stoppedWithPostStopThrows_shouldTerminate() throws {
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
@@ -319,6 +334,7 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         try p.expectTerminated(ref)
     }
 
+    @Test
     func test_makeAsynchronousCallback_shouldExecuteClosureInActorContext() throws {
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
@@ -348,6 +364,7 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         case context(() -> _ActorRef<String>)
     }
 
+    @Test
     func test_myself_shouldStayValidAfterActorStopped() throws {
         let p: ActorTestProbe<ContextClosureMessage> = self.testKit.makeTestProbe()
 
@@ -371,6 +388,7 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         }
     }
 
+    @Test
     func test_suspendedActor_shouldBeUnsuspendedOnResumeSystemMessage() throws {
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
@@ -403,6 +421,7 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         try p.expectMessage("resumed:something else")
     }
 
+    @Test
     func test_suspendedActor_shouldStaySuspendedWhenResumeHandlerSuspendsAgain() throws {
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
@@ -452,6 +471,7 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         }
     }
 
+    @Test
     func test_suspendedActor_shouldBeUnsuspendedOnFailedResumeSystemMessage() throws {
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
@@ -517,6 +537,7 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         }
     }
 
+    @Test
     func test_awaitResult_shouldResumeActorWithSuccessResultWhenFutureSucceeds() throws {
         let eventLoop = self.eventLoopGroup.next()
         let promise: EventLoopPromise<Int> = eventLoop.makePromise()
@@ -549,6 +570,7 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         try p.expectMessage("another test")
     }
 
+    @Test
     func test_awaitResult_shouldResumeActorWithFailureResultWhenFutureFails() throws {
         let eventLoop = self.eventLoopGroup.next()
         let promise: EventLoopPromise<Int> = eventLoop.makePromise()
@@ -578,6 +600,7 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         try p.expectMessage("another test")
     }
 
+    @Test
     func test_awaitResultThrowing_shouldResumeActorSuccessResultWhenFutureSucceeds() throws {
         let eventLoop = self.eventLoopGroup.next()
         let promise: EventLoopPromise<Int> = eventLoop.makePromise()
@@ -605,6 +628,7 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         try p.expectMessage("another test")
     }
 
+    @Test
     func test_awaitResultThrowing_shouldCrashActorWhenFutureFails() throws {
         let eventLoop = self.eventLoopGroup.next()
         let promise: EventLoopPromise<Int> = eventLoop.makePromise()
@@ -632,7 +656,8 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         try suspendProbe.expectNoMessage(for: .milliseconds(10))
         try p.expectTerminated(ref)
     }
-
+    
+    @Test
     func test_awaitResult_shouldResumeActorWithFailureResultWhenFutureTimesOut() throws {
         let eventLoop = self.eventLoopGroup.next()
         let promise: EventLoopPromise<Int> = eventLoop.makePromise()
@@ -659,6 +684,7 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         try p.expectMessage("test")
     }
 
+    @Test
     func test_awaitResult_shouldWorkWhenReturnedInsideInitialSetup() throws {
         let eventLoop = self.eventLoopGroup.next()
         let promise: EventLoopPromise<Int> = eventLoop.makePromise()
@@ -698,6 +724,7 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         try p.expectMessage("test")
     }
 
+    @Test
     func test_awaitResult_shouldCrashWhenReturnedInsideInitialSetup_andReturnSameOnResume() throws {
         let eventLoop = self.eventLoopGroup.next()
         let promise: EventLoopPromise<Int> = eventLoop.makePromise()
@@ -731,6 +758,7 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         try p.expectTerminated(ref)
     }
 
+    @Test
     func test_awaitResult_allowBecomingIntoSetup() throws {
         let eventLoop = self.eventLoopGroup.next()
         let promise: EventLoopPromise<Int> = eventLoop.makePromise()
@@ -766,6 +794,7 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         }
     }
 
+    @Test
     func test_awaitResultThrowing_shouldCrashActorWhenFutureTimesOut() throws {
         let eventLoop = self.eventLoopGroup.next()
         let promise: EventLoopPromise<Int> = eventLoop.makePromise()
@@ -792,6 +821,7 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         try p.expectTerminated(ref)
     }
 
+    @Test
     func test_suspendedActor_shouldKeepProcessingSystemMessages() throws {
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
@@ -818,6 +848,7 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         try p.expectTerminated(ref)
     }
 
+    @Test
     func test_suspendedActor_shouldKeepProcessingSignals() throws {
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
@@ -859,6 +890,7 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         try p.expectMessage("changedBySignal:something else")
     }
 
+    @Test
     func test_suspendedActor_shouldStopWhenSignalHandlerReturnsStopped() throws {
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
@@ -885,6 +917,7 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         try p.expectTerminated(ref)
     }
 
+    @Test
     func test_onResultAsync_shouldExecuteContinuationWhenFutureSucceeds() throws {
         let eventLoop = self.eventLoopGroup.next()
         let promise: EventLoopPromise<Int> = eventLoop.makePromise()
@@ -911,6 +944,7 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         try probe.expectMessage(1)
     }
 
+    @Test
     func test_onResultAsync_shouldExecuteContinuationWhenFutureFails() throws {
         let eventLoop = self.eventLoopGroup.next()
         let promise: EventLoopPromise<Int> = eventLoop.makePromise()
@@ -938,6 +972,7 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         _ = try probe.expectMessage()
     }
 
+    @Test
     func test_onResultAsync_shouldAssignBehaviorFromContinuationWhenFutureSucceeds() throws {
         let eventLoop = self.eventLoopGroup.next()
         let promise: EventLoopPromise<Int> = eventLoop.makePromise()
@@ -972,6 +1007,7 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         try probe.expectMessage("assigned:test")
     }
 
+    @Test
     func test_onResultAsync_shouldCanonicalizeBehaviorFromContinuationWhenFutureSucceeds() throws {
         let eventLoop = self.eventLoopGroup.next()
         let promise: EventLoopPromise<Int> = eventLoop.makePromise()
@@ -1006,6 +1042,7 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         try probe.expectMessage("setup")
     }
 
+    @Test
     func test_onResultAsync_shouldKeepProcessingMessagesWhileFutureIsNotCompleted() throws {
         let eventLoop = self.eventLoopGroup.next()
         let promise: EventLoopPromise<Int> = eventLoop.makePromise()
@@ -1040,6 +1077,7 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         try resultProbe.expectMessage(1)
     }
 
+    @Test
     func test_onResultAsync_shouldAllowChangingBehaviorWhileFutureIsNotCompleted() throws {
         let eventLoop = self.eventLoopGroup.next()
         let promise: EventLoopPromise<Int> = eventLoop.makePromise()
@@ -1083,6 +1121,7 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         try probe.expectMessage("assigned:test")
     }
 
+    @Test
     func test_onResultAsyncThrowing_shouldExecuteContinuationWhenFutureSucceeds() throws {
         let eventLoop = self.eventLoopGroup.next()
         let promise: EventLoopPromise<Int> = eventLoop.makePromise()
@@ -1106,6 +1145,7 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         try probe.expectMessage(1)
     }
 
+    @Test
     func test_onResultAsyncThrowing_shouldFailActorWhenFutureFails() throws {
         let eventLoop = self.eventLoopGroup.next()
         let promise: EventLoopPromise<Int> = eventLoop.makePromise()

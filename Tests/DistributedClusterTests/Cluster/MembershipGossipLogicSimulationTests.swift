@@ -16,8 +16,9 @@ import DistributedActorsTestKit
 @testable import DistributedCluster
 import Logging
 import NIO
-import XCTest
+import Testing
 
+@Suite(.serialized)
 final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCase {
     override func configureActorSystem(settings: inout ClusterSystemSettings) {
         settings.enabled = false // not actually clustering, just need a few nodes
@@ -73,7 +74,7 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Simulation Tests
-
+    @Test
     func test_avgRounds_untilConvergence() async throws {
         let systemA = await setUpNode("A") { settings in
             settings.enabled = true
@@ -122,6 +123,7 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
         )
     }
 
+    @Test
     func test_avgRounds_manyNodes() async throws {
         let systemA = await setUpNode("A") { settings in
             settings.enabled = true
@@ -235,6 +237,7 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
         )
     }
 
+    @Test
     func test_shouldEventuallySuspendGossiping() async throws {
         let systemA = await setUpNode("A") { settings in
             settings.enabled = true

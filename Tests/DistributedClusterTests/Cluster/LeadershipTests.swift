@@ -16,9 +16,10 @@ import DistributedActorsTestKit
 @testable import DistributedCluster
 import Logging
 import NIO
-import XCTest
+import Testing
 
-final class LeadershipTests: XCTestCase {
+@Suite(.serialized)
+final class LeadershipTests {
     let memberA = Cluster.Member(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "C", host: "1.1.1.1", port: 7337), nid: .random()), status: .up)
     let memberB = Cluster.Member(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "B", host: "2.2.2.2", port: 8228), nid: .random()), status: .up)
     let memberC = Cluster.Member(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "A", host: "3.3.3.3", port: 9119), nid: .random()), status: .up)
@@ -32,7 +33,7 @@ final class LeadershipTests: XCTestCase {
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: LowestAddressReachableMember
-
+    @Test
     func test_LowestAddressReachableMember_selectLeader() throws {
         var election = Leadership.LowestReachableMember(minimumNrOfMembers: 3)
 
@@ -42,6 +43,7 @@ final class LeadershipTests: XCTestCase {
         change.shouldEqual(Cluster.LeadershipChange(oldLeader: nil, newLeader: self.memberA))
     }
 
+    @Test
     func test_LowestAddressReachableMember_notEnoughMembersToDecide() throws {
         var election = Leadership.LowestReachableMember(minimumNrOfMembers: 3)
 
@@ -59,6 +61,7 @@ final class LeadershipTests: XCTestCase {
         change2.shouldEqual(Cluster.LeadershipChange(oldLeader: nil, newLeader: self.memberB))
     }
 
+    @Test
     func test_LowestAddressReachableMember_notEnoughReachableMembersToDecide() throws {
         var election = Leadership.LowestReachableMember(minimumNrOfMembers: 3)
 
@@ -76,6 +79,7 @@ final class LeadershipTests: XCTestCase {
         change2.shouldEqual(Cluster.LeadershipChange(oldLeader: nil, newLeader: self.memberA))
     }
 
+    @Test
     func test_LowestAddressReachableMember_onlyUnreachableMembers_cantDecide() throws {
         var election = Leadership.LowestReachableMember(minimumNrOfMembers: 3)
 
@@ -88,6 +92,7 @@ final class LeadershipTests: XCTestCase {
         change1.shouldBeNil()
     }
 
+    @Test
     func test_LowestAddressReachableMember_notEnoughMembersToDecide_fromWithToWithoutLeader() throws {
         var election = Leadership.LowestReachableMember(minimumNrOfMembers: 3)
 
@@ -107,6 +112,7 @@ final class LeadershipTests: XCTestCase {
         change.shouldEqual(Cluster.LeadershipChange(oldLeader: leader, newLeader: nil))
     }
 
+    @Test
     func test_LowestAddressReachableMember_whenCurrentLeaderDown() throws {
         var election = Leadership.LowestReachableMember(minimumNrOfMembers: 3)
 
@@ -121,6 +127,7 @@ final class LeadershipTests: XCTestCase {
             .shouldEqual(Cluster.LeadershipChange(oldLeader: nil, newLeader: self.memberB))
     }
 
+    @Test
     func test_LowestAddressReachableMember_whenCurrentLeaderDown_enoughMembers() throws {
         var election = Leadership.LowestReachableMember(minimumNrOfMembers: 3)
 
@@ -135,6 +142,7 @@ final class LeadershipTests: XCTestCase {
             .shouldEqual(Cluster.LeadershipChange(oldLeader: nil, newLeader: self.memberB))
     }
 
+    @Test
     func test_LowestAddressReachableMember_whenCurrentLeaderUnreachable_notEnoughMinMembers() throws {
         var election = Leadership.LowestReachableMember(minimumNrOfMembers: 3)
 
@@ -158,6 +166,7 @@ final class LeadershipTests: XCTestCase {
         membership.leader.shouldEqual(self.memberA.asUnreachable)
     }
 
+    @Test
     func test_LowestAddressReachableMember_keepLeader_notEnoughMembers_DO_NOT_loseLeadershipIfBelowMinNrOfMembers() throws {
         // - 3 nodes join
         // - first becomes leader
@@ -195,6 +204,7 @@ final class LeadershipTests: XCTestCase {
         membership.leader.shouldEqual(self.memberA)
     }
 
+    @Test
     func test_LowestAddressReachableMember_keepLeader_notEnoughMembers_DO_loseLeadershipIfBelowMinNrOfMembers() throws {
         // - 3 nodes join
         // - first becomes leader

@@ -15,13 +15,14 @@
 import DistributedActorsTestKit
 @testable import DistributedCluster
 import Foundation
-import XCTest
+import Testing
 
+@Suite(.serialized)
 final class ActorLoggingTests: SingleClusterSystemXCTestCase {
     var exampleSenderPath: ActorPath!
 
-    override func setUp() {
-        super.setUp()
+    override init() async throws {
+        try await super.init()
 
         self.exampleSenderPath = try! ActorPath(root: "user")
         self.exampleSenderPath.append(segment: try! ActorPathSegment("hello"))
@@ -30,6 +31,7 @@ final class ActorLoggingTests: SingleClusterSystemXCTestCase {
         self.exampleSenderPath.append(segment: try! ActorPathSegment("avoid-rendering-this-if-possible"))
     }
 
+    @Test
     func test_actorLogger_shouldIncludeActorPath() throws {
         let p = self.testKit.makeTestProbe("p", expecting: String.self)
         let r = self.testKit.makeTestProbe("r", expecting: Rendered.self)
@@ -58,6 +60,7 @@ final class ActorLoggingTests: SingleClusterSystemXCTestCase {
         // try r.expectNoMessage(for: .milliseconds(100))
     }
 
+    @Test
     func test_actorLogger_shouldNotRenderLazyMetadataIfLogIsUnderDefinedLogLevel() throws {
         let p = self.testKit.makeTestProbe("p2", expecting: String.self)
         let r = self.testKit.makeTestProbe("r2", expecting: Rendered.self)
@@ -87,6 +90,7 @@ final class ActorLoggingTests: SingleClusterSystemXCTestCase {
         try r.expectNoMessage(for: .milliseconds(100))
     }
 
+    @Test
     func test_actorLogger_shouldNotRenderALazyValueIfWeOverwriteItUsingLocalMetadata() throws {
         let p = self.testKit.makeTestProbe("p2", expecting: String.self)
         let r = self.testKit.makeTestProbe("r2", expecting: Rendered.self)

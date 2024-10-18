@@ -20,9 +20,11 @@ import DistributedCluster
 
 @testable import DistributedActorsTestKit
 import ServiceDiscovery
-import XCTest
+import Testing
 
-class ClusterDocExamples: XCTestCase {
+struct ClusterDocExamples {
+    
+    @Test
     func example_receive_behavior() throws {
         // tag::joining[]
         let system = ClusterSystem("ClusterJoining") { settings in
@@ -36,6 +38,7 @@ class ClusterDocExamples: XCTestCase {
         // end::joining[]
     }
 
+    @Test
     func example_discovery_joining_seedNodes() {
         class SomeSpecificServiceDiscovery: ServiceDiscovery {
             typealias Service = String
@@ -63,6 +66,7 @@ class ClusterDocExamples: XCTestCase {
         _ = system
     }
 
+    @Test
     func example_discovery_joining_seedNodes_2() {
         struct SomeGenericNode: Hashable {
             let host: String
@@ -96,6 +100,7 @@ class ClusterDocExamples: XCTestCase {
         _ = system
     }
 
+    @Test
     func example_subscribe_events_apply() throws {
         let system = ClusterSystem("Sample")
 

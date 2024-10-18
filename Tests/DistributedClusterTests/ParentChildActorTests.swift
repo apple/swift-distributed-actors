@@ -15,8 +15,9 @@
 import DistributedActorsTestKit
 @testable import DistributedCluster
 import Foundation
-import XCTest
+import Testing
 
+@Suite(.serialized)
 final class ParentChildActorTests: SingleClusterSystemXCTestCase {
     typealias ParentRef = _ActorRef<ParentProtocol>
     enum ParentProtocol: _NotActuallyCodableMessage {
@@ -146,6 +147,7 @@ final class ParentChildActorTests: SingleClusterSystemXCTestCase {
         }
     }
 
+    @Test
     func test_contextSpawn_shouldSpawnChildActorOnAppropriatePath() throws {
         let p: ActorTestProbe<ParentChildProbeProtocol> = self.testKit.makeTestProbe()
 
@@ -171,6 +173,7 @@ final class ParentChildActorTests: SingleClusterSystemXCTestCase {
         try p.expectMessage(.childNotFound(name: child.id.name))
     }
 
+    @Test
     func test_contextSpawnAnonymous_shouldSpawnChildActorOnAppropriatePath() throws {
         let p: ActorTestProbe<ParentChildProbeProtocol> = self.testKit.makeTestProbe()
 
@@ -192,6 +195,7 @@ final class ParentChildActorTests: SingleClusterSystemXCTestCase {
         try p.expectMessage(.childNotFound(name: child.id.name))
     }
 
+    @Test
     func test_contextSpawn_duplicateNameShouldFail() throws {
         let p: ActorTestProbe<ParentChildProbeProtocol> = self.testKit.makeTestProbe()
 
@@ -215,6 +219,7 @@ final class ParentChildActorTests: SingleClusterSystemXCTestCase {
         }
     }
 
+    @Test
     func test_contextStop_shouldStopChild() throws {
         let p: ActorTestProbe<ParentChildProbeProtocol> = self.testKit.makeTestProbe()
 
@@ -228,7 +233,7 @@ final class ParentChildActorTests: SingleClusterSystemXCTestCase {
 
         _ = try p.expectMessageMatching { x throws -> String? in
             switch x {
-            case .childFound(name: "kid", _): return name
+            case .childFound(name: "kid", _): return "kid" // name // FIXME: return name
             default: return nil
             }
         }
@@ -236,6 +241,7 @@ final class ParentChildActorTests: SingleClusterSystemXCTestCase {
         try p.expectMessage(.childStopped(name: "kid"))
     }
 
+    @Test
     func test_contextStop_shouldThrowIfRefIsNotChild() throws {
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
@@ -260,6 +266,7 @@ final class ParentChildActorTests: SingleClusterSystemXCTestCase {
         try p.expectTerminated(parent)
     }
 
+    @Test
     func test_contextStop_shouldThrowIfRefIsMyself() throws {
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
@@ -284,6 +291,7 @@ final class ParentChildActorTests: SingleClusterSystemXCTestCase {
         try p.expectTerminated(parent)
     }
 
+    @Test
     func test_spawnStopSpawn_shouldWorkWithSameChildName() throws {
         let p: ActorTestProbe<Never> = self.testKit.makeTestProbe("p")
         let p1: ActorTestProbe<ParentChildProbeProtocol> = self.testKit.makeTestProbe("p1")
@@ -333,6 +341,7 @@ final class ParentChildActorTests: SingleClusterSystemXCTestCase {
         try p.expectNoTerminationSignal(for: .milliseconds(100))
     }
 
+    @Test
     func test_throwOfSpawnedChild_shouldNotCauseParentToTerminate() throws {
         let p: ActorTestProbe<ParentChildProbeProtocol> = self.testKit.makeTestProbe()
 
@@ -375,6 +384,7 @@ final class ParentChildActorTests: SingleClusterSystemXCTestCase {
         secondChild.id.incarnation.shouldNotEqual(child.id.incarnation)
     }
 
+    @Test
     func test_throwOfWatchedSpawnedChild_shouldCauseParentToTerminate() throws {
         let p: ActorTestProbe<ParentChildProbeProtocol> = self.testKit.makeTestProbe()
 
@@ -405,6 +415,7 @@ final class ParentChildActorTests: SingleClusterSystemXCTestCase {
         try p.expectTerminatedInAnyOrder([child.asAddressable, parent.asAddressable])
     }
 
+    @Test
     func test_watchedChild_shouldProduceInSingleTerminatedSignal() throws {
         let p: ActorTestProbe<ParentChildProbeProtocol> = self.testKit.makeTestProbe()
         let pChild: ActorTestProbe<String> = self.testKit.makeTestProbe()
@@ -458,6 +469,7 @@ final class ParentChildActorTests: SingleClusterSystemXCTestCase {
         try p.expectNoMessage(for: .milliseconds(100)) // no second terminated should happen
     }
 
+    @Test
     func test_spawnWatch_shouldSpawnAWatchedActor() throws {
         let p: ActorTestProbe<ParentChildProbeProtocol> = self.testKit.makeTestProbe()
 
@@ -491,6 +503,7 @@ final class ParentChildActorTests: SingleClusterSystemXCTestCase {
         childRef.id.name.shouldEqual(name)
     }
 
+    @Test
     func test_stopParent_shouldWaitForChildrenToStop() throws {
         let p: ActorTestProbe<ParentChildProbeProtocol> = self.testKit.makeTestProbe()
 
@@ -511,6 +524,7 @@ final class ParentChildActorTests: SingleClusterSystemXCTestCase {
         try p.expectTerminatedInAnyOrder([parent.asAddressable, childRef.asAddressable, grandchildRef.asAddressable])
     }
 
+    @Test
     func test_spawnStopSpawnManyTimesWithSameName_shouldProperlyTerminateAllChildren() throws {
         let p: ActorTestProbe<Int> = self.testKit.makeTestProbe("p")
         let childCount = 100

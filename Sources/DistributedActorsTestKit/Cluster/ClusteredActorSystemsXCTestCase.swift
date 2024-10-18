@@ -155,16 +155,17 @@ open class ClusteredActorSystemsXCTestCase {
     
     deinit { self.tearDown() }
 
-    func tearDown() {
+    open func tearDown() {
         self.stuckTestDumpLogsTask?.cancel()
         self.stuckTestDumpLogsTask = nil
 
 //        try await super.tearDown()
 
-        let testsFailed = false //self.testRun?.totalFailureCount ?? 0 > 0
-        if self.captureLogs, self.alwaysPrintCaptureLogs || testsFailed {
-            self.printAllCapturedLogs()
-        }
+        /// FIXME: Check if new testing supports testRun.totalFailureCount
+//        let testsFailed = self.testRun?.totalFailureCount ?? 0 > 0
+//        if self.captureLogs, self.alwaysPrintCaptureLogs || testsFailed {
+//            self.printAllCapturedLogs()
+//        }
 
         for node in self._nodes {
             node.log.warning("======================== TEST TEAR DOWN: SHUTDOWN ========================")

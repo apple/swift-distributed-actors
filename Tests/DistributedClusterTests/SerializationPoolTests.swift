@@ -17,9 +17,9 @@ import DistributedActorsTestKit
 import Foundation
 import NIO
 import NIOFoundationCompat
-import XCTest
+import Testing
 
-final class SerializationPoolTests: XCTestCase {
+final class SerializationPoolTests {
     struct Test1: Codable {
         // These locks are used to validate the different ordering guarantees
         // we give in the serialization pool. The locks are used to block
@@ -93,7 +93,7 @@ final class SerializationPoolTests: XCTestCase {
         }
     }
 
-    override func setUp() async throws {
+    init() async throws {
         self.system = await ClusterSystem("SerializationTests") { settings in
             settings.logging.baseLogger = NoopLogger.make()
             settings.serialization.register(Test1.self)
@@ -106,8 +106,8 @@ final class SerializationPoolTests: XCTestCase {
         self.actorPath2 = try! ActorPath([ActorPathSegment("foo"), ActorPathSegment("baz")])
     }
 
-    override func tearDown() async throws {
-        try! await self.system.shutdown().wait()
+    deinit {
+        try! self.system.shutdown().wait()
         self.system = nil
         self.testKit = nil
         try! self.elg.syncShutdownGracefully()
@@ -115,6 +115,7 @@ final class SerializationPoolTests: XCTestCase {
         self.elg = nil
     }
 
+    @Test
     func test_serializationPool_shouldSerializeMessagesInDefaultGroupOnCallingThread() throws {
         let serializationPool = try _SerializationPool(settings: .default, serialization: system.serialization)
         defer { serializationPool.shutdown() }
@@ -146,6 +147,7 @@ final class SerializationPoolTests: XCTestCase {
         try p.expectMessage("p2")
     }
 
+    @Test
     func test_serializationPool_shouldSerializeMessagesInTheSameNonDefaultGroupInSequence() throws {
         let serializationPool = try _SerializationPool(settings: SerializationPoolSettings(serializationGroups: [[self.actorPath1, self.actorPath2]]), serialization: self.system.serialization)
         defer { serializationPool.shutdown() }
@@ -181,6 +183,7 @@ final class SerializationPoolTests: XCTestCase {
         try p.expectMessage("p2")
     }
 
+    @Test
     func test_serializationPool_shouldSerializeMessagesInDifferentNonDefaultGroupsInParallel() throws {
         let serializationPool = try _SerializationPool(settings: SerializationPoolSettings(serializationGroups: [[self.actorPath1], [self.actorPath2]]), serialization: self.system.serialization)
         defer { serializationPool.shutdown() }
@@ -215,6 +218,7 @@ final class SerializationPoolTests: XCTestCase {
         try p.expectMessage("p1")
     }
 
+    @Test
     func test_serializationPool_shouldDeserializeMessagesInDefaultGroupOnCallingThread() throws {
         let serializationPool = try _SerializationPool(settings: .default, serialization: self.system.serialization)
         defer { serializationPool.shutdown() }
@@ -252,6 +256,7 @@ final class SerializationPoolTests: XCTestCase {
         try p.expectMessage("p2")
     }
 
+    @Test
     func test_serializationPool_shouldDeserializeMessagesInTheSameNonDefaultGroupInSequence() throws {
         let serializationPool = try _SerializationPool(settings: SerializationPoolSettings(serializationGroups: [[self.actorPath1, self.actorPath2]]), serialization: self.system.serialization)
         defer { serializationPool.shutdown() }
@@ -293,6 +298,7 @@ final class SerializationPoolTests: XCTestCase {
         try p.expectMessage("p2")
     }
 
+    @Test
     func test_serializationPool_shouldDeserializeMessagesInDifferentNonDefaultGroupsInParallel() throws {
         let serializationPool = try _SerializationPool(settings: SerializationPoolSettings(serializationGroups: [[self.actorPath1], [self.actorPath2]]), serialization: self.system.serialization)
         defer { serializationPool.shutdown() }
@@ -331,6 +337,7 @@ final class SerializationPoolTests: XCTestCase {
         try p.expectMessage("p1")
     }
 
+    @Test
     func test_serializationPool_shouldExecuteSerializationAndDeserializationGroupsOnSeparateWorkerPools() throws {
         let serializationPool = try _SerializationPool(settings: SerializationPoolSettings(serializationGroups: [[self.actorPath1]]), serialization: self.system.serialization)
         defer { serializationPool.shutdown() }
