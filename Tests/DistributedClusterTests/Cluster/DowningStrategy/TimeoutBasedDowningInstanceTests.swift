@@ -219,7 +219,7 @@ final class TimeoutBasedDowningInstanceTests {
             throw TestError("Expected directive to be .cancelTimer")
         }
     }
-    
+
     @Test
     func test_onMemberReachable_whenMemberWasMarkAsDown_shouldReturnNone() throws {
         let member = Cluster.Member(node: self.otherNode, status: .up)

@@ -22,9 +22,9 @@ import Testing
 final class GossipSeenTableTests {
     typealias SeenTable = Cluster.MembershipGossip.SeenTable
 
-    let nodeA: Cluster.Node = Cluster.Node(systemName: "firstA", host: "127.0.0.1", port: 7111, nid: .random())
-    let nodeB: Cluster.Node = Cluster.Node(systemName: "secondB", host: "127.0.0.1", port: 7222, nid: .random())
-    let nodeC: Cluster.Node = Cluster.Node(systemName: "thirdC", host: "127.0.0.1", port: 7333, nid: .random())
+    let nodeA = Cluster.Node(systemName: "firstA", host: "127.0.0.1", port: 7111, nid: .random())
+    let nodeB = Cluster.Node(systemName: "secondB", host: "127.0.0.1", port: 7222, nid: .random())
+    let nodeC = Cluster.Node(systemName: "thirdC", host: "127.0.0.1", port: 7333, nid: .random())
 
     lazy var allNodes = [
         self.nodeA, self.nodeB, self.nodeC,
@@ -97,7 +97,7 @@ final class GossipSeenTableTests {
         table.version(at: self.nodeB)
             .shouldEqual(VersionVector.parse("B:2", nodes: self.allNodes))
     }
-    
+
     @Test
     func test_seenTable_merge_sameInformation() {
         // a situation in which the two nodes have converged, so their versions are .same

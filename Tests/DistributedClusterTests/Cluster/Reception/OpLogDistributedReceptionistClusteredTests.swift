@@ -54,9 +54,8 @@ extension DistributedReception.Key {
 
 @Suite(.timeLimit(.minutes(1)), .serialized)
 struct OpLogDistributedReceptionistClusteredTests {
-    
     let testCase: ClusteredActorSystemsTestCase
-    
+
     init() throws {
         self.testCase = try ClusteredActorSystemsTestCase()
         self.self.testCase.configureLogCapture = { settings in
@@ -84,7 +83,7 @@ struct OpLogDistributedReceptionistClusteredTests {
         context.log.warning("Stopping...")
         return .stop
     }
-    
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Sync
     @Test
@@ -92,12 +91,12 @@ struct OpLogDistributedReceptionistClusteredTests {
         let (first, second) = await self.testCase.setUpPair()
         let testKit = self.testCase.testKit(first)
         try await self.testCase.joinNodes(node: first, with: second)
-        
+
         let probe = testKit.makeTestProbe(expecting: String.self)
-        
+
         // Create forwarder on 'first'
         let forwarder = StringForwarder(probe: probe, actorSystem: first)
-        
+
         // subscribe on `remote`
         let subscriberProbe = testKit.makeTestProbe("subscriber", expecting: StringForwarder.self)
         let subscriptionTask = Task {
@@ -108,17 +107,17 @@ struct OpLogDistributedReceptionistClusteredTests {
         defer {
             subscriptionTask.cancel()
         }
-        
+
         // checkIn on `first`
         await first.receptionist.checkIn(forwarder, with: .stringForwarders)
         first.log.notice("Checked in: \(forwarder)")
-        
+
         try await Task {
             let found = try subscriberProbe.expectMessage()
-            
+
             // we expect only one actor
             try subscriberProbe.expectNoMessage(for: .milliseconds(200))
-            
+
             // check if we can interact with it
             let echo = try await found.forward(message: "test")
             echo.shouldEqual("echo:test")
@@ -132,14 +131,14 @@ struct OpLogDistributedReceptionistClusteredTests {
         let (local, remote) = await self.testCase.setUpPair {
             $0.receptionist.ackPullReplicationIntervalSlow = .seconds(1)
         }
-        
+
         let probe = self.testCase.testKit(local).makeTestProbe(expecting: String.self)
         let subscriberProbe = self.testCase.testKit(local).makeTestProbe(expecting: StringForwarder.self)
-        
+
         // Create on local
         let key = DistributedReception.Key(StringForwarder.self, id: "test")
         let forwarder = StringForwarder(probe: probe, actorSystem: local)
-        
+
         // Subscribe on remote
         let remoteSubscriberTask = Task {
             for try await found in await remote.receptionist.listing(of: key) {
@@ -147,21 +146,21 @@ struct OpLogDistributedReceptionistClusteredTests {
             }
         }
         defer { remoteSubscriberTask.cancel() }
-        
+
         // Register on local
         await local.receptionist.checkIn(forwarder, with: key)
-        
+
         // Join the nodes
         local.cluster.join(endpoint: remote.cluster.node.endpoint)
         try self.testCase.assertAssociated(local, withExactly: remote.settings.bindNode)
-        
+
         // The remote node discovers the actor
         try await Task {
             let found = try subscriberProbe.expectMessage()
-            
+
             // we expect only one actor
             try subscriberProbe.expectNoMessage(for: .milliseconds(200))
-            
+
             // check if we can interact with it
             let echo = try await found.forward(message: "test")
             echo.shouldEqual("echo:test")

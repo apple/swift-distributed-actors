@@ -16,8 +16,8 @@ import DistributedActorsConcurrencyHelpers
 @testable import DistributedCluster
 import struct Foundation.Date
 @testable import Logging
-import Testing
 import Synchronization
+import Testing
 
 /// Testing only utility: Captures all log statements for later inspection.
 ///
@@ -34,7 +34,7 @@ public final class LogCapture: Sendable {
     }
 
     public func logger(label: String) -> Logger {
-        self.captureLabel.withLock { $0  = label }
+        self.captureLabel.withLock { $0 = label }
         return Logger(label: "LogCapture(\(label))", LogCaptureLogHandler(label: label, self))
     }
 

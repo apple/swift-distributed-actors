@@ -18,13 +18,12 @@ import Testing
 
 @Suite(.timeLimit(.minutes(1)), .serialized)
 struct ClusterSingletonPluginTests {
-    
     let testCase: SingleClusterSystemTestCase
 
     init() async throws {
         self.testCase = try await SingleClusterSystemTestCase(name: String(describing: type(of: self)))
     }
-    
+
     @Test
     func test_singletonPlugin_clusterDisabled() async throws {
         // Singleton should work just fine without clustering
@@ -32,16 +31,16 @@ struct ClusterSingletonPluginTests {
             settings.enabled = false
             settings += ClusterSingletonPlugin()
         }
-        
+
         let name = "the-one"
-        
+
         // singleton.host
         let ref = try await test.singleton.host(name: name) { actorSystem in
             TheSingleton(greeting: "Hello", actorSystem: actorSystem)
         }
         let reply = try await ref.greet(name: "Charlie")
         reply.shouldStartWith(prefix: "Hello Charlie!")
-        
+
         // singleton.ref (proxy-only)
         let proxyRef = try await test.singleton.proxy(TheSingleton.self, name: name)
         let proxyReply = try await proxyRef.greet(name: "Charlene")
@@ -53,18 +52,18 @@ struct ClusterSingletonPluginTests {
         let system = await self.testCase.setUpNode("test") { settings in
             settings += ClusterSingletonPlugin()
         }
-        
+
         let singleton = try await system.singleton.host(name: "test-singleton") { actorSystem in
             SingletonWhichCreatesDistributedActorDuringInit(actorSystem: actorSystem)
         }
-        
+
         let singletonID = singleton.id
         let greeterID = try await singleton.getGreeter().id
-        
+
         pinfo("singleton proxy    id: \(singletonID)")
         pinfo("singleton actual   id: \(try await singleton.actualID())")
         pinfo("singleton(greeter) id: \(greeterID)")
-        
+
         try await singleton.actualID().detailedDescription.shouldContain("test-singleton")
         // if this were true we would have crashed by a duplicate name already, but let's make sure:
         singletonID.shouldNotEqual(greeterID)

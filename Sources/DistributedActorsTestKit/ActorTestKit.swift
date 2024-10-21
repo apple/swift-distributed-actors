@@ -468,12 +468,11 @@ extension ActorTestKit {
         let fullMessage: String = message ?? "<no message>"
         return callSite.error(fullMessage, failTest: false)
     }
-    
+
     public func error(_ message: String? = nil, file: String = #fileID, filePath: String = #filePath, line: Int = #line, column: Int = #column) -> Error {
         let sourceLocation = SourceLocation(fileID: file, filePath: filePath, line: line, column: column)
         return self.error(message, sourceLocation: sourceLocation)
     }
-
 
     /// Returns a failure with additional callsite information and fails the test.
     ///
@@ -485,7 +484,7 @@ extension ActorTestKit {
         let fullMessage: String = message ?? "<no message>"
         return callSite.error(fullMessage, failTest: true)
     }
-    
+
     public func fail(_ message: String? = nil, file: String = #fileID, filePath: String = #filePath, line: Int = #line, column: Int = #column) -> Error {
         let sourceLocation = SourceLocation(fileID: file, filePath: filePath, line: line, column: column)
         return self.fail(message, sourceLocation: sourceLocation)

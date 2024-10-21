@@ -15,14 +15,14 @@
 import DistributedActorsConcurrencyHelpers
 @testable import DistributedCluster
 import Foundation
-import Testing
 import Synchronization
+import Testing
 
-//final class PortFactory: Sendable {
+// final class PortFactory: Sendable {
 //    static let shared: PortFactory = PortFactory()
-//    
+//
 //    let _port = Mutex(9001)
-//    
+//
 //    var nextPort: Int {
 //        _port.withLock { port in
 //            let currentPort = port
@@ -30,14 +30,13 @@ import Synchronization
 //            return currentPort
 //        }
 //    }
-//}
+// }
 
 /// Convenience class for building multi-node (yet same-process) tests with many actor systems involved.
 ///
 /// Systems started using `setUpNode` are automatically terminated upon test completion, and logs are automatically
 /// captured and only printed when a test failure occurs.
 public final class ClusteredActorSystemsTestCase: Sendable {
-        
     public let _nodes: Mutex<[ClusterSystem]> = Mutex([])
     public let _testKits: Mutex<[ActorTestKit]> = Mutex([])
     public let _logCaptures: Mutex<[LogCapture]> = Mutex([])
@@ -56,12 +55,12 @@ public final class ClusteredActorSystemsTestCase: Sendable {
             return false
         }
     }()
-    
+
     public struct Settings: Sendable {
         public let captureLogs: Bool
         public let dumpLogsAfter: Duration
         public let alwaysPrintCaptureLogs: Bool
-        
+
         public init(
             captureLogs: Bool = true,
             dumpLogsAfter: Duration = .seconds(60),
@@ -77,7 +76,6 @@ public final class ClusteredActorSystemsTestCase: Sendable {
     public var inspectDetectActorLeaks: Bool {
         ClusteredActorSystemsTestCase.inspectDetectActorLeaksEnv
     }
-
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Log capture
@@ -103,28 +101,29 @@ public final class ClusteredActorSystemsTestCase: Sendable {
     }
 
     public let settings: Settings
-    public var configureLogCapture: (@Sendable (_ settings: inout LogCapture.Settings) -> ()) {
+    public var configureLogCapture: (@Sendable (_ settings: inout LogCapture.Settings) -> Void) {
         get { self._configureLogCapture.withLock { $0 } }
         set { self._configureLogCapture.withLock { $0 = newValue }}
     }
+
     /// Configuration to be applied to every actor system.
     ///
     /// Order in which configuration is changed:
     /// - default changes made by `ClusteredNodesTestBase`
     /// - changes made by `configureActorSystem`
     /// - changes made by `modifySettings`, which is a parameter of `setUpNode`
-    public var configureActorSystem: (@Sendable  (_ settings: inout ClusterSystemSettings) -> ()) {
+    public var configureActorSystem: (@Sendable (_ settings: inout ClusterSystemSettings) -> Void) {
         get { self._configureActorSystem.withLock { $0 } }
         set { self._configureActorSystem.withLock { $0 = newValue }}
     }
 
-    public let _configureLogCapture: Mutex<(@Sendable (_ settings: inout LogCapture.Settings) -> ())> = Mutex({ _ in })
-    public let _configureActorSystem: Mutex<(@Sendable (_ settings: inout ClusterSystemSettings) -> ())> = Mutex({ _ in })
+    public let _configureLogCapture: Mutex<(@Sendable (_ settings: inout LogCapture.Settings) -> Void)> = Mutex { _ in }
+    public let _configureActorSystem: Mutex<(@Sendable (_ settings: inout ClusterSystemSettings) -> Void)> = Mutex { _ in }
 
     let _port = Mutex(9001)
-    
+
     var nextPort: Int {
-        _port.withLock { port in
+        self._port.withLock { port in
             let currentPort = port
             port += 1
             return currentPort
@@ -143,7 +142,7 @@ public final class ClusteredActorSystemsTestCase: Sendable {
 //                guard !Task.isCancelled else {
 //                    return
 //                }
-//                
+//
 //                print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 //                print("!!!!!!!!!!               TEST SEEMS STUCK - DUMPING LOGS                   !!!!!!!!!!")
 //                print("!!!!!!!!!!               PID: \(ProcessInfo.processInfo.processIdentifier)                              !!!!!!!!!!")
@@ -152,7 +151,7 @@ public final class ClusteredActorSystemsTestCase: Sendable {
 //            }
 //        }
     }
-    
+
     enum SomeError {
         case cancelled
     }
@@ -198,11 +197,11 @@ public final class ClusteredActorSystemsTestCase: Sendable {
         let second = await self.setUpNode("second", modifySettings)
         return (first, second)
     }
-    
+
     deinit {
         self.tearDown()
     }
-    
+
     public let totalFailureCount: Mutex<Int> = .init(0)
 
     public func tearDown() {
@@ -210,7 +209,6 @@ public final class ClusteredActorSystemsTestCase: Sendable {
             $0?.cancel()
             $0 = nil
         }
-
 
         let testsFailed = self.totalFailureCount.withLock { $0 > 0 }
         if self.captureLogs, self.alwaysPrintCaptureLogs || testsFailed {
@@ -231,7 +229,7 @@ public final class ClusteredActorSystemsTestCase: Sendable {
 //        if self.inspectDetectActorLeaks {
 //            Task.detached {
 //                try await Task.sleep(until: .now + .seconds(2), clock: .continuous)
-//                
+//
 //                let actorStatsAfter = try InspectKit.actorStats()
 //                if let error = self.actorStatsBefore.withLock({ $0.detectLeaks(latest: actorStatsAfter) }) {
 //                    print(error.message)

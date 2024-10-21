@@ -18,7 +18,6 @@ import NIO
 import Testing
 
 struct NIOExtensionTests {
-    
     @Test
     func test_ByteBuf_formatHexDump_shouldPrettyPrintAsExpected() {
         let allocator = ByteBufferAllocator()

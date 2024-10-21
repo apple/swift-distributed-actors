@@ -58,11 +58,10 @@ struct ProtobufRoundTripTests {
 }
 
 extension SingleClusterSystemTestCase {
-    
     var node: Cluster.Node {
         self.system.cluster.node
     }
-    
+
     var localActorAddress: ActorID {
         try! ActorPath._user.appending("hello")
             .makeLocalID(on: self.system.cluster.node, incarnation: .wellKnown)

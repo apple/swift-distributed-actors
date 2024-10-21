@@ -20,10 +20,10 @@ import Testing
 /// Tests of just the datatype
 @Suite(.timeLimit(.minutes(1)), .serialized)
 final class MembershipGossipTests {
-    let nodeA: Cluster.Node = Cluster.Node(systemName: "firstA", host: "127.0.0.1", port: 7111, nid: .random())
-    let nodeB: Cluster.Node = Cluster.Node(systemName: "secondB", host: "127.0.0.1", port: 7222, nid: .random())
-    let nodeC: Cluster.Node = Cluster.Node(systemName: "thirdC", host: "127.0.0.1", port: 7333, nid: .random())
-    let fourthNode: Cluster.Node = Cluster.Node(systemName: "fourthD", host: "127.0.0.1", port: 7444, nid: .random())
+    let nodeA = Cluster.Node(systemName: "firstA", host: "127.0.0.1", port: 7111, nid: .random())
+    let nodeB = Cluster.Node(systemName: "secondB", host: "127.0.0.1", port: 7222, nid: .random())
+    let nodeC = Cluster.Node(systemName: "thirdC", host: "127.0.0.1", port: 7333, nid: .random())
+    let fourthNode = Cluster.Node(systemName: "fourthD", host: "127.0.0.1", port: 7444, nid: .random())
     lazy var allNodes = [
         self.nodeA, self.nodeB, self.nodeC, self.fourthNode,
     ]

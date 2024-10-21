@@ -16,7 +16,6 @@
 import Testing
 
 struct MPSCLinkedQueueTests {
-    
     @Test
     func test_dequeueWhenEmpty() {
         let q = MPSCLinkedQueue<Int>()
@@ -29,7 +28,7 @@ struct MPSCLinkedQueueTests {
         let q = MPSCLinkedQueue<Int>()
         q.enqueue(1)
 
-        #expect(1 == q.dequeue()!)
+        #expect(q.dequeue()! == 1)
     }
 
     @Test

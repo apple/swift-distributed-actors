@@ -14,18 +14,17 @@
 
 import DistributedActorsTestKit
 @testable import DistributedCluster
-import Testing
 import Foundation
+import Testing
 
 @Suite(.timeLimit(.minutes(1)), .serialized)
 struct ActorIDTests {
-    
     let testCase: ClusteredActorSystemsTestCase
-    
+
     init() throws {
         self.testCase = try ClusteredActorSystemsTestCase()
     }
-    
+
     @Test
     func test_local_actorAddress_shouldPrintNicely() throws {
         let node = Cluster.Node(systemName: "\(Self.self)", host: "127.0.0.1", port: 7337, nid: .random())
@@ -185,14 +184,14 @@ struct ActorIDTests {
         let node = Cluster.Node(systemName: "one", host: "127.0.0.1", port: 1234, nid: Cluster.Node.ID(11111))
         let a = try ActorPath._user.appending("a").makeRemoteID(on: node, incarnation: 1)
         a.metadata.test = "test-value"
-        
+
         let system = await self.testCase.setUpNode("test_serializing_ActorAddress_skipCustomTag") { settings in
             settings.bindPort = 1234
         }
-        
+
         let serialized = try system.serialization.serialize(a)
         let serializedJson = String(data: serialized.buffer.readData(), encoding: .utf8)!
-        
+
         // TODO: improve serialization format of identities to be more compact
         serializedJson.shouldContain(#""incarnation":1"#)
         serializedJson.shouldContain(#""node":["sact","one","127.0.0.1",1234,11111]"#)
@@ -205,23 +204,23 @@ struct ActorIDTests {
         let node = Cluster.Node(systemName: "one", host: "127.0.0.1", port: 1234, nid: Cluster.Node.ID(11111))
         let a = try ActorPath._user.appending("a").makeRemoteID(on: node, incarnation: 1)
         a.metadata.test = "test-value"
-        
+
         let system = await self.testCase.setUpNode("test_serializing_ActorAddress_propagateCustomTag") { settings in
             settings.bindPort = 1234
             settings.actorMetadata.encodeCustomMetadata = { metadata, container in
                 try container.encodeIfPresent(metadata.test, forKey: ActorCoding.MetadataKeys.custom(ActorMetadataKeys.__instance.test.id))
             }
-            
+
             settings.actorMetadata.decodeCustomMetadata = { container, metadata in
                 if let value = try container.decodeIfPresent(String.self, forKey: .custom(ActorMetadataKeys.__instance.test.id)) {
                     metadata.test = value
                 }
             }
         }
-        
+
         let serialized = try system.serialization.serialize(a)
         let serializedJson = String(data: serialized.buffer.readData(), encoding: .utf8)!
-        
+
         // TODO: improve serialization format of identities to be more compact
         serializedJson.shouldContain(#""incarnation":1"#)
         serializedJson.shouldContain(#""node":["sact","one","127.0.0.1",1234,11111]"#)

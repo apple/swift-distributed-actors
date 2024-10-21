@@ -18,20 +18,19 @@ import Testing
 
 @Suite(.timeLimit(.minutes(1)), .serialized)
 struct BasicClusterSystemLifecycleTests {
-    
     let testCase: SingleClusterSystemTestCase
 
     init() async throws {
         self.testCase = try await SingleClusterSystemTestCase(name: String(describing: type(of: self)))
     }
-    
+
     func test_system_shouldAssignIdentityAndReadyActor() async throws {
         let first = await self.testCase.setUpNode("first")
-        
+
         var stub: StubDistributedActor? = StubDistributedActor(actorSystem: first)
         _ = stub
         stub = nil
-        
+
         let identity = try self.testCase.logCapture.awaitLogContaining(self.testCase.testKit, text: "Assign identity")
         let idString = "\(identity.metadata!["actor/id"]!)"
         let ready = try self.testCase.logCapture.awaitLogContaining(self.testCase.testKit, text: "Actor ready")

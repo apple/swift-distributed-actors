@@ -18,7 +18,6 @@ import Testing
 
 @Suite(.timeLimit(.minutes(1)), .serialized)
 class VersionVectorTests {
-    
     private typealias VV = VersionVector
     private typealias V = VersionVector.Version
 

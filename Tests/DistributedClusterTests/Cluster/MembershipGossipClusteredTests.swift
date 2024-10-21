@@ -20,9 +20,8 @@ import Testing
 
 @Suite(.timeLimit(.minutes(1)), .serialized)
 struct MembershipGossipClusteredTests {
-    
     let testCase: ClusteredActorSystemsTestCase
-    
+
     init() throws {
         self.testCase = try ClusteredActorSystemsTestCase()
         self.self.testCase.configureLogCapture = { settings in
@@ -58,24 +57,24 @@ struct MembershipGossipClusteredTests {
             settings.autoLeaderElection = strategy
             settings.onDownAction = .none
         }
-        
+
         first.cluster.join(endpoint: second.cluster.node.endpoint)
         third.cluster.join(endpoint: second.cluster.node.endpoint)
-        
+
         try self.testCase.assertAssociated(first, withAtLeast: second.cluster.node)
         try self.testCase.assertAssociated(second, withAtLeast: third.cluster.node)
         try self.testCase.assertAssociated(first, withAtLeast: third.cluster.node)
-        
+
         try await self.testCase.assertMemberStatus(on: second, node: first.cluster.node, is: .up, within: .seconds(10))
         try await self.testCase.assertMemberStatus(on: second, node: second.cluster.node, is: .up, within: .seconds(10))
         try await self.testCase.assertMemberStatus(on: second, node: third.cluster.node, is: .up, within: .seconds(10))
-        
+
         let firstEvents = await self.testCase.testKit(first).spawnClusterEventStreamTestProbe()
         let secondEvents = await self.testCase.testKit(second).spawnClusterEventStreamTestProbe()
         let thirdEvents = await self.testCase.testKit(third).spawnClusterEventStreamTestProbe()
-        
+
         second.cluster.down(endpoint: third.cluster.node.endpoint)
-        
+
         try self.testCase.assertMemberDown(firstEvents, node: third.cluster.node)
         try self.testCase.assertMemberDown(secondEvents, node: third.cluster.node)
         try self.testCase.assertMemberDown(thirdEvents, node: third.cluster.node)
@@ -94,13 +93,13 @@ struct MembershipGossipClusteredTests {
         let third = await self.testCase.setUpNode("third") { settings in
             settings.endpoint.port = 9333
         }
-        
+
         // 1. first join second
         first.cluster.join(endpoint: second.cluster.node.endpoint)
-        
+
         // 2. third join second
         third.cluster.join(endpoint: second.cluster.node.endpoint)
-        
+
         // confirm 1
         try self.testCase.assertAssociated(first, withAtLeast: second.cluster.node)
         try self.testCase.assertAssociated(second, withAtLeast: first.cluster.node)
@@ -109,17 +108,17 @@ struct MembershipGossipClusteredTests {
         try self.testCase.assertAssociated(third, withAtLeast: second.cluster.node)
         try self.testCase.assertAssociated(second, withAtLeast: third.cluster.node)
         pinfo("Associated: second <~> third")
-        
+
         // 3.1. first should discover third
         // confirm 3.1
         try self.testCase.assertAssociated(first, withAtLeast: third.cluster.node)
         pinfo("Associated: first ~> third")
-        
+
         // 3.2. third should discover first
         // confirm 3.2
         try self.testCase.assertAssociated(third, withAtLeast: first.cluster.node)
         pinfo("Associated: third ~> first")
-        
+
         // excellent, all nodes know each other
         pinfo("Associated: third <~> first")
     }

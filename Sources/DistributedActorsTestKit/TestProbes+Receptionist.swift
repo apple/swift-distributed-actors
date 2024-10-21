@@ -25,7 +25,7 @@ extension ActorTestProbe where Message == _Reception.Listing<_ActorRef<String>> 
     public func eventuallyExpectListing(
         expected: Set<_ActorRef<String>>, within timeout: Duration,
         verbose: Bool = false,
-        sourceLocation: SourceLocation =  #_sourceLocation
+        sourceLocation: SourceLocation = #_sourceLocation
     ) throws {
         do {
             let listing = try self.fishForMessages(within: timeout, sourceLocation: sourceLocation) {

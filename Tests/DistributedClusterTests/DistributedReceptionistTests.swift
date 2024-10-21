@@ -27,12 +27,12 @@ struct DistributedReceptionistTests {
     init() async throws {
         self.testCase = try await SingleClusterSystemTestCase(name: String(describing: type(of: self)))
     }
-    
+
     @Test
     func test_receptionist_mustHaveWellKnownID() {
         let opLogReceptionist = self.testCase.system.receptionist
         let id = opLogReceptionist.id
-        
+
         id.metadata.wellKnown.shouldEqual("receptionist")
         id.incarnation.shouldEqual(.wellKnown)
     }
@@ -41,19 +41,19 @@ struct DistributedReceptionistTests {
     func test_receptionist_shouldRespondWithRegisteredRefsForKey() async throws {
         let receptionist = self.testCase.system.receptionist
         let probe: ActorTestProbe<String> = self.testCase.testKit.makeTestProbe()
-        
+
         let forwarderA = Forwarder(probe: probe, name: "A", actorSystem: self.testCase.system)
         let forwarderB = Forwarder(probe: probe, name: "B", actorSystem: self.testCase.system)
-        
+
         await receptionist.checkIn(forwarderA, with: .forwarders)
         await receptionist.checkIn(forwarderB, with: .forwarders)
-        
+
         let listing = await receptionist.lookup(.forwarders)
         listing.count.shouldEqual(2)
         for forwarder in listing {
             try await forwarder.forward(message: "test")
         }
-        
+
         try probe.expectMessagesInAnyOrder([
             "\(forwarderA.id) A forwarded: test",
             "\(forwarderB.id) B forwarded: test",
@@ -64,27 +64,27 @@ struct DistributedReceptionistTests {
     func test_receptionist_listing_shouldRespondWithRegisteredRefsForKey() async throws {
         let receptionist = self.testCase.system.receptionist
         let probe: ActorTestProbe<String> = self.testCase.testKit.makeTestProbe()
-        
+
         let forwarderA = Forwarder(probe: probe, name: "A", actorSystem: self.testCase.system)
         let forwarderB = Forwarder(probe: probe, name: "B", actorSystem: self.testCase.system)
-        
+
         self.testCase.system.log.notice("Checking in: \(forwarderA.id)")
         await receptionist.checkIn(forwarderA, with: .forwarders)
         self.testCase.system.log.notice("Checking in: \(forwarderB.id)")
         await receptionist.checkIn(forwarderB, with: .forwarders)
-        
+
         var i = 0
         self.testCase.system.log.notice("here")
         for await forwarder in await receptionist.listing(of: .forwarders) {
             self.testCase.system.log.notice("here more \(i): \(forwarder.id)")
             i += 1
             try await forwarder.forward(message: "test")
-            
+
             if i == 2 {
                 break
             }
         }
-        
+
         try probe.expectMessagesInAnyOrder([
             "\(forwarderA.id) A forwarded: test",
             "\(forwarderB.id) B forwarded: test",
@@ -96,35 +96,35 @@ struct DistributedReceptionistTests {
         let receptionist = self.testCase.system.receptionist
         let probeA: ActorTestProbe<String> = self.testCase.testKit.makeTestProbe()
         let probeB: ActorTestProbe<String> = self.testCase.testKit.makeTestProbe()
-        
+
         let bossA = Boss(probe: probeA, name: "A", actorSystem: self.testCase.system)
         let bossB = Boss(probe: probeB, name: "B", actorSystem: self.testCase.system)
-        
+
         let workerA = Worker(name: "A", actorSystem: self.testCase.system)
         let workerB = Worker(name: "B", actorSystem: self.testCase.system)
         let workerC = Worker(name: "C", actorSystem: self.testCase.system)
-        
+
         try await bossA.findWorkers()
         try await bossB.findWorkers()
-        
+
         await receptionist.checkIn(workerA, with: .workers)
-        
+
         try probeA.expectMessage("\(bossA.id) A found \(workerA.id)")
         try probeB.expectMessage("\(bossB.id) B found \(workerA.id)")
-        
+
         try await bossB.done()
         try probeB.expectMessage("B done")
-        
+
         await receptionist.checkIn(workerB, with: .workers)
-        
+
         try probeA.expectMessage("\(bossA.id) A found \(workerB.id)")
         try probeB.expectNoMessage(for: .milliseconds(500))
-        
+
         try await bossA.done()
         try probeA.expectMessage("A done")
-        
+
         await receptionist.checkIn(workerC, with: .workers)
-        
+
         try probeA.expectNoMessage(for: .milliseconds(500))
         try probeB.expectNoMessage(for: .milliseconds(500))
     }
@@ -132,10 +132,10 @@ struct DistributedReceptionistTests {
     @Test
     func test_receptionist_shouldRespondWithEmptyRefForUnknownKey() async {
         let receptionist = self.testCase.system.receptionist
-        
+
         let ref = Forwarder(probe: nil, name: "C", actorSystem: self.testCase.system)
         await receptionist.checkIn(ref, with: .forwarders)
-        
+
         let listing = await receptionist.lookup(.unknown)
         listing.count.shouldEqual(0)
     }
@@ -144,12 +144,12 @@ struct DistributedReceptionistTests {
     @Test
     func test_receptionist_shouldNotRegisterTheSameRefTwice() async {
         let ref = Forwarder(probe: nil, name: "D", actorSystem: self.testCase.system)
-        
+
         await self.testCase.system.receptionist.checkIn(ref, with: .forwarders)
         await self.testCase.system.receptionist.checkIn(ref, with: .forwarders)
-        
+
         let listing = await self.testCase.system.receptionist.lookup(.forwarders)
-        
+
         listing.count.shouldEqual(1)
     }
 
@@ -158,13 +158,13 @@ struct DistributedReceptionistTests {
         let (first, second) = await self.testCase.setUpPair { settings in
             settings.enabled = true
         }
-        
+
         let ref = Forwarder(probe: nil, name: "D", actorSystem: first)
         await first.receptionist.checkIn(ref, with: .forwarders)
-        
+
         first.cluster.join(endpoint: second.cluster.node.endpoint)
         try await first.cluster.joined(node: second.cluster.node, within: .seconds(30))
-        
+
         try await self.testCase.testKit.eventually(within: .seconds(5)) {
             let lookup = await second.receptionist.lookup(.forwarders)
             guard let first = lookup.first, lookup.count == 1 else {
@@ -179,20 +179,20 @@ struct DistributedReceptionistTests {
         let (first, second) = await self.testCase.setUpPair { settings in
             settings.enabled = true
         }
-        
+
         let ref = Forwarder(probe: nil, name: "D", actorSystem: first)
         await first.receptionist.checkIn(ref, with: .forwarders)
-        
+
         first.cluster.join(endpoint: second.cluster.node.endpoint)
         try await first.cluster.joined(node: second.cluster.node, within: .seconds(30))
-        
+
         try await self.testCase.testKit.eventually(within: .seconds(5)) {
             let lookup = await second.receptionist.lookup(.forwarders)
             guard let first = lookup.first, lookup.count == 1 else {
                 throw TestError("Lookup returned but is empty: \(lookup)")
             }
             first.id.shouldEqual(ref.id)
-            
+
             let listing = await second.receptionist.listing(of: .forwarders)
             for await forwarder in listing {
                 forwarder.id.shouldEqual(ref.id)
@@ -205,20 +205,20 @@ struct DistributedReceptionistTests {
     func test_receptionist_shouldRemoveAndAddNewSingletonRef() async throws {
         var old: Forwarder? = Forwarder(probe: nil, name: "old", actorSystem: self.testCase.system)
         let new = Forwarder(probe: nil, name: "new", actorSystem: self.testCase.system)
-        
+
         await self.testCase.system.receptionist.checkIn(old!, with: .forwarders)
-        
+
         try await self.testCase.testKit.eventually(within: .seconds(2)) {
             let lookup = await self.testCase.system.receptionist.lookup(.forwarders)
             if lookup.count != 1 {
                 throw Boom("Expected lookup to contain ONLY \(old!.id), but was: \(lookup)")
             }
         }
-        
+
         // release the old ref
         old = nil
         await self.testCase.system.receptionist.checkIn(new, with: .forwarders)
-        
+
         try await self.testCase.testKit.eventually(within: .seconds(5)) {
             let lookup = await self.testCase.system.receptionist.lookup(.forwarders)
             if lookup.count != 1 {

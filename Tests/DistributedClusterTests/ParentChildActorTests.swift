@@ -146,7 +146,7 @@ struct ParentChildActorTests {
             }
         }
     }
-    
+
     let testCase: SingleClusterSystemTestCase
 
     init() async throws {
@@ -156,25 +156,25 @@ struct ParentChildActorTests {
     @Test
     func test_contextSpawn_shouldSpawnChildActorOnAppropriatePath() throws {
         let p: ActorTestProbe<ParentChildProbeProtocol> = self.testCase.testKit.makeTestProbe()
-        
+
         let parent: _ActorRef<ParentProtocol> = try self.testCase.system._spawn("parent", self.parentBehavior(probe: p.ref))
         parent.tell(.spawnChild(name: "kid", behavior: self.childBehavior(probe: p.ref)))
-        
+
         guard case .spawned(let child) = try p.expectMessage() else { throw p.error() }
-        
+
         let unknownName = "capybara"
         parent.tell(.findByName(name: unknownName))
         try p.expectMessage(.childNotFound(name: unknownName))
-        
+
         parent.tell(.findByName(name: child.id.name))
         try p.expectMessage(.childFound(name: child.id.name, ref: child)) // should return same (or equal) ref
-        
+
         parent.tell(.stopByName(name: child.id.name)) // stopping by name
         try p.expectMessage(.childFound(name: child.id.name, ref: child)) // we get the same, now dead, ref back
-        
+
         p.watch(child) // watching dead ref triggers terminated
         try p.expectTerminated(child)
-        
+
         parent.tell(.findByName(name: child.id.name)) // should not find that child anymore, it was stopped
         try p.expectMessage(.childNotFound(name: child.id.name))
     }
@@ -182,21 +182,21 @@ struct ParentChildActorTests {
     @Test
     func test_contextSpawnAnonymous_shouldSpawnChildActorOnAppropriatePath() throws {
         let p: ActorTestProbe<ParentChildProbeProtocol> = self.testCase.testKit.makeTestProbe()
-        
+
         let parent: _ActorRef<ParentProtocol> = try self.testCase.system._spawn("parent", self.parentBehavior(probe: p.ref))
         parent.tell(.spawnAnonymousChild(behavior: self.childBehavior(probe: p.ref)))
-        
+
         guard case .spawned(let child) = try p.expectMessage() else { throw p.error() }
-        
+
         parent.tell(.findByName(name: child.id.name))
         try p.expectMessage(.childFound(name: child.id.name, ref: child)) // should return same (or equal) ref
-        
+
         parent.tell(.stopByName(name: child.id.name)) // stopping by name
         try p.expectMessage(.childFound(name: child.id.name, ref: child)) // we get the same, now dead, ref back
-        
+
         p.watch(child) // watching dead ref triggers terminated
         try p.expectTerminated(child)
-        
+
         parent.tell(.findByName(name: child.id.name)) // should not find that child anymore, it was stopped
         try p.expectMessage(.childNotFound(name: child.id.name))
     }
@@ -204,19 +204,19 @@ struct ParentChildActorTests {
     @Test
     func test_contextSpawn_duplicateNameShouldFail() throws {
         let p: ActorTestProbe<ParentChildProbeProtocol> = self.testCase.testKit.makeTestProbe()
-        
+
         let parent: _ActorRef<ParentProtocol> = try self.testCase.system._spawn("parent-2", self.parentBehavior(probe: p.ref))
         parent.tell(.spawnChild(name: "kid", behavior: self.childBehavior(probe: p.ref)))
-        
+
         _ = try p.expectMessageMatching { x throws -> _ActorRef<ChildProtocol>? in
             switch x {
             case .spawned(let child): return child
             default: return nil
             }
         }
-        
+
         parent.tell(.spawnChild(name: "kid", behavior: self.childBehavior(probe: p.ref)))
-        
+
         _ = try p.expectMessageMatching { x throws -> ActorPath? in
             switch x {
             case .spawnFailed(let path): return path
@@ -228,29 +228,29 @@ struct ParentChildActorTests {
     @Test
     func test_contextStop_shouldStopChild() throws {
         let p: ActorTestProbe<ParentChildProbeProtocol> = self.testCase.testKit.makeTestProbe()
-        
+
         let parent: _ActorRef<ParentProtocol> = try self.testCase.system._spawn("parent-3", self.parentBehavior(probe: p.ref, notifyWhenChildStops: true))
-        
+
         parent.tell(.spawnChild(name: "kid", behavior: self.childBehavior(probe: p.ref)))
-        
+
         guard case .spawned = try p.expectMessage() else { throw p.error() }
-        
+
         parent.tell(.stopByName(name: "kid"))
-        
+
         _ = try p.expectMessageMatching { x throws -> String? in
             switch x {
             case .childFound(name: "kid", _): return "kid" // name // FIXME: return name
             default: return nil
             }
         }
-        
+
         try p.expectMessage(.childStopped(name: "kid"))
     }
 
     @Test
     func test_contextStop_shouldThrowIfRefIsNotChild() throws {
         let p: ActorTestProbe<String> = self.testCase.testKit.makeTestProbe()
-        
+
         let parent: _ActorRef<String> = try self.testCase.system._spawn(
             "parent-4",
             .receive { context, _ in
@@ -263,11 +263,11 @@ struct ParentChildActorTests {
                 return .same
             }
         )
-        
+
         p.watch(parent)
-        
+
         parent.tell("stop")
-        
+
         try p.expectMessage().shouldStartWith(prefix: "Errored:_ActorContextError(attemptedStoppingNonChildActor(ref: _AddressableActorRef(/user/$testProbe")
         try p.expectTerminated(parent)
     }
@@ -275,7 +275,7 @@ struct ParentChildActorTests {
     @Test
     func test_contextStop_shouldThrowIfRefIsMyself() throws {
         let p: ActorTestProbe<String> = self.testCase.testKit.makeTestProbe()
-        
+
         let parent: _ActorRef<String> = try self.testCase.system._spawn(
             "parent-5",
             .receive { context, _ in
@@ -288,11 +288,11 @@ struct ParentChildActorTests {
                 return .same
             }
         )
-        
+
         p.watch(parent)
-        
+
         parent.tell("stop")
-        
+
         try p.expectMessage().shouldStartWith(prefix: "Errored:_ActorContextError(attemptedStoppingMyselfUsingContext(ref: _AddressableActorRef(/user/parent-5")
         try p.expectTerminated(parent)
     }
@@ -302,7 +302,7 @@ struct ParentChildActorTests {
         let p: ActorTestProbe<Never> = self.testCase.testKit.makeTestProbe("p")
         let p1: ActorTestProbe<ParentChildProbeProtocol> = self.testCase.testKit.makeTestProbe("p1")
         let p2: ActorTestProbe<ParentChildProbeProtocol> = self.testCase.testKit.makeTestProbe("p2")
-        
+
         let parent: _ActorRef<String> = try self.testCase.system._spawn(
             .anonymous,
             .receive { context, msg in
@@ -316,7 +316,7 @@ struct ParentChildActorTests {
                         }
                     )
                     try context.stop(child: refA)
-                    
+
                     let refB: _ActorRef<ChildProtocol> = try context._spawn(
                         "child",
                         .setup { context in
@@ -325,23 +325,23 @@ struct ParentChildActorTests {
                         }
                     )
                     try context.stop(child: refB)
-                    
+
                     return .same
                 default:
                     return .ignore
                 }
             }
         )
-        
+
         p.watch(parent)
         parent.tell("spawn")
-        
+
         // TODO: would be useful to provide some expectSpawned since it's such a common thing
         guard case .spawned(let childA) = try p1.expectMessage() else { throw p1.error() }
         p1.watch(childA)
         guard case .spawned(let childB) = try p2.expectMessage() else { throw p2.error() }
         p2.watch(childB)
-        
+
         try p1.expectTerminated(childA, within: .milliseconds(500))
         try p2.expectTerminated(childB, within: .milliseconds(500))
         try p.expectNoTerminationSignal(for: .milliseconds(100))
@@ -350,9 +350,9 @@ struct ParentChildActorTests {
     @Test
     func test_throwOfSpawnedChild_shouldNotCauseParentToTerminate() throws {
         let p: ActorTestProbe<ParentChildProbeProtocol> = self.testCase.testKit.makeTestProbe()
-        
+
         let childBehavior: _Behavior<ChildProtocol> = self.childBehavior(probe: p.ref)
-        
+
         let parentBehavior = _Behavior<String>.receive { context, msg in
             switch msg {
             case "spawn":
@@ -363,29 +363,29 @@ struct ParentChildActorTests {
                 return .ignore
             }
         }
-        
+
         let parent: _ActorRef<String> = try self.testCase.system._spawn("watchingParent", parentBehavior)
-        
+
         p.watch(parent)
         parent.tell("spawn")
-        
+
         guard case .spawned(let child) = try p.expectMessage() else { throw p.error() }
         p.watch(child)
-        
+
         child.tell(.throwWhoops)
-        
+
         // since the parent watched the child, it will also terminate
         try p.expectTerminated(child)
         try p.expectNoTerminationSignal(for: .milliseconds(200))
-        
+
         // yet it MUST allow spawning another child with the same name now, since the previous one has terminated
         parent.tell("spawn")
-        
+
         let secondChild: _ActorRef<ChildProtocol> = try p.expectMessageMatching {
             guard case .spawned(let ref) = $0 else { return nil }
             return p.watch(ref)
         }
-        
+
         secondChild.id.path.shouldEqual(child.id.path)
         secondChild.id.incarnation.shouldNotEqual(child.id.incarnation)
     }
@@ -393,9 +393,9 @@ struct ParentChildActorTests {
     @Test
     func test_throwOfWatchedSpawnedChild_shouldCauseParentToTerminate() throws {
         let p: ActorTestProbe<ParentChildProbeProtocol> = self.testCase.testKit.makeTestProbe()
-        
+
         let stoppingChildBehavior = self.childBehavior(probe: p.ref)
-        
+
         let parentBehavior = _Behavior<String>.receive { context, msg in
             switch msg {
             case "spawn":
@@ -406,17 +406,17 @@ struct ParentChildActorTests {
                 return .ignore
             }
         }
-        
+
         let parent: _ActorRef<String> = try self.testCase.system._spawn("watchingParent", parentBehavior)
-        
+
         p.watch(parent)
         parent.tell("spawn")
-        
+
         guard case .spawned(let child) = try p.expectMessage() else { throw p.error() }
         p.watch(child)
-        
+
         child.tell(.throwWhoops)
-        
+
         // since the parent watched the child, it will also terminate
         try p.expectTerminatedInAnyOrder([child.asAddressable, parent.asAddressable])
     }
@@ -425,9 +425,9 @@ struct ParentChildActorTests {
     func test_watchedChild_shouldProduceInSingleTerminatedSignal() throws {
         let p: ActorTestProbe<ParentChildProbeProtocol> = self.testCase.testKit.makeTestProbe()
         let pChild: ActorTestProbe<String> = self.testCase.testKit.makeTestProbe()
-        
+
         let childBehavior: _Behavior<ChildProtocol> = self.childBehavior(probe: p.ref)
-        
+
         let parentBehavior = _Behavior<String>.receive { context, msg in
             switch msg {
             case "spawn":
@@ -450,20 +450,20 @@ struct ParentChildActorTests {
             }
             return .same
         }
-        
+
         let parent: _ActorRef<String> = try self.testCase.system._spawn("watchingParent", parentBehavior)
-        
+
         p.watch(parent)
         parent.tell("spawn")
-        
+
         guard case .spawned(let child) = try p.expectMessage() else { throw p.error() }
         p.watch(child)
-        
+
         child.tell(.howAreYou(replyTo: pChild.ref))
         _ = try pChild.expectMessage() // only expecting the ping pong to give parent time enough to watch the child "properly" and not its dead cell
-        
+
         child.tell(.throwWhoops)
-        
+
         // since the parent watched the child, it will also terminate
         try p.expectTerminated(child)
         switch try p.expectMessage() {
@@ -478,7 +478,7 @@ struct ParentChildActorTests {
     @Test
     func test_spawnWatch_shouldSpawnAWatchedActor() throws {
         let p: ActorTestProbe<ParentChildProbeProtocol> = self.testCase.testKit.makeTestProbe()
-        
+
         let parentBehavior: _Behavior<String> = .receive { context, message in
             switch message {
             case "spawn":
@@ -489,44 +489,44 @@ struct ParentChildActorTests {
             }
             return .same
         }
-        
+
         let parent = try self.testCase.system._spawn(
             .anonymous,
             parentBehavior.receiveSignal { _, signal in
                 if case let terminated as _Signals.Terminated = signal {
                     p.tell(.childStopped(name: terminated.id.name))
                 }
-                
+
                 return .same
             }
         )
-        
+
         parent.tell("spawn")
-        
+
         guard case .spawned(let childRef) = try p.expectMessage() else { throw p.error() }
         guard case .childStopped(let name) = try p.expectMessage() else { throw p.error() }
-        
+
         childRef.id.name.shouldEqual(name)
     }
 
     @Test
     func test_stopParent_shouldWaitForChildrenToStop() throws {
         let p: ActorTestProbe<ParentChildProbeProtocol> = self.testCase.testKit.makeTestProbe()
-        
+
         let parent = try self.testCase.system._spawn("parent", self.parentBehavior(probe: p.ref))
         parent.tell(.spawnChild(name: "child", behavior: self.childBehavior(probe: p.ref)))
         p.watch(parent)
-        
+
         guard case .spawned(let childRef) = try p.expectMessage() else { throw p.error() }
         p.watch(childRef)
-        
+
         childRef.tell(.makeChild(name: "grandChild", behavior: self.childBehavior(probe: p.ref)))
-        
+
         guard case .spawned(let grandchildRef) = try p.expectMessage() else { throw p.error() }
         p.watch(grandchildRef)
-        
+
         parent.tell(.stop)
-        
+
         try p.expectTerminatedInAnyOrder([parent.asAddressable, childRef.asAddressable, grandchildRef.asAddressable])
     }
 
@@ -534,7 +534,7 @@ struct ParentChildActorTests {
     func test_spawnStopSpawnManyTimesWithSameName_shouldProperlyTerminateAllChildren() throws {
         let p: ActorTestProbe<Int> = self.testCase.testKit.makeTestProbe("p")
         let childCount = 100
-        
+
         let parent: _ActorRef<String> = try self.testCase.system._spawn(
             .anonymous,
             .receive { context, msg in
@@ -548,22 +548,22 @@ struct ParentChildActorTests {
                                 if signal is _Signals._PostStop {
                                     p.tell(count)
                                 }
-                                
+
                                 return .same
                             }
                         )
                         try context.stop(child: ref)
                     }
-                    
+
                     return .same
                 default:
                     return .ignore
                 }
             }
         )
-        
+
         parent.tell("spawn")
-        
+
         let messages = try p.expectMessages(count: childCount)
         messages.sorted().shouldEqual((1 ... childCount).sorted())
     }

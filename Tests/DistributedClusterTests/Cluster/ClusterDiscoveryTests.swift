@@ -21,12 +21,11 @@ import Testing
 
 @Suite(.timeLimit(.minutes(1)), .serialized)
 struct ClusterDiscoveryTests {
-    
     let A = Cluster.Member(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "A", host: "1.1.1.1", port: 7337), nid: .random()), status: .up)
     let B = Cluster.Member(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "B", host: "2.2.2.2", port: 8228), nid: .random()), status: .up)
-    
+
     let testCase: SingleClusterSystemTestCase
-    
+
     init() async throws {
         self.testCase = try await SingleClusterSystemTestCase(name: String(describing: type(of: self)))
     }
@@ -37,16 +36,16 @@ struct ClusterDiscoveryTests {
         let settings = ServiceDiscoverySettings(discovery, service: "example")
         let clusterProbe = self.testCase.testKit.makeTestProbe(expecting: ClusterShell.Message.self)
         _ = try self.testCase.system._spawn("discovery", DiscoveryShell(settings: settings, cluster: clusterProbe.ref).behavior)
-        
+
         discovery.subscribed.wait()
-        
+
         // [A], join A
         discovery.sendNext(.success([self.A.node.endpoint]))
         guard case .command(.handshakeWith(let node1)) = try clusterProbe.expectMessage() else {
             throw self.testCase.testKit.fail(line: #line - 1)
         }
         node1.shouldEqual(self.A.node.endpoint)
-        
+
         // [A, B], join B
         discovery.sendNext(.success([self.A.node.endpoint, self.B.node.endpoint]))
         guard case .command(.handshakeWith(let node2)) = try clusterProbe.expectMessage() else {
@@ -55,15 +54,15 @@ struct ClusterDiscoveryTests {
         node2.shouldEqual(self.B.node.endpoint)
         try clusterProbe.expectNoMessage(for: .milliseconds(300)) // i.e. it should not send another join for `A` we already did that
         // sending another join for A would be harmless in general, but let's avoid causing more work for the system?
-        
+
         // [A, B]; should not really emit like this but even if it did, no reason to issue more joins
         discovery.sendNext(.success([self.A.node.endpoint, self.B.node.endpoint]))
         try clusterProbe.expectNoMessage(for: .milliseconds(200))
-        
+
         // [A], removals do not cause removals / downs, one could do this via a downing provider if one wanted to
         discovery.sendNext(.success([self.A.node.endpoint]))
         try clusterProbe.expectNoMessage(for: .milliseconds(200))
-        
+
         // [A, B], B is back, this could mean it's a "new" B, so let's issue a join just to be sure.
         discovery.sendNext(.success([self.A.node.endpoint, self.B.node.endpoint]))
         guard case .command(.handshakeWith(let node3)) = try clusterProbe.expectMessage() else {
@@ -78,7 +77,7 @@ struct ClusterDiscoveryTests {
         let settings = ServiceDiscoverySettings(static: Set(nodes))
         let clusterProbe = self.testCase.testKit.makeTestProbe(expecting: ClusterShell.Message.self)
         _ = try self.testCase.system._spawn("discovery", DiscoveryShell(settings: settings, cluster: clusterProbe.ref).behavior)
-        
+
         try clusterProbe.expectMessages(count: 2).forEach { message in
             guard case .command(.handshakeWith(let node)) = message else {
                 throw self.testCase.testKit.fail(line: #line - 1)
@@ -104,16 +103,16 @@ struct ClusterDiscoveryTests {
         )
         let clusterProbe = self.testCase.testKit.makeTestProbe(expecting: ClusterShell.Message.self)
         _ = try self.testCase.system._spawn("discovery", DiscoveryShell(settings: settings, cluster: clusterProbe.ref).behavior)
-        
+
         discovery.subscribed.wait()
-        
+
         // [A], join A
         discovery.sendNext(.success([ExampleK8sInstance(endpoint: self.A.node.endpoint)]))
         guard case .command(.handshakeWith(let node1)) = try clusterProbe.expectMessage() else {
             throw self.testCase.testKit.fail(line: #line - 1)
         }
         node1.shouldEqual(self.A.node.endpoint)
-        
+
         // [A, B], join B
         discovery.sendNext(.success([ExampleK8sInstance(endpoint: self.A.node.endpoint), ExampleK8sInstance(endpoint: self.B.node.endpoint)]))
         guard case .command(.handshakeWith(let node2)) = try clusterProbe.expectMessage() else {
@@ -129,16 +128,16 @@ struct ClusterDiscoveryTests {
         let settings = ServiceDiscoverySettings(discovery, service: "example")
         let clusterProbe = self.testCase.testKit.makeTestProbe(expecting: ClusterShell.Message.self)
         let ref = try self.testCase.system._spawn("discovery", DiscoveryShell(settings: settings, cluster: clusterProbe.ref).behavior)
-        
+
         discovery.subscribed.wait()
-        
+
         // [A], join A
         discovery.sendNext(.success([self.A.node.endpoint]))
         guard case .command(.handshakeWith(let node1)) = try clusterProbe.expectMessage() else {
             throw self.testCase.testKit.fail(line: #line - 1)
         }
         node1.shouldEqual(self.A.node.endpoint)
-        
+
         ref._sendSystemMessage(.stop)
         _ = discovery.cancelled.wait(atMost: .seconds(3))
     }

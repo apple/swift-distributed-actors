@@ -25,7 +25,7 @@ struct TraversalTests {
     struct ActorReady: Codable {
         let name: String
     }
-    
+
     let testCase: SingleClusterSystemTestCase
 
     init() async throws {
@@ -81,7 +81,7 @@ struct TraversalTests {
                 return .continue
             }
         }
-        
+
         switch found {
         case .results(let inners):
             inners.shouldContain("inner-1")

@@ -146,7 +146,6 @@ func pinfo(_ message: String, file: String = #fileID, line: Int = #line) {
     """)
 }
 
-
 internal func _hackyPThreadThreadId() -> String {
     #if os(macOS)
     var threadId: UInt64 = 0

@@ -18,7 +18,6 @@ import Foundation
 import Testing
 
 struct DurationTests {
-    
     @Test
     func test_duration_rendersPrettyDurations() {
         Duration.nanoseconds(12).prettyDescription.shouldEqual("12ns")

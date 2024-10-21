@@ -13,8 +13,8 @@
 //===----------------------------------------------------------------------===//
 
 @testable import DistributedCluster
-import Testing
 import Foundation
+import Testing
 
 public func getRandomNumbers(count: Int) -> [UInt8] {
     var values: [UInt8] = .init(repeating: 0, count: count)
@@ -30,14 +30,13 @@ public func getRandomNumbers(count: Int) -> [UInt8] {
 }
 
 struct HeapTests {
-    
     @Test
     func testSimple() throws {
         var h = Heap<Int>(type: .maxHeap)
         h.append(1)
         h.append(3)
         h.append(2)
-        #expect(3 == h.removeRoot())
+        #expect(h.removeRoot() == 3)
         #expect(h.checkHeapProperty())
     }
 
@@ -63,7 +62,7 @@ struct HeapTests {
             #expect(minHeap.checkHeapProperty(), "\(minHeap.debugDescription)")
             #expect(maxHeap.checkHeapProperty())
         }
-        #expect(-1 == minHeapInputPtr)
+        #expect(minHeapInputPtr == -1)
         #expect(input.count == maxHeapInputPtr)
     }
 
@@ -86,7 +85,7 @@ struct HeapTests {
             minHeapInputPtr += 1
         }
         #expect(input.count == minHeapInputPtr)
-        #expect(-1 == maxHeapInputPtr)
+        #expect(maxHeapInputPtr == -1)
     }
 
     @Test
@@ -116,7 +115,7 @@ struct HeapTests {
             minHeapInputPtr += 1
         }
         #expect(input.count == minHeapInputPtr)
-        #expect(-1 == maxHeapInputPtr)
+        #expect(maxHeapInputPtr == -1)
     }
 
     @Test
@@ -175,8 +174,8 @@ struct HeapTests {
             #expect(maxHeap.checkHeapProperty())
         }
 
-        #expect(0 == minHeap.underestimatedCount)
-        #expect(0 == maxHeap.underestimatedCount)
+        #expect(minHeap.underestimatedCount == 0)
+        #expect(maxHeap.underestimatedCount == 0)
     }
 
     func testRemoveElement() throws {

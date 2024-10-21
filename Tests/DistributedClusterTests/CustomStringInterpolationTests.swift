@@ -17,7 +17,6 @@ import DistributedActorsTestKit
 import Testing
 
 struct CustomStringInterpolationTests {
-    
     @Test
     func test_leftPadTo_whenValueShorterThanPadTo() {
         let padded = "\("hello world", leftPadTo: 16)"

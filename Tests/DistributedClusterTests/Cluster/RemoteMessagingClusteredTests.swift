@@ -19,13 +19,12 @@ import Testing
 
 @Suite(.timeLimit(.minutes(1)), .serialized)
 struct RemoteMessagingClusteredTests {
-    
     let testCase: ClusteredActorSystemsTestCase
-    
+
     init() throws {
         self.testCase = try ClusteredActorSystemsTestCase()
     }
-    
+
     // TODO: This will start failing once we implement _mangledTypeName manifests
     @Test
     func test_association_shouldStayAliveWhenMessageSerializationFailsOnReceivingSide() async throws {
@@ -33,12 +32,12 @@ struct RemoteMessagingClusteredTests {
             settings.serialization.register(SerializationTestMessage.self)
             settings.serialization.register(EchoTestMessage.self)
         }
-        
+
         let remote = await self.testCase.setUpNode("remote") { settings in
             // do not register SerializationTestMessage on purpose, we want it to fail when receiving
             settings.serialization.register(EchoTestMessage.self)
         }
-        
+
         let probeOnRemote = self.testCase.testKit(remote).makeTestProbe(expecting: String.self)
         let nonCodableRefOnRemoteSystem: _ActorRef<SerializationTestMessage> = try remote._spawn(
             "remoteAcquaintance1",
@@ -47,7 +46,7 @@ struct RemoteMessagingClusteredTests {
                 return .same
             }
         )
-        
+
         let codableRefOnRemoteSystem: _ActorRef<String> = try remote._spawn(
             "remoteAcquaintance2",
             .receiveMessage { message in
@@ -55,19 +54,19 @@ struct RemoteMessagingClusteredTests {
                 return .same
             }
         )
-        
+
         local.cluster.join(endpoint: remote.cluster.node.endpoint)
-        
+
         try self.testCase.assertAssociated(local, withExactly: remote.settings.bindNode)
-        
+
         let nonCodableResolvedRef = self.testCase.resolveRef(local, type: SerializationTestMessage.self, id: nonCodableRefOnRemoteSystem.id, on: remote)
         nonCodableResolvedRef.tell(SerializationTestMessage(serializationBehavior: .succeed))
-        
+
         try probeOnRemote.expectNoMessage(for: .milliseconds(500))
-        
+
         let codableResolvedRef = self.testCase.resolveRef(local, type: String.self, id: codableRefOnRemoteSystem.id, on: remote)
         codableResolvedRef.tell("HELLO")
-        
+
         try probeOnRemote.expectMessage("forwarded:HELLO")
     }
 
@@ -78,7 +77,7 @@ struct RemoteMessagingClusteredTests {
                 settings.serialization.register(SerializationTestMessage.self)
                 settings.serialization.register(EchoTestMessage.self)
             }
-            
+
             let probeOnRemote = self.testCase.testKit(remote).makeTestProbe(expecting: String.self)
             let refOnRemoteSystem: _ActorRef<SerializationTestMessage> = try remote._spawn(
                 .anonymous,
@@ -87,16 +86,16 @@ struct RemoteMessagingClusteredTests {
                     return .same
                 }
             )
-            
+
             local.cluster.join(endpoint: remote.cluster.node.endpoint)
-            
+
             try self.testCase.assertAssociated(local, withExactly: remote.settings.bindNode)
-            
+
             let nonCodableResolvedRef = self.testCase.resolveRef(local, type: SerializationTestMessage.self, id: refOnRemoteSystem.id, on: remote)
             nonCodableResolvedRef.tell(SerializationTestMessage(serializationBehavior: .failEncoding))
-            
+
             try probeOnRemote.expectNoMessage(for: .milliseconds(100))
-            
+
             nonCodableResolvedRef.tell(SerializationTestMessage(serializationBehavior: .succeed))
             try probeOnRemote.expectMessage("forwarded:SerializationTestMessage")
         }
@@ -108,7 +107,7 @@ struct RemoteMessagingClusteredTests {
             settings.serialization.register(SerializationTestMessage.self)
             settings.serialization.register(EchoTestMessage.self)
         }
-        
+
         let probeOnRemote = self.testCase.testKit(remote).makeTestProbe(expecting: String.self)
         let nonCodableRefOnRemoteSystem: _ActorRef<SerializationTestMessage> = try remote._spawn(
             .anonymous,
@@ -117,16 +116,16 @@ struct RemoteMessagingClusteredTests {
                 return .same
             }
         )
-        
+
         local.cluster.join(endpoint: remote.cluster.node.endpoint)
-        
+
         try self.testCase.assertAssociated(local, withExactly: remote.settings.bindNode)
-        
+
         let nonCodableResolvedRef = self.testCase.resolveRef(local, type: SerializationTestMessage.self, id: nonCodableRefOnRemoteSystem.id, on: remote)
         nonCodableResolvedRef.tell(SerializationTestMessage(serializationBehavior: .failDecoding))
-        
+
         try probeOnRemote.expectNoMessage(for: .milliseconds(100))
-        
+
         nonCodableResolvedRef.tell(SerializationTestMessage(serializationBehavior: .succeed))
         try probeOnRemote.expectMessage("forwarded:SerializationTestMessage")
     }
@@ -137,7 +136,7 @@ struct RemoteMessagingClusteredTests {
             settings.serialization.register(SerializationTestMessage.self)
             settings.serialization.register(EchoTestMessage.self)
         }
-        
+
         let testKit = ActorTestKit(local)
         let probe = testKit.makeTestProbe(expecting: String.self)
         let localRef: _ActorRef<String> = try local._spawn(
@@ -147,9 +146,9 @@ struct RemoteMessagingClusteredTests {
                 return .same
             }
         )
-        
+
         let localResolvedRefWithLocalAddress = self.testCase.resolveRef(local, type: String.self, id: localRef.id, on: local)
-        
+
         localResolvedRefWithLocalAddress.tell("hello")
         try probe.expectMessage("received:hello")
     }
@@ -161,9 +160,9 @@ struct RemoteMessagingClusteredTests {
             settings.serialization.register(SerializationTestMessage.self)
             settings.serialization.register(EchoTestMessage.self)
         }
-        
+
         let probe = self.testCase.testKit(local).makeTestProbe("X", expecting: String.self)
-        
+
         let localRef: _ActorRef<String> = try local._spawn(
             "localRef",
             .receiveMessage { message in
@@ -171,7 +170,7 @@ struct RemoteMessagingClusteredTests {
                 return .same
             }
         )
-        
+
         let refOnRemoteSystem: _ActorRef<EchoTestMessage> = try remote._spawn(
             "remoteAcquaintance",
             .receiveMessage { message in
@@ -179,14 +178,14 @@ struct RemoteMessagingClusteredTests {
                 return .same
             }
         )
-        
+
         local.cluster.join(endpoint: remote.cluster.node.endpoint)
-        
+
         try self.testCase.assertAssociated(local, withExactly: remote.settings.bindNode)
-        
+
         let remoteRef = self.testCase.resolveRef(local, type: EchoTestMessage.self, id: refOnRemoteSystem.id, on: remote)
         remoteRef.tell(EchoTestMessage(string: "test", respondTo: localRef))
-        
+
         try probe.expectMessage("response:echo:test")
     }
 
@@ -197,9 +196,9 @@ struct RemoteMessagingClusteredTests {
             settings.serialization.register(SerializationTestMessage.self)
             settings.serialization.register(EchoTestMessage.self)
         }
-        
+
         let probe = self.testCase.testKit(local).makeTestProbe("X", expecting: String.self)
-        
+
         let refOnRemoteSystem: _ActorRef<EchoTestMessage> = try remote._spawn(
             "remoteAcquaintance",
             .receiveMessage { message in
@@ -207,13 +206,13 @@ struct RemoteMessagingClusteredTests {
                 return .same
             }
         )
-        
+
         local.cluster.join(endpoint: remote.cluster.node.endpoint)
-        
+
         try self.testCase.assertAssociated(local, withExactly: remote.settings.bindNode)
-        
+
         let remoteRef = self.testCase.resolveRef(local, type: EchoTestMessage.self, id: refOnRemoteSystem.id, on: remote)
-        
+
         let _: _ActorRef<Int> = try local._spawn(
             "localRef",
             .setup { context in
@@ -224,13 +223,13 @@ struct RemoteMessagingClusteredTests {
                         return .same
                     }
                 )
-                
+
                 remoteRef.tell(EchoTestMessage(string: "test", respondTo: child))
-                
+
                 return .receiveMessage { _ in .same }
             }
         )
-        
+
         try probe.expectMessage("response:echo:test")
     }
 
@@ -241,9 +240,9 @@ struct RemoteMessagingClusteredTests {
             settings.serialization.register(SerializationTestMessage.self)
             settings.serialization.register(EchoTestMessage.self)
         }
-        
+
         let probe = self.testCase.testKit(local).makeTestProbe("X", expecting: String.self)
-        
+
         let refOnRemoteSystem: _ActorRef<EchoTestMessage> = try remote._spawn(
             "remoteAcquaintance",
             .receiveMessage { message in
@@ -251,13 +250,13 @@ struct RemoteMessagingClusteredTests {
                 return .same
             }
         )
-        
+
         local.cluster.join(endpoint: remote.cluster.node.endpoint)
-        
+
         try self.testCase.assertAssociated(local, withExactly: remote.settings.bindNode)
-        
+
         let remoteRef = self.testCase.resolveRef(local, type: EchoTestMessage.self, id: refOnRemoteSystem.id, on: remote)
-        
+
         let _: _ActorRef<WrappedString> = try local._spawn(
             "localRef",
             .setup { context in
@@ -269,7 +268,7 @@ struct RemoteMessagingClusteredTests {
                 }
             }
         )
-        
+
         try probe.expectMessage("response:echo:test")
     }
 
@@ -280,21 +279,21 @@ struct RemoteMessagingClusteredTests {
             settings.serialization.register(EchoTestMessage.self)
         }
         remote.cluster.join(endpoint: local.cluster.node.endpoint)
-        
+
         try self.testCase.assertAssociated(local, withExactly: remote.cluster.node)
-        
+
         let thirdSystem = await self.testCase.setUpNode("ClusterAssociationTests") { settings in
             settings.bindPort = 9119
             settings.serialization.register(SerializationTestMessage.self)
             settings.serialization.register(EchoTestMessage.self)
         }
         defer { try! thirdSystem.shutdown().wait() }
-        
+
         thirdSystem.cluster.join(endpoint: local.cluster.node.endpoint)
         thirdSystem.cluster.join(endpoint: remote.cluster.node.endpoint)
         try self.testCase.assertAssociated(thirdSystem, withExactly: [local.cluster.node, remote.cluster.node])
         let thirdTestKit = ActorTestKit(thirdSystem)
-        
+
         let localRef: _ActorRef<EchoTestMessage> = try local._spawn(
             "Local",
             .receiveMessage { message in
@@ -302,9 +301,9 @@ struct RemoteMessagingClusteredTests {
                 return .stop
             }
         )
-        
+
         let localRefRemote = remote._resolveKnownRemote(localRef, onRemoteSystem: local)
-        
+
         let remoteRef: _ActorRef<EchoTestMessage> = try remote._spawn(
             "Remote",
             .receiveMessage { message in
@@ -312,13 +311,13 @@ struct RemoteMessagingClusteredTests {
                 return .stop
             }
         )
-        
+
         let remoteRefThird = thirdSystem._resolveKnownRemote(remoteRef, onRemoteSystem: remote)
-        
+
         let probeThird = thirdTestKit.makeTestProbe(expecting: String.self)
-        
+
         remoteRefThird.tell(EchoTestMessage(string: "test", respondTo: probeThird.ref))
-        
+
         try probeThird.expectMessage().shouldEqual("local:remote:test")
     }
 }

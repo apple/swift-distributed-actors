@@ -17,7 +17,6 @@ import DistributedActorsTestKit
 import Testing
 
 struct BlockingReceptacleTests {
-    
     @Test
     func test_blockingReceptacle_singleThreadedOfferWait() {
         let receptacle: BlockingReceptacle<String> = BlockingReceptacle()

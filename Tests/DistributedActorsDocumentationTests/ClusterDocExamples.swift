@@ -24,7 +24,6 @@ import Testing
 
 @Suite(.serialized)
 struct ClusterDocExamples {
-    
     @Test
     func example_receive_behavior() throws {
         // tag::joining[]

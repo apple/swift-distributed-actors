@@ -17,7 +17,6 @@ import DistributedActorsTestKit
 import Testing
 
 struct ActorNamingTests {
-    
     @Test
     func test_makeName_unique() {
         var context = ActorNamingContext()

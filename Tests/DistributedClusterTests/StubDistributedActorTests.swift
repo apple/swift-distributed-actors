@@ -21,17 +21,16 @@ import Testing
 
 @Suite(.timeLimit(.minutes(1)), .serialized)
 struct StubDistributedActorTests {
-    
     let testCase: SingleClusterSystemTestCase
 
     init() async throws {
         self.testCase = try await SingleClusterSystemTestCase(name: String(describing: type(of: self)))
     }
-    
+
     @Test
     func test_StubDistributedActor_shouldAlwaysResolveAsRemote() {
         let anyID = self.testCase.system.assignID(StubDistributedActor.self)
-        
+
         let resolved = self.testCase.system._resolveStub(id: anyID)
         __isRemoteActor(resolved).shouldBeTrue()
     }

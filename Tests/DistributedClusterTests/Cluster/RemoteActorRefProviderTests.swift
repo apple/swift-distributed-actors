@@ -19,7 +19,6 @@ import Testing
 
 @Suite(.timeLimit(.minutes(1)), .serialized)
 struct RemoteActorRefProviderTests {
-    
     let testCase: SingleClusterSystemTestCase
 
     init() async throws {
@@ -42,25 +41,25 @@ struct RemoteActorRefProviderTests {
         let theOne = TheOneWhoHasNoParent(local: self.testCase.system.cluster.node)
         let guardian = _Guardian(parent: theOne, name: "user", localNode: self.testCase.system.cluster.node, system: self.testCase.system)
         let localProvider = LocalActorRefProvider(root: guardian)
-        
+
         var settings = ClusterSystemSettings(name: "\(Self.self)")
         settings.endpoint = self.localNode.endpoint
         settings.nid = self.localNode.nid
         let clusterShell = ClusterShell(settings: settings)
         let provider = RemoteActorRefProvider(settings: self.testCase.system.settings, cluster: clusterShell, localProvider: localProvider)
-        
+
         let node = Cluster.Node(endpoint: .init(systemName: "system", host: "3.3.3.3", port: 2322), nid: .random())
         let remoteNode = ActorID(remote: node, path: try ActorPath._user.appending("henry").appending("hacker"), incarnation: ActorIncarnation(1337))
         let resolveContext = _ResolveContext<String>(id: remoteNode, system: self.testCase.system)
-        
+
         // when
         let madeUpRef = provider._resolveAsRemoteRef(resolveContext, remoteAddress: remoteNode)
         let _: _ActorRef<String> = madeUpRef // check inferred type
-        
+
         // then
         pinfo("Made remote ref: \(madeUpRef)")
         "\(madeUpRef)".shouldEqual("_ActorRef<String>(sact://system@3.3.3.3:2322/user/henry/hacker)")
-        
+
         // Note: Attempting to send to it will not work, we have not associated and there's no real system around here
         // so this concludes the trivial test here; at least it shows that we resolve and soundness checks how we print remote refs
         //
@@ -75,10 +74,10 @@ struct RemoteActorRefProviderTests {
         let ref: _ActorRef<String> = try self.testCase.system._spawn("ignoresStrings", .stop)
         var id: ActorID = ref.id
         id._location = .remote(self.testCase.system.settings.bindNode)
-        
+
         let resolveContext = _ResolveContext<Int>(id: id, system: self.testCase.system)
         let resolvedRef = self.testCase.system._resolve(context: resolveContext)
-        
+
         "\(resolvedRef)".shouldEqual("_ActorRef<Int>(/dead/user/ignoresStrings)")
     }
 
@@ -87,10 +86,10 @@ struct RemoteActorRefProviderTests {
         let ref: _ActorRef<DeadLetter> = self.testCase.system.deadLetters
         var id: ActorID = ref.id
         id._location = .remote(self.testCase.system.settings.bindNode)
-        
+
         let resolveContext = _ResolveContext<DeadLetter>(id: id, system: self.testCase.system)
         let resolvedRef = self.testCase.system._resolve(context: resolveContext)
-        
+
         "\(resolvedRef)".shouldEqual("_ActorRef<DeadLetter>(/dead/letters)")
     }
 
@@ -100,10 +99,10 @@ struct RemoteActorRefProviderTests {
         var id: ActorID = ref.id
         let unknownNode = Cluster.Node(endpoint: .init(systemName: "something", host: "1.1.1.1", port: 1111), nid: Cluster.Node.ID(1211))
         id._location = .remote(unknownNode)
-        
+
         let resolveContext = _ResolveContext<DeadLetter>(id: id, system: self.testCase.system)
         let resolvedRef = self.testCase.system._resolve(context: resolveContext)
-        
+
         "\(resolvedRef)".shouldEqual("_ActorRef<DeadLetter>(sact://something@1.1.1.1:1111/dead/letters)")
     }
 
@@ -111,23 +110,23 @@ struct RemoteActorRefProviderTests {
     func test_remoteActorRefProvider_shouldResolveRemoteAlreadyDeadRef_forTypeMismatchOfActorAndResolveContext() throws {
         let unknownNode = Cluster.Node(endpoint: .init(systemName: "something", host: "1.1.1.1", port: 1111), nid: Cluster.Node.ID(1211))
         let id: ActorID = try .init(remote: unknownNode, path: ActorPath._dead.appending("already"), incarnation: .wellKnown)
-        
+
         let resolveContext = _ResolveContext<DeadLetter>(id: id, system: self.testCase.system)
         let resolvedRef = self.testCase.system._resolve(context: resolveContext)
-        
+
         "\(resolvedRef)".shouldEqual("_ActorRef<DeadLetter>(sact://something@1.1.1.1:1111/dead/already)")
     }
 
     @Test
     func test_remoteActorRefProvider_shouldResolveDeadRef_forSerializedDeadLettersRef() {
         let ref: _ActorRef<String> = self.testCase.system.deadLetters.adapt(from: String.self)
-        
+
         var id: ActorID = ref.id
         id._location = .remote(self.testCase.system.settings.bindNode)
-        
+
         let resolveContext = _ResolveContext<String>(id: id, system: self.testCase.system)
         let resolvedRef = self.testCase.system._resolve(context: resolveContext)
-        
+
         // then
         pinfo("Made remote ref: \(resolvedRef)")
         "\(resolvedRef)".shouldEqual("_ActorRef<String>(/dead/letters)")

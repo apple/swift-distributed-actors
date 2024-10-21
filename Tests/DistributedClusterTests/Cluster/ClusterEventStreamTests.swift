@@ -19,23 +19,22 @@ import Testing
 
 @Suite(.timeLimit(.minutes(1)), .serialized)
 struct ClusterEventStreamTests {
-    
     let memberA = Cluster.Member(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "System", host: "1.1.1.1", port: 7337), nid: .random()), status: .up)
     let memberB = Cluster.Member(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "System", host: "2.2.2.2", port: 8228), nid: .random()), status: .up)
 
     let testCase: SingleClusterSystemTestCase
-    
+
     init() async throws {
         self.testCase = try await SingleClusterSystemTestCase(name: String(describing: type(of: self)))
     }
-    
+
     @Test
     func test_clusterEventStream_shouldNotCauseDeadLettersOnLocalOnlySystem() throws {
         _ = try self.testCase.system._spawn("anything", of: String.self, .setup { context in
             context.log.info("Hello there!")
             return .stop
         })
-        
+
         try self.testCase.logCapture.awaitLogContaining(self.testCase.testKit, text: "Hello there!")
         self.testCase.logCapture.grep("Dead letter").shouldBeEmpty()
     }
@@ -44,16 +43,16 @@ struct ClusterEventStreamTests {
     func test_clusterEventStream_shouldCollapseEventsAndOfferASnapshotToLateSubscribers() async throws {
         let p1 = self.testCase.testKit.makeTestProbe(expecting: Cluster.Event.self)
         let p2 = self.testCase.testKit.makeTestProbe(expecting: Cluster.Event.self)
-        
+
         let eventStream = ClusterEventStream(self.testCase.system, customName: "testClusterEvents")
-        
+
         await eventStream._subscribe(p1.ref) // sub before first -> up was published
         await eventStream.publish(.membershipChange(.init(member: self.memberA, toStatus: .up)))
         await eventStream._subscribe(p2.ref)
         await eventStream.publish(.membershipChange(.init(member: self.memberB, toStatus: .up)))
-        
+
         // ==== p1 ---------------------
-        
+
         switch try p1.expectMessage() {
         case .snapshot(.empty):
             () // ok
@@ -72,9 +71,9 @@ struct ClusterEventStreamTests {
         default:
             throw p1.error("Expected a membershipChange")
         }
-        
+
         // ==== p2 ---------------------
-        
+
         switch try p2.expectMessage() {
         case .snapshot(let snapshot):
             snapshot.member(self.memberA.node).shouldEqual(self.memberA)
@@ -93,39 +92,39 @@ struct ClusterEventStreamTests {
     @Test
     func test_clusterEventStream_collapseManyEventsIntoSnapshot() async throws {
         let p1 = self.testCase.testKit.makeTestProbe(expecting: Cluster.Event.self)
-        
+
         let eventStream = ClusterEventStream(self.testCase.system, customName: "testClusterEvents")
-        
+
         await eventStream.publish(.membershipChange(.init(member: self.memberA, toStatus: .joining)))
         await eventStream.publish(.membershipChange(.init(member: self.memberA, toStatus: .up)))
         await eventStream.publish(.membershipChange(.init(member: self.memberB, toStatus: .joining)))
         await eventStream.publish(.membershipChange(.init(member: self.memberB, toStatus: .up)))
         await eventStream._subscribe(p1.ref)
-        
+
         // ==== p1 ---------------------
-        
+
         switch try p1.expectMessage() {
         case .snapshot(let snapshot):
             let members = snapshot.members(atLeast: .joining)
             Set(members).shouldEqual(Set([self.memberA, self.memberB]))
-            
+
         default:
             throw p1.error("Expected a snapshot with all the data")
         }
-        
+
         try p1.expectNoMessage(for: .milliseconds(100))
     }
 
     @Test
     func test_clusterEventStream_collapseManyEventsIntoSnapshot_async() async throws {
         let eventStream = ClusterEventStream(self.testCase.system, customName: "testClusterEvents")
-        
+
         // Publish events to change membership
         await eventStream.publish(.membershipChange(.init(member: self.memberA, toStatus: .joining)))
         await eventStream.publish(.membershipChange(.init(member: self.memberA, toStatus: .up)))
         await eventStream.publish(.membershipChange(.init(member: self.memberB, toStatus: .joining)))
         await eventStream.publish(.membershipChange(.init(member: self.memberB, toStatus: .up)))
-        
+
         // .snapshot is sent on subscribe
         for await event in eventStream {
             switch event {

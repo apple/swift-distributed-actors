@@ -12,18 +12,18 @@
 ////
 ////===----------------------------------------------------------------------===//
 //
-//import DistributedActorsTestKit
-//@testable import DistributedCluster
-//import Logging
-//import NIO
-//import Testing
-//import Synchronization
+// import DistributedActorsTestKit
+// @testable import DistributedCluster
+// import Logging
+// import NIO
+// import Testing
+// import Synchronization
 //
-//@Suite(.timeLimit(.minutes(1)), .serialized)
-//final class MembershipGossipLogicSimulationTests {
-//    
+// @Suite(.timeLimit(.minutes(1)), .serialized)
+// final class MembershipGossipLogicSimulationTests {
+//
 //    let testCase: ClusteredActorSystemsTestCase
-//    
+//
 //    init() throws {
 //        self.testCase = try ClusteredActorSystemsTestCase()
 //        self.self.testCase.configureLogCapture = { settings in
@@ -70,7 +70,7 @@
 //        }
 //        let systemB = await self.testCase.setUpNode("B")
 //        let systemC = await self.testCase.setUpNode("C")
-//        
+//
 //        let initialGossipState =
 //        """
 //        A.up B.joining C.joining
@@ -78,7 +78,7 @@
 //        B: A@3 B@3 C@3
 //        C: A@3 B@3 C@3
 //        """
-//        
+//
 //        try await self.gossipSimulationTest(
 //            for: testCase,
 //            runs: 10,
@@ -91,7 +91,7 @@
 //            },
 //            updateLogic: { _ in
 //                let logicA: MembershipGossipLogic = self.logic("A")
-//                
+//
 //                // We simulate that `A` noticed it's the leader and moved `B` and `C` .up
 //                logicA.receiveLocalGossipUpdate(Cluster.MembershipGossip.parse(
 //                """
@@ -127,16 +127,16 @@
 //        let systemH = await self.testCase.setUpNode("H")
 //        let systemI = await self.testCase.setUpNode("I")
 //        let systemJ = await self.testCase.setUpNode("J")
-//        
+//
 //        let allSystems = [
 //            systemA, systemB, systemC, systemD, systemE,
 //            systemF, systemG, systemH, systemI, systemJ,
 //        ]
-//        
+//
 //        let initialFewGossip =
 //        """
-//        A.up B.joining C.joining D.joining E.joining F.joining G.joining H.joining I.joining J.joining 
-//        A: A@9 B@3 C@3 D@5 E@5 F@5 G@5 H@5 I@5 J@5 
+//        A.up B.joining C.joining D.joining E.joining F.joining G.joining H.joining I.joining J.joining
+//        A: A@9 B@3 C@3 D@5 E@5 F@5 G@5 H@5 I@5 J@5
 //        B: A@5 B@3 C@3 D@5 E@5 F@5 G@5 H@5 I@5 J@5
 //        C: A@3 B@3 C@3 D@5 E@5 F@5 G@5 H@5 I@5 J@5
 //        D: A@2 B@3 C@3 D@5 E@5 F@5 G@5 H@5 I@5 J@1
@@ -149,7 +149,7 @@
 //        """
 //        let initialNewGossip =
 //        """
-//        D.joining E.joining F.joining G.joining H.joining I.joining J.joining 
+//        D.joining E.joining F.joining G.joining H.joining I.joining J.joining
 //        D: D@5 E@5 F@5 G@5 H@5 I@5 J@5
 //        E: D@5 E@5 F@5 G@5 H@5 I@5 J@5
 //        F: D@5 E@5 F@5 G@5 H@5 I@5 J@5
@@ -158,7 +158,7 @@
 //        I: D@5 E@5 F@5 G@5 H@5 I@5 J@5
 //        J: D@5 E@5 F@5 G@5 H@5 I@5 J@5
 //        """
-//        
+//
 //        try await self.gossipSimulationTest(
 //            for: testCase,
 //            runs: 1,
@@ -167,7 +167,7 @@
 //                    Cluster.MembershipGossip.parse(initialFewGossip, owner: systemA.cluster.node, nodes: self.testCase.nodes),
 //                    Cluster.MembershipGossip.parse(initialFewGossip, owner: systemB.cluster.node, nodes: self.testCase.nodes),
 //                    Cluster.MembershipGossip.parse(initialFewGossip, owner: systemC.cluster.node, nodes: self.testCase.nodes),
-//                    
+//
 //                    Cluster.MembershipGossip.parse(initialNewGossip, owner: systemD.cluster.node, nodes: self.testCase.nodes),
 //                    Cluster.MembershipGossip.parse(initialNewGossip, owner: systemE.cluster.node, nodes: self.testCase.nodes),
 //                    Cluster.MembershipGossip.parse(initialNewGossip, owner: systemF.cluster.node, nodes: self.testCase.nodes),
@@ -180,11 +180,11 @@
 //            updateLogic: { _ in
 //                let logicA: MembershipGossipLogic = self.logic("A")
 //                let logicD: MembershipGossipLogic = self.logic("D")
-//                
+//
 //                logicA.receiveLocalGossipUpdate(Cluster.MembershipGossip.parse(
 //                """
-//                A.up B.up C.up D.up E.up F.up G.up H.up I.up J.up 
-//                A: A@20 B@16 C@16 D@16 E@16 F@16 G@16 H@16 I@16 J@16 
+//                A.up B.up C.up D.up E.up F.up G.up H.up I.up J.up
+//                A: A@20 B@16 C@16 D@16 E@16 F@16 G@16 H@16 I@16 J@16
 //                B: A@20 B@16 C@16 D@16 E@16 F@16 G@16 H@16 I@16 J@16
 //                C: A@20 B@16 C@16 D@16 E@16 F@16 G@16 H@16 I@16 J@16
 //                D: A@20 B@16 C@16 D@16 E@16 F@16 G@16 H@16 I@16 J@16
@@ -197,11 +197,11 @@
 //                """,
 //                owner: systemA.cluster.node, nodes: self.testCase.nodes
 //                ))
-//                
+//
 //                // they're trying to join
 //                logicD.receiveLocalGossipUpdate(Cluster.MembershipGossip.parse(
 //                """
-//                A.up B.up C.up D.joining E.joining F.joining G.joining H.joining I.joining J.joining 
+//                A.up B.up C.up D.joining E.joining F.joining G.joining H.joining I.joining J.joining
 //                A: A@11 B@16 C@16 D@9 E@13 F@13 G@13 H@13 I@13 J@13
 //                B: A@12 B@11 C@11 D@9 E@13 F@13 G@13 H@13 I@13 J@13
 //                C: A@12 B@11 C@11 D@9 E@13 F@13 G@13 H@13 I@13 J@13
@@ -235,7 +235,7 @@
 //        }
 //        let systemB = await self.testCase.setUpNode("B")
 //        let systemC = await self.testCase.setUpNode("C")
-//        
+//
 //        let initialGossipState =
 //        """
 //        A.up B.joining C.joining
@@ -243,7 +243,7 @@
 //        B: A@3 B@3 C@3
 //        C: A@3 B@3 C@3
 //        """
-//        
+//
 //        try await self.gossipSimulationTest(
 //            for: testCase,
 //            runs: 10,
@@ -256,7 +256,7 @@
 //            },
 //            updateLogic: { _ in
 //                let logicA: MembershipGossipLogic = self.logic("A")
-//                
+//
 //                // We simulate that `A` noticed it's the leader and moved `B` and `C` .up
 //                logicA.receiveLocalGossipUpdate(Cluster.MembershipGossip.parse(
 //                """
@@ -434,15 +434,15 @@
 //            fatalError("No addressable peer for logic: \(logic), peers: \(self.mockPeers.withLock { $0 })")
 //        }
 //    }
-//}
+// }
 //
-//extension MembershipGossipLogic {
+// extension MembershipGossipLogic {
 //    fileprivate var nodeName: String {
 //        self.localNode.endpoint.systemName
 //    }
-//}
+// }
 //
-//extension ClusteredActorSystemsTestCase {
+// extension ClusteredActorSystemsTestCase {
 //    var systems: [ClusterSystem] {
 //        self._nodes.withLock { $0 }
 //    }
@@ -454,8 +454,8 @@
 //    var nodes: [Cluster.Node] {
 //        self._nodes.withLock { $0.map(\.cluster.node) }
 //    }
-//    
+//
 //    var testKit: ActorTestKit {
 //        self.testKit(self.systems.first!)
 //    }
-//}
+// }

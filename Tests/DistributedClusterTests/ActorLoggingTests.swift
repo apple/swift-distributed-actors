@@ -19,13 +19,12 @@ import Testing
 
 @Suite(.timeLimit(.minutes(1)), .serialized)
 struct ActorLoggingTests {
-    
     let exampleSenderPath: ActorPath
     let testCase: SingleClusterSystemTestCase
 
     init() async throws {
         self.testCase = try await SingleClusterSystemTestCase(name: String(describing: type(of: self)))
-        
+
         var exampleSenderPath = try ActorPath(root: "user")
         exampleSenderPath.append(segment: try! ActorPathSegment("hello"))
         exampleSenderPath.append(segment: try! ActorPathSegment("deep"))
@@ -38,7 +37,7 @@ struct ActorLoggingTests {
     func test_actorLogger_shouldIncludeActorPath() throws {
         let p = self.testCase.testKit.makeTestProbe("p", expecting: String.self)
         let r = self.testCase.testKit.makeTestProbe("r", expecting: Rendered.self)
-        
+
         let ref: _ActorRef<String> = try self.testCase.system._spawn(
             "myName",
             .setup { context in
@@ -48,16 +47,16 @@ struct ActorLoggingTests {
                     return self.exampleSenderPath.description
                 }
                 // ~~~~ end of (imagine as) set by swift-distributed-actors library internally ~~~~~~
-                
+
                 return .receiveMessage { message in
                     context.log.info("I got \(message)")
-                    
+
                     p.ref.tell("Got: \(message)")
                     return .same
                 }
             }
         )
-        
+
         ref.tell("Hello world")
         try p.expectMessage("Got: Hello world")
         // try r.expectNoMessage(for: .milliseconds(100))
@@ -67,7 +66,7 @@ struct ActorLoggingTests {
     func test_actorLogger_shouldNotRenderLazyMetadataIfLogIsUnderDefinedLogLevel() throws {
         let p = self.testCase.testKit.makeTestProbe("p2", expecting: String.self)
         let r = self.testCase.testKit.makeTestProbe("r2", expecting: Rendered.self)
-        
+
         let ref: _ActorRef<String> = try self.testCase.system._spawn(
             "myName",
             .setup { context in
@@ -77,17 +76,17 @@ struct ActorLoggingTests {
                     return self.exampleSenderPath.description
                 }
                 // ~~~~ end of (imagine as) set by swift-distributed-actors library internally ~~~~~~
-                
+
                 return .receiveMessage { message in
                     context.log.logLevel = .warning
                     context.log.info("I got \(message)") // thus should not render any metadata
-                    
+
                     p.ref.tell("Got: \(message)")
                     return .same
                 }
             }
         )
-        
+
         ref.tell("Hello world")
         try p.expectMessage("Got: Hello world")
         try r.expectNoMessage(for: .milliseconds(100))
@@ -97,7 +96,7 @@ struct ActorLoggingTests {
     func test_actorLogger_shouldNotRenderALazyValueIfWeOverwriteItUsingLocalMetadata() throws {
         let p = self.testCase.testKit.makeTestProbe("p2", expecting: String.self)
         let r = self.testCase.testKit.makeTestProbe("r2", expecting: Rendered.self)
-        
+
         let ref: _ActorRef<String> = try self.testCase.system._spawn(
             "myName",
             .setup { context in
@@ -107,17 +106,17 @@ struct ActorLoggingTests {
                     return self.exampleSenderPath.description
                 }
                 // ~~~~ end of (imagine as) set by swift-distributed-actors library internally ~~~~~~
-                
+
                 return .receiveMessage { message in
                     // overwrite the metadata with a local one:
                     context.log.info("I got \(message)", metadata: ["senderPath": .string("/user/sender/pre-rendered")])
-                    
+
                     p.ref.tell("Got: \(message)")
                     return .same
                 }
             }
         )
-        
+
         ref.tell("Hello world")
         try p.expectMessage("Got: Hello world")
         try r.expectNoMessage(for: .milliseconds(100))

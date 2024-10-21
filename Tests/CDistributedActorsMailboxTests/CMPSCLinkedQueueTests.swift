@@ -17,7 +17,6 @@ import Foundation
 import Testing
 
 struct CMPSCLinkedQueueTests {
-    
     @Test
     func testDequeueWhenEmpty() {
         let q = c_sact_mpsc_linked_queue_create()

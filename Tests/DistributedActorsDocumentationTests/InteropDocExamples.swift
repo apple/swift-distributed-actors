@@ -20,7 +20,6 @@ import Testing
 
 @Suite(.serialized)
 class InteropDocExamples: XCTestCase {
-    
     @Test
     func example_asyncOp_sendResult_dispatch() throws {
         // tag::message_greetings[]

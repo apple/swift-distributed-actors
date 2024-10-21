@@ -22,11 +22,10 @@ import Testing
 
 @Suite(.timeLimit(.minutes(1)), .serialized)
 struct SerializationTests {
-    
     let testCase: SingleClusterSystemTestCase
 
     init() async throws {
-        testCase = try await SingleClusterSystemTestCase(
+        self.testCase = try await SingleClusterSystemTestCase(
             setupNode: .init(name: String(describing: type(of: self))) { settings in
                 settings.serialization.register(HasReceivesSystemMsgs.self)
                 settings.serialization.register(HasStringRef.self)
@@ -45,37 +44,37 @@ struct SerializationTests {
         let allocator = ByteBufferAllocator()
         var buf = allocator.buffer(capacity: 5)
         buf.writeString("hello")
-        
+
         let data: Data = buf.getData(at: 0, length: buf.readableBytes)!
-        
+
         let out: ByteBuffer = data.withUnsafeBytes { bytes in
             var out = allocator.buffer(capacity: data.count)
             out.writeBytes(bytes)
             return out
         }
-        
+
         buf.shouldEqual(out)
     }
 
     @Test
     func test_serialize_Int_withData() throws {
         let value = 6
-        
+
         let serialized = try self.testCase.system.serialization.serialize(value)
         // Deserialize from `Data`
         let deserialized = try self.testCase.system.serialization.deserialize(as: Int.self, from: .data(serialized.buffer.readData()), using: serialized.manifest)
-        
+
         deserialized.shouldEqual(value)
     }
 
     @Test
     func test_serialize_Bool_withData() throws {
         let value = true
-        
+
         let serialized = try self.testCase.system.serialization.serialize(value)
         // Deserialize from `Data`
         let deserialized = try self.testCase.system.serialization.deserialize(as: Bool.self, from: .data(serialized.buffer.readData()), using: serialized.manifest)
-        
+
         deserialized.shouldEqual(value)
     }
 
@@ -86,10 +85,10 @@ struct SerializationTests {
         let path = try ActorPath(root: "user") / ActorPathSegment("hello")
         let encoded = try JSONEncoder().encode(path)
         pinfo("Serialized actor path: \(encoded.copyToNewByteBuffer().stringDebugDescription())")
-        
+
         let pathAgain = try JSONDecoder().decode(ActorPath.self, from: encoded)
         pinfo("Deserialized again: \(String(reflecting: pathAgain))")
-        
+
         pathAgain.shouldEqual(path)
     }
 
@@ -97,25 +96,25 @@ struct SerializationTests {
     func test_serialize_actorAddress_usingContext() throws {
         let node = Cluster.Node(systemName: "one", host: "127.0.0.1", port: 1234, nid: Cluster.Node.ID(11111))
         let id = try ActorPath(root: "user").appending("hello").makeLocalID(on: node, incarnation: .random())
-        
+
         let encoder = JSONEncoder()
         let decoder = JSONDecoder()
-        
+
         let context = Serialization.Context(
             log: self.testCase.system.log,
             system: self.testCase.system,
             allocator: ByteBufferAllocator()
         )
-        
+
         encoder.userInfo[.actorSerializationContext] = context
         decoder.userInfo[.actorSerializationContext] = context
-        
+
         let encoded = try encoder.encode(id)
         pinfo("Serialized actor path: \(encoded.copyToNewByteBuffer().stringDebugDescription())")
-        
+
         let decodedID = try decoder.decode(ActorID.self, from: encoded)
         pinfo("Deserialized again: \(String(reflecting: decodedID))")
-        
+
         "\(decodedID)".shouldEqual("sact://one@127.0.0.1:1234/user/hello")
         decodedID.incarnation.shouldEqual(id.incarnation)
     }
@@ -125,7 +124,7 @@ struct SerializationTests {
     @Test
     func test_serialize_actorRef_inMessage() throws {
         let p = self.testCase.testKit.makeTestProbe(expecting: String.self)
-        
+
         let ref: _ActorRef<String> = try self.testCase.system._spawn(
             "hello",
             .receiveMessage { message in
@@ -134,21 +133,21 @@ struct SerializationTests {
             }
         )
         let hasRef = HasStringRef(containedRef: ref)
-        
+
         pinfo("Before serialize: \(hasRef)")
-        
+
         let serialized = try shouldNotThrow {
             try self.testCase.system.serialization.serialize(hasRef)
         }
         pinfo("serialized ref: \(serialized.buffer.stringDebugDescription())")
-        
+
         let back: HasStringRef = try shouldNotThrow {
             try self.testCase.system.serialization.deserialize(as: HasStringRef.self, from: serialized)
         }
         pinfo("Deserialized again: \(back)")
-        
+
         back.shouldEqual(hasRef)
-        
+
         back.containedRef.tell("hello")
         try p.expectMessage("got:hello")
     }
@@ -159,10 +158,10 @@ struct SerializationTests {
             settings.enabled = true
             settings.serialization.register(HasStringRef.self)
         }
-        
+
         let testKit = ActorTestKit(remoteCapableSystem)
         let p = testKit.makeTestProbe(expecting: String.self)
-        
+
         let ref: _ActorRef<String> = try remoteCapableSystem._spawn(
             "hello",
             .receiveMessage { message in
@@ -170,11 +169,11 @@ struct SerializationTests {
                 return .same
             }
         )
-        
+
         let hasRef = HasStringRef(containedRef: ref)
-        
+
         pinfo("Before serialize: \(hasRef)")
-        
+
         let serialized = try shouldNotThrow {
             try remoteCapableSystem.serialization.serialize(hasRef)
         }
@@ -185,14 +184,14 @@ struct SerializationTests {
         serializedFormat.shouldContain(remoteCapableSystem.name) // automatically picked up name from system
         serializedFormat.shouldContain("\(remoteCapableSystem.settings.bindHost)")
         serializedFormat.shouldContain("\(remoteCapableSystem.settings.bindPort)")
-        
+
         let back: HasStringRef = try shouldNotThrow {
             try remoteCapableSystem.serialization.deserialize(as: HasStringRef.self, from: serialized)
         }
         pinfo("Deserialized again: \(back)")
-        
+
         back.shouldEqual(hasRef)
-        
+
         back.containedRef.tell("hello")
         try p.expectMessage("got:hello")
     }
@@ -202,19 +201,19 @@ struct SerializationTests {
         let p = self.testCase.testKit.makeTestProbe(expecting: Never.self)
         let stoppedRef: _ActorRef<String> = try self.testCase.system._spawn("dead-on-arrival", .stop)
         p.watch(stoppedRef)
-        
+
         let hasRef = HasStringRef(containedRef: stoppedRef)
         let serialized = try shouldNotThrow {
             try self.testCase.system.serialization.serialize(hasRef)
         }
-        
+
         try p.expectTerminated(stoppedRef)
-        
+
         try self.testCase.testKit.eventually(within: .seconds(3)) {
             let back: HasStringRef = try shouldNotThrow {
                 try self.testCase.system.serialization.deserialize(as: HasStringRef.self, from: serialized)
             }
-            
+
             guard "\(back.containedRef.id)" == "/dead/user/dead-on-arrival" else {
                 throw self.testCase.testKit.error("\(back.containedRef.id) is not equal to expected /dead/user/dead-on-arrival")
             }
@@ -225,16 +224,16 @@ struct SerializationTests {
     func test_deserialize_alreadyDeadActorRef_shouldDeserializeAsDeadLetters_forUserDefinedMessageType() throws {
         let stoppedRef: _ActorRef<InterestingMessage> = try self.testCase.system._spawn("dead-on-arrival", .stop) // stopped
         let hasRef = HasInterestingMessageRef(containedInterestingRef: stoppedRef)
-        
+
         let serialized = try shouldNotThrow {
             try self.testCase.system.serialization.serialize(hasRef)
         }
-        
+
         try self.testCase.testKit.eventually(within: .seconds(3)) {
             let back: HasInterestingMessageRef = try shouldNotThrow {
                 try self.testCase.system.serialization.deserialize(as: HasInterestingMessageRef.self, from: serialized)
             }
-            
+
             back.containedInterestingRef.tell(InterestingMessage())
             guard "\(back.containedInterestingRef.id)" == "/dead/user/dead-on-arrival" else {
                 throw self.testCase.testKit.error("\(back.containedInterestingRef.id) is not equal to expected /dead/user/dead-on-arrival")
@@ -252,9 +251,9 @@ struct SerializationTests {
     @Test
     func test_serialize_receivesSystemMessages_inMessage() throws {
         let p = self.testCase.testKit.makeTestProbe(expecting: String.self)
-        
+
         let watchMe: _ActorRef<String> = try self.testCase.system._spawn("watchMe", .ignore)
-        
+
         let ref: _ActorRef<String> = try self.testCase.system._spawn(
             "shouldGetSystemMessage",
             .setup { context in
@@ -270,21 +269,21 @@ struct SerializationTests {
                 }
             }
         )
-        
+
         let sysRef = ref.asAddressable
-        
+
         let hasSysRef = HasReceivesSystemMsgs(sysRef: ref)
-        
+
         let serialized = try shouldNotThrow {
             try self.testCase.system.serialization.serialize(hasSysRef)
         }
-        
+
         let back: HasReceivesSystemMsgs = try shouldNotThrow {
             try self.testCase.system.serialization.deserialize(as: HasReceivesSystemMsgs.self, from: serialized)
         }
-        
+
         back.sysRef.id.shouldEqual(sysRef.id)
-        
+
         // Only to see that the deserialized ref indeed works for sending system messages to it
         back.sysRef._sendSystemMessage(.terminated(ref: watchMe.asAddressable, existenceConfirmed: false), file: #filePath, line: #line)
         try p.expectMessage("terminated:watchMe")
@@ -296,19 +295,19 @@ struct SerializationTests {
     func test_serialize_errorEnvelope_stringDescription() throws {
         let description = "BOOM!!!"
         let errorEnvelope = ErrorEnvelope(description: description)
-        
+
         let serialized = try shouldNotThrow {
             try self.testCase.system.serialization.serialize(errorEnvelope)
         }
-        
+
         let back: ErrorEnvelope = try shouldNotThrow {
             try self.testCase.system.serialization.deserialize(as: ErrorEnvelope.self, from: serialized)
         }
-        
+
         guard let bestEffortStringError = back.error as? BestEffortStringError else {
             throw self.testCase.testKit.error("\(back.error) is not BestEffortStringError")
         }
-        
+
         bestEffortStringError.representation.shouldEqual(description)
     }
 
@@ -316,19 +315,19 @@ struct SerializationTests {
     func test_serialize_errorEnvelope_notCodableError() throws {
         let notCodableError: NotCodableTestingError = .errorTwo
         let errorEnvelope = ErrorEnvelope(notCodableError)
-        
+
         let serialized = try shouldNotThrow {
             try self.testCase.system.serialization.serialize(errorEnvelope)
         }
-        
+
         let back: ErrorEnvelope = try shouldNotThrow {
             try self.testCase.system.serialization.deserialize(as: ErrorEnvelope.self, from: serialized)
         }
-        
+
         guard let bestEffortStringError = back.error as? BestEffortStringError else {
             throw self.testCase.testKit.error("\(back.error) is not BestEffortStringError")
         }
-        
+
         bestEffortStringError.representation.shouldContain(String(reflecting: NotCodableTestingError.self))
     }
 
@@ -336,19 +335,19 @@ struct SerializationTests {
     func test_serialize_errorEnvelope_codableError() throws {
         let codableError: CodableTestingError = .errorB
         let errorEnvelope = ErrorEnvelope(codableError)
-        
+
         let serialized = try shouldNotThrow {
             try self.testCase.system.serialization.serialize(errorEnvelope)
         }
-        
+
         let back: ErrorEnvelope = try shouldNotThrow {
             try self.testCase.system.serialization.deserialize(as: ErrorEnvelope.self, from: serialized)
         }
-        
+
         guard let codableTestingError = back.error as? CodableTestingError else {
             throw self.testCase.testKit.error("\(back.error) is not CodableTestingError")
         }
-        
+
         codableTestingError.shouldEqual(codableError)
     }
 
@@ -357,45 +356,45 @@ struct SerializationTests {
     @Test
     func test_plist_binary() throws {
         let test = PListBinCodableTest(name: "foo", items: ["bar", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz"])
-        
+
         let serialized = try! shouldNotThrow {
             try self.testCase.system.serialization.serialize(test)
         }
-        
+
         let back = try! self.testCase.system.serialization.deserialize(as: PListBinCodableTest.self, from: serialized)
-        
+
         back.shouldEqual(test)
     }
 
     @Test
     func test_plist_xml() throws {
         let test = PListXMLCodableTest(name: "foo", items: ["bar", "baz"])
-        
+
         let serialized = try shouldNotThrow {
             try self.testCase.system.serialization.serialize(test)
         }
-        
+
         let back = try self.testCase.system.serialization.deserialize(as: PListXMLCodableTest.self, from: serialized)
-        
+
         back.shouldEqual(test)
     }
 
     @Test
     func test_plist_throws_whenWrongFormat() async throws {
         let test = PListXMLCodableTest(name: "foo", items: ["bar", "baz"])
-        
+
         let serialized = try shouldNotThrow {
             try self.testCase.system.serialization.serialize(test)
         }
-        
+
         let system2 = await self.testCase.setUpNode("OtherSystem") { settings in
             settings.serialization.register(PListXMLCodableTest.self, serializerID: .foundationPropertyListBinary) // on purpose "wrong" format
         }
-        
+
         _ = try shouldThrow {
             _ = try system2.serialization.deserialize(as: PListXMLCodableTest.self, from: serialized)
         }
-        
+
         let back = try self.testCase.system.serialization.deserialize(as: PListXMLCodableTest.self, from: serialized)
         back.shouldEqual(test)
     }

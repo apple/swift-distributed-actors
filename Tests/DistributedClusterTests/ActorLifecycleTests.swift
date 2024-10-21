@@ -19,13 +19,12 @@ import Testing
 
 @Suite(.timeLimit(.minutes(1)), .serialized)
 struct ActorLifecycleTests {
-    
     let testCase: SingleClusterSystemTestCase
 
     init() async throws {
-        testCase = try await SingleClusterSystemTestCase(name: String(describing: type(of: self)))
+        self.testCase = try await SingleClusterSystemTestCase(name: String(describing: type(of: self)))
     }
-    
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: starting actors
     @Test
@@ -35,7 +34,7 @@ struct ActorLifecycleTests {
             let sameBehavior: _Behavior<String> = .same
             _ = try self.testCase.system._spawn("same", sameBehavior)
         }
-        
+
         "\(ex)".shouldEqual("""
         notAllowedAsInitial(DistributedCluster._Behavior<Swift.String>.same)
         """)
@@ -52,7 +51,7 @@ struct ActorLifecycleTests {
             let unhandledBehavior: _Behavior<String> = .unhandled
             try self.testCase.system._spawn("unhandled", unhandledBehavior)
         }
-        
+
         "\(ex)".shouldEqual("notAllowedAsInitial(DistributedCluster._Behavior<Swift.String>.unhandled)")
     }
 
@@ -61,7 +60,7 @@ struct ActorLifecycleTests {
         func check(illegalName: String, expectedError: String) throws {
             let err = try shouldThrow {
                 let b: _Behavior<String> = .ignore
-                
+
                 // more coverage for all the different chars in [[ActorPathTests]]
                 try self.testCase.system._spawn(.unique(illegalName), b)
             }
@@ -115,10 +114,10 @@ struct ActorLifecycleTests {
         try self.testCase.system._spawn("d", spawner).tell("charlie")
         try self.testCase.system._spawn("e", spawner).tell("charlie")
         try self.testCase.system._spawn("f", spawner).tell("charlie")
-        
+
         let spawnedBy = try p.expectMessage()
         pinfo("Spawned by: \(spawnedBy)")
-        
+
         try p.expectNoMessage(for: .milliseconds(200))
     }
 }

@@ -23,12 +23,12 @@ import Testing
 
 @Suite(.timeLimit(.minutes(1)), .serialized)
 final class ActorMetricsTests {
-    let metrics: TestMetrics = TestMetrics()
-    
+    let metrics = TestMetrics()
+
     let testCase: ClusteredActorSystemsTestCase
-    
+
     init() throws {
-        testCase = try ClusteredActorSystemsTestCase()
+        self.testCase = try ClusteredActorSystemsTestCase()
         MetricsSystem.bootstrapInternal(self.metrics)
     }
 
@@ -40,18 +40,18 @@ final class ActorMetricsTests {
     func test_serialization_reportsMetrics() async throws {
         let first = await self.testCase.setUpNode("first")
         let second = await self.testCase.setUpNode("second")
-        
+
         let ref: _ActorRef<String> = try first._spawn(
             "measuredActor",
             props: .metrics(group: "measuredActorGroup", measure: [.deserialization]),
             _Behavior.receive { _, _ in
-                    .same
+                .same
             }
         )
-        
+
         let remoteRef = second._resolve(ref: ref, onSystem: first)
         remoteRef.tell("Hello!")
-        
+
         try await Task.sleep(for: .seconds(6))
         let gauge = try self.metrics.expectGauge("first.measuredActorGroup.deserialization.size")
         gauge.lastValue?.shouldEqual(6)
@@ -60,17 +60,17 @@ final class ActorMetricsTests {
     @Test
     func test_mailboxCount_reportsMetrics() async throws {
         let first = await self.testCase.setUpNode("first")
-        
+
         let one: _ActorRef<String> = try first._spawn(
             "measuredActor",
             props: .metrics(group: "measuredActorGroup", measure: [.mailbox]),
             _Behavior.receive { _, _ in .same }
         )
-        
+
         for _ in 0 ... 256 {
             one.tell("hello")
         }
-        
+
         try await Task.sleep(for: .seconds(5))
         let gauge = try self.metrics.expectGauge("first.measuredActorGroup.mailbox.count")
         // we can't really reliably test that we get to some "maximum" since the actor starts processing messages as they come in

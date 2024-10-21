@@ -16,7 +16,6 @@ import DistributedCluster
 import Testing
 
 struct PluginsSettingsTests {
-    
     @Test
 
     func test_pluginsSettings_isInstalled() {

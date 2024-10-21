@@ -16,7 +16,6 @@
 import Testing
 
 struct FixedThreadPoolTests {
-    
     @Test
     func test_pool_shouldProperlyShutdownAllThreads() throws {
         let pool = try _FixedThreadPool(4)

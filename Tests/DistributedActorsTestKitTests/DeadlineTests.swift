@@ -18,7 +18,6 @@ import Foundation
 import Testing
 
 struct DeadlineTests {
-    
     @Test
     func test_deadline_nowIsNotPastNow() {
         let now = ContinuousClock.Instant.now

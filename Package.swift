@@ -8,7 +8,7 @@ import PackageDescription
 // and ONE of our dependencies currently produces one warning, we have to use this workaround to enable it in _our_
 // targets when the flag is set. We should remove the dependencies and then enable the flag globally though just by passing it.
 var globalSwiftSettings: [SwiftSetting] = [
-    .swiftLanguageMode(.v5)
+    .swiftLanguageMode(.v5),
 ]
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -93,7 +93,7 @@ var targets: [PackageDescription.Target] = [
             /* permissions: needs full network access */
         ),
         dependencies: []
-        
+
     ),
     .target(
         name: "MultiNodeTestKit",

@@ -84,7 +84,6 @@ distributed actor Juliet: LifecycleWatch, CustomStringConvertible {
 // MARK: Tests
 @Suite(.timeLimit(.minutes(1)), .serialized)
 struct LifecycleWatchTests {
-    
     var testCase: SingleClusterSystemTestCase
 
     init() async throws {
@@ -101,21 +100,21 @@ struct LifecycleWatchTests {
             ]
         }
     }
-    
+
     @Test
     func test_watch_shouldTriggerTerminatedWhenWatchedActorDeinits() async throws {
         let pj = self.testCase.testKit.makeTestProbe(expecting: String.self)
         let pr = self.testCase.testKit.makeTestProbe(expecting: String.self)
         let juliet = Juliet(probe: pj, actorSystem: self.testCase.system)
-        
+
         func meet() async throws {
             var romeo: Romeo? = Romeo(probe: pr, actorSystem: self.testCase.system)
-            
+
             try await juliet.meetWatch(romeo!, unwatch: false)
             romeo = nil
         }
         try await meet()
-        
+
         try pj.expectMessage("Juliet init")
         try pr.expectMessage("Romeo init")
         try pj.expectMessage(prefix: "Received terminated: /user/Romeo")
@@ -126,15 +125,15 @@ struct LifecycleWatchTests {
         let pj = self.testCase.testKit.makeTestProbe(expecting: String.self)
         let pr = self.testCase.testKit.makeTestProbe(expecting: String.self)
         let juliet = Juliet(probe: pj, actorSystem: self.testCase.system)
-        
+
         func meet() async throws {
             var romeo: Romeo? = Romeo(probe: pr, actorSystem: self.testCase.system)
-            
+
             try await juliet.meetWatch(romeo!, unwatch: true)
             romeo = nil
         }
         try await meet()
-        
+
         try pj.expectMessage("Juliet init")
         try pr.expectMessage("Romeo init")
         try pj.expectNoMessage(for: .milliseconds(300))
@@ -145,22 +144,22 @@ struct LifecycleWatchTests {
         try await shouldNotThrow {
             let pj = self.testCase.testKit.makeTestProbe(expecting: String.self)
             let pr = self.testCase.testKit.makeTestProbe(expecting: String.self)
-            
+
             let (first, second) = await self.testCase.setUpPair() { settings in
                 settings.enabled = true
             }
             try await self.testCase.joinNodes(node: first, with: second, ensureMembers: .up)
-            
+
             let juliet = Juliet(probe: pj, actorSystem: first)
-            
+
             let romeo = Romeo(probe: pr, actorSystem: second)
             let remoteRomeo = try! Romeo.resolve(id: romeo.id, using: first)
             try assertRemoteActor(remoteRomeo)
-            
+
             try await juliet.meetWatch(remoteRomeo, unwatch: false)
-            
+
             first.cluster.down(endpoint: second.cluster.node.endpoint)
-            
+
             try pj.expectMessage("Juliet init")
             try pr.expectMessage("Romeo init")
             try pj.expectMessage(prefix: "Received terminated: /user/Romeo", within: .seconds(10))

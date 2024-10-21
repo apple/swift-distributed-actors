@@ -25,17 +25,17 @@ struct BehaviorTests {
         let message: String
         let replyTo: _ActorRef<String>
     }
-    
+
     let testCase: SingleClusterSystemTestCase
 
     init() async throws {
-        testCase = try await SingleClusterSystemTestCase(name: String(describing: type(of: self)))
+        self.testCase = try await SingleClusterSystemTestCase(name: String(describing: type(of: self)))
     }
 
     @Test
     func test_setup_executesImmediatelyOnStartOfActor() throws {
         let p = self.testCase.testKit.makeTestProbe("testActor-1", expecting: String.self)
-        
+
         let message = "EHLO"
         let _: _ActorRef<String> = try self.testCase.system._spawn(
             .anonymous,
@@ -44,16 +44,16 @@ struct BehaviorTests {
                 return .stop
             }
         )
-        
+
         try p.expectMessage(message)
     }
 
     @Test
     func test_single_actor_should_wakeUp_on_new_message_lockstep() throws {
         let p: ActorTestProbe<String> = self.testCase.testKit.makeTestProbe("testActor-2")
-        
+
         var counter = 0
-        
+
         for _ in 0 ... 10 {
             counter += 1
             let payload = "message-\(counter)"
@@ -65,18 +65,18 @@ struct BehaviorTests {
     @Test
     func test_two_actors_should_wakeUp_on_new_message_lockstep() throws {
         let p = self.testCase.testKit.makeTestProbe("testActor-2", expecting: String.self)
-        
+
         var counter = 0
-        
+
         let echoPayload: _ActorRef<TestMessage> =
-        try self.testCase.system._spawn(
-            .anonymous,
-            .receiveMessage { message in
-                p.tell(message.message)
-                return .same
-            }
-        )
-        
+            try self.testCase.system._spawn(
+                .anonymous,
+                .receiveMessage { message in
+                    p.tell(message.message)
+                    return .same
+                }
+            )
+
         for _ in 0 ... 10 {
             counter += 1
             let payload = "message-\(counter)"
@@ -88,11 +88,11 @@ struct BehaviorTests {
     @Test
     func test_receive_shouldReceiveManyMessagesInExpectedOrder() throws {
         let p = self.testCase.testKit.makeTestProbe("testActor-3", expecting: Int.self)
-        
+
         func countTillNThenDieBehavior(n: Int, currentlyAt at: Int = -1) -> _Behavior<Int> {
             if at == n {
                 return .setup { _ in
-                        .stop
+                    .stop
                 }
             } else {
                 return .receive { _, message in
@@ -105,15 +105,15 @@ struct BehaviorTests {
                 }
             }
         }
-        
+
         let n = 10
         let ref = try self.testCase.system._spawn("countTill\(n)", countTillNThenDieBehavior(n: n))
-        
+
         // first we send many messages
         for i in 0 ... n {
             ref.tell(i)
         }
-        
+
         // then we expect they arrive in the expected order
         for i in 0 ... n {
             try p.expectMessage(i)
@@ -127,14 +127,14 @@ struct BehaviorTests {
             .anonymous,
             .setup { context in
                 let _: _ActorRef<Never> = try context._spawnWatch(.anonymous, .stop)
-                
+
                 return .receiveSpecificSignal(_Signals.Terminated.self) { _, terminated in
                     p.tell(terminated)
                     return .stop
                 }
             }
         )
-        
+
         _ = try p.expectMessage()
         // receiveSignalType was invoked successfully
     }
@@ -145,14 +145,14 @@ struct BehaviorTests {
         let ref: _ActorRef<String> = try self.testCase.system._spawn(
             .anonymous,
             _Behavior<String>.receiveMessage { _ in
-                    .stop
+                .stop
             }.receiveSpecificSignal(_Signals._PostStop.self) { _, postStop in
                 p.tell("got:\(postStop)")
                 return .stop
             }
         )
         ref.tell("please stop")
-        
+
         try p.expectMessage("got:_PostStop()")
         // receiveSignalType was invoked successfully
     }
@@ -192,7 +192,7 @@ struct BehaviorTests {
     func test_orElse_shouldExecuteFirstBehavior() throws {
         let p: ActorTestProbe<OrElseMessage> = self.testCase.testKit.makeTestProbe()
         let ref: _ActorRef<OrElseMessage> = try self.testCase.system._spawn(.anonymous, self.combinedBehavior(p.ref))
-        
+
         ref.tell(.first)
         try p.expectMessage(.first)
     }
@@ -201,7 +201,7 @@ struct BehaviorTests {
     func test_orElse_shouldExecuteSecondBehavior() throws {
         let p: ActorTestProbe<OrElseMessage> = self.testCase.testKit.makeTestProbe()
         let ref: _ActorRef<OrElseMessage> = try self.testCase.system._spawn(.anonymous, self.combinedBehavior(p.ref))
-        
+
         ref.tell(.second)
         try p.expectMessage(.second)
     }
@@ -210,7 +210,7 @@ struct BehaviorTests {
     func test_orElse_shouldNotExecuteSecondBehaviorOnIgnore() throws {
         let p: ActorTestProbe<OrElseMessage> = self.testCase.testKit.makeTestProbe()
         let ref: _ActorRef<OrElseMessage> = try self.testCase.system._spawn(.anonymous, self.combinedBehavior(p.ref))
-        
+
         ref.tell(.other)
         try p.expectNoMessage(for: .milliseconds(100))
     }
@@ -222,7 +222,7 @@ struct BehaviorTests {
             p.tell(message)
             return .same
         }
-        
+
         for i in (0 ... 100).reversed() {
             behavior = _Behavior<Int>.receiveMessage { message in
                 if message == i {
@@ -233,12 +233,12 @@ struct BehaviorTests {
                 }
             }.orElse(behavior)
         }
-        
+
         let ref = try self.testCase.system._spawn(.anonymous, behavior)
-        
+
         ref.tell(50)
         try p.expectMessage(-50)
-        
+
         p.tell(255)
         try p.expectMessage(255)
     }
@@ -254,7 +254,7 @@ struct BehaviorTests {
                 }
             )
             child.tell("Please throw now.")
-            
+
             return .receiveSignal { _, signal in
                 switch signal {
                 case let terminated as _Signals.Terminated:
@@ -276,7 +276,7 @@ struct BehaviorTests {
         }
         let ref: _ActorRef<Never> = try self.testCase.system._spawn("orElseTerminated", first.orElse(second))
         p.watch(ref)
-        
+
         try p.expectMessage("first:terminated-name:child")
         try p.expectMessage("second:terminated-name:child")
         try p.expectTerminated(ref) // due to death pact, since none of the signal handlers handled Terminated
@@ -285,9 +285,9 @@ struct BehaviorTests {
     @Test
     func test_orElse_shouldCanonicalizeNestedSetupInAlternative() throws {
         let p: ActorTestProbe<OrElseMessage> = self.testCase.testKit.makeTestProbe()
-        
+
         let first: _Behavior<OrElseMessage> = .receiveMessage { _ in
-                .unhandled
+            .unhandled
         }
         let second: _Behavior<OrElseMessage> = .setup { _ in
             p.tell(.second)
@@ -300,7 +300,7 @@ struct BehaviorTests {
             }
         }
         let ref: _ActorRef<OrElseMessage> = try self.testCase.system._spawn(.anonymous, first.orElse(second))
-        
+
         ref.tell(.second)
         try p.expectMessage(.second)
         try p.expectMessage(.second)
@@ -311,31 +311,31 @@ struct BehaviorTests {
     @Test
     func test_stoppedWithPostStop_shouldTriggerPostStopCallback() throws {
         let p: ActorTestProbe<String> = self.testCase.testKit.makeTestProbe()
-        
+
         let behavior: _Behavior<Never> = .stop { _ in
             p.tell("postStop")
         }
-        
+
         try self.testCase.system._spawn(.anonymous, behavior)
-        
+
         try p.expectMessage("postStop")
     }
 
     @Test
     func test_stoppedWithPostStopThrows_shouldTerminate() throws {
         let p: ActorTestProbe<String> = self.testCase.testKit.makeTestProbe()
-        
+
         let behavior: _Behavior<Never> = .stop(
             postStop: .signalHandling(handleMessage: .ignore) { _, _ in
                 p.tell("postStop")
                 throw TestError("Boom")
             }
         )
-        
+
         let ref = try self.testCase.system._spawn(.anonymous, behavior)
-        
+
         p.watch(ref)
-        
+
         try p.expectMessage("postStop")
         try p.expectTerminated(ref)
     }
@@ -343,7 +343,7 @@ struct BehaviorTests {
     @Test
     func test_makeAsynchronousCallback_shouldExecuteClosureInActorContext() throws {
         let p: ActorTestProbe<String> = self.testCase.testKit.makeTestProbe()
-        
+
         let behavior: _Behavior<String> = .receive { context, msg in
             let cb = context.makeAsynchronousCallback {
                 // This is a nasty trick to determine that the closure is
@@ -353,14 +353,14 @@ struct BehaviorTests {
                 context.myself._unsafeUnwrapCell.actor?.behavior = .stop
                 p.tell("fromCallback:\(msg)")
             }
-            
+
             cb.invoke(())
             return .same
         }
-        
+
         let ref = try self.testCase.system._spawn(.anonymous, behavior)
         p.watch(ref)
-        
+
         ref.tell("test")
         try p.expectMessage("fromCallback:test")
         try p.expectTerminated(ref)
@@ -373,18 +373,18 @@ struct BehaviorTests {
     @Test
     func test_myself_shouldStayValidAfterActorStopped() throws {
         let p: ActorTestProbe<ContextClosureMessage> = self.testCase.testKit.makeTestProbe()
-        
+
         let behavior: _Behavior<String> = .setup { context in
             p.tell(.context {
                 context.myself
             })
-            
+
             return .stop
         }
-        
+
         let ref = try self.testCase.system._spawn("myselfStillValidAfterStopped", behavior)
         p.watch(ref)
-        
+
         ref.tell("test") // this does nothing
         try p.expectTerminated(ref)
         switch try p.expectMessage() {
@@ -397,32 +397,32 @@ struct BehaviorTests {
     @Test
     func test_suspendedActor_shouldBeUnsuspendedOnResumeSystemMessage() throws {
         let p: ActorTestProbe<String> = self.testCase.testKit.makeTestProbe()
-        
+
         let behavior: _Behavior<String> = .intercept(
             behavior: .receiveMessage { msg in
-                    .suspend { (msg: Result<Int, Error>) in
-                        p.tell("unsuspended:\(msg)")
-                        return .receiveMessage { msg in
-                            p.tell("resumed:\(msg)")
-                            return .same
-                        }
+                .suspend { (msg: Result<Int, Error>) in
+                    p.tell("unsuspended:\(msg)")
+                    return .receiveMessage { msg in
+                        p.tell("resumed:\(msg)")
+                        return .same
                     }
+                }
             },
             with: ProbeInterceptor(probe: p)
         )
-        
+
         let ref = try self.testCase.system._spawn(.anonymous, behavior)
-        
+
         ref.tell("something") // this message causes the actor the suspend
-        
+
         try p.expectMessage("something")
-        
+
         ref.tell("something else") // actor is suspended and should not process this message
-        
+
         try p.expectNoMessage(for: .milliseconds(50))
-        
+
         ref._sendSystemMessage(.resume(.success(1)))
-        
+
         try p.expectMessage("unsuspended:success(1)")
         try p.expectMessage("resumed:something else")
     }
@@ -430,41 +430,41 @@ struct BehaviorTests {
     @Test
     func test_suspendedActor_shouldStaySuspendedWhenResumeHandlerSuspendsAgain() throws {
         let p: ActorTestProbe<String> = self.testCase.testKit.makeTestProbe()
-        
+
         let behavior: _Behavior<String> = .intercept(
             behavior: .receiveMessage { msg in
-                    .suspend { (msg: Result<Int, Error>) in
-                        p.tell("suspended:\(msg)")
-                        return .suspend { (msg: Result<String, Error>) in
-                            p.tell("unsuspended:\(msg)")
-                            return .receiveMessage { msg in
-                                p.tell("resumed:\(msg)")
-                                return .same
-                            }
+                .suspend { (msg: Result<Int, Error>) in
+                    p.tell("suspended:\(msg)")
+                    return .suspend { (msg: Result<String, Error>) in
+                        p.tell("unsuspended:\(msg)")
+                        return .receiveMessage { msg in
+                            p.tell("resumed:\(msg)")
+                            return .same
                         }
                     }
+                }
             },
             with: ProbeInterceptor(probe: p)
         )
-        
+
         let ref = try self.testCase.system._spawn("suspender", behavior)
-        
+
         ref.tell("something") // this message causes the actor the suspend
-        
+
         try p.expectMessage("something")
-        
+
         ref.tell("something else") // actor is suspended and should not process this message
         try p.expectNoMessage(for: .milliseconds(50))
-        
+
         ref._sendSystemMessage(.resume(.success(1))) // actor will process the resume handler, but stay suspended
         try p.expectMessage("suspended:success(1)")
         try p.expectNoMessage(for: .milliseconds(50))
-        
+
         ref.tell("last") // actor is still suspended and should not process this message
         try p.expectNoMessage(for: .milliseconds(50))
-        
+
         ref._sendSystemMessage(.resume(.success("test")))
-        
+
         try p.expectMessage("unsuspended:success(\"test\")")
         try p.expectMessage("resumed:something else")
         try p.expectMessage("resumed:last")
@@ -480,35 +480,35 @@ struct BehaviorTests {
     @Test
     func test_suspendedActor_shouldBeUnsuspendedOnFailedResumeSystemMessage() throws {
         let p: ActorTestProbe<String> = self.testCase.testKit.makeTestProbe()
-        
+
         let behavior: _Behavior<String> = .intercept(
             behavior: .receiveMessage { msg in
-                    .suspend { (msg: Result<Int, Error>) in
-                        switch msg {
-                        case .success(let res): p.tell("unsuspended:\(res)")
-                        case .failure(let error): p.tell("unsuspended:\(error)")
-                        }
-                        return .receiveMessage { msg in
-                            p.tell("resumed:\(msg)")
-                            return .same
-                        }
+                .suspend { (msg: Result<Int, Error>) in
+                    switch msg {
+                    case .success(let res): p.tell("unsuspended:\(res)")
+                    case .failure(let error): p.tell("unsuspended:\(error)")
                     }
+                    return .receiveMessage { msg in
+                        p.tell("resumed:\(msg)")
+                        return .same
+                    }
+                }
             },
             with: ProbeInterceptor(probe: p)
         )
-        
+
         let ref = try self.testCase.system._spawn(.anonymous, behavior)
-        
+
         ref.tell("something") // this message causes the actor the suspend
-        
+
         try p.expectMessage("something")
-        
+
         ref.tell("something else") // actor is suspended and should not process this message
-        
+
         try p.expectNoMessage(for: .milliseconds(50))
-        
+
         ref._sendSystemMessage(.resume(.failure(Boom())))
-        
+
         try p.expectMessage().shouldStartWith(prefix: "unsuspended:Boom")
         try p.expectMessage("resumed:something else")
     }
@@ -550,29 +550,29 @@ struct BehaviorTests {
         let future = promise.futureResult
         let suspendProbe: ActorTestProbe<Result<Int, ErrorEnvelope>> = self.testCase.testKit.makeTestProbe()
         let p: ActorTestProbe<String> = self.testCase.testKit.makeTestProbe()
-        
+
         let behavior: _Behavior<String> = self.awaitResultBehavior(future: future, timeout: .seconds(1), probe: p, suspendProbe: suspendProbe)
-        
+
         let ref = try self.testCase.system._spawn(.anonymous, behavior)
-        
+
         ref.tell("test")
         try p.expectMessage("test")
-        
+
         ref.tell("suspend")
         try p.expectNoMessage(for: .milliseconds(10))
         try suspendProbe.expectNoMessage(for: .milliseconds(10))
-        
+
         ref.tell("another test")
         try p.expectNoMessage(for: .milliseconds(10))
         try suspendProbe.expectNoMessage(for: .milliseconds(10))
-        
+
         promise.succeed(1)
         let suspendResult = try suspendProbe.expectMessage()
         switch suspendResult {
         case .success(1): ()
         default: Issue.record("Expected success(1), got \(suspendResult)")
         }
-        
+
         try p.expectMessage("another test")
     }
 
@@ -583,16 +583,16 @@ struct BehaviorTests {
         let future = promise.futureResult
         let suspendProbe: ActorTestProbe<Result<Int, ErrorEnvelope>> = self.testCase.testKit.makeTestProbe()
         let p: ActorTestProbe<String> = self.testCase.testKit.makeTestProbe()
-        
+
         let behavior: _Behavior<String> = self.awaitResultBehavior(future: future, timeout: .seconds(1), probe: p, suspendProbe: suspendProbe)
-        
+
         let ref = try self.testCase.system._spawn(.anonymous, behavior)
-        
+
         ref.tell("suspend")
         ref.tell("another test")
         try p.expectNoMessage(for: .milliseconds(10))
         try suspendProbe.expectNoMessage(for: .milliseconds(10))
-        
+
         promise.fail(self.testCase.testKit.error())
         let suspendResult = try suspendProbe.expectMessage()
         switch suspendResult {
@@ -602,7 +602,7 @@ struct BehaviorTests {
             }
         default: throw p.error("Expected failure(ExecutionException(underlying: CallSiteError())), got \(suspendResult)")
         }
-        
+
         try p.expectMessage("another test")
     }
 
@@ -613,22 +613,22 @@ struct BehaviorTests {
         let future = promise.futureResult
         let suspendProbe: ActorTestProbe<Int> = self.testCase.testKit.makeTestProbe()
         let p: ActorTestProbe<String> = self.testCase.testKit.makeTestProbe()
-        
+
         let behavior: _Behavior<String> = self.awaitResultThrowingBehavior(future: future, timeout: .seconds(1), probe: p, suspendProbe: suspendProbe)
-        
+
         let ref = try self.testCase.system._spawn(.anonymous, behavior)
-        
+
         ref.tell("test")
         try p.expectMessage("test")
-        
+
         ref.tell("suspend")
         try p.expectNoMessage(for: .milliseconds(10))
         try suspendProbe.expectNoMessage(for: .milliseconds(10))
-        
+
         ref.tell("another test")
         try p.expectNoMessage(for: .milliseconds(10))
         try suspendProbe.expectNoMessage(for: .milliseconds(10))
-        
+
         promise.succeed(1)
         try suspendProbe.expectMessage(1)
         try p.expectMessage("another test")
@@ -641,28 +641,28 @@ struct BehaviorTests {
         let future = promise.futureResult
         let suspendProbe: ActorTestProbe<Int> = self.testCase.testKit.makeTestProbe()
         let p: ActorTestProbe<String> = self.testCase.testKit.makeTestProbe()
-        
+
         let behavior: _Behavior<String> = self.awaitResultThrowingBehavior(future: future, timeout: .seconds(1), probe: p, suspendProbe: suspendProbe)
-        
+
         let ref = try self.testCase.system._spawn(.anonymous, behavior)
         p.watch(ref)
-        
+
         ref.tell("test")
         try p.expectMessage("test")
-        
+
         ref.tell("suspend")
         try p.expectNoMessage(for: .milliseconds(10))
         try suspendProbe.expectNoMessage(for: .milliseconds(10))
-        
+
         ref.tell("another test")
         try p.expectNoMessage(for: .milliseconds(10))
         try suspendProbe.expectNoMessage(for: .milliseconds(10))
-        
+
         promise.fail(self.testCase.testKit.error())
         try suspendProbe.expectNoMessage(for: .milliseconds(10))
         try p.expectTerminated(ref)
     }
-    
+
     @Test
     func test_awaitResult_shouldResumeActorWithFailureResultWhenFutureTimesOut() throws {
         let eventLoop = self.testCase.eventLoopGroup.next()
@@ -670,13 +670,13 @@ struct BehaviorTests {
         let future = promise.futureResult
         let suspendProbe: ActorTestProbe<Result<Int, ErrorEnvelope>> = self.testCase.testKit.makeTestProbe()
         let p: ActorTestProbe<String> = self.testCase.testKit.makeTestProbe()
-        
+
         let behavior: _Behavior<String> = self.awaitResultBehavior(future: future, timeout: .milliseconds(10), probe: p, suspendProbe: suspendProbe)
-        
+
         let ref = try self.testCase.system._spawn(.anonymous, behavior)
-        
+
         ref.tell("suspend")
-        
+
         let suspendResult = try suspendProbe.expectMessage()
         switch suspendResult {
         case .failure(let errorEnvelope):
@@ -685,7 +685,7 @@ struct BehaviorTests {
             }
         default: throw p.error("Expected failure(ExecutionException(underlying: TimeoutError)), got \(suspendResult)")
         }
-        
+
         ref.tell("test")
         try p.expectMessage("test")
     }
@@ -697,7 +697,7 @@ struct BehaviorTests {
         let future = promise.futureResult
         let suspendProbe: ActorTestProbe<Result<Int, ErrorEnvelope>> = self.testCase.testKit.makeTestProbe()
         let p: ActorTestProbe<String> = self.testCase.testKit.makeTestProbe()
-        
+
         let behavior: _Behavior<String> = .setup { context in
             p.tell("initializing")
             return context.awaitResult(of: future, timeout: .milliseconds(100)) { result in
@@ -708,12 +708,12 @@ struct BehaviorTests {
                 }
             }
         }
-        
+
         let ref = try self.testCase.system._spawn(.anonymous, behavior)
-        
+
         try p.expectMessage("initializing")
         ref.tell("while-suspended") // hits the actor while it's still suspended
-        
+
         let suspendResult = try suspendProbe.expectMessage()
         switch suspendResult {
         case .failure(let errorEnvelope):
@@ -723,9 +723,9 @@ struct BehaviorTests {
         default:
             throw p.error("Expected failure(ExecutionException(underlying: TimeoutError)), got \(suspendResult)")
         }
-        
+
         try p.expectMessage("while-suspended")
-        
+
         ref.tell("test")
         try p.expectMessage("test")
     }
@@ -737,7 +737,7 @@ struct BehaviorTests {
         let future = promise.futureResult
         let suspendProbe: ActorTestProbe<Result<Int, ErrorEnvelope>> = self.testCase.testKit.makeTestProbe()
         let p: ActorTestProbe<String> = self.testCase.testKit.makeTestProbe()
-        
+
         let behavior: _Behavior<String> = .setup { context in
             p.tell("initializing")
             return context.awaitResult(of: future, timeout: .milliseconds(10)) { result in
@@ -745,12 +745,12 @@ struct BehaviorTests {
                 return .same
             }
         }
-        
+
         let ref = try self.testCase.system._spawn(.anonymous, behavior)
         p.watch(ref)
-        
+
         try p.expectMessage("initializing")
-        
+
         let suspendResult = try suspendProbe.expectMessage()
         switch suspendResult {
         case .failure(let errorEnvelope):
@@ -760,7 +760,7 @@ struct BehaviorTests {
         default:
             throw p.error("Expected failure(ExecutionException(underlying: TimeoutError)), got \(suspendResult)")
         }
-        
+
         try p.expectTerminated(ref)
     }
 
@@ -771,26 +771,26 @@ struct BehaviorTests {
         let future = promise.futureResult
         let suspendProbe: ActorTestProbe<Result<Int, ErrorEnvelope>> = self.testCase.testKit.makeTestProbe()
         let p: ActorTestProbe<String> = self.testCase.testKit.makeTestProbe()
-        
+
         let behavior: _Behavior<String> = .setup { context in
             p.tell("initializing")
             return .receiveMessage { _ in
                 context.awaitResult(of: future, timeout: .seconds(3)) { result in
-                        .setup { _ in
-                            suspendProbe.tell(result.mapError { error in ErrorEnvelope(error) })
-                            return .same
-                        }
+                    .setup { _ in
+                        suspendProbe.tell(result.mapError { error in ErrorEnvelope(error) })
+                        return .same
+                    }
                 }
             }
         }
-        
+
         let ref = try self.testCase.system._spawn(.anonymous, behavior)
         p.watch(ref)
         try p.expectMessage("initializing")
-        
+
         ref.tell("wake up")
         promise.succeed(13)
-        
+
         let suspendResult = try suspendProbe.expectMessage()
         switch suspendResult {
         case .success(let value):
@@ -807,57 +807,57 @@ struct BehaviorTests {
         let future = promise.futureResult
         let suspendProbe: ActorTestProbe<Int> = self.testCase.testKit.makeTestProbe()
         let p: ActorTestProbe<String> = self.testCase.testKit.makeTestProbe()
-        
+
         let behavior: _Behavior<String> = self.awaitResultThrowingBehavior(future: future, timeout: .milliseconds(10), probe: p, suspendProbe: suspendProbe)
-        
+
         let ref = try self.testCase.system._spawn(.anonymous, behavior)
         p.watch(ref)
-        
+
         ref.tell("test")
         try p.expectMessage("test")
-        
+
         ref.tell("suspend")
         try p.expectNoMessage(for: .milliseconds(10))
         try suspendProbe.expectNoMessage(for: .milliseconds(10))
-        
+
         ref.tell("another test")
         try p.expectNoMessage(for: .milliseconds(10))
         try suspendProbe.expectNoMessage(for: .milliseconds(10))
-        
+
         try p.expectTerminated(ref)
     }
 
     @Test
     func test_suspendedActor_shouldKeepProcessingSystemMessages() throws {
         let p: ActorTestProbe<String> = self.testCase.testKit.makeTestProbe()
-        
+
         let behavior: _Behavior<String> = .receiveMessage { msg in
-                .suspend { (msg: Result<Int, Error>) in
-                    switch msg {
-                    case .success(let res): p.tell("unsuspended:\(res)")
-                    case .failure(let error): p.tell("unsuspended:\(error)")
-                    }
-                    return .receiveMessage { msg in
-                        p.tell("resumed:\(msg)")
-                        return .same
-                    }
+            .suspend { (msg: Result<Int, Error>) in
+                switch msg {
+                case .success(let res): p.tell("unsuspended:\(res)")
+                case .failure(let error): p.tell("unsuspended:\(error)")
                 }
+                return .receiveMessage { msg in
+                    p.tell("resumed:\(msg)")
+                    return .same
+                }
+            }
         }
-        
+
         let ref = try self.testCase.system._spawn(.anonymous, behavior)
         p.watch(ref)
-        
+
         ref.tell("something") // this message causes the actor the suspend
-        
+
         ref._sendSystemMessage(.stop)
-        
+
         try p.expectTerminated(ref)
     }
 
     @Test
     func test_suspendedActor_shouldKeepProcessingSignals() throws {
         let p: ActorTestProbe<String> = self.testCase.testKit.makeTestProbe()
-        
+
         let behavior = _Behavior<String>.receive { context, msg in
             p.tell("suspended")
             try context._spawnWatch("child", _Behavior<String>.stop)
@@ -873,25 +873,25 @@ struct BehaviorTests {
                 return .same
             }
             p.tell("signal:\(s.id.name)")
-            
+
             // returning this behavior should not unsuspend the actor
             return _Behavior<String>.receiveMessage { msg in
                 p.tell("changedBySignal:\(msg)")
                 return .same
             }
         }
-        
+
         let ref = try self.testCase.system._spawn("parent", behavior)
-        
+
         ref.tell("something") // this message causes the actor to suspend
         try p.expectMessage("suspended")
-        
+
         ref.tell("something else") // this message should not get processed until we resume, even though the behavior is changed by the signal
-        
+
         try p.expectMessage("signal:child")
-        
+
         ref._sendSystemMessage(.resume(.success(1)))
-        
+
         try p.expectMessage("unsuspended:1")
         try p.expectMessage("changedBySignal:something else")
     }
@@ -899,7 +899,7 @@ struct BehaviorTests {
     @Test
     func test_suspendedActor_shouldStopWhenSignalHandlerReturnsStopped() throws {
         let p: ActorTestProbe<String> = self.testCase.testKit.makeTestProbe()
-        
+
         let behavior = _Behavior<String>.receive { context, msg in
             p.tell("suspended")
             try context._spawnWatch("child", _Behavior<String>.stop)
@@ -911,15 +911,15 @@ struct BehaviorTests {
                 return .same
             }
         }.receiveSignal { _, _ in
-                .stop
+            .stop
         }
-        
+
         let ref = try self.testCase.system._spawn("parent", behavior)
         p.watch(ref)
-        
+
         ref.tell("something") // this message causes the actor the suspend
         try p.expectMessage("suspended")
-        
+
         try p.expectTerminated(ref)
     }
 
@@ -929,7 +929,7 @@ struct BehaviorTests {
         let promise: EventLoopPromise<Int> = eventLoop.makePromise()
         let future = promise.futureResult
         let probe: ActorTestProbe<Int> = self.testCase.testKit.makeTestProbe()
-        
+
         let behavior: _Behavior<String> = .setup { context in
             context.onResultAsync(of: future, timeout: .milliseconds(300)) {
                 switch $0 {
@@ -938,14 +938,14 @@ struct BehaviorTests {
                 }
                 return .same
             }
-            
+
             return .receiveMessage { _ in
-                    .same
+                .same
             }
         }
-        
+
         try self.testCase.system._spawn(.anonymous, behavior)
-        
+
         promise.succeed(1)
         try probe.expectMessage(1)
     }
@@ -957,7 +957,7 @@ struct BehaviorTests {
         let future = promise.futureResult
         let probe = self.testCase.testKit.makeTestProbe(expecting: NonTransportableAnyError.self)
         let error = self.testCase.testKit.error()
-        
+
         let behavior: _Behavior<String> = .setup { [testCase] context in
             context.onResultAsync(of: future, timeout: .milliseconds(300)) {
                 switch $0 {
@@ -966,14 +966,14 @@ struct BehaviorTests {
                 }
                 return .same
             }
-            
+
             return .receiveMessage { _ in
-                    .same
+                .same
             }
         }
-        
+
         try self.testCase.system._spawn(.anonymous, behavior)
-        
+
         promise.fail(error)
         _ = try probe.expectMessage()
     }
@@ -985,7 +985,7 @@ struct BehaviorTests {
         let future = promise.futureResult
         let resultProbe: ActorTestProbe<Int> = self.testCase.testKit.makeTestProbe()
         let probe: ActorTestProbe<String> = self.testCase.testKit.makeTestProbe()
-        
+
         let behavior: _Behavior<String> = .setup { context in
             context.onResultAsync(of: future, timeout: .milliseconds(300)) {
                 switch $0 {
@@ -997,18 +997,18 @@ struct BehaviorTests {
                     return .same
                 }
             }
-            
+
             return .receiveMessage {
                 probe.tell("started:\($0)")
                 return .same
             }
         }
-        
+
         let ref = try self.testCase.system._spawn(.anonymous, behavior)
-        
+
         promise.succeed(1)
         try resultProbe.expectMessage(1)
-        
+
         ref.tell("test")
         try probe.expectMessage("assigned:test")
     }
@@ -1020,7 +1020,7 @@ struct BehaviorTests {
         let future = promise.futureResult
         let resultProbe: ActorTestProbe<Int> = self.testCase.testKit.makeTestProbe()
         let probe: ActorTestProbe<String> = self.testCase.testKit.makeTestProbe()
-        
+
         let behavior: _Behavior<String> = .setup { context in
             context.onResultAsync(of: future, timeout: .milliseconds(300)) {
                 switch $0 {
@@ -1030,21 +1030,21 @@ struct BehaviorTests {
                 return .setup { _ in
                     probe.tell("setup")
                     return .receiveMessage { _ in
-                            .same
+                        .same
                     }
                 }
             }
-            
+
             return .receiveMessage { _ in
-                    .same
+                .same
             }
         }
-        
+
         try self.testCase.system._spawn(.anonymous, behavior)
-        
+
         promise.succeed(1)
         try resultProbe.expectMessage(1)
-        
+
         try probe.expectMessage("setup")
     }
 
@@ -1055,7 +1055,7 @@ struct BehaviorTests {
         let future = promise.futureResult
         let probe: ActorTestProbe<String> = self.testCase.testKit.makeTestProbe()
         let resultProbe: ActorTestProbe<Int> = self.testCase.testKit.makeTestProbe()
-        
+
         let behavior: _Behavior<String> = .setup { context in
             context.onResultAsync(of: future, timeout: .seconds(3)) {
                 switch $0 {
@@ -1064,21 +1064,21 @@ struct BehaviorTests {
                 }
                 return .same
             }
-            
+
             return .receiveMessage {
                 probe.tell("started:\($0)")
                 return .same
             }
         }
-        
+
         let ref = try self.testCase.system._spawn(.anonymous, behavior)
-        
+
         ref.tell("test")
         try probe.expectMessage("started:test")
-        
+
         ref.tell("test2")
         try probe.expectMessage("started:test2")
-        
+
         promise.succeed(1)
         try resultProbe.expectMessage(1)
     }
@@ -1090,7 +1090,7 @@ struct BehaviorTests {
         let future = promise.futureResult
         let probe: ActorTestProbe<String> = self.testCase.testKit.makeTestProbe()
         let resultProbe: ActorTestProbe<Int> = self.testCase.testKit.makeTestProbe()
-        
+
         let behavior: _Behavior<String> = .setup { context in
             context.onResultAsync(of: future, timeout: .seconds(3)) {
                 switch $0 {
@@ -1102,7 +1102,7 @@ struct BehaviorTests {
                     return .same
                 }
             }
-            
+
             return .receiveMessage {
                 probe.tell("started:\($0)")
                 return .receiveMessage {
@@ -1111,18 +1111,18 @@ struct BehaviorTests {
                 }
             }
         }
-        
+
         let ref = try self.testCase.system._spawn(.anonymous, behavior)
-        
+
         ref.tell("test")
         try probe.expectMessage("started:test")
-        
+
         ref.tell("test")
         try probe.expectMessage("changed:test")
-        
+
         promise.succeed(1)
         try resultProbe.expectMessage(1)
-        
+
         ref.tell("test")
         try probe.expectMessage("assigned:test")
     }
@@ -1133,20 +1133,20 @@ struct BehaviorTests {
         let promise: EventLoopPromise<Int> = eventLoop.makePromise()
         let future = promise.futureResult
         let probe: ActorTestProbe<Int> = self.testCase.testKit.makeTestProbe()
-        
+
         let behavior: _Behavior<String> = .setup { context in
             context.onResultAsyncThrowing(of: future, timeout: .milliseconds(300)) {
                 probe.tell($0)
                 return .same
             }
-            
+
             return .receiveMessage { _ in
-                    .same
+                .same
             }
         }
-        
+
         try self.testCase.system._spawn(.anonymous, behavior)
-        
+
         promise.succeed(1)
         try probe.expectMessage(1)
     }
@@ -1158,20 +1158,20 @@ struct BehaviorTests {
         let future = promise.futureResult
         let probe: ActorTestProbe<Never> = self.testCase.testKit.makeTestProbe()
         let error = self.testCase.testKit.error()
-        
+
         let behavior: _Behavior<String> = .setup { context in
             context.onResultAsyncThrowing(of: future, timeout: .milliseconds(300)) { _ in
-                    .same
+                .same
             }
-            
+
             return .receiveMessage { _ in
-                    .same
+                .same
             }
         }
-        
+
         let ref = try self.testCase.system._spawn(.anonymous, behavior)
         probe.watch(ref)
-        
+
         promise.fail(error)
         try probe.expectTerminated(ref)
     }

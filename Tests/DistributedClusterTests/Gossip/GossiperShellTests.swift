@@ -25,7 +25,7 @@ struct GossiperShellTests {
             if "\(msg)".contains("stop") { return .stop } else { return .same }
         }
     }
-    
+
     let testCase: SingleClusterSystemTestCase
 
     init() async throws {
@@ -37,7 +37,7 @@ struct GossiperShellTests {
     @Test
     func test_down_beGossipedToOtherNodes() throws {
         let p = self.testCase.testKit.makeTestProbe(expecting: [_AddressableActorRef].self)
-        
+
         let control = try Gossiper._spawn(
             self.testCase.system,
             name: "gossiper",
@@ -46,21 +46,21 @@ struct GossiperShellTests {
                 style: .unidirectional
             )
         ) { _ in InspectOfferedPeersTestGossipLogic(offeredPeersProbe: p.ref) }
-        
+
         let first: _ActorRef<GossipShell<InspectOfferedPeersTestGossipLogic.Gossip, String>.Message> =
-        try self.testCase.system._spawn("first", self.peerBehavior())
+            try self.testCase.system._spawn("first", self.peerBehavior())
         let second: _ActorRef<GossipShell<InspectOfferedPeersTestGossipLogic.Gossip, String>.Message> =
-        try self.testCase.system._spawn("second", self.peerBehavior())
-        
+            try self.testCase.system._spawn("second", self.peerBehavior())
+
         control.introduce(peer: first)
         control.introduce(peer: second)
         control.update(StringGossipIdentifier("hi"), payload: .init("hello"))
-        
+
         try Set(p.expectMessage()).shouldEqual(Set([first.asAddressable, second.asAddressable]))
-        
+
         first.tell(.removePayload(identifier: StringGossipIdentifier("stop")))
         try Set(p.expectMessage()).shouldEqual(Set([second.asAddressable]))
-        
+
         first.tell(.removePayload(identifier: StringGossipIdentifier("stop")))
         try p.expectNoMessage(for: .milliseconds(300))
     }
@@ -106,7 +106,7 @@ struct GossiperShellTests {
     @Test
     func test_unidirectional_yetReceivesAckRef_shouldWarn() throws {
         let p = self.testCase.testKit.makeTestProbe(expecting: String.self)
-        
+
         let control = try Gossiper._spawn(
             self.testCase.system,
             name: "noAcks",
@@ -116,10 +116,10 @@ struct GossiperShellTests {
             ),
             makeLogic: { _ in NoAcksTestGossipLogic(probe: p.ref) }
         )
-        
+
         let first: _ActorRef<GossipShell<NoAcksTestGossipLogic.Gossip, NoAcksTestGossipLogic.Acknowledgement>.Message> =
-        try self.testCase.system._spawn("first", self.peerBehavior())
-        
+            try self.testCase.system._spawn("first", self.peerBehavior())
+
         control.introduce(peer: first)
         control.update(StringGossipIdentifier("hi"), payload: .init("hello"))
         control.ref.tell(
@@ -129,7 +129,7 @@ struct GossiperShellTests {
                 ackRef: self.testCase.system.deadLetters.adapted() // this is wrong on purpose; we're configured as `unidirectional`; this should cause warnings
             )
         )
-        
+
         try self.testCase.logCapture.awaitLogContaining(
             self.testCase.testKit,
             text: " Incoming gossip has acknowledgement actor ref and seems to be expecting an ACK, while this gossiper is configured as .unidirectional!"

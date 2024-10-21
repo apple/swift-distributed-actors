@@ -19,7 +19,6 @@ import Testing
 
 @Suite(.serialized)
 struct ClusteringDocExamples {
-    
     @Test
     func example_config_tls() throws {
         // tag::config_tls[]

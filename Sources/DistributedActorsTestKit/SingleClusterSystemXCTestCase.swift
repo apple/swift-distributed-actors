@@ -20,9 +20,8 @@ import Testing
 
 /// Base class to handle the repetitive setUp/tearDown code involved in most `ClusterSystem` requiring tests.
 public final class SingleClusterSystemTestCase: Sendable {
-    
     let baseTestCase: ClusteredActorSystemsTestCase
-    
+
     public var system: ClusterSystem {
         guard let node = self.baseTestCase._nodes.withLock({ $0.first }) else {
             fatalError("No system spawned!")
@@ -37,36 +36,36 @@ public final class SingleClusterSystemTestCase: Sendable {
     public var testKit: ActorTestKit {
         self.baseTestCase.testKit(self.system)
     }
-    
+
     public func testKit(_ system: ClusterSystem) -> ActorTestKit {
         self.baseTestCase.testKit(system)
     }
-    
-    public var configureLogCapture: (@Sendable (_ settings: inout LogCapture.Settings) -> ()) {
+
+    public var configureLogCapture: (@Sendable (_ settings: inout LogCapture.Settings) -> Void) {
         get { self.baseTestCase.configureLogCapture }
         set { self.baseTestCase.configureLogCapture = newValue }
     }
-    
-    public var configureActorSystem: (@Sendable (_ settings: inout ClusterSystemSettings) -> ()) {
+
+    public var configureActorSystem: (@Sendable (_ settings: inout ClusterSystemSettings) -> Void) {
         get { self.baseTestCase.configureActorSystem }
         set { self.baseTestCase.configureActorSystem = newValue }
     }
-    
+
     public var settings: ClusteredActorSystemsTestCase.Settings {
         self.baseTestCase.settings
     }
-    
+
     public var logCapture: LogCapture {
         guard let handler = self.baseTestCase._logCaptures.withLock({ $0.first }) else {
             fatalError("No log capture installed!")
         }
         return handler
     }
-    
+
     public struct SetupNode {
         let name: String
         let modifySettings: ((inout ClusterSystemSettings) -> Void)?
-        
+
         public init(name: String, modifySettings: ((inout ClusterSystemSettings) -> Void)?) {
             self.name = name
             self.modifySettings = modifySettings
@@ -80,7 +79,7 @@ public final class SingleClusterSystemTestCase: Sendable {
         self.baseTestCase = try ClusteredActorSystemsTestCase(settings: settings)
         _ = await self.setUpNode(setupNode.name, setupNode.modifySettings)
     }
-    
+
     public convenience init(
         settings: ClusteredActorSystemsTestCase.Settings = .init(),
         name: String
@@ -97,15 +96,15 @@ public final class SingleClusterSystemTestCase: Sendable {
             modifySettings?(&settings)
         }
     }
-    
+
     public func capturedLogs(of node: ClusterSystem) -> LogCapture {
         self.baseTestCase.capturedLogs(of: node)
     }
-    
+
     public func setUpPair(_ modifySettings: ((inout ClusterSystemSettings) -> Void)? = nil) async -> (ClusterSystem, ClusterSystem) {
         await self.baseTestCase.setUpPair(modifySettings)
     }
-    
+
     public func joinNodes(
         node: ClusterSystem, with other: ClusterSystem,
         ensureWithin: Duration? = nil, ensureMembers maybeExpectedStatus: Cluster.MemberStatus? = nil,
@@ -119,7 +118,7 @@ public final class SingleClusterSystemTestCase: Sendable {
             sourceLocation: sourceLocation
         )
     }
-    
+
     deinit {
         self.baseTestCase.tearDown()
     }

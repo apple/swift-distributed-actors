@@ -18,13 +18,12 @@ import Testing
 
 @Suite(.serialized)
 final class ActorTestProbeTests: Sendable {
-    
     let testCase: SingleClusterSystemTestCase
-    
+
     init() async throws {
         self.testCase = try await SingleClusterSystemTestCase(name: String(describing: type(of: self)))
     }
-    
+
     @Test
     func test_maybeExpectMessage_shouldReturnTheReceivedMessage() throws {
         let probe = self.testCase.testKit.makeTestProbe("p2", expecting: String.self)

@@ -20,7 +20,7 @@ import Testing
 @Suite(.timeLimit(.minutes(1)), .serialized)
 struct ShootTheOtherNodeClusteredTests {
     let testCase: ClusteredActorSystemsTestCase
-    
+
     init() throws {
         self.testCase = try ClusteredActorSystemsTestCase()
         self.self.testCase.configureLogCapture = { settings in
@@ -37,17 +37,17 @@ struct ShootTheOtherNodeClusteredTests {
     @Test
     func test_shootOtherNodeShouldTerminateIt() async throws {
         let (local, remote) = await self.testCase.setUpPair()
-        
+
         // also assures they are associated
         try await self.testCase.joinNodes(node: local, with: remote, ensureWithin: .seconds(5), ensureMembers: .up)
-        
+
         let remoteAssociationControlState0 = local._cluster!.getEnsureAssociation(with: remote.cluster.node)
         guard case ClusterShell.StoredAssociationState.association(let remoteControl0) = remoteAssociationControlState0 else {
             throw Boom("Expected the association to exist for \(remote.cluster.node)")
         }
-        
+
         ClusterShell.shootTheOtherNodeAndCloseConnection(system: local, targetNodeAssociation: remoteControl0)
-        
+
         // the remote should get the "shot" and become down asap
         try self.testCase.testKit(local).eventually(within: .seconds(3)) {
             // we do NOT failTest:, since we are in an eventuallyBlock and are waiting for the logs to happen still
