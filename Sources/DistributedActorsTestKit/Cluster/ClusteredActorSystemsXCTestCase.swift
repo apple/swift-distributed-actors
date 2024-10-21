@@ -16,18 +16,34 @@ import DistributedActorsConcurrencyHelpers
 @testable import DistributedCluster
 import Foundation
 import Testing
+import Synchronization
+
+//final class PortFactory: Sendable {
+//    static let shared: PortFactory = PortFactory()
+//    
+//    let _port = Mutex(9001)
+//    
+//    var nextPort: Int {
+//        _port.withLock { port in
+//            let currentPort = port
+//            port += 1
+//            return currentPort
+//        }
+//    }
+//}
 
 /// Convenience class for building multi-node (yet same-process) tests with many actor systems involved.
 ///
 /// Systems started using `setUpNode` are automatically terminated upon test completion, and logs are automatically
 /// captured and only printed when a test failure occurs.
-open class ClusteredActorSystemsXCTestCase {
-    internal let lock = DistributedActorsConcurrencyHelpers.Lock()
-    public private(set) var _nodes: [ClusterSystem] = []
-    public private(set) var _testKits: [ActorTestKit] = []
-    public private(set) var _logCaptures: [LogCapture] = []
+public final class ClusteredActorSystemsTestCase: Sendable {
+        
+    public let _nodes: Mutex<[ClusterSystem]> = Mutex([])
+    public let _testKits: Mutex<[ActorTestKit]> = Mutex([])
+    public let _logCaptures: Mutex<[LogCapture]> = Mutex([])
 
-    private var stuckTestDumpLogsTask: Task<Void, Error>?
+    private let stuckTestDumpLogsTask: Mutex<Task<Void, Error>?> = Mutex(.none)
+    private let actorStatsBefore: Mutex<InspectKit.ActorStats> = Mutex(.init())
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Actor leak detection
@@ -40,13 +56,28 @@ open class ClusteredActorSystemsXCTestCase {
             return false
         }
     }()
-
-    /// If true, will use ``InspectKit`` to detect actor leaks around tests run in this test suite.
-    open var inspectDetectActorLeaks: Bool {
-        ClusteredActorSystemsXCTestCase.inspectDetectActorLeaksEnv
+    
+    public struct Settings: Sendable {
+        public let captureLogs: Bool
+        public let dumpLogsAfter: Duration
+        public let alwaysPrintCaptureLogs: Bool
+        
+        public init(
+            captureLogs: Bool = true,
+            dumpLogsAfter: Duration = .seconds(60),
+            alwaysPrintCaptureLogs: Bool = false
+        ) {
+            self.captureLogs = captureLogs
+            self.dumpLogsAfter = dumpLogsAfter
+            self.alwaysPrintCaptureLogs = alwaysPrintCaptureLogs
+        }
     }
 
-    private var actorStatsBefore: InspectKit.ActorStats = .init()
+    /// If true, will use ``InspectKit`` to detect actor leaks around tests run in this test suite.
+    public var inspectDetectActorLeaks: Bool {
+        ClusteredActorSystemsTestCase.inspectDetectActorLeaksEnv
+    }
+
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Log capture
@@ -55,78 +86,93 @@ open class ClusteredActorSystemsXCTestCase {
     /// If `false`, log capture is disabled and the systems will log messages normally.
     ///
     /// - Default: `true`
-    open var captureLogs: Bool {
-        true
+    private var captureLogs: Bool {
+        self.settings.captureLogs
     }
 
     /// Unconditionally dump logs if the test has been running longer than this duration.
     /// This is to help diagnose stuck tests.
-    open var dumpLogsAfter: Duration {
-        .seconds(60)
+    private var dumpLogsAfter: Duration {
+        self.settings.dumpLogsAfter
     }
 
     /// Enables logging all captured logs, even if the test passed successfully.
     /// - Default: `false`
-    open var alwaysPrintCaptureLogs: Bool {
-        false
+    private var alwaysPrintCaptureLogs: Bool {
+        self.settings.alwaysPrintCaptureLogs
     }
 
-    open func configureLogCapture(settings: inout LogCapture.Settings) {
-        // just use defaults
+    public let settings: Settings
+    public var configureLogCapture: (@Sendable (_ settings: inout LogCapture.Settings) -> ()) {
+        get { self._configureLogCapture.withLock { $0 } }
+        set { self._configureLogCapture.withLock { $0 = newValue }}
     }
-
     /// Configuration to be applied to every actor system.
     ///
     /// Order in which configuration is changed:
     /// - default changes made by `ClusteredNodesTestBase`
     /// - changes made by `configureActorSystem`
     /// - changes made by `modifySettings`, which is a parameter of `setUpNode`
-    open func configureActorSystem(settings: inout ClusterSystemSettings) {
-        // just use defaults
+    public var configureActorSystem: (@Sendable  (_ settings: inout ClusterSystemSettings) -> ()) {
+        get { self._configureActorSystem.withLock { $0 } }
+        set { self._configureActorSystem.withLock { $0 = newValue }}
     }
 
-    var _nextPort = 9001
-    open func nextPort() -> Int {
-        defer { self._nextPort += 1 }
-        return self._nextPort
+    public let _configureLogCapture: Mutex<(@Sendable (_ settings: inout LogCapture.Settings) -> ())> = Mutex({ _ in })
+    public let _configureActorSystem: Mutex<(@Sendable (_ settings: inout ClusterSystemSettings) -> ())> = Mutex({ _ in })
+
+    let _port = Mutex(9001)
+    
+    var nextPort: Int {
+        _port.withLock { port in
+            let currentPort = port
+            port += 1
+            return currentPort
+        }
     }
 
-    public init() async throws {
+    public init(settings: Settings = .init()) throws {
+        self.settings = settings
         if self.inspectDetectActorLeaks {
-            self.actorStatsBefore = try InspectKit.actorStats()
+            try self.actorStatsBefore.withLock { $0 = try InspectKit.actorStats() }
         }
 
-        self.stuckTestDumpLogsTask = Task.detached {
-            try await Task.sleep(until: .now + self.dumpLogsAfter, clock: .continuous)
-            guard !Task.isCancelled else {
-                return
-            }
-
-            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-            print("!!!!!!!!!!               TEST SEEMS STUCK - DUMPING LOGS                   !!!!!!!!!!")
-            print("!!!!!!!!!!               PID: \(ProcessInfo.processInfo.processIdentifier)                              !!!!!!!!!!")
-            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-            self.printAllCapturedLogs()
-        }
+//        self.stuckTestDumpLogsTask.withLock {
+//            $0 = Task.detached {
+//                try await Task.sleep(until: .now + self.dumpLogsAfter, clock: .continuous)
+//                guard !Task.isCancelled else {
+//                    return
+//                }
+//                
+//                print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+//                print("!!!!!!!!!!               TEST SEEMS STUCK - DUMPING LOGS                   !!!!!!!!!!")
+//                print("!!!!!!!!!!               PID: \(ProcessInfo.processInfo.processIdentifier)                              !!!!!!!!!!")
+//                print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+//                self.printAllCapturedLogs()
+//            }
+//        }
+    }
+    
+    enum SomeError {
+        case cancelled
     }
 
     /// Set up a new node intended to be clustered.
-    open func setUpNode(_ name: String, _ modifySettings: ((inout ClusterSystemSettings) -> Void)? = nil) async -> ClusterSystem {
-        let node = await ClusterSystem(name) { settings in
+    public func setUpNode(_ name: String, _ modifySettings: ((inout ClusterSystemSettings) -> Void)? = nil) async -> ClusterSystem {
+        let node = await ClusterSystem(name) { [weak self] settings in
+            guard let self else { return }
             settings.enabled = true
-            settings.endpoint.port = self.nextPort()
+            settings.endpoint.port = self.nextPort
 
             if self.captureLogs {
                 var captureSettings = LogCapture.Settings()
-                self.configureLogCapture(settings: &captureSettings)
+                self.configureLogCapture(&captureSettings)
                 let capture = LogCapture(settings: captureSettings)
 
                 settings.logging.baseLogger = capture.logger(label: name)
                 settings.swim.logger = settings.logging.baseLogger
 
-                self.lock.withLockVoid {
-                    self._logCaptures.append(capture)
-                }
+                self._logCaptures.withLock { $0.append(capture) }
             }
 
             settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
@@ -136,12 +182,12 @@ open class ClusteredActorSystemsXCTestCase {
             settings.swim.lifeguard.suspicionTimeoutMin = .milliseconds(500)
             settings.swim.lifeguard.suspicionTimeoutMax = .seconds(1)
 
-            self.configureActorSystem(settings: &settings)
+            self.configureActorSystem(&settings)
             modifySettings?(&settings)
         }
 
-        self._nodes.append(node)
-        self._testKits.append(.init(node))
+        self._nodes.withLock { $0.append(node) }
+        self._testKits.withLock { $0.append(.init(node)) }
 
         return node
     }
@@ -153,49 +199,53 @@ open class ClusteredActorSystemsXCTestCase {
         return (first, second)
     }
     
-    deinit { self.tearDown() }
+    deinit {
+        self.tearDown()
+    }
+    
+    public let totalFailureCount: Mutex<Int> = .init(0)
 
-    open func tearDown() {
-        self.stuckTestDumpLogsTask?.cancel()
-        self.stuckTestDumpLogsTask = nil
-
-//        try await super.tearDown()
-
-        /// FIXME: Check if new testing supports testRun.totalFailureCount
-//        let testsFailed = self.testRun?.totalFailureCount ?? 0 > 0
-//        if self.captureLogs, self.alwaysPrintCaptureLogs || testsFailed {
-//            self.printAllCapturedLogs()
-//        }
-
-        for node in self._nodes {
-            node.log.warning("======================== TEST TEAR DOWN: SHUTDOWN ========================")
-            try! node.shutdown().wait()
+    public func tearDown() {
+        self.stuckTestDumpLogsTask.withLock {
+            $0?.cancel()
+            $0 = nil
         }
 
-        self.lock.withLockVoid {
-            self._nodes = []
-            self._testKits = []
-            self._logCaptures = []
+
+        let testsFailed = self.totalFailureCount.withLock { $0 > 0 }
+        if self.captureLogs, self.alwaysPrintCaptureLogs || testsFailed {
+            self.printAllCapturedLogs()
         }
 
-        if self.inspectDetectActorLeaks {
-            Task {
-                try await Task.sleep(until: .now + .seconds(2), clock: .continuous)
-                
-                let actorStatsAfter = try InspectKit.actorStats()
-                if let error = self.actorStatsBefore.detectLeaks(latest: actorStatsAfter) {
-                    print(error.message)
-                }
+        self._nodes.withLock { nodes in
+            for node in nodes {
+                node.log.warning("======================== TEST TEAR DOWN: SHUTDOWN ========================")
+                try! node.shutdown().wait()
             }
         }
+
+        self._nodes.withLock { $0 = [] }
+        self._testKits.withLock { $0 = [] }
+        self._logCaptures.withLock { $0 = [] }
+        print("Should be done")
+//        if self.inspectDetectActorLeaks {
+//            Task.detached {
+//                try await Task.sleep(until: .now + .seconds(2), clock: .continuous)
+//                
+//                let actorStatsAfter = try InspectKit.actorStats()
+//                if let error = self.actorStatsBefore.withLock({ $0.detectLeaks(latest: actorStatsAfter) }) {
+//                    print(error.message)
+//                }
+//            }
+//        }
     }
 
     public func testKit(_ system: ClusterSystem) -> ActorTestKit {
-        guard let idx = self._nodes.firstIndex(where: { s in s.cluster.node == system.cluster.node }) else {
+        guard let idx = self._nodes.withLock({ $0.firstIndex(where: { s in s.cluster.node == system.cluster.node }) }) else {
             fatalError("Must only call with system that was spawned using `setUpNode()`, was: \(system)")
         }
 
-        let testKit = self._testKits[idx]
+        let testKit = self._testKits.withLock { $0[idx] }
 
         return testKit
     }
@@ -237,7 +287,7 @@ open class ClusteredActorSystemsXCTestCase {
         _ status: Cluster.MemberStatus, on system: ClusterSystem? = nil, within: Duration = .seconds(20), nodes: [Cluster.Node],
         sourceLocation: SourceLocation = #_sourceLocation
     ) async throws {
-        guard let onSystem = system ?? self._nodes.first(where: { !$0.isShuttingDown }) else {
+        guard let onSystem = system ?? self._nodes.withLock({ $0.first(where: { !$0.isShuttingDown }) }) else {
             fatalError("Must at least have 1 system present to use [\(#function)]")
         }
 
@@ -253,7 +303,7 @@ open class ClusteredActorSystemsXCTestCase {
         atLeast status: Cluster.MemberStatus, on system: ClusterSystem? = nil, within: Duration = .seconds(20), nodes: [Cluster.Node],
         sourceLocation: SourceLocation = #_sourceLocation
     ) async throws {
-        guard let onSystem = system ?? self._nodes.first(where: { !$0.isShuttingDown }) else {
+        guard let onSystem = system ?? self._nodes.withLock({ $0.first(where: { !$0.isShuttingDown }) }) else {
             fatalError("Must at least have 1 system present to use [\(#function)]")
         }
 
@@ -270,7 +320,7 @@ open class ClusteredActorSystemsXCTestCase {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Printing information
 
-extension ClusteredActorSystemsXCTestCase {
+extension ClusteredActorSystemsTestCase {
     public func pinfoMembership(_ system: ClusterSystem, sourceLocation: SourceLocation = #_sourceLocation) {
         let testKit = self.testKit(system)
         let p = testKit.makeTestProbe(expecting: Cluster.Membership.self)
@@ -297,15 +347,13 @@ extension ClusteredActorSystemsXCTestCase {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Captured Logs
 
-extension ClusteredActorSystemsXCTestCase {
+extension ClusteredActorSystemsTestCase {
     public func capturedLogs(of node: ClusterSystem) -> LogCapture {
-        guard let index = self._nodes.firstIndex(of: node) else {
-            fatalError("No such node: [\(node)] in [\(self._nodes)]!")
+        guard let index = self._nodes.withLock({ $0.firstIndex(of: node) }) else {
+            fatalError("No such node: [\(node)] in [\(self._nodes.withLock { $0 })]!")
         }
 
-        return self.lock.withLock {
-            self._logCaptures[index]
-        }
+        return self._logCaptures.withLock { $0[index] }
     }
 
     public func printCapturedLogs(of node: ClusterSystem) {
@@ -315,7 +363,7 @@ extension ClusteredActorSystemsXCTestCase {
     }
 
     public func printAllCapturedLogs() {
-        for node in self._nodes {
+        for node in self._nodes.withLock({ $0 }) {
             self.printCapturedLogs(of: node)
         }
     }
@@ -324,7 +372,7 @@ extension ClusteredActorSystemsXCTestCase {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Assertions
 
-extension ClusteredActorSystemsXCTestCase {
+extension ClusteredActorSystemsTestCase {
     public func assertAssociated(
         _ system: ClusterSystem, withAtLeast node: Cluster.Node,
         timeout: Duration? = nil, interval: Duration? = nil,
@@ -500,7 +548,7 @@ extension ClusteredActorSystemsXCTestCase {
         }
 
         guard events.first != nil else {
-            throw self._testKits.first!.fail("Expected to capture cluster event about \(node) being down or removed, yet none captured!")
+            throw self._testKits.withLock { $0.first!.fail("Expected to capture cluster event about \(node) being down or removed, yet none captured!") }
         }
     }
 
@@ -529,7 +577,7 @@ extension ClusteredActorSystemsXCTestCase {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Resolve utilities, for resolving remote refs "on" a specific system
 
-extension ClusteredActorSystemsXCTestCase {
+extension ClusteredActorSystemsTestCase {
     public func resolveRef<M>(_ system: ClusterSystem, type: M.Type, id: ActorID, on targetSystem: ClusterSystem) -> _ActorRef<M> {
         // DO NOT TRY THIS AT HOME; we do this since we have no receptionist which could offer us references
         // first we manually construct the "right remote path", DO NOT ABUSE THIS IN REAL CODE (please) :-)

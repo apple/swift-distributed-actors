@@ -19,8 +19,8 @@ import NIOSSL
 import Testing
 
 // Unit tests of the actions, see `ClusterLeaderActionsClusteredTests` for integration tests
-@Suite(.serialized)
-final class ClusterLeaderActionsTests {
+@Suite(.timeLimit(.minutes(1)), .serialized)
+struct ClusterLeaderActionsTests {
     let _endpointA = Cluster.Endpoint(systemName: "nodeA", host: "1.1.1.1", port: 7337)
     let _endpointB = Cluster.Endpoint(systemName: "nodeB", host: "2.2.2.2", port: 8228)
     let _endpointC = Cluster.Endpoint(systemName: "nodeC", host: "3.3.3.3", port: 9119)
@@ -78,7 +78,7 @@ final class ClusterLeaderActionsTests {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Moving members to .removed
     @Test
-    func test_leaderActions_removeDownMembers_ifKnownAsDownToAllMembers() {
+    mutating func test_leaderActions_removeDownMembers_ifKnownAsDownToAllMembers() {
         // make A the leader
         let makeFirstTheLeader = Cluster.LeadershipChange(oldLeader: nil, newLeader: self.stateA.membership.anyMember(forEndpoint: self.nodeA.endpoint)!)!
         _ = self.stateA.applyClusterEvent(.leadershipChange(makeFirstTheLeader))
@@ -134,7 +134,7 @@ final class ClusterLeaderActionsTests {
     }
 
     @Test
-    func test_leaderActions_removeDownMembers_dontRemoveIfDownNotKnownToAllMembersYet() {
+    mutating func test_leaderActions_removeDownMembers_dontRemoveIfDownNotKnownToAllMembersYet() {
         // A is .down, but
         _ = self.stateB._latestGossip = .parse(
             """

@@ -56,26 +56,32 @@ final class TerminatedInterceptor<Message: Codable>: _Interceptor<Message> {
     }
 }
 
-@Suite(.serialized)
-final class InterceptorTests: SingleClusterSystemXCTestCase {
+@Suite(.timeLimit(.minutes(1)), .serialized)
+struct InterceptorTests {
+    
+    let testCase: SingleClusterSystemTestCase
+
+    init() async throws {
+        testCase = try await SingleClusterSystemTestCase(name: String(describing: type(of: self)))
+    }
     
     @Test
     func test_remoteCall_interceptor() async throws {
-        let local = await setUpNode("local") { settings in
+        let local = await self.testCase.setUpNode("local") { settings in
             settings.enabled = true
         }
-        let remote = await setUpNode("remote") { settings in
+        let remote = await self.testCase.setUpNode("remote") { settings in
             settings.enabled = true
         }
         local.cluster.join(endpoint: remote.cluster.endpoint)
-
+        
         let otherGreeter = Greeter(actorSystem: local, greeting: "HI!!!")
-        let localGreeter: Greeter = try system.interceptCalls(
+        let localGreeter: Greeter = try self.testCase.system.interceptCalls(
             to: Greeter.self,
             metadata: ActorMetadata(),
             interceptor: GreeterRemoteCallInterceptor(system: local, greeter: otherGreeter)
         )
-
+        
         let value = try await shouldNotThrow {
             try await localGreeter.greet()
         }
@@ -84,50 +90,50 @@ final class InterceptorTests: SingleClusterSystemXCTestCase {
 
     @Test
     func test_remoteCallVoid_interceptor() async throws {
-        let local = await setUpNode("local") { settings in
+        let local = await self.testCase.setUpNode("local") { settings in
             settings.enabled = true
         }
-        let remote = await setUpNode("remote") { settings in
+        let remote = await self.testCase.setUpNode("remote") { settings in
             settings.enabled = true
         }
         local.cluster.join(endpoint: remote.cluster.endpoint)
-
+        
         let otherGreeter = Greeter(actorSystem: local, greeting: "HI!!!")
         let localGreeter: Greeter = try shouldNotThrow {
-            try system.interceptCalls(
+            try self.testCase.system.interceptCalls(
                 to: Greeter.self,
                 metadata: ActorMetadata(),
                 interceptor: GreeterRemoteCallInterceptor(system: local, greeter: otherGreeter)
             )
         }
-
+        
         try await shouldNotThrow {
             try await localGreeter.muted()
         }
-        try self.capturedLogs(of: local).awaitLogContaining(self.testKit(local), text: "Muted greeting: HI!!!")
+        try self.testCase.capturedLogs(of: local).awaitLogContaining(self.testCase.testKit(local), text: "Muted greeting: HI!!!")
     }
 
     // Legacy interceptor API tests -----------------------------------------------------------------------------------
     @Test
     func test_interceptor_shouldConvertMessages() throws {
-        let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
-
+        let p: ActorTestProbe<String> = self.testCase.testKit.makeTestProbe()
+        
         let interceptor = ShoutingInterceptor()
-
+        
         let forwardToProbe: _Behavior<String> = .receiveMessage { message in
             p.tell(message)
             return .same
         }
-
-        let ref: _ActorRef<String> = try system._spawn(
+        
+        let ref: _ActorRef<String> = try self.testCase.system._spawn(
             "theWallsHaveEars",
             .intercept(behavior: forwardToProbe, with: interceptor)
         )
-
+        
         for i in 0 ... 10 {
             ref.tell("hello:\(i)")
         }
-
+        
         for i in 0 ... 10 {
             try p.expectMessage("hello:\(i)!")
         }
@@ -135,11 +141,11 @@ final class InterceptorTests: SingleClusterSystemXCTestCase {
 
     @Test
     func test_interceptor_shouldSurviveDeeplyNestedInterceptors() throws {
-        let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
-        let i: ActorTestProbe<String> = self.testKit.makeTestProbe()
-
+        let p: ActorTestProbe<String> = self.testCase.testKit.makeTestProbe()
+        let i: ActorTestProbe<String> = self.testCase.testKit.makeTestProbe()
+        
         let makeStringsLouderInterceptor = ShoutingInterceptor(probe: i)
-
+        
         // just like in the movie "Inception"
         func interceptionInceptionBehavior(currentDepth depth: Int, stopAt limit: Int) -> _Behavior<String> {
             let behavior: _Behavior<String>
@@ -152,18 +158,18 @@ final class InterceptorTests: SingleClusterSystemXCTestCase {
                     return .stop
                 }
             }
-
+            
             return .intercept(behavior: behavior, with: makeStringsLouderInterceptor)
         }
-
+        
         let depth = 50
-        let ref: _ActorRef<String> = try system._spawn(
+        let ref: _ActorRef<String> = try self.testCase.system._spawn(
             "theWallsHaveEars",
             interceptionInceptionBehavior(currentDepth: 0, stopAt: depth)
         )
-
+        
         ref.tell("hello")
-
+        
         try p.expectMessage("received:hello!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
         for j in 0 ... depth {
             let m = "from-interceptor:hello\(String(repeating: "!", count: j))"
@@ -186,20 +192,20 @@ final class InterceptorTests: SingleClusterSystemXCTestCase {
 
     @Test
     func test_interceptor_shouldRemainWhenReturningStoppingWithPostStop() throws {
-        let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
-
+        let p: ActorTestProbe<String> = self.testCase.testKit.makeTestProbe()
+        
         let behavior: _Behavior<String> = .receiveMessage { _ in
-            .stop { _ in
-                p.tell("postStop")
-            }
+                .stop { _ in
+                    p.tell("postStop")
+                }
         }
-
+        
         let interceptedBehavior: _Behavior<String> = .intercept(behavior: behavior, with: SignalToStringInterceptor(p))
-
-        let ref = try system._spawn(.anonymous, interceptedBehavior)
+        
+        let ref = try self.testCase.system._spawn(.anonymous, interceptedBehavior)
         p.watch(ref)
         ref.tell("test")
-
+        
         try p.expectMessage("intercepted:_PostStop()")
         try p.expectMessage("postStop")
         try p.expectTerminated(ref)

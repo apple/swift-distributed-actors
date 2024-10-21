@@ -19,6 +19,7 @@ import NIO
 import NIOFoundationCompat
 import Testing
 
+@Suite(.timeLimit(.minutes(1)), .serialized)
 final class SerializationPoolTests {
     struct Test1: Codable {
         // These locks are used to validate the different ordering guarantees

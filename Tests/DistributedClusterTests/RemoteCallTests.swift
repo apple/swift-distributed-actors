@@ -17,22 +17,28 @@ import DistributedActorsTestKit
 @testable import DistributedCluster
 import Testing
 
-@Suite(.serialized)
-final class RemoteCallTests: ClusteredActorSystemsXCTestCase {
+@Suite(.timeLimit(.minutes(1)), .serialized)
+struct RemoteCallTests {
+    
+    let testCase: ClusteredActorSystemsTestCase
+    
+    init() throws {
+        testCase = try ClusteredActorSystemsTestCase()
+    }
     
     @Test
     func test_remoteCall() async throws {
-        let local = await setUpNode("local") { settings in
+        let local = await self.testCase.setUpNode("local") { settings in
             settings.serialization.registerInbound(GreeterCodableError.self)
         }
-        let remote = await setUpNode("remote") { settings in
+        let remote = await self.testCase.setUpNode("remote") { settings in
             settings.serialization.registerInbound(GreeterCodableError.self)
         }
         local.cluster.join(endpoint: remote.cluster.endpoint)
-
+        
         let greeter = Greeter(actorSystem: local)
         let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
-
+        
         let value = try await shouldNotThrow {
             try await remoteGreeterRef.hello()
         }
@@ -41,17 +47,17 @@ final class RemoteCallTests: ClusteredActorSystemsXCTestCase {
 
     @Test
     func test_remoteCall_shouldCarryBackThrownError_Codable() async throws {
-        let local = await setUpNode("local") { settings in
+        let local = await self.testCase.setUpNode("local") { settings in
             settings.serialization.registerInbound(GreeterCodableError.self)
         }
-        let remote = await setUpNode("remote") { settings in
+        let remote = await self.testCase.setUpNode("remote") { settings in
             settings.serialization.registerInbound(GreeterCodableError.self)
         }
         local.cluster.join(endpoint: remote.cluster.endpoint)
-
+        
         let greeter = Greeter(actorSystem: local)
         let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
-
+        
         let error = try await shouldThrow {
             _ = try await remoteGreeterRef.helloThrow(codable: true)
         }
@@ -62,17 +68,17 @@ final class RemoteCallTests: ClusteredActorSystemsXCTestCase {
 
     @Test
     func test_remoteCall_shouldCarryBackThrownError_nonCodable() async throws {
-        let local = await setUpNode("local") { settings in
+        let local = await self.testCase.setUpNode("local") { settings in
             settings.serialization.registerInbound(GreeterCodableError.self)
         }
-        let remote = await setUpNode("remote") { settings in
+        let remote = await self.testCase.setUpNode("remote") { settings in
             settings.serialization.registerInbound(GreeterCodableError.self)
         }
         local.cluster.join(endpoint: remote.cluster.endpoint)
-
+        
         let greeter = Greeter(actorSystem: local)
         let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
-
+        
         let error = try await shouldThrow {
             _ = try await remoteGreeterRef.helloThrow(codable: false)
         }
@@ -84,15 +90,15 @@ final class RemoteCallTests: ClusteredActorSystemsXCTestCase {
 
     @Test
     func test_remoteCallVoid() async throws {
-        let local = await setUpNode("local")
-        let remote = await setUpNode("remote") { settings in
+        let local = await self.testCase.setUpNode("local")
+        let remote = await self.testCase.setUpNode("remote") { settings in
             settings.serialization.registerInbound(GreeterCodableError.self)
         }
         local.cluster.join(endpoint: remote.cluster.endpoint)
-
+        
         let greeter = Greeter(actorSystem: local)
         let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
-
+        
         try await shouldNotThrow {
             try await remoteGreeterRef.muted()
         }
@@ -100,35 +106,35 @@ final class RemoteCallTests: ClusteredActorSystemsXCTestCase {
 
     @Test
     func test_remoteCallVoid_shouldCarryBackThrownError_Codable() async throws {
-        let local = await setUpNode("local")
-        let remote = await setUpNode("remote") { settings in
+        let local = await self.testCase.setUpNode("local")
+        let remote = await self.testCase.setUpNode("remote") { settings in
             settings.serialization.registerInbound(GreeterCodableError.self)
         }
-        try await self.joinNodes(node: local, with: remote)
-
+        try await self.testCase.joinNodes(node: local, with: remote)
+        
         let greeter = Greeter(actorSystem: local)
         let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
-
+        
         let error = try await shouldThrow {
             try await remoteGreeterRef.mutedThrow(codable: true)
         }
         guard error is GreeterCodableError else {
-            _ = self.testKit(local).fail("Expected GreeterCodableError, got \(error)")
+            _ = self.testCase.testKit(local).fail("Expected GreeterCodableError, got \(error)")
             return
         }
     }
 
     @Test
     func test_remoteCallVoid_shouldCarryBackThrownError_nonCodable() async throws {
-        let local = await setUpNode("local")
-        let remote = await setUpNode("remote") { settings in
+        let local = await self.testCase.setUpNode("local")
+        let remote = await self.testCase.setUpNode("remote") { settings in
             settings.serialization.registerInbound(GreeterCodableError.self)
         }
-        try await self.joinNodes(node: local, with: remote)
-
+        try await self.testCase.joinNodes(node: local, with: remote)
+        
         let greeter = Greeter(actorSystem: local)
         let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
-
+        
         let error = try await shouldThrow {
             try await remoteGreeterRef.mutedThrow(codable: false)
         }
@@ -140,19 +146,19 @@ final class RemoteCallTests: ClusteredActorSystemsXCTestCase {
 
     @Test
     func test_remoteCall_shouldConfigureTimeout() async throws {
-        let local = await setUpNode("local")
-        let remote = await setUpNode("remote")
-        try await self.joinNodes(node: local, with: remote)
-
+        let local = await self.testCase.setUpNode("local")
+        let remote = await self.testCase.setUpNode("remote")
+        try await self.testCase.joinNodes(node: local, with: remote)
+        
         let greeter = Greeter(actorSystem: local)
         let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
-
+        
         let error = try await shouldThrow {
             try await RemoteCall.with(timeout: .milliseconds(200)) {
                 _ = try await remoteGreeterRef.hello(delayNanos: 3_000_000_000)
             }
         }
-
+        
         guard let remoteCallError = error as? RemoteCallError, case .timedOut(_, let timeoutError) = remoteCallError.underlying.error else {
             throw TestError("Expected RemoteCallError.timedOut, got \(error)")
         }
@@ -163,19 +169,19 @@ final class RemoteCallTests: ClusteredActorSystemsXCTestCase {
 
     @Test
     func test_remoteCallVoid_shouldConfigureTimeout() async throws {
-        let local = await setUpNode("local")
-        let remote = await setUpNode("remote")
+        let local = await self.testCase.setUpNode("local")
+        let remote = await self.testCase.setUpNode("remote")
         local.cluster.join(endpoint: remote.cluster.endpoint)
-
+        
         let greeter = Greeter(actorSystem: local)
         let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
-
+        
         let error = try await shouldThrow {
             try await RemoteCall.with(timeout: .milliseconds(200)) {
                 try await remoteGreeterRef.muted(delayNanos: 3_000_000_000)
             }
         }
-
+        
         guard let remoteCallError = error as? RemoteCallError, case .timedOut(_, let timeoutError) = remoteCallError.underlying.error else {
             throw TestError("Expected RemoteCallError.timedOut, got \(error)")
         }
@@ -186,13 +192,13 @@ final class RemoteCallTests: ClusteredActorSystemsXCTestCase {
 
     @Test
     func test_remoteCallGeneric() async throws {
-        let local = await setUpNode("local")
-        let remote = await setUpNode("remote")
+        let local = await self.testCase.setUpNode("local")
+        let remote = await self.testCase.setUpNode("remote")
         local.cluster.join(endpoint: remote.cluster.endpoint)
-
+        
         let greeter = Greeter(actorSystem: local)
         let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
-
+        
         let message: String = "hello"
         let value = try await shouldNotThrow {
             try await remoteGreeterRef.genericEcho(message)
@@ -202,21 +208,21 @@ final class RemoteCallTests: ClusteredActorSystemsXCTestCase {
 
     @Test
     func test_remoteCall_codableErrorAllowList_all() async throws {
-        let local = await setUpNode("local") { settings in
+        let local = await self.testCase.setUpNode("local") { settings in
             settings.remoteCall.codableErrorAllowance = .all
             settings.serialization.registerInbound(GreeterCodableError.self)
             settings.serialization.registerInbound(AnotherGreeterCodableError.self)
         }
-        let remote = await setUpNode("remote") { settings in
+        let remote = await self.testCase.setUpNode("remote") { settings in
             settings.remoteCall.codableErrorAllowance = .all
             settings.serialization.registerInbound(GreeterCodableError.self)
             settings.serialization.registerInbound(AnotherGreeterCodableError.self)
         }
         local.cluster.join(endpoint: remote.cluster.endpoint)
-
+        
         let greeter = Greeter(actorSystem: local)
         let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
-
+        
         let error = try await shouldThrow {
             _ = try await remoteGreeterRef.helloThrow(codable: true)
         }
@@ -227,21 +233,21 @@ final class RemoteCallTests: ClusteredActorSystemsXCTestCase {
 
     @Test
     func test_remoteCall_codableErrorAllowList_none() async throws {
-        let local = await setUpNode("local") { settings in
+        let local = await self.testCase.setUpNode("local") { settings in
             settings.remoteCall.codableErrorAllowance = .none
             settings.serialization.registerInbound(GreeterCodableError.self)
             settings.serialization.registerInbound(AnotherGreeterCodableError.self)
         }
-        let remote = await setUpNode("remote") { settings in
+        let remote = await self.testCase.setUpNode("remote") { settings in
             settings.remoteCall.codableErrorAllowance = .none
             settings.serialization.registerInbound(GreeterCodableError.self)
             settings.serialization.registerInbound(AnotherGreeterCodableError.self)
         }
         local.cluster.join(endpoint: remote.cluster.endpoint)
-
+        
         let greeter = Greeter(actorSystem: local)
         let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
-
+        
         let error = try await shouldThrow {
             _ = try await remoteGreeterRef.helloThrow(codable: true)
         }
@@ -253,21 +259,21 @@ final class RemoteCallTests: ClusteredActorSystemsXCTestCase {
 
     @Test
     func test_remoteCall_customCodableErrorAllowList_errorInList() async throws {
-        let local = await setUpNode("local") { settings in
+        let local = await self.testCase.setUpNode("local") { settings in
             settings.remoteCall.codableErrorAllowance = .custom(allowedTypes: [GreeterCodableError.self, AnotherGreeterCodableError.self])
             settings.serialization.registerInbound(GreeterCodableError.self)
             settings.serialization.registerInbound(AnotherGreeterCodableError.self)
         }
-        let remote = await setUpNode("remote") { settings in
+        let remote = await self.testCase.setUpNode("remote") { settings in
             settings.remoteCall.codableErrorAllowance = .custom(allowedTypes: [GreeterCodableError.self, AnotherGreeterCodableError.self])
             settings.serialization.registerInbound(GreeterCodableError.self)
             settings.serialization.registerInbound(AnotherGreeterCodableError.self)
         }
         local.cluster.join(endpoint: remote.cluster.endpoint)
-
+        
         let greeter = Greeter(actorSystem: local)
         let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
-
+        
         let error = try await shouldThrow {
             _ = try await remoteGreeterRef.helloThrow(codable: true)
         }
@@ -278,17 +284,17 @@ final class RemoteCallTests: ClusteredActorSystemsXCTestCase {
 
     @Test
     func test_remoteCall_customCodableErrorAllowList_errorInListButNotRegistered() async throws {
-        let local = await setUpNode("local") { settings in
+        let local = await self.testCase.setUpNode("local") { settings in
             settings.remoteCall.codableErrorAllowance = .custom(allowedTypes: [GreeterCodableError.self, AnotherGreeterCodableError.self])
         }
-        let remote = await setUpNode("remote") { settings in
+        let remote = await self.testCase.setUpNode("remote") { settings in
             settings.remoteCall.codableErrorAllowance = .custom(allowedTypes: [GreeterCodableError.self, AnotherGreeterCodableError.self])
         }
         local.cluster.join(endpoint: remote.cluster.endpoint)
-
+        
         let greeter = Greeter(actorSystem: local)
         let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
-
+        
         let error = try await shouldThrow {
             try await RemoteCall.with(timeout: .milliseconds(200)) {
                 _ = try await remoteGreeterRef.helloThrow(codable: true)
@@ -301,21 +307,21 @@ final class RemoteCallTests: ClusteredActorSystemsXCTestCase {
 
     @Test
     func test_remoteCall_customCodableErrorAllowList_errorNotInList() async throws {
-        let local = await setUpNode("local") { settings in
+        let local = await self.testCase.setUpNode("local") { settings in
             settings.remoteCall.codableErrorAllowance = .custom(allowedTypes: [AnotherGreeterCodableError.self])
             settings.serialization.registerInbound(GreeterCodableError.self)
             settings.serialization.registerInbound(AnotherGreeterCodableError.self)
         }
-        let remote = await setUpNode("remote") { settings in
+        let remote = await self.testCase.setUpNode("remote") { settings in
             settings.remoteCall.codableErrorAllowance = .custom(allowedTypes: [AnotherGreeterCodableError.self])
             settings.serialization.registerInbound(GreeterCodableError.self)
             settings.serialization.registerInbound(AnotherGreeterCodableError.self)
         }
         local.cluster.join(endpoint: remote.cluster.endpoint)
-
+        
         let greeter = Greeter(actorSystem: local)
         let remoteGreeterRef = try Greeter.resolve(id: greeter.id, using: remote)
-
+        
         let error = try await shouldThrow {
             _ = try await remoteGreeterRef.helloThrow(codable: true)
         }

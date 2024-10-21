@@ -16,7 +16,7 @@ import DistributedActorsTestKit
 @testable import DistributedCluster
 import Testing
 
-@Suite(.serialized)
+@Suite(.timeLimit(.minutes(1)), .serialized)
 final class MembershipTests {
     let memberA = Cluster.Member(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "nodeA", host: "1.1.1.1", port: 1111), nid: .random()), status: .up)
     var nodeA: Cluster.Node { self.memberA.node }

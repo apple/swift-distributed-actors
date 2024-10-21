@@ -17,17 +17,24 @@ import DistributedActorsTestKit
 import Foundation
 import Testing
 
-final class MailboxTests: SingleClusterSystemXCTestCase {
+@Suite(.timeLimit(.minutes(1)), .serialized)
+struct MailboxTests {
+    
+    let testCase: SingleClusterSystemTestCase
+
+    init() async throws {
+        self.testCase = try await SingleClusterSystemTestCase(name: String(describing: type(of: self)))
+    }
     
     @Test
     func test_sendMessage_shouldDropMessagesWhenFull() {
-        let mailbox: _Mailbox<Int> = _Mailbox(system: self.system, capacity: 2)
-
+        let mailbox: _Mailbox<Int> = _Mailbox(system: self.testCase.system, capacity: 2)
+        
         (mailbox.enqueueUserMessage(Payload(payload: .message(1))) == .needsScheduling).shouldBeTrue()
         (mailbox.enqueueUserMessage(Payload(payload: .message(2))) == .alreadyScheduled).shouldBeTrue()
-
+        
         (mailbox.enqueueUserMessage(Payload(payload: .message(3))) == .mailboxFull).shouldBeTrue()
-
+        
         mailbox.status.messageCount.shouldEqual(2)
     }
 }

@@ -17,6 +17,7 @@ import DistributedCluster
 import NIOSSL
 import Testing
 
+@Suite(.serialized)
 struct ClusteringDocExamples {
     
     @Test

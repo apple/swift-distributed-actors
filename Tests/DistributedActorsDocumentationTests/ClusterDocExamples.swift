@@ -22,6 +22,7 @@ import DistributedCluster
 import ServiceDiscovery
 import Testing
 
+@Suite(.serialized)
 struct ClusterDocExamples {
     
     @Test

@@ -16,7 +16,7 @@ import DistributedActorsTestKit
 @testable import DistributedCluster
 import Testing
 
-@Suite(.serialized)
+@Suite(.timeLimit(.minutes(1)), .serialized)
 final class TimeoutBasedDowningInstanceTests {
     var instance: TimeoutBasedDowningStrategy!
 

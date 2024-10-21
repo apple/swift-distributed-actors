@@ -21,6 +21,7 @@ import DistributedCluster
 @testable import DistributedActorsTestKit
 import Testing
 
+@Suite(.serialized)
 struct ActorDocExamples {
     // tag::message_greetings[]
     enum Greetings: _NotActuallyCodableMessage {

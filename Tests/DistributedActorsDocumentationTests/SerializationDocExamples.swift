@@ -134,7 +134,7 @@ enum CustomlyEncodedMessage: Codable, _NotActuallyCodableMessage {
 }
 
 // end::serialization_custom_messages[]
-
+@Suite(.serilized)
 class SerializationDocExamples {
     lazy var system: ClusterSystem = _undefined(hint: "Examples, not intended to be run")
 

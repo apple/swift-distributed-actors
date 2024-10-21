@@ -17,27 +17,33 @@ import DistributedActorsTestKit
 import Foundation
 import Testing
 
-@Suite(.serialized)
-final class ActorSubReceiveTests: SingleClusterSystemXCTestCase {
+@Suite(.timeLimit(.minutes(1)), .serialized)
+struct ActorSubReceiveTests {
+    
+    let testCase: SingleClusterSystemTestCase
+
+    init() async throws {
+        self.testCase = try await SingleClusterSystemTestCase(name: String(describing: type(of: self)))
+    }
     
     @Test
     func test_subReceive_shouldBeAbleToReceiveMessages() throws {
-        let p = self.testKit.makeTestProbe(expecting: String.self)
-        let refProbe = self.testKit.makeTestProbe(expecting: _ActorRef<String>.self)
-
+        let p = self.testCase.testKit.makeTestProbe(expecting: String.self)
+        let refProbe = self.testCase.testKit.makeTestProbe(expecting: _ActorRef<String>.self)
+        
         let behavior: _Behavior<Int> = .setup { context in
             let subRef = context.subReceive("test-sub", String.self) { message in
                 p.tell("subreceive:\(message)")
             }
             refProbe.tell(subRef)
-
+            
             return .receiveMessage { _ in .same }
         }
-
-        try system._spawn("test-parent", behavior)
-
+        
+        try self.testCase.system._spawn("test-parent", behavior)
+        
         let subRef = try refProbe.expectMessage()
-
+        
         subRef.tell("test")
         try p.expectMessage("subreceive:test")
     }
@@ -46,9 +52,9 @@ final class ActorSubReceiveTests: SingleClusterSystemXCTestCase {
     
     @Test
     func test_subReceive_notCrashWhenTypeIncludesSpecialChar() throws {
-        let p = self.testKit.makeTestProbe(expecting: String.self)
-        let refProbe = self.testKit.makeTestProbe(expecting: _ActorRef<TestSubReceiveType<Void>>.self)
-
+        let p = self.testCase.testKit.makeTestProbe(expecting: String.self)
+        let refProbe = self.testCase.testKit.makeTestProbe(expecting: _ActorRef<TestSubReceiveType<Void>>.self)
+        
         let behavior: _Behavior<Int> = .setup { context in
             let subRef = context.subReceive("test-sub", TestSubReceiveType<Void>.self) { message in
                 p.tell("subreceive:\(message)")
@@ -57,155 +63,155 @@ final class ActorSubReceiveTests: SingleClusterSystemXCTestCase {
                 p.tell("subreceive:\(message)")
             }
             refProbe.tell(subRef)
-
+            
             return .receiveMessage { _ in .same }
         }
-
-        try system._spawn("test-parent", behavior)
-
+        
+        try self.testCase.system._spawn("test-parent", behavior)
+        
         let subRef = try refProbe.expectMessage()
-
+        
         subRef.tell(TestSubReceiveType<Void>())
         try p.expectMessage("subreceive:\(TestSubReceiveType<Void>())")
     }
 
     @Test
     func test_subReceiveId_fromGenericType_shouldNotBlowUp() throws {
-        let p = self.testKit.makeTestProbe(expecting: String.self)
-        let refProbe = self.testKit.makeTestProbe(expecting: _ActorRef<Set<String>>.self)
-
+        let p = self.testCase.testKit.makeTestProbe(expecting: String.self)
+        let refProbe = self.testCase.testKit.makeTestProbe(expecting: _ActorRef<Set<String>>.self)
+        
         let behavior: _Behavior<Int> = .setup { context in
             let subRef = context.subReceive(Set<String>.self) { message in
                 p.tell("subreceive:\(message.count)")
             }
             refProbe.tell(subRef)
-
+            
             return .receiveMessage { _ in .same }
         }
-
-        try system._spawn("test-parent", behavior)
-
+        
+        try self.testCase.system._spawn("test-parent", behavior)
+        
         let subRef = try refProbe.expectMessage()
-
+        
         subRef.tell(Set(["one", "two"]))
         try p.expectMessage("subreceive:2")
     }
 
     @Test
     func test_subReceive_shouldBeAbleToModifyActorState() throws {
-        let p = self.testKit.makeTestProbe(expecting: Int.self)
-        let refProbe = self.testKit.makeTestProbe(expecting: _ActorRef<IncrementAndGet>.self)
-
+        let p = self.testCase.testKit.makeTestProbe(expecting: Int.self)
+        let refProbe = self.testCase.testKit.makeTestProbe(expecting: _ActorRef<IncrementAndGet>.self)
+        
         struct GetState: Codable {
             let replyTo: _ActorRef<Int>
         }
-
+        
         struct IncrementAndGet: Codable {
             let replyTo: _ActorRef<Int>
         }
-
+        
         let behavior: _Behavior<GetState> = .setup { context in
             var state = 0
-
+            
             let subRef = context.subReceive("test-sub", IncrementAndGet.self) { message in
                 state += 1
                 message.replyTo.tell(state)
             }
             refProbe.tell(subRef)
-
+            
             return .receiveMessage { message in
                 message.replyTo.tell(state)
                 return .same
             }
         }
-
-        let ref = try system._spawn("test-parent", behavior)
-
+        
+        let ref = try self.testCase.system._spawn("test-parent", behavior)
+        
         let subRef = try refProbe.expectMessage()
-
+        
         var previousState = 0
         for _ in 1 ... 10 {
             subRef.tell(IncrementAndGet(replyTo: p.ref))
             let state = try p.expectMessage()
             state.shouldEqual(previousState + 1)
-
+            
             ref.tell(GetState(replyTo: p.ref))
             try p.expectMessage().shouldEqual(state)
-
+            
             previousState = state
         }
     }
 
     @Test
     func test_subReceive_shouldBeWatchable() throws {
-        let p = self.testKit.makeTestProbe(expecting: Never.self)
-        let refProbe = self.testKit.makeTestProbe(expecting: _ActorRef<String>.self)
-
+        let p = self.testCase.testKit.makeTestProbe(expecting: Never.self)
+        let refProbe = self.testCase.testKit.makeTestProbe(expecting: _ActorRef<String>.self)
+        
         let behavior: _Behavior<Never> = .setup { context in
             let subRef = context.subReceive("test-sub", String.self) { _ in
                 throw Boom()
             }
             refProbe.tell(subRef)
-
+            
             return .unhandled
         }
-
-        try system._spawn("test-parent", behavior)
-
+        
+        try self.testCase.system._spawn("test-parent", behavior)
+        
         let subRef = try refProbe.expectMessage()
-
+        
         p.watch(subRef)
-
+        
         subRef.tell("test")
         try p.expectTerminated(subRef)
     }
 
     @Test
     func test_subReceive_shouldShareLifetimeWithParent() throws {
-        let p = self.testKit.makeTestProbe(expecting: Never.self)
-        let refProbe = self.testKit.makeTestProbe(expecting: _ActorRef<String>.self)
-
+        let p = self.testCase.testKit.makeTestProbe(expecting: Never.self)
+        let refProbe = self.testCase.testKit.makeTestProbe(expecting: _ActorRef<String>.self)
+        
         let behavior: _Behavior<String> = .setup { context in
             let subRef = context.subReceive("test-sub", String.self) { _ in
                 // ignore
             }
             refProbe.tell(subRef)
-
+            
             return .receiveMessage { _ in
-                .stop
+                    .stop
             }
         }
-
-        let ref = try system._spawn("test-parent", behavior)
-
+        
+        let ref = try self.testCase.system._spawn("test-parent", behavior)
+        
         let subRef = try refProbe.expectMessage()
-
+        
         p.watch(ref)
         p.watch(subRef)
-
+        
         ref.tell("test")
-
+        
         try p.expectTerminatedInAnyOrder([ref.asAddressable, subRef.asAddressable])
     }
 
     func shared_subReceive_shouldTriggerSupervisionOnFailure(failureMode: SupervisionTests.FailureMode) throws {
-        let refProbe = self.testKit.makeTestProbe(expecting: _ActorRef<String>.self)
-
+        let refProbe = self.testCase.testKit.makeTestProbe(expecting: _ActorRef<String>.self)
+        
         let behavior: _Behavior<String> = .setup { context in
             let subRef = context.subReceive("test-sub", String.self) { _ in
                 try failureMode.fail()
             }
             refProbe.tell(subRef)
-
+            
             return .unhandled
         }
-
-        try system._spawn("test", props: .supervision(strategy: .restart(atMost: 5, within: .seconds(5))), behavior)
-
+        
+        try self.testCase.system._spawn("test", props: .supervision(strategy: .restart(atMost: 5, within: .seconds(5))), behavior)
+        
         let subRef = try refProbe.expectMessage()
-
+        
         subRef.tell("test")
-
+        
         _ = try refProbe.expectMessage() // this means the actor was restarted
     }
 
@@ -221,9 +227,9 @@ final class ActorSubReceiveTests: SingleClusterSystemXCTestCase {
             let message: String
         }
 
-        let p = self.testKit.makeTestProbe(expecting: String.self)
-        let refProbe = self.testKit.makeTestProbe(expecting: _ActorRef<TestMessage>.self)
-
+        let p = self.testCase.testKit.makeTestProbe(expecting: String.self)
+        let refProbe = self.testCase.testKit.makeTestProbe(expecting: _ActorRef<TestMessage>.self)
+        
         let behavior: _Behavior<String> = .setup { context in
             var subReceiveCounter = 0
             return .receiveMessage { message in
@@ -235,25 +241,25 @@ final class ActorSubReceiveTests: SingleClusterSystemXCTestCase {
                     }
                     refProbe.tell(subRef)
                 }
-
+                
                 return .same
             }
         }
-
-        let ref = try system._spawn("test", behavior)
-
+        
+        let ref = try self.testCase.system._spawn("test", behavior)
+        
         ref.tell("install")
         let subRef = try refProbe.expectMessage()
-
+        
         subRef.tell(TestMessage(replyTo: p.ref, message: "test"))
         try p.expectMessage("subReceive-0:test")
-
+        
         ref.tell("install")
         let subRef2 = try refProbe.expectMessage()
-
+        
         subRef.tell(TestMessage(replyTo: p.ref, message: "test"))
         try p.expectMessage("subReceive-1:test") // subReceive has been replaced, so we should get an incremented count
-
+        
         subRef2.tell(TestMessage(replyTo: p.ref, message: "test"))
         try p.expectMessage("subReceive-1:test") // second sub ref should also work
     }

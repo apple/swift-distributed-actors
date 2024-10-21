@@ -18,7 +18,7 @@ import NIO
 import Testing
 
 /// Tests of just the datatype
-@Suite(.serialized)
+@Suite(.timeLimit(.minutes(1)), .serialized)
 final class MembershipGossipTests {
     let nodeA: Cluster.Node = Cluster.Node(systemName: "firstA", host: "127.0.0.1", port: 7111, nid: .random())
     let nodeB: Cluster.Node = Cluster.Node(systemName: "secondB", host: "127.0.0.1", port: 7222, nid: .random())

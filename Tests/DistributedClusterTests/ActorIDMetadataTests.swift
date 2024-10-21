@@ -47,8 +47,8 @@ distributed actor ThereCanBeOnlyOneClusterSingleton: ExampleClusterSingleton {
     }
 }
 
-@Suite(.serialized)
-final class ActorIDMetadataTests: ClusteredActorSystemsXCTestCase {
+@Suite(.timeLimit(.minutes(1)), .serialized)
+struct ActorIDMetadataTests {
     distributed actor Example: CustomStringConvertible {
         typealias ActorSystem = ClusterSystem
 
@@ -68,84 +68,90 @@ final class ActorIDMetadataTests: ClusteredActorSystemsXCTestCase {
             "\(Self.self)(\(self.metadata))"
         }
     }
+    
+    let testCase: ClusteredActorSystemsTestCase
+    
+    init() throws {
+        testCase = try ClusteredActorSystemsTestCase()
+    }
 
     @Test
-    func test_metadata_shouldBeStoredInID() async throws {
-        let system = await setUpNode("first")
+    func test_metadata_shouldBeStoredInID() async {
+        let system = await self.testCase.setUpNode("first")
         let userID = "user-1234"
         let example = await Example(userID: userID, actorSystem: system)
-
+        
         example.metadata.exampleUserID.shouldEqual(userID)
     }
 
     @Test
     func test_metadata_beUsableInDescription() async throws {
-        let system = await setUpNode("first")
+        let system = await self.testCase.setUpNode("first")
         let userID = "user-1234"
         let example = await Example(userID: userID, actorSystem: system)
-
+        
         "\(example)".shouldContain("\"user-id\": \"user-1234\"")
         try await example.assertThat(userID: userID)
     }
 
     @Test
-    func test_metadata_initializedInline() async throws {
-        let system = await setUpNode("first")
+    func test_metadata_initializedInline() async {
+        let system = await self.testCase.setUpNode("first")
         let singleton = await ThereCanBeOnlyOneClusterSingleton(actorSystem: system)
-
+        
         singleton.metadata.exampleClusterSingletonID.shouldEqual("singer-1234")
     }
 
     @Test
     func test_metadata_wellKnown_coding() async throws {
-        let system = await setUpNode("first")
+        let system = await self.testCase.setUpNode("first")
         let singleton = await ThereCanBeOnlyOneClusterSingleton(actorSystem: system)
-
+        
         let encoded = try JSONEncoder().encode(singleton)
         let encodedString = String(data: encoded, encoding: .utf8)!
         encodedString.shouldContain("\"$wellKnown\":\"singer-1234\"")
-
+        
         let back = try! JSONDecoder().decode(ActorID.self, from: encoded)
         back.metadata.wellKnown.shouldEqual("singer-1234")
     }
 
     @Test
     func test_metadata_wellKnown_proto() async throws {
-        let system = await setUpNode("first")
+        let system = await self.testCase.setUpNode("first")
         let singleton = await ThereCanBeOnlyOneClusterSingleton(actorSystem: system)
-
+        
         let context = Serialization.Context(log: system.log, system: system, allocator: .init())
         let encoded = try singleton.id.toProto(context: context)
-
+        
         let back = try ActorID(fromProto: encoded, context: context)
         back.metadata.wellKnown.shouldEqual(singleton.id.metadata.wellKnown)
     }
 
     @Test
-    func test_metadata_wellKnown_equality() async throws {
-        let system = await setUpNode("first")
-
+    func test_metadata_wellKnown_equality() async {
+        let system = await self.testCase.setUpNode("first")
+        
         let singleton = await ThereCanBeOnlyOneClusterSingleton(actorSystem: system)
-
+        
         let madeUpID = ActorID(local: system.cluster.node, path: singleton.id.path, incarnation: .wellKnown)
         madeUpID.metadata.wellKnown = singleton.id.metadata.wellKnown!
-
+        
         singleton.id.shouldEqual(madeUpID)
         singleton.id.hashValue.shouldEqual(madeUpID.hashValue)
-
+        
         let set: Set<ActorID> = [singleton.id, madeUpID]
         set.count.shouldEqual(1)
     }
 
     @Test
     func test_metadata_userDefined_coding() async throws {
-        let system = await setUpNode("first")
+        let system = await self.testCase.setUpNode("first")
         let singleton = await ThereCanBeOnlyOneClusterSingleton(actorSystem: system)
-
+        
         let encoded = try JSONEncoder().encode(singleton)
         let encodedString = String(data: encoded, encoding: .utf8)!
         encodedString.shouldContain("\"$wellKnown\":\"singer-1234\"")
-
+        
         let back = try! JSONDecoder().decode(ActorID.self, from: encoded)
         back.metadata.wellKnown.shouldEqual("singer-1234")
     }

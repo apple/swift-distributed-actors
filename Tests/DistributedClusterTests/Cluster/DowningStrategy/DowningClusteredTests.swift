@@ -17,15 +17,21 @@ import DistributedActorsTestKit
 import Testing
 
 // "Get down!"
-@Suite(.serialized)
-final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
-    override func configureLogCapture(settings: inout LogCapture.Settings) {
-        settings.excludeActorPaths = [
-            "/system/replicator",
-            "/system/replicator/gossip",
-            "/system/receptionist",
-            "/system/cluster/swim",
-        ]
+@Suite(.timeLimit(.minutes(1)), .serialized)
+struct DowningClusteredTests {
+    
+    let testCase: ClusteredActorSystemsTestCase
+    
+    init() throws {
+        self.testCase = try ClusteredActorSystemsTestCase()
+        self.self.testCase.configureLogCapture = { settings in
+            settings.excludeActorPaths = [
+                "/system/replicator",
+                "/system/replicator/gossip",
+                "/system/receptionist",
+                "/system/cluster/swim",
+            ]
+        }
     }
 
     enum NodeStopMethod {
@@ -56,15 +62,15 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
         stopNode: StopNodeSelection,
         _ modifySettings: ((inout ClusterSystemSettings) -> Void)? = nil
     ) async throws {
-        let (first, second) = await self.setUpPair { settings in
+        let (first, second) = await self.testCase.setUpPair { settings in
             settings.swim.probeInterval = .milliseconds(500)
             modifySettings?(&settings)
         }
-        let thirdNeverDownSystem = await self.setUpNode("third", modifySettings)
-
-        try await self.joinNodes(node: first, with: second, ensureMembers: .up)
-        try await self.joinNodes(node: thirdNeverDownSystem, with: second, ensureMembers: .up)
-
+        let thirdNeverDownSystem = await self.testCase.setUpNode("third", modifySettings)
+        
+        try await self.testCase.joinNodes(node: first, with: second, ensureMembers: .up)
+        try await self.testCase.joinNodes(node: thirdNeverDownSystem, with: second, ensureMembers: .up)
+        
         let expectedDownSystem: ClusterSystem
         let otherNotDownPairSystem: ClusterSystem
         switch stopNode {
@@ -75,34 +81,34 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
             expectedDownSystem = second
             otherNotDownPairSystem = first
         }
-
+        
         let expectedDownNode = expectedDownSystem.cluster.node
-
+        
         // we start cluster event probes early, so they get the events one by one as they happen
-        let eventsProbeOther = await self.testKit(otherNotDownPairSystem).spawnClusterEventStreamTestProbe()
-        let eventsProbeThird = await self.testKit(thirdNeverDownSystem).spawnClusterEventStreamTestProbe()
-
+        let eventsProbeOther = await self.testCase.testKit(otherNotDownPairSystem).spawnClusterEventStreamTestProbe()
+        let eventsProbeThird = await self.testCase.testKit(thirdNeverDownSystem).spawnClusterEventStreamTestProbe()
+        
         // we cause the stop of the target node as expected
         switch (stopMethod, stopNode) {
         case (.leaveSelfNode, .firstLeader): first.cluster.leave()
         case (.leaveSelfNode, .secondNonLeader): second.cluster.leave()
-
+            
         case (.downSelf, .firstLeader): first.cluster.down(endpoint: first.cluster.node.endpoint)
         case (.downSelf, .secondNonLeader): second.cluster.down(endpoint: second.cluster.node.endpoint)
-
+            
         case (.shutdownSelf, .firstLeader): try first.shutdown()
         case (.shutdownSelf, .secondNonLeader): try second.shutdown()
-
+            
         case (.downFromOtherMember, .firstLeader): second.cluster.down(endpoint: first.cluster.node.endpoint)
         case (.downFromOtherMember, .secondNonLeader): thirdNeverDownSystem.cluster.down(endpoint: second.cluster.node.endpoint)
         }
-
+        
         func expectedDownMemberEventsFishing(
             on: ClusterSystem,
             file: String = #fileID, line: Int = #line
         ) -> (Cluster.Event) -> ActorTestProbe<Cluster.Event>.FishingDirective<Cluster.MembershipChange> {
             pinfo("Expecting [\(expectedDownSystem)] to become [.down] on [\(on.cluster.node.endpoint)], method to stop the node [\(stopMethod)]")
-
+            
             return { event in
                 switch event {
                 case .membershipChange(let change) where change.node == expectedDownNode && change.isRemoval:
@@ -120,7 +126,7 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
                 }
             }
         }
-
+        
         // collect all events regarding the expectedDownNode's membership lifecycle
         // - the timeout is fairly large here to tolerate slow CI and variations how the events get propagated, normally they propagate quite quickly
         // - we only check for "did it become down (or was it removed even already), because that's the purpose of these tests
@@ -129,7 +135,7 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
         // note also that technically we may only "so far" only get a down, and that's okay, the removal would follow soon
         let eventsOnOther = try eventsProbeOther.fishFor(Cluster.MembershipChange.self, within: .seconds(30), expectedDownMemberEventsFishing(on: otherNotDownPairSystem))
         eventsOnOther.shouldContain(where: { change in change.status.isAtLeast(.down) })
-
+        
         let eventsOnThird = try eventsProbeThird.fishFor(Cluster.MembershipChange.self, within: .seconds(30), expectedDownMemberEventsFishing(on: thirdNeverDownSystem))
         eventsOnThird.shouldContain(where: { change in change.status.isAtLeast(.down) })
     }
@@ -228,40 +234,40 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
     func test_many_nonLeaders_shouldPropagateToOtherNodes() async throws {
         var nodes: [ClusterSystem] = []
         for i in (1 ... 7) {
-            nodes[i] = await setUpNode("node-\(i)")
+            nodes[i] = await self.testCase.setUpNode("node-\(i)")
         }
         let first = nodes.first!
-
+        
         var probes: [Cluster.Node: ActorTestProbe<Cluster.Event>] = [:]
         for remainingNode in nodes {
-            probes[remainingNode.cluster.node] = await self.testKit(remainingNode).spawnClusterEventStreamTestProbe()
+            probes[remainingNode.cluster.node] = await self.testCase.testKit(remainingNode).spawnClusterEventStreamTestProbe()
         }
-
+        
         pinfo("Joining \(nodes.count) nodes...")
         let joiningStart = ContinuousClock.Instant.now
-
+        
         nodes.forEach { first.cluster.join(endpoint: $0.cluster.node.endpoint) }
-        try await self.ensureNodes(.up, within: .seconds(30), nodes: nodes.map(\.cluster.node))
-
+        try await self.testCase.ensureNodes(.up, within: .seconds(30), nodes: nodes.map(\.cluster.node))
+        
         let joiningStop = ContinuousClock.Instant.now
         pinfo("Joined \(nodes.count) nodes, took: \((joiningStop - joiningStart).prettyDescription)")
-
+        
         let nodesToDown = nodes.prefix(nodes.count / 2)
         var remainingNodes = nodes
         remainingNodes.removeFirst(nodesToDown.count)
-
+        
         pinfo("Downing \(nodesToDown.count) nodes: \(nodesToDown.map(\.cluster.node))")
         for node in nodesToDown {
             try! await node.shutdown().wait()
         }
-
+        
         func expectedDownMemberEventsFishing(
             on: ClusterSystem,
             file: String = #fileID, line: Int = #line
         ) -> (Cluster.Event) -> ActorTestProbe<Cluster.Event>.FishingDirective<Cluster.MembershipChange> {
             pinfo("Expecting \(nodesToDown.map(\.cluster.node.endpoint)) to become [.down] on [\(on.cluster.node.endpoint)]")
             var removalsFound = 0
-
+            
             return { event in
                 switch event {
                 case .membershipChange(let change) where change.isRemoval:
@@ -280,11 +286,11 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
                 }
             }
         }
-
+        
         for remainingNode in remainingNodes {
             let probe = probes[remainingNode.cluster.node]!
             let events = try probe.fishFor(Cluster.MembershipChange.self, within: .seconds(60), expectedDownMemberEventsFishing(on: remainingNode))
-
+            
             events.shouldContain(where: { change in change.status.isDown && (change.previousStatus == .joining || change.previousStatus == .up) })
             for expectedDownNode in nodesToDown {
                 events.shouldContain(Cluster.MembershipChange(node: expectedDownNode.cluster.node, previousStatus: .down, toStatus: .removed))

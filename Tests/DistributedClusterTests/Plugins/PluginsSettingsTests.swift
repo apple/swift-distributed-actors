@@ -18,6 +18,7 @@ import Testing
 struct PluginsSettingsTests {
     
     @Test
+
     func test_pluginsSettings_isInstalled() {
         var pluginsSettings = PluginsSettings()
 

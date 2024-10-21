@@ -19,8 +19,8 @@ import DistributedActorsTestKit
 import Foundation
 import Testing
 
-@Suite(.serialized)
-final class ActorLeakingTests: SingleClusterSystemXCTestCase {
+@Suite(.timeLimit(.minutes(1)), .serialized)
+struct ActorLeakingTests {
     struct NotEnoughActorsAlive: Error {
         let expected: Int
         let current: Int
@@ -30,6 +30,12 @@ final class ActorLeakingTests: SingleClusterSystemXCTestCase {
         let expected: Int
         let current: Int
     }
+    
+    let testCase: SingleClusterSystemTestCase
+
+    init() async throws {
+        self.testCase = try await SingleClusterSystemTestCase(name: String(describing: type(of: self)))
+    }
 
     @Test
     func test_spawn_stop_shouldNotLeakActors() throws {
@@ -37,32 +43,32 @@ final class ActorLeakingTests: SingleClusterSystemXCTestCase {
         return self.skipLeakTests()
         #else
         let stopsOnAnyMessage: _Behavior<String> = .receiveMessage { _ in
-            .stop
+                .stop
         }
-
-        var ref: _ActorRef<String>? = try system._spawn("printer", stopsOnAnyMessage)
-
-        let afterStartActorCount = try testKit.eventually(within: .milliseconds(200)) { () -> Int in
-            let counter = self.system.userCellInitCounter.load(ordering: .relaxed)
+        
+        var ref: _ActorRef<String>? = try self.testCase.system._spawn("printer", stopsOnAnyMessage)
+        
+        let afterStartActorCount = try self.testCase.testKit.eventually(within: .milliseconds(200)) { () -> Int in
+            let counter = self.testCase.system.userCellInitCounter.load(ordering: .relaxed)
             if counter != 1 {
                 throw NotEnoughActorsAlive(expected: 1, current: counter)
             } else {
                 return counter
             }
         }
-
+        
         ref?.tell("please stop")
         ref = nil
-
-        let afterStopActorCount = try testKit.eventually(within: .milliseconds(200)) { () -> Int in
-            let counter = self.system.userCellInitCounter.load(ordering: .relaxed)
+        
+        let afterStopActorCount = try self.testCase.testKit.eventually(within: .milliseconds(200)) { () -> Int in
+            let counter = self.testCase.system.userCellInitCounter.load(ordering: .relaxed)
             if counter != 0 {
                 throw TooManyActorsAlive(expected: 0, current: counter)
             } else {
                 return counter
             }
         }
-
+        
         afterStartActorCount.shouldEqual(1)
         afterStopActorCount.shouldEqual(0)
         #endif
@@ -74,35 +80,35 @@ final class ActorLeakingTests: SingleClusterSystemXCTestCase {
         return self.skipLeakTests()
         #else
         let stopsOnAnyMessage: _Behavior<String> = .setup { context in
-            .receiveMessage { _ in
-                context.log.debug("just so we actually close over context ;)")
-                return .stop
-            }
+                .receiveMessage { _ in
+                    context.log.debug("just so we actually close over context ;)")
+                    return .stop
+                }
         }
-
-        var ref: _ActorRef<String>? = try system._spawn("printer", stopsOnAnyMessage)
-
-        let afterStartActorCount = try testKit.eventually(within: .milliseconds(200)) { () -> Int in
-            let counter = self.system.userCellInitCounter.load(ordering: .relaxed)
+        
+        var ref: _ActorRef<String>? = try self.testCase.system._spawn("printer", stopsOnAnyMessage)
+        
+        let afterStartActorCount = try self.testCase.testKit.eventually(within: .milliseconds(200)) { () -> Int in
+            let counter = self.testCase.system.userCellInitCounter.load(ordering: .relaxed)
             if counter != 1 {
                 throw NotEnoughActorsAlive(expected: 1, current: counter)
             } else {
                 return counter
             }
         }
-
+        
         ref?.tell("please stop")
         ref = nil
-
-        let afterStopActorCount = try testKit.eventually(within: .milliseconds(200)) { () -> Int in
-            let counter = self.system.userCellInitCounter.load(ordering: .relaxed)
+        
+        let afterStopActorCount = try self.testCase.testKit.eventually(within: .milliseconds(200)) { () -> Int in
+            let counter = self.testCase.system.userCellInitCounter.load(ordering: .relaxed)
             if counter != 0 {
                 throw TooManyActorsAlive(expected: 0, current: counter)
             } else {
                 return counter
             }
         }
-
+        
         afterStartActorCount.shouldEqual(1)
         afterStopActorCount.shouldEqual(0)
         #endif
@@ -114,35 +120,34 @@ final class ActorLeakingTests: SingleClusterSystemXCTestCase {
         return self.skipLeakTests()
         #else
         let stopsOnAnyMessage: _Behavior<String> = .receiveMessage { _ in
-            .stop
+                .stop
         }
-
-        var ref: _ActorRef<String>? = try system._spawn("stopsOnAnyMessage", stopsOnAnyMessage)
-
-        let afterStartMailboxCount = try testKit.eventually(within: .milliseconds(200)) { () -> Int in
-            let counter = self.system.userMailboxInitCounter.load(ordering: .relaxed)
+        
+        var ref: _ActorRef<String>? = try self.testCase.system._spawn("stopsOnAnyMessage", stopsOnAnyMessage)
+        
+        let afterStartMailboxCount = try self.testCase.testKit.eventually(within: .milliseconds(200)) { () -> Int in
+            let counter = self.testCase.system.userMailboxInitCounter.load(ordering: .relaxed)
             if counter != 1 {
                 throw NotEnoughActorsAlive(expected: 1, current: counter)
             } else {
                 return counter
             }
         }
-
+        
         ref?.tell("please stop")
         ref = nil
-
-        let afterStopMailboxCount = try testKit.eventually(within: .milliseconds(200)) { () -> Int in
-            let counter = self.system.userMailboxInitCounter.load(ordering: .relaxed)
+        
+        let afterStopMailboxCount = try self.testCase.testKit.eventually(within: .milliseconds(200)) { () -> Int in
+            let counter = self.testCase.system.userMailboxInitCounter.load(ordering: .relaxed)
             if counter != 0 {
                 throw TooManyActorsAlive(expected: 0, current: counter)
             } else {
                 return counter
             }
         }
-
+        
         afterStartMailboxCount.shouldEqual(1)
         afterStopMailboxCount.shouldEqual(0)
-
         #endif
     }
 
@@ -162,36 +167,36 @@ final class ActorLeakingTests: SingleClusterSystemXCTestCase {
                 return .same
             }
         }
-
-        var ref: _ActorRef<Int>? = try system._spawn("printer", spawnsNChildren)
-
+        
+        var ref: _ActorRef<Int>? = try self.testCase.system._spawn("printer", spawnsNChildren)
+        
         let expectedParentCount = 1
         let expectedChildrenCount = 3
         let expectedActorCount = expectedParentCount + expectedChildrenCount
-
+        
         ref?.tell(expectedChildrenCount)
-
-        let afterStartActorCount = try testKit.eventually(within: .milliseconds(200)) { () -> Int in
-            let counter = self.system.userCellInitCounter.load(ordering: .relaxed)
+        
+        let afterStartActorCount = try self.testCase.testKit.eventually(within: .milliseconds(200)) { () -> Int in
+            let counter = self.testCase.system.userCellInitCounter.load(ordering: .relaxed)
             if counter != expectedActorCount {
                 throw NotEnoughActorsAlive(expected: expectedActorCount, current: counter)
             } else {
                 return counter
             }
         }
-
+        
         ref?.tell(0) // stops the parent actor
         ref = nil
-
-        let afterStopActorCount = try testKit.eventually(within: .milliseconds(200)) { () -> Int in
-            let counter = self.system.userCellInitCounter.load(ordering: .relaxed)
+        
+        let afterStopActorCount = try self.testCase.testKit.eventually(within: .milliseconds(200)) { () -> Int in
+            let counter = self.testCase.system.userCellInitCounter.load(ordering: .relaxed)
             if counter != 0 {
                 throw TooManyActorsAlive(expected: 0, current: counter)
             } else {
                 return counter
             }
         }
-
+        
         afterStartActorCount.shouldEqual(expectedActorCount)
         afterStopActorCount.shouldEqual(0)
         #endif
@@ -215,15 +220,15 @@ final class ActorLeakingTests: SingleClusterSystemXCTestCase {
         return self.skipLeakTests()
         #else
         return // FIXME: Skip
-//        throw XCTSkip("!!! Skipping test \(#function) !!!") // FIXME(distributed): we need to manage the retain cycles with the receptionist better #831
-
+        //        throw XCTSkip("!!! Skipping test \(#function) !!!") // FIXME(distributed): we need to manage the retain cycles with the receptionist better #831
+        
         let initialSystemCount = ClusterSystem.actorSystemInitCounter.load(ordering: .relaxed)
-
+        
         for n in 1 ... 5 {
             let system = await ClusterSystem("Test-\(n)")
             try! await system.shutdown().wait()
         }
-
+        
         ClusterSystem.actorSystemInitCounter.load(ordering: .relaxed).shouldEqual(initialSystemCount)
         #endif // SACT_TESTS_LEAKS
     }
@@ -234,9 +239,9 @@ final class ActorLeakingTests: SingleClusterSystemXCTestCase {
         return self.skipLeakTests()
         #else
         var system: ClusterSystem? = await ClusterSystem("FreeMe") // only "reference from user land" to the system
-
-        let p = self.testKit.makeTestProbe(expecting: String.self)
-
+        
+        let p = self.testCase.testKit.makeTestProbe(expecting: String.self)
+        
         let ref = try system!._spawn("echo", of: String.self, .receive { context, message in
             if message == "shutdown" {
                 try! context.system.shutdown()
@@ -244,18 +249,17 @@ final class ActorLeakingTests: SingleClusterSystemXCTestCase {
             p.tell("system:\(context.system)")
             return .same
         })
-
+        
         ref.tell("x")
         try p.expectMessage("system:ClusterSystem(FreeMe, sact://FreeMe@127.0.0.1:7337)")
-
+        
         // clear the strong reference from "user land"
         system = nil
-
+        
         ref.tell("x")
         try p.expectMessage("system:ClusterSystem(FreeMe, sact://FreeMe@127.0.0.1:7337)")
-
+        
         ref.tell("shutdown") // since we lost the `system` reference here we'll ask the actor to stop the system
-
         #endif // SACT_TESTS_LEAKS
     }
 
@@ -265,7 +269,7 @@ final class ActorLeakingTests: SingleClusterSystemXCTestCase {
         return self.skipLeakTests()
         #else
         let initialSystemCount = ClusterSystem.actorSystemInitCounter.load(ordering: .relaxed)
-
+        
         var system: ClusterSystem? = await ClusterSystem("Test") { settings in
             settings.logging.logLevel = .info
         }
@@ -275,7 +279,7 @@ final class ActorLeakingTests: SingleClusterSystemXCTestCase {
         })
         try! await system?.shutdown().wait()
         system = nil
-
+        
         ClusterSystem.actorSystemInitCounter.load(ordering: .relaxed).shouldEqual(initialSystemCount)
         #endif // SACT_TESTS_LEAKS
     }
@@ -286,10 +290,10 @@ final class ActorLeakingTests: SingleClusterSystemXCTestCase {
         return self.skipLeakTests()
         #else
         return // FIXME: Skip
-//        throw XCTSkip("!!! Skipping test \(#function) !!!") // FIXME(distributed): we need to manage the retain cycles with the receptionist better
-
+        //        throw XCTSkip("!!! Skipping test \(#function) !!!") // FIXME(distributed): we need to manage the retain cycles with the receptionist better
+        
         let initialSystemCount = ClusterSystem.actorSystemInitCounter.load(ordering: .relaxed)
-
+        
         var system: ClusterSystem? = await ClusterSystem("Test") { settings in
             settings.logging.logLevel = .info
         }
@@ -299,7 +303,7 @@ final class ActorLeakingTests: SingleClusterSystemXCTestCase {
         })
         try! await system?.shutdown().wait()
         system = nil
-
+        
         ClusterSystem.actorSystemInitCounter.load(ordering: .relaxed).shouldEqual(initialSystemCount)
         #endif // SACT_TESTS_LEAKS
     }

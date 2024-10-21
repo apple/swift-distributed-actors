@@ -18,7 +18,7 @@ import NIO
 import Testing
 
 /// Tests of just the datatype
-@Suite(.serialized)
+@Suite(.timeLimit(.minutes(1)), .serialized)
 final class GossipSeenTableTests {
     typealias SeenTable = Cluster.MembershipGossip.SeenTable
 

@@ -17,21 +17,28 @@ import DistributedActorsTestKit
 import NIOSSL
 import Testing
 
-@Suite(.serialized)
-final class ClusterOnDownActionTests: ClusteredActorSystemsXCTestCase {
+@Suite(.timeLimit(.minutes(1)), .serialized)
+struct ClusterOnDownActionTests {
+    
+    let testCase: ClusteredActorSystemsTestCase
+    
+    init() throws {
+        self.testCase = try ClusteredActorSystemsTestCase()
+    }
+    
     @Test
     func test_onNodeDowned_performShutdown() async throws {
-        let (first, second) = await self.setUpPair { settings in
+        let (first, second) = await self.testCase.setUpPair { settings in
             settings.onDownAction = .gracefulShutdown(delay: .milliseconds(300))
         }
-
-        try await self.joinNodes(node: first, with: second)
-
+        
+        try await self.testCase.joinNodes(node: first, with: second)
+        
         second.cluster.down(endpoint: first.cluster.node.endpoint)
-
-        try self.capturedLogs(of: first).awaitLogContaining(self.testKit(first), text: "Self node was marked [.down]!")
-
-        try self.testKit(first).eventually(within: .seconds(3)) {
+        
+        try self.testCase.capturedLogs(of: first).awaitLogContaining(self.testCase.testKit(first), text: "Self node was marked [.down]!")
+        
+        try self.testCase.testKit(first).eventually(within: .seconds(3)) {
             guard first.isShuttingDown else {
                 throw TestError("System \(first) was not shutting down. It was marked down and the default onDownAction should have triggered!")
             }
@@ -40,16 +47,16 @@ final class ClusterOnDownActionTests: ClusteredActorSystemsXCTestCase {
     
     @Test
     func test_onNodeDowned_configuredNoop_doNothing() async throws {
-        let (first, second) = await setUpPair { settings in
+        let (first, second) = await self.testCase.setUpPair { settings in
             settings.onDownAction = .none
         }
-
-        try await self.joinNodes(node: first, with: second)
-
+        
+        try await self.testCase.joinNodes(node: first, with: second)
+        
         second.cluster.down(endpoint: first.cluster.node.endpoint)
-
-        try self.capturedLogs(of: first).awaitLogContaining(self.testKit(first), text: "Self node was marked [.down]!")
-
+        
+        try self.testCase.capturedLogs(of: first).awaitLogContaining(self.testCase.testKit(first), text: "Self node was marked [.down]!")
+        
         first.isShuttingDown.shouldBeFalse()
     }
 }

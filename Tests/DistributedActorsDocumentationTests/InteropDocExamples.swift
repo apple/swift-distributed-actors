@@ -18,6 +18,7 @@ import DistributedCluster
 import NIO
 import Testing
 
+@Suite(.serialized)
 class InteropDocExamples: XCTestCase {
     
     @Test

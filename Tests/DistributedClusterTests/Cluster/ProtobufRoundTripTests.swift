@@ -19,39 +19,52 @@ import NIO
 import SwiftProtobuf
 import Testing
 
-@Suite(.serialized)
-final class ProtobufRoundTripTests: SingleClusterSystemXCTestCase {
+@Suite(.timeLimit(.minutes(1)), .serialized)
+struct ProtobufRoundTripTests {
     func check<Value: _ProtobufRepresentable & Equatable>(_ value: Value) throws {
-        let context = Serialization.Context(log: self.system.log, system: self.system, allocator: self.system.serialization.allocator)
+        let context = self.testCase.context
         let proto = try value.toProto(context: context)
         let back = try Value(fromProto: proto, context: context)
         back.shouldEqual(value)
     }
 
-    let allocator = ByteBufferAllocator()
-    var node: Cluster.Node {
-        self.system.cluster.node
-    }
+    let testCase: SingleClusterSystemTestCase
 
-    var localActorAddress: ActorID {
-        try! ActorPath._user.appending("hello")
-            .makeLocalID(on: self.system.cluster.node, incarnation: .wellKnown)
+    init() async throws {
+        self.testCase = try await SingleClusterSystemTestCase(name: String(describing: type(of: self)))
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Core actor types
     @Test
     func test_roundTrip_ActorID() throws {
-        try self.check(self.localActorAddress)
+        try self.check(self.self.testCase.localActorAddress)
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Handshake protocol
     @Test
     func test_roundTrip_Wire_HandshakeOffer() throws {
-        let offer = Wire.HandshakeOffer(version: .init(reserved: 2, major: 3, minor: 5, patch: 5), originNode: self.node, targetEndpoint: self.node.endpoint)
+        let node = self.self.testCase.node
+        let offer = Wire.HandshakeOffer(
+            version: .init(reserved: 2, major: 3, minor: 5, patch: 5),
+            originNode: node,
+            targetEndpoint: node.endpoint
+        )
         let proto = _ProtoHandshakeOffer(offer)
         let back = try Wire.HandshakeOffer(fromProto: proto)
         back.shouldEqual(offer)
+    }
+}
+
+extension SingleClusterSystemTestCase {
+    
+    var node: Cluster.Node {
+        self.system.cluster.node
+    }
+    
+    var localActorAddress: ActorID {
+        try! ActorPath._user.appending("hello")
+            .makeLocalID(on: self.system.cluster.node, incarnation: .wellKnown)
     }
 }

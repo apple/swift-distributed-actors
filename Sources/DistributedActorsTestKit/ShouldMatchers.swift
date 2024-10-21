@@ -520,7 +520,7 @@ public enum ShouldMatcherError: Error {
     case unexpectedErrorWasThrown
 }
 
-public struct CallSiteInfo {
+public struct CallSiteInfo: Sendable {
     public let sourceLocation: Testing.SourceLocation
     public let appliedAssertionName: String
 

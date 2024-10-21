@@ -16,18 +16,25 @@ import DistributedActorsTestKit
 @testable import DistributedCluster
 import Testing
 
-@Suite(.serialized)
-final class BasicClusterSystemLifecycleTests: SingleClusterSystemXCTestCase, @unchecked Sendable {
-    func test_system_shouldAssignIdentityAndReadyActor() async throws {
-        let first = await setUpNode("first")
+@Suite(.timeLimit(.minutes(1)), .serialized)
+struct BasicClusterSystemLifecycleTests {
+    
+    let testCase: SingleClusterSystemTestCase
 
+    init() async throws {
+        self.testCase = try await SingleClusterSystemTestCase(name: String(describing: type(of: self)))
+    }
+    
+    func test_system_shouldAssignIdentityAndReadyActor() async throws {
+        let first = await self.testCase.setUpNode("first")
+        
         var stub: StubDistributedActor? = StubDistributedActor(actorSystem: first)
         _ = stub
         stub = nil
-
-        let identity = try self.logCapture.awaitLogContaining(testKit, text: "Assign identity")
+        
+        let identity = try self.testCase.logCapture.awaitLogContaining(self.testCase.testKit, text: "Assign identity")
         let idString = "\(identity.metadata!["actor/id"]!)"
-        let ready = try self.logCapture.awaitLogContaining(testKit, text: "Actor ready")
+        let ready = try self.testCase.logCapture.awaitLogContaining(self.testCase.testKit, text: "Actor ready")
         "\(ready.metadata!["actor/id"]!)".shouldEqual(idString)
     }
 }

@@ -18,22 +18,24 @@ import Logging
 import NIO
 import Testing
 
-@Suite(.serialized)
-final class ClusterEventsSerializationTests: SingleClusterSystemXCTestCase {
-    lazy var context: Serialization.Context! = Serialization.Context(
-        log: system.log,
-        system: system,
-        allocator: system.settings.serialization.allocator
-    )
+@Suite(.timeLimit(.minutes(1)), .serialized)
+final class ClusterEventsSerializationTests {
+
+    let testCase: SingleClusterSystemTestCase
+    
+    init() async throws {
+        self.testCase = try await SingleClusterSystemTestCase(name: String(describing: type(of: self)))
+    }
 
     @Test
     func test_serializationOf_membershipChange() throws {
         let change = Cluster.MembershipChange(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "first", host: "1.1.1.1", port: 7337), nid: .random()), previousStatus: .leaving, toStatus: .removed)
         let event = Cluster.Event.membershipChange(change)
-
-        let proto = try event.toProto(context: self.context)
-        let back = try Cluster.Event(fromProto: proto, context: self.context)
-
+        
+        let context = self.testCase.context
+        let proto = try event.toProto(context: context)
+        let back = try Cluster.Event(fromProto: proto, context: context)
+        
         back.shouldEqual(event)
     }
 
@@ -42,10 +44,11 @@ final class ClusterEventsSerializationTests: SingleClusterSystemXCTestCase {
         let old = Cluster.Member(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "first", host: "1.1.1.1", port: 7337), nid: .random()), status: .joining)
         let new = Cluster.Member(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "first", host: "1.2.2.1", port: 2222), nid: .random()), status: .up)
         let event = Cluster.Event.leadershipChange(Cluster.LeadershipChange(oldLeader: old, newLeader: new)!) // !-safe, since new/old leader known to be different
-
-        let proto = try event.toProto(context: self.context)
-        let back = try Cluster.Event(fromProto: proto, context: self.context)
-
+        
+        let context = self.testCase.context
+        let proto = try event.toProto(context: context)
+        let back = try Cluster.Event(fromProto: proto, context: context)
+        
         back.shouldEqual(event)
     }
 }

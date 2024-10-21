@@ -19,29 +19,25 @@ import Logging
 import NIO
 import Testing
 
-@Suite(.serialized)
-final class MembershipSerializationTests: SingleClusterSystemXCTestCase {
-    lazy var context: Serialization.Context! = Serialization.Context(
-        log: system.log,
-        system: system,
-        allocator: system.settings.serialization.allocator
-    )
-
-    override func tearDown() {
-        super.tearDown()
-        self.context = nil
+@Suite(.timeLimit(.minutes(1)), .serialized)
+struct MembershipSerializationTests {
+    
+    let testCase: SingleClusterSystemTestCase
+    
+    init() async throws {
+        self.testCase = try await SingleClusterSystemTestCase(name: String(describing: type(of: self)))
     }
-
+    
     @Test
     func test_serializationOf_membership() throws {
         let membership: Cluster.Membership = [
             Cluster.Member(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "first", host: "1.1.1.1", port: 7337), nid: .random()), status: .up),
             Cluster.Member(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "second", host: "2.2.2.2", port: 8228), nid: .random()), status: .down),
         ]
-
-        let proto = try membership.toProto(context: self.context)
-        let back = try Cluster.Membership(fromProto: proto, context: self.context)
-
+        let context = self.testCase.context
+        let proto = try membership.toProto(context: context)
+        let back = try Cluster.Membership(fromProto: proto, context: context)
+        
         back.shouldEqual(membership)
     }
 
@@ -59,34 +55,34 @@ final class MembershipSerializationTests: SingleClusterSystemXCTestCase {
             )
         }
         let nodes = members.map(\.node)
-
+        
         let gossip = Cluster.MembershipGossip.parse(
-            """
-            1.joining 2.joining 3.joining 4.up 5.up 6.up 7.up 8.up 9.down 10.down 11.up 12.up 13.up 14.up 15.up  
-            1: 1:4 2:4 3:4 4:6 5:7 6:7 7:8 8:8 9:12 10:12 11:8 12:8 13:8 14:9 15:6
-            2: 1:4 2:4 3:4 4:6 5:7 6:7 7:8 8:8 9:12 10:12 11:8 12:8 13:8 14:9 15:6
-            3: 1:4 2:4 3:4 4:6 5:7 6:7 7:8 8:8 9:12 10:12 11:8 12:8 13:8 14:9 15:6
-            4: 1:4 2:4 3:4 4:6 5:7 6:7 7:8 8:8 9:12 10:12 11:8 12:8 13:8 14:9 15:6
-            5: 1:4 2:4 3:4 4:6 5:7 6:7 7:8 8:8 9:12 10:12 11:8 12:8 13:8 14:9 15:6
-            6: 1:4 2:4 3:4 4:6 5:7 6:7 7:8 8:8 9:12 10:12 11:8 12:8 13:8 14:9 15:6
-            7: 1:4 2:4 3:4 4:6 5:7 6:7 7:8 8:8 9:12 10:12 11:8 12:8 13:8 14:9 15:6
-            8: 1:4 2:4 3:4 4:6 5:7 6:7 7:8 8:8 9:12 10:12 11:8 12:8 13:8 14:9 15:6
-            9: 1:4 2:4 3:4 4:6 5:7 6:7 7:8 8:8 9:12 10:12 11:8 12:8 13:8 14:9 15:6
-            10: 1:4 2:4 3:4 4:6 5:7 6:7 7:8 8:8 9:12 10:12 11:8 12:8 13:8 14:9 15:6
-            """, owner: nodes.first!, nodes: nodes
+        """
+        1.joining 2.joining 3.joining 4.up 5.up 6.up 7.up 8.up 9.down 10.down 11.up 12.up 13.up 14.up 15.up  
+        1: 1:4 2:4 3:4 4:6 5:7 6:7 7:8 8:8 9:12 10:12 11:8 12:8 13:8 14:9 15:6
+        2: 1:4 2:4 3:4 4:6 5:7 6:7 7:8 8:8 9:12 10:12 11:8 12:8 13:8 14:9 15:6
+        3: 1:4 2:4 3:4 4:6 5:7 6:7 7:8 8:8 9:12 10:12 11:8 12:8 13:8 14:9 15:6
+        4: 1:4 2:4 3:4 4:6 5:7 6:7 7:8 8:8 9:12 10:12 11:8 12:8 13:8 14:9 15:6
+        5: 1:4 2:4 3:4 4:6 5:7 6:7 7:8 8:8 9:12 10:12 11:8 12:8 13:8 14:9 15:6
+        6: 1:4 2:4 3:4 4:6 5:7 6:7 7:8 8:8 9:12 10:12 11:8 12:8 13:8 14:9 15:6
+        7: 1:4 2:4 3:4 4:6 5:7 6:7 7:8 8:8 9:12 10:12 11:8 12:8 13:8 14:9 15:6
+        8: 1:4 2:4 3:4 4:6 5:7 6:7 7:8 8:8 9:12 10:12 11:8 12:8 13:8 14:9 15:6
+        9: 1:4 2:4 3:4 4:6 5:7 6:7 7:8 8:8 9:12 10:12 11:8 12:8 13:8 14:9 15:6
+        10: 1:4 2:4 3:4 4:6 5:7 6:7 7:8 8:8 9:12 10:12 11:8 12:8 13:8 14:9 15:6
+        """, owner: nodes.first!, nodes: nodes
         )
-
-        let serialized = try system.serialization.serialize(gossip)
-
+        
+        let serialized = try self.testCase.system.serialization.serialize(gossip)
+        
         pnote("\(serialized.buffer.readData().stringDebugDescription())")
         pinfo("Serialized size: \(serialized.buffer.count) bytes")
         pinfo("  Manifest.serializerID: \(serialized.manifest.serializerID)")
         pinfo("  Manifest.hint:         \(optional: serialized.manifest.hint)")
-
+        
         serialized.manifest.serializerID.shouldEqual(Serialization.SerializerID._ProtobufRepresentable)
         serialized.buffer.count.shouldEqual(2105)
-
-        let back = try system.serialization.deserialize(as: Cluster.MembershipGossip.self, from: serialized)
+        
+        let back = try self.testCase.system.serialization.deserialize(as: Cluster.MembershipGossip.self, from: serialized)
         "\(pretty: back)".shouldStartWith(prefix: "\(pretty: gossip)") // nicer human readable error
         back.shouldEqual(gossip) // the actual soundness check
     }

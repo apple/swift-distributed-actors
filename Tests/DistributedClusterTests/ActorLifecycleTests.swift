@@ -17,19 +17,25 @@ import DistributedActorsTestKit
 import Foundation
 import Testing
 
-@Suite(.serialized)
-class ActorLifecycleTests: SingleClusterSystemXCTestCase {
+@Suite(.timeLimit(.minutes(1)), .serialized)
+struct ActorLifecycleTests {
+    
+    let testCase: SingleClusterSystemTestCase
+
+    init() async throws {
+        testCase = try await SingleClusterSystemTestCase(name: String(describing: type(of: self)))
+    }
+    
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: starting actors
     @Test
     func test_spawn_shouldNotAllowStartingWith_Same() throws {
         // since there is no previous behavior to stay "same" name at the same time:
-
         let ex = try shouldThrow {
             let sameBehavior: _Behavior<String> = .same
-            _ = try self.system._spawn("same", sameBehavior)
+            _ = try self.testCase.system._spawn("same", sameBehavior)
         }
-
+        
         "\(ex)".shouldEqual("""
         notAllowedAsInitial(DistributedCluster._Behavior<Swift.String>.same)
         """)
@@ -42,12 +48,11 @@ class ActorLifecycleTests: SingleClusterSystemXCTestCase {
         // is better avoided all together.
         //
         // We do allow starting with .ignore though since that's like a "blackhole"
-
         let ex = try shouldThrow {
             let unhandledBehavior: _Behavior<String> = .unhandled
-            try system._spawn("unhandled", unhandledBehavior)
+            try self.testCase.system._spawn("unhandled", unhandledBehavior)
         }
-
+        
         "\(ex)".shouldEqual("notAllowedAsInitial(DistributedCluster._Behavior<Swift.String>.unhandled)")
     }
 
@@ -56,9 +61,9 @@ class ActorLifecycleTests: SingleClusterSystemXCTestCase {
         func check(illegalName: String, expectedError: String) throws {
             let err = try shouldThrow {
                 let b: _Behavior<String> = .ignore
-
+                
                 // more coverage for all the different chars in [[ActorPathTests]]
-                try system._spawn(.unique(illegalName), b)
+                try self.testCase.system._spawn(.unique(illegalName), b)
             }
             "\(err)".shouldEqual(expectedError)
         }
@@ -92,7 +97,7 @@ class ActorLifecycleTests: SingleClusterSystemXCTestCase {
 
     @Test
     func test_spawn_shouldThrowFromMultipleActorsWithTheSamePathBeingSpawned() throws {
-        let p = self.testKit.makeTestProbe(expecting: String.self)
+        let p = self.testCase.testKit.makeTestProbe(expecting: String.self)
         let spawner: _Behavior<String> = .receive { context, name in
             let fromName = context.path
             let _: _ActorRef<Int> = try context.system._spawn(
@@ -104,16 +109,16 @@ class ActorLifecycleTests: SingleClusterSystemXCTestCase {
             )
             return .stop
         }
-        try system._spawn("a", spawner).tell("charlie")
-        try self.system._spawn("b", spawner).tell("charlie")
-        try self.system._spawn("c", spawner).tell("charlie")
-        try self.system._spawn("d", spawner).tell("charlie")
-        try self.system._spawn("e", spawner).tell("charlie")
-        try self.system._spawn("f", spawner).tell("charlie")
-
+        try self.testCase.system._spawn("a", spawner).tell("charlie")
+        try self.testCase.system._spawn("b", spawner).tell("charlie")
+        try self.testCase.system._spawn("c", spawner).tell("charlie")
+        try self.testCase.system._spawn("d", spawner).tell("charlie")
+        try self.testCase.system._spawn("e", spawner).tell("charlie")
+        try self.testCase.system._spawn("f", spawner).tell("charlie")
+        
         let spawnedBy = try p.expectMessage()
         pinfo("Spawned by: \(spawnedBy)")
-
+        
         try p.expectNoMessage(for: .milliseconds(200))
     }
 }

@@ -333,7 +333,7 @@ public final class TestRecorder: TestMetric, RecorderHandler, Equatable, CustomS
     }
 }
 
-public final class TestTimer: TestMetric, TimerHandler, Equatable, CustomStringConvertible {
+public final class TestTimer: TestMetric, TimerHandler, Equatable, CustomStringConvertible, @unchecked Sendable {
     public let id: String
     public let label: String
     public var displayUnit: TimeUnit?
