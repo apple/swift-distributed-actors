@@ -164,11 +164,11 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
         if self.captureLogs, self.alwaysPrintCaptureLogs || testsFailed {
             self.printAllCapturedLogs()
         }
-        
+
         self.lock.withLockVoid {
             self._logCaptures = []
         }
-        
+
         for node in self._nodes {
             node.log.warning("======================== TEST TEAR DOWN: SHUTDOWN ========================")
             try! await node.shutdown().wait()

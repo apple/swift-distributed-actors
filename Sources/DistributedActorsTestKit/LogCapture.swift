@@ -201,9 +201,9 @@ public struct CapturedLogMessage {
 struct LogCaptureLogHandler: LogHandler {
     let label: String
     let settings: LogCapture.Settings
-    let append: (CapturedLogMessage) -> ()
+    let append: (CapturedLogMessage) -> Void
 
-    init(label: String, settings: LogCapture.Settings, append: @escaping (CapturedLogMessage) -> ()) {
+    init(label: String, settings: LogCapture.Settings, append: @escaping (CapturedLogMessage) -> Void) {
         self.label = label
         self.settings = settings
         self.append = append

@@ -258,7 +258,7 @@ public distributed actor OpLogDistributedReceptionist: DistributedReceptionist, 
             self.id.path.description == "/system/receptionist",
             "\(Self.self) expects to be on well known path: /system/receptionist, but was: \(self.id.fullDescription)"
         ) // TODO(distributed): remove when we remove paths entirely
-        
+
         let events = system.cluster.events
         self.eventsListeningTask = Task { [weak self] in
             for try await event in events {
@@ -282,7 +282,7 @@ public distributed actor OpLogDistributedReceptionist: DistributedReceptionist, 
 
         self.log.debug("Initialized receptionist")
     }
-    
+
     deinit {
         self.eventsListeningTask?.cancel()
         self.slowACKReplicationTimerTask?.cancel()

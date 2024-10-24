@@ -182,7 +182,7 @@ public class Serialization {
         print("\(p)")
         self.log.debug("\(p)")
     }
-    
+
     deinit {
         self._serializers = [:]
     }

@@ -550,7 +550,7 @@ internal distributed actor SWIMActor: SWIMPeer, SWIMAddressablePeer, CustomStrin
         )
 
         Task {
-            guard var swim = self.swim else { return}
+            guard var swim = self.swim else { return }
             // TODO: we are sending the ping here to initiate cluster membership. Once available this should do a state sync instead
             await self.sendPing(
                 to: targetPeer,
@@ -579,11 +579,11 @@ internal distributed actor SWIMActor: SWIMPeer, SWIMAddressablePeer, CustomStrin
     nonisolated var description: String {
         "\(Self.self)(\(self.id))"
     }
-    
+
     nonisolated func clean() {
         Task { [weak self] in await self?.whenLocal { $0.cleanAll() } }
     }
-    
+
     private func cleanAll() {
         self.swim = nil
     }

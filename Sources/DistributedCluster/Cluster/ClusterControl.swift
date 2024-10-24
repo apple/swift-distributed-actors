@@ -32,7 +32,7 @@ public struct ClusterControl {
     public var events: ClusterEventStream {
         self._events
     }
-    
+
     internal var _events: ClusterEventStream
 
     /// Offers a snapshot of membership, which may be used to perform ad-hoc tests against the membership.

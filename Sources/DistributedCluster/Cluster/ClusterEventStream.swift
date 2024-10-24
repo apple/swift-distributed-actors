@@ -36,7 +36,7 @@ public struct ClusterEventStream: AsyncSequence {
     internal init() {
         self.actor = nil
     }
-    
+
     internal mutating func clean() {
         self.actor = nil
     }

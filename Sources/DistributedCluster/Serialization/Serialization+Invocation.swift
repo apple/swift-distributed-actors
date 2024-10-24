@@ -105,7 +105,7 @@ public struct ClusterInvocationDecoder: DistributedTargetInvocationDecoder {
         guard let system else {
             throw SerializationError(.notAbleToDeserialize(hint: "System is nil"))
         }
-        
+
         let argumentData: Data
 
         switch self.state {

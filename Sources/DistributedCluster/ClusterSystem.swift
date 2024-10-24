@@ -91,7 +91,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
                 guard let s = serialization.load() else {
                     return fatalErrorBacktrace("Serialization is not initialized! This is likely a bug, as it is initialized synchronously during system startup.")
                 }
-                
+
                 return s
             }
         }
@@ -553,11 +553,11 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
 
         /// Only once we've shutdown all dispatchers and loops, we clear cycles between the serialization and system,
         /// as they should never be invoked anymore.
-        
+
         self.lazyInitializationLock.withWriterLockVoid {
-             self._serialization = nil
+            self._serialization = nil
         }
-         
+
         self._clusterControlStore.load()?.value._events.clean()
         self._clusterStore.load()?.value = nil
         _ = self._clusterStore.storeIfNilThenLoad(Box(nil))

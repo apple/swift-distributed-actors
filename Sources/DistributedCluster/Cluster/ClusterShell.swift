@@ -364,7 +364,7 @@ internal class ClusterShell {
         .init()
             .supervision(strategy: .escalate) // always escalate failures, if this actor fails we're in big trouble -> terminate the system
             ._asWellKnown
-    
+
     deinit {
         self.clusterEvents?.clean()
         self._swimShell?.clean()
@@ -437,7 +437,7 @@ extension ClusterShell {
                 guard let events = self.clusterEvents else {
                     throw ClusterSystemError(.shuttingDown(""))
                 }
-                
+
                 var state = ClusterShellState(
                     settings: self.settings,
                     channel: chan,
