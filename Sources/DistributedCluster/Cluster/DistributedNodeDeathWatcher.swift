@@ -54,20 +54,20 @@ internal actor DistributedNodeDeathWatcher {
         // initialized
 
         let events = actorSystem.cluster.events
-        self.eventListenerTask = Task {
+        self.eventListenerTask = Task { [weak self] in
             for try await event in events {
                 switch event {
                 case .membershipChange(let change):
-                    self.membershipChanged(change)
+                    await self?.membershipChanged(change)
                 case .snapshot(let membership):
                     let diff = Cluster.Membership._diff(from: .empty, to: membership)
                     for change in diff.changes {
-                        self.membershipChanged(change)
+                        await self?.membershipChanged(change)
                     }
                 case .leadershipChange, .reachabilityChange:
                     break // ignore those, they don't affect downing
                 case ._PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE:
-                    self.log.error("Received Cluster.Event [\(event)]. This should not happen, please file an issue.")
+                    self?.log.error("Received Cluster.Event [\(event)]. This should not happen, please file an issue.")
                 }
             }
         }

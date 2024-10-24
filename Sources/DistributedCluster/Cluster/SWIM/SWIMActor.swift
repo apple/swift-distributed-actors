@@ -31,7 +31,7 @@ internal distributed actor SWIMActor: SWIMPeer, SWIMAddressablePeer, CustomStrin
 
     // !-safe since we initialize this during init() right after the actor becomes ready;
     // The reason for this is that the instance needs our `self` in order to use it as a `SWIMPeer`
-    private var swim: SWIM.Instance<SWIMActor, SWIMActor, SWIMActor>!
+    private var swim: SWIM.Instance<SWIMActor, SWIMActor, SWIMActor>?
 
     nonisolated var swimNode: ClusterMembership.Node {
         .init(
@@ -48,8 +48,8 @@ internal distributed actor SWIMActor: SWIMPeer, SWIMAddressablePeer, CustomStrin
         return log
     }()
 
-    var metrics: SWIM.Metrics {
-        self.swim.metrics
+    var metrics: SWIM.Metrics? {
+        self.swim?.metrics
     }
 
     init(settings: SWIM.Settings, clusterRef: ClusterShell.Ref, system: ActorSystem) async {
@@ -91,13 +91,13 @@ internal distributed actor SWIMActor: SWIMPeer, SWIMAddressablePeer, CustomStrin
 
     /// Scheduling a new protocol period and performing the actions for the current protocol period
     internal func handlePeriodicProtocolPeriodTick() {
-        self.swim.onPeriodicPingTick().forEach { directive in
+        self.swim?.onPeriodicPingTick().forEach { directive in
             switch directive {
             case .membershipChanged(let change):
                 self.tryAnnounceMemberReachability(change: change)
 
             case .sendPing(let target, let payload, let timeout, let sequenceNumber):
-                self.log.trace("Periodic ping random member, among: \(self.swim.otherMemberCount)", metadata: self.swim.metadata)
+                self.log.trace("Periodic ping random member, among: \(self.swim?.otherMemberCount)", metadata: self.swim?.metadata)
                 Task {
                     await self.sendPing(
                         to: target,
@@ -131,27 +131,28 @@ internal distributed actor SWIMActor: SWIMPeer, SWIMAddressablePeer, CustomStrin
         timeout: Duration,
         sequenceNumber: SWIM.SequenceNumber
     ) async -> SWIM.PingResponse<SWIMActor, SWIMActor> {
-        let payload = self.swim.makeGossipPayload(to: target)
+        let payload = self.swim?.makeGossipPayload(to: target)
 
-        self.log.debug("Sending ping", metadata: self.swim.metadata([
+        self.log.debug("Sending ping", metadata: self.swim?.metadata([
             "swim/target": "\(target)",
             "swim/gossip/payload": "\(payload)",
             "swim/timeout": "\(timeout)",
         ]))
 
         let pingSentAt = DispatchTime.now()
-        self.metrics.shell.messageOutboundCount.increment()
+        self.metrics?.shell.messageOutboundCount.increment()
 
         do {
+            guard let payload else { throw ClusterSystemError(.shuttingDown("")) }
             let pingResponse = try await target.ping(payload: payload, from: self, timeout: timeout, sequenceNumber: sequenceNumber)
-            self.metrics.shell.pingResponseTime.recordInterval(since: pingSentAt)
+            self.metrics?.shell.pingResponseTime.recordInterval(since: pingSentAt)
             return self.handlePingResponse(
                 response: pingResponse,
                 pingRequestOrigin: pingRequestOrigin,
                 pingRequestSequenceNumber: pingRequestSequenceNumber
             )
         } catch {
-            self.log.debug(".ping resulted in error", metadata: self.swim.metadata([
+            self.log.debug(".ping resulted in error", metadata: self.swim?.metadata([
                 "swim/ping/target": "\(target)",
                 "swim/ping/sequenceNumber": "\(sequenceNumber)",
                 "error": "\(error)",
@@ -174,7 +175,7 @@ internal distributed actor SWIMActor: SWIMPeer, SWIMAddressablePeer, CustomStrin
         let peerToPing = directive.target
 
         let startedSendingPingRequestsSentAt: DispatchTime = .now()
-        let pingRequestResponseTimeFirstTimer = self.swim.metrics.shell.pingRequestResponseTimeFirst
+        let pingRequestResponseTimeFirstTimer = self.swim?.metrics.shell.pingRequestResponseTimeFirst
 
         let firstSuccessful = await withTaskGroup(
             of: SWIM.PingResponse<SWIMActor, SWIMActor>.self,
@@ -189,7 +190,7 @@ internal distributed actor SWIMActor: SWIMPeer, SWIMAddressablePeer, CustomStrin
                     log.trace("Sending ping request for [\(peerToPing)] to [\(peerToPingRequestThrough)] with payload: \(payload)")
 
                     let pingRequestSentAt: DispatchTime = .now()
-                    metrics.shell.messageOutboundCount.increment()
+                    metrics?.shell.messageOutboundCount.increment()
 
                     do {
                         let response = try await peerToPingRequestThrough.pingRequest(
@@ -199,7 +200,7 @@ internal distributed actor SWIMActor: SWIMPeer, SWIMAddressablePeer, CustomStrin
                             timeout: pingTimeout,
                             sequenceNumber: sequenceNumber
                         )
-                        metrics.shell.pingRequestResponseTimeAll.recordInterval(since: pingRequestSentAt)
+                        metrics?.shell.pingRequestResponseTimeAll.recordInterval(since: pingRequestSentAt)
                         return response
                     } catch {
                         log.debug(".pingRequest resulted in error", metadata: swim!.metadata([ // !-safe, initialized in init()
@@ -236,7 +237,7 @@ internal distributed actor SWIMActor: SWIMPeer, SWIMAddressablePeer, CustomStrin
                 // still alive. Therefore we propagate only the first success, but no failures.
                 // The failure case is handled through the timeout of the whole operation.
                 if case .ack = response, firstSuccessful == nil {
-                    pingRequestResponseTimeFirstTimer.recordInterval(since: startedSendingPingRequestsSentAt)
+                    pingRequestResponseTimeFirstTimer?.recordInterval(since: startedSendingPingRequestsSentAt)
                     firstSuccessful = response
                 }
             }
@@ -266,7 +267,7 @@ internal distributed actor SWIMActor: SWIMPeer, SWIMAddressablePeer, CustomStrin
     ) -> SWIM.PingResponse<SWIMActor, SWIMActor> {
         var pingRequestOriginResponse: SWIM.PingResponse<SWIMActor, SWIMActor>?
 
-        self.swim.onPingResponse(
+        self.swim?.onPingResponse(
             response: response,
             pingRequestOrigin: pingRequestOrigin,
             pingRequestSequenceNumber: pingRequestSequenceNumber
@@ -293,7 +294,7 @@ internal distributed actor SWIMActor: SWIMPeer, SWIMAddressablePeer, CustomStrin
 
     internal func handlePingRequestResponse(response: SWIM.PingResponse<SWIMActor, SWIMActor>, pinged: SWIMActor) {
         // self.tracelog(context, .receive(pinged: pinged), message: response)
-        self.swim.onPingRequestResponse(
+        self.swim?.onPingRequestResponse(
             response,
             pinged: pinged
         ).forEach { directive in
@@ -303,7 +304,7 @@ internal distributed actor SWIMActor: SWIMPeer, SWIMAddressablePeer, CustomStrin
 
             case .alive(let previousStatus):
                 self.log.debug("Member [\(pinged)] is alive")
-                if previousStatus.isUnreachable, let member = swim.member(for: pinged) {
+                if previousStatus.isUnreachable, let member = swim?.member(for: pinged) {
                     // member was unreachable but now is alive, we should emit an event
                     let event = SWIM.MemberStatusChangedEvent(previousStatus: previousStatus, member: member) // FIXME: make SWIM emit an option of the event
                     self.tryAnnounceMemberReachability(change: event)
@@ -389,14 +390,14 @@ internal distributed actor SWIMActor: SWIMPeer, SWIMAddressablePeer, CustomStrin
     /// We have to handle *every* response, because they adjust the value of the timeouts we'll be using in future probes.
     private func handleEveryPingRequestResponse(response: SWIM.PingResponse<SWIMActor, SWIMActor>, pinged: SWIMActor) {
         // self.tracelog(.receive(pinged: pinged.node), message: "\(response)")
-        let directives = self.swim.onEveryPingRequestResponse(response, pinged: pinged)
+        let directives = self.swim?.onEveryPingRequestResponse(response, pinged: pinged) ?? []
 
         if !directives.isEmpty {
             fatalError("""
             Ignored directive from: onEveryPingRequestResponse! \
             This directive used to be implemented as always returning no directives. \
             Check your shell implementations if you updated the SWIM library as it seems this has changed. \
-            Directive was: \(directives), swim was: \(self.swim.metadata)
+            Directive was: \(directives), swim was: \(self.swim?.metadata)
             """)
         }
     }
@@ -425,18 +426,18 @@ internal distributed actor SWIMActor: SWIMPeer, SWIMAddressablePeer, CustomStrin
         payload: SWIM.GossipPayload<SWIMActor>,
         sequenceNumber: SWIM.SequenceNumber
     ) async throws -> SWIM.PingResponse<SWIMActor, SWIMActor> {
-        self.log.trace("Received ping@\(sequenceNumber)", metadata: self.swim.metadata([
+        self.log.trace("Received ping@\(sequenceNumber)", metadata: self.swim?.metadata([
             "swim/ping/origin": "\(origin.id)",
             "swim/ping/payload": "\(payload)",
             "swim/ping/seqNr": "\(sequenceNumber)",
         ]))
-        self.metrics.shell.messageInboundCount.increment()
+        self.metrics?.shell.messageInboundCount.increment()
 
-        for directive in self.swim.onPing(
+        for directive in (self.swim?.onPing(
             pingOrigin: origin,
             payload: payload,
             sequenceNumber: sequenceNumber
-        ) {
+        ) ?? []) {
             switch directive {
             case .gossipProcessed(let gossipDirective):
                 self.handleGossipPayloadProcessedDirective(gossipDirective)
@@ -474,19 +475,19 @@ internal distributed actor SWIMActor: SWIMPeer, SWIMAddressablePeer, CustomStrin
         payload: SWIM.GossipPayload<SWIMActor>,
         sequenceNumber pingRequestSequenceNumber: SWIM.SequenceNumber
     ) async throws -> SWIM.PingResponse<SWIMActor, SWIMActor> {
-        self.log.trace("Received pingRequest@\(pingRequestSequenceNumber) [\(target)] from [\(pingRequestOrigin)]", metadata: self.swim.metadata([
+        self.log.trace("Received pingRequest@\(pingRequestSequenceNumber) [\(target)] from [\(pingRequestOrigin)]", metadata: self.swim?.metadata([
             "swim/pingRequest/origin": "\(pingRequestOrigin)",
             "swim/pingRequest/payload": "\(payload)",
             "swim/pingRequest/seqNr": "\(pingRequestSequenceNumber)",
         ]))
-        self.metrics.shell.messageInboundCount.increment()
+        self.metrics?.shell.messageInboundCount.increment()
 
-        for directive in self.swim.onPingRequest(
+        for directive in (self.swim?.onPingRequest(
             target: target,
             pingRequestOrigin: pingRequestOrigin,
             payload: payload,
             sequenceNumber: pingRequestSequenceNumber
-        ) {
+        ) ?? []) {
             switch directive {
             case .gossipProcessed(let gossipDirective):
                 self.handleGossipPayloadProcessedDirective(gossipDirective)
@@ -522,11 +523,11 @@ internal distributed actor SWIMActor: SWIMPeer, SWIMAddressablePeer, CustomStrin
     nonisolated func confirmDead(node: Cluster.Node) {
         Task {
             await self.whenLocal { myself in
-                let directive = myself.swim.confirmDead(peer: node.asSWIMNode.swimShell(myself.actorSystem))
+                let directive = myself.swim?.confirmDead(peer: node.asSWIMNode.swimShell(myself.actorSystem))
                 switch directive {
                 case .applied(let change):
-                    myself.log.warning("Confirmed node .dead: \(change)", metadata: myself.swim.metadata(["swim/change": "\(change)"]))
-                case .ignored:
+                    myself.log.warning("Confirmed node .dead: \(change)", metadata: myself.swim?.metadata(["swim/change": "\(change)"]))
+                case .ignored, .none:
                     return
                 }
             }
@@ -542,13 +543,14 @@ internal distributed actor SWIMActor: SWIMPeer, SWIMAddressablePeer, CustomStrin
         let fakeGossip = SWIM.GossipPayload.membership([
             SWIM.Member(peer: targetPeer, status: .alive(incarnation: 0), protocolPeriod: 0),
         ])
-        _ = self.swim.onPingResponse(
+        _ = self.swim?.onPingResponse(
             response: .ack(target: targetPeer, incarnation: 0, payload: fakeGossip, sequenceNumber: 0),
             pingRequestOrigin: nil,
             pingRequestSequenceNumber: nil
         )
 
         Task {
+            guard var swim = self.swim else { return}
             // TODO: we are sending the ping here to initiate cluster membership. Once available this should do a state sync instead
             await self.sendPing(
                 to: targetPeer,
@@ -556,7 +558,7 @@ internal distributed actor SWIMActor: SWIMPeer, SWIMAddressablePeer, CustomStrin
                 pingRequestOrigin: nil,
                 pingRequestSequenceNumber: nil,
                 timeout: .seconds(1),
-                sequenceNumber: self.swim.nextSequenceNumber()
+                sequenceNumber: swim.nextSequenceNumber()
             )
         }
     }
@@ -565,15 +567,25 @@ internal distributed actor SWIMActor: SWIMPeer, SWIMAddressablePeer, CustomStrin
     // MARK: For testing only
 
     func _getMembershipState() -> [SWIM.Member<SWIMActor>] {
-        Array(self.swim.members)
+        self.swim.map { Array($0.members) } ?? []
     }
 
     func _configureSWIM(_ configure: (inout SWIM.Instance<SWIMActor, SWIMActor, SWIMActor>) throws -> Void) rethrows {
-        try configure(&self.swim)
+        guard var swim else { return }
+        try configure(&swim)
+        self.swim = swim
     }
 
     nonisolated var description: String {
         "\(Self.self)(\(self.id))"
+    }
+    
+    nonisolated func clean() {
+        Task { [weak self] in await self?.whenLocal { $0.cleanAll() } }
+    }
+    
+    private func cleanAll() {
+        self.swim = nil
     }
 }
 

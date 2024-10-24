@@ -92,9 +92,10 @@ internal distributed actor DowningStrategyShell {
     init(_ strategy: DowningStrategy, system: ActorSystem) async {
         self.strategy = strategy
         self.actorSystem = system
+        let events = system.cluster.events
         self.eventsListeningTask = Task { [weak self] in
-            try await self?.whenLocal { myself in
-                for await event in system.cluster.events {
+            for await event in events {
+                try await self?.whenLocal { myself in
                     try myself.receiveClusterEvent(event)
                 }
             }

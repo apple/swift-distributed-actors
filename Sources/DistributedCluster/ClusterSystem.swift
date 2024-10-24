@@ -81,14 +81,19 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
     // initialized during startup
     private let lazyInitializationLock: ReadWriteLock
 
-    internal var _serialization: ManagedAtomicLazyReference<Serialization>
+    internal var _serialization: ManagedAtomicLazyReference<Serialization>?
     public var serialization: Serialization {
-        self.lazyInitializationLock.withReaderLock {
-            guard let s = self._serialization.load() else {
-                return fatalErrorBacktrace("Serialization is not initialized! This is likely a bug, as it is initialized synchronously during system startup.")
+        get throws {
+            try self.lazyInitializationLock.withReaderLock {
+                guard let serialization = _serialization else {
+                    throw ClusterSystemError(.shuttingDown("System deinit'ed"))
+                }
+                guard let s = serialization.load() else {
+                    return fatalErrorBacktrace("Serialization is not initialized! This is likely a bug, as it is initialized synchronously during system startup.")
+                }
+                
+                return s
             }
-
-            return s
         }
     }
 
@@ -267,7 +272,6 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         self.metrics = ClusterSystemMetrics(settings.metrics)
 
         self._receptionistRef = ManagedAtomicLazyReference()
-//        self._receptionistStore = ManagedAtomicLazyReference()
         self._serialization = ManagedAtomicLazyReference()
         self._clusterStore = ManagedAtomicLazyReference()
         self._clusterControlStore = ManagedAtomicLazyReference()
@@ -280,7 +284,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
 
         // serialization
         let serialization = Serialization(settings: settings, system: self)
-        _ = self._serialization.storeIfNilThenLoad(serialization)
+        _ = self._serialization?.storeIfNilThenLoad(serialization)
 
         // dead letters init
         self._deadLetters = _ActorRef(.deadLetters(.init(self.log, id: ActorID._deadLetters(on: settings.bindNode), system: self)))
@@ -424,7 +428,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
 
     deinit {
 //        self.shutdownFlag.destroy()
-
+        print("\(Self.self) DEINIT")
         #if SACT_TESTS_LEAKS
         ClusterSystem.actorSystemInitCounter.loadThenWrappingDecrement(ordering: .relaxed)
 
@@ -549,11 +553,13 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
 
         /// Only once we've shutdown all dispatchers and loops, we clear cycles between the serialization and system,
         /// as they should never be invoked anymore.
-        /*
-         self.lazyInitializationLock.withWriterLockVoid {
-             // self._serialization = nil // FIXME: need to release serialization
-         }
-         */
+        
+        self.lazyInitializationLock.withWriterLockVoid {
+             self._serialization = nil
+        }
+         
+        self._clusterControlStore.load()?.value._events.clean()
+        self._clusterStore.load()?.value = nil
         _ = self._clusterStore.storeIfNilThenLoad(Box(nil))
 
         self.shutdownReceptacle.offerOnce(nil)

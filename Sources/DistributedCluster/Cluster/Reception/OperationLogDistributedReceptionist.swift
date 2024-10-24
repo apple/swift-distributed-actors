@@ -258,21 +258,23 @@ public distributed actor OpLogDistributedReceptionist: DistributedReceptionist, 
             self.id.path.description == "/system/receptionist",
             "\(Self.self) expects to be on well known path: /system/receptionist, but was: \(self.id.fullDescription)"
         ) // TODO(distributed): remove when we remove paths entirely
-
-        self.eventsListeningTask = Task { [weak self, system] in
-            try await self?.whenLocal { __secretlyKnownToBeLocal in
-                for try await event in system.cluster.events {
-                    __secretlyKnownToBeLocal.onClusterEvent(event: event)
+        
+        let events = system.cluster.events
+        self.eventsListeningTask = Task { [weak self] in
+            for try await event in events {
+                await self?.whenLocal { myself in
+                    myself.onClusterEvent(event: event)
                 }
             }
         }
 
+        let interval = system.settings.receptionist.ackPullReplicationIntervalSlow
         // === timers ------------------
         // periodically gossip to other receptionists with the last seqNr we've seen,
         // and if it happens to be outdated by then this will cause a push from that node.
         self.slowACKReplicationTimerTask = Task { [weak self] in
-            await self?.whenLocal { myself in
-                for await _ in AsyncTimerSequence.repeating(every: system.settings.receptionist.ackPullReplicationIntervalSlow, clock: .continuous) {
+            for await _ in AsyncTimerSequence.repeating(every: interval, clock: .continuous) {
+                await self?.whenLocal { myself in
                     myself.periodicAckTick()
                 }
             }
@@ -280,7 +282,7 @@ public distributed actor OpLogDistributedReceptionist: DistributedReceptionist, 
 
         self.log.debug("Initialized receptionist")
     }
-
+    
     deinit {
         self.eventsListeningTask?.cancel()
         self.slowACKReplicationTimerTask?.cancel()
