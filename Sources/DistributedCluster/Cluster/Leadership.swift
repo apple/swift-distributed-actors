@@ -243,7 +243,7 @@ extension Leadership {
             if enoughMembers {
                 return self.selectByLowestAddress(context: context, membership: &membership, membersToSelectAmong: membersToSelectAmong)
             } else {
-                context.log.info("Not enough members [\(membersToSelectAmong.count)/\(self.minimumNumberOfMembersToDecide)] to run election, members: \(membersToSelectAmong)")
+                context.log.debug("Not enough members [\(membersToSelectAmong.count)/\(self.minimumNumberOfMembersToDecide)] to run election, members: \(membersToSelectAmong)")
                 if self.loseLeadershipIfBelowMinNrOfMembers {
                     return self.notEnoughMembers(context: context, membership: &membership, membersToSelectAmong: membersToSelectAmong)
                 } else {
@@ -300,7 +300,7 @@ extension Leadership {
                 .first
 
             if let change = try! membership.applyLeadershipChange(to: leader) { // try! safe, as we KNOW this member is part of membership
-                context.log.debug(
+                context.log.info(
                     "Selected new leader: [\(oldLeader, orElse: "nil") -> \(leader, orElse: "nil")]",
                     metadata: [
                         "membership": "\(membership)",

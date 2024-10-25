@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import _PrettyLogHandler
 import Distributed
 import DistributedCluster
 import Logging

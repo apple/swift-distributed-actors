@@ -14,6 +14,7 @@
 
 import Distributed
 import struct Foundation.Data
+import InstrumentationBaggage
 
 /// Representation of the distributed invocation in the Behavior APIs.
 /// This needs to be removed eventually as we remove behaviors.
@@ -23,12 +24,19 @@ public struct InvocationMessage: Sendable, Codable, CustomStringConvertible {
     let genericSubstitutions: [String]
     let arguments: [Data]
 
+    /// Tracing metadata, injected/extracted by distributed-tracing.
+    var metadata: [String: String] = [:]
+
+    var hasMetadata: Bool {
+        !self.metadata.isEmpty
+    }
+
     var target: RemoteCallTarget {
         RemoteCallTarget(targetIdentifier)
     }
 
     public var description: String {
-        "InvocationMessage(callID: \(callID), target: \(target), genericSubstitutions: \(genericSubstitutions), arguments: \(arguments.count))"
+        "InvocationMessage(callID: \(callID), target: \(target), genericSubstitutions: \(genericSubstitutions), arguments: \(arguments.count), metadata: \(metadata))"
     }
 }
 

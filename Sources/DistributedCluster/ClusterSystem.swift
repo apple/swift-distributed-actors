@@ -21,6 +21,7 @@ import DistributedActorsConcurrencyHelpers
 import Foundation // for UUID
 import Logging
 import NIO
+import Tracing
 
 /// A `ClusterSystem` is a confined space which runs and manages Actors.
 ///
@@ -1171,28 +1172,36 @@ extension ClusterSystem {
         let recipient = _RemoteClusterActorPersonality<InvocationMessage>(shell: clusterShell, id: actor.id._asRemote, system: self)
         let arguments = invocation.arguments
 
-        let reply: RemoteCallReply<Res> = try await self.withCallID(on: actor.id, target: target) { callID in
-            let invocation = InvocationMessage(
-                callID: callID,
-                targetIdentifier: target.identifier,
-                genericSubstitutions: invocation.genericSubstitutions,
-                arguments: arguments
-            )
+        // -- Pick up the distributed-tracing baggage; It will be injected into the message inside the withCallID body.
+        let baggage = Baggage.current ?? .topLevel
+        // TODO: we can enrich this with actor and system information here if not already present.
 
-            recipient.sendInvocation(invocation)
-        }
+        return try await InstrumentationSystem.tracer.withSpan("\(target)", baggage: baggage, ofKind: .client) { _ in
+            let reply: RemoteCallReply<Res> = try await self.withCallID(on: actor.id, target: target) { callID in
+                var invocation = InvocationMessage(
+                    callID: callID,
+                    targetIdentifier: target.identifier,
+                    genericSubstitutions: invocation.genericSubstitutions,
+                    arguments: arguments
+                )
 
-        if let error = reply.thrownError {
-            throw error
+                InstrumentationSystem.instrument.inject(baggage, into: &invocation, using: .invocationMessage)
+
+                recipient.sendInvocation(invocation)
+            }
+
+            if let error = reply.thrownError {
+                throw error
+            }
+            guard let value = reply.value else {
+                throw RemoteCallError(
+                    .invalidReply(reply.callID),
+                    on: actor.id,
+                    target: target
+                )
+            }
+            return value
         }
-        guard let value = reply.value else {
-            throw RemoteCallError(
-                .invalidReply(reply.callID),
-                on: actor.id,
-                target: target
-            )
-        }
-        return value
     }
 
     public func remoteCallVoid<Act, Err>(
@@ -1234,18 +1243,27 @@ extension ClusterSystem {
         let recipient = _RemoteClusterActorPersonality<InvocationMessage>(shell: clusterShell, id: actor.id._asRemote, system: self)
         let arguments = invocation.arguments
 
-        let reply: RemoteCallReply<_Done> = try await self.withCallID(on: actor.id, target: target) { callID in
-            let invocation = InvocationMessage(
-                callID: callID,
-                targetIdentifier: target.identifier,
-                genericSubstitutions: invocation.genericSubstitutions,
-                arguments: arguments
-            )
-            recipient.sendInvocation(invocation)
-        }
+        // -- Pick up the distributed-tracing baggage; It will be injected into the message inside the withCallID body.
+        let baggage = Baggage.current ?? .topLevel
+        // TODO: we can enrich this with actor and system information here if not already present.
 
-        if let error = reply.thrownError {
-            throw error
+        return try await InstrumentationSystem.tracer.withSpan("\(target)", baggage: baggage, ofKind: .client) { _ in
+            let reply: RemoteCallReply<_Done> = try await self.withCallID(on: actor.id, target: target) { callID in
+                var invocation = InvocationMessage(
+                    callID: callID,
+                    targetIdentifier: target.identifier,
+                    genericSubstitutions: invocation.genericSubstitutions,
+                    arguments: arguments
+                )
+
+                InstrumentationSystem.instrument.inject(baggage, into: &invocation, using: .invocationMessage)
+
+                recipient.sendInvocation(invocation)
+            }
+
+            if let error = reply.thrownError {
+                throw error
+            }
         }
     }
 
@@ -1256,8 +1274,10 @@ extension ClusterSystem {
     ) async throws -> Reply
         where Reply: AnyRemoteCallReply
     {
+        // Make an UUID for the remote call (so we can accept a reply for it)
         let callID = UUID()
 
+        // Prepare timeout handling
         let timeout = RemoteCall.timeout ?? self.settings.remoteCall.defaultTimeout
         let timeoutTask: Task<Void, Error> = Task.detached {
             try await Task.sleep(nanoseconds: UInt64(timeout.nanoseconds))
@@ -1296,6 +1316,7 @@ extension ClusterSystem {
             timeoutTask.cancel()
         }
 
+        /// Call the body which should perform the actual call!
         let reply: any AnyRemoteCallReply = try await withCheckedThrowingContinuation { continuation in
             self.inFlightCallLock.withLock {
                 self._inFlightCalls[callID] = continuation // this is to be resumed from an incoming reply or timeout
@@ -1426,6 +1447,9 @@ extension ClusterSystem {
             return
         }
 
+        var baggage: Baggage = .topLevel
+        InstrumentationSystem.instrument.extract(invocation, into: &baggage, using: .invocationMessage)
+
         Task {
             var decoder = ClusterInvocationDecoder(system: self, message: invocation)
 
@@ -1443,12 +1467,14 @@ extension ClusterSystem {
                     throw DeadLetterError(recipient: recipient)
                 }
 
-                try await executeDistributedTarget(
-                    on: actor,
-                    target: target,
-                    invocationDecoder: &decoder,
-                    handler: resultHandler
-                )
+                try await InstrumentationSystem.tracer.withSpan("\(target)", baggage: baggage, ofKind: .server) { _ in
+                    try await executeDistributedTarget(
+                        on: actor,
+                        target: target,
+                        invocationDecoder: &decoder,
+                        handler: resultHandler
+                    )
+                }
             } catch {
                 // FIXME(distributed): is this right?
                 do {

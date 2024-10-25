@@ -29,7 +29,7 @@ import WASILibc
 #endif
 
 /// Logger that prints "pretty" for showcasing the cluster nicely in sample applications.
-struct SamplePrettyLogHandler: LogHandler {
+public struct SamplePrettyLogHandler: LogHandler {
     static let CONSOLE_RESET = "\u{001B}[0;0m"
     static let CONSOLE_BOLD = "\u{001B}[1m"
 
@@ -52,8 +52,7 @@ struct SamplePrettyLogHandler: LogHandler {
         }
     }
 
-    // internal for testing only
-    internal init(label: String) {
+    public init(label: String) {
         self.label = label
     }
 
@@ -75,7 +74,14 @@ struct SamplePrettyLogHandler: LogHandler {
             nodeInfo += "\(node)"
         }
         let label: String
-        if let path = effectiveMetadata.removeValue(forKey: "actor/path")?.description {
+        if let id = effectiveMetadata.removeValue(forKey: "actor/id")?.description {
+            if id.contains("[$wellKnown") {
+                label = String(id[id.firstIndex(of: "[")! ..< id.endIndex])
+            } else {
+                label = id
+            }
+            effectiveMetadata.removeValue(forKey: "actor/path")
+        } else if let path = effectiveMetadata.removeValue(forKey: "actor/path")?.description {
             label = path
         } else {
             label = ""
