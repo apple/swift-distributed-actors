@@ -220,7 +220,7 @@ struct ActorLeakingTests {
         return self.skipLeakTests()
         #else
         return // FIXME: Skip
-        //        throw XCTSkip("!!! Skipping test \(#function) !!!") // FIXME(distributed): we need to manage the retain cycles with the receptionist better #831
+        //        throw XCTSkip("!!! Skipping test !!!") // FIXME(distributed): we need to manage the retain cycles with the receptionist better #831
 
         let initialSystemCount = ClusterSystem.actorSystemInitCounter.load(ordering: .relaxed)
 
@@ -263,7 +263,7 @@ struct ActorLeakingTests {
         #endif // SACT_TESTS_LEAKS
     }
 
-    @Test(.disabled("!!! Skipping test \(#function) !!!")) // FIXME(distributed): disabled test
+    @Test(.disabled("!!! Skipping test !!!")) // FIXME(distributed): disabled test
     func test_actor_whichLogsShouldNotCauseLeak_onDisabledLevel() async throws {
         #if !SACT_TESTS_LEAKS
         return self.skipLeakTests()
@@ -290,7 +290,7 @@ struct ActorLeakingTests {
         return self.skipLeakTests()
         #else
         return // FIXME: Skip
-        //        throw XCTSkip("!!! Skipping test \(#function) !!!") // FIXME(distributed): we need to manage the retain cycles with the receptionist better
+        //        throw XCTSkip("!!! Skipping test !!!") // FIXME(distributed): we need to manage the retain cycles with the receptionist better
 
         let initialSystemCount = ClusterSystem.actorSystemInitCounter.load(ordering: .relaxed)
 

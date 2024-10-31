@@ -36,7 +36,7 @@ final class ActorMetricsTests {
         MetricsSystem.bootstrapInternal(NOOPMetricsHandler.instance)
     }
 
-    @Test(.disabled("!!! Skipping test \(#function) !!!")) // FIXME(distributed): this crashes the cluster with a message on setup
+    @Test(.disabled("!!! Skipping test !!!")) // FIXME(distributed): this crashes the cluster with a message on setup
     func test_serialization_reportsMetrics() async throws {
         let first = await self.testCase.setUpNode("first")
         let second = await self.testCase.setUpNode("second")

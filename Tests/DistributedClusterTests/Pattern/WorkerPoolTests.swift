@@ -74,7 +74,7 @@ struct WorkerPoolTests {
         }
     }
 
-    @Test(.disabled("!!! Skipping test \(#function) !!!")) // FIXME(distributed): Pending fix for #831 to be able to terminate worker by setting it to nil
+    @Test(.disabled("!!! Skipping test !!!")) // FIXME(distributed): Pending fix for #831 to be able to terminate worker by setting it to nil
     func test_workerPool_dynamic_removeDeadActors() async throws {
         let workerKey = DistributedReception.Key(Greeter.self, id: "request-workers")
 

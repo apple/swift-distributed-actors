@@ -592,7 +592,7 @@ public struct CallSiteError: Error, CustomStringConvertible {
         }
 
         var s = ""
-        let lines = try! String(contentsOfFile: "\(self.callSite.sourceLocation.fileID)")
+        let lines = try! String(contentsOfFile: "\(self.callSite.sourceLocation._filePath)")
             .components(separatedBy: .newlines)
         let failingLine = lines
             .dropFirst(Int(self.callSite.sourceLocation.line - 1))
