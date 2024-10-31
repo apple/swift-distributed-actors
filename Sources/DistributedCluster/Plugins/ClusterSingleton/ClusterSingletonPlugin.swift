@@ -90,7 +90,7 @@ public actor ClusterSingletonPlugin {
 
     // FOR TESTING
     internal func _boss<Singleton: ClusterSingleton>(name: String, type: Singleton.Type = Singleton.self) -> ClusterSingletonBoss<Singleton>? {
-        guard let (id, boss) = self.singletons[name] else {
+        guard let (_, boss) = self.singletons[name] else {
             return nil
         }
 

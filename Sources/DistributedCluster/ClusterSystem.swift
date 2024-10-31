@@ -232,11 +232,6 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
         var settings = settings
         self.name = settings.endpoint.systemName
 
-        // rely on swift-backtrace for pretty backtraces on crashes
-        if settings.installSwiftBacktrace {
-            Backtrace.install()
-        }
-
         // TODO: we should not rely on NIO for futures
         let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: settings.threadPoolSize)
         settings.eventLoopGroup = eventLoopGroup
@@ -538,7 +533,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
             self.namingLock.withLock {
                 self._managedWellKnownDistributedActors = [:] // release
             }
-            knownActors = [:] // release the references outside namingLock
+            knownActors.removeAll()
         }
 
         self._associationTombstoneCleanupTask?.cancel()
@@ -763,7 +758,7 @@ extension ClusterSystem: _ActorRefFactory {
             return try self._spawn(using: provider, behavior, id: id, props: props)
             // try!-safe, since the naming must have been correct
         } catch {
-            fatalError("Failed to _spawn DistributedActor, id: \(id.fullDescription); props: \(id.metadata._props?.props), error: \(error)")
+            fatalError("Failed to _spawn DistributedActor, id: \(id.fullDescription); props: \(id.metadata._props?.props ?? _Props()), error: \(error)")
         }
     }
 }

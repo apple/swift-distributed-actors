@@ -86,7 +86,7 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
         let probe = self.testKit(first).makeTestProbe("p1", expecting: String.self)
 
         let name = "the-one"
-        let ref1 = try await first.singleton.host(name: name, settings: singletonSettings) { actorSystem in
+        _ = try await first.singleton.host(name: name, settings: singletonSettings) { actorSystem in
             LifecycleTestSingleton(probe: probe, actorSystem: actorSystem)
         }
 

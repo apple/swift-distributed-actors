@@ -52,9 +52,6 @@ extension MultiNodeTestKitRunnerBoot {
             settings.bindHost = myNode.host
             settings.bindPort = myNode.port
 
-            /// By default get better backtraces in case we crash:
-            settings.installSwiftBacktrace = true
-
             /// Configure a nicer logger, that pretty prints metadata and also includes source location of logs
             if multiNodeSettings.installPrettyLogger {
                 settings.logging.baseLogger = Logger(label: nodeName, factory: { label in
