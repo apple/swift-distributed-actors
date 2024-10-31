@@ -78,7 +78,7 @@ final class ClusterSingletonPluginTests: SingleClusterSystemXCTestCase {
         }
 
         let id = ActorWithID(actorSystem: testNode, customID: actorID)
-        await fulfillment(of: [hookFulfillment])
+        await fulfillment(of: [hookFulfillment], timeout: 3.0)
     }
 
     final class TestActorLifecyclePlugin: ActorLifecyclePlugin {
