@@ -15,9 +15,10 @@
 @testable import DistributedActorsTestKit
 @testable import DistributedCluster
 import NIO
-import XCTest
+import Testing
 
-class NIOExtensionTests: XCTestCase {
+struct NIOExtensionTests {
+    @Test
     func test_ByteBuf_formatHexDump_shouldPrettyPrintAsExpected() {
         let allocator = ByteBufferAllocator()
         var b = allocator.buffer(capacity: 512)
@@ -34,6 +35,7 @@ class NIOExtensionTests: XCTestCase {
         b.formatHexDump().shouldEqual(expected)
     }
 
+    @Test
     func test_ByteBuf_formatHexDump_truncating_shouldPrettyPrintAsExpected() {
         let allocator = ByteBufferAllocator()
         var b = allocator.buffer(capacity: 512)

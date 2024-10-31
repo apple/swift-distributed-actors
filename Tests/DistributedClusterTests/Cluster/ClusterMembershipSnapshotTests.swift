@@ -14,13 +14,21 @@
 
 import DistributedActorsTestKit
 import DistributedCluster
-import XCTest
+import Testing
 
-final class ClusterMembershipSnapshotTests: ClusteredActorSystemsXCTestCase {
+@Suite(.timeLimit(.minutes(1)), .serialized)
+struct ClusterMembershipSnapshotTests {
+    let testCase: ClusteredActorSystemsTestCase
+
+    init() throws {
+        self.testCase = try ClusteredActorSystemsTestCase()
+    }
+
+    @Test
     func test_membershipSnapshot_initialShouldContainSelfNode() async throws {
-        let system = await setUpNode("first")
+        let system = await self.testCase.setUpNode("first")
 
-        let testKit: ActorTestKit = self.testKit(system)
+        let testKit: ActorTestKit = self.testCase.testKit(system)
         try await testKit.eventually(within: .seconds(5)) {
             await system.cluster.membershipSnapshot.members(atLeast: .joining).shouldContain(
                 Cluster.Member(node: system.cluster.node, status: .joining)
@@ -28,14 +36,15 @@ final class ClusterMembershipSnapshotTests: ClusteredActorSystemsXCTestCase {
         }
     }
 
+    @Test
     func test_membershipSnapshot_shouldBeUpdated() async throws {
-        let (first, second) = await self.setUpPair()
-        try await self.joinNodes(node: first, with: second)
+        let (first, second) = await self.testCase.setUpPair()
+        try await self.testCase.joinNodes(node: first, with: second)
 
-        let third = await setUpNode("third")
-        try await self.joinNodes(node: first, with: third)
+        let third = await self.testCase.setUpNode("third")
+        try await self.testCase.joinNodes(node: first, with: third)
 
-        let testKit: ActorTestKit = self.testKit(first)
+        let testKit: ActorTestKit = self.testCase.testKit(first)
         try await testKit.eventually(within: .seconds(5)) {
             let snapshot: Cluster.Membership = await first.cluster.membershipSnapshot
 
@@ -51,16 +60,17 @@ final class ClusterMembershipSnapshotTests: ClusteredActorSystemsXCTestCase {
         }
     }
 
+    @Test
     func test_membershipSnapshot_beInSyncWithEvents() async throws {
-        let first = await setUpNode("first")
-        let second = await setUpNode("second")
-        let third = await setUpNode("third")
+        let first = await self.testCase.setUpNode("first")
+        let second = await self.testCase.setUpNode("second")
+        let third = await self.testCase.setUpNode("third")
 
-        let events = await self.testKit(first).spawnClusterEventStreamTestProbe()
+        let events = await self.testCase.testKit(first).spawnClusterEventStreamTestProbe()
 
-        try await self.joinNodes(node: first, with: second)
-        try await self.joinNodes(node: first, with: third)
-        try await self.joinNodes(node: second, with: third)
+        try await self.testCase.joinNodes(node: first, with: second)
+        try await self.testCase.joinNodes(node: first, with: third)
+        try await self.testCase.joinNodes(node: second, with: third)
 
         var membership: Cluster.Membership = .empty
         while let event = try events.maybeExpectMessage(within: .seconds(1)) {

@@ -21,41 +21,41 @@ import DistributedActorsTestKit
 import Foundation
 @testable import Metrics
 @testable import SWIM
-import XCTest
+import Testing
 
-final class SWIMActorClusteredTests: ClusteredActorSystemsXCTestCase {
-    var metrics: TestMetrics! = TestMetrics()
+@Suite(.timeLimit(.minutes(1)), .serialized)
+final class SWIMActorClusteredTests {
+    let metrics = TestMetrics()
+    let testCase: ClusteredActorSystemsTestCase
 
-    override func setUp() {
+    init() throws {
         MetricsSystem.bootstrapInternal(self.metrics)
-        super.setUp()
+
+        self.testCase = try ClusteredActorSystemsTestCase()
+        self.self.testCase.configureLogCapture = { settings in
+            settings.filterActorPaths = ["/user/swim"]
+        }
     }
 
-    override func tearDown() async throws {
-        try await super.tearDown()
-        self.metrics = nil
+    deinit {
         MetricsSystem.bootstrapInternal(NOOPMetricsHandler.instance)
     }
 
-    override func configureLogCapture(settings: inout LogCapture.Settings) {
-        settings.filterActorPaths = ["/user/swim"]
-    }
-
     func setUpFirst(_ modifySettings: ((inout ClusterSystemSettings) -> Void)? = nil) async -> ClusterSystem {
-        await super.setUpNode("first", modifySettings)
+        await self.self.testCase.setUpNode("first", modifySettings)
     }
 
     func setUpSecond(_ modifySettings: ((inout ClusterSystemSettings) -> Void)? = nil) async -> ClusterSystem {
-        await super.setUpNode("second", modifySettings)
+        await self.self.testCase.setUpNode("second", modifySettings)
     }
 
     func setUpThird(_ modifySettings: ((inout ClusterSystemSettings) -> Void)? = nil) async -> ClusterSystem {
-        await super.setUpNode("third", modifySettings)
+        await self.self.testCase.setUpNode("third", modifySettings)
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: LHA probe modifications
-
+    @Test
     func test_swim_shouldNotIncreaseProbeInterval_whenLowMultiplier() async throws {
         let firstNode = await self.setUpFirst() { settings in
             settings.swim.lifeguard.maxLocalHealthMultiplier = 1
@@ -66,13 +66,13 @@ final class SWIMActorClusteredTests: ClusteredActorSystemsXCTestCase {
         let secondNode = await self.setUpSecond()
 
         firstNode.cluster.join(endpoint: secondNode.cluster.endpoint)
-        try assertAssociated(firstNode, withExactly: secondNode.cluster.node)
+        try self.testCase.assertAssociated(firstNode, withExactly: secondNode.cluster.node)
 
         guard let first = firstNode._cluster?._swimShell else {
-            throw testKit(firstNode).fail("SWIM shell of [\(firstNode)] should not be nil")
+            throw self.testCase.testKit(firstNode).fail("SWIM shell of [\(firstNode)] should not be nil")
         }
         guard let second = secondNode._cluster?._swimShell else {
-            throw testKit(secondNode).fail("SWIM shell of [\(secondNode)] should not be nil")
+            throw self.testCase.testKit(secondNode).fail("SWIM shell of [\(secondNode)] should not be nil")
         }
 
         try await self.configureSWIM(for: first, members: [second])
@@ -90,29 +90,30 @@ final class SWIMActorClusteredTests: ClusteredActorSystemsXCTestCase {
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Pinging nodes
-
+    @Test
     func test_swim_shouldRespondWithAckToPing() async throws {
         let firstNode = await self.setUpFirst()
         let secondNode = await self.setUpSecond()
 
         guard let first = firstNode._cluster?._swimShell else {
-            throw testKit(firstNode).fail("SWIM shell of [\(firstNode)] should not be nil")
+            throw self.testCase.testKit(firstNode).fail("SWIM shell of [\(firstNode)] should not be nil")
         }
         guard let second = secondNode._cluster?._swimShell else {
-            throw testKit(secondNode).fail("SWIM shell of [\(secondNode)] should not be nil")
+            throw self.testCase.testKit(secondNode).fail("SWIM shell of [\(secondNode)] should not be nil")
         }
 
         let originPeer = try SWIMActor.resolve(id: second.id._asRemote, using: firstNode)
         let response = try await first.ping(origin: originPeer, payload: .none, sequenceNumber: 13)
 
         guard case .ack(let pinged, let incarnation, _, _) = response else {
-            throw testKit(firstNode).fail("Expected ack, but got \(response)")
+            throw self.testCase.testKit(firstNode).fail("Expected ack, but got \(response)")
         }
 
         pinged.shouldEqual(first)
         incarnation.shouldEqual(0)
     }
 
+    @Test
     func test_swim_shouldRespondWithNackToPingReq_whenNoResponseFromTarget() async throws {
         let firstNode = await self.setUpFirst()
         let secondNode = await self.setUpSecond()
@@ -120,16 +121,16 @@ final class SWIMActorClusteredTests: ClusteredActorSystemsXCTestCase {
 
         firstNode.cluster.join(endpoint: secondNode.cluster.node.endpoint)
         thirdNode.cluster.join(endpoint: secondNode.cluster.node.endpoint)
-        try assertAssociated(firstNode, withExactly: secondNode.cluster.node)
+        try self.testCase.assertAssociated(firstNode, withExactly: secondNode.cluster.node)
 
         guard let first = firstNode._cluster?._swimShell else {
-            throw testKit(firstNode).fail("SWIM shell of [\(firstNode)] should not be nil")
+            throw self.testCase.testKit(firstNode).fail("SWIM shell of [\(firstNode)] should not be nil")
         }
         guard let second = secondNode._cluster?._swimShell else {
-            throw testKit(secondNode).fail("SWIM shell of [\(secondNode)] should not be nil")
+            throw self.testCase.testKit(secondNode).fail("SWIM shell of [\(secondNode)] should not be nil")
         }
         guard let third = thirdNode._cluster?._swimShell else {
-            throw testKit(thirdNode).fail("SWIM shell of [\(thirdNode)] should not be nil")
+            throw self.testCase.testKit(thirdNode).fail("SWIM shell of [\(thirdNode)] should not be nil")
         }
 
         try await self.configureSWIM(for: first, members: [second, third])
@@ -137,7 +138,7 @@ final class SWIMActorClusteredTests: ClusteredActorSystemsXCTestCase {
         // FIXME: use a non-responsive test probe instead of real system
         // Down the node so it doesn't respond to ping
         try thirdNode.shutdown()
-        try await self.ensureNodes(.removed, on: secondNode, nodes: thirdNode.cluster.node)
+        try await self.testCase.ensureNodes(.removed, on: secondNode, nodes: thirdNode.cluster.node)
 
         let originPeer = try SWIMActor.resolve(id: first.id._asRemote, using: secondNode)
         let targetPeer = try SWIMActor.resolve(id: third.id._asRemote, using: secondNode)
@@ -145,10 +146,11 @@ final class SWIMActorClusteredTests: ClusteredActorSystemsXCTestCase {
         let response = try await second.pingRequest(target: targetPeer, pingRequestOrigin: originPeer, payload: .none, sequenceNumber: 13)
 
         guard case .nack = response else {
-            throw testKit(firstNode).fail("Expected nack, but got \(response)")
+            throw self.testCase.testKit(firstNode).fail("Expected nack, but got \(response)")
         }
     }
 
+    @Test
     func test_swim_shouldPingRandomMember() async throws {
         let firstNode = await self.setUpFirst()
         let secondNode = await self.setUpSecond()
@@ -156,16 +158,16 @@ final class SWIMActorClusteredTests: ClusteredActorSystemsXCTestCase {
 
         firstNode.cluster.join(endpoint: secondNode.cluster.node.endpoint)
         thirdNode.cluster.join(endpoint: secondNode.cluster.node.endpoint)
-        try assertAssociated(firstNode, withExactly: secondNode.cluster.node)
+        try self.testCase.assertAssociated(firstNode, withExactly: secondNode.cluster.node)
 
         guard let first = firstNode._cluster?._swimShell else {
-            throw testKit(firstNode).fail("SWIM shell of [\(firstNode)] should not be nil")
+            throw self.testCase.testKit(firstNode).fail("SWIM shell of [\(firstNode)] should not be nil")
         }
         guard let second = secondNode._cluster?._swimShell else {
-            throw testKit(secondNode).fail("SWIM shell of [\(secondNode)] should not be nil")
+            throw self.testCase.testKit(secondNode).fail("SWIM shell of [\(secondNode)] should not be nil")
         }
         guard let third = thirdNode._cluster?._swimShell else {
-            throw testKit(thirdNode).fail("SWIM shell of [\(thirdNode)] should not be nil")
+            throw self.testCase.testKit(thirdNode).fail("SWIM shell of [\(thirdNode)] should not be nil")
         }
 
         try await self.configureSWIM(for: first, members: [second, third])
@@ -192,19 +194,20 @@ final class SWIMActorClusteredTests: ClusteredActorSystemsXCTestCase {
         }
     }
 
+    @Test
     func test_swim_shouldPingSpecificMemberWhenRequested() async throws {
         let firstNode = await self.setUpFirst()
         let secondNode = await self.setUpSecond()
         let thirdNode = await self.setUpThird()
 
         guard let first = firstNode._cluster?._swimShell else {
-            throw testKit(firstNode).fail("SWIM shell of [\(firstNode)] should not be nil")
+            throw self.testCase.testKit(firstNode).fail("SWIM shell of [\(firstNode)] should not be nil")
         }
         guard let second = secondNode._cluster?._swimShell else {
-            throw testKit(secondNode).fail("SWIM shell of [\(secondNode)] should not be nil")
+            throw self.testCase.testKit(secondNode).fail("SWIM shell of [\(secondNode)] should not be nil")
         }
         guard let third = thirdNode._cluster?._swimShell else {
-            throw testKit(thirdNode).fail("SWIM shell of [\(thirdNode)] should not be nil")
+            throw self.testCase.testKit(thirdNode).fail("SWIM shell of [\(thirdNode)] should not be nil")
         }
 
         try await self.configureSWIM(for: first, members: [second, third])
@@ -215,7 +218,7 @@ final class SWIMActorClusteredTests: ClusteredActorSystemsXCTestCase {
         let response = try await second.pingRequest(target: targetPeer, pingRequestOrigin: originPeer, payload: .none, sequenceNumber: 13)
 
         guard case .ack(let pinged, let incarnation, _, _) = response else {
-            throw testKit(firstNode).fail("Expected ack, but got \(response)")
+            throw self.testCase.testKit(firstNode).fail("Expected ack, but got \(response)")
         }
 
         pinged.shouldEqual(third)
@@ -224,19 +227,19 @@ final class SWIMActorClusteredTests: ClusteredActorSystemsXCTestCase {
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Marking suspect nodes
-
+    @Test
     func test_swim_shouldMarkSuspects_whenPingFailsAndNoOtherNodesCanBeRequested() async throws {
         let firstNode = await self.setUpFirst()
         let secondNode = await self.setUpSecond()
 
         firstNode.cluster.join(endpoint: secondNode.cluster.node.endpoint)
-        try assertAssociated(firstNode, withExactly: secondNode.cluster.node)
+        try self.testCase.assertAssociated(firstNode, withExactly: secondNode.cluster.node)
 
         guard let first = firstNode._cluster?._swimShell else {
-            throw testKit(firstNode).fail("SWIM shell of [\(firstNode)] should not be nil")
+            throw self.testCase.testKit(firstNode).fail("SWIM shell of [\(firstNode)] should not be nil")
         }
         guard let second = secondNode._cluster?._swimShell else {
-            throw testKit(secondNode).fail("SWIM shell of [\(secondNode)] should not be nil")
+            throw self.testCase.testKit(secondNode).fail("SWIM shell of [\(secondNode)] should not be nil")
         }
 
         try await self.configureSWIM(for: first, members: [second])
@@ -256,19 +259,20 @@ final class SWIMActorClusteredTests: ClusteredActorSystemsXCTestCase {
         try await self.awaitStatus(.suspect(incarnation: 0, suspectedBy: [first.node]), for: targetPeer, on: first, within: .seconds(1))
     }
 
+    @Test
     func test_swim_shouldMarkSuspects_whenPingFailsAndRequestedNodesFailToPing() async throws {
         let firstNode = await self.setUpFirst()
         let secondNode = await self.setUpSecond()
         let thirdNode = await self.setUpThird()
 
         guard let first = firstNode._cluster?._swimShell else {
-            throw testKit(firstNode).fail("SWIM shell of [\(firstNode)] should not be nil")
+            throw self.testCase.testKit(firstNode).fail("SWIM shell of [\(firstNode)] should not be nil")
         }
         guard let second = secondNode._cluster?._swimShell else {
-            throw testKit(secondNode).fail("SWIM shell of [\(secondNode)] should not be nil")
+            throw self.testCase.testKit(secondNode).fail("SWIM shell of [\(secondNode)] should not be nil")
         }
         guard let third = thirdNode._cluster?._swimShell else {
-            throw testKit(thirdNode).fail("SWIM shell of [\(thirdNode)] should not be nil")
+            throw self.testCase.testKit(thirdNode).fail("SWIM shell of [\(thirdNode)] should not be nil")
         }
 
         try await self.configureSWIM(for: first, members: [second, third])
@@ -296,6 +300,7 @@ final class SWIMActorClusteredTests: ClusteredActorSystemsXCTestCase {
         try await self.awaitStatus(.suspect(incarnation: 0, suspectedBy: [first.node]), for: targetPeer, on: first, within: .seconds(1))
     }
 
+    @Test
     func test_swim_shouldNotMarkUnreachable_whenSuspectedByNotEnoughNodes_whenMinTimeoutReached() async throws {
         let maxIndependentSuspicions = 10
         let suspicionTimeoutPeriodsMax = 1000
@@ -313,17 +318,17 @@ final class SWIMActorClusteredTests: ClusteredActorSystemsXCTestCase {
 
         firstNode.cluster.join(endpoint: secondNode.cluster.node.endpoint)
         thirdNode.cluster.join(endpoint: secondNode.cluster.node.endpoint)
-        try assertAssociated(firstNode, withExactly: [secondNode.cluster.node, thirdNode.cluster.node])
-        try assertAssociated(secondNode, withExactly: [firstNode.cluster.node, thirdNode.cluster.node])
+        try self.testCase.assertAssociated(firstNode, withExactly: [secondNode.cluster.node, thirdNode.cluster.node])
+        try self.testCase.assertAssociated(secondNode, withExactly: [firstNode.cluster.node, thirdNode.cluster.node])
 
         guard let first = firstNode._cluster?._swimShell else {
-            throw testKit(firstNode).fail("SWIM shell of [\(firstNode)] should not be nil")
+            throw self.testCase.testKit(firstNode).fail("SWIM shell of [\(firstNode)] should not be nil")
         }
         guard let second = secondNode._cluster?._swimShell else {
-            throw testKit(secondNode).fail("SWIM shell of [\(secondNode)] should not be nil")
+            throw self.testCase.testKit(secondNode).fail("SWIM shell of [\(secondNode)] should not be nil")
         }
         guard let third = thirdNode._cluster?._swimShell else {
-            throw testKit(thirdNode).fail("SWIM shell of [\(thirdNode)] should not be nil")
+            throw self.testCase.testKit(thirdNode).fail("SWIM shell of [\(thirdNode)] should not be nil")
         }
 
         try await self.configureSWIM(for: first, members: [second, third])
@@ -335,7 +340,7 @@ final class SWIMActorClusteredTests: ClusteredActorSystemsXCTestCase {
             __secretlyKnownToBeLocal.handlePeriodicProtocolPeriodTick()
         }
         // FIXME: use a non-responsive test probe
-//         try self.expectPing(on: probeOnSecond, reply: false)
+        //         try self.expectPing(on: probeOnSecond, reply: false)
         timeSource.tick()
 
         let suspectStatus: SWIM.Status = .suspect(incarnation: 0, suspectedBy: [first.node])
@@ -345,41 +350,41 @@ final class SWIMActorClusteredTests: ClusteredActorSystemsXCTestCase {
         try await self.awaitStatus(suspectStatus, for: targetPeer, on: first, within: .seconds(1))
         timeSource.tick()
 
-//          for _ in 0 ..< suspicionTimeoutPeriodsMin {
-//              _ = await first.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
-//                  __secretlyKnownToBeLocal.handlePeriodicProtocolPeriodTick()
-//              }
-//              // FIXME: use a non-responsive test probe
-//              try self.expectPing(on: probeOnSecond, reply: false)
-//              timeSource.tick()
-//          }
-//
-//          // We need to trigger an additional ping to advance the protocol period
-//          // and have the SWIM actor mark the remote node as dead
-//         _ = await first.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
-//             __secretlyKnownToBeLocal.handlePeriodicProtocolPeriodTick()
-//         }
-//
-//         // FIXME: would second end up with .dead status?
-//         try await self.awaitStatus(.dead, for: targetPeer, on: first, within: .seconds(1))
+        //          for _ in 0 ..< suspicionTimeoutPeriodsMin {
+        //              _ = await first.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
+        //                  __secretlyKnownToBeLocal.handlePeriodicProtocolPeriodTick()
+        //              }
+        //              // FIXME: use a non-responsive test probe
+        //              try self.expectPing(on: probeOnSecond, reply: false)
+        //              timeSource.tick()
+        //          }
+        //
+        //          // We need to trigger an additional ping to advance the protocol period
+        //          // and have the SWIM actor mark the remote node as dead
+        //         _ = await first.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
+        //             __secretlyKnownToBeLocal.handlePeriodicProtocolPeriodTick()
+        //         }
+        //
+        //         // FIXME: would second end up with .dead status?
+        //         try await self.awaitStatus(.dead, for: targetPeer, on: first, within: .seconds(1))
     }
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Gossiping
-
+    @Test
     func test_swim_shouldSendGossipInAck() async throws {
         let firstNode = await self.setUpFirst()
         let secondNode = await self.setUpSecond()
 
         firstNode.cluster.join(endpoint: secondNode.cluster.node.endpoint)
-        try assertAssociated(firstNode, withExactly: secondNode.cluster.node)
-        try assertAssociated(secondNode, withExactly: firstNode.cluster.node)
+        try self.testCase.assertAssociated(firstNode, withExactly: secondNode.cluster.node)
+        try self.testCase.assertAssociated(secondNode, withExactly: firstNode.cluster.node)
 
         guard let first = firstNode._cluster?._swimShell else {
-            throw testKit(firstNode).fail("SWIM shell of [\(firstNode)] should not be nil")
+            throw self.testCase.testKit(firstNode).fail("SWIM shell of [\(firstNode)] should not be nil")
         }
         guard let second = secondNode._cluster?._swimShell else {
-            throw testKit(secondNode).fail("SWIM shell of [\(secondNode)] should not be nil")
+            throw self.testCase.testKit(secondNode).fail("SWIM shell of [\(secondNode)] should not be nil")
         }
 
         try await self.configureSWIM(for: first, members: [second])
@@ -388,7 +393,7 @@ final class SWIMActorClusteredTests: ClusteredActorSystemsXCTestCase {
         let response = try await first.ping(origin: secondPeer, payload: .none, sequenceNumber: 1)
 
         guard case .ack(_, _, .membership(let members), _) = response else {
-            throw testKit(firstNode).fail("Expected gossip with membership, but got \(response)")
+            throw self.testCase.testKit(firstNode).fail("Expected gossip with membership, but got \(response)")
         }
 
         members.count.shouldEqual(2)
@@ -396,6 +401,7 @@ final class SWIMActorClusteredTests: ClusteredActorSystemsXCTestCase {
         members.shouldContain(where: { $0.peer == first && $0.status == .alive(incarnation: 0) })
     }
 
+    @Test
     func test_SWIMShell_shouldMonitorJoinedClusterMembers() async throws {
         let localNode = await self.setUpFirst()
         let remoteNode = await self.setUpSecond()
@@ -403,10 +409,10 @@ final class SWIMActorClusteredTests: ClusteredActorSystemsXCTestCase {
         localNode.cluster.join(endpoint: remoteNode.cluster.node.endpoint)
 
         guard let local = localNode._cluster?._swimShell else {
-            throw testKit(localNode).fail("SWIM shell of [\(localNode)] should not be nil")
+            throw self.testCase.testKit(localNode).fail("SWIM shell of [\(localNode)] should not be nil")
         }
         guard let remote = remoteNode._cluster?._swimShell else {
-            throw testKit(remoteNode).fail("SWIM shell of [\(remoteNode)] should not be nil")
+            throw self.testCase.testKit(remoteNode).fail("SWIM shell of [\(remoteNode)] should not be nil")
         }
 
         let remotePeer = try SWIMActor.resolve(id: remote.id._asRemote, using: localNode)
@@ -439,7 +445,7 @@ final class SWIMActorClusteredTests: ClusteredActorSystemsXCTestCase {
         // FIXME: with test probes we can control the exact number of messages (e.g., probe.expectMessage()),
         // but that's not easy with do with real systems so we check for inbound message count and do at-least
         // instead of exact comparisons.
-        let testKit = self.testKit(swimShell.actorSystem)
+        let testKit = self.testCase.testKit(swimShell.actorSystem)
 
         try await testKit.eventually(within: within) {
             guard let counter = try await self.metrics.getSWIMCounter(swimShell, { $0.messageInboundCount }) else {
@@ -456,11 +462,11 @@ final class SWIMActorClusteredTests: ClusteredActorSystemsXCTestCase {
     private func awaitStatus(
         _ status: SWIM.Status, for peer: SWIMActor,
         on swimShell: SWIMActor, within timeout: Duration,
-        file: StaticString = #filePath, line: UInt = #line, column: UInt = #column
+        sourceLocation: SourceLocation = #_sourceLocation
     ) async throws {
-        let testKit = self.testKit(swimShell.actorSystem)
+        let testKit = self.testCase.testKit(swimShell.actorSystem)
 
-        try await testKit.eventually(within: timeout, file: file, line: line, column: column) {
+        try await testKit.eventually(within: timeout, sourceLocation: sourceLocation) {
             let membership = await swimShell.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
                 __secretlyKnownToBeLocal._getMembershipState()
             } ?? []
@@ -470,7 +476,7 @@ final class SWIMActorClusteredTests: ClusteredActorSystemsXCTestCase {
                 .map(\.status)
 
             guard otherStatus == status else {
-                throw testKit.error("Expected status [\(status)] for [\(peer)], but found \(otherStatus.debugDescription); Membership: \(membership)", file: file, line: line)
+                throw testKit.error("Expected status [\(status)] for [\(peer)], but found \(otherStatus.debugDescription); Membership: \(membership)", sourceLocation: sourceLocation)
             }
         }
     }

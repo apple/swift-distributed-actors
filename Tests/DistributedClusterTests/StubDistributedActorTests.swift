@@ -17,13 +17,21 @@ import DistributedActorsTestKit
 @testable import DistributedCluster
 import Foundation
 import NIO
-import XCTest
+import Testing
 
-final class StubDistributedActorTests: SingleClusterSystemXCTestCase {
+@Suite(.timeLimit(.minutes(1)), .serialized)
+struct StubDistributedActorTests {
+    let testCase: SingleClusterSystemTestCase
+
+    init() async throws {
+        self.testCase = try await SingleClusterSystemTestCase(name: String(describing: type(of: self)))
+    }
+
+    @Test
     func test_StubDistributedActor_shouldAlwaysResolveAsRemote() {
-        let anyID = system.assignID(StubDistributedActor.self)
+        let anyID = self.testCase.system.assignID(StubDistributedActor.self)
 
-        let resolved = system._resolveStub(id: anyID)
+        let resolved = self.testCase.system._resolveStub(id: anyID)
         __isRemoteActor(resolved).shouldBeTrue()
     }
 }

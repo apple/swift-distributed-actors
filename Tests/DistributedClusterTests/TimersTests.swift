@@ -13,19 +13,27 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-import Foundation
-import XCTest
-
 @testable import DistributedCluster
+import Foundation
+import Testing
 
-final class TimersTests: SingleClusterSystemXCTestCase {
+@Suite(.timeLimit(.minutes(1)), .serialized)
+struct TimersTests {
+    let testCase: SingleClusterSystemTestCase
+
+    init() async throws {
+        self.testCase = try await SingleClusterSystemTestCase(name: String(describing: type(of: self)))
+    }
+
+    @Test
     func testTimerKey_shouldPrintNicely() {
         _TimerKey("Hello").description.shouldEqual("_TimerKey(Hello)")
         _TimerKey("Hello", isSystemTimer: true).description.shouldEqual("_TimerKey(Hello, isSystemTimer: true)")
     }
 
+    @Test
     func test_startSingleTimer_shouldSendSingleMessage() throws {
-        let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
+        let p: ActorTestProbe<String> = self.testCase.testKit.makeTestProbe()
 
         let behavior: _Behavior<String> = .setup { context in
             context.timers.startSingle(key: _TimerKey("message"), message: "fromTimer", delay: .microseconds(100))
@@ -35,13 +43,14 @@ final class TimersTests: SingleClusterSystemXCTestCase {
             }
         }
 
-        try system._spawn(.anonymous, behavior)
+        try self.testCase.system._spawn(.anonymous, behavior)
         try p.expectMessage("fromTimer")
         try p.expectNoMessage(for: .milliseconds(10))
     }
 
+    @Test
     func test_startPeriodicTimer_shouldSendPeriodicMessage() throws {
-        let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
+        let p: ActorTestProbe<String> = self.testCase.testKit.makeTestProbe()
 
         let behavior: _Behavior<String> = .setup { context in
             var i = 0
@@ -58,15 +67,16 @@ final class TimersTests: SingleClusterSystemXCTestCase {
             }
         }
 
-        try system._spawn(.anonymous, behavior)
+        try self.testCase.system._spawn(.anonymous, behavior)
         for _ in 0 ..< 5 {
             try p.expectMessage("fromTimer")
         }
         try p.expectNoMessage(for: .milliseconds(10))
     }
 
+    @Test
     func test_periodicTimer_shouldStopWhenCanceled() throws {
-        let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
+        let p: ActorTestProbe<String> = self.testCase.testKit.makeTestProbe()
 
         let behavior: _Behavior<String> = .setup { context in
             var i = 0
@@ -82,15 +92,16 @@ final class TimersTests: SingleClusterSystemXCTestCase {
             }
         }
 
-        try system._spawn(.anonymous, behavior)
+        try self.testCase.system._spawn(.anonymous, behavior)
         for _ in 0 ..< 5 {
             try p.expectMessage("fromTimer")
         }
         try p.expectNoMessage(for: .milliseconds(100))
     }
 
+    @Test
     func test_singleTimer_shouldStopWhenCanceled() throws {
-        let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
+        let p: ActorTestProbe<String> = self.testCase.testKit.makeTestProbe()
 
         let behavior = _Behavior<String>.setup { context in
             // We start the timer without delay and then sleep for a short
@@ -106,12 +117,13 @@ final class TimersTests: SingleClusterSystemXCTestCase {
             }
         }
 
-        _ = try self.system._spawn(.anonymous, behavior)
+        _ = try self.testCase.system._spawn(.anonymous, behavior)
         try p.expectNoMessage(for: .milliseconds(10))
     }
 
+    @Test
     func test_timers_cancelAllShouldStopAllTimers() throws {
-        let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
+        let p: ActorTestProbe<String> = self.testCase.testKit.makeTestProbe()
 
         let behavior: _Behavior<String> = .setup { context in
             context.timers.startPeriodic(key: _TimerKey("message"), message: "fromTimer", interval: .milliseconds(10))
@@ -124,13 +136,14 @@ final class TimersTests: SingleClusterSystemXCTestCase {
             }
         }
 
-        try system._spawn(.anonymous, behavior)
+        try self.testCase.system._spawn(.anonymous, behavior)
         try p.expectMessage("fromTimer")
         try p.expectNoMessage(for: .milliseconds(100))
     }
 
+    @Test
     func test_timers_cancelAllShouldNotStopSystemTimers() throws {
-        let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
+        let p: ActorTestProbe<String> = self.testCase.testKit.makeTestProbe()
 
         let behavior: _Behavior<String> = .setup { context in
             context.timers.startPeriodic(key: _TimerKey("message", isSystemTimer: true), message: "fromSystemTimer", interval: .milliseconds(10))
@@ -141,7 +154,7 @@ final class TimersTests: SingleClusterSystemXCTestCase {
             }
         }
 
-        try system._spawn(.anonymous, behavior)
+        try self.testCase.system._spawn(.anonymous, behavior)
         try p.expectMessage("fromSystemTimer")
         try p.expectMessage("fromSystemTimer")
         try p.expectMessage("fromSystemTimer")

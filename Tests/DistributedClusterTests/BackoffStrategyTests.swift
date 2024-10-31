@@ -14,12 +14,12 @@
 
 import DistributedActorsTestKit
 @testable import DistributedCluster
-import XCTest
+import Testing
 
-class BackoffStrategyTests: XCTestCase {
+class BackoffStrategyTests {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Constant backoff
-
+    @Test
     func test_constantBackoff_shouldAlwaysYieldSameDuration() {
         let backoff = Backoff.constant(.milliseconds(100))
         backoff.next()?.shouldEqual(.milliseconds(100))
@@ -27,6 +27,7 @@ class BackoffStrategyTests: XCTestCase {
         backoff.next()?.shouldEqual(.milliseconds(100))
     }
 
+    @Test
     func test_constantBackoff_reset_shouldDoNothing() {
         let backoff = Backoff.constant(.milliseconds(100))
         backoff.next()?.shouldEqual(.milliseconds(100))
@@ -38,7 +39,7 @@ class BackoffStrategyTests: XCTestCase {
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Exponential backoff
-
+    @Test
     func test_exponentialBackoff_shouldIncreaseBackoffEachTime() {
         var backoff = Backoff.exponential(initialInterval: .milliseconds(100))
         let b1: Duration = backoff.next()!
@@ -50,6 +51,7 @@ class BackoffStrategyTests: XCTestCase {
         b2.shouldBeLessThanOrEqual(Duration.milliseconds(260))
     }
 
+    @Test
     func test_exponentialBackoff_shouldAllowDisablingRandomFactor() {
         var backoff = Backoff.exponential(initialInterval: .milliseconds(100), randomFactor: 0)
         backoff.next()?.shouldEqual(.milliseconds(100))
@@ -60,6 +62,7 @@ class BackoffStrategyTests: XCTestCase {
         backoff.next()?.shouldEqual(.nanoseconds(337_500_000))
     }
 
+    @Test
     func test_exponentialBackoff_reset_shouldResetBackoffIntervals() {
         var backoff = Backoff.exponential(initialInterval: .milliseconds(100), randomFactor: 0)
         backoff.next()?.shouldEqual(.milliseconds(100))
@@ -69,6 +72,7 @@ class BackoffStrategyTests: XCTestCase {
         backoff.next()?.shouldEqual(.milliseconds(150))
     }
 
+    @Test
     func test_exponentialBackoff_shouldNotExceedMaximumBackoff() {
         let max = Duration.seconds(1)
         let maxRandomNoise = max * 1.25
@@ -79,6 +83,7 @@ class BackoffStrategyTests: XCTestCase {
         backoff.next()?.shouldBeLessThanOrEqual(max + maxRandomNoise)
     }
 
+    @Test
     func test_exponentialBackoff_shouldStopAfterMaxAttempts() {
         let maxAttempts = 3
         var backoff = Backoff.exponential(initialInterval: .milliseconds(500), randomFactor: 0, maxAttempts: maxAttempts)
@@ -90,6 +95,7 @@ class BackoffStrategyTests: XCTestCase {
         backoff.next().shouldBeNil()
     }
 
+    @Test
     func test_exponentialBackoff_withLargeInitial_shouldAdjustCap() {
         _ = Backoff.exponential(initialInterval: .seconds(60)) // cap used to be hardcoded which would cause this to precondition crash
     }

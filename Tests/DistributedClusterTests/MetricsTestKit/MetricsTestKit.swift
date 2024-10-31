@@ -28,8 +28,9 @@
 
 import CoreMetrics
 import DistributedCluster
+import Foundation
 @testable import Metrics
-import XCTest
+import Testing
 
 /// Taken directly from swift-metrics's own test package.
 ///
@@ -332,7 +333,7 @@ public final class TestRecorder: TestMetric, RecorderHandler, Equatable, CustomS
     }
 }
 
-public final class TestTimer: TestMetric, TimerHandler, Equatable, CustomStringConvertible {
+public final class TestTimer: TestMetric, TimerHandler, Equatable, CustomStringConvertible, @unchecked Sendable {
     public let id: String
     public let label: String
     public var displayUnit: TimeUnit?

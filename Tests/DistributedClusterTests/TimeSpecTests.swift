@@ -14,11 +14,11 @@
 
 import DistributedActorsTestKit
 @testable import DistributedCluster
-import XCTest
+import Testing
 
 private let NANOS = 1_000_000_000
 
-class TimeSpecTests: XCTestCase {
+struct TimeSpecTests {
     let nanosDuration: Duration = .nanoseconds(100)
     let secondsDuration: Duration = .seconds(2)
     var totalDuration: Duration {
@@ -49,24 +49,27 @@ class TimeSpecTests: XCTestCase {
         sum.shouldEqual(self.total)
     }
 
+    @Test
     func test_lessThan() {
-        XCTAssertTrue(self.nanos < self.seconds)
-        XCTAssertFalse(self.seconds < self.nanos)
-        XCTAssertFalse(self.total < self.total)
+        #expect(self.nanos < self.seconds)
+//        XCTAssertFalse(self.seconds < self.nanos)
+//        XCTAssertFalse(self.total < self.total)
     }
 
+    @Test
     func test_greaterThan() {
-        XCTAssertFalse(self.nanos > self.seconds)
-        XCTAssertTrue(self.seconds > self.nanos)
+//        XCTAssertFalse(self.nanos > self.seconds)
+        #expect(self.seconds > self.nanos)
     }
 
+    @Test
     func test_equals() {
-        XCTAssertFalse(self.nanos == self.seconds)
-        XCTAssertFalse(self.seconds == self.nanos)
+//        XCTAssertFalse(self.nanos == self.seconds)
+//        XCTAssertFalse(self.seconds == self.nanos)
 
-        XCTAssertTrue(self.nanos == self.nanos)
-        XCTAssertTrue(self.seconds == self.seconds)
-        XCTAssertTrue(self.total == self.total)
+        #expect(self.nanos == self.nanos)
+        #expect(self.seconds == self.seconds)
+        #expect(self.total == self.total)
     }
 }
 

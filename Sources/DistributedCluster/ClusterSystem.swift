@@ -423,6 +423,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
     }
 
     deinit {
+        print("Deinit")
 //        self.shutdownFlag.destroy()
 
         #if SACT_TESTS_LEAKS

@@ -15,20 +15,28 @@
 import DistributedActorsTestKit
 @testable import DistributedCluster
 import Foundation
-import XCTest
+import Testing
 
-final class ActorAskTests: SingleClusterSystemXCTestCase {
+@Suite(.timeLimit(.minutes(1)), .serialized)
+struct ActorAskTests {
     struct TestMessage: Codable {
         let replyTo: _ActorRef<String>
     }
 
+    let testCase: SingleClusterSystemTestCase
+
+    init() async throws {
+        self.testCase = try await SingleClusterSystemTestCase(name: String(describing: type(of: self)))
+    }
+
+    @Test
     func test_ask_forSimpleType() async throws {
         let behavior: _Behavior<TestMessage> = .receiveMessage {
             $0.replyTo.tell("received")
             return .stop
         }
 
-        let ref = try system._spawn(.anonymous, behavior)
+        let ref = try self.testCase.system._spawn(.anonymous, behavior)
 
         let response = ref.ask(for: String.self, timeout: .seconds(1)) { TestMessage(replyTo: $0) }
 
@@ -37,13 +45,14 @@ final class ActorAskTests: SingleClusterSystemXCTestCase {
         result.shouldEqual("received")
     }
 
+    @Test
     func test_ask_shouldSucceedIfResponseIsReceivedBeforeTimeout() async throws {
         let behavior: _Behavior<TestMessage> = .receiveMessage {
             $0.replyTo.tell("received")
             return .stop
         }
 
-        let ref = try system._spawn(.anonymous, behavior)
+        let ref = try self.testCase.system._spawn(.anonymous, behavior)
 
         let response = ref.ask(for: String.self, timeout: .seconds(1)) { TestMessage(replyTo: $0) }
 
@@ -52,12 +61,13 @@ final class ActorAskTests: SingleClusterSystemXCTestCase {
         result.shouldEqual("received")
     }
 
+    @Test
     func test_ask_shouldFailIfResponseIsNotReceivedBeforeTimeout() async throws {
         let behavior: _Behavior<TestMessage> = .receiveMessage { _ in
             .stop
         }
 
-        let ref = try system._spawn(.anonymous, behavior)
+        let ref = try self.testCase.system._spawn(.anonymous, behavior)
 
         let response = ref.ask(for: String.self, timeout: .seconds(1)) { TestMessage(replyTo: $0) }
 
@@ -66,10 +76,11 @@ final class ActorAskTests: SingleClusterSystemXCTestCase {
         }
 
         guard let remoteCallError = error as? RemoteCallError, case .timedOut = remoteCallError.underlying.error else {
-            throw testKit.fail("Expected RemoteCallError.timedOut, got \(error)")
+            throw self.testCase.testKit.fail("Expected RemoteCallError.timedOut, got \(error)")
         }
     }
 
+    @Test
     func test_ask_shouldCompleteWithFirstResponse() async throws {
         let behavior: _Behavior<TestMessage> = .receiveMessage {
             $0.replyTo.tell("received:1")
@@ -77,7 +88,7 @@ final class ActorAskTests: SingleClusterSystemXCTestCase {
             return .stop
         }
 
-        let ref = try system._spawn(.anonymous, behavior)
+        let ref = try self.testCase.system._spawn(.anonymous, behavior)
 
         let response = ref.ask(for: String.self, timeout: .milliseconds(1)) { TestMessage(replyTo: $0) }
 
@@ -90,10 +101,11 @@ final class ActorAskTests: SingleClusterSystemXCTestCase {
         let replyTo: _ActorRef<String>
     }
 
+    @Test
     func test_askResult_shouldBePossibleTo_contextAwaitOn() throws {
-        let p = testKit.makeTestProbe(expecting: String.self)
+        let p = self.testCase.testKit.makeTestProbe(expecting: String.self)
 
-        let greeter: _ActorRef<AnswerMePlease> = try system._spawn(
+        let greeter: _ActorRef<AnswerMePlease> = try self.testCase.system._spawn(
             "greeterAskReply",
             .receiveMessage { message in
                 message.replyTo.tell("Hello there")
@@ -101,7 +113,7 @@ final class ActorAskTests: SingleClusterSystemXCTestCase {
             }
         )
 
-        let _: _ActorRef<Never> = try system._spawn(
+        let _: _ActorRef<Never> = try self.testCase.system._spawn(
             "awaitOnAskResult",
             .setup { context in
                 let askResult = greeter.ask(for: String.self, timeout: .seconds(1)) { AnswerMePlease(replyTo: $0) }
@@ -117,9 +129,9 @@ final class ActorAskTests: SingleClusterSystemXCTestCase {
     }
 
     func shared_askResult_shouldBePossibleTo_contextOnResultAsyncOn(withTimeout timeout: Duration) throws {
-        let p = testKit.makeTestProbe(expecting: String.self)
+        let p = self.testCase.testKit.makeTestProbe(expecting: String.self)
 
-        let greeter: _ActorRef<AnswerMePlease> = try system._spawn(
+        let greeter: _ActorRef<AnswerMePlease> = try self.testCase.system._spawn(
             "greeterAskReply",
             .receiveMessage { message in
                 message.replyTo.tell("Hello there")
@@ -127,7 +139,7 @@ final class ActorAskTests: SingleClusterSystemXCTestCase {
             }
         )
 
-        let _: _ActorRef<Int> = try system._spawn(
+        let _: _ActorRef<Int> = try self.testCase.system._spawn(
             "askingAndOnResultAsyncThrowing",
             .setup { context in
                 let askResult = greeter.ask(for: String.self, timeout: timeout) { replyTo in
@@ -148,20 +160,23 @@ final class ActorAskTests: SingleClusterSystemXCTestCase {
         try p.expectMessage("Hello there", within: .seconds(3))
     }
 
+    @Test
     func test_askResult_shouldBePossibleTo_contextOnResultAsyncOn_withNormalTimeout() throws {
         try self.shared_askResult_shouldBePossibleTo_contextOnResultAsyncOn(withTimeout: .seconds(1))
     }
 
+    @Test
     func test_askResult_shouldBePossibleTo_contextOnResultAsyncOn_withInfiniteTimeout() throws {
         try self.shared_askResult_shouldBePossibleTo_contextOnResultAsyncOn(withTimeout: .effectivelyInfinite)
     }
 
+    @Test
     func test_askResult_whenContextAwaitedOn_shouldRespectTimeout() throws {
-        let p = testKit.makeTestProbe(expecting: String.self)
+        let p = self.testCase.testKit.makeTestProbe(expecting: String.self)
 
-        let void: _ActorRef<AnswerMePlease> = try system._spawn("theVoid", (.receiveMessage { _ in .same }))
+        let void: _ActorRef<AnswerMePlease> = try self.testCase.system._spawn("theVoid", (.receiveMessage { _ in .same }))
 
-        let _: _ActorRef<Never> = try system._spawn(
+        let _: _ActorRef<Never> = try self.testCase.system._spawn(
             "onResultAsync",
             .setup { context in
                 let askResult = void
@@ -184,8 +199,9 @@ final class ActorAskTests: SingleClusterSystemXCTestCase {
         message.shouldContain("DistributedCluster.TimeoutError(message: \"AskResponse<String> timed out after 100ms\", timeout: 0.1 seconds))")
     }
 
+    @Test
     func test_ask_onDeadLetters_shouldPutMessageIntoDeadLetters() async throws {
-        let ref = system.deadLetters.adapt(from: AnswerMePlease.self)
+        let ref = self.testCase.system.deadLetters.adapt(from: AnswerMePlease.self)
 
         let result = ref.ask(for: String.self, timeout: .milliseconds(300)) {
             AnswerMePlease(replyTo: $0)
@@ -196,12 +212,13 @@ final class ActorAskTests: SingleClusterSystemXCTestCase {
         }
 
         guard let remoteCallError = error as? RemoteCallError, case .timedOut = remoteCallError.underlying.error else {
-            throw testKit.fail("Expected RemoteCallError.timedOut, got \(error)")
+            throw self.testCase.testKit.fail("Expected RemoteCallError.timedOut, got \(error)")
         }
     }
 
+    @Test
     func test_ask_withTerminatedSystem_shouldNotCauseCrash() async throws {
-        let system = await self.setUpNode("AskCrashSystem")
+        let system = await self.testCase.setUpNode("AskCrashSystem")
 
         let ref = try system._spawn(
             .unique("responder"),

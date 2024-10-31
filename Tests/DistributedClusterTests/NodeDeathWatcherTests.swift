@@ -15,18 +15,26 @@
 import DistributedActorsTestKit
 @testable import DistributedCluster
 import Foundation
-import XCTest
+import Testing
 
-final class NodeDeathWatcherTests: ClusteredActorSystemsXCTestCase {
+@Suite(.timeLimit(.minutes(1)), .serialized)
+struct NodeDeathWatcherTests {
+    let testCase: ClusteredActorSystemsTestCase
+
+    init() throws {
+        self.testCase = try ClusteredActorSystemsTestCase()
+    }
+
+    @Test
     func test_nodeDeath_shouldFailAllRefsOnSpecificAddress() async throws {
-        let first = await setUpNode("first") { settings in
+        let first = await self.testCase.setUpNode("first") { settings in
             settings.swim.probeInterval = .milliseconds(100)
         }
-        let second = await setUpNode("second") { settings in
+        let second = await self.testCase.setUpNode("second") { settings in
             settings.swim.probeInterval = .milliseconds(100)
         }
 
-        try await self.joinNodes(node: first, with: second)
+        try await self.testCase.joinNodes(node: first, with: second)
 
         let refOnRemote1: _ActorRef<String> = try second._spawn("remote-1", .ignore)
         let refOnFirstToRemote1 = first._resolve(ref: refOnRemote1, onSystem: second)
@@ -56,7 +64,7 @@ final class NodeDeathWatcherTests: ClusteredActorSystemsXCTestCase {
             }
         )
 
-        try await self.ensureNodes(.up, nodes: first.cluster.node, second.cluster.node)
+        try await self.testCase.ensureNodes(.up, nodes: first.cluster.node, second.cluster.node)
         first.cluster.down(endpoint: second.cluster.node.endpoint)
 
         // should cause termination of all remote actors, observed by the local actors on [first]

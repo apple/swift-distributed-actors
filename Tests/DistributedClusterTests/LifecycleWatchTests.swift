@@ -17,7 +17,7 @@ import DistributedActorsTestKit
 @testable import DistributedCluster
 import Foundation
 import Logging
-import XCTest
+import Testing
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Romeo
@@ -82,27 +82,33 @@ distributed actor Juliet: LifecycleWatch, CustomStringConvertible {
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Tests
+@Suite(.timeLimit(.minutes(1)), .serialized)
+struct LifecycleWatchTests {
+    var testCase: SingleClusterSystemTestCase
 
-final class LifecycleWatchTests: SingleClusterSystemXCTestCase, @unchecked Sendable {
-    override func configureLogCapture(settings: inout LogCapture.Settings) {
-        settings.excludeActorPaths = [
-            "/system/cluster",
-            "/system/gossip",
-            "/system/cluster/gossip",
-            "/system/receptionist",
-            "/system/receptionist-ref",
-            "/system/cluster/swim",
-            "/system/clusterEvents",
-        ]
+    init() async throws {
+        self.testCase = try await SingleClusterSystemTestCase(name: String(describing: type(of: self)))
+        self.self.testCase.configureLogCapture = { settings in
+            settings.excludeActorPaths = [
+                "/system/cluster",
+                "/system/gossip",
+                "/system/cluster/gossip",
+                "/system/receptionist",
+                "/system/receptionist-ref",
+                "/system/cluster/swim",
+                "/system/clusterEvents",
+            ]
+        }
     }
 
+    @Test
     func test_watch_shouldTriggerTerminatedWhenWatchedActorDeinits() async throws {
-        let pj = self.testKit.makeTestProbe(expecting: String.self)
-        let pr = self.testKit.makeTestProbe(expecting: String.self)
-        let juliet = Juliet(probe: pj, actorSystem: system)
+        let pj = self.testCase.testKit.makeTestProbe(expecting: String.self)
+        let pr = self.testCase.testKit.makeTestProbe(expecting: String.self)
+        let juliet = Juliet(probe: pj, actorSystem: self.testCase.system)
 
         func meet() async throws {
-            var romeo: Romeo? = Romeo(probe: pr, actorSystem: system)
+            var romeo: Romeo? = Romeo(probe: pr, actorSystem: self.testCase.system)
 
             try await juliet.meetWatch(romeo!, unwatch: false)
             romeo = nil
@@ -114,13 +120,14 @@ final class LifecycleWatchTests: SingleClusterSystemXCTestCase, @unchecked Senda
         try pj.expectMessage(prefix: "Received terminated: /user/Romeo")
     }
 
+    @Test
     func test_watchThenUnwatch_shouldTriggerTerminatedWhenWatchedActorDeinits() async throws {
-        let pj = self.testKit.makeTestProbe(expecting: String.self)
-        let pr = self.testKit.makeTestProbe(expecting: String.self)
-        let juliet = Juliet(probe: pj, actorSystem: system)
+        let pj = self.testCase.testKit.makeTestProbe(expecting: String.self)
+        let pr = self.testCase.testKit.makeTestProbe(expecting: String.self)
+        let juliet = Juliet(probe: pj, actorSystem: self.testCase.system)
 
         func meet() async throws {
-            var romeo: Romeo? = Romeo(probe: pr, actorSystem: system)
+            var romeo: Romeo? = Romeo(probe: pr, actorSystem: self.testCase.system)
 
             try await juliet.meetWatch(romeo!, unwatch: true)
             romeo = nil
@@ -132,15 +139,16 @@ final class LifecycleWatchTests: SingleClusterSystemXCTestCase, @unchecked Senda
         try pj.expectNoMessage(for: .milliseconds(300))
     }
 
+    @Test
     func test_watch_shouldTriggerTerminatedWhenNodeTerminates() async throws {
         try await shouldNotThrow {
-            let pj = self.testKit.makeTestProbe(expecting: String.self)
-            let pr = self.testKit.makeTestProbe(expecting: String.self)
+            let pj = self.testCase.testKit.makeTestProbe(expecting: String.self)
+            let pr = self.testCase.testKit.makeTestProbe(expecting: String.self)
 
-            let (first, second) = await self.setUpPair() { settings in
+            let (first, second) = await self.testCase.setUpPair() { settings in
                 settings.enabled = true
             }
-            try await joinNodes(node: first, with: second, ensureMembers: .up)
+            try await self.testCase.joinNodes(node: first, with: second, ensureMembers: .up)
 
             let juliet = Juliet(probe: pj, actorSystem: first)
 

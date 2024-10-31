@@ -13,22 +13,25 @@
 //===----------------------------------------------------------------------===//
 
 @testable import DistributedCluster
-import XCTest
+import Testing
 
-class MPSCLinkedQueueTests: XCTestCase {
+struct MPSCLinkedQueueTests {
+    @Test
     func test_dequeueWhenEmpty() {
         let q = MPSCLinkedQueue<Int>()
 
-        XCTAssertNil(q.dequeue())
+        #expect(q.dequeue() == nil)
     }
 
+    @Test
     func test_enqueueDequeue() {
         let q = MPSCLinkedQueue<Int>()
         q.enqueue(1)
 
-        XCTAssertEqual(1, q.dequeue()!)
+        #expect(q.dequeue()! == 1)
     }
 
+    @Test
     func test_concurrentEnqueueDequeue() throws {
         let writerCount = 6
         let messageCountPerWriter = 10000

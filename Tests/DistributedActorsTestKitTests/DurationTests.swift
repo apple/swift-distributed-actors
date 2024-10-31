@@ -15,9 +15,10 @@
 @testable import DistributedActorsTestKit
 @testable import DistributedCluster
 import Foundation
-import XCTest
+import Testing
 
-class DurationTests: XCTestCase {
+struct DurationTests {
+    @Test
     func test_duration_rendersPrettyDurations() {
         Duration.nanoseconds(12).prettyDescription.shouldEqual("12ns")
         Duration.microseconds(12).prettyDescription.shouldEqual("12μs")

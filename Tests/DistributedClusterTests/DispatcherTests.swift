@@ -17,14 +17,21 @@ import DistributedActorsTestKit
 @testable import DistributedCluster
 import Foundation
 import NIO
-import XCTest
+import Testing
 
-final class DispatcherTests: SingleClusterSystemXCTestCase {
+@Suite(.timeLimit(.minutes(1)), .serialized)
+struct DispatcherTests {
+    let testCase: SingleClusterSystemTestCase
+
+    init() async throws {
+        self.testCase = try await SingleClusterSystemTestCase(name: String(describing: type(of: self)))
+    }
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Running "on NIO" for fun and profit
-
+    @Test
     func test_runOn_nioEventLoop() throws {
-        let p = self.testKit.makeTestProbe(expecting: String.self)
+        let p = self.testCase.testKit.makeTestProbe(expecting: String.self)
         let behavior: _Behavior<String> = .receive { context, message in
             context.log.info("HELLO")
             p.tell("Received: \(message)")
@@ -32,7 +39,7 @@ final class DispatcherTests: SingleClusterSystemXCTestCase {
             return .same
         }
 
-        let w = try system._spawn(.anonymous, props: .dispatcher(.nio(self.eventLoopGroup.next())), behavior)
+        let w = try self.testCase.system._spawn(.anonymous, props: .dispatcher(.nio(self.testCase.eventLoopGroup.next())), behavior)
         w.tell("Hello")
 
         let received: String = try p.expectMessage()
@@ -42,8 +49,9 @@ final class DispatcherTests: SingleClusterSystemXCTestCase {
         dispatcher.dropFirst("Dispatcher: ".count).shouldStartWith(prefix: "nio:")
     }
 
+    @Test
     func test_runOn_nioEventLoopGroup() throws {
-        let p = self.testKit.makeTestProbe(expecting: String.self)
+        let p = self.testCase.testKit.makeTestProbe(expecting: String.self)
         let behavior: _Behavior<String> = .receive { context, message in
             context.log.info("HELLO")
             p.tell("Received: \(message)")
@@ -51,7 +59,7 @@ final class DispatcherTests: SingleClusterSystemXCTestCase {
             return .same
         }
 
-        let w = try system._spawn(.anonymous, props: .dispatcher(.nio(self.eventLoopGroup)), behavior)
+        let w = try self.testCase.system._spawn(.anonymous, props: .dispatcher(.nio(self.testCase.eventLoopGroup)), behavior)
         w.tell("Hello")
 
         let received: String = try p.expectMessage()
@@ -63,9 +71,9 @@ final class DispatcherTests: SingleClusterSystemXCTestCase {
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Grand Central Dispatch
-
+    @Test
     func test_runOn_dispatchQueue() throws {
-        let p = self.testKit.makeTestProbe(expecting: String.self)
+        let p = self.testCase.testKit.makeTestProbe(expecting: String.self)
         let behavior: _Behavior<String> = .receive { context, message in
             context.log.info("HELLO")
             p.tell("\(message)")
@@ -74,7 +82,7 @@ final class DispatcherTests: SingleClusterSystemXCTestCase {
         }
 
         let global: DispatchQueue = .global()
-        let w = try system._spawn(.anonymous, props: .dispatcher(.dispatchQueue(global)), behavior)
+        let w = try self.testCase.system._spawn(.anonymous, props: .dispatcher(.dispatchQueue(global)), behavior)
         w.tell("Hello")
         w.tell("World")
 

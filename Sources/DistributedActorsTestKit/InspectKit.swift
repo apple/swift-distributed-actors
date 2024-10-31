@@ -15,7 +15,7 @@
 import Foundation
 // FIXME(regex): rdar://98705227 can't use regex on 5.7 on Linux because of a bug that crashes String.starts(with:) at runtime then
 import RegexBuilder
-import XCTest
+import Testing
 
 internal struct InspectKit {
     private static var baseDir: String {

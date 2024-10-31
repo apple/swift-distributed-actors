@@ -14,9 +14,10 @@
 
 import DistributedActorsTestKit
 @testable import DistributedCluster
-import XCTest
+import Testing
 
-final class ActorNamingTests: XCTestCase {
+struct ActorNamingTests {
+    @Test
     func test_makeName_unique() {
         var context = ActorNamingContext()
         let naming = _ActorNaming.unique("hello")
@@ -27,6 +28,7 @@ final class ActorNamingTests: XCTestCase {
         }
     }
 
+    @Test
     func test_makeName_sequentialNumeric() {
         var context = ActorNamingContext()
         let naming = _ActorNaming(unchecked: .prefixed(prefix: "hello", suffixScheme: .sequentialNumeric))
@@ -37,6 +39,7 @@ final class ActorNamingTests: XCTestCase {
         }
     }
 
+    @Test
     func test_makeName_letters() {
         var context = ActorNamingContext()
         let naming = _ActorNaming(unchecked: .prefixed(prefix: "hello", suffixScheme: .letters))

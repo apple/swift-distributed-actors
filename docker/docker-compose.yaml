@@ -44,7 +44,7 @@ services:
 
   test:
     <<: *common
-    command: /bin/bash -cl "swift -version; SACT_WARNINGS_AS_ERRORS=yes swift test $${EXPLICIT_TARGET_DEPENDENCY_IMPORT_CHECK-} -Xswiftc -DSACT_TESTS_LEAKS"
+    command: /bin/bash -cl "swift -version; SACT_WARNINGS_AS_ERRORS=yes swift test --no-parallel $${EXPLICIT_TARGET_DEPENDENCY_IMPORT_CHECK-} -Xswiftc -DSACT_TESTS_LEAKS"
 
   # util
 

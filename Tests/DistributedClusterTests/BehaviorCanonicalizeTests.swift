@@ -15,11 +15,19 @@
 import DistributedActorsTestKit
 @testable import DistributedCluster
 import Foundation
-import XCTest
+import Testing
 
-final class BehaviorCanonicalizeTests: SingleClusterSystemXCTestCase {
+@Suite(.timeLimit(.minutes(1)), .serialized)
+struct BehaviorCanonicalizeTests {
+    let testCase: SingleClusterSystemTestCase
+
+    init() async throws {
+        self.testCase = try await SingleClusterSystemTestCase(name: String(describing: type(of: self)))
+    }
+
+    @Test
     func test_canonicalize_nestedSetupBehaviors() throws {
-        let p: ActorTestProbe<String> = self.testKit.makeTestProbe("canonicalizeProbe1")
+        let p: ActorTestProbe<String> = self.testCase.testKit.makeTestProbe("canonicalizeProbe1")
 
         let b: _Behavior<String> = .setup { _ in
             p.tell("outer-1")
@@ -35,7 +43,7 @@ final class BehaviorCanonicalizeTests: SingleClusterSystemXCTestCase {
             }
         }
 
-        let ref = try system._spawn("nestedSetups", b)
+        let ref = try self.testCase.system._spawn("nestedSetups", b)
 
         try p.expectMessage("outer-1")
         try p.expectMessage("inner-2")
@@ -45,8 +53,9 @@ final class BehaviorCanonicalizeTests: SingleClusterSystemXCTestCase {
         try p.expectMessage("received:ping")
     }
 
+    @Test
     func test_canonicalize_doesSurviveDeeplyNestedSetups() throws {
-        let p: ActorTestProbe<String> = self.testKit.makeTestProbe("canonicalizeProbe2")
+        let p: ActorTestProbe<String> = self.testCase.testKit.makeTestProbe("canonicalizeProbe2")
 
         func deepSetupRabbitHole(currentDepth depth: Int, stopAt limit: Int) -> _Behavior<String> {
             .setup { _ in
@@ -64,15 +73,16 @@ final class BehaviorCanonicalizeTests: SingleClusterSystemXCTestCase {
 
         // we attempt to cause a stack overflow by nesting tons of setups inside each other.
         // this could fail if canonicalization were implemented in some naive way.
-        let depthLimit = self.system.settings.actor.maxBehaviorNestingDepth - 2 // not a good idea, but we should not crash
-        let ref = try system._spawn("deepSetupNestedRabbitHole", deepSetupRabbitHole(currentDepth: 0, stopAt: depthLimit))
+        let depthLimit = self.testCase.system.settings.actor.maxBehaviorNestingDepth - 2 // not a good idea, but we should not crash
+        let ref = try self.testCase.system._spawn("deepSetupNestedRabbitHole", deepSetupRabbitHole(currentDepth: 0, stopAt: depthLimit))
 
         ref.tell("ping")
         try p.expectMessage("received:ping")
     }
 
+    @Test
     func test_canonicalize_unwrapInterceptBehaviors() throws {
-        let p: ActorTestProbe<String> = self.testKit.makeTestProbe("canonicalizeProbe3")
+        let p: ActorTestProbe<String> = self.testCase.testKit.makeTestProbe("canonicalizeProbe3")
 
         let b: _Behavior<String> = .intercept(
             behavior: .setup { _ in
@@ -88,7 +98,7 @@ final class BehaviorCanonicalizeTests: SingleClusterSystemXCTestCase {
             with: ProbeInterceptor(probe: p)
         )
 
-        let ref = try system._spawn("nestedSetups", b)
+        let ref = try self.testCase.system._spawn("nestedSetups", b)
 
         try p.expectMessage("outer-1")
         try p.expectMessage("inner-2")
@@ -98,14 +108,15 @@ final class BehaviorCanonicalizeTests: SingleClusterSystemXCTestCase {
         try p.expectMessage("received:ping")
     }
 
+    @Test
     func test_canonicalize_orElse_shouldThrowOnTooDeeplyNestedBehaviors() throws {
-        let p: ActorTestProbe<Int> = self.testKit.makeTestProbe()
+        let p: ActorTestProbe<Int> = self.testCase.testKit.makeTestProbe()
         var behavior: _Behavior<Int> = .receiveMessage { message in
             p.tell(message)
             return .same
         }
 
-        for i in (0 ... self.system.settings.actor.maxBehaviorNestingDepth).reversed() {
+        for i in (0 ... self.testCase.system.settings.actor.maxBehaviorNestingDepth).reversed() {
             behavior = _Behavior<Int>.receiveMessage { message in
                 if message == i {
                     p.tell(-i)
@@ -116,15 +127,16 @@ final class BehaviorCanonicalizeTests: SingleClusterSystemXCTestCase {
             }.orElse(behavior)
         }
 
-        let ref = try system._spawn(.anonymous, behavior)
+        let ref = try self.testCase.system._spawn(.anonymous, behavior)
         p.watch(ref)
         try p.expectTerminated(ref)
     }
 
+    @Test
     func test_canonicalize_orElse_executeNestedSetupOnBecome() throws {
-        let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
+        let p: ActorTestProbe<String> = self.testCase.testKit.makeTestProbe()
 
-        let ref: _ActorRef<String> = try system._spawn(
+        let ref: _ActorRef<String> = try self.testCase.system._spawn(
             "orElseCanonicalizeNestedSetups",
             .receiveMessage { msg in
                 let onlyA = _Behavior<String>.setup { _ in
@@ -163,8 +175,9 @@ final class BehaviorCanonicalizeTests: SingleClusterSystemXCTestCase {
         try p.expectMessage("got:B")
     }
 
+    @Test
     func test_startBehavior_shouldThrowOnTooDeeplyNestedBehaviorSetups() throws {
-        let p: ActorTestProbe<String> = self.testKit.makeTestProbe("startBehaviorProbe")
+        let p: ActorTestProbe<String> = self.testCase.testKit.makeTestProbe("startBehaviorProbe")
 
         /// Creates an infinitely nested setup behavior -- it is used to see that we detect this and abort executing eagerly
         func setupDaDoRunRunRunDaDoRunRun(depth: Int = 0) -> _Behavior<String> {
@@ -177,16 +190,17 @@ final class BehaviorCanonicalizeTests: SingleClusterSystemXCTestCase {
         // TODO: if issue #244 is implemented, we cna supervise and "spy on" start() failures making this test much more specific
 
         let behavior = setupDaDoRunRunRunDaDoRunRun()
-        try system._spawn("nestedSetups", behavior)
+        try self.testCase.system._spawn("nestedSetups", behavior)
 
-        for depth in 0 ..< self.system.settings.actor.maxBehaviorNestingDepth {
+        for depth in 0 ..< self.testCase.system.settings.actor.maxBehaviorNestingDepth {
             try p.expectMessage("at:\(depth)")
         }
         try p.expectNoMessage(for: .milliseconds(50))
     }
 
+    @Test
     func test_stopWithoutPostStop_shouldUsePreviousBehavior() throws {
-        let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
+        let p: ActorTestProbe<String> = self.testCase.testKit.makeTestProbe()
 
         let behavior: _Behavior<String> = _Behavior.receiveMessage { _ in
             .stop
@@ -197,7 +211,7 @@ final class BehaviorCanonicalizeTests: SingleClusterSystemXCTestCase {
             return .same
         }
 
-        let ref = try system._spawn(.anonymous, behavior)
+        let ref = try self.testCase.system._spawn(.anonymous, behavior)
         p.watch(ref)
 
         ref.tell("test")
@@ -206,8 +220,9 @@ final class BehaviorCanonicalizeTests: SingleClusterSystemXCTestCase {
         try p.expectTerminated(ref)
     }
 
+    @Test
     func test_stopWithPostStop_shouldUseItForPostStopSignalHandling() throws {
-        let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
+        let p: ActorTestProbe<String> = self.testCase.testKit.makeTestProbe()
 
         let behavior: _Behavior<String> = _Behavior.receiveMessage { _ in
             .stop { _ in
@@ -215,7 +230,7 @@ final class BehaviorCanonicalizeTests: SingleClusterSystemXCTestCase {
             }
         }
 
-        let ref = try system._spawn(.anonymous, behavior)
+        let ref = try self.testCase.system._spawn(.anonymous, behavior)
         p.watch(ref)
 
         ref.tell("test")
@@ -224,14 +239,15 @@ final class BehaviorCanonicalizeTests: SingleClusterSystemXCTestCase {
         try p.expectTerminated(ref)
     }
 
+    @Test
     func test_setup_returningSameShouldThrow() throws {
-        let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
+        let p: ActorTestProbe<String> = self.testCase.testKit.makeTestProbe()
 
         let behavior: _Behavior<String> = .setup { _ in
             .same
         }
 
-        let ref = try system._spawn(.anonymous, behavior)
+        let ref = try self.testCase.system._spawn(.anonymous, behavior)
 
         p.watch(ref)
 

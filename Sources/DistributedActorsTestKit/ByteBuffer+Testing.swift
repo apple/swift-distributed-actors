@@ -18,7 +18,7 @@ import Foundation
 import DistributedActorsConcurrencyHelpers
 import NIO
 import NIOFoundationCompat
-import XCTest
+import Testing
 
 // TODO: probably remove those?
 

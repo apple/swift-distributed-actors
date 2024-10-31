@@ -16,17 +16,25 @@ import Distributed
 import DistributedActorsTestKit
 @testable import DistributedCluster
 import Foundation
-import XCTest
+import Testing
 
-final class _ActorRefReceptionistTests: SingleClusterSystemXCTestCase {
+@Suite(.timeLimit(.minutes(1)), .serialized)
+struct _ActorRefReceptionistTests {
     let receptionistBehavior = _OperationLogClusterReceptionist(settings: .default).behavior
 
-    func test_receptionist_shouldRespondWithRegisteredRefsForKey() throws {
-        let receptionist = SystemReceptionist(ref: try system._spawn("test-receptionist", self.receptionistBehavior))
-        let probe: ActorTestProbe<String> = self.testKit.makeTestProbe()
-        let lookupProbe: ActorTestProbe<_Reception.Listing<_ActorRef<String>>> = self.testKit.makeTestProbe()
+    let testCase: SingleClusterSystemTestCase
 
-        let refA: _ActorRef<String> = try system._spawn(
+    init() async throws {
+        self.testCase = try await SingleClusterSystemTestCase(name: String(describing: type(of: self)))
+    }
+
+    @Test
+    func test_receptionist_shouldRespondWithRegisteredRefsForKey() throws {
+        let receptionist = SystemReceptionist(ref: try self.testCase.system._spawn("test-receptionist", self.receptionistBehavior))
+        let probe: ActorTestProbe<String> = self.testCase.testKit.makeTestProbe()
+        let lookupProbe: ActorTestProbe<_Reception.Listing<_ActorRef<String>>> = self.testCase.testKit.makeTestProbe()
+
+        let refA: _ActorRef<String> = try self.testCase.system._spawn(
             .anonymous,
             .receiveMessage { message in
                 probe.tell("forwardedA:\(message)")
@@ -34,7 +42,7 @@ final class _ActorRefReceptionistTests: SingleClusterSystemXCTestCase {
             }
         )
 
-        let refB: _ActorRef<String> = try system._spawn(
+        let refB: _ActorRef<String> = try self.testCase.system._spawn(
             .anonymous,
             .receiveMessage { message in
                 probe.tell("forwardedB:\(message)")
@@ -58,11 +66,12 @@ final class _ActorRefReceptionistTests: SingleClusterSystemXCTestCase {
         try probe.expectMessagesInAnyOrder(["forwardedA:test", "forwardedB:test"])
     }
 
+    @Test
     func test_receptionist_shouldRespondWithEmptyRefForUnknownKey() throws {
-        let receptionist = SystemReceptionist(ref: try system._spawn("test-receptionist", self.receptionistBehavior))
-        let lookupProbe: ActorTestProbe<_Reception.Listing<_ActorRef<String>>> = self.testKit.makeTestProbe()
+        let receptionist = SystemReceptionist(ref: try self.testCase.system._spawn("test-receptionist", self.receptionistBehavior))
+        let lookupProbe: ActorTestProbe<_Reception.Listing<_ActorRef<String>>> = self.testCase.testKit.makeTestProbe()
 
-        let ref: _ActorRef<String> = try system._spawn(
+        let ref: _ActorRef<String> = try self.testCase.system._spawn(
             .anonymous,
             .receiveMessage { _ in
                 .same
@@ -81,11 +90,12 @@ final class _ActorRefReceptionistTests: SingleClusterSystemXCTestCase {
         listing.refs.count.shouldEqual(0)
     }
 
+    @Test
     func test_receptionist_shouldNotRegisterTheSameRefTwice() throws {
-        let receptionist = SystemReceptionist(ref: try system._spawn("test-receptionist", self.receptionistBehavior))
-        let lookupProbe: ActorTestProbe<_Reception.Listing<_ActorRef<String>>> = self.testKit.makeTestProbe()
+        let receptionist = SystemReceptionist(ref: try self.testCase.system._spawn("test-receptionist", self.receptionistBehavior))
+        let lookupProbe: ActorTestProbe<_Reception.Listing<_ActorRef<String>>> = self.testCase.testKit.makeTestProbe()
 
-        let ref: _ActorRef<String> = try system._spawn(.anonymous, .receiveMessage { _ in .same })
+        let ref: _ActorRef<String> = try self.testCase.system._spawn(.anonymous, .receiveMessage { _ in .same })
 
         let key = _Reception.Key(_ActorRef<String>.self, id: "test")
 
@@ -99,18 +109,19 @@ final class _ActorRefReceptionistTests: SingleClusterSystemXCTestCase {
         listing.refs.count.shouldEqual(1)
     }
 
+    @Test
     func test_receptionist_shouldRemoveAndAddNewSingletonRef() throws {
-        let receptionist = SystemReceptionist(ref: try system._spawn("test-receptionist", self.receptionistBehavior))
-        let lookupProbe: ActorTestProbe<_Reception.Listing<_ActorRef<String>>> = self.testKit.makeTestProbe()
+        let receptionist = SystemReceptionist(ref: try self.testCase.system._spawn("test-receptionist", self.receptionistBehavior))
+        let lookupProbe: ActorTestProbe<_Reception.Listing<_ActorRef<String>>> = self.testCase.testKit.makeTestProbe()
 
-        let old: _ActorRef<String> = try system._spawn(
+        let old: _ActorRef<String> = try self.testCase.system._spawn(
             .anonymous,
             .receive { context, _ in
                 context.log.info("Stopping...")
                 return .stop
             }
         )
-        let new: _ActorRef<String> = try system._spawn(
+        let new: _ActorRef<String> = try self.testCase.system._spawn(
             .anonymous,
             .receiveMessage { _ in
                 .same
@@ -123,7 +134,7 @@ final class _ActorRefReceptionistTests: SingleClusterSystemXCTestCase {
         old.tell("stop")
         receptionist.register(new, with: key)
 
-        try self.testKit.eventually(within: .seconds(2)) {
+        try self.testCase.testKit.eventually(within: .seconds(2)) {
             receptionist.lookup(key, replyTo: lookupProbe.ref)
             let listing = try lookupProbe.expectMessage()
 
@@ -133,11 +144,12 @@ final class _ActorRefReceptionistTests: SingleClusterSystemXCTestCase {
         }
     }
 
+    @Test
     func test_receptionist_shouldReplyWithRegistered() throws {
-        let receptionist = SystemReceptionist(ref: try system._spawn("test-receptionist", self.receptionistBehavior))
-        let probe: ActorTestProbe<_Reception.Registered<_ActorRef<String>>> = self.testKit.makeTestProbe()
+        let receptionist = SystemReceptionist(ref: try self.testCase.system._spawn("test-receptionist", self.receptionistBehavior))
+        let probe: ActorTestProbe<_Reception.Registered<_ActorRef<String>>> = self.testCase.testKit.makeTestProbe()
 
-        let ref: _ActorRef<String> = try system._spawn(
+        let ref: _ActorRef<String> = try self.testCase.system._spawn(
             .anonymous,
             .receiveMessage { _ in
                 .same
@@ -154,11 +166,12 @@ final class _ActorRefReceptionistTests: SingleClusterSystemXCTestCase {
         registered.ref.shouldEqual(ref)
     }
 
+    @Test
     func test_receptionist_shouldUnregisterTerminatedRefs() throws {
-        let receptionist = SystemReceptionist(ref: try system._spawn("test-receptionist", self.receptionistBehavior))
-        let lookupProbe: ActorTestProbe<_Reception.Listing<_ActorRef<String>>> = self.testKit.makeTestProbe()
+        let receptionist = SystemReceptionist(ref: try self.testCase.system._spawn("test-receptionist", self.receptionistBehavior))
+        let lookupProbe: ActorTestProbe<_Reception.Listing<_ActorRef<String>>> = self.testCase.testKit.makeTestProbe()
 
-        let ref: _ActorRef<String> = try system._spawn(
+        let ref: _ActorRef<String> = try self.testCase.system._spawn(
             .anonymous,
             .receiveMessage { _ in
                 .stop
@@ -171,29 +184,30 @@ final class _ActorRefReceptionistTests: SingleClusterSystemXCTestCase {
 
         ref.tell("stop")
 
-        try self.testKit.eventually(within: .seconds(1)) {
+        try self.testCase.testKit.eventually(within: .seconds(1)) {
             receptionist.lookup(key, replyTo: lookupProbe.ref)
             let message = try lookupProbe.expectMessage()
 
             // TODO: modify TestKit to allow usage of matchers instead
             guard message.refs.isEmpty else {
-                throw self.testKit.error()
+                throw self.testCase.testKit.error()
             }
         }
     }
 
+    @Test
     func test_receptionist_shouldContinuouslySendUpdatesForSubscriptions() throws {
-        let receptionist = SystemReceptionist(ref: try system._spawn("test-receptionist", self.receptionistBehavior))
-        let lookupProbe: ActorTestProbe<_Reception.Listing<_ActorRef<String>>> = self.testKit.makeTestProbe()
+        let receptionist = SystemReceptionist(ref: try self.testCase.system._spawn("test-receptionist", self.receptionistBehavior))
+        let lookupProbe: ActorTestProbe<_Reception.Listing<_ActorRef<String>>> = self.testCase.testKit.makeTestProbe()
 
-        let refA: _ActorRef<String> = try system._spawn(
+        let refA: _ActorRef<String> = try self.testCase.system._spawn(
             .anonymous,
             .receiveMessage { _ in
                 .same
             }
         )
 
-        let refB: _ActorRef<String> = try system._spawn(
+        let refB: _ActorRef<String> = try self.testCase.system._spawn(
             .anonymous,
             .receiveMessage { _ in
                 .stop
@@ -217,19 +231,19 @@ final class _ActorRefReceptionistTests: SingleClusterSystemXCTestCase {
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Delayed flush
-
+    @Test
     func test_delayedFlush_shouldEmitEvenWhenAllPeersRemoved() throws {
-        let receptionist = SystemReceptionist(ref: try system._spawn("test-receptionist", self.receptionistBehavior))
-        let lookupProbe: ActorTestProbe<_Reception.Listing<_ActorRef<String>>> = self.testKit.makeTestProbe()
+        let receptionist = SystemReceptionist(ref: try self.testCase.system._spawn("test-receptionist", self.receptionistBehavior))
+        let lookupProbe: ActorTestProbe<_Reception.Listing<_ActorRef<String>>> = self.testCase.testKit.makeTestProbe()
 
         let key = _Reception.Key(_ActorRef<String>.self, id: "test")
 
         receptionist.subscribe(lookupProbe.ref, to: key)
         _ = try lookupProbe.expectMessage()
 
-        receptionist.register(try system._spawn(.anonymous, .receiveMessage { _ in .same }), with: key)
-        receptionist.register(try system._spawn(.anonymous, .receiveMessage { _ in .same }), with: key)
-        receptionist.register(try system._spawn(.anonymous, .receiveMessage { _ in .same }), with: key)
+        receptionist.register(try self.testCase.system._spawn(.anonymous, .receiveMessage { _ in .same }), with: key)
+        receptionist.register(try self.testCase.system._spawn(.anonymous, .receiveMessage { _ in .same }), with: key)
+        receptionist.register(try self.testCase.system._spawn(.anonymous, .receiveMessage { _ in .same }), with: key)
 
         // we're expecting to get the update in batch, thanks to the delayed flushing
         let listing1 = try lookupProbe.expectMessage()

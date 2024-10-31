@@ -18,23 +18,29 @@ import DistributedActorsTestKit
 import Foundation
 import NIO
 import NIOFoundationCompat
-import XCTest
+import Testing
 
-class SerializationTests: SingleClusterSystemXCTestCase {
-    override func setUp() async throws {
-        _ = await self.setUpNode(String(describing: type(of: self))) { settings in
-            settings.serialization.register(HasReceivesSystemMsgs.self)
-            settings.serialization.register(HasStringRef.self)
-            settings.serialization.register(HasIntRef.self)
-            settings.serialization.register(HasInterestingMessageRef.self)
-            settings.serialization.register(CodableTestingError.self)
+@Suite(.timeLimit(.minutes(1)), .serialized)
+struct SerializationTests {
+    let testCase: SingleClusterSystemTestCase
 
-            settings.serialization.register(PListBinCodableTest.self, serializerID: .foundationPropertyListBinary)
-            settings.serialization.register(PListXMLCodableTest.self, serializerID: .foundationPropertyListXML)
-        }
+    init() async throws {
+        self.testCase = try await SingleClusterSystemTestCase(
+            setupNode: .init(name: String(describing: type(of: self))) { settings in
+                settings.serialization.register(HasReceivesSystemMsgs.self)
+                settings.serialization.register(HasStringRef.self)
+                settings.serialization.register(HasIntRef.self)
+                settings.serialization.register(HasInterestingMessageRef.self)
+                settings.serialization.register(CodableTestingError.self)
+
+                settings.serialization.register(PListBinCodableTest.self, serializerID: .foundationPropertyListBinary)
+                settings.serialization.register(PListXMLCodableTest.self, serializerID: .foundationPropertyListXML)
+            }
+        )
     }
 
-    func test_soundness_roundTripBetweenFoundationDataAndNioByteBuffer() throws {
+    @Test
+    func test_soundness_roundTripBetweenFoundationDataAndNioByteBuffer() {
         let allocator = ByteBufferAllocator()
         var buf = allocator.buffer(capacity: 5)
         buf.writeString("hello")
@@ -50,29 +56,31 @@ class SerializationTests: SingleClusterSystemXCTestCase {
         buf.shouldEqual(out)
     }
 
+    @Test
     func test_serialize_Int_withData() throws {
         let value = 6
 
-        let serialized = try system.serialization.serialize(value)
+        let serialized = try self.testCase.system.serialization.serialize(value)
         // Deserialize from `Data`
-        let deserialized = try system.serialization.deserialize(as: Int.self, from: .data(serialized.buffer.readData()), using: serialized.manifest)
+        let deserialized = try self.testCase.system.serialization.deserialize(as: Int.self, from: .data(serialized.buffer.readData()), using: serialized.manifest)
 
         deserialized.shouldEqual(value)
     }
 
+    @Test
     func test_serialize_Bool_withData() throws {
         let value = true
 
-        let serialized = try system.serialization.serialize(value)
+        let serialized = try self.testCase.system.serialization.serialize(value)
         // Deserialize from `Data`
-        let deserialized = try system.serialization.deserialize(as: Bool.self, from: .data(serialized.buffer.readData()), using: serialized.manifest)
+        let deserialized = try self.testCase.system.serialization.deserialize(as: Bool.self, from: .data(serialized.buffer.readData()), using: serialized.manifest)
 
         deserialized.shouldEqual(value)
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Codable round-trip tests for of simple Swift Distributed Actors types
-
+    @Test
     func test_serialize_actorPath() throws {
         let path = try ActorPath(root: "user") / ActorPathSegment("hello")
         let encoded = try JSONEncoder().encode(path)
@@ -84,6 +92,7 @@ class SerializationTests: SingleClusterSystemXCTestCase {
         pathAgain.shouldEqual(path)
     }
 
+    @Test
     func test_serialize_actorAddress_usingContext() throws {
         let node = Cluster.Node(systemName: "one", host: "127.0.0.1", port: 1234, nid: Cluster.Node.ID(11111))
         let id = try ActorPath(root: "user").appending("hello").makeLocalID(on: node, incarnation: .random())
@@ -92,8 +101,8 @@ class SerializationTests: SingleClusterSystemXCTestCase {
         let decoder = JSONDecoder()
 
         let context = Serialization.Context(
-            log: self.system.log,
-            system: self.system,
+            log: self.testCase.system.log,
+            system: self.testCase.system,
             allocator: ByteBufferAllocator()
         )
 
@@ -112,11 +121,11 @@ class SerializationTests: SingleClusterSystemXCTestCase {
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Actor ref serialization and resolve
-
+    @Test
     func test_serialize_actorRef_inMessage() throws {
-        let p = self.testKit.makeTestProbe(expecting: String.self)
+        let p = self.testCase.testKit.makeTestProbe(expecting: String.self)
 
-        let ref: _ActorRef<String> = try system._spawn(
+        let ref: _ActorRef<String> = try self.testCase.system._spawn(
             "hello",
             .receiveMessage { message in
                 p.tell("got:\(message)")
@@ -128,12 +137,12 @@ class SerializationTests: SingleClusterSystemXCTestCase {
         pinfo("Before serialize: \(hasRef)")
 
         let serialized = try shouldNotThrow {
-            try system.serialization.serialize(hasRef)
+            try self.testCase.system.serialization.serialize(hasRef)
         }
         pinfo("serialized ref: \(serialized.buffer.stringDebugDescription())")
 
         let back: HasStringRef = try shouldNotThrow {
-            try system.serialization.deserialize(as: HasStringRef.self, from: serialized)
+            try self.testCase.system.serialization.deserialize(as: HasStringRef.self, from: serialized)
         }
         pinfo("Deserialized again: \(back)")
 
@@ -143,8 +152,9 @@ class SerializationTests: SingleClusterSystemXCTestCase {
         try p.expectMessage("got:hello")
     }
 
+    @Test
     func test_serialize_actorRef_inMessage_forRemoting() async throws {
-        let remoteCapableSystem = await self.setUpNode("remoteCapableSystem") { settings in
+        let remoteCapableSystem = await self.testCase.setUpNode("remoteCapableSystem") { settings in
             settings.enabled = true
             settings.serialization.register(HasStringRef.self)
         }
@@ -186,61 +196,65 @@ class SerializationTests: SingleClusterSystemXCTestCase {
         try p.expectMessage("got:hello")
     }
 
+    @Test
     func test_deserialize_alreadyDeadActorRef_shouldDeserializeAsDeadLetters_forSystemDefinedMessageType() throws {
-        let p = self.testKit.makeTestProbe(expecting: Never.self)
-        let stoppedRef: _ActorRef<String> = try system._spawn("dead-on-arrival", .stop)
+        let p = self.testCase.testKit.makeTestProbe(expecting: Never.self)
+        let stoppedRef: _ActorRef<String> = try self.testCase.system._spawn("dead-on-arrival", .stop)
         p.watch(stoppedRef)
 
         let hasRef = HasStringRef(containedRef: stoppedRef)
         let serialized = try shouldNotThrow {
-            try system.serialization.serialize(hasRef)
+            try self.testCase.system.serialization.serialize(hasRef)
         }
 
         try p.expectTerminated(stoppedRef)
 
-        try self.testKit.eventually(within: .seconds(3)) {
+        try self.testCase.testKit.eventually(within: .seconds(3)) {
             let back: HasStringRef = try shouldNotThrow {
-                try system.serialization.deserialize(as: HasStringRef.self, from: serialized)
+                try self.testCase.system.serialization.deserialize(as: HasStringRef.self, from: serialized)
             }
 
             guard "\(back.containedRef.id)" == "/dead/user/dead-on-arrival" else {
-                throw self.testKit.error("\(back.containedRef.id) is not equal to expected /dead/user/dead-on-arrival")
+                throw self.testCase.testKit.error("\(back.containedRef.id) is not equal to expected /dead/user/dead-on-arrival")
             }
         }
     }
 
+    @Test
     func test_deserialize_alreadyDeadActorRef_shouldDeserializeAsDeadLetters_forUserDefinedMessageType() throws {
-        let stoppedRef: _ActorRef<InterestingMessage> = try system._spawn("dead-on-arrival", .stop) // stopped
+        let stoppedRef: _ActorRef<InterestingMessage> = try self.testCase.system._spawn("dead-on-arrival", .stop) // stopped
         let hasRef = HasInterestingMessageRef(containedInterestingRef: stoppedRef)
 
         let serialized = try shouldNotThrow {
-            try system.serialization.serialize(hasRef)
+            try self.testCase.system.serialization.serialize(hasRef)
         }
 
-        try self.testKit.eventually(within: .seconds(3)) {
+        try self.testCase.testKit.eventually(within: .seconds(3)) {
             let back: HasInterestingMessageRef = try shouldNotThrow {
-                try system.serialization.deserialize(as: HasInterestingMessageRef.self, from: serialized)
+                try self.testCase.system.serialization.deserialize(as: HasInterestingMessageRef.self, from: serialized)
             }
 
             back.containedInterestingRef.tell(InterestingMessage())
             guard "\(back.containedInterestingRef.id)" == "/dead/user/dead-on-arrival" else {
-                throw self.testKit.error("\(back.containedInterestingRef.id) is not equal to expected /dead/user/dead-on-arrival")
+                throw self.testCase.testKit.error("\(back.containedInterestingRef.id) is not equal to expected /dead/user/dead-on-arrival")
             }
         }
     }
 
+    @Test
     func test_serialize_shouldNotSerializeNotRegisteredType() throws {
         _ = try shouldThrow {
-            try system.serialization.serialize(NotCodableHasInt(containedInt: 1337))
+            try self.testCase.system.serialization.serialize(NotCodableHasInt(containedInt: 1337))
         }
     }
 
+    @Test
     func test_serialize_receivesSystemMessages_inMessage() throws {
-        let p = self.testKit.makeTestProbe(expecting: String.self)
+        let p = self.testCase.testKit.makeTestProbe(expecting: String.self)
 
-        let watchMe: _ActorRef<String> = try system._spawn("watchMe", .ignore)
+        let watchMe: _ActorRef<String> = try self.testCase.system._spawn("watchMe", .ignore)
 
-        let ref: _ActorRef<String> = try system._spawn(
+        let ref: _ActorRef<String> = try self.testCase.system._spawn(
             "shouldGetSystemMessage",
             .setup { context in
                 context.watch(watchMe)
@@ -261,11 +275,11 @@ class SerializationTests: SingleClusterSystemXCTestCase {
         let hasSysRef = HasReceivesSystemMsgs(sysRef: ref)
 
         let serialized = try shouldNotThrow {
-            try system.serialization.serialize(hasSysRef)
+            try self.testCase.system.serialization.serialize(hasSysRef)
         }
 
         let back: HasReceivesSystemMsgs = try shouldNotThrow {
-            try system.serialization.deserialize(as: HasReceivesSystemMsgs.self, from: serialized)
+            try self.testCase.system.serialization.deserialize(as: HasReceivesSystemMsgs.self, from: serialized)
         }
 
         back.sysRef.id.shouldEqual(sysRef.id)
@@ -277,59 +291,61 @@ class SerializationTests: SingleClusterSystemXCTestCase {
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Error envelope serialization
-
+    @Test
     func test_serialize_errorEnvelope_stringDescription() throws {
         let description = "BOOM!!!"
         let errorEnvelope = ErrorEnvelope(description: description)
 
         let serialized = try shouldNotThrow {
-            try system.serialization.serialize(errorEnvelope)
+            try self.testCase.system.serialization.serialize(errorEnvelope)
         }
 
         let back: ErrorEnvelope = try shouldNotThrow {
-            try system.serialization.deserialize(as: ErrorEnvelope.self, from: serialized)
+            try self.testCase.system.serialization.deserialize(as: ErrorEnvelope.self, from: serialized)
         }
 
         guard let bestEffortStringError = back.error as? BestEffortStringError else {
-            throw self.testKit.error("\(back.error) is not BestEffortStringError")
+            throw self.testCase.testKit.error("\(back.error) is not BestEffortStringError")
         }
 
         bestEffortStringError.representation.shouldEqual(description)
     }
 
+    @Test
     func test_serialize_errorEnvelope_notCodableError() throws {
         let notCodableError: NotCodableTestingError = .errorTwo
         let errorEnvelope = ErrorEnvelope(notCodableError)
 
         let serialized = try shouldNotThrow {
-            try system.serialization.serialize(errorEnvelope)
+            try self.testCase.system.serialization.serialize(errorEnvelope)
         }
 
         let back: ErrorEnvelope = try shouldNotThrow {
-            try system.serialization.deserialize(as: ErrorEnvelope.self, from: serialized)
+            try self.testCase.system.serialization.deserialize(as: ErrorEnvelope.self, from: serialized)
         }
 
         guard let bestEffortStringError = back.error as? BestEffortStringError else {
-            throw self.testKit.error("\(back.error) is not BestEffortStringError")
+            throw self.testCase.testKit.error("\(back.error) is not BestEffortStringError")
         }
 
         bestEffortStringError.representation.shouldContain(String(reflecting: NotCodableTestingError.self))
     }
 
+    @Test
     func test_serialize_errorEnvelope_codableError() throws {
         let codableError: CodableTestingError = .errorB
         let errorEnvelope = ErrorEnvelope(codableError)
 
         let serialized = try shouldNotThrow {
-            try system.serialization.serialize(errorEnvelope)
+            try self.testCase.system.serialization.serialize(errorEnvelope)
         }
 
         let back: ErrorEnvelope = try shouldNotThrow {
-            try system.serialization.deserialize(as: ErrorEnvelope.self, from: serialized)
+            try self.testCase.system.serialization.deserialize(as: ErrorEnvelope.self, from: serialized)
         }
 
         guard let codableTestingError = back.error as? CodableTestingError else {
-            throw self.testKit.error("\(back.error) is not CodableTestingError")
+            throw self.testCase.testKit.error("\(back.error) is not CodableTestingError")
         }
 
         codableTestingError.shouldEqual(codableError)
@@ -337,39 +353,41 @@ class SerializationTests: SingleClusterSystemXCTestCase {
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: PList coding
-
+    @Test
     func test_plist_binary() throws {
         let test = PListBinCodableTest(name: "foo", items: ["bar", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz"])
 
         let serialized = try! shouldNotThrow {
-            try system.serialization.serialize(test)
+            try self.testCase.system.serialization.serialize(test)
         }
 
-        let back = try! system.serialization.deserialize(as: PListBinCodableTest.self, from: serialized)
+        let back = try! self.testCase.system.serialization.deserialize(as: PListBinCodableTest.self, from: serialized)
 
         back.shouldEqual(test)
     }
 
+    @Test
     func test_plist_xml() throws {
         let test = PListXMLCodableTest(name: "foo", items: ["bar", "baz"])
 
         let serialized = try shouldNotThrow {
-            try system.serialization.serialize(test)
+            try self.testCase.system.serialization.serialize(test)
         }
 
-        let back = try system.serialization.deserialize(as: PListXMLCodableTest.self, from: serialized)
+        let back = try self.testCase.system.serialization.deserialize(as: PListXMLCodableTest.self, from: serialized)
 
         back.shouldEqual(test)
     }
 
+    @Test
     func test_plist_throws_whenWrongFormat() async throws {
         let test = PListXMLCodableTest(name: "foo", items: ["bar", "baz"])
 
         let serialized = try shouldNotThrow {
-            try system.serialization.serialize(test)
+            try self.testCase.system.serialization.serialize(test)
         }
 
-        let system2 = await self.setUpNode("OtherSystem") { settings in
+        let system2 = await self.testCase.setUpNode("OtherSystem") { settings in
             settings.serialization.register(PListXMLCodableTest.self, serializerID: .foundationPropertyListBinary) // on purpose "wrong" format
         }
 
@@ -377,7 +395,7 @@ class SerializationTests: SingleClusterSystemXCTestCase {
             _ = try system2.serialization.deserialize(as: PListXMLCodableTest.self, from: serialized)
         }
 
-        let back = try system.serialization.deserialize(as: PListXMLCodableTest.self, from: serialized)
+        let back = try self.testCase.system.serialization.deserialize(as: PListXMLCodableTest.self, from: serialized)
         back.shouldEqual(test)
     }
 }

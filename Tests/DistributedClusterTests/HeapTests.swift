@@ -13,7 +13,8 @@
 //===----------------------------------------------------------------------===//
 
 @testable import DistributedCluster
-import XCTest
+import Foundation
+import Testing
 
 public func getRandomNumbers(count: Int) -> [UInt8] {
     var values: [UInt8] = .init(repeating: 0, count: count)
@@ -28,16 +29,18 @@ public func getRandomNumbers(count: Int) -> [UInt8] {
     return values
 }
 
-class HeapTests: XCTestCase {
+struct HeapTests {
+    @Test
     func testSimple() throws {
         var h = Heap<Int>(type: .maxHeap)
         h.append(1)
         h.append(3)
         h.append(2)
-        XCTAssertEqual(3, h.removeRoot())
-        XCTAssertTrue(h.checkHeapProperty())
+        #expect(h.removeRoot() == 3)
+        #expect(h.checkHeapProperty())
     }
 
+    @Test
     func testSortedDesc() throws {
         var maxHeap = Heap<Int>(type: .maxHeap)
         var minHeap = Heap<Int>(type: .minHeap)
@@ -46,23 +49,24 @@ class HeapTests: XCTestCase {
         input.forEach {
             minHeap.append($0)
             maxHeap.append($0)
-            XCTAssertTrue(minHeap.checkHeapProperty())
-            XCTAssertTrue(maxHeap.checkHeapProperty())
+            #expect(minHeap.checkHeapProperty())
+            #expect(maxHeap.checkHeapProperty())
         }
         var minHeapInputPtr = input.count - 1
         var maxHeapInputPtr = 0
         while let maxE = maxHeap.removeRoot(), let minE = minHeap.removeRoot() {
-            XCTAssertEqual(maxE, input[maxHeapInputPtr], "\(maxHeap.debugDescription)")
-            XCTAssertEqual(minE, input[minHeapInputPtr])
+            #expect(maxE == input[maxHeapInputPtr], "\(maxHeap.debugDescription)")
+            #expect(minE == input[minHeapInputPtr])
             maxHeapInputPtr += 1
             minHeapInputPtr -= 1
-            XCTAssertTrue(minHeap.checkHeapProperty(), "\(minHeap.debugDescription)")
-            XCTAssertTrue(maxHeap.checkHeapProperty())
+            #expect(minHeap.checkHeapProperty(), "\(minHeap.debugDescription)")
+            #expect(maxHeap.checkHeapProperty())
         }
-        XCTAssertEqual(-1, minHeapInputPtr)
-        XCTAssertEqual(input.count, maxHeapInputPtr)
+        #expect(minHeapInputPtr == -1)
+        #expect(input.count == maxHeapInputPtr)
     }
 
+    @Test
     func testSortedAsc() throws {
         var maxHeap = Heap<Int>(type: .maxHeap)
         var minHeap = Heap<Int>(type: .minHeap)
@@ -75,15 +79,16 @@ class HeapTests: XCTestCase {
         var minHeapInputPtr = 0
         var maxHeapInputPtr = input.count - 1
         while let maxE = maxHeap.removeRoot(), let minE = minHeap.removeRoot() {
-            XCTAssertEqual(maxE, input[maxHeapInputPtr])
-            XCTAssertEqual(minE, input[minHeapInputPtr])
+            #expect(maxE == input[maxHeapInputPtr])
+            #expect(minE == input[minHeapInputPtr])
             maxHeapInputPtr -= 1
             minHeapInputPtr += 1
         }
-        XCTAssertEqual(input.count, minHeapInputPtr)
-        XCTAssertEqual(-1, maxHeapInputPtr)
+        #expect(input.count == minHeapInputPtr)
+        #expect(maxHeapInputPtr == -1)
     }
 
+    @Test
     func testSortedCustom() throws {
         struct Test: Equatable {
             let x: Int
@@ -104,15 +109,16 @@ class HeapTests: XCTestCase {
         var minHeapInputPtr = 0
         var maxHeapInputPtr = input.count - 1
         while let maxE = maxHeap.removeRoot(), let minE = minHeap.removeRoot() {
-            XCTAssertEqual(maxE, input[maxHeapInputPtr])
-            XCTAssertEqual(minE, input[minHeapInputPtr])
+            #expect(maxE == input[maxHeapInputPtr])
+            #expect(minE == input[minHeapInputPtr])
             maxHeapInputPtr -= 1
             minHeapInputPtr += 1
         }
-        XCTAssertEqual(input.count, minHeapInputPtr)
-        XCTAssertEqual(-1, maxHeapInputPtr)
+        #expect(input.count == minHeapInputPtr)
+        #expect(maxHeapInputPtr == -1)
     }
 
+    @Test
     func testAddAndRemoveRandomNumbers() throws {
         var maxHeap = Heap<UInt8>(type: .maxHeap)
         var minHeap = Heap<UInt8>(type: .minHeap)
@@ -124,26 +130,26 @@ class HeapTests: XCTestCase {
         for n in getRandomNumbers(count: N) {
             maxHeap.append(n)
             minHeap.append(n)
-            XCTAssertTrue(maxHeap.checkHeapProperty(), maxHeap.debugDescription)
-            XCTAssertTrue(minHeap.checkHeapProperty(), maxHeap.debugDescription)
+            #expect(maxHeap.checkHeapProperty(), .init(rawValue: maxHeap.debugDescription))
+            #expect(minHeap.checkHeapProperty(), .init(rawValue: minHeap.debugDescription))
 
-            XCTAssertEqual(Array(minHeap.sorted()), Array(minHeap))
-            XCTAssertEqual(Array(maxHeap.sorted().reversed()), Array(maxHeap))
+            #expect(Array(minHeap.sorted()) == Array(minHeap))
+            #expect(Array(maxHeap.sorted().reversed()) == Array(maxHeap))
         }
 
         for _ in 0 ..< N / 2 {
             var value = maxHeap.removeRoot()!
-            XCTAssertLessThanOrEqual(value, maxHeapLast)
+            #expect(value <= maxHeapLast)
             maxHeapLast = value
             value = minHeap.removeRoot()!
-            XCTAssertGreaterThanOrEqual(value, minHeapLast)
+            #expect(value >= minHeapLast)
             minHeapLast = value
 
-            XCTAssertTrue(minHeap.checkHeapProperty())
-            XCTAssertTrue(maxHeap.checkHeapProperty())
+            #expect(minHeap.checkHeapProperty())
+            #expect(maxHeap.checkHeapProperty())
 
-            XCTAssertEqual(Array(minHeap.sorted()), Array(minHeap))
-            XCTAssertEqual(Array(maxHeap.sorted().reversed()), Array(maxHeap))
+            #expect(Array(minHeap.sorted()) == Array(minHeap))
+            #expect(Array(maxHeap.sorted().reversed()) == Array(maxHeap))
         }
 
         maxHeapLast = UInt8.max
@@ -152,29 +158,29 @@ class HeapTests: XCTestCase {
         for n in getRandomNumbers(count: N) {
             maxHeap.append(n)
             minHeap.append(n)
-            XCTAssertTrue(maxHeap.checkHeapProperty(), maxHeap.debugDescription)
-            XCTAssertTrue(minHeap.checkHeapProperty(), maxHeap.debugDescription)
+            #expect(maxHeap.checkHeapProperty(), .init(rawValue: maxHeap.debugDescription))
+            #expect(minHeap.checkHeapProperty(), .init(rawValue: minHeap.debugDescription))
         }
 
         for _ in 0 ..< N / 2 + N {
             var value = maxHeap.removeRoot()!
-            XCTAssertLessThanOrEqual(value, maxHeapLast)
+            #expect(value <= maxHeapLast)
             maxHeapLast = value
             value = minHeap.removeRoot()!
-            XCTAssertGreaterThanOrEqual(value, minHeapLast)
+            #expect(value >= minHeapLast)
             minHeapLast = value
 
-            XCTAssertTrue(minHeap.checkHeapProperty())
-            XCTAssertTrue(maxHeap.checkHeapProperty())
+            #expect(minHeap.checkHeapProperty())
+            #expect(maxHeap.checkHeapProperty())
         }
 
-        XCTAssertEqual(0, minHeap.underestimatedCount)
-        XCTAssertEqual(0, maxHeap.underestimatedCount)
+        #expect(minHeap.underestimatedCount == 0)
+        #expect(maxHeap.underestimatedCount == 0)
     }
 
     func testRemoveElement() throws {
         var h = Heap<Int>(type: .maxHeap, storage: [84, 22, 19, 21, 3, 10, 6, 5, 20])!
         _ = h.remove(value: 10)
-        XCTAssertTrue(h.checkHeapProperty(), "\(h.debugDescription)")
+        #expect(h.checkHeapProperty(), "\(h.debugDescription)")
     }
 }

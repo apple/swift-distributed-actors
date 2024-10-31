@@ -1,4 +1,4 @@
-// swift-tools-version:5.10
+// swift-tools-version:6.0
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import class Foundation.ProcessInfo
@@ -7,7 +7,9 @@ import PackageDescription
 // Workaround: Since we cannot include the flat just as command line options since then it applies to all targets,
 // and ONE of our dependencies currently produces one warning, we have to use this workaround to enable it in _our_
 // targets when the flag is set. We should remove the dependencies and then enable the flag globally though just by passing it.
-var globalSwiftSettings: [SwiftSetting] = []
+var globalSwiftSettings: [SwiftSetting] = [
+    .swiftLanguageMode(.v5),
+]
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Products
@@ -91,6 +93,7 @@ var targets: [PackageDescription.Target] = [
             /* permissions: needs full network access */
         ),
         dependencies: []
+
     ),
     .target(
         name: "MultiNodeTestKit",
@@ -167,9 +170,9 @@ var dependencies: [Package.Dependency] = [
 //    .package(name: "swift-cluster-membership", path: "Packages/swift-cluster-membership"), // FIXME: just work in progress
     .package(url: "https://github.com/apple/swift-cluster-membership", branch: "main"),
 
-    .package(url: "https://github.com/apple/swift-nio", from: "2.61.1"),
-    .package(url: "https://github.com/apple/swift-nio-extras", from: "1.20.0"),
-    .package(url: "https://github.com/apple/swift-nio-ssl", from: "2.25.0"),
+    .package(url: "https://github.com/apple/swift-nio", from: "2.75.0"),
+    .package(url: "https://github.com/apple/swift-nio-extras", from: "1.24.0"),
+    .package(url: "https://github.com/apple/swift-nio-ssl", from: "2.28.0"),
 
     .package(url: "https://github.com/apple/swift-protobuf", from: "1.25.1"),
 
@@ -227,10 +230,10 @@ platforms = nil
 #else
 platforms = [
     // we require the 'distributed actor' language and runtime feature:
-    .iOS(.v16),
-    .macOS(.v14),
-    .tvOS(.v16),
-    .watchOS(.v9),
+    .iOS(.v18),
+    .macOS(.v15),
+    .tvOS(.v18),
+    .watchOS(.v11),
 ]
 #endif
 

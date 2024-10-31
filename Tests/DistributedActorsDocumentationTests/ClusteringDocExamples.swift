@@ -15,9 +15,11 @@
 @testable import DistributedActorsTestKit
 import DistributedCluster
 import NIOSSL
-import XCTest
+import Testing
 
-class ClusteringDocExamples: XCTestCase {
+@Suite(.serialized)
+struct ClusteringDocExamples {
+    @Test
     func example_config_tls() throws {
         // tag::config_tls[]
         let system = ClusterSystem("TestSystem") { settings in
@@ -36,6 +38,7 @@ class ClusteringDocExamples: XCTestCase {
         try! await system.shutdown().wait()
     }
 
+    @Test
     func example_config_tls_passphrase() throws {
         // tag::config_tls_passphrase[]
         let system = ClusterSystem("TestSystem") { settings in

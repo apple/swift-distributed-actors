@@ -15,27 +15,36 @@
 import DistributedActorsTestKit
 @testable import DistributedCluster
 import NIO
-import XCTest
+import Testing
 
-final class ClusterEventStreamTests: SingleClusterSystemXCTestCase, @unchecked Sendable {
+@Suite(.timeLimit(.minutes(1)), .serialized)
+struct ClusterEventStreamTests {
     let memberA = Cluster.Member(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "System", host: "1.1.1.1", port: 7337), nid: .random()), status: .up)
     let memberB = Cluster.Member(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "System", host: "2.2.2.2", port: 8228), nid: .random()), status: .up)
 
+    let testCase: SingleClusterSystemTestCase
+
+    init() async throws {
+        self.testCase = try await SingleClusterSystemTestCase(name: String(describing: type(of: self)))
+    }
+
+    @Test
     func test_clusterEventStream_shouldNotCauseDeadLettersOnLocalOnlySystem() throws {
-        _ = try self.system._spawn("anything", of: String.self, .setup { context in
+        _ = try self.testCase.system._spawn("anything", of: String.self, .setup { context in
             context.log.info("Hello there!")
             return .stop
         })
 
-        try self.logCapture.awaitLogContaining(self.testKit, text: "Hello there!")
-        self.logCapture.grep("Dead letter").shouldBeEmpty()
+        try self.testCase.logCapture.awaitLogContaining(self.testCase.testKit, text: "Hello there!")
+        self.testCase.logCapture.grep("Dead letter").shouldBeEmpty()
     }
 
+    @Test
     func test_clusterEventStream_shouldCollapseEventsAndOfferASnapshotToLateSubscribers() async throws {
-        let p1 = self.testKit.makeTestProbe(expecting: Cluster.Event.self)
-        let p2 = self.testKit.makeTestProbe(expecting: Cluster.Event.self)
+        let p1 = self.testCase.testKit.makeTestProbe(expecting: Cluster.Event.self)
+        let p2 = self.testCase.testKit.makeTestProbe(expecting: Cluster.Event.self)
 
-        let eventStream = ClusterEventStream(system, customName: "testClusterEvents")
+        let eventStream = ClusterEventStream(self.testCase.system, customName: "testClusterEvents")
 
         await eventStream._subscribe(p1.ref) // sub before first -> up was published
         await eventStream.publish(.membershipChange(.init(member: self.memberA, toStatus: .up)))
@@ -80,10 +89,11 @@ final class ClusterEventStreamTests: SingleClusterSystemXCTestCase, @unchecked S
         }
     }
 
+    @Test
     func test_clusterEventStream_collapseManyEventsIntoSnapshot() async throws {
-        let p1 = self.testKit.makeTestProbe(expecting: Cluster.Event.self)
+        let p1 = self.testCase.testKit.makeTestProbe(expecting: Cluster.Event.self)
 
-        let eventStream = ClusterEventStream(system, customName: "testClusterEvents")
+        let eventStream = ClusterEventStream(self.testCase.system, customName: "testClusterEvents")
 
         await eventStream.publish(.membershipChange(.init(member: self.memberA, toStatus: .joining)))
         await eventStream.publish(.membershipChange(.init(member: self.memberA, toStatus: .up)))
@@ -105,8 +115,9 @@ final class ClusterEventStreamTests: SingleClusterSystemXCTestCase, @unchecked S
         try p1.expectNoMessage(for: .milliseconds(100))
     }
 
+    @Test
     func test_clusterEventStream_collapseManyEventsIntoSnapshot_async() async throws {
-        let eventStream = ClusterEventStream(system, customName: "testClusterEvents")
+        let eventStream = ClusterEventStream(self.testCase.system, customName: "testClusterEvents")
 
         // Publish events to change membership
         await eventStream.publish(.membershipChange(.init(member: self.memberA, toStatus: .joining)))
@@ -122,7 +133,7 @@ final class ClusterEventStreamTests: SingleClusterSystemXCTestCase, @unchecked S
                 Set(members).shouldEqual(Set([self.memberA, self.memberB]))
                 return
             default:
-                return XCTFail("Expected a snapshot with all the data to be the first received event")
+                Issue.record("Expected a snapshot with all the data to be the first received event")
             }
         }
     }

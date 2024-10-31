@@ -17,35 +17,32 @@ import DistributedActorsTestKit
 import Foundation // for pretty printing JSON
 import Logging
 import NIO
-import XCTest
+import Testing
 
-final class MembershipSerializationTests: SingleClusterSystemXCTestCase {
-    lazy var context: Serialization.Context! = Serialization.Context(
-        log: system.log,
-        system: system,
-        allocator: system.settings.serialization.allocator
-    )
+@Suite(.timeLimit(.minutes(1)), .serialized)
+struct MembershipSerializationTests {
+    let testCase: SingleClusterSystemTestCase
 
-    override func tearDown() async throws {
-        try await super.tearDown()
-        self.context = nil
+    init() async throws {
+        self.testCase = try await SingleClusterSystemTestCase(name: String(describing: type(of: self)))
     }
 
+    @Test
     func test_serializationOf_membership() throws {
         let membership: Cluster.Membership = [
             Cluster.Member(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "first", host: "1.1.1.1", port: 7337), nid: .random()), status: .up),
             Cluster.Member(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "second", host: "2.2.2.2", port: 8228), nid: .random()), status: .down),
         ]
-
-        let proto = try membership.toProto(context: self.context)
-        let back = try Cluster.Membership(fromProto: proto, context: self.context)
+        let context = self.testCase.context
+        let proto = try membership.toProto(context: context)
+        let back = try Cluster.Membership(fromProto: proto, context: context)
 
         back.shouldEqual(membership)
     }
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Measuring serialization sizes
-
+    @Test
     func test_gossip_serialization() throws {
         let members = (1 ... 15).map { id in
             Cluster.Member(
@@ -74,7 +71,7 @@ final class MembershipSerializationTests: SingleClusterSystemXCTestCase {
             """, owner: nodes.first!, nodes: nodes
         )
 
-        let serialized = try system.serialization.serialize(gossip)
+        let serialized = try self.testCase.system.serialization.serialize(gossip)
 
         pnote("\(serialized.buffer.readData().stringDebugDescription())")
         pinfo("Serialized size: \(serialized.buffer.count) bytes")
@@ -84,7 +81,7 @@ final class MembershipSerializationTests: SingleClusterSystemXCTestCase {
         serialized.manifest.serializerID.shouldEqual(Serialization.SerializerID._ProtobufRepresentable)
         serialized.buffer.count.shouldEqual(2105)
 
-        let back = try system.serialization.deserialize(as: Cluster.MembershipGossip.self, from: serialized)
+        let back = try self.testCase.system.serialization.deserialize(as: Cluster.MembershipGossip.self, from: serialized)
         "\(pretty: back)".shouldStartWith(prefix: "\(pretty: gossip)") // nicer human readable error
         back.shouldEqual(gossip) // the actual soundness check
     }

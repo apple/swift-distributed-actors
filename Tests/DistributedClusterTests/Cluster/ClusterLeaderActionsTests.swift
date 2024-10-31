@@ -16,10 +16,11 @@ import DistributedActorsTestKit
 @testable import DistributedCluster
 import Foundation
 import NIOSSL
-import XCTest
+import Testing
 
 // Unit tests of the actions, see `ClusterLeaderActionsClusteredTests` for integration tests
-final class ClusterLeaderActionsTests: XCTestCase {
+@Suite(.timeLimit(.minutes(1)), .serialized)
+struct ClusterLeaderActionsTests {
     let _endpointA = Cluster.Endpoint(systemName: "nodeA", host: "1.1.1.1", port: 7337)
     let _endpointB = Cluster.Endpoint(systemName: "nodeB", host: "2.2.2.2", port: 8228)
     let _endpointC = Cluster.Endpoint(systemName: "nodeC", host: "3.3.3.3", port: 9119)
@@ -44,7 +45,7 @@ final class ClusterLeaderActionsTests: XCTestCase {
         self.stateC.selfNode
     }
 
-    override func setUp() {
+    init() {
         self.stateA = ClusterShellState.makeTestMock(side: .server) { settings in
             settings.endpoint = self._endpointA
         }
@@ -76,8 +77,8 @@ final class ClusterLeaderActionsTests: XCTestCase {
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Moving members to .removed
-
-    func test_leaderActions_removeDownMembers_ifKnownAsDownToAllMembers() {
+    @Test
+    mutating func test_leaderActions_removeDownMembers_ifKnownAsDownToAllMembers() {
         // make A the leader
         let makeFirstTheLeader = Cluster.LeadershipChange(oldLeader: nil, newLeader: self.stateA.membership.anyMember(forEndpoint: self.nodeA.endpoint)!)!
         _ = self.stateA.applyClusterEvent(.leadershipChange(makeFirstTheLeader))
@@ -115,7 +116,7 @@ final class ClusterLeaderActionsTests: XCTestCase {
         let hopefullyRemovalActions = self.stateA.collectLeaderActions()
         hopefullyRemovalActions.count.shouldEqual(1)
         guard case .some(.removeMember(let member)) = hopefullyRemovalActions.first else {
-            XCTFail("Expected a member removal action, but did not get one, actions: \(hopefullyRemovalActions)")
+            Issue.record("Expected a member removal action, but did not get one, actions: \(hopefullyRemovalActions)")
             return
         }
         member.status.isDown.shouldBeTrue()
@@ -132,7 +133,8 @@ final class ClusterLeaderActionsTests: XCTestCase {
         _ = self.gossip(from: self.stateA, to: &self.stateC)
     }
 
-    func test_leaderActions_removeDownMembers_dontRemoveIfDownNotKnownToAllMembersYet() {
+    @Test
+    mutating func test_leaderActions_removeDownMembers_dontRemoveIfDownNotKnownToAllMembersYet() {
         // A is .down, but
         _ = self.stateB._latestGossip = .parse(
             """

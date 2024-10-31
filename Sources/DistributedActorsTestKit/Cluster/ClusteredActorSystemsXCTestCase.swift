@@ -15,19 +15,34 @@
 import DistributedActorsConcurrencyHelpers
 @testable import DistributedCluster
 import Foundation
-import XCTest
+import Synchronization
+import Testing
+
+// final class PortFactory: Sendable {
+//    static let shared: PortFactory = PortFactory()
+//
+//    let _port = Mutex(9001)
+//
+//    var nextPort: Int {
+//        _port.withLock { port in
+//            let currentPort = port
+//            port += 1
+//            return currentPort
+//        }
+//    }
+// }
 
 /// Convenience class for building multi-node (yet same-process) tests with many actor systems involved.
 ///
 /// Systems started using `setUpNode` are automatically terminated upon test completion, and logs are automatically
 /// captured and only printed when a test failure occurs.
-open class ClusteredActorSystemsXCTestCase: XCTestCase {
-    internal let lock = DistributedActorsConcurrencyHelpers.Lock()
-    public private(set) var _nodes: [ClusterSystem] = []
-    public private(set) var _testKits: [ActorTestKit] = []
-    public private(set) var _logCaptures: [LogCapture] = []
+public final class ClusteredActorSystemsTestCase: Sendable {
+    public let _nodes: Mutex<[ClusterSystem]> = Mutex([])
+    public let _testKits: Mutex<[ActorTestKit]> = Mutex([])
+    public let _logCaptures: Mutex<[LogCapture]> = Mutex([])
 
-    private var stuckTestDumpLogsTask: Task<Void, Error>?
+    private let stuckTestDumpLogsTask: Mutex<Task<Void, Error>?> = Mutex(.none)
+    private let actorStatsBefore: Mutex<InspectKit.ActorStats> = Mutex(.init())
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Actor leak detection
@@ -41,12 +56,26 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
         }
     }()
 
-    /// If true, will use ``InspectKit`` to detect actor leaks around tests run in this test suite.
-    open var inspectDetectActorLeaks: Bool {
-        ClusteredActorSystemsXCTestCase.inspectDetectActorLeaksEnv
+    public struct Settings: Sendable {
+        public let captureLogs: Bool
+        public let dumpLogsAfter: Duration
+        public let alwaysPrintCaptureLogs: Bool
+
+        public init(
+            captureLogs: Bool = true,
+            dumpLogsAfter: Duration = .seconds(60),
+            alwaysPrintCaptureLogs: Bool = false
+        ) {
+            self.captureLogs = captureLogs
+            self.dumpLogsAfter = dumpLogsAfter
+            self.alwaysPrintCaptureLogs = alwaysPrintCaptureLogs
+        }
     }
 
-    private var actorStatsBefore: InspectKit.ActorStats = .init()
+    /// If true, will use ``InspectKit`` to detect actor leaks around tests run in this test suite.
+    public var inspectDetectActorLeaks: Bool {
+        ClusteredActorSystemsTestCase.inspectDetectActorLeaksEnv
+    }
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Log capture
@@ -55,24 +84,26 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
     /// If `false`, log capture is disabled and the systems will log messages normally.
     ///
     /// - Default: `true`
-    open var captureLogs: Bool {
-        true
+    private var captureLogs: Bool {
+        self.settings.captureLogs
     }
 
     /// Unconditionally dump logs if the test has been running longer than this duration.
     /// This is to help diagnose stuck tests.
-    open var dumpLogsAfter: Duration {
-        .seconds(60)
+    private var dumpLogsAfter: Duration {
+        self.settings.dumpLogsAfter
     }
 
     /// Enables logging all captured logs, even if the test passed successfully.
     /// - Default: `false`
-    open var alwaysPrintCaptureLogs: Bool {
-        false
+    private var alwaysPrintCaptureLogs: Bool {
+        self.settings.alwaysPrintCaptureLogs
     }
 
-    open func configureLogCapture(settings: inout LogCapture.Settings) {
-        // just use defaults
+    public let settings: Settings
+    public var configureLogCapture: (@Sendable (_ settings: inout LogCapture.Settings) -> Void) {
+        get { self._configureLogCapture.withLock { $0 } }
+        set { self._configureLogCapture.withLock { $0 = newValue }}
     }
 
     /// Configuration to be applied to every actor system.
@@ -81,53 +112,66 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
     /// - default changes made by `ClusteredNodesTestBase`
     /// - changes made by `configureActorSystem`
     /// - changes made by `modifySettings`, which is a parameter of `setUpNode`
-    open func configureActorSystem(settings: inout ClusterSystemSettings) {
-        // just use defaults
+    public var configureActorSystem: (@Sendable (_ settings: inout ClusterSystemSettings) -> Void) {
+        get { self._configureActorSystem.withLock { $0 } }
+        set { self._configureActorSystem.withLock { $0 = newValue }}
     }
 
-    var _nextPort = 9001
-    open func nextPort() -> Int {
-        defer { self._nextPort += 1 }
-        return self._nextPort
+    public let _configureLogCapture: Mutex<(@Sendable (_ settings: inout LogCapture.Settings) -> Void)> = Mutex { _ in }
+    public let _configureActorSystem: Mutex<(@Sendable (_ settings: inout ClusterSystemSettings) -> Void)> = Mutex { _ in }
+
+    let _port = Mutex(9001)
+
+    var nextPort: Int {
+        self._port.withLock { port in
+            let currentPort = port
+            port += 1
+            return currentPort
+        }
     }
 
-    override open func setUp() async throws {
+    public init(settings: Settings = .init()) throws {
+        self.settings = settings
         if self.inspectDetectActorLeaks {
-            self.actorStatsBefore = try InspectKit.actorStats()
+            try self.actorStatsBefore.withLock { $0 = try InspectKit.actorStats() }
         }
 
-        self.stuckTestDumpLogsTask = Task.detached {
-            try await Task.sleep(until: .now + self.dumpLogsAfter, clock: .continuous)
-            guard !Task.isCancelled else {
-                return
-            }
+//        self.stuckTestDumpLogsTask.withLock {
+//            $0 = Task.detached {
+//                try await Task.sleep(until: .now + self.dumpLogsAfter, clock: .continuous)
+//                guard !Task.isCancelled else {
+//                    return
+//                }
+//
+//                print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+//                print("!!!!!!!!!!               TEST SEEMS STUCK - DUMPING LOGS                   !!!!!!!!!!")
+//                print("!!!!!!!!!!               PID: \(ProcessInfo.processInfo.processIdentifier)                              !!!!!!!!!!")
+//                print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+//                self.printAllCapturedLogs()
+//            }
+//        }
+    }
 
-            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-            print("!!!!!!!!!!               TEST SEEMS STUCK - DUMPING LOGS                   !!!!!!!!!!")
-            print("!!!!!!!!!!               PID: \(ProcessInfo.processInfo.processIdentifier)                              !!!!!!!!!!")
-            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-            self.printAllCapturedLogs()
-        }
-        try await super.setUp()
+    enum SomeError {
+        case cancelled
     }
 
     /// Set up a new node intended to be clustered.
-    open func setUpNode(_ name: String, _ modifySettings: ((inout ClusterSystemSettings) -> Void)? = nil) async -> ClusterSystem {
-        let node = await ClusterSystem(name) { settings in
+    public func setUpNode(_ name: String, _ modifySettings: ((inout ClusterSystemSettings) -> Void)? = nil) async -> ClusterSystem {
+        let node = await ClusterSystem(name) { [weak self] settings in
+            guard let self else { return }
             settings.enabled = true
-            settings.endpoint.port = self.nextPort()
+            settings.endpoint.port = self.nextPort
 
             if self.captureLogs {
                 var captureSettings = LogCapture.Settings()
-                self.configureLogCapture(settings: &captureSettings)
+                self.configureLogCapture(&captureSettings)
                 let capture = LogCapture(settings: captureSettings)
 
                 settings.logging.baseLogger = capture.logger(label: name)
                 settings.swim.logger = settings.logging.baseLogger
 
-                self.lock.withLockVoid {
-                    self._logCaptures.append(capture)
-                }
+                self._logCaptures.withLock { $0.append(capture) }
             }
 
             settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
@@ -137,12 +181,12 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
             settings.swim.lifeguard.suspicionTimeoutMin = .milliseconds(500)
             settings.swim.lifeguard.suspicionTimeoutMax = .seconds(1)
 
-            self.configureActorSystem(settings: &settings)
+            self.configureActorSystem(&settings)
             modifySettings?(&settings)
         }
 
-        self._nodes.append(node)
-        self._testKits.append(.init(node))
+        self._nodes.withLock { $0.append(node) }
+        self._testKits.withLock { $0.append(.init(node)) }
 
         return node
     }
@@ -154,44 +198,52 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
         return (first, second)
     }
 
-    override open func tearDown() async throws {
-        self.stuckTestDumpLogsTask?.cancel()
-        self.stuckTestDumpLogsTask = nil
+    deinit {
+        self.tearDown()
+    }
 
-        try await super.tearDown()
+    public let totalFailureCount: Mutex<Int> = .init(0)
 
-        let testsFailed = self.testRun?.totalFailureCount ?? 0 > 0
+    public func tearDown() {
+        self.stuckTestDumpLogsTask.withLock {
+            $0?.cancel()
+            $0 = nil
+        }
+
+        let testsFailed = self.totalFailureCount.withLock { $0 > 0 }
         if self.captureLogs, self.alwaysPrintCaptureLogs || testsFailed {
             self.printAllCapturedLogs()
         }
 
-        for node in self._nodes {
-            node.log.warning("======================== TEST TEAR DOWN: SHUTDOWN ========================")
-            try! await node.shutdown().wait()
-        }
-
-        self.lock.withLockVoid {
-            self._nodes = []
-            self._testKits = []
-            self._logCaptures = []
-        }
-
-        if self.inspectDetectActorLeaks {
-            try await Task.sleep(until: .now + .seconds(2), clock: .continuous)
-
-            let actorStatsAfter = try InspectKit.actorStats()
-            if let error = self.actorStatsBefore.detectLeaks(latest: actorStatsAfter) {
-                print(error.message)
+        self._nodes.withLock { nodes in
+            for node in nodes {
+                node.log.warning("======================== TEST TEAR DOWN: SHUTDOWN ========================")
+                try! node.shutdown().wait()
             }
         }
+
+        self._nodes.withLock { $0 = [] }
+        self._testKits.withLock { $0 = [] }
+        self._logCaptures.withLock { $0 = [] }
+        print("Should be done")
+//        if self.inspectDetectActorLeaks {
+//            Task.detached {
+//                try await Task.sleep(until: .now + .seconds(2), clock: .continuous)
+//
+//                let actorStatsAfter = try InspectKit.actorStats()
+//                if let error = self.actorStatsBefore.withLock({ $0.detectLeaks(latest: actorStatsAfter) }) {
+//                    print(error.message)
+//                }
+//            }
+//        }
     }
 
     public func testKit(_ system: ClusterSystem) -> ActorTestKit {
-        guard let idx = self._nodes.firstIndex(where: { s in s.cluster.node == system.cluster.node }) else {
+        guard let idx = self._nodes.withLock({ $0.firstIndex(where: { s in s.cluster.node == system.cluster.node }) }) else {
             fatalError("Must only call with system that was spawned using `setUpNode()`, was: \(system)")
         }
 
-        let testKit = self._testKits[idx]
+        let testKit = self._testKits.withLock { $0[idx] }
 
         return testKit
     }
@@ -199,7 +251,7 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
     public func joinNodes(
         node: ClusterSystem, with other: ClusterSystem,
         ensureWithin: Duration? = nil, ensureMembers maybeExpectedStatus: Cluster.MemberStatus? = nil,
-        file: StaticString = #filePath, line: UInt = #line
+        sourceLocation: SourceLocation = #_sourceLocation
     ) async throws {
         node.cluster.join(endpoint: other.cluster.node.endpoint)
 
@@ -208,32 +260,32 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
 
         if let expectedStatus = maybeExpectedStatus {
             if let specificTimeout = ensureWithin {
-                try await self.ensureNodes(expectedStatus, on: node, within: specificTimeout, nodes: other.cluster.node, file: file, line: line)
+                try await self.ensureNodes(expectedStatus, on: node, within: specificTimeout, nodes: other.cluster.node, sourceLocation: sourceLocation)
             } else {
-                try await self.ensureNodes(expectedStatus, on: node, nodes: other.cluster.node, file: file, line: line)
+                try await self.ensureNodes(expectedStatus, on: node, nodes: other.cluster.node, sourceLocation: sourceLocation)
             }
         }
     }
 
     public func ensureNodes(
         _ status: Cluster.MemberStatus, on system: ClusterSystem? = nil, within: Duration = .seconds(20), nodes: Cluster.Node...,
-        file: StaticString = #filePath, line: UInt = #line
+        sourceLocation: SourceLocation = #_sourceLocation
     ) async throws {
-        try await self.ensureNodes(status, on: system, within: within, nodes: nodes, file: file, line: line)
+        try await self.ensureNodes(status, on: system, within: within, nodes: nodes, sourceLocation: sourceLocation)
     }
 
     public func ensureNodes(
         atLeast status: Cluster.MemberStatus, on system: ClusterSystem? = nil, within: Duration = .seconds(20), nodes: Cluster.Node...,
-        file: StaticString = #filePath, line: UInt = #line
+        sourceLocation: SourceLocation = #_sourceLocation
     ) async throws {
-        try await self.ensureNodes(atLeast: status, on: system, within: within, nodes: nodes, file: file, line: line)
+        try await self.ensureNodes(atLeast: status, on: system, within: within, nodes: nodes, sourceLocation: sourceLocation)
     }
 
     public func ensureNodes(
         _ status: Cluster.MemberStatus, on system: ClusterSystem? = nil, within: Duration = .seconds(20), nodes: [Cluster.Node],
-        file: StaticString = #filePath, line: UInt = #line
+        sourceLocation: SourceLocation = #_sourceLocation
     ) async throws {
-        guard let onSystem = system ?? self._nodes.first(where: { !$0.isShuttingDown }) else {
+        guard let onSystem = system ?? self._nodes.withLock({ $0.first(where: { !$0.isShuttingDown }) }) else {
             fatalError("Must at least have 1 system present to use [\(#function)]")
         }
 
@@ -241,15 +293,15 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
         do {
             try await onSystem.cluster.waitFor(Set(nodes), status, within: within)
         } catch {
-            throw testKit.error("\(error)", file: file, line: line)
+            throw testKit.error("\(error)", sourceLocation: sourceLocation)
         }
     }
 
     public func ensureNodes(
         atLeast status: Cluster.MemberStatus, on system: ClusterSystem? = nil, within: Duration = .seconds(20), nodes: [Cluster.Node],
-        file: StaticString = #filePath, line: UInt = #line
+        sourceLocation: SourceLocation = #_sourceLocation
     ) async throws {
-        guard let onSystem = system ?? self._nodes.first(where: { !$0.isShuttingDown }) else {
+        guard let onSystem = system ?? self._nodes.withLock({ $0.first(where: { !$0.isShuttingDown }) }) else {
             fatalError("Must at least have 1 system present to use [\(#function)]")
         }
 
@@ -258,7 +310,7 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
             // all members on onMember should have reached this status (e.g. up)
             try await onSystem.cluster.waitFor(Set(nodes), atLeast: status, within: within)
         } catch {
-            throw testKit.error("\(error)", file: file, line: line)
+            throw testKit.error("\(error)", sourceLocation: sourceLocation)
         }
     }
 }
@@ -266,8 +318,8 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Printing information
 
-extension ClusteredActorSystemsXCTestCase {
-    public func pinfoMembership(_ system: ClusterSystem, file: StaticString = #fileID, line: UInt = #line) {
+extension ClusteredActorSystemsTestCase {
+    public func pinfoMembership(_ system: ClusterSystem, sourceLocation: SourceLocation = #_sourceLocation) {
         let testKit = self.testKit(system)
         let p = testKit.makeTestProbe(expecting: Cluster.Membership.self)
 
@@ -284,8 +336,8 @@ extension ClusteredActorSystemsXCTestCase {
             \(info)
             END OF MEMBERSHIP === ------------------------------------------------------------------------------ 
             """,
-            file: file,
-            line: line
+            file: sourceLocation.fileID,
+            line: sourceLocation.line
         )
     }
 }
@@ -293,15 +345,13 @@ extension ClusteredActorSystemsXCTestCase {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Captured Logs
 
-extension ClusteredActorSystemsXCTestCase {
+extension ClusteredActorSystemsTestCase {
     public func capturedLogs(of node: ClusterSystem) -> LogCapture {
-        guard let index = self._nodes.firstIndex(of: node) else {
-            fatalError("No such node: [\(node)] in [\(self._nodes)]!")
+        guard let index = self._nodes.withLock({ $0.firstIndex(of: node) }) else {
+            fatalError("No such node: [\(node)] in [\(self._nodes.withLock { $0 })]!")
         }
 
-        return self.lock.withLock {
-            self._logCaptures[index]
-        }
+        return self._logCaptures.withLock { $0[index] }
     }
 
     public func printCapturedLogs(of node: ClusterSystem) {
@@ -311,7 +361,7 @@ extension ClusteredActorSystemsXCTestCase {
     }
 
     public func printAllCapturedLogs() {
-        for node in self._nodes {
+        for node in self._nodes.withLock({ $0 }) {
             self.printCapturedLogs(of: node)
         }
     }
@@ -320,26 +370,28 @@ extension ClusteredActorSystemsXCTestCase {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Assertions
 
-extension ClusteredActorSystemsXCTestCase {
+extension ClusteredActorSystemsTestCase {
     public func assertAssociated(
         _ system: ClusterSystem, withAtLeast node: Cluster.Node,
         timeout: Duration? = nil, interval: Duration? = nil,
-        verbose: Bool = false, file: StaticString = #filePath, line: UInt = #line, column: UInt = #column
+        verbose: Bool = false,
+        sourceLocation: SourceLocation = #_sourceLocation
     ) throws {
         try self.assertAssociated(
             system, withAtLeast: [node], timeout: timeout, interval: interval,
-            verbose: verbose, file: file, line: line, column: column
+            verbose: verbose, sourceLocation: sourceLocation
         )
     }
 
     public func assertAssociated(
         _ system: ClusterSystem, withExactly node: Cluster.Node,
         timeout: Duration? = nil, interval: Duration? = nil,
-        verbose: Bool = false, file: StaticString = #filePath, line: UInt = #line, column: UInt = #column
+        verbose: Bool = false,
+        sourceLocation: SourceLocation = #_sourceLocation
     ) throws {
         try self.assertAssociated(
             system, withExactly: [node], timeout: timeout, interval: interval,
-            verbose: verbose, file: file, line: line, column: column
+            verbose: verbose, sourceLocation: sourceLocation
         )
     }
 
@@ -353,19 +405,20 @@ extension ClusteredActorSystemsXCTestCase {
         withExactly exactlyNodes: [Cluster.Node] = [],
         withAtLeast atLeastNodes: [Cluster.Node] = [],
         timeout: Duration? = nil, interval: Duration? = nil,
-        verbose: Bool = false, file: StaticString = #filePath, line: UInt = #line, column: UInt = #column
+        verbose: Bool = false,
+        sourceLocation: SourceLocation = #_sourceLocation
     ) throws {
         // FIXME: this is a weak workaround around not having "extensions" (unique object per actor system)
         // FIXME: this can be removed once issue #458 lands
 
         let testKit = self.testKit(system)
 
-        let probe = testKit.makeTestProbe(.prefixed(with: "probe-assertAssociated"), expecting: Set<Cluster.Node>.self, file: file, line: line)
+        let probe = testKit.makeTestProbe(.prefixed(with: "probe-assertAssociated"), expecting: Set<Cluster.Node>.self, sourceLocation: sourceLocation)
         defer { probe.stop() }
 
-        try testKit.eventually(within: timeout ?? .seconds(8), file: file, line: line, column: column) {
+        try testKit.eventually(within: timeout ?? .seconds(8), sourceLocation: sourceLocation) {
             system.cluster.ref.tell(.query(.associatedNodes(probe.ref))) // TODO: ask would be nice here
-            let associatedNodes = try probe.expectMessage(file: file, line: line)
+            let associatedNodes = try probe.expectMessage(sourceLocation: sourceLocation)
 
             if verbose {
                 pprint("                   Self: \(String(reflecting: system.settings.bindNode))")
@@ -428,7 +481,7 @@ extension ClusteredActorSystemsXCTestCase {
         on system: ClusterSystem, node: Cluster.Node,
         is expectedStatus: Cluster.MemberStatus,
         within: Duration,
-        file: StaticString = #filePath, line: UInt = #line
+        sourceLocation: SourceLocation = #_sourceLocation
     ) async throws {
         let testKit = self.testKit(system)
 
@@ -437,18 +490,17 @@ extension ClusteredActorSystemsXCTestCase {
         } catch let error as Cluster.MembershipError {
             switch error.underlying.error {
             case .notFound:
-                throw testKit.error("Expected [\(system.cluster.node)] to know about [\(node)] member", file: file, line: line)
+                throw testKit.error("Expected [\(system.cluster.node)] to know about [\(node)] member", sourceLocation: sourceLocation)
             case .statusRequirementNotMet(_, let foundMember):
                 throw testKit.error(
                     """
                     Expected \(reflecting: foundMember.node) on \(reflecting: system.cluster.node) \
                     to be seen as: [\(expectedStatus)], but was [\(foundMember.status)]
                     """,
-                    file: file,
-                    line: line
+                    sourceLocation: sourceLocation
                 )
             default:
-                throw testKit.error(error.description, file: file, line: line)
+                throw testKit.error(error.description, sourceLocation: sourceLocation)
             }
         }
     }
@@ -457,7 +509,7 @@ extension ClusteredActorSystemsXCTestCase {
         on system: ClusterSystem, node: Cluster.Node,
         atLeast expectedAtLeastStatus: Cluster.MemberStatus,
         within: Duration,
-        file: StaticString = #filePath, line: UInt = #line
+        sourceLocation: SourceLocation = #_sourceLocation
     ) async throws {
         let testKit = self.testKit(system)
 
@@ -466,18 +518,17 @@ extension ClusteredActorSystemsXCTestCase {
         } catch let error as Cluster.MembershipError {
             switch error.underlying.error {
             case .notFound:
-                throw testKit.error("Expected [\(system.cluster.node)] to know about [\(node)] member", file: file, line: line)
+                throw testKit.error("Expected [\(system.cluster.node)] to know about [\(node)] member", sourceLocation: sourceLocation)
             case .atLeastStatusRequirementNotMet(_, let foundMember):
                 throw testKit.error(
                     """
                     Expected \(reflecting: foundMember.node) on \(reflecting: system.cluster.node) \
                     to be seen as at-least: [\(expectedAtLeastStatus)], but was [\(foundMember.status)]
                     """,
-                    file: file,
-                    line: line
+                    sourceLocation: sourceLocation
                 )
             default:
-                throw testKit.error(error.description, file: file, line: line)
+                throw testKit.error(error.description, sourceLocation: sourceLocation)
             }
         }
     }
@@ -495,7 +546,7 @@ extension ClusteredActorSystemsXCTestCase {
         }
 
         guard events.first != nil else {
-            throw self._testKits.first!.fail("Expected to capture cluster event about \(node) being down or removed, yet none captured!")
+            throw self._testKits.withLock { $0.first!.fail("Expected to capture cluster event about \(node) being down or removed, yet none captured!") }
         }
     }
 
@@ -504,7 +555,7 @@ extension ClusteredActorSystemsXCTestCase {
     /// An error is thrown but NOT failing the test; use in pair with `testKit.eventually` to achieve the expected behavior.
     public func assertLeaderNode(
         on system: ClusterSystem, is expectedNode: Cluster.Node?,
-        file: StaticString = #filePath, line: UInt = #line
+        sourceLocation: SourceLocation = #_sourceLocation
     ) throws {
         let testKit = self.testKit(system)
         let p = testKit.makeTestProbe(expecting: Cluster.Membership.self)
@@ -524,7 +575,7 @@ extension ClusteredActorSystemsXCTestCase {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Resolve utilities, for resolving remote refs "on" a specific system
 
-extension ClusteredActorSystemsXCTestCase {
+extension ClusteredActorSystemsTestCase {
     public func resolveRef<M>(_ system: ClusterSystem, type: M.Type, id: ActorID, on targetSystem: ClusterSystem) -> _ActorRef<M> {
         // DO NOT TRY THIS AT HOME; we do this since we have no receptionist which could offer us references
         // first we manually construct the "right remote path", DO NOT ABUSE THIS IN REAL CODE (please) :-)

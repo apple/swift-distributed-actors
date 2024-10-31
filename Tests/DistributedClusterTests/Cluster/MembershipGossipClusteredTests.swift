@@ -16,38 +16,44 @@ import DistributedActorsTestKit
 @testable import DistributedCluster
 import Foundation
 import NIOSSL
-import XCTest
+import Testing
 
-final class MembershipGossipClusteredTests: ClusteredActorSystemsXCTestCase {
-    override func configureLogCapture(settings: inout LogCapture.Settings) {
-        settings.filterActorPaths = [
-            "/system/cluster",
-        ]
-        settings.excludeActorPaths = [
-            "/system/cluster/swim", // we assume it works fine
-            "/system/receptionist",
-        ]
-        settings.excludeGrep = [
-            "_TimerKey",
-            "schedule next gossip",
-            "Gossip payload updated",
-        ]
+@Suite(.timeLimit(.minutes(1)), .serialized)
+struct MembershipGossipClusteredTests {
+    let testCase: ClusteredActorSystemsTestCase
+
+    init() throws {
+        self.testCase = try ClusteredActorSystemsTestCase()
+        self.self.testCase.configureLogCapture = { settings in
+            settings.filterActorPaths = [
+                "/system/cluster",
+            ]
+            settings.excludeActorPaths = [
+                "/system/cluster/swim", // we assume it works fine
+                "/system/receptionist",
+            ]
+            settings.excludeGrep = [
+                "_TimerKey",
+                "schedule next gossip",
+                "Gossip payload updated",
+            ]
+        }
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Marking .down
-
+    @Test
     func test_down_beGossipedToOtherNodes() async throws {
         let strategy = ClusterSystemSettings.LeadershipSelectionSettings.lowestReachable(minNumberOfMembers: 3)
-        let first = await setUpNode("first") { settings in
+        let first = await self.testCase.setUpNode("first") { settings in
             settings.autoLeaderElection = strategy
             settings.onDownAction = .none
         }
-        let second = await setUpNode("second") { settings in
+        let second = await self.testCase.setUpNode("second") { settings in
             settings.autoLeaderElection = strategy
             settings.onDownAction = .none
         }
-        let third = await setUpNode("third") { settings in
+        let third = await self.testCase.setUpNode("third") { settings in
             settings.autoLeaderElection = strategy
             settings.onDownAction = .none
         }
@@ -55,36 +61,36 @@ final class MembershipGossipClusteredTests: ClusteredActorSystemsXCTestCase {
         first.cluster.join(endpoint: second.cluster.node.endpoint)
         third.cluster.join(endpoint: second.cluster.node.endpoint)
 
-        try assertAssociated(first, withAtLeast: second.cluster.node)
-        try assertAssociated(second, withAtLeast: third.cluster.node)
-        try assertAssociated(first, withAtLeast: third.cluster.node)
+        try self.testCase.assertAssociated(first, withAtLeast: second.cluster.node)
+        try self.testCase.assertAssociated(second, withAtLeast: third.cluster.node)
+        try self.testCase.assertAssociated(first, withAtLeast: third.cluster.node)
 
-        try await self.assertMemberStatus(on: second, node: first.cluster.node, is: .up, within: .seconds(10))
-        try await self.assertMemberStatus(on: second, node: second.cluster.node, is: .up, within: .seconds(10))
-        try await self.assertMemberStatus(on: second, node: third.cluster.node, is: .up, within: .seconds(10))
+        try await self.testCase.assertMemberStatus(on: second, node: first.cluster.node, is: .up, within: .seconds(10))
+        try await self.testCase.assertMemberStatus(on: second, node: second.cluster.node, is: .up, within: .seconds(10))
+        try await self.testCase.assertMemberStatus(on: second, node: third.cluster.node, is: .up, within: .seconds(10))
 
-        let firstEvents = await testKit(first).spawnClusterEventStreamTestProbe()
-        let secondEvents = await testKit(second).spawnClusterEventStreamTestProbe()
-        let thirdEvents = await testKit(third).spawnClusterEventStreamTestProbe()
+        let firstEvents = await self.testCase.testKit(first).spawnClusterEventStreamTestProbe()
+        let secondEvents = await self.testCase.testKit(second).spawnClusterEventStreamTestProbe()
+        let thirdEvents = await self.testCase.testKit(third).spawnClusterEventStreamTestProbe()
 
         second.cluster.down(endpoint: third.cluster.node.endpoint)
 
-        try self.assertMemberDown(firstEvents, node: third.cluster.node)
-        try self.assertMemberDown(secondEvents, node: third.cluster.node)
-        try self.assertMemberDown(thirdEvents, node: third.cluster.node)
+        try self.testCase.assertMemberDown(firstEvents, node: third.cluster.node)
+        try self.testCase.assertMemberDown(secondEvents, node: third.cluster.node)
+        try self.testCase.assertMemberDown(thirdEvents, node: third.cluster.node)
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: SWIM + joining
-
+    @Test
     func test_join_swimDiscovered_thirdNode() async throws {
-        let first = await setUpNode("first") { settings in
+        let first = await self.testCase.setUpNode("first") { settings in
             settings.endpoint.port = 7111
         }
-        let second = await setUpNode("second") { settings in
+        let second = await self.testCase.setUpNode("second") { settings in
             settings.endpoint.port = 8222
         }
-        let third = await setUpNode("third") { settings in
+        let third = await self.testCase.setUpNode("third") { settings in
             settings.endpoint.port = 9333
         }
 
@@ -95,22 +101,22 @@ final class MembershipGossipClusteredTests: ClusteredActorSystemsXCTestCase {
         third.cluster.join(endpoint: second.cluster.node.endpoint)
 
         // confirm 1
-        try assertAssociated(first, withAtLeast: second.cluster.node)
-        try assertAssociated(second, withAtLeast: first.cluster.node)
+        try self.testCase.assertAssociated(first, withAtLeast: second.cluster.node)
+        try self.testCase.assertAssociated(second, withAtLeast: first.cluster.node)
         pinfo("Associated: first <~> second")
         // confirm 2
-        try assertAssociated(third, withAtLeast: second.cluster.node)
-        try assertAssociated(second, withAtLeast: third.cluster.node)
+        try self.testCase.assertAssociated(third, withAtLeast: second.cluster.node)
+        try self.testCase.assertAssociated(second, withAtLeast: third.cluster.node)
         pinfo("Associated: second <~> third")
 
         // 3.1. first should discover third
         // confirm 3.1
-        try assertAssociated(first, withAtLeast: third.cluster.node)
+        try self.testCase.assertAssociated(first, withAtLeast: third.cluster.node)
         pinfo("Associated: first ~> third")
 
         // 3.2. third should discover first
         // confirm 3.2
-        try assertAssociated(third, withAtLeast: first.cluster.node)
+        try self.testCase.assertAssociated(third, withAtLeast: first.cluster.node)
         pinfo("Associated: third ~> first")
 
         // excellent, all nodes know each other

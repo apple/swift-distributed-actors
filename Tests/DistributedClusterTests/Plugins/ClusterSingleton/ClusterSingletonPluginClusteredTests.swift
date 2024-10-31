@@ -17,34 +17,41 @@ import Distributed
 import DistributedActorsTestKit
 @testable import DistributedCluster
 import Logging
-import XCTest
+import Testing
 
-final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCase {
-    override func configureLogCapture(settings: inout LogCapture.Settings) {
-        settings.excludeActorPaths = [
-            "/system/swim",
-            "/system/cluster/swim",
-            "/system/cluster",
-            "/system/cluster/gossip",
-            "/system/receptionist",
-        ]
+@Suite(.timeLimit(.minutes(1)), .serialized)
+struct ClusterSingletonPluginClusteredTests {
+    let testCase: ClusteredActorSystemsTestCase
+
+    init() throws {
+        self.testCase = try ClusteredActorSystemsTestCase()
+        self.self.testCase.configureLogCapture = { settings in
+            settings.excludeActorPaths = [
+                "/system/swim",
+                "/system/cluster/swim",
+                "/system/cluster",
+                "/system/cluster/gossip",
+                "/system/receptionist",
+            ]
+        }
     }
 
+    @Test
     func test_singletonByClusterLeadership_happyPath() async throws {
         var singletonSettings = ClusterSingletonSettings()
         singletonSettings.allocationStrategy = .byLeadership
 
-        let first = await self.setUpNode("first") { settings in
+        let first = await self.testCase.setUpNode("first") { settings in
             settings.endpoint.port = 7111
             settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
             settings += ClusterSingletonPlugin()
         }
-        let second = await self.setUpNode("second") { settings in
+        let second = await self.testCase.setUpNode("second") { settings in
             settings.endpoint.port = 8222
             settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
             settings += ClusterSingletonPlugin()
         }
-        let third = await self.setUpNode("third") { settings in
+        let third = await self.testCase.setUpNode("third") { settings in
             settings.endpoint.port = 9333
             settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
             settings += ClusterSingletonPlugin()
@@ -66,24 +73,25 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
         third.cluster.join(endpoint: first.cluster.node.endpoint)
 
         // `first` will be the leader (lowest address) and runs the singleton
-        try await self.ensureNodes(.up, on: first, within: .seconds(10), nodes: second.cluster.node, third.cluster.node)
+        try await self.testCase.ensureNodes(.up, on: first, within: .seconds(10), nodes: second.cluster.node, third.cluster.node)
 
-        try await self.assertSingletonRequestReply(first, singleton: ref1, greetingName: "Alice", expectedPrefix: "Hello-1 Alice!")
-        try await self.assertSingletonRequestReply(second, singleton: ref2, greetingName: "Bob", expectedPrefix: "Hello-1 Bob!")
-        try await self.assertSingletonRequestReply(third, singleton: ref3, greetingName: "Charlie", expectedPrefix: "Hello-1 Charlie!")
+        try await self.assertSingletonRequestReply(self.testCase, first, singleton: ref1, greetingName: "Alice", expectedPrefix: "Hello-1 Alice!")
+        try await self.assertSingletonRequestReply(self.testCase, second, singleton: ref2, greetingName: "Bob", expectedPrefix: "Hello-1 Bob!")
+        try await self.assertSingletonRequestReply(self.testCase, third, singleton: ref3, greetingName: "Charlie", expectedPrefix: "Hello-1 Charlie!")
     }
 
+    @Test
     func test_singleton_lifecycle() async throws {
         var singletonSettings = ClusterSingletonSettings()
         singletonSettings.allocationStrategy = .byLeadership
 
-        let first = await self.setUpNode("first") { settings in
+        let first = await self.testCase.setUpNode("first") { settings in
             settings.endpoint.port = 7111
             settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 1) // just myself
             settings.plugins.install(plugin: ClusterSingletonPlugin())
         }
 
-        let probe = self.testKit(first).makeTestProbe("p1", expecting: String.self)
+        let probe = self.testCase.testKit(first).makeTestProbe("p1", expecting: String.self)
 
         let name = "the-one"
         _ = try await first.singleton.host(name: name, settings: singletonSettings) { actorSystem in
@@ -104,22 +112,23 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
         try probe.expectMessage(prefix: "deinit")
     }
 
+    @Test
     func test_singletonByClusterLeadership_stashMessagesIfNoLeader() async throws {
         var singletonSettings = ClusterSingletonSettings()
         singletonSettings.allocationStrategy = .byLeadership
         singletonSettings.allocationTimeout = .seconds(15)
 
-        let first = await self.setUpNode("first") { settings in
+        let first = await self.testCase.setUpNode("first") { settings in
             settings.endpoint.port = 7111
             settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
             settings += ClusterSingletonPlugin()
         }
-        let second = await self.setUpNode("second") { settings in
+        let second = await self.testCase.setUpNode("second") { settings in
             settings.endpoint.port = 8222
             settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
             settings += ClusterSingletonPlugin()
         }
-        let third = await self.setUpNode("third") { settings in
+        let third = await self.testCase.setUpNode("third") { settings in
             settings.endpoint.port = 9333
             settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
             settings += ClusterSingletonPlugin()
@@ -181,27 +190,28 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
         }
     }
 
+    @Test
     func test_singletonByClusterLeadership_withLeaderChange() async throws {
         var singletonSettings = ClusterSingletonSettings()
         singletonSettings.allocationStrategy = .byLeadership
         singletonSettings.allocationTimeout = .seconds(15)
 
-        let first = await self.setUpNode("first") { settings in
+        let first = await self.testCase.setUpNode("first") { settings in
             settings.endpoint.port = 7111
             settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
             settings += ClusterSingletonPlugin()
         }
-        let second = await self.setUpNode("second") { settings in
+        let second = await self.testCase.setUpNode("second") { settings in
             settings.endpoint.port = 8222
             settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
             settings += ClusterSingletonPlugin()
         }
-        let third = await self.setUpNode("third") { settings in
+        let third = await self.testCase.setUpNode("third") { settings in
             settings.endpoint.port = 9333
             settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
             settings += ClusterSingletonPlugin()
         }
-        let fourth = await self.setUpNode("fourth") { settings in
+        let fourth = await self.testCase.setUpNode("fourth") { settings in
             settings.endpoint.port = 7444
             settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
             settings += ClusterSingletonPlugin()
@@ -226,24 +236,24 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
         third.cluster.join(endpoint: first.cluster.node.endpoint)
 
         // `first` will be the leader (lowest address) and runs the singleton
-        try await self.ensureNodes(.up, on: first, within: .seconds(10), nodes: second.cluster.node, third.cluster.node)
+        try await self.testCase.ensureNodes(.up, on: first, within: .seconds(10), nodes: second.cluster.node, third.cluster.node)
         pinfo("Nodes up: \([first.cluster.node, second.cluster.node, third.cluster.node])")
 
-        try await self.assertSingletonRequestReply(first, singleton: ref1, greetingName: "Alice", expectedPrefix: "Hello-1 Alice!")
-        try await self.assertSingletonRequestReply(second, singleton: ref2, greetingName: "Bob", expectedPrefix: "Hello-1 Bob!")
-        try await self.assertSingletonRequestReply(third, singleton: ref3, greetingName: "Charlie", expectedPrefix: "Hello-1 Charlie!")
+        try await self.assertSingletonRequestReply(self.testCase, first, singleton: ref1, greetingName: "Alice", expectedPrefix: "Hello-1 Alice!")
+        try await self.assertSingletonRequestReply(self.testCase, second, singleton: ref2, greetingName: "Bob", expectedPrefix: "Hello-1 Bob!")
+        try await self.assertSingletonRequestReply(self.testCase, third, singleton: ref3, greetingName: "Charlie", expectedPrefix: "Hello-1 Charlie!")
         pinfo("All three nodes communicated with singleton")
 
         let firstNode = first.cluster.node
         first.cluster.leave()
 
         // Make sure that `second` and `third` see `first` as down and become leader-less
-        try await self.assertMemberStatus(on: second, node: firstNode, is: .down, within: .seconds(10))
-        try await self.assertMemberStatus(on: third, node: firstNode, is: .down, within: .seconds(10))
+        try await self.testCase.assertMemberStatus(on: second, node: firstNode, is: .down, within: .seconds(10))
+        try await self.testCase.assertMemberStatus(on: third, node: firstNode, is: .down, within: .seconds(10))
 
-        try self.testKit(second).eventually(within: .seconds(10)) {
-            try self.assertLeaderNode(on: second, is: nil)
-            try self.assertLeaderNode(on: third, is: nil)
+        try self.testCase.testKit(second).eventually(within: .seconds(10)) {
+            try self.testCase.assertLeaderNode(on: second, is: nil)
+            try self.testCase.assertLeaderNode(on: third, is: nil)
         }
         pinfo("Endpoint \(firstNode) left cluster...")
 
@@ -285,7 +295,7 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
         let ref2Task = requestReplyTask(singleton: ref2, greetingName: "Bob")
         let ref3Task = requestReplyTask(singleton: ref2, greetingName: "Charlie")
 
-        try await self.ensureNodes(.up, on: second, within: .seconds(10), nodes: third.cluster.node, fourth.cluster.node)
+        try await self.testCase.ensureNodes(.up, on: second, within: .seconds(10), nodes: third.cluster.node, fourth.cluster.node)
         pinfo("Fourth node joined, will become leader; Members now: \([fourth.cluster.node, second.cluster.node, third.cluster.node])")
 
         ref2Task.cancel()
@@ -323,17 +333,18 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
         pinfo("Nodes communicated successfully with singleton on [fourth]")
     }
 
+    @Test
     func test_remoteCallShouldFailAfterAllocationTimedOut() async throws {
         var singletonSettings = ClusterSingletonSettings()
         singletonSettings.allocationStrategy = .byLeadership
         singletonSettings.allocationTimeout = .milliseconds(100)
 
-        let first = await self.setUpNode("first") { settings in
+        let first = await self.testCase.setUpNode("first") { settings in
             settings.endpoint.port = 7111
             settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
             settings += ClusterSingletonPlugin()
         }
-        let second = await self.setUpNode("second") { settings in
+        let second = await self.testCase.setUpNode("second") { settings in
             settings.endpoint.port = 8222
             settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
             settings += ClusterSingletonPlugin()
@@ -351,18 +362,18 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
         first.cluster.join(endpoint: second.cluster.node.endpoint)
 
         // `first` will be the leader (lowest address) and runs the singleton
-        try await self.ensureNodes(.up, on: first, nodes: second.cluster.node)
+        try await self.testCase.ensureNodes(.up, on: first, nodes: second.cluster.node)
 
-        try await self.assertSingletonRequestReply(second, singleton: ref2, greetingName: "Bob", expectedPrefix: "Hello-1 Bob!")
+        try await self.assertSingletonRequestReply(self.testCase, second, singleton: ref2, greetingName: "Bob", expectedPrefix: "Hello-1 Bob!")
 
         let firstNode = first.cluster.node
         first.cluster.leave()
 
-        try await self.assertMemberStatus(on: second, node: firstNode, is: .down, within: .seconds(10))
+        try await self.testCase.assertMemberStatus(on: second, node: firstNode, is: .down, within: .seconds(10))
 
         // Make sure that `second` and `third` see `first` as down and become leader-less
-        try self.testKit(second).eventually(within: .seconds(10)) {
-            try self.assertLeaderNode(on: second, is: nil)
+        try self.testCase.testKit(second).eventually(within: .seconds(10)) {
+            try self.testCase.assertLeaderNode(on: second, is: nil)
         }
 
         // This should take us over allocation timeout. Singleton is nil since there is no leader.
@@ -372,13 +383,13 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
             _ = try await ref2.greet(name: "Bob")
         }
         guard case ClusterSingletonError.allocationTimeout = error else {
-            throw self.testKit(second).fail("Expected ClusterSingletonError.allocationTimeout, got \(error)")
+            throw self.testCase.testKit(second).fail("Expected ClusterSingletonError.allocationTimeout, got \(error)")
         }
     }
 
     /// Since during re-balancing it may happen that a message gets lost, we send messages a few times and only if none "got through" it would be a serious error.
-    private func assertSingletonRequestReply(_ system: ClusterSystem, singleton: TheSingleton, greetingName: String, expectedPrefix: String) async throws {
-        let testKit: ActorTestKit = self.testKit(system)
+    private func assertSingletonRequestReply(_ testCase: ClusteredActorSystemsTestCase, _ system: ClusterSystem, singleton: TheSingleton, greetingName: String, expectedPrefix: String) async throws {
+        let testKit: ActorTestKit = self.testCase.testKit(system)
 
         var attempts = 0
         try await testKit.eventually(within: .seconds(10)) {

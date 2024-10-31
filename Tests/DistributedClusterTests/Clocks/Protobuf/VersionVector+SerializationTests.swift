@@ -14,49 +14,56 @@
 
 import DistributedActorsTestKit
 @testable import DistributedCluster
-import XCTest
+import Testing
 
-final class VersionVectorSerializationTests: SingleClusterSystemXCTestCase {
-    var node: Cluster.Node {
-        self.system.cluster.node
+@Suite(.timeLimit(.minutes(1)), .serialized)
+struct VersionVectorSerializationTests {
+    let testCase: SingleClusterSystemTestCase
+
+    init() async throws {
+        self.testCase = try await SingleClusterSystemTestCase(name: String(describing: type(of: self)))
     }
-
-    lazy var idA = try! ActorID(local: node, path: ActorPath._user.appending("A"), incarnation: .wellKnown)
-    lazy var idB = try! ActorID(local: node, path: ActorPath._user.appending("B"), incarnation: .wellKnown)
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: VersionVector
+    @Test
 
     func test_serializationOf_VersionVector() throws {
-        let vv = VersionVector([(.actorID(self.idA), 2), (.actorID(self.idB), 5)])
+        let idA = try ActorID(local: self.testCase.system.cluster.node, path: ActorPath._user.appending("A"), incarnation: .wellKnown)
+        let idB = try ActorID(local: self.testCase.system.cluster.node, path: ActorPath._user.appending("B"), incarnation: .wellKnown)
 
-        let serialized = try system.serialization.serialize(vv)
-        let deserialized = try system.serialization.deserialize(as: VersionVector.self, from: serialized)
+        let vv = VersionVector([(.actorID(idA), 2), (.actorID(idB), 5)])
+
+        let serialized = try self.testCase.system.serialization.serialize(vv)
+        let deserialized = try self.testCase.system.serialization.deserialize(as: VersionVector.self, from: serialized)
 
         deserialized.state.count.shouldEqual(2) // replicas A and B
-        "\(deserialized)".shouldContain("actor:sact://VersionVectorSerializationTests@127.0.0.1:9001/user/A: 2")
-        "\(deserialized)".shouldContain("actor:sact://VersionVectorSerializationTests@127.0.0.1:9001/user/B: 5")
+        "\(deserialized)".shouldContain("actor:sact://SingleClusterSystemTestCase@127.0.0.1:9001/user/A: 2")
+        "\(deserialized)".shouldContain("actor:sact://SingleClusterSystemTestCase@127.0.0.1:9001/user/B: 5")
     }
 
+    @Test
     func test_serializationOf_VersionVector_empty() throws {
         let vv = VersionVector()
 
-        let serialized = try system.serialization.serialize(vv)
-        let deserialized = try system.serialization.deserialize(as: VersionVector.self, from: serialized)
+        let serialized = try self.testCase.system.serialization.serialize(vv)
+        let deserialized = try self.testCase.system.serialization.deserialize(as: VersionVector.self, from: serialized)
 
         deserialized.isEmpty.shouldBeTrue()
     }
 
     // ==== -----------------------------------------------------------------------------------------------------------
     // MARK: VersionDot
-
+    @Test
     func test_serializationOf_VersionDot() throws {
-        let dot = VersionDot(.actorID(self.idA), 2)
+        let idA = try ActorID(local: self.testCase.system.cluster.node, path: ActorPath._user.appending("A"), incarnation: .wellKnown)
 
-        let serialized = try system.serialization.serialize(dot)
-        let deserialized = try system.serialization.deserialize(as: VersionDot.self, from: serialized)
+        let dot = VersionDot(.actorID(idA), 2)
 
-        "\(deserialized)".shouldContain("actor:sact://VersionVectorSerializationTests@127.0.0.1:9001/user/A")
+        let serialized = try self.testCase.system.serialization.serialize(dot)
+        let deserialized = try self.testCase.system.serialization.deserialize(as: VersionDot.self, from: serialized)
+
+        "\(deserialized)".shouldContain("actor:sact://SingleClusterSystemTestCase@127.0.0.1:9001/user/A")
         deserialized.version.shouldEqual(2)
     }
 }

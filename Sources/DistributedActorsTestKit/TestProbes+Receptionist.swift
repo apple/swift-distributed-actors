@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 @testable import DistributedCluster
-import XCTest
+import Testing
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ActorTestProbe: Receptionist expectations
@@ -25,21 +25,21 @@ extension ActorTestProbe where Message == _Reception.Listing<_ActorRef<String>> 
     public func eventuallyExpectListing(
         expected: Set<_ActorRef<String>>, within timeout: Duration,
         verbose: Bool = false,
-        file: StaticString = #filePath, line: UInt = #line, column: UInt = #column
+        sourceLocation: SourceLocation = #_sourceLocation
     ) throws {
         do {
-            let listing = try self.fishForMessages(within: timeout, file: file, line: line) {
+            let listing = try self.fishForMessages(within: timeout, sourceLocation: sourceLocation) {
                 if verbose {
-                    pinfo("Received listing: \($0.refs.count)", file: file, line: line)
+                    pinfo("Received listing: \($0.refs.count)", file: sourceLocation.fileID, line: sourceLocation.line)
                 }
 
                 if $0.refs.count == expected.count { return .catchComplete }
                 else { return .ignore }
             }.first!
 
-            listing.refs.map(\.path).sorted().shouldEqual(expected.map(\.id.path).sorted(), file: file, line: line, column: column)
+            listing.refs.map(\.path).sorted().shouldEqual(expected.map(\.id.path).sorted(), sourceLocation: sourceLocation)
         } catch {
-            throw self.error("Expected \(expected), error: \(error)", file: file, line: line)
+            throw self.error("Expected \(expected), error: \(error)", sourceLocation: sourceLocation)
         }
     }
 }

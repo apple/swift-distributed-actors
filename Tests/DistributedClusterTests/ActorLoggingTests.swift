@@ -15,26 +15,30 @@
 import DistributedActorsTestKit
 @testable import DistributedCluster
 import Foundation
-import XCTest
+import Testing
 
-final class ActorLoggingTests: SingleClusterSystemXCTestCase {
-    var exampleSenderPath: ActorPath!
+@Suite(.timeLimit(.minutes(1)), .serialized)
+struct ActorLoggingTests {
+    let exampleSenderPath: ActorPath
+    let testCase: SingleClusterSystemTestCase
 
-    override func setUp() {
-        super.setUp()
+    init() async throws {
+        self.testCase = try await SingleClusterSystemTestCase(name: String(describing: type(of: self)))
 
-        self.exampleSenderPath = try! ActorPath(root: "user")
-        self.exampleSenderPath.append(segment: try! ActorPathSegment("hello"))
-        self.exampleSenderPath.append(segment: try! ActorPathSegment("deep"))
-        self.exampleSenderPath.append(segment: try! ActorPathSegment("path"))
-        self.exampleSenderPath.append(segment: try! ActorPathSegment("avoid-rendering-this-if-possible"))
+        var exampleSenderPath = try ActorPath(root: "user")
+        exampleSenderPath.append(segment: try! ActorPathSegment("hello"))
+        exampleSenderPath.append(segment: try! ActorPathSegment("deep"))
+        exampleSenderPath.append(segment: try! ActorPathSegment("path"))
+        exampleSenderPath.append(segment: try! ActorPathSegment("avoid-rendering-this-if-possible"))
+        self.exampleSenderPath = exampleSenderPath
     }
 
+    @Test
     func test_actorLogger_shouldIncludeActorPath() throws {
-        let p = self.testKit.makeTestProbe("p", expecting: String.self)
-        let r = self.testKit.makeTestProbe("r", expecting: Rendered.self)
+        let p = self.testCase.testKit.makeTestProbe("p", expecting: String.self)
+        let r = self.testCase.testKit.makeTestProbe("r", expecting: Rendered.self)
 
-        let ref: _ActorRef<String> = try system._spawn(
+        let ref: _ActorRef<String> = try self.testCase.system._spawn(
             "myName",
             .setup { context in
                 // ~~~~~~~ (imagine as) set by swift-distributed-actors library internally ~~~~~~~~~~
@@ -58,11 +62,12 @@ final class ActorLoggingTests: SingleClusterSystemXCTestCase {
         // try r.expectNoMessage(for: .milliseconds(100))
     }
 
+    @Test
     func test_actorLogger_shouldNotRenderLazyMetadataIfLogIsUnderDefinedLogLevel() throws {
-        let p = self.testKit.makeTestProbe("p2", expecting: String.self)
-        let r = self.testKit.makeTestProbe("r2", expecting: Rendered.self)
+        let p = self.testCase.testKit.makeTestProbe("p2", expecting: String.self)
+        let r = self.testCase.testKit.makeTestProbe("r2", expecting: Rendered.self)
 
-        let ref: _ActorRef<String> = try system._spawn(
+        let ref: _ActorRef<String> = try self.testCase.system._spawn(
             "myName",
             .setup { context in
                 // ~~~~~~~ (imagine as) set by swift-distributed-actors library internally ~~~~~~~~~~
@@ -87,11 +92,12 @@ final class ActorLoggingTests: SingleClusterSystemXCTestCase {
         try r.expectNoMessage(for: .milliseconds(100))
     }
 
+    @Test
     func test_actorLogger_shouldNotRenderALazyValueIfWeOverwriteItUsingLocalMetadata() throws {
-        let p = self.testKit.makeTestProbe("p2", expecting: String.self)
-        let r = self.testKit.makeTestProbe("r2", expecting: Rendered.self)
+        let p = self.testCase.testKit.makeTestProbe("p2", expecting: String.self)
+        let r = self.testCase.testKit.makeTestProbe("r2", expecting: Rendered.self)
 
-        let ref: _ActorRef<String> = try system._spawn(
+        let ref: _ActorRef<String> = try self.testCase.system._spawn(
             "myName",
             .setup { context in
                 // ~~~~~~~ (imagine as) set by swift-distributed-actors library internally ~~~~~~~~~~

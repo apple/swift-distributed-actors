@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedCluster
-import XCTest
+import Testing
 
 import Distributed
 

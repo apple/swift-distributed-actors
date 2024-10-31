@@ -16,21 +16,26 @@ import DistributedActorsTestKit
 @testable import DistributedCluster
 import Foundation
 import NIOSSL
-import XCTest
+import Testing
 
-final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase {
+@Suite(.timeLimit(.minutes(1)), .serialized)
+struct ClusterLeaderActionsClusteredTests {
+    let testCase: ClusteredActorSystemsTestCase
+
+    init() throws {
+        self.testCase = try ClusteredActorSystemsTestCase()
+    }
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: leader decision: .joining -> .up
-
+    @Test(.disabled("!!! Skipping known flaky test !!!")) // FIXME(distributed): revisit and fix https://github.com/apple/swift-distributed-actors/issues/945
     func test_singleLeader() async throws {
-        throw XCTSkip("!!! Skipping known flaky test \(#function) !!!") // FIXME(distributed): revisit and fix https://github.com/apple/swift-distributed-actors/issues/945
-
-        let first = await setUpNode("first") { settings in
+        let first = await self.testCase.setUpNode("first") { settings in
             settings.endpoint.port = 7111
             settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 1)
         }
 
-        let p = self.testKit(first).makeTestProbe(expecting: Cluster.Event.self)
+        let p = self.testCase.testKit(first).makeTestProbe(expecting: Cluster.Event.self)
 
         _ = try first._spawn(
             "selfishSingleLeader",
@@ -52,24 +57,25 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
         switch try p.expectMessage() {
         case .leadershipChange(let change):
             guard let leader = change.newLeader else {
-                throw self.testKit(first).fail("Expected \(first.cluster.node) to be leader")
+                throw self.testCase.testKit(first).fail("Expected \(first.cluster.node) to be leader")
             }
             leader.node.shouldEqual(first.cluster.node)
         default:
-            throw self.testKit(first).fail("Expected leader change event")
+            throw self.testCase.testKit(first).fail("Expected leader change event")
         }
     }
 
+    @Test
     func test_joining_to_up_decisionByLeader() async throws {
-        let first = await setUpNode("first") { settings in
+        let first = await self.testCase.setUpNode("first") { settings in
             settings.endpoint.port = 7111
             settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
         }
-        let second = await setUpNode("second") { settings in
+        let second = await self.testCase.setUpNode("second") { settings in
             settings.endpoint.port = 8222
             settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
         }
-        let third = await setUpNode("third") { settings in
+        let third = await self.testCase.setUpNode("third") { settings in
             settings.endpoint.port = 9333
             settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
         }
@@ -77,23 +83,24 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
         first.cluster.join(endpoint: second.cluster.node.endpoint)
         third.cluster.join(endpoint: second.cluster.node.endpoint)
 
-        try assertAssociated(first, withAtLeast: second.cluster.node)
-        try assertAssociated(second, withAtLeast: third.cluster.node)
-        try assertAssociated(first, withAtLeast: third.cluster.node)
+        try self.testCase.assertAssociated(first, withAtLeast: second.cluster.node)
+        try self.testCase.assertAssociated(second, withAtLeast: third.cluster.node)
+        try self.testCase.assertAssociated(first, withAtLeast: third.cluster.node)
 
-        try await self.assertMemberStatus(on: first, node: first.cluster.node, is: .up, within: .seconds(10))
-        try await self.assertMemberStatus(on: first, node: second.cluster.node, is: .up, within: .seconds(10))
-        try await self.assertMemberStatus(on: first, node: third.cluster.node, is: .up, within: .seconds(10))
+        try await self.testCase.assertMemberStatus(on: first, node: first.cluster.node, is: .up, within: .seconds(10))
+        try await self.testCase.assertMemberStatus(on: first, node: second.cluster.node, is: .up, within: .seconds(10))
+        try await self.testCase.assertMemberStatus(on: first, node: third.cluster.node, is: .up, within: .seconds(10))
 
-        try await self.assertMemberStatus(on: second, node: first.cluster.node, is: .up, within: .seconds(10))
-        try await self.assertMemberStatus(on: second, node: second.cluster.node, is: .up, within: .seconds(10))
-        try await self.assertMemberStatus(on: second, node: third.cluster.node, is: .up, within: .seconds(10))
+        try await self.testCase.assertMemberStatus(on: second, node: first.cluster.node, is: .up, within: .seconds(10))
+        try await self.testCase.assertMemberStatus(on: second, node: second.cluster.node, is: .up, within: .seconds(10))
+        try await self.testCase.assertMemberStatus(on: second, node: third.cluster.node, is: .up, within: .seconds(10))
 
-        try await self.assertMemberStatus(on: third, node: first.cluster.node, is: .up, within: .seconds(10))
-        try await self.assertMemberStatus(on: third, node: second.cluster.node, is: .up, within: .seconds(10))
-        try await self.assertMemberStatus(on: third, node: third.cluster.node, is: .up, within: .seconds(10))
+        try await self.testCase.assertMemberStatus(on: third, node: first.cluster.node, is: .up, within: .seconds(10))
+        try await self.testCase.assertMemberStatus(on: third, node: second.cluster.node, is: .up, within: .seconds(10))
+        try await self.testCase.assertMemberStatus(on: third, node: third.cluster.node, is: .up, within: .seconds(10))
     }
 
+    @Test
     func test_joining_to_up_earlyYetStillLettingAllNodesKnowAboutLatestMembershipStatus() async throws {
         // This showcases a racy situation, where we allow a leader elected when at least 2 nodes joined
         // yet we actually join 3 nodes -- meaning that the joining up is _slightly_ racy:
@@ -109,23 +116,23 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
         // In other words, this test exercises that there must be _some_ (gossip, or similar "push" membership once a new member joins),
         // to a new member.
         //
-        let first = await setUpNode("first") { settings in
+        let first = await self.testCase.setUpNode("first") { settings in
             settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
         }
-        let second = await setUpNode("second") { settings in
+        let second = await self.testCase.setUpNode("second") { settings in
             settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
         }
-        let third = await setUpNode("third") { settings in
+        let third = await self.testCase.setUpNode("third") { settings in
             settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
         }
 
-        let fourth = await setUpNode("fourth") { settings in
+        let fourth = await self.testCase.setUpNode("fourth") { settings in
             settings.autoLeaderElection = .none // even without election running, it will be notified by things by the others
         }
 
         first.cluster.join(endpoint: second.cluster.node.endpoint)
         third.cluster.join(endpoint: second.cluster.node.endpoint)
-        try await self.ensureNodes(.up, within: .seconds(10), nodes: first.cluster.node, second.cluster.node, third.cluster.node)
+        try await self.testCase.ensureNodes(.up, within: .seconds(10), nodes: first.cluster.node, second.cluster.node, third.cluster.node)
 
         // Even the fourth node now could join and be notified about all the existing up members.
         // It does not even have to run any leadership election -- there are leaders in the cluster.
@@ -133,9 +140,10 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
         // We only join one arbitrary node, we will be notified about all nodes:
         fourth.cluster.join(endpoint: third.cluster.node.endpoint)
 
-        try await self.ensureNodes(.up, within: .seconds(10), nodes: first.cluster.node, second.cluster.node, third.cluster.node, fourth.cluster.node)
+        try await self.testCase.ensureNodes(.up, within: .seconds(10), nodes: first.cluster.node, second.cluster.node, third.cluster.node, fourth.cluster.node)
     }
 
+    @Test
     func test_up_ensureAllSubscribersGetMovingUpEvents() async throws {
         // it shall perform its duties. This tests however quickly shows that lack of letting the "third" node,
         // via gossip or some other way about the ->up of other nodes once it joins the "others", it'd be stuck waiting for
@@ -144,22 +152,22 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
         // In other words, this test exercises that there must be _some_ (gossip, or similar "push" membership once a new member joins),
         // to a new member.
         //
-        let first = await setUpNode("first") { settings in
+        let first = await self.testCase.setUpNode("first") { settings in
             settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
         }
-        let second = await setUpNode("second") { settings in
+        let second = await self.testCase.setUpNode("second") { settings in
             settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
         }
 
-        let p1 = self.testKit(first).makeTestProbe(expecting: Cluster.Event.self)
+        let p1 = self.testCase.testKit(first).makeTestProbe(expecting: Cluster.Event.self)
         await first.cluster.events._subscribe(p1.ref)
-        let p2 = self.testKit(second).makeTestProbe(expecting: Cluster.Event.self)
+        let p2 = self.testCase.testKit(second).makeTestProbe(expecting: Cluster.Event.self)
         await second.cluster.events._subscribe(p2.ref)
 
         first.cluster.join(endpoint: second.cluster.node.endpoint)
 
         // this ensures that the membership, as seen in ClusterShell converged on all members being up
-        try await self.ensureNodes(.up, nodes: first.cluster.node, second.cluster.node)
+        try await self.testCase.ensureNodes(.up, nodes: first.cluster.node, second.cluster.node)
 
         // the following tests confirm that the manually subscribed actors, got all the events they expected
         func assertExpectedClusterEvents(events: [Cluster.Event], probe: ActorTestProbe<Cluster.Event>) throws { // the specific type of snapshot we get is slightly racy: it could be .empty or contain already the node itself
@@ -200,7 +208,7 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
             let event = try probe.expectMessage()
             pinfo("Captured event: \(event)")
             guard !events.contains(event) else {
-                throw self._testKits.first!.fail("Received DUPLICATE cluster event: \(event), while already received: \(lineByLine: events). Duplicate events are illegal, this is a bug.")
+                throw self.testCase._testKits.withLock { $0.first!.fail("Received DUPLICATE cluster event: \(event), while already received: \(lineByLine: events). Duplicate events are illegal, this is a bug.") }
             }
             try membership.apply(event: event)
             events.append(event)
@@ -212,41 +220,41 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: .down -> removal
-
+    @Test
     func test_down_to_removed_ensureRemovalHappensWhenAllHaveSeenDown() async throws {
-        let first = await setUpNode("first") { settings in
+        let first = await self.testCase.setUpNode("first") { settings in
             settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
             settings.downingStrategy = .timeout(.init(downUnreachableMembersAfter: .milliseconds(300)))
         }
-        let p1 = testKit(first).makeTestProbe(expecting: Cluster.Event.self)
+        let p1 = self.testCase.testKit(first).makeTestProbe(expecting: Cluster.Event.self)
         await first.cluster.events._subscribe(p1.ref)
 
-        let second = await setUpNode("second") { settings in
+        let second = await self.testCase.setUpNode("second") { settings in
             settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
             settings.downingStrategy = .timeout(.init(downUnreachableMembersAfter: .milliseconds(300)))
         }
-        let p2 = testKit(second).makeTestProbe(expecting: Cluster.Event.self)
+        let p2 = self.testCase.testKit(second).makeTestProbe(expecting: Cluster.Event.self)
         await second.cluster.events._subscribe(p2.ref)
 
-        let third = await setUpNode("third") { settings in
+        let third = await self.testCase.setUpNode("third") { settings in
             settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
             settings.downingStrategy = .timeout(.init(downUnreachableMembersAfter: .milliseconds(300)))
         }
-        let p3 = self.testKit(third).makeTestProbe(expecting: Cluster.Event.self)
+        let p3 = self.testCase.testKit(third).makeTestProbe(expecting: Cluster.Event.self)
         await third.cluster.events._subscribe(p3.ref)
 
-        try await self.joinNodes(node: first, with: second)
-        try await self.joinNodes(node: second, with: third)
-        try await self.joinNodes(node: first, with: third)
+        try await self.testCase.joinNodes(node: first, with: second)
+        try await self.testCase.joinNodes(node: second, with: third)
+        try await self.testCase.joinNodes(node: first, with: third)
 
         let secondNode = second.cluster.node
-        try await self.ensureNodes(.up, nodes: first.cluster.node, secondNode, third.cluster.node)
+        try await self.testCase.ensureNodes(.up, nodes: first.cluster.node, secondNode, third.cluster.node)
 
         first.cluster.down(endpoint: secondNode.endpoint)
 
         // other nodes have observed it down
-        try await self.ensureNodes(atLeast: .down, on: first, nodes: secondNode)
-        try await self.ensureNodes(atLeast: .down, on: third, nodes: secondNode)
+        try await self.testCase.ensureNodes(atLeast: .down, on: first, nodes: secondNode)
+        try await self.testCase.ensureNodes(atLeast: .down, on: third, nodes: secondNode)
 
         // on the leader node, the other node noticed as up:
         var eventsOnFirstSub: [Cluster.Event] = []
@@ -277,55 +285,56 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
 
         eventsOnFirstSub.shouldContain(.membershipChange(.init(node: secondNode, previousStatus: .up, toStatus: .down)))
 
-        try self.testKit(first).eventually(within: .seconds(3)) {
-            let p1s = self.testKit(first).makeTestProbe(expecting: Cluster.Membership.self)
+        try self.testCase.testKit(first).eventually(within: .seconds(3)) {
+            let p1s = self.testCase.testKit(first).makeTestProbe(expecting: Cluster.Membership.self)
             first.cluster.ref.tell(.query(.currentMembership(p1s.ref)))
         }
     }
 
+    @Test
     func test_ensureDownAndRemovalSpreadsToAllMembers() async throws {
-        let first = await setUpNode("first") { settings in
+        let first = await self.testCase.setUpNode("first") { settings in
             settings.swim.probeInterval = .milliseconds(300)
             settings.swim.pingTimeout = .milliseconds(100)
             settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
             settings.downingStrategy = .timeout(.init(downUnreachableMembersAfter: .milliseconds(200)))
         }
-        let p1 = self.testKit(first).makeTestProbe(expecting: Cluster.Event.self)
+        let p1 = self.testCase.testKit(first).makeTestProbe(expecting: Cluster.Event.self)
         await first.cluster.events._subscribe(p1.ref)
 
-        let second = await setUpNode("second") { settings in
+        let second = await self.testCase.setUpNode("second") { settings in
             settings.swim.probeInterval = .milliseconds(300)
             settings.swim.pingTimeout = .milliseconds(100)
             settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
             settings.downingStrategy = .timeout(.init(downUnreachableMembersAfter: .milliseconds(200)))
         }
-        let p2 = self.testKit(second).makeTestProbe(expecting: Cluster.Event.self)
+        let p2 = self.testCase.testKit(second).makeTestProbe(expecting: Cluster.Event.self)
         await second.cluster.events._subscribe(p2.ref)
 
-        let third = await setUpNode("third") { settings in
+        let third = await self.testCase.setUpNode("third") { settings in
             settings.swim.probeInterval = .milliseconds(300)
             settings.swim.pingTimeout = .milliseconds(100)
             settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
             settings.downingStrategy = .timeout(.init(downUnreachableMembersAfter: .milliseconds(200)))
         }
-        let p3 = self.testKit(third).makeTestProbe(expecting: Cluster.Event.self)
+        let p3 = self.testCase.testKit(third).makeTestProbe(expecting: Cluster.Event.self)
         await third.cluster.events._subscribe(p3.ref)
 
-        try await self.joinNodes(node: first, with: second)
-        try await self.joinNodes(node: second, with: third)
-        try await self.joinNodes(node: first, with: third)
+        try await self.testCase.joinNodes(node: first, with: second)
+        try await self.testCase.joinNodes(node: second, with: third)
+        try await self.testCase.joinNodes(node: first, with: third)
 
-        try await self.ensureNodes(.up, nodes: first.cluster.node, second.cluster.node, third.cluster.node)
+        try await self.testCase.ensureNodes(.up, nodes: first.cluster.node, second.cluster.node, third.cluster.node)
 
         // crash the second node
         try second.shutdown()
 
         // other nodes have observed it down
-        try await self.ensureNodes(atLeast: .down, on: first, within: .seconds(15), nodes: second.cluster.node)
-        try await self.ensureNodes(atLeast: .down, on: third, within: .seconds(15), nodes: second.cluster.node)
+        try await self.testCase.ensureNodes(atLeast: .down, on: first, within: .seconds(15), nodes: second.cluster.node)
+        try await self.testCase.ensureNodes(atLeast: .down, on: third, within: .seconds(15), nodes: second.cluster.node)
 
         // on the leader node, the other node noticed as up:
-        let testKit = self.testKit(first)
+        let testKit = self.testCase.testKit(first)
         try testKit.eventually(within: .seconds(20)) {
             let event: Cluster.Event? = try p1.maybeExpectMessage()
             switch event {

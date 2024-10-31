@@ -14,16 +14,18 @@
 
 import CDistributedActorsMailbox
 import Foundation
-import XCTest
+import Testing
 
-class CMPSCLinkedQueueTests: XCTestCase {
+struct CMPSCLinkedQueueTests {
+    @Test
     func testDequeueWhenEmpty() {
         let q = c_sact_mpsc_linked_queue_create()
         let res = c_sact_mpsc_linked_queue_dequeue(q)
 
-        XCTAssertNil(res)
+        #expect(res == nil)
     }
 
+    @Test
     func testEnqueueDequeue() {
         let q = c_sact_mpsc_linked_queue_create()
         let p = UnsafeMutableRawPointer.allocate(byteCount: 0, alignment: 0)
@@ -34,9 +36,10 @@ class CMPSCLinkedQueueTests: XCTestCase {
         c_sact_mpsc_linked_queue_enqueue(q, p)
         let res = c_sact_mpsc_linked_queue_dequeue(q)
 
-        XCTAssertEqual(p, res)
+        #expect(p == res)
     }
 
+    @Test
     func testDestroy() {
         // jsut checking that it doesn't segfault here
         let q = c_sact_mpsc_linked_queue_create()

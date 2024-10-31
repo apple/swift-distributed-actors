@@ -14,14 +14,15 @@
 
 import DistributedActorsTestKit
 @testable import DistributedCluster
-import XCTest
+import Testing
 
-final class OpLogStreamTests: XCTestCase {
+struct OpLogStreamTests {
     enum TestOp: Equatable, OpLogStreamOp {
         case add(id: String)
         case rm(id: String)
     }
 
+    @Test
     func test_ops_replay() {
         let stream = OpLog(of: TestOp.self, batchSize: 50)
         stream.add(.add(id: "one"))
@@ -40,6 +41,7 @@ final class OpLogStreamTests: XCTestCase {
         )
     }
 
+    @Test
     func test_ops_replay_beyondEnd() {
         let stream = OpLog(of: TestOp.self, batchSize: 50)
         stream.add(.add(id: "one"))
@@ -62,6 +64,7 @@ final class OpLogStreamTests: XCTestCase {
         replayer.nextOpsChunk().shouldBeEmpty()
     }
 
+    @Test
     func test_ops_replay_confirm_replay() {
         let stream = OpLog(of: TestOp.self, batchSize: 50)
         stream.add(.add(id: "one"))

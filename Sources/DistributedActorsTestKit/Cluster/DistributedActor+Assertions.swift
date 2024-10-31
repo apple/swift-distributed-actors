@@ -14,7 +14,7 @@
 
 import Distributed
 import DistributedCluster
-import XCTest
+import Testing
 
 public nonisolated func assertRemoteActor<DA: DistributedActor>(_ actor: DA) throws {
     if __isRemoteActor(actor) {

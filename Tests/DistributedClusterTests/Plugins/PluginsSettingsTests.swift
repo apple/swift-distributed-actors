@@ -13,16 +13,18 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedCluster
-import XCTest
+import Testing
 
-final class PluginsSettingsTests: XCTestCase {
+struct PluginsSettingsTests {
+    @Test
+
     func test_pluginsSettings_isInstalled() {
         var pluginsSettings = PluginsSettings()
 
         let clusterSingletonPlugin = ClusterSingletonPlugin()
-        XCTAssertFalse(pluginsSettings.isInstalled(plugin: clusterSingletonPlugin))
+        #expect(pluginsSettings.isInstalled(plugin: clusterSingletonPlugin) == false)
 
         pluginsSettings.install(plugin: clusterSingletonPlugin)
-        XCTAssertTrue(pluginsSettings.isInstalled(plugin: clusterSingletonPlugin))
+        #expect(pluginsSettings.isInstalled(plugin: clusterSingletonPlugin) == true)
     }
 }

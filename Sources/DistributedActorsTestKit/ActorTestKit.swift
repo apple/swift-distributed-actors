@@ -16,8 +16,7 @@ import DistributedActorsConcurrencyHelpers
 @testable import DistributedCluster
 import Foundation
 import Logging
-
-import XCTest
+import Testing
 
 /// Contains helper functions for testing Actor based code.
 /// Due to their asynchronous nature Actors are sometimes tricky to write assertions for,
@@ -68,7 +67,7 @@ extension ActorTestKit {
     public func makeTestProbe<Message: Codable>(
         _ naming: _ActorNaming? = nil,
         expecting type: Message.Type = Message.self,
-        file: StaticString = #filePath, line: UInt = #line
+        sourceLocation: SourceLocation = #_sourceLocation
     ) -> ActorTestProbe<Message> {
         self.makeProbesLock.lock()
         defer { self.makeProbesLock.unlock() }
@@ -102,7 +101,7 @@ extension ActorTestKit {
     /// - Hint: Use `fishForMessages` and `fishFor` to filter expectations for specific events.
     public func spawnClusterEventStreamTestProbe(
         _ naming: _ActorNaming? = nil,
-        file: String = #filePath, line: UInt = #line, column: UInt = #column
+        sourceLocation: SourceLocation = #_sourceLocation
     ) async -> ActorTestProbe<Cluster.Event> {
         let eventStream = self.system.cluster.events
         let p = self.makeTestProbe(naming ?? _ActorNaming.prefixed(with: "\(ClusterEventStream.self)-subscriberProbe"), expecting: Cluster.Event.self)
@@ -127,10 +126,10 @@ extension ActorTestKit {
     @discardableResult
     public func eventually<T>(
         within duration: Duration, interval: Duration = .milliseconds(100),
-        file: StaticString = #filePath, line: UInt = #line, column: UInt = #column,
+        sourceLocation: SourceLocation = #_sourceLocation,
         _ block: () throws -> T
     ) throws -> T {
-        let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
+        let callSite = CallSiteInfo(sourceLocation: sourceLocation, function: #function)
         let deadline = ContinuousClock.Instant.fromNow(duration)
 
         var lastError: Error?
@@ -156,7 +155,7 @@ extension ActorTestKit {
 
         let error = EventuallyError(callSite, duration, polledTimes, lastError: lastError)
         if !ActorTestKit.isInRepeatableContext() {
-            XCTFail("\(error)", file: callSite.file, line: callSite.line)
+            Issue.record("\(error)")
         }
         throw error
     }
@@ -173,10 +172,10 @@ extension ActorTestKit {
     @discardableResult
     public func eventually<T>(
         within duration: Duration, interval: Duration = .milliseconds(100),
-        file: StaticString = #filePath, line: UInt = #line, column: UInt = #column,
+        sourceLocation: SourceLocation = #_sourceLocation,
         _ block: () async throws -> T
     ) async throws -> T {
-        let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
+        let callSite = CallSiteInfo(sourceLocation: sourceLocation, function: #function)
         let deadline = ContinuousClock.Instant.fromNow(duration)
 
         var lastError: Error?
@@ -202,7 +201,7 @@ extension ActorTestKit {
 
         let error = EventuallyError(callSite, duration, polledTimes, lastError: lastError)
         if !ActorTestKit.isInRepeatableContext() {
-            XCTFail("\(error)", file: callSite.file, line: callSite.line)
+            Issue.record("\(error)", sourceLocation: callSite.sourceLocation)
         }
         throw error
     }
@@ -237,7 +236,7 @@ public struct EventuallyError: Error, CustomStringConvertible, CustomDebugString
         }
 
         message += """
-        No result within \(self.duration.prettyDescription) for block at \(self.callSite.file):\(self.callSite.line). \
+        No result within \(self.duration.prettyDescription) for block at \(self.callSite.sourceLocation.fileID):\(self.callSite.sourceLocation.line). \
         Queried \(self.polledTimes) times, within \(self.duration.prettyDescription). \
         \(lastErrorMessage)
         """
@@ -262,10 +261,10 @@ extension ActorTestKit {
     /// Throws an error when the block fails within the specified time amount.
     public func assertHolds(
         for duration: Duration, interval: Duration = .milliseconds(100),
-        file: StaticString = #filePath, line: UInt = #line, column: UInt = #column,
+        sourceLocation: SourceLocation = #_sourceLocation,
         _ block: () throws -> Void
     ) throws {
-        let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
+        let callSite = CallSiteInfo(sourceLocation: sourceLocation, function: #function)
         let deadline = ContinuousClock.Instant.fromNow(duration)
 
         var polledTimes = 0
@@ -278,12 +277,12 @@ extension ActorTestKit {
             } catch {
                 let error = callSite.error(
                     """
-                    Failed within \(duration.prettyDescription) for block at \(file):\(line). \
+                    Failed within \(duration.prettyDescription) for block at \(sourceLocation.fileID):\(sourceLocation.line). \
                     Queried \(polledTimes) times, within \(duration.prettyDescription). \
                     Error: \(error)
                     """
                 )
-                XCTFail("\(error)", file: callSite.file, line: callSite.line)
+                Issue.record("\(error)", sourceLocation: callSite.sourceLocation)
                 throw error
             }
         }
@@ -296,10 +295,10 @@ extension ActorTestKit {
 extension ActorTestKit {
     // TODO: how to better hide such more nasty assertions?
     // TODO: Not optimal since we always do traverseAll rather than follow the Path of the context
-    public func _assertActorPathOccupied(_ path: String, file: StaticString = #filePath, line: UInt = #line, column: UInt = #column) throws {
+    public func _assertActorPathOccupied(_ path: String, sourceLocation: SourceLocation = #_sourceLocation) throws {
         precondition(!path.contains("#"), "assertion path MUST NOT contain # id section of an unique path.")
 
-        let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
+        let callSiteInfo = CallSiteInfo(sourceLocation: sourceLocation, function: #function)
         let res: _TraversalResult<_AddressableActorRef> = self.system._traverseAll { _, ref in
             if ref.id.path.description == path {
                 return .accumulateSingle(ref)
@@ -464,10 +463,15 @@ extension ActorTestKit {
     ///     testKit.eventually(within: .seconds(3)) {
     ///         guard ... else { throw testKit.error("failed to extract expected information") }
     ///     }
-    public func error(_ message: String? = nil, file: StaticString = #filePath, line: UInt = #line, column: UInt = #column) -> Error {
-        let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
+    public func error(_ message: String? = nil, sourceLocation: SourceLocation = #_sourceLocation) -> Error {
+        let callSite = CallSiteInfo(sourceLocation: sourceLocation, function: #function)
         let fullMessage: String = message ?? "<no message>"
         return callSite.error(fullMessage, failTest: false)
+    }
+
+    public func error(_ message: String? = nil, file: String = #fileID, filePath: String = #filePath, line: Int = #line, column: Int = #column) -> Error {
+        let sourceLocation = SourceLocation(fileID: file, filePath: filePath, line: line, column: column)
+        return self.error(message, sourceLocation: sourceLocation)
     }
 
     /// Returns a failure with additional callsite information and fails the test.
@@ -475,10 +479,15 @@ extension ActorTestKit {
     /// Examples:
     ///
     ///     guard ... else { throw testKit.fail("failed to extract expected information") }
-    public func fail(_ message: String? = nil, file: StaticString = #filePath, line: UInt = #line, column: UInt = #column) -> Error {
-        let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
+    public func fail(_ message: String? = nil, sourceLocation: SourceLocation = #_sourceLocation) -> Error {
+        let callSite = CallSiteInfo(sourceLocation: sourceLocation, function: #function)
         let fullMessage: String = message ?? "<no message>"
         return callSite.error(fullMessage, failTest: true)
+    }
+
+    public func fail(_ message: String? = nil, file: String = #fileID, filePath: String = #filePath, line: Int = #line, column: Int = #column) -> Error {
+        let sourceLocation = SourceLocation(fileID: file, filePath: filePath, line: line, column: column)
+        return self.fail(message, sourceLocation: sourceLocation)
     }
 }
 

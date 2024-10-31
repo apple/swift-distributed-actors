@@ -16,9 +16,11 @@ import Dispatch
 @testable import DistributedActorsTestKit
 import DistributedCluster
 import NIO
-import XCTest
+import Testing
 
+@Suite(.serialized)
 class InteropDocExamples: XCTestCase {
+    @Test
     func example_asyncOp_sendResult_dispatch() throws {
         // tag::message_greetings[]
         enum Messages: _NotActuallyCodableMessage {
@@ -49,6 +51,7 @@ class InteropDocExamples: XCTestCase {
         _ = behavior // avoid not-used warning
     }
 
+    @Test
     func example_asyncOp_sendResult_insideActor() throws {
         // tag::asyncOp_sendResult_insideActor_enum_Messages[]
         enum Messages: _NotActuallyCodableMessage {
@@ -91,6 +94,7 @@ class InteropDocExamples: XCTestCase {
         // end::asyncOp_sendResult_insideActor_external_api[]
     }
 
+    @Test
     func example_asyncOp_onResultAsync() throws {
         struct User {}
         struct Cache<Key, Value> {
@@ -159,6 +163,7 @@ class InteropDocExamples: XCTestCase {
         _ = behavior
     }
 
+    @Test
     func example_asyncOp_awaitResult() throws {
         // tag::asyncOp_awaitResult_enum_Messages[]
         enum Message: _NotActuallyCodableMessage {
@@ -200,6 +205,7 @@ class InteropDocExamples: XCTestCase {
         _ = behavior // avoids warning: unused variable
     }
 
+    @Test
     func example_asyncOp_awaitResultThrowing() throws {
         enum Message: _NotActuallyCodableMessage {
             case addPrefix(string: String, recipient: _ActorRef<String>)

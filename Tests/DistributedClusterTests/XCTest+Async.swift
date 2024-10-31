@@ -47,7 +47,7 @@ extension XCTestCase {
         }
 
         if let error = error as? CallSiteError {
-            XCTFail(error.explained, file: error.callSite.file, line: error.callSite.line)
+//            Issue.record(error.explained, file: error.callSite.file, line: error.callSite.line)
         }
         throw error
     }

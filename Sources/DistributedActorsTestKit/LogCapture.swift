@@ -16,43 +16,41 @@ import DistributedActorsConcurrencyHelpers
 @testable import DistributedCluster
 import struct Foundation.Date
 @testable import Logging
-import XCTest
+import Synchronization
+import Testing
 
 /// Testing only utility: Captures all log statements for later inspection.
 ///
 /// ### Warning
 /// This handler uses locks for each and every operation.
-public final class LogCapture {
-    private var _logs: [CapturedLogMessage] = []
-    private let lock = DistributedActorsConcurrencyHelpers.Lock()
+public final class LogCapture: Sendable {
+    private let _logs: Mutex<[CapturedLogMessage]> = Mutex([])
+    private let captureLabel: Mutex<String> = Mutex("")
 
     let settings: Settings
-    private var captureLabel: String = ""
 
     public init(settings: Settings = .init()) {
         self.settings = settings
     }
 
     public func logger(label: String) -> Logger {
-        self.captureLabel = label
+        self.captureLabel.withLock { $0 = label }
         return Logger(label: "LogCapture(\(label))", LogCaptureLogHandler(label: label, self))
     }
 
     func append(_ log: CapturedLogMessage) {
-        self.lock.withLockVoid {
-            self._logs.append(log)
+        self._logs.withLock {
+            $0.append(log)
         }
     }
 
     public var logs: [CapturedLogMessage] {
-        self.lock.withLock {
-            self._logs
-        }
+        self._logs.withLock { $0 }
     }
 
     public var deadLetterLogs: [CapturedLogMessage] {
-        self.lock.withLock {
-            self._logs.filter {
+        self._logs.withLock {
+            $0.filter {
                 $0.metadata?.keys.contains("deadLetter") ?? false
             }
         }
@@ -66,9 +64,9 @@ public final class LogCapture {
     public func awaitLogContaining(
         _ testKit: ActorTestKit, text: String,
         within: Duration = .seconds(3),
-        file: StaticString = #filePath, line: UInt = #line
+        sourceLocation: SourceLocation = #_sourceLocation
     ) throws -> CapturedLogMessage {
-        try testKit.eventually(within: within, file: file, line: line) {
+        try testKit.eventually(within: within, sourceLocation: sourceLocation) {
             let logs = self.logs
             guard let found = logs.first(where: { log in "\(log)".contains(text) }) else {
                 throw TestError("Logs did not contain [\(text)].")
@@ -80,7 +78,7 @@ public final class LogCapture {
 }
 
 extension LogCapture {
-    public struct Settings {
+    public struct Settings: Sendable {
         public var minimumLogLevel: Logger.Level = .trace
 
         /// Filter and capture logs only from actors with the following path prefix
@@ -104,13 +102,13 @@ extension LogCapture {
 // MARK: XCTest integrations and helpers
 
 extension LogCapture {
-    public func printIfFailed(_ testRun: XCTestRun?) {
-        if let failureCount = testRun?.failureCount, failureCount > 0 {
-            print("------------------------------------------------------------------------------------------------------------------------")
-            self.printLogs()
-            print("========================================================================================================================")
-        }
-    }
+//    public func printIfFailed(_ testRun: XCTestRun?) {
+//        if let failureCount = testRun?.failureCount, failureCount > 0 {
+//            print("------------------------------------------------------------------------------------------------------------------------")
+//            self.printLogs()
+//            print("========================================================================================================================")
+//        }
+//    }
 
     public func printLogs() {
         for log in self.logs {
@@ -139,9 +137,9 @@ extension LogCapture {
                             allString = String(
                                 allString.split(separator: "\n").map { valueLine in
                                     if valueLine.starts(with: "// ") {
-                                        return "[captured] [\(self.captureLabel)] \(valueLine)\n"
+                                        return "[captured] [\(self.captureLabel.withLock { $0 })] \(valueLine)\n"
                                     } else {
-                                        return "[captured] [\(self.captureLabel)] // \(valueLine)\n"
+                                        return "[captured] [\(self.captureLabel.withLock { $0 })] // \(valueLine)\n"
                                     }
                                 }.joined(separator: "")
                             )
@@ -154,7 +152,7 @@ extension LogCapture {
             let date = ActorOriginLogHandler._createSimpleFormatter().string(from: log.date)
             let file = log.file.split(separator: "/").last ?? ""
             let line = log.line
-            print("[captured] [\(self.captureLabel)] \(date) \(log.level) \(actorIdentifier) [\(file):\(line)] \(log.message)\(metadataString)")
+            print("[captured] [\(self.captureLabel.withLock { $0 })] \(date) \(log.level) \(actorIdentifier) [\(file):\(line)] \(log.message)\(metadataString)")
         }
     }
 
@@ -182,7 +180,7 @@ extension LogCapture {
     }
 }
 
-public struct CapturedLogMessage {
+public struct CapturedLogMessage: Sendable {
     public let date: Date
     public let level: Logger.Level
     public var message: Logger.Message
@@ -271,10 +269,10 @@ extension LogCapture {
         expectedFile: String? = nil,
         expectedLine: Int = -1,
         failTest: Bool = true,
-        file: StaticString = #filePath, line: UInt = #line, column: UInt = #column
+        sourceLocation: SourceLocation = #_sourceLocation
     ) throws -> CapturedLogMessage {
         precondition(prefix != nil || message != nil || grep != nil || level != nil || level != nil || expectedFile != nil, "At least one query parameter must be not `nil`!")
-        let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
+        let callSite = CallSiteInfo(sourceLocation: sourceLocation, function: #function)
 
         let found = self.logs.lazy
             .filter { log in
@@ -335,11 +333,11 @@ extension LogCapture {
             let message = """
             Did not find expected log, matching query: 
                 [\(query)]
-            in captured logs at \(file):\(line)
+            in captured logs at \(sourceLocation.fileID):\(sourceLocation.line)
             """
             let callSiteError = callSite.error(message)
             if failTest {
-                XCTFail(message, file: callSite.file, line: callSite.line)
+                Issue.record(.init(rawValue: message), sourceLocation: sourceLocation)
             }
             throw callSiteError
         }

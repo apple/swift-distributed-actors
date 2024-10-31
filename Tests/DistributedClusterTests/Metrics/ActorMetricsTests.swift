@@ -19,27 +19,27 @@ import DistributedActorsTestKit
 import Foundation
 @testable import Metrics
 import NIO
-import XCTest
+import Testing
 
-final class ActorMetricsTests: ClusteredActorSystemsXCTestCase {
-    var metrics: TestMetrics! = TestMetrics()
+@Suite(.timeLimit(.minutes(1)), .serialized)
+final class ActorMetricsTests {
+    let metrics = TestMetrics()
 
-    override func setUp() {
-        super.setUp()
+    let testCase: ClusteredActorSystemsTestCase
+
+    init() throws {
+        self.testCase = try ClusteredActorSystemsTestCase()
         MetricsSystem.bootstrapInternal(self.metrics)
     }
 
-    override func tearDown() async throws {
-        try await super.tearDown()
-        self.metrics = nil
+    deinit {
         MetricsSystem.bootstrapInternal(NOOPMetricsHandler.instance)
     }
 
+    @Test(.disabled("!!! Skipping test !!!")) // FIXME(distributed): this crashes the cluster with a message on setup
     func test_serialization_reportsMetrics() async throws {
-        throw XCTSkip("!!! Skipping test \(#function) !!!") // FIXME(distributed): this crashes the cluster with a message on setup
-
-        let first = await setUpNode("first")
-        let second = await setUpNode("second")
+        let first = await self.testCase.setUpNode("first")
+        let second = await self.testCase.setUpNode("second")
 
         let ref: _ActorRef<String> = try first._spawn(
             "measuredActor",
@@ -52,13 +52,14 @@ final class ActorMetricsTests: ClusteredActorSystemsXCTestCase {
         let remoteRef = second._resolve(ref: ref, onSystem: first)
         remoteRef.tell("Hello!")
 
-        sleep(6)
+        try await Task.sleep(for: .seconds(6))
         let gauge = try self.metrics.expectGauge("first.measuredActorGroup.deserialization.size")
         gauge.lastValue?.shouldEqual(6)
     }
 
+    @Test
     func test_mailboxCount_reportsMetrics() async throws {
-        let first = await setUpNode("first")
+        let first = await self.testCase.setUpNode("first")
 
         let one: _ActorRef<String> = try first._spawn(
             "measuredActor",
@@ -70,7 +71,7 @@ final class ActorMetricsTests: ClusteredActorSystemsXCTestCase {
             one.tell("hello")
         }
 
-        sleep(5)
+        try await Task.sleep(for: .seconds(5))
         let gauge = try self.metrics.expectGauge("first.measuredActorGroup.mailbox.count")
         // we can't really reliably test that we get to some "maximum" since the actor starts processing messages as they come in
         gauge.lastValue.shouldEqual(0) // after processing we must always go back to zero
