@@ -21,7 +21,7 @@ import XCTest
 // TODO: "ActorGroup" perhaps could be better name?
 final class WorkerPoolTests: SingleClusterSystemXCTestCase {
     func test_workerPool_registerNewlyStartedActors() async throws {
-        let workerKey = DistributedReception.Key(Greeter.self, id: "request-workers")
+        let workerKey = DistributedReception.Key(GreeterDistributedWorker.self, id: "request-workers")
 
         let settings = WorkerPoolSettings(selector: .dynamic(workerKey), strategy: .simpleRoundRobin)
         let workers = try await WorkerPool(settings: settings, actorSystem: system)
@@ -30,9 +30,9 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
         let pB: ActorTestProbe<String> = self.testKit.makeTestProbe("pB")
         let pC: ActorTestProbe<String> = self.testKit.makeTestProbe("pC")
 
-        let workerA = await Greeter(probe: pA, actorSystem: self.system, key: workerKey)
-        let workerB = await Greeter(probe: pB, actorSystem: self.system, key: workerKey)
-        let workerC = await Greeter(probe: pC, actorSystem: self.system, key: workerKey)
+        let workerA = await GreeterDistributedWorker(probe: pA, actorSystem: self.system, key: workerKey)
+        let workerB = await GreeterDistributedWorker(probe: pB, actorSystem: self.system, key: workerKey)
+        let workerC = await GreeterDistributedWorker(probe: pC, actorSystem: self.system, key: workerKey)
 
         let workerProbes: [ClusterSystem.ActorID: ActorTestProbe<String>] = [
             workerA.id: pA,
@@ -68,7 +68,7 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
     }
 
     func test_workerPool_dynamic_removeDeadActors() async throws {
-        let workerKey = DistributedReception.Key(Greeter.self, id: "request-workers")
+        let workerKey = DistributedReception.Key(GreeterDistributedWorker.self, id: "request-workers")
 
         let workers = try await WorkerPool(settings: .init(selector: .dynamic(workerKey), strategy: .simpleRoundRobin), actorSystem: system)
 
@@ -76,9 +76,9 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
         let pB: ActorTestProbe<String> = self.testKit.makeTestProbe("pB")
         let pC: ActorTestProbe<String> = self.testKit.makeTestProbe("pC")
 
-        var workerA: Greeter? = await Greeter(probe: pA, actorSystem: self.system, key: workerKey)
-        var workerB: Greeter? = await Greeter(probe: pB, actorSystem: self.system, key: workerKey)
-        var workerC: Greeter? = await Greeter(probe: pC, actorSystem: self.system, key: workerKey)
+        var workerA: GreeterDistributedWorker? = await GreeterDistributedWorker(probe: pA, actorSystem: self.system, key: workerKey)
+        var workerB: GreeterDistributedWorker? = await GreeterDistributedWorker(probe: pB, actorSystem: self.system, key: workerKey)
+        var workerC: GreeterDistributedWorker? = await GreeterDistributedWorker(probe: pC, actorSystem: self.system, key: workerKey)
 
         // !-safe since we initialize workers above
         let workerProbes: [ClusterSystem.ActorID: ActorTestProbe<String>] = [
@@ -143,7 +143,7 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
 
         // Register new worker
         let pD: ActorTestProbe<String> = self.testKit.makeTestProbe("pD")
-        let workerD = await Greeter(probe: pD, actorSystem: self.system, key: workerKey)
+        let workerD = await GreeterDistributedWorker(probe: pD, actorSystem: self.system, key: workerKey)
 
         // WorkerPool should wait for D to join then assign work to it
         _ = try await workers.submit(work: "D-only")
@@ -155,9 +155,9 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
         let pB: ActorTestProbe<String> = self.testKit.makeTestProbe("pB")
         let pC: ActorTestProbe<String> = self.testKit.makeTestProbe("pC")
 
-        var workerA: Greeter? = Greeter(probe: pA, actorSystem: self.system)
-        var workerB: Greeter? = Greeter(probe: pB, actorSystem: self.system)
-        var workerC: Greeter? = Greeter(probe: pC, actorSystem: self.system)
+        var workerA: GreeterDistributedWorker? = GreeterDistributedWorker(probe: pA, actorSystem: self.system)
+        var workerB: GreeterDistributedWorker? = GreeterDistributedWorker(probe: pB, actorSystem: self.system)
+        var workerC: GreeterDistributedWorker? = GreeterDistributedWorker(probe: pC, actorSystem: self.system)
 
         var workers = [workerA!, workerB!, workerC!]
         let workerIDs = workers.map(\.id)
@@ -232,7 +232,7 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
 
     func test_workerPool_static_throwOnEmptyInitialSet() async throws {
         let error = try await shouldThrow {
-            let _: WorkerPool<Greeter> = try await WorkerPool(selector: .static([]), actorSystem: system)
+            let _: WorkerPool<GreeterDistributedWorker> = try await WorkerPool(selector: .static([]), actorSystem: system)
         }
 
         guard let workerPoolError = error as? WorkerPoolError, case .emptyStaticWorkerPool(let errorMessage) = workerPoolError.underlying.error else {
@@ -240,9 +240,66 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
         }
         errorMessage.shouldContain("Illegal empty collection passed to `.static` worker pool")
     }
+    
+    func test_workerPool_testRemoteActorReferencesAreHandledProperly() async throws {
+        let (local, remote) = await self.setUpPair {
+            $0.enabled = true
+        }
+        let testKit = ActorTestKit(local)
+        try await self.joinNodes(node: local, with: remote)
+
+        let workerKey = DistributedReception.Key<GreeterDistributedWorker>(id: "request-workers")
+        let workers = try await WorkerPool(
+            settings: WorkerPoolSettings(
+                selector: .dynamic(workerKey),
+                strategy: .simpleRoundRobin
+            ),
+            actorSystem: local
+        )
+        let pA: ActorTestProbe<String> = testKit.makeTestProbe("pA")
+        let pB: ActorTestProbe<String> = testKit.makeTestProbe("pB")
+        let pC: ActorTestProbe<String> = testKit.makeTestProbe("pC")
+
+        let workerA = await GreeterDistributedWorker(probe: pA, actorSystem: remote, key: workerKey)
+        let workerB = await GreeterDistributedWorker(probe: pB, actorSystem: remote, key: workerKey)
+        let workerC = await GreeterDistributedWorker(probe: pC, actorSystem: remote, key: workerKey)
+
+        let workerProbes: [ClusterSystem.ActorID: ActorTestProbe<String>] = [
+            workerA.id: pA,
+            workerB.id: pB,
+            workerC.id: pC,
+        ]
+        let workerIDs = [workerA.id, workerB.id, workerC.id]
+
+        // Wait for all workers to be registered with the receptionist
+        let finished = expectation(description: "all workers available")
+        Task {
+            while true {
+                if try await workers.size == workerProbes.count {
+                    break
+                }
+                try await Task.sleep(nanoseconds: 100_000_000)
+            }
+            finished.fulfill()
+        }
+        await fulfillment(of: [finished], timeout: 3.0)
+
+        // Submit work with all workers available
+        for i in 0 ... 7 {
+            _ = try await workers.submit(work: "\(i)")
+
+            // We are submitting more work than there are workers
+            let workerID = workerIDs[i % workerIDs.count]
+            guard let probe = workerProbes[workerID] else {
+                throw testKit.fail("Missing test probe for worker \(workerID)")
+            }
+            try probe.expectMessage("work:\(i) at \(workerID)")
+        }
+    }
 }
 
-private distributed actor Greeter: DistributedWorker {
+/// Distributed actors for receptionist should be non-private, otherwise `SerializationError(.unableToSummonTypeFromManifest)` will kick in for remote calls
+distributed actor GreeterDistributedWorker: DistributedWorker {
     typealias ID = ClusterSystem.ActorID
     typealias ActorSystem = ClusterSystem
     typealias WorkItem = String
@@ -255,7 +312,7 @@ private distributed actor Greeter: DistributedWorker {
         self.probe = probe
     }
 
-    init(probe: ActorTestProbe<String>, actorSystem: ActorSystem, key: DistributedReception.Key<Greeter>) async {
+    init(probe: ActorTestProbe<String>, actorSystem: ActorSystem, key: DistributedReception.Key<GreeterDistributedWorker>) async {
         self.actorSystem = actorSystem
         self.probe = probe
         await self.actorSystem.receptionist.checkIn(self, with: key)
@@ -265,11 +322,12 @@ private distributed actor Greeter: DistributedWorker {
         self.probe.tell("Greeter deinit")
     }
 
-    distributed func submit(work: WorkItem) async throws -> WorkResult {
+    distributed public func submit(work: WorkItem) async throws -> WorkResult {
         self.probe.tell("work:\(work) at \(self.id)")
         return "hello \(work)"
     }
 }
+
 
 private extension Array where Element == ClusterSystem.ActorID {
     mutating func sort() {
