@@ -240,7 +240,7 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
         }
         errorMessage.shouldContain("Illegal empty collection passed to `.static` worker pool")
     }
-    
+
     func test_workerPool_testRemoteActorReferencesAreHandledProperly() async throws {
         let (local, remote) = await self.setUpPair {
             $0.enabled = true
@@ -327,7 +327,6 @@ distributed actor GreeterDistributedWorker: DistributedWorker {
         return "hello \(work)"
     }
 }
-
 
 private extension Array where Element == ClusterSystem.ActorID {
     mutating func sort() {
