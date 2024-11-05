@@ -1,4 +1,4 @@
-// swift-tools-version:5.7
+// swift-tools-version:5.10
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import class Foundation.ProcessInfo
@@ -235,7 +235,7 @@ platforms = nil
 platforms = [
     // we require the 'distributed actor' language and runtime feature:
     .iOS(.v16),
-    .macOS(.v13),
+    .macOS(.v14),
     .tvOS(.v16),
     .watchOS(.v9),
 ]

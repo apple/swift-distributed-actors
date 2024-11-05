@@ -626,19 +626,19 @@ public final class _ActorShell<Message: Codable>: _ActorContext<Message>, Abstra
     }
 
     @discardableResult
-    override public func _spawnWatch<Message>(
+    override public func _spawnWatch<M>(
         _ naming: _ActorNaming,
-        of type: Message.Type = Message.self,
+        of type: M.Type = M.self,
         props: _Props = _Props(),
         file: String = #filePath, line: UInt = #line,
-        _ behavior: _Behavior<Message>
-    ) throws -> _ActorRef<Message>
-        where Message: Codable
+        _ behavior: _Behavior<M>
+    ) throws -> _ActorRef<M>
+        where M: Codable
     {
         self.watch(try self._spawn(naming, props: props, behavior))
     }
 
-    override public func stop<Message: Codable>(child ref: _ActorRef<Message>) throws {
+    override public func stop<M: Codable>(child ref: _ActorRef<M>) throws {
         try self._stop(child: ref)
     }
 

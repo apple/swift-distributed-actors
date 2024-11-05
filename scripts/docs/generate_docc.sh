@@ -68,6 +68,6 @@ git clean -fdx
 git checkout -f gh-pages
 cp -R /tmp/$version .
 
-git add $version; ci -m "Update documentation: $version"
+git add $version; git commit -m "Update documentation: $version"
 
 echo "Done."
