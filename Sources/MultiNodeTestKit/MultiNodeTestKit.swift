@@ -82,7 +82,7 @@ public protocol MultiNodeTestSuite {
     init()
     associatedtype Nodes: MultiNodeNodes
     static func configureActorSystem(settings: inout ClusterSystemSettings)
-    // static func startNode(settings: ClusterSystemSettings) -> ClusterSystem
+    static func startNode(settings: ClusterSystemSettings) async throws -> ClusterSystem
     static func configureMultiNodeTest(settings: inout MultiNodeTestSettings)
 }
 

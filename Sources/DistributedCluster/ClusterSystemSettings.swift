@@ -441,8 +441,6 @@ public struct ServiceDiscoverySettings {
     }
 
     /// Locate the default `ClusterD` process and use it for discovering cluster nodes.
-    ///
-    ///
     public static var clusterd: Self {
         get {
             Self.clusterd(endpoint: nil)
