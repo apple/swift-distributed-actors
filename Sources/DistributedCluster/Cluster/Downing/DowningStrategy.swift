@@ -103,7 +103,6 @@ internal distributed actor DowningStrategyShell {
     }
 
     deinit {
-        print("\(Self.self) DEINIT")
         self.eventsListeningTask?.cancel()
 //        self.eventsListeningTask = nil
     }
