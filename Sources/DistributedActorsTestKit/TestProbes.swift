@@ -696,7 +696,7 @@ extension ActorTestProbe {
     /// Without this it may happen that we asked the probe to watch an actor, and send a message to the actor directly,
     /// and our direct message arrives first, before the watch at the destination, causing potentially confusing behavior
     /// in some very ordering delicate testing scenarios.
-    public func forward<Message>(_ message: Message, to target: _ActorRef<Message>, file: String = #filePath, line: UInt = #line) where Message: Codable {
+    public func forward<M>(_ message: M, to target: _ActorRef<M>, file: String = #filePath, line: UInt = #line) where M: Codable {
         self.internalRef.tell(ProbeCommands.forwardCommand(send: { () in target.tell(message, file: file, line: line) }))
     }
 
