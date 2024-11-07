@@ -142,11 +142,11 @@ extension Process {
 
 extension Process {
     static func killall(name: String) {
-        let killAllRunners = Process()
-        killAllRunners.binaryPath = "/usr/bin/killall"
-        killAllRunners.arguments = ["-9", "MultiNodeTestKitRunner"]
-        try? killAllRunners.runProcess()
-        killAllRunners.waitUntilExit()
+        let stopAllRunners = Process()
+        stopAllRunners.binaryPath = "/usr/bin/killall" // ignore-unacceptable-language
+        stopAllRunners.arguments = ["-9", "MultiNodeTestKitRunner"]
+        try? stopAllRunners.runProcess()
+        stopAllRunners.waitUntilExit()
     }
 }
 

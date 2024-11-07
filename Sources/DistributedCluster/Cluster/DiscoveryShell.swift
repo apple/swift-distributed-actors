@@ -44,7 +44,7 @@ final class DiscoveryShell {
                     }
                 },
                 onComplete: { reason in
-                    // if for some reason the subscription completes, we also kill the discovery actor
+                    // if for some reason the subscription completes, we also destroy the discovery actor
                     // TODO: would there be cases where we want to reconnect the discovery mechanism instead? (we could handle it here)
                     context.myself.tell(.stop(reason))
                 }
