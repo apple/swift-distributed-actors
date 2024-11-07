@@ -45,6 +45,9 @@ var targets: [PackageDescription.Target] = [
             .product(name: "ServiceDiscovery", package: "swift-service-discovery"),
             .product(name: "Backtrace", package: "swift-backtrace"),
             .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
+        ],
+        swiftSettings: [
+            .swiftLanguageMode(.v5)
         ]
     ),
 
@@ -58,6 +61,9 @@ var targets: [PackageDescription.Target] = [
             "DistributedCluster",
             "DistributedActorsConcurrencyHelpers",
             .product(name: "Atomics", package: "swift-atomics"),
+        ],
+        swiftSettings: [
+            .swiftLanguageMode(.v5)
         ]
     ),
 
@@ -70,6 +76,9 @@ var targets: [PackageDescription.Target] = [
             "DistributedCluster",
             "DistributedActorsTestKit",
             .product(name: "Atomics", package: "swift-atomics"),
+        ],
+        swiftSettings: [
+           .swiftLanguageMode(.v5)
         ]
     ),
 
@@ -78,6 +87,9 @@ var targets: [PackageDescription.Target] = [
         dependencies: [
             "DistributedCluster",
             "DistributedActorsTestKit",
+        ],
+        swiftSettings: [
+           .swiftLanguageMode(.v5)
         ]
     ),
 
@@ -105,6 +117,9 @@ var targets: [PackageDescription.Target] = [
             .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
             .product(name: "Atomics", package: "swift-atomics"),
             .product(name: "OrderedCollections", package: "swift-collections"),
+        ],
+        swiftSettings: [
+            .swiftLanguageMode(.v5)
         ]
     ),
     .executableTarget(
@@ -116,6 +131,9 @@ var targets: [PackageDescription.Target] = [
             // Dependencies:
             "MultiNodeTestKit",
             .product(name: "ArgumentParser", package: "swift-argument-parser"),
+        ],
+        swiftSettings: [
+            .swiftLanguageMode(.v5)
         ]
     ),
 
@@ -128,7 +146,10 @@ var targets: [PackageDescription.Target] = [
         dependencies: [
             "MultiNodeTestKit"
         ],
-        path: "MultiNodeTests/DistributedActorsMultiNodeTests"
+        path: "MultiNodeTests/DistributedActorsMultiNodeTests",
+        swiftSettings: [
+            .swiftLanguageMode(.v5)
+        ]
     ),
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -140,7 +161,10 @@ var targets: [PackageDescription.Target] = [
         dependencies: [
             "DistributedCluster"
         ],
-        path: "IntegrationTests/tests_01_cluster/it_Clustered_swim_suspension_reachability"
+        path: "IntegrationTests/tests_01_cluster/it_Clustered_swim_suspension_reachability",
+        swiftSettings: [
+            .swiftLanguageMode(.v5)
+        ]
     ),
 
     // ==== ----------------------------------------------------------------------------------------------------------------
@@ -160,6 +184,9 @@ var targets: [PackageDescription.Target] = [
         dependencies: [],
         exclude: [
             "README.md"
+        ],
+        swiftSettings: [
+            .swiftLanguageMode(.v5)
         ]
     ),
 ]
