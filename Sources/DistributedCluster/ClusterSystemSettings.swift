@@ -12,12 +12,13 @@
 //
 //===----------------------------------------------------------------------===//
 
-import class Foundation.ProcessInfo
 import Logging
 import NIO
 import NIOSSL
-import ServiceDiscovery
 import SWIM
+import ServiceDiscovery
+
+import class Foundation.ProcessInfo
 
 /// Settings used to configure a `ClusterSystem`.
 public struct ClusterSystemSettings {
@@ -198,7 +199,7 @@ public struct ClusterSystemSettings {
     /// Unless the `eventLoopGroup` property is set, this function is used to create a new event loop group
     /// for the underlying NIO pipelines.
     public func makeDefaultEventLoopGroup() -> EventLoopGroup {
-        MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount) // TODO: share pool with others
+        MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)  // TODO: share pool with others
     }
 
     /// Allocator to be used for allocating byte buffers for coding/decoding messages.
@@ -245,13 +246,23 @@ public struct ClusterSystemSettings {
     internal var instrumentation: InstrumentationSettings = .default
 
     /// Installs a global backtrace (on fault) pretty-print facility upon actor system start.
-    @available(*, deprecated, message: "Backtrace will not longer be offered by the actor system by default, and has to be depended on by end-users")
+    @available(
+        *,
+        deprecated,
+        message:
+            "Backtrace will not longer be offered by the actor system by default, and has to be depended on by end-users"
+    )
     public var installSwiftBacktrace: Bool = false
 
     // FIXME: should have more proper config section
     public var threadPoolSize: Int = ProcessInfo.processInfo.activeProcessorCount
 
-    public init(name: String, host: String = Default.bindHost, port: Int = Default.bindPort, tls: TLSConfiguration? = nil) {
+    public init(
+        name: String,
+        host: String = Default.bindHost,
+        port: Int = Default.bindPort,
+        tls: TLSConfiguration? = nil
+    ) {
         self.init(endpoint: Cluster.Endpoint(systemName: name, host: host, port: port), tls: tls)
     }
 
@@ -314,7 +325,7 @@ public struct LoggingSettings {
     }
 
     internal var customizedLogger: Bool = false
-    internal var _logger = Logger(label: "ClusterSystem-initializing") // replaced by specific system name during startup
+    internal var _logger = Logger(label: "ClusterSystem-initializing")  // replaced by specific system name during startup
 
     internal var useBuiltInFormatter: Bool = true
 
@@ -404,10 +415,14 @@ protocol ClusterSystemInstrumentationProvider {
 /// all the nodes of an existing cluster.
 public struct ServiceDiscoverySettings {
     let implementation: ServiceDiscoveryImplementation
-    private let _subscribe: (@escaping (Result<[Cluster.Endpoint], Error>) -> Void, @escaping (CompletionReason) -> Void) -> CancellationToken?
+    private let _subscribe:
+        (@escaping (Result<[Cluster.Endpoint], Error>) -> Void, @escaping (CompletionReason) -> Void) ->
+            CancellationToken?
 
     public init<Discovery, S>(_ implementation: Discovery, service: S)
-        where Discovery: ServiceDiscovery, Discovery.Instance == Cluster.Endpoint,
+    where
+        Discovery: ServiceDiscovery,
+        Discovery.Instance == Cluster.Endpoint,
         S == Discovery.Service
     {
         self.implementation = .dynamic(AnyServiceDiscovery(implementation))
@@ -416,11 +431,18 @@ public struct ServiceDiscoverySettings {
         }
     }
 
-    public init<Discovery, S>(_ implementation: Discovery, service: S, mapInstanceToNode transformer: @escaping (Discovery.Instance) throws -> Cluster.Endpoint)
-        where Discovery: ServiceDiscovery,
+    public init<Discovery, S>(
+        _ implementation: Discovery,
+        service: S,
+        mapInstanceToNode transformer: @escaping (Discovery.Instance) throws -> Cluster.Endpoint
+    )
+    where
+        Discovery: ServiceDiscovery,
         S == Discovery.Service
     {
-        let mappedDiscovery: MapInstanceServiceDiscovery<Discovery, Cluster.Endpoint> = implementation.mapInstance(transformer)
+        let mappedDiscovery: MapInstanceServiceDiscovery<Discovery, Cluster.Endpoint> = implementation.mapInstance(
+            transformer
+        )
         self.implementation = .dynamic(AnyServiceDiscovery(mappedDiscovery))
         self._subscribe = { onNext, onComplete in
             mappedDiscovery.subscribe(to: service, onNext: onNext, onComplete: onComplete)
@@ -441,7 +463,10 @@ public struct ServiceDiscoverySettings {
 
     /// Similar to `ServiceDiscovery.subscribe` however it allows the handling of the listings to be generic and handled by the cluster system.
     /// This function is only intended for internal use by the `DiscoveryShell`.
-    func subscribe(onNext nextResultHandler: @escaping (Result<[Cluster.Endpoint], Error>) -> Void, onComplete completionHandler: @escaping (CompletionReason) -> Void) -> CancellationToken? {
+    func subscribe(
+        onNext nextResultHandler: @escaping (Result<[Cluster.Endpoint], Error>) -> Void,
+        onComplete completionHandler: @escaping (CompletionReason) -> Void
+    ) -> CancellationToken? {
         self._subscribe(nextResultHandler, completionHandler)
     }
 

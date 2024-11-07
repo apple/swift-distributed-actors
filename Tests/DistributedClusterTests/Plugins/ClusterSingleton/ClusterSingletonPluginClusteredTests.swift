@@ -15,9 +15,10 @@
 import AsyncAlgorithms
 import Distributed
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import Logging
 import XCTest
+
+@testable import DistributedCluster
 
 final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCase {
     override func configureLogCapture(settings: inout LogCapture.Settings) {
@@ -68,9 +69,24 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
         // `first` will be the leader (lowest address) and runs the singleton
         try await self.ensureNodes(.up, on: first, within: .seconds(10), nodes: second.cluster.node, third.cluster.node)
 
-        try await self.assertSingletonRequestReply(first, singleton: ref1, greetingName: "Alice", expectedPrefix: "Hello-1 Alice!")
-        try await self.assertSingletonRequestReply(second, singleton: ref2, greetingName: "Bob", expectedPrefix: "Hello-1 Bob!")
-        try await self.assertSingletonRequestReply(third, singleton: ref3, greetingName: "Charlie", expectedPrefix: "Hello-1 Charlie!")
+        try await self.assertSingletonRequestReply(
+            first,
+            singleton: ref1,
+            greetingName: "Alice",
+            expectedPrefix: "Hello-1 Alice!"
+        )
+        try await self.assertSingletonRequestReply(
+            second,
+            singleton: ref2,
+            greetingName: "Bob",
+            expectedPrefix: "Hello-1 Bob!"
+        )
+        try await self.assertSingletonRequestReply(
+            third,
+            singleton: ref3,
+            greetingName: "Charlie",
+            expectedPrefix: "Hello-1 Charlie!"
+        )
     }
 
     func test_singleton_lifecycle() async throws {
@@ -79,7 +95,7 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
 
         let first = await self.setUpNode("first") { settings in
             settings.endpoint.port = 7111
-            settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 1) // just myself
+            settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 1)  // just myself
             settings.plugins.install(plugin: ClusterSingletonPlugin())
         }
 
@@ -142,7 +158,11 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
             case remoteCall
         }
 
-        func requestReplyTask(singleton: TheSingleton, greetingName: String, expectedPrefix: String) -> (@Sendable () async throws -> TaskType) {
+        func requestReplyTask(
+            singleton: TheSingleton,
+            greetingName: String,
+            expectedPrefix: String
+        ) -> (@Sendable () async throws -> TaskType) {
             {
                 let reply = try await singleton.greet(name: greetingName)
                 reply.shouldStartWith(prefix: expectedPrefix)
@@ -166,9 +186,19 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
             }
 
             // Remote calls should be stashed until singleton is allocated
-            group.addTask(operation: requestReplyTask(singleton: ref1, greetingName: "Alice", expectedPrefix: "Hello-1 Alice!"))
-            group.addTask(operation: requestReplyTask(singleton: ref2, greetingName: "Bob", expectedPrefix: "Hello-1 Bob!"))
-            group.addTask(operation: requestReplyTask(singleton: ref3, greetingName: "Charlie", expectedPrefix: "Hello-1 Charlie!"))
+            group.addTask(
+                operation: requestReplyTask(singleton: ref1, greetingName: "Alice", expectedPrefix: "Hello-1 Alice!")
+            )
+            group.addTask(
+                operation: requestReplyTask(singleton: ref2, greetingName: "Bob", expectedPrefix: "Hello-1 Bob!")
+            )
+            group.addTask(
+                operation: requestReplyTask(
+                    singleton: ref3,
+                    greetingName: "Charlie",
+                    expectedPrefix: "Hello-1 Charlie!"
+                )
+            )
 
             var taskTypes = [TaskType]()
             for try await taskType in group {
@@ -229,9 +259,24 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
         try await self.ensureNodes(.up, on: first, within: .seconds(10), nodes: second.cluster.node, third.cluster.node)
         pinfo("Nodes up: \([first.cluster.node, second.cluster.node, third.cluster.node])")
 
-        try await self.assertSingletonRequestReply(first, singleton: ref1, greetingName: "Alice", expectedPrefix: "Hello-1 Alice!")
-        try await self.assertSingletonRequestReply(second, singleton: ref2, greetingName: "Bob", expectedPrefix: "Hello-1 Bob!")
-        try await self.assertSingletonRequestReply(third, singleton: ref3, greetingName: "Charlie", expectedPrefix: "Hello-1 Charlie!")
+        try await self.assertSingletonRequestReply(
+            first,
+            singleton: ref1,
+            greetingName: "Alice",
+            expectedPrefix: "Hello-1 Alice!"
+        )
+        try await self.assertSingletonRequestReply(
+            second,
+            singleton: ref2,
+            greetingName: "Bob",
+            expectedPrefix: "Hello-1 Bob!"
+        )
+        try await self.assertSingletonRequestReply(
+            third,
+            singleton: ref3,
+            greetingName: "Charlie",
+            expectedPrefix: "Hello-1 Charlie!"
+        )
         pinfo("All three nodes communicated with singleton")
 
         let firstNode = first.cluster.node
@@ -285,8 +330,16 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
         let ref2Task = requestReplyTask(singleton: ref2, greetingName: "Bob")
         let ref3Task = requestReplyTask(singleton: ref2, greetingName: "Charlie")
 
-        try await self.ensureNodes(.up, on: second, within: .seconds(10), nodes: third.cluster.node, fourth.cluster.node)
-        pinfo("Fourth node joined, will become leader; Members now: \([fourth.cluster.node, second.cluster.node, third.cluster.node])")
+        try await self.ensureNodes(
+            .up,
+            on: second,
+            within: .seconds(10),
+            nodes: third.cluster.node,
+            fourth.cluster.node
+        )
+        pinfo(
+            "Fourth node joined, will become leader; Members now: \([fourth.cluster.node, second.cluster.node, third.cluster.node])"
+        )
 
         ref2Task.cancel()
         ref3Task.cancel()
@@ -353,7 +406,12 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
         // `first` will be the leader (lowest address) and runs the singleton
         try await self.ensureNodes(.up, on: first, nodes: second.cluster.node)
 
-        try await self.assertSingletonRequestReply(second, singleton: ref2, greetingName: "Bob", expectedPrefix: "Hello-1 Bob!")
+        try await self.assertSingletonRequestReply(
+            second,
+            singleton: ref2,
+            greetingName: "Bob",
+            expectedPrefix: "Hello-1 Bob!"
+        )
 
         let firstNode = first.cluster.node
         first.cluster.leave()
@@ -377,7 +435,12 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
     }
 
     /// Since during re-balancing it may happen that a message gets lost, we send messages a few times and only if none "got through" it would be a serious error.
-    private func assertSingletonRequestReply(_ system: ClusterSystem, singleton: TheSingleton, greetingName: String, expectedPrefix: String) async throws {
+    private func assertSingletonRequestReply(
+        _ system: ClusterSystem,
+        singleton: TheSingleton,
+        greetingName: String,
+        expectedPrefix: String
+    ) async throws {
         let testKit: ActorTestKit = self.testKit(system)
 
         var attempts = 0
@@ -394,7 +457,8 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
                     """
                     Received no reply from singleton [\(singleton)] while sending from [\(system.cluster.node.endpoint)], \
                     perhaps request was lost. Sent greeting [\(greetingName)] and expected prefix: [\(expectedPrefix)] (attempts: \(attempts))
-                    """)
+                    """
+                )
             }
         }
     }
@@ -436,7 +500,7 @@ distributed actor LifecycleTestSingleton: ClusterSingleton {
     }
 
     deinit {
-        guard __isLocalActor(self) else { // FIXME: workaround until fixed Swift is released
+        guard __isLocalActor(self) else {  // FIXME: workaround until fixed Swift is released
             return
         }
 

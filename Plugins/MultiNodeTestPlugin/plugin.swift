@@ -87,18 +87,20 @@ final class MultiNodeTestPlugin: CommandPlugin {
     }
 
     func usage(arguments: [String]) throws -> Never {
-        throw UsageError(message: """
-        ILLEGAL INVOCATION: \(arguments)
-        USAGE:
-        > swift package --disable-sandbox multi-node [OPTIONS] COMMAND
+        throw UsageError(
+            message: """
+                ILLEGAL INVOCATION: \(arguments)
+                USAGE:
+                > swift package --disable-sandbox multi-node [OPTIONS] COMMAND
 
-        OPTIONS:
-            -c release/debug  - to build in release or debug mode (default: \(self.buildConfiguration))
+                OPTIONS:
+                    -c release/debug  - to build in release or debug mode (default: \(self.buildConfiguration))
 
-        COMMAND:
-            test - run multi-node tests
-            _exec
-        """)
+                COMMAND:
+                    test - run multi-node tests
+                    _exec
+                """
+        )
     }
 }
 

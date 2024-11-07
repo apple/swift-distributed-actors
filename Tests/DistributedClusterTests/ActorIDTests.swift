@@ -13,8 +13,9 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import XCTest
+
+@testable import DistributedCluster
 
 final class ActorIDTests: ClusteredActorSystemsXCTestCase {
     func test_local_actorAddress_shouldPrintNicely() throws {
@@ -38,11 +39,17 @@ final class ActorIDTests: ClusteredActorSystemsXCTestCase {
 
     func test_remote_actorAddress_shouldPrintNicely() throws {
         let localNode = Cluster.Node(systemName: "\(Self.self)", host: "127.0.0.1", port: 7337, nid: .random())
-        let id = try ActorID(local: localNode, path: ActorPath._user.appending("hello"), incarnation: ActorIncarnation(8888))
+        let id = try ActorID(
+            local: localNode,
+            path: ActorPath._user.appending("hello"),
+            incarnation: ActorIncarnation(8888)
+        )
         let remoteNode = Cluster.Node(systemName: "system", host: "127.0.0.1", port: 1234, nid: Cluster.Node.ID(11111))
         let remote = ActorID(remote: remoteNode, path: id.path, incarnation: ActorIncarnation(8888))
 
-        remote.detailedDescription.shouldEqual("sact://system:11111@127.0.0.1:1234/user/hello#8888[\"$path\": /user/hello]")
+        remote.detailedDescription.shouldEqual(
+            "sact://system:11111@127.0.0.1:1234/user/hello#8888[\"$path\": /user/hello]"
+        )
         String(reflecting: remote).shouldEqual("sact://system@127.0.0.1:1234/user/hello")
         "\(remote)".shouldEqual("sact://system@127.0.0.1:1234/user/hello")
         "\(remote.name)".shouldEqual("hello")
@@ -69,24 +76,48 @@ final class ActorIDTests: ClusteredActorSystemsXCTestCase {
 
     func test_equalityOf_idWithDifferentSystemNameOnly() throws {
         let path = try ActorPath._user.appending("hello")
-        let one = ActorID(local: Cluster.Node(systemName: "one", host: "127.0.0.1", port: 1234, nid: Cluster.Node.ID(11111)), path: path, incarnation: ActorIncarnation(88))
-        let two = ActorID(local: Cluster.Node(systemName: "two", host: "127.0.0.1", port: 1234, nid: Cluster.Node.ID(11111)), path: path, incarnation: ActorIncarnation(88))
+        let one = ActorID(
+            local: Cluster.Node(systemName: "one", host: "127.0.0.1", port: 1234, nid: Cluster.Node.ID(11111)),
+            path: path,
+            incarnation: ActorIncarnation(88)
+        )
+        let two = ActorID(
+            local: Cluster.Node(systemName: "two", host: "127.0.0.1", port: 1234, nid: Cluster.Node.ID(11111)),
+            path: path,
+            incarnation: ActorIncarnation(88)
+        )
 
         one.shouldEqual(two)
     }
 
     func test_equalityOf_idWithDifferentSystemNameOnly_remote() throws {
         let path = try ActorPath._user.appending("hello")
-        let one = ActorID(remote: Cluster.Node(systemName: "one", host: "127.0.0.1", port: 1234, nid: Cluster.Node.ID(11111)), path: path, incarnation: ActorIncarnation(88))
-        let two = ActorID(remote: Cluster.Node(systemName: "two", host: "127.0.0.1", port: 1234, nid: Cluster.Node.ID(11111)), path: path, incarnation: ActorIncarnation(88))
+        let one = ActorID(
+            remote: Cluster.Node(systemName: "one", host: "127.0.0.1", port: 1234, nid: Cluster.Node.ID(11111)),
+            path: path,
+            incarnation: ActorIncarnation(88)
+        )
+        let two = ActorID(
+            remote: Cluster.Node(systemName: "two", host: "127.0.0.1", port: 1234, nid: Cluster.Node.ID(11111)),
+            path: path,
+            incarnation: ActorIncarnation(88)
+        )
 
         one.shouldEqual(two)
     }
 
     func test_equalityOf_idWithDifferentSystemNameOnly_local_remote() throws {
         let path = try ActorPath._user.appending("hello")
-        let one = ActorID(local: Cluster.Node(systemName: "one", host: "127.0.0.1", port: 1234, nid: Cluster.Node.ID(11111)), path: path, incarnation: ActorIncarnation(88))
-        let two = ActorID(remote: Cluster.Node(systemName: "two", host: "127.0.0.1", port: 1234, nid: Cluster.Node.ID(11111)), path: path, incarnation: ActorIncarnation(88))
+        let one = ActorID(
+            local: Cluster.Node(systemName: "one", host: "127.0.0.1", port: 1234, nid: Cluster.Node.ID(11111)),
+            path: path,
+            incarnation: ActorIncarnation(88)
+        )
+        let two = ActorID(
+            remote: Cluster.Node(systemName: "two", host: "127.0.0.1", port: 1234, nid: Cluster.Node.ID(11111)),
+            path: path,
+            incarnation: ActorIncarnation(88)
+        )
 
         one.shouldEqual(two)
     }
@@ -94,7 +125,10 @@ final class ActorIDTests: ClusteredActorSystemsXCTestCase {
     func test_equalityOf_idWithDifferentSegmentsButSameUID() throws {
         let node = Cluster.Node(systemName: "one", host: "127.0.0.1", port: 1234, nid: Cluster.Node.ID(11111))
         let one = try ActorPath(root: "test").makeChildPath(name: "foo").makeLocalID(on: node, incarnation: .random())
-        let one2 = try ActorPath(root: "test").makeChildPath(name: "foo2").makeLocalID(on: node, incarnation: one.incarnation)
+        let one2 = try ActorPath(root: "test").makeChildPath(name: "foo2").makeLocalID(
+            on: node,
+            incarnation: one.incarnation
+        )
 
         one.shouldNotEqual(one2)
     }
@@ -150,7 +184,7 @@ final class ActorIDTests: ClusteredActorSystemsXCTestCase {
         let addressWithoutTestTag = a
         a.metadata.test = "test-value"
 
-        let data = try JSONEncoder().encode(a) // should skip the test tag, it does not know how to encode it
+        let data = try JSONEncoder().encode(a)  // should skip the test tag, it does not know how to encode it
         let serializedJson = String(data: data, encoding: .utf8)!
 
         serializedJson.shouldContain(#""incarnation":1"#)
@@ -189,11 +223,17 @@ final class ActorIDTests: ClusteredActorSystemsXCTestCase {
         let system = await self.setUpNode("test_serializing_ActorAddress_propagateCustomTag") { settings in
             settings.bindPort = 1234
             settings.actorMetadata.encodeCustomMetadata = { metadata, container in
-                try container.encodeIfPresent(metadata.test, forKey: ActorCoding.MetadataKeys.custom(ActorMetadataKeys.__instance.test.id))
+                try container.encodeIfPresent(
+                    metadata.test,
+                    forKey: ActorCoding.MetadataKeys.custom(ActorMetadataKeys.__instance.test.id)
+                )
             }
 
             settings.actorMetadata.decodeCustomMetadata = { container, metadata in
-                if let value = try container.decodeIfPresent(String.self, forKey: .custom(ActorMetadataKeys.__instance.test.id)) {
+                if let value = try container.decodeIfPresent(
+                    String.self,
+                    forKey: .custom(ActorMetadataKeys.__instance.test.id)
+                ) {
                     metadata.test = value
                 }
             }

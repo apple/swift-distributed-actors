@@ -13,9 +13,10 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import Foundation
 import XCTest
+
+@testable import DistributedCluster
 
 final class ActorSubReceiveTests: SingleClusterSystemXCTestCase {
     func test_subReceive_shouldBeAbleToReceiveMessages() throws {
@@ -117,7 +118,7 @@ final class ActorSubReceiveTests: SingleClusterSystemXCTestCase {
         let subRef = try refProbe.expectMessage()
 
         var previousState = 0
-        for _ in 1 ... 10 {
+        for _ in 1...10 {
             subRef.tell(IncrementAndGet(replyTo: p.ref))
             let state = try p.expectMessage()
             state.shouldEqual(previousState + 1)
@@ -197,7 +198,7 @@ final class ActorSubReceiveTests: SingleClusterSystemXCTestCase {
 
         subRef.tell("test")
 
-        _ = try refProbe.expectMessage() // this means the actor was restarted
+        _ = try refProbe.expectMessage()  // this means the actor was restarted
     }
 
     func test_subReceive_shouldTriggerSupervisionOnError() throws {
@@ -241,9 +242,9 @@ final class ActorSubReceiveTests: SingleClusterSystemXCTestCase {
         let subRef2 = try refProbe.expectMessage()
 
         subRef.tell(TestMessage(replyTo: p.ref, message: "test"))
-        try p.expectMessage("subReceive-1:test") // subReceive has been replaced, so we should get an incremented count
+        try p.expectMessage("subReceive-1:test")  // subReceive has been replaced, so we should get an incremented count
 
         subRef2.tell(TestMessage(replyTo: p.ref, message: "test"))
-        try p.expectMessage("subReceive-1:test") // second sub ref should also work
+        try p.expectMessage("subReceive-1:test")  // second sub ref should also work
     }
 }

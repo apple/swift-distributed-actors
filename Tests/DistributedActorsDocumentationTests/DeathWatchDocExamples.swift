@@ -113,12 +113,12 @@ class DeathWatchDocExamples {
         // tag::simple_death_watch[]
         func gameUnit(player: _ActorRef<Player.Command>) -> _Behavior<GameUnit.Command> {
             .setup { context in
-                context.watch(player) // <1>
+                context.watch(player)  // <1>
 
-                return .receiveMessage { _ in // <2>
+                return .receiveMessage { _ in  // <2>
                     // perform some game logic...
                     .same
-                } // <3>
+                }  // <3>
             }
         }
         // end::simple_death_watch[]

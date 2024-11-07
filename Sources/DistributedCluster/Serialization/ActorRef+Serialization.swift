@@ -12,10 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Foundation  // for Codable
 import NIO
 import NIOFoundationCompat
-
-import Foundation // for Codable
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Codable _ActorRef
@@ -107,11 +106,11 @@ extension _ReceivesMessages {
         let id: ActorID = try container.decode(ActorID.self)
 
         guard let context = decoder.actorSerializationContext else {
-            fatalError("Can not resolve actor refs without CodingUserInfoKey.actorSerializationContext set!") // TODO: better message
+            fatalError("Can not resolve actor refs without CodingUserInfoKey.actorSerializationContext set!")  // TODO: better message
         }
 
         let resolved: _ActorRef<Self.Message> = context._resolveActorRef(identifiedBy: id)
-        self = resolved as! Self // this is safe, we know Self IS-A _ActorRef
+        self = resolved as! Self  // this is safe, we know Self IS-A _ActorRef
     }
 }
 
@@ -131,7 +130,7 @@ extension _ReceivesSystemMessages {
     }
 
     public init(from decoder: Decoder) throws {
-        self = try ReceivesSystemMessagesDecoder.decode(from: decoder) as! Self // as! safe, since we know definitely that Self IS-A ReceivesSystemMessages
+        self = try ReceivesSystemMessagesDecoder.decode(from: decoder) as! Self  // as! safe, since we know definitely that Self IS-A ReceivesSystemMessages
     }
 }
 
@@ -267,7 +266,10 @@ extension SingleValueDecodingContainer {
     internal func decodeNonEmpty(_ type: String.Type, hint: String) throws -> String {
         let value = try self.decode(type)
         if value.isEmpty {
-            throw DecodingError.dataCorruptedError(in: self, debugDescription: "Cannot initialize [\(hint)] from an empty string!")
+            throw DecodingError.dataCorruptedError(
+                in: self,
+                debugDescription: "Cannot initialize [\(hint)] from an empty string!"
+            )
         }
         return value
     }
@@ -277,7 +279,10 @@ extension UnkeyedDecodingContainer {
     internal mutating func decodeNonEmpty(_ type: String.Type, hint: String) throws -> String {
         let value = try self.decode(type)
         if value.isEmpty {
-            throw DecodingError.dataCorruptedError(in: self, debugDescription: "Cannot initialize [\(hint)] from an empty string!")
+            throw DecodingError.dataCorruptedError(
+                in: self,
+                debugDescription: "Cannot initialize [\(hint)] from an empty string!"
+            )
         }
         return value
     }
@@ -299,7 +304,7 @@ extension _SystemMessage: Codable {
     }
 
     enum Types {
-        static let watch = 0 // TODO: UNWATCH!?
+        static let watch = 0  // TODO: UNWATCH!?
         static let terminated = 1
     }
 

@@ -37,7 +37,7 @@ extension Cluster {
     public struct Endpoint: Hashable, Sendable {
         // TODO: collapse into one String and index into it?
         public var `protocol`: String
-        public var systemName: String // TODO: some other name, to signify "this is just for humans"?
+        public var systemName: String  // TODO: some other name, to signify "this is just for humans"?
         public var host: String
         public var port: Int
 

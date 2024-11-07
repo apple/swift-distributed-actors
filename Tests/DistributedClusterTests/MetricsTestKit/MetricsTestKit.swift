@@ -28,8 +28,9 @@
 
 import CoreMetrics
 import DistributedCluster
-@testable import Metrics
 import XCTest
+
+@testable import Metrics
 
 /// Taken directly from swift-metrics's own test package.
 ///
@@ -113,8 +114,8 @@ extension TestMetrics.FullKey: Hashable {
     }
 
     public static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.label == rhs.label &&
-            Dictionary(uniqueKeysWithValues: lhs.dimensions) == Dictionary(uniqueKeysWithValues: rhs.dimensions)
+        lhs.label == rhs.label
+            && Dictionary(uniqueKeysWithValues: lhs.dimensions) == Dictionary(uniqueKeysWithValues: rhs.dimensions)
     }
 }
 

@@ -13,9 +13,10 @@
 //===----------------------------------------------------------------------===//
 
 import Distributed
+import Logging
+
 import struct Foundation.Data
 import struct Foundation.UUID
-import Logging
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Cluster singleton

@@ -1,3 +1,6 @@
+import NIO
+import SwiftProtobuf
+
 //===----------------------------------------------------------------------===//
 //
 // This source file is part of the Swift Distributed Actors open source project
@@ -11,9 +14,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-import struct Foundation.Data // TODO: would refer to not go "through" Data as our target always is ByteBuffer
-import NIO
-import SwiftProtobuf
+import struct Foundation.Data  // TODO: would refer to not go "through" Data as our target always is ByteBuffer
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: _ProtoEnvelope
@@ -145,7 +146,9 @@ extension Wire.HandshakeOffer {
             throw SerializationError(.missingField("originNode", type: String(reflecting: Wire.HandshakeOffer.self)))
         }
         guard proto.hasTargetEndpoint else {
-            throw SerializationError(.missingField("targetEndpoint", type: String(reflecting: Wire.HandshakeOffer.self)))
+            throw SerializationError(
+                .missingField("targetEndpoint", type: String(reflecting: Wire.HandshakeOffer.self))
+            )
         }
         guard proto.hasVersion else {
             throw SerializationError(.missingField("version", type: String(reflecting: Wire.HandshakeOffer.self)))
@@ -153,7 +156,12 @@ extension Wire.HandshakeOffer {
 
         self.originNode = try Cluster.Node(proto.originNode)
         self.targetEndpoint = Cluster.Endpoint(proto.targetEndpoint)
-        self.version = Wire.Version(reserved: UInt8(proto.version.reserved), major: UInt8(proto.version.major), minor: UInt8(proto.version.minor), patch: UInt8(proto.version.patch))
+        self.version = Wire.Version(
+            reserved: UInt8(proto.version.reserved),
+            major: UInt8(proto.version.major),
+            minor: UInt8(proto.version.minor),
+            patch: UInt8(proto.version.patch)
+        )
     }
 }
 
@@ -175,7 +183,9 @@ extension _ProtoHandshakeOffer {
             throw SerializationError(.missingField("hasOriginNode", type: String(reflecting: Wire.HandshakeOffer.self)))
         }
         guard proto.hasTargetEndpoint else {
-            throw SerializationError(.missingField("targetEndpoint", type: String(reflecting: Wire.HandshakeOffer.self)))
+            throw SerializationError(
+                .missingField("targetEndpoint", type: String(reflecting: Wire.HandshakeOffer.self))
+            )
         }
 
         self = proto

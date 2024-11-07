@@ -12,13 +12,13 @@
 //
 //===----------------------------------------------------------------------===//
 
+import NIO
+
 #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
 import Darwin
 #else
 import Glibc
 #endif
-
-import NIO
 
 /// Not intended for general use.
 public final class _Condition {

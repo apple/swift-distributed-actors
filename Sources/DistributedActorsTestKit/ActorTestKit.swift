@@ -13,11 +13,11 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsConcurrencyHelpers
-@testable import DistributedCluster
 import Foundation
 import Logging
-
 import XCTest
+
+@testable import DistributedCluster
 
 /// Contains helper functions for testing Actor based code.
 /// Due to their asynchronous nature Actors are sometimes tricky to write assertions for,
@@ -34,7 +34,10 @@ public final class ActorTestKit {
 
     public let settings: ActorTestKitSettings
 
-    public init(_ system: ClusterSystem, configuredWith configureSettings: (inout ActorTestKitSettings) -> Void = { _ in () }) {
+    public init(
+        _ system: ClusterSystem,
+        configuredWith configureSettings: (inout ActorTestKitSettings) -> Void = { _ in () }
+    ) {
         self.system = system
 
         var settings = ActorTestKitSettings()
@@ -68,7 +71,8 @@ extension ActorTestKit {
     public func makeTestProbe<Message: Codable>(
         _ naming: _ActorNaming? = nil,
         expecting type: Message.Type = Message.self,
-        file: StaticString = #filePath, line: UInt = #line
+        file: StaticString = #filePath,
+        line: UInt = #line
     ) -> ActorTestProbe<Message> {
         self.makeProbesLock.lock()
         defer { self.makeProbesLock.unlock() }
@@ -102,10 +106,15 @@ extension ActorTestKit {
     /// - Hint: Use `fishForMessages` and `fishFor` to filter expectations for specific events.
     public func spawnClusterEventStreamTestProbe(
         _ naming: _ActorNaming? = nil,
-        file: String = #filePath, line: UInt = #line, column: UInt = #column
+        file: String = #filePath,
+        line: UInt = #line,
+        column: UInt = #column
     ) async -> ActorTestProbe<Cluster.Event> {
         let eventStream = self.system.cluster.events
-        let p = self.makeTestProbe(naming ?? _ActorNaming.prefixed(with: "\(ClusterEventStream.self)-subscriberProbe"), expecting: Cluster.Event.self)
+        let p = self.makeTestProbe(
+            naming ?? _ActorNaming.prefixed(with: "\(ClusterEventStream.self)-subscriberProbe"),
+            expecting: Cluster.Event.self
+        )
         await eventStream._subscribe(p.ref)
         return p
     }
@@ -126,8 +135,11 @@ extension ActorTestKit {
     // TODO: should use default `within` from TestKit
     @discardableResult
     public func eventually<T>(
-        within duration: Duration, interval: Duration = .milliseconds(100),
-        file: StaticString = #filePath, line: UInt = #line, column: UInt = #column,
+        within duration: Duration,
+        interval: Duration = .milliseconds(100),
+        file: StaticString = #filePath,
+        line: UInt = #line,
+        column: UInt = #column,
         _ block: () throws -> T
     ) throws -> T {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
@@ -172,8 +184,11 @@ extension ActorTestKit {
     // TODO: should use default `within` from TestKit
     @discardableResult
     public func eventually<T>(
-        within duration: Duration, interval: Duration = .milliseconds(100),
-        file: StaticString = #filePath, line: UInt = #line, column: UInt = #column,
+        within duration: Duration,
+        interval: Duration = .milliseconds(100),
+        file: StaticString = #filePath,
+        line: UInt = #line,
+        column: UInt = #column,
         _ block: () async throws -> T
     ) async throws -> T {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
@@ -237,10 +252,10 @@ public struct EventuallyError: Error, CustomStringConvertible, CustomDebugString
         }
 
         message += """
-        No result within \(self.duration.prettyDescription) for block at \(self.callSite.file):\(self.callSite.line). \
-        Queried \(self.polledTimes) times, within \(self.duration.prettyDescription). \
-        \(lastErrorMessage)
-        """
+            No result within \(self.duration.prettyDescription) for block at \(self.callSite.file):\(self.callSite.line). \
+            Queried \(self.polledTimes) times, within \(self.duration.prettyDescription). \
+            \(lastErrorMessage)
+            """
 
         return message
     }
@@ -249,7 +264,8 @@ public struct EventuallyError: Error, CustomStringConvertible, CustomDebugString
         let error = self.callSite.error(
             """
             Eventually block failed, after \(self.duration) (polled \(self.polledTimes) times), last error: \(optional: self.lastError)
-            """)
+            """
+        )
         return "\(error)"
     }
 }
@@ -261,8 +277,11 @@ extension ActorTestKit {
     /// Executes passed in block numerous times, to check the assertion holds over time.
     /// Throws an error when the block fails within the specified time amount.
     public func assertHolds(
-        for duration: Duration, interval: Duration = .milliseconds(100),
-        file: StaticString = #filePath, line: UInt = #line, column: UInt = #column,
+        for duration: Duration,
+        interval: Duration = .milliseconds(100),
+        file: StaticString = #filePath,
+        line: UInt = #line,
+        column: UInt = #column,
         _ block: () throws -> Void
     ) throws {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
@@ -296,7 +315,12 @@ extension ActorTestKit {
 extension ActorTestKit {
     // TODO: how to better hide such more nasty assertions?
     // TODO: Not optimal since we always do traverseAll rather than follow the Path of the context
-    public func _assertActorPathOccupied(_ path: String, file: StaticString = #filePath, line: UInt = #line, column: UInt = #column) throws {
+    public func _assertActorPathOccupied(
+        _ path: String,
+        file: StaticString = #filePath,
+        line: UInt = #line,
+        column: UInt = #column
+    ) throws {
         precondition(!path.contains("#"), "assertion path MUST NOT contain # id section of an unique path.")
 
         let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
@@ -309,7 +333,7 @@ extension ActorTestKit {
         }
 
         switch res {
-        case .result: return // good
+        case .result: return  // good
         case .results(let refs): throw callSiteInfo.error("Found more than a single ref for assertion! Got \(refs).")
         case .completed: throw callSiteInfo.error("Failed to find actor occupying [\(path)]!")
         case .failed(let err): throw callSiteInfo.error("Path \(path) was not occupied by any actor! Error: \(err)")
@@ -320,7 +344,11 @@ extension ActorTestKit {
     /// If unable to resolve a not-dead reference, this function throws, rather than returning the dead reference.
     ///
     /// This is useful when the resolution might be racing against the startup of the actor we are trying to resolve.
-    public func _eventuallyResolve<Message>(id: ActorID, of: Message.Type = Message.self, within: Duration = .seconds(5)) throws -> _ActorRef<Message> {
+    public func _eventuallyResolve<Message>(
+        id: ActorID,
+        of: Message.Type = Message.self,
+        within: Duration = .seconds(5)
+    ) throws -> _ActorRef<Message> {
         let context = _ResolveContext<Message>(id: id, system: self.system)
 
         return try self.eventually(within: .seconds(3)) {
@@ -354,10 +382,9 @@ extension ActorTestKit {
 
 struct MockActorContextError: Error, CustomStringConvertible {
     var description: String {
-        "MockActorContextError(" +
-            "A mock context can not be used to perform any real actions! " +
-            "If you find yourself needing to perform assertions on an actor context please file a ticket." + // this would be "EffectfulContext"
-            ")"
+        "MockActorContextError(" + "A mock context can not be used to perform any real actions! "
+            + "If you find yourself needing to perform assertions on an actor context please file a ticket."  // this would be "EffectfulContext"
+            + ")"
     }
 }
 
@@ -395,14 +422,15 @@ public final class Mock_ActorContext<Message: Codable>: _ActorContext<Message> {
     }
 
     override public var props: _Props {
-        .init() // mock impl
+        .init()  // mock impl
     }
 
     @discardableResult
     override public func watch<Watchee>(
         _ watchee: Watchee,
         with terminationMessage: Message? = nil,
-        file: String = #filePath, line: UInt = #line
+        file: String = #filePath,
+        line: UInt = #line
     ) -> Watchee where Watchee: _DeathWatchable {
         fatalError("Failed: \(MockActorContextError())")
     }
@@ -410,30 +438,35 @@ public final class Mock_ActorContext<Message: Codable>: _ActorContext<Message> {
     @discardableResult
     override public func unwatch<Watchee>(
         _ watchee: Watchee,
-        file: String = #filePath, line: UInt = #line
+        file: String = #filePath,
+        line: UInt = #line
     ) -> Watchee where Watchee: _DeathWatchable {
         fatalError("Failed: \(MockActorContextError())")
     }
 
     @discardableResult
     override public func _spawn<M>(
-        _ naming: _ActorNaming, of type: M.Type = M.self, props: _Props = _Props(),
-        file: String = #filePath, line: UInt = #line,
+        _ naming: _ActorNaming,
+        of type: M.Type = M.self,
+        props: _Props = _Props(),
+        file: String = #filePath,
+        line: UInt = #line,
         _ behavior: _Behavior<M>
     ) throws -> _ActorRef<M>
-        where M: Codable
-    {
+    where M: Codable {
         fatalError("Failed: \(MockActorContextError())")
     }
 
     @discardableResult
     override public func _spawnWatch<M>(
-        _ naming: _ActorNaming, of type: M.Type = M.self, props: _Props = _Props(),
-        file: String = #filePath, line: UInt = #line,
+        _ naming: _ActorNaming,
+        of type: M.Type = M.self,
+        props: _Props = _Props(),
+        file: String = #filePath,
+        line: UInt = #line,
         _ behavior: _Behavior<M>
     ) throws -> _ActorRef<M>
-        where M: Codable
-    {
+    where M: Codable {
         fatalError("Failed: \(MockActorContextError())")
     }
 
@@ -464,7 +497,12 @@ extension ActorTestKit {
     ///     testKit.eventually(within: .seconds(3)) {
     ///         guard ... else { throw testKit.error("failed to extract expected information") }
     ///     }
-    public func error(_ message: String? = nil, file: StaticString = #filePath, line: UInt = #line, column: UInt = #column) -> Error {
+    public func error(
+        _ message: String? = nil,
+        file: StaticString = #filePath,
+        line: UInt = #line,
+        column: UInt = #column
+    ) -> Error {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
         let fullMessage: String = message ?? "<no message>"
         return callSite.error(fullMessage, failTest: false)
@@ -475,7 +513,12 @@ extension ActorTestKit {
     /// Examples:
     ///
     ///     guard ... else { throw testKit.fail("failed to extract expected information") }
-    public func fail(_ message: String? = nil, file: StaticString = #filePath, line: UInt = #line, column: UInt = #column) -> Error {
+    public func fail(
+        _ message: String? = nil,
+        file: StaticString = #filePath,
+        line: UInt = #line,
+        column: UInt = #column
+    ) -> Error {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
         let fullMessage: String = message ?? "<no message>"
         return callSite.error(fullMessage, failTest: true)
@@ -535,11 +578,15 @@ extension ActorTestKit {
 
             let listing = try lookupProbe.expectMessage()
             guard listing.refs.count == expectedCount else {
-                throw self.error("Expected _Reception.Listing for key [\(key)] to have count [\(expectedCount)], but got [\(listing.refs.count)]")
+                throw self.error(
+                    "Expected _Reception.Listing for key [\(key)] to have count [\(expectedCount)], but got [\(listing.refs.count)]"
+                )
             }
             if let expectedRefs = expectedRefs {
                 guard Set(listing.refs) == expectedRefs else {
-                    throw self.error("Expected _Reception.Listing for key [\(key)] to have refs \(expectedRefs), but got \(listing.refs)")
+                    throw self.error(
+                        "Expected _Reception.Listing for key [\(key)] to have refs \(expectedRefs), but got \(listing.refs)"
+                    )
                 }
             }
         }

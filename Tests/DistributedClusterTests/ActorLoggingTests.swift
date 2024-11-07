@@ -13,9 +13,10 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import Foundation
 import XCTest
+
+@testable import DistributedCluster
 
 final class ActorLoggingTests: SingleClusterSystemXCTestCase {
     var exampleSenderPath: ActorPath!
@@ -74,7 +75,7 @@ final class ActorLoggingTests: SingleClusterSystemXCTestCase {
 
                 return .receiveMessage { message in
                     context.log.logLevel = .warning
-                    context.log.info("I got \(message)") // thus should not render any metadata
+                    context.log.info("I got \(message)")  // thus should not render any metadata
 
                     p.ref.tell("Got: \(message)")
                     return .same

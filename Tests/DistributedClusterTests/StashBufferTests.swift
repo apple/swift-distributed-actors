@@ -43,11 +43,11 @@ final class _StashBufferTests: SingleClusterSystemXCTestCase {
 
         let stasher = try system._spawn(.anonymous, behavior)
 
-        for i in 0 ... 10 {
+        for i in 0...10 {
             stasher.tell(i)
         }
 
-        for i in 0 ... 9 {
+        for i in 0...9 {
             try probe.expectMessage(i)
         }
 
@@ -113,12 +113,12 @@ final class _StashBufferTests: SingleClusterSystemXCTestCase {
 
         let stasher = try system._spawn(.anonymous, behavior)
 
-        for i in 0 ... 10 {
+        for i in 0...10 {
             stasher.tell(i)
         }
 
         // we are expecting to get each stashed message once
-        for i in 0 ... 9 {
+        for i in 0...9 {
             try probe.expectMessage(i)
         }
 

@@ -13,9 +13,10 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import Foundation
 import XCTest
+
+@testable import DistributedCluster
 
 class ActorLifecycleTests: SingleClusterSystemXCTestCase {
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -29,9 +30,11 @@ class ActorLifecycleTests: SingleClusterSystemXCTestCase {
             _ = try self.system._spawn("same", sameBehavior)
         }
 
-        "\(ex)".shouldEqual("""
-        notAllowedAsInitial(DistributedCluster._Behavior<Swift.String>.same)
-        """)
+        "\(ex)".shouldEqual(
+            """
+            notAllowedAsInitial(DistributedCluster._Behavior<Swift.String>.same)
+            """
+        )
     }
 
     func test_spawn_shouldNotAllowStartingWith_Unhandled() throws {
@@ -63,28 +66,28 @@ class ActorLifecycleTests: SingleClusterSystemXCTestCase {
         try check(
             illegalName: "hello world",
             expectedError: """
-            illegalActorPathElement(name: "hello world", illegal: " ", index: 5)
-            """
+                illegalActorPathElement(name: "hello world", illegal: " ", index: 5)
+                """
         )
 
         try check(
             illegalName: "he//o",
             expectedError: """
-            illegalActorPathElement(name: "he//o", illegal: "/", index: 2)
-            """
+                illegalActorPathElement(name: "he//o", illegal: "/", index: 2)
+                """
         )
         try check(
             illegalName: "ążŻŌżąć",
             expectedError: """
-            illegalActorPathElement(name: "ążŻŌżąć", illegal: "ą", index: 0)
-            """
+                illegalActorPathElement(name: "ążŻŌżąć", illegal: "ą", index: 0)
+                """
         )
         try check(
             illegalName: "カピバラ",
             expectedError: """
-            illegalActorPathElement(name: "カピバラ", illegal: "カ", index: 0)
-            """
-        ) // ka-pi-ba-ra
+                illegalActorPathElement(name: "カピバラ", illegal: "カ", index: 0)
+                """
+        )  // ka-pi-ba-ra
     }
 
     func test_spawn_shouldThrowFromMultipleActorsWithTheSamePathBeingSpawned() throws {
@@ -95,7 +98,7 @@ class ActorLifecycleTests: SingleClusterSystemXCTestCase {
                 "\(name)",
                 .setup { context in
                     p.tell("me:\(context.path) spawned from \(fromName)")
-                    return .receiveMessage { _ in .stop } // keep ignoring
+                    return .receiveMessage { _ in .stop }  // keep ignoring
                 }
             )
             return .stop

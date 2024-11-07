@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import Logging
-import NIO // Future
+import NIO  // Future
 
 /// Leader election allows for determining a "leader" node among members.
 ///
@@ -101,7 +101,7 @@ extension Leadership {
     final class Shell {
         static let naming: _ActorNaming = "leadership"
 
-        private var membership: Cluster.Membership // FIXME: we need to ensure the membership is always up to date -- we need the initial snapshot or a diff from a zero state etc.
+        private var membership: Cluster.Membership  // FIXME: we need to ensure the membership is always up to date -- we need the initial snapshot or a diff from a zero state etc.
         private var election: LeaderElection
 
         init(_ election: LeaderElection) {
@@ -115,7 +115,9 @@ extension Leadership {
                 context.system.cluster.events.subscribe(context.myself)
 
                 // FIXME: we have to add "own node" since we're not getting the .snapshot... so we have to manually act as if..
-                _ = self.membership.applyMembershipChange(Cluster.MembershipChange(node: context.system.cluster.node, previousStatus: nil, toStatus: .joining))
+                _ = self.membership.applyMembershipChange(
+                    Cluster.MembershipChange(node: context.system.cluster.node, previousStatus: nil, toStatus: .joining)
+                )
                 return self.runElection(context)
             }
         }
@@ -129,7 +131,7 @@ extension Leadership {
 
                 case .membershipChange(let change):
                     guard self.membership.applyMembershipChange(change) != nil else {
-                        return .same // nothing changed, no need to select anew
+                        return .same  // nothing changed, no need to select anew
                     }
 
                     return self.runElection(context)
@@ -140,10 +142,12 @@ extension Leadership {
                     return self.runElection(context)
 
                 case .leadershipChange:
-                    return .same // we are the source of such events!
+                    return .same  // we are the source of such events!
 
                 case ._PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE:
-                    context.log.error("Received Cluster.Event [\(event)]. This should not happen, please file an issue.")
+                    context.log.error(
+                        "Received Cluster.Event [\(event)]. This should not happen, please file an issue."
+                    )
                     return .same
                 }
             }
@@ -159,7 +163,9 @@ extension Leadership {
                 switch $0 {
                 case .success(.some(let leadershipChange)):
                     guard let changed = try self.membership.applyLeadershipChange(to: leadershipChange.newLeader) else {
-                        context.log.trace("The leadership change that was decided on by \(self.election) results in no change from current leadership state.")
+                        context.log.trace(
+                            "The leadership change that was decided on by \(self.election) results in no change from current leadership state."
+                        )
                         return self.ready
                     }
                     context.system.cluster.ref.tell(.requestMembershipChange(.leadershipChange(changed)))
@@ -235,30 +241,49 @@ extension Leadership {
             self.loseLeadershipIfBelowMinNrOfMembers = loseLeadershipIfBelowMinNrOfMembers
         }
 
-        public mutating func runElection(context: LeaderElectionContext, membership: Cluster.Membership) -> LeaderElectionResult {
+        public mutating func runElection(
+            context: LeaderElectionContext,
+            membership: Cluster.Membership
+        ) -> LeaderElectionResult {
             var membership = membership
             let membersToSelectAmong = membership.members(atMost: .up, reachability: .reachable)
 
             let enoughMembers = membersToSelectAmong.count >= self.minimumNumberOfMembersToDecide
             if enoughMembers {
-                return self.selectByLowestAddress(context: context, membership: &membership, membersToSelectAmong: membersToSelectAmong)
+                return self.selectByLowestAddress(
+                    context: context,
+                    membership: &membership,
+                    membersToSelectAmong: membersToSelectAmong
+                )
             } else {
-                context.log.info("Not enough members [\(membersToSelectAmong.count)/\(self.minimumNumberOfMembersToDecide)] to run election, members: \(membersToSelectAmong)")
+                context.log.info(
+                    "Not enough members [\(membersToSelectAmong.count)/\(self.minimumNumberOfMembersToDecide)] to run election, members: \(membersToSelectAmong)"
+                )
                 if self.loseLeadershipIfBelowMinNrOfMembers {
-                    return self.notEnoughMembers(context: context, membership: &membership, membersToSelectAmong: membersToSelectAmong)
+                    return self.notEnoughMembers(
+                        context: context,
+                        membership: &membership,
+                        membersToSelectAmong: membersToSelectAmong
+                    )
                 } else {
                     return self.belowMinMembersTryKeepStableLeader(context: context, membership: &membership)
                 }
             }
         }
 
-        internal mutating func notEnoughMembers(context: LeaderElectionContext, membership: inout Cluster.Membership, membersToSelectAmong: [Cluster.Member]) -> LeaderElectionResult {
+        internal mutating func notEnoughMembers(
+            context: LeaderElectionContext,
+            membership: inout Cluster.Membership,
+            membersToSelectAmong: [Cluster.Member]
+        ) -> LeaderElectionResult {
             // not enough members to make a decision yet
-            context.log.trace("Not enough members to select leader from, minimum nr of members [\(membersToSelectAmong.count)/\(self.minimumNumberOfMembersToDecide)]")
+            context.log.trace(
+                "Not enough members to select leader from, minimum nr of members [\(membersToSelectAmong.count)/\(self.minimumNumberOfMembersToDecide)]"
+            )
 
             if let currentLeader = membership.leader {
                 // Clear current leader and trigger `Cluster.LeadershipChange`
-                let change = try! membership.applyLeadershipChange(to: nil) // try!-safe, because changing leader to nil is safe
+                let change = try! membership.applyLeadershipChange(to: nil)  // try!-safe, because changing leader to nil is safe
                 context.log.trace("Removing leader [\(currentLeader)]")
                 return .init(context.loop.next().makeSucceededFuture(change))
             } else {
@@ -273,15 +298,18 @@ extension Leadership {
         /// - it still is reachable and part of the membership
         ///
         /// Other nodes MAY NOT be elected, as we are below the minimum members threshold, we can only keep an existing leader, but not elect new ones.
-        internal mutating func belowMinMembersTryKeepStableLeader(context: LeaderElectionContext, membership: inout Cluster.Membership) -> LeaderElectionResult {
+        internal mutating func belowMinMembersTryKeepStableLeader(
+            context: LeaderElectionContext,
+            membership: inout Cluster.Membership
+        ) -> LeaderElectionResult {
             guard let currentLeader = membership.leader else {
                 // there was no leader previously, and now we are below `minimumNumberOfMembersToDecide` thus cannot select a new one
-                return .init(context.loop.next().makeSucceededFuture(nil)) // no change
+                return .init(context.loop.next().makeSucceededFuture(nil))  // no change
             }
 
             guard currentLeader.status <= .up else {
                 // the leader is not up anymore, and we have to remove it (cannot keep trusting it)
-                let change = try! membership.applyLeadershipChange(to: nil) // try!-safe, because changing leader to nil is safe
+                let change = try! membership.applyLeadershipChange(to: nil)  // try!-safe, because changing leader to nil is safe
                 context.log.trace("Removing leader [\(currentLeader)], not enough members to elect new leader.")
                 return .init(context.loop.next().makeSucceededFuture(change))
             }
@@ -291,24 +319,29 @@ extension Leadership {
             return .init(context.loop.next().makeSucceededFuture(nil))
         }
 
-        internal mutating func selectByLowestAddress(context: LeaderElectionContext, membership: inout Cluster.Membership, membersToSelectAmong: [Cluster.Member]) -> LeaderElectionResult {
+        internal mutating func selectByLowestAddress(
+            context: LeaderElectionContext,
+            membership: inout Cluster.Membership,
+            membersToSelectAmong: [Cluster.Member]
+        ) -> LeaderElectionResult {
             let oldLeader = membership.leader
 
             // select the leader, by lowest address
-            let leader = membersToSelectAmong
+            let leader =
+                membersToSelectAmong
                 .sorted(by: Cluster.Member.lowestAddressOrdering)
                 .first
 
-            if let change = try! membership.applyLeadershipChange(to: leader) { // try! safe, as we KNOW this member is part of membership
+            if let change = try! membership.applyLeadershipChange(to: leader) {  // try! safe, as we KNOW this member is part of membership
                 context.log.debug(
                     "Selected new leader: [\(oldLeader, orElse: "nil") -> \(leader, orElse: "nil")]",
                     metadata: [
-                        "membership": "\(membership)",
+                        "membership": "\(membership)"
                     ]
                 )
                 return .init(context.loop.next().makeSucceededFuture(change))
             } else {
-                return .init(context.loop.next().makeSucceededFuture(nil)) // no change, e.g. the new/old leader are the same
+                return .init(context.loop.next().makeSucceededFuture(nil))  // no change, e.g. the new/old leader are the same
             }
         }
     }

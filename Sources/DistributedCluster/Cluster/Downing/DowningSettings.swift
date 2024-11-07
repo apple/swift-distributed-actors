@@ -63,7 +63,7 @@ public struct OnDownActionStrategySettings {
     func make() -> (ClusterSystem) throws -> Void {
         switch self.underlying {
         case .none:
-            return { _ in () } // do nothing
+            return { _ in () }  // do nothing
 
         case .gracefulShutdown(let shutdownDelay):
             return { system in
@@ -72,7 +72,9 @@ public struct OnDownActionStrategySettings {
                     of: String.self,
                     .setup { context in
                         guard .milliseconds(0) < shutdownDelay else {
-                            context.log.warning("This node was marked as [.down], delay is immediate. Shutting down the system immediately!")
+                            context.log.warning(
+                                "This node was marked as [.down], delay is immediate. Shutting down the system immediately!"
+                            )
                             Task {
                                 try system.shutdown()
                             }
@@ -80,7 +82,9 @@ public struct OnDownActionStrategySettings {
                         }
 
                         context.timers.startSingle(key: "shutdown-delay", message: "shutdown", delay: shutdownDelay)
-                        system.log.warning("This node was marked as [.down], performing OnDownAction as configured: shutting down the system, in \(shutdownDelay)")
+                        system.log.warning(
+                            "This node was marked as [.down], performing OnDownAction as configured: shutting down the system, in \(shutdownDelay)"
+                        )
 
                         return .receiveMessage { _ in
                             system.log.warning("Shutting down...")

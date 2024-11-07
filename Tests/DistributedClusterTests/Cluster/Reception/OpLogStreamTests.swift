@@ -13,8 +13,9 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import XCTest
+
+@testable import DistributedCluster
 
 final class OpLogStreamTests: XCTestCase {
     enum TestOp: Equatable, OpLogStreamOp {

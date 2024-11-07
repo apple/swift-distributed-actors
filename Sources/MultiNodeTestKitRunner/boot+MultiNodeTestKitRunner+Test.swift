@@ -14,15 +14,16 @@
 
 import ArgumentParser
 import DistributedCluster
+import MultiNodeTestKit
+import NIOCore
+import NIOPosix
+import OrderedCollections
+
 import struct Foundation.Date
 import class Foundation.FileHandle
 import class Foundation.Process
 import class Foundation.ProcessInfo
 import struct Foundation.URL
-import MultiNodeTestKit
-import NIOCore
-import NIOPosix
-import OrderedCollections
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Code executing on each specific process/node
@@ -72,7 +73,11 @@ extension MultiNodeTestKitRunnerBoot {
         summary.emit("Test '\(suite).\(testName)' started at \(startDate)", failed: false)
 
         do {
-            let runResult = try await runMultiNodeTest(suite: suite, testName: testName, binary: CommandLine.arguments.first!)
+            let runResult = try await runMultiNodeTest(
+                suite: suite,
+                testName: testName,
+                binary: CommandLine.arguments.first!
+            )
 
             let endDate = Date()
             var message = "Test '\(suite).\(testName)' finished: "
@@ -83,7 +88,7 @@ extension MultiNodeTestKitRunnerBoot {
             case .crashedAsExpected:
                 message += "OK (EXPECTED CRASH) "
 
-            case .crashRegexDidNotMatch(regex: let regex, output: _):
+            case .crashRegexDidNotMatch(let regex, output: _):
                 message += "FAILED: crash regex did not match output; regex: \(regex) "
                 failed = true
             case .unexpectedRunResult(let runResult):
@@ -96,7 +101,9 @@ extension MultiNodeTestKitRunnerBoot {
             summary.emit("\(message) (took: \(endDate.timeIntervalSince(startDate)))", failed: failed)
         } catch {
             let endDate = Date()
-            summary.emitFailed("Test '\(suite).\(testName)' finished: FAILED (took: \(endDate.timeIntervalSince(startDate))), threw error: \(error)")
+            summary.emitFailed(
+                "Test '\(suite).\(testName)' finished: FAILED (took: \(endDate.timeIntervalSince(startDate))), threw error: \(error)"
+            )
         }
     }
 
@@ -107,8 +114,7 @@ extension MultiNodeTestKitRunnerBoot {
             summary.emit("[multi-node] TestSuite '\(testSuite.key)' started at \(suiteStartDate)", failed: false)
 
             for test in allTestsForSuite(testSuite.key)
-                where filter.matches(suiteName: testSuite.key, testName: test.0)
-            {
+            where filter.matches(suiteName: testSuite.key, testName: test.0) {
                 await runAndEval(suite: testSuite.key, testName: test.0, summary: &summary)
             }
         }
@@ -148,9 +154,11 @@ extension MultiNodeTestKitRunnerBoot {
                         nodeName: nodeName,
                         group: elg,
                         programLogRecipient: nil
-                    ) // TODO: use distributed log recipient for multi device tests
+                    )  // TODO: use distributed log recipient for multi device tests
 
-                    let processOutputPipe = FileHandle(fileDescriptor: try! grepper.processOutputPipe.takeDescriptorOwnership())
+                    let processOutputPipe = FileHandle(
+                        fileDescriptor: try! grepper.processOutputPipe.takeDescriptorOwnership()
+                    )
 
                     // TODO: killall except the current ones?
                     // killAll(binary)
@@ -159,15 +167,21 @@ extension MultiNodeTestKitRunnerBoot {
                     process.binaryPath = binary
                     process.standardInput = devNull
                     process.standardOutput = processOutputPipe
-                    process.standardError = processOutputPipe // we pipe all output to the same pipe; we don't really care that much
+                    process.standardError = processOutputPipe  // we pipe all output to the same pipe; we don't really care that much
 
                     process.arguments = ["_exec", suite, testName, nodeName, allNodesCommandString]
 
                     try process.runProcess()
-                    log("[exec] \(process.binaryPath!) \(process.arguments?.joined(separator: " ") ?? "")\n  \(nodeName) -> PID: \(process.processIdentifier)")
+                    log(
+                        "[exec] \(process.binaryPath!) \(process.arguments?.joined(separator: " ") ?? "")\n  \(nodeName) -> PID: \(process.processIdentifier)"
+                    )
                     assert(process.processIdentifier != 0, "Failed to spawn process")
 
-                    let testTimeoutTask = startTestTimeoutReaperTask(nodeName: nodeName, process: process, settings: settings)
+                    let testTimeoutTask = startTestTimeoutReaperTask(
+                        nodeName: nodeName,
+                        process: process,
+                        settings: settings
+                    )
                     process.waitUntilExit()
                     testTimeoutTask.cancel()
 
@@ -183,9 +197,8 @@ extension MultiNodeTestKitRunnerBoot {
                         expectedFailureRegex: multiNodeTest.crashRegex,
                         grepper: grepper,
                         settings: settings,
-                        runResult: process.terminationReason == .exit ?
-                            .exit(Int(process.terminationStatus)) :
-                            .signal(Int(process.terminationStatus))
+                        runResult: process.terminationReason == .exit
+                            ? .exit(Int(process.terminationStatus)) : .signal(Int(process.terminationStatus))
                     )
 
                     return .init(node: nodeName, result: testResult)
@@ -214,7 +227,7 @@ extension MultiNodeTestKitRunnerBoot {
         // return the first failure we found
         for testResult in testResults {
             if testResult.result.failed {
-                return testResult.result // return this error (first of them all)
+                return testResult.result  // return this error (first of them all)
             }
         }
 
@@ -222,7 +235,11 @@ extension MultiNodeTestKitRunnerBoot {
         return .passedAsExpected
     }
 
-    private func startTestTimeoutReaperTask(nodeName: String, process: Process, settings: MultiNodeTestSettings) -> Task<Void, Never> {
+    private func startTestTimeoutReaperTask(
+        nodeName: String,
+        process: Process,
+        settings: MultiNodeTestSettings
+    ) -> Task<Void, Never> {
         Task.detached {
             try? await Task.sleep(until: .now + settings.execRunHardTimeout, clock: .continuous)
             guard !Task.isCancelled else {
@@ -253,7 +270,7 @@ func prettyWait(seconds: Int64, hint: String) async {
 
     var lastMsg = "\(seconds)s remaining..."
     print("\(messageBase) \(lastMsg)", terminator: "")
-    for i in 0 ..< seconds {
+    for i in 0..<seconds {
         try? await Task.sleep(until: .now + .seconds(1), clock: .continuous)
         lastMsg = "\(seconds - i)s remaining..."
         print("\r\(messageBase) \(lastMsg)", terminator: " ")

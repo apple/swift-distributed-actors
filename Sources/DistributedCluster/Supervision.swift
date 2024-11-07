@@ -62,7 +62,10 @@ extension _Props {
     /// - Parameters:
     ///   - strategy: supervision strategy to apply for the given class of failures
     ///   - forAll: failure type selector, working as a "catch all" for the specific types of failures.
-    internal static func supervision(strategy: _SupervisionStrategy, forAll selector: _Supervise.All = .failures) -> _Props {
+    internal static func supervision(
+        strategy: _SupervisionStrategy,
+        forAll selector: _Supervise.All = .failures
+    ) -> _Props {
         self.supervision(strategy: strategy, forErrorType: _Supervise.internalErrorTypeFor(selector: selector))
     }
 
@@ -188,7 +191,7 @@ internal enum _SupervisionStrategy {
     ///   - `backoff` strategy to be used for suspending the failed actor for a given (backoff) amount of time before completing the restart.
     ///     The actor's mailbox remains untouched by default, and it would continue processing it from where it left off before the crash;
     ///     the message which caused a failure is NOT processed again. For retrying processing of such higher level mechanisms should be used.
-    case restart(atMost: Int, within: Duration?, backoff: BackoffStrategy?) // TODO: would like to remove the `?` and model more properly
+    case restart(atMost: Int, within: Duration?, backoff: BackoffStrategy?)  // TODO: would like to remove the `?` and model more properly
 
     /// WARNING: Purposefully ESCALATES the failure to the parent of the spawned actor, even if it has not watched the child.
     ///
@@ -249,12 +252,24 @@ internal struct ErrorTypeBoundSupervisionStrategy {
 /// - SeeAlso: `_SupervisionStrategy` for thorough documentation of supervision strategies and semantics.
 internal enum _Supervision {
     /// Internal conversion from supervision props to appropriate (potentially composite) `Supervisor<Message>`.
-    internal static func supervisorFor<Message>(_ system: ClusterSystem, initialBehavior: _Behavior<Message>, props: _SupervisionProps) -> Supervisor<Message> {
+    internal static func supervisorFor<Message>(
+        _ system: ClusterSystem,
+        initialBehavior: _Behavior<Message>,
+        props: _SupervisionProps
+    ) -> Supervisor<Message> {
         func supervisorFor0(failureType: Error.Type, strategy: _SupervisionStrategy) -> Supervisor<Message> {
             switch strategy {
             case .restart(let atMost, let within, let backoffStrategy):
-                let strategy = RestartDecisionLogic(maxRestarts: atMost, within: within, backoffStrategy: backoffStrategy)
-                return RestartingSupervisor(initialBehavior: initialBehavior, restartLogic: strategy, failureType: failureType)
+                let strategy = RestartDecisionLogic(
+                    maxRestarts: atMost,
+                    within: within,
+                    backoffStrategy: backoffStrategy
+                )
+                return RestartingSupervisor(
+                    initialBehavior: initialBehavior,
+                    restartLogic: strategy,
+                    failureType: failureType
+                )
             case .escalate:
                 return EscalatingSupervisor(failureType: failureType)
             case .stop:
@@ -273,7 +288,10 @@ internal enum _Supervision {
             var supervisors: [Supervisor<Message>] = []
             supervisors.reserveCapacity(props.supervisionMappings.count)
             for typeBoundStrategy in props.supervisionMappings {
-                let supervisor = supervisorFor0(failureType: typeBoundStrategy.failureType, strategy: typeBoundStrategy.strategy)
+                let supervisor = supervisorFor0(
+                    failureType: typeBoundStrategy.failureType,
+                    strategy: typeBoundStrategy.strategy
+                )
                 supervisors.append(supervisor)
             }
             return CompositeSupervisor(supervisors: supervisors)
@@ -386,7 +404,7 @@ internal enum ProcessingAction<Message: Codable> {
     case message(Message)
     case signal(_Signal)
     case closure(ActorClosureCarry)
-    case continuation(() throws -> _Behavior<Message>) // TODO: make it a Carry type for better debugging
+    case continuation(() throws -> _Behavior<Message>)  // TODO: make it a Carry type for better debugging
     case subMessage(SubMessageCarry)
 }
 
@@ -410,48 +428,84 @@ extension ProcessingAction {
 internal class Supervisor<Message: Codable> {
     typealias Directive = SupervisionDirective<Message>
 
-    internal final func interpretSupervised(target: _Behavior<Message>, context: _ActorContext<Message>, message: Message) throws -> _Behavior<Message> {
+    internal final func interpretSupervised(
+        target: _Behavior<Message>,
+        context: _ActorContext<Message>,
+        message: Message
+    ) throws -> _Behavior<Message> {
         traceLog_Supervision("CALL WITH \(target) @@@@ [\(message)]:\(type(of: message))")
         return try self.interpretSupervised0(target: target, context: context, processingAction: .message(message))
     }
 
-    internal final func interpretSupervised(target: _Behavior<Message>, context: _ActorContext<Message>, signal: _Signal) throws -> _Behavior<Message> {
+    internal final func interpretSupervised(
+        target: _Behavior<Message>,
+        context: _ActorContext<Message>,
+        signal: _Signal
+    ) throws -> _Behavior<Message> {
         traceLog_Supervision("INTERCEPT SIGNAL APPLY: \(target) @@@@ \(signal)")
         return try self.interpretSupervised0(target: target, context: context, processingAction: .signal(signal))
     }
 
-    internal final func interpretSupervised(target: _Behavior<Message>, context: _ActorContext<Message>, closure: ActorClosureCarry) throws -> _Behavior<Message> {
+    internal final func interpretSupervised(
+        target: _Behavior<Message>,
+        context: _ActorContext<Message>,
+        closure: ActorClosureCarry
+    ) throws -> _Behavior<Message> {
         traceLog_Supervision("CALLING CLOSURE: \(target)")
         return try self.interpretSupervised0(target: target, context: context, processingAction: .closure(closure))
     }
 
-    internal final func interpretSupervised(target: _Behavior<Message>, context: _ActorContext<Message>, subMessage: SubMessageCarry) throws -> _Behavior<Message> {
+    internal final func interpretSupervised(
+        target: _Behavior<Message>,
+        context: _ActorContext<Message>,
+        subMessage: SubMessageCarry
+    ) throws -> _Behavior<Message> {
         traceLog_Supervision("INTERPRETING SUB MESSAGE: \(target)")
-        return try self.interpretSupervised0(target: target, context: context, processingAction: .subMessage(subMessage))
-    }
-
-    internal final func interpretSupervised(target: _Behavior<Message>, context: _ActorContext<Message>, closure: @escaping () throws -> _Behavior<Message>) throws -> _Behavior<Message> {
-        traceLog_Supervision("CALLING CLOSURE: \(target)")
         return try self.interpretSupervised0(
-            target: target, context: context, processingAction: .continuation(closure)
+            target: target,
+            context: context,
+            processingAction: .subMessage(subMessage)
         )
     }
 
-    internal final func startSupervised(target: _Behavior<Message>, context: _ActorContext<Message>) throws -> _Behavior<Message> {
+    internal final func interpretSupervised(
+        target: _Behavior<Message>,
+        context: _ActorContext<Message>,
+        closure: @escaping () throws -> _Behavior<Message>
+    ) throws -> _Behavior<Message> {
+        traceLog_Supervision("CALLING CLOSURE: \(target)")
+        return try self.interpretSupervised0(
+            target: target,
+            context: context,
+            processingAction: .continuation(closure)
+        )
+    }
+
+    internal final func startSupervised(
+        target: _Behavior<Message>,
+        context: _ActorContext<Message>
+    ) throws -> _Behavior<Message> {
         traceLog_Supervision("CALLING START")
         return try self.interpretSupervised0(
-            target: target, context: context,
+            target: target,
+            context: context,
             processingAction: .start
         )
     }
 
     /// Implements all directives, which supervisor implementations may yield to instruct how we should (if at all) restart an actor.
     @inline(__always)
-    final func interpretSupervised0(target: _Behavior<Message>, context: _ActorContext<Message>, processingAction: ProcessingAction<Message>) throws -> _Behavior<Message> {
+    final func interpretSupervised0(
+        target: _Behavior<Message>,
+        context: _ActorContext<Message>,
+        processingAction: ProcessingAction<Message>
+    ) throws -> _Behavior<Message> {
         try self.interpretSupervised0(
-            target: target, context: context,
-            processingAction: processingAction, nFoldFailureDepth: 1
-        ) // 1 since we already have "one failure"
+            target: target,
+            context: context,
+            processingAction: processingAction,
+            nFoldFailureDepth: 1
+        )  // 1 since we already have "one failure"
     }
 
     @inline(__always)
@@ -478,18 +532,30 @@ internal class Supervisor<Message: Codable> {
                 return try continuation()
             case .subMessage(let carry):
                 guard let subFunction = context.subReceive(identifiedBy: carry.identifier) else {
-                    fatalError("BUG! Received sub message [\(carry.message)]:\(type(of: carry.message)) for unknown identifier \(carry.identifier) on address \(carry.subReceiveAddress). Please report this on the issue tracker.")
+                    fatalError(
+                        "BUG! Received sub message [\(carry.message)]:\(type(of: carry.message)) for unknown identifier \(carry.identifier) on address \(carry.subReceiveAddress). Please report this on the issue tracker."
+                    )
                 }
 
                 return try subFunction(carry)
             }
         } catch {
-            return try self.handleError(context: context, target: target, processingAction: processingAction, error: error)
+            return try self.handleError(
+                context: context,
+                target: target,
+                processingAction: processingAction,
+                error: error
+            )
         }
     }
 
     @usableFromInline
-    func handleError(context: _ActorContext<Message>, target: _Behavior<Message>, processingAction: ProcessingAction<Message>, error: Error) throws -> _Behavior<Message> {
+    func handleError(
+        context: _ActorContext<Message>,
+        target: _Behavior<Message>,
+        processingAction: ProcessingAction<Message>,
+        error: Error
+    ) throws -> _Behavior<Message> {
         var errorToHandle = error
         // The following restart loop exists to support interpreting `_PreRestart` and `Start` signal interpretation failures;
         // If the actor fails during restarting, this failure becomes the new failure reason, and we supervise this failure
@@ -505,17 +571,30 @@ internal class Supervisor<Message: Codable> {
         repeat {
             switch processingAction {
             case .closure(let closure):
-                context.log.warning("Actor has THROWN [\(errorToHandle)]:\(type(of: errorToHandle)) while interpreting [closure defined at \(closure.file):\(closure.line)], handling with \(self.descriptionForLogs)")
+                context.log.warning(
+                    "Actor has THROWN [\(errorToHandle)]:\(type(of: errorToHandle)) while interpreting [closure defined at \(closure.file):\(closure.line)], handling with \(self.descriptionForLogs)"
+                )
             default:
-                context.log.warning("Actor has THROWN [\(errorToHandle)]:\(type(of: errorToHandle)) while interpreting \(processingAction), handling with \(self.descriptionForLogs)")
+                context.log.warning(
+                    "Actor has THROWN [\(errorToHandle)]:\(type(of: errorToHandle)) while interpreting \(processingAction), handling with \(self.descriptionForLogs)"
+                )
             }
 
             let directive: Directive
             do {
-                directive = try self.handleFailure(context, target: target, failure: .error(errorToHandle), processingType: processingAction.type)
+                directive = try self.handleFailure(
+                    context,
+                    target: target,
+                    failure: .error(errorToHandle),
+                    processingType: processingAction.type
+                )
             } catch {
                 // An error was thrown by our Supervisor logic while handling the failure, this is a bug and thus we crash hard
-                throw _Supervision.SupervisionError.illegalDecision("Illegal supervision decision detected.", handledError: errorToHandle, error: error)
+                throw _Supervision.SupervisionError.illegalDecision(
+                    "Illegal supervision decision detected.",
+                    handledError: errorToHandle,
+                    error: error
+                )
             }
 
             do {
@@ -535,10 +614,10 @@ internal class Supervisor<Message: Codable> {
                     return SupervisionRestartDelayedBehavior.after(delay: delay, with: replacement)
                 }
             } catch {
-                errorToHandle = error // the error captured from restarting is now the reason why we are failing, and should be passed to the supervisor
-                continue // by now supervising the errorToHandle which has just occurred
+                errorToHandle = error  // the error captured from restarting is now the reason why we are failing, and should be passed to the supervisor
+                continue  // by now supervising the errorToHandle which has just occurred
             }
-        } while true // the only way to break out of here is succeeding to interpret `directive` OR supervisor giving up (e.g. max nr of restarts being exhausted)
+        } while true  // the only way to break out of here is succeeding to interpret `directive` OR supervisor giving up (e.g. max nr of restarts being exhausted)
     }
 
     // MARK: Internal Supervisor API
@@ -546,7 +625,12 @@ internal class Supervisor<Message: Codable> {
     /// Handle a fault that happened during processing.
     ///
     /// The returned `SupervisionDirective` will be interpreted appropriately.
-    open func handleFailure(_ context: _ActorContext<Message>, target: _Behavior<Message>, failure: _Supervision.Failure, processingType: ProcessingType) throws -> SupervisionDirective<Message> {
+    open func handleFailure(
+        _ context: _ActorContext<Message>,
+        target: _Behavior<Message>,
+        failure: _Supervision.Failure,
+        processingType: ProcessingType
+    ) throws -> SupervisionDirective<Message> {
         _undefined()
     }
 
@@ -580,7 +664,12 @@ final class StoppingSupervisor<Message: Codable>: Supervisor<Message> {
         self.failureType = failureType
     }
 
-    override func handleFailure(_ context: _ActorContext<Message>, target: _Behavior<Message>, failure: _Supervision.Failure, processingType: ProcessingType) throws -> SupervisionDirective<Message> {
+    override func handleFailure(
+        _ context: _ActorContext<Message>,
+        target: _Behavior<Message>,
+        failure: _Supervision.Failure,
+        processingType: ProcessingType
+    ) throws -> SupervisionDirective<Message> {
         if failure.shouldBeHandled(bySupervisorHandling: self.failureType) {
             // TODO: matters perhaps only for metrics where we'd want to "please count this specific type of error" so leaving this logic as-is
             return .stop
@@ -614,7 +703,12 @@ final class EscalatingSupervisor<Message: Codable>: Supervisor<Message> {
         self.failureType = failureType
     }
 
-    override func handleFailure(_ context: _ActorContext<Message>, target: _Behavior<Message>, failure: _Supervision.Failure, processingType: ProcessingType) throws -> SupervisionDirective<Message> {
+    override func handleFailure(
+        _ context: _ActorContext<Message>,
+        target: _Behavior<Message>,
+        failure: _Supervision.Failure,
+        processingType: ProcessingType
+    ) throws -> SupervisionDirective<Message> {
         if failure.shouldBeHandled(bySupervisorHandling: self.failureType) {
             return .escalate(failure)
         } else {
@@ -648,15 +742,28 @@ final class CompositeSupervisor<Message: Codable>: Supervisor<Message> {
     private let supervisors: [Supervisor<Message>]
 
     init(supervisors: [Supervisor<Message>]) {
-        assert(supervisors.count > 1, "There is no need to use a composite supervisor if only one supervisor is passed in. Consider this a Swift Distributed Actors bug.")
+        assert(
+            supervisors.count > 1,
+            "There is no need to use a composite supervisor if only one supervisor is passed in. Consider this a Swift Distributed Actors bug."
+        )
         self.supervisors = supervisors
         super.init()
     }
 
-    override func handleFailure(_ context: _ActorContext<Message>, target: _Behavior<Message>, failure: _Supervision.Failure, processingType: ProcessingType) throws -> SupervisionDirective<Message> {
+    override func handleFailure(
+        _ context: _ActorContext<Message>,
+        target: _Behavior<Message>,
+        failure: _Supervision.Failure,
+        processingType: ProcessingType
+    ) throws -> SupervisionDirective<Message> {
         for supervisor in self.supervisors {
             if supervisor.canHandle(failure: failure) {
-                return try supervisor.handleFailure(context, target: target, failure: failure, processingType: processingType)
+                return try supervisor.handleFailure(
+                    context,
+                    target: target,
+                    failure: failure,
+                    processingType: processingType
+                )
             }
         }
         return .stop
@@ -686,7 +793,7 @@ internal enum SupervisionDirective<Message: Codable> {
 
 internal enum SupervisionDecision {
     case restartImmediately
-    case restartBackoff(delay: Duration) // could also configure "drop messages while restarting" etc
+    case restartBackoff(delay: Duration)  // could also configure "drop messages while restarting" etc
     case escalate
     case stop
 }
@@ -705,7 +812,10 @@ internal struct RestartDecisionLogic {
         precondition(maxRestarts > 0, "RestartStrategy.maxRestarts MUST be > 0")
         self.maxRestarts = maxRestarts
         if let failurePeriodTime = within {
-            precondition(failurePeriodTime.nanoseconds > 0, "RestartStrategy.within MUST be > 0. For supervision without time bounds (i.e. absolute count of restarts allowed) use `.restart(:atMost)` instead.")
+            precondition(
+                failurePeriodTime.nanoseconds > 0,
+                "RestartStrategy.within MUST be > 0. For supervision without time bounds (i.e. absolute count of restarts allowed) use `.restart(:atMost)` instead."
+            )
             self.within = failurePeriodTime
         } else {
             // if within was not set, we treat is as if "no time limit", which we mimic by a ContinuousClock.Instant far far away in time
@@ -775,41 +885,60 @@ final class RestartingSupervisor<Message: Codable>: Supervisor<Message> {
 
     private var restartDecider: RestartDecisionLogic
 
-    public init(initialBehavior behavior: _Behavior<Message>, restartLogic: RestartDecisionLogic, failureType: Error.Type) {
+    public init(
+        initialBehavior behavior: _Behavior<Message>,
+        restartLogic: RestartDecisionLogic,
+        failureType: Error.Type
+    ) {
         self.initialBehavior = behavior
         self.restartDecider = restartLogic
         self.failureType = failureType
     }
 
-    override func handleFailure(_ context: _ActorContext<Message>, target: _Behavior<Message>, failure: _Supervision.Failure, processingType: ProcessingType) throws -> SupervisionDirective<Message> {
+    override func handleFailure(
+        _ context: _ActorContext<Message>,
+        target: _Behavior<Message>,
+        failure: _Supervision.Failure,
+        processingType: ProcessingType
+    ) throws -> SupervisionDirective<Message> {
         let decision: SupervisionDecision = self.restartDecider.recordFailure()
 
         guard failure.shouldBeHandled(bySupervisorHandling: self.failureType) else {
-            traceLog_Supervision("ESCALATE from \(processingType) (\(self.restartDecider.remainingRestartsDescription)), failure was: \(failure)! >>>> \(self.initialBehavior)")
+            traceLog_Supervision(
+                "ESCALATE from \(processingType) (\(self.restartDecider.remainingRestartsDescription)), failure was: \(failure)! >>>> \(self.initialBehavior)"
+            )
 
             return .stop
         }
 
         switch decision {
         case .stop:
-            traceLog_Supervision("STOP from \(processingType) (\(self.restartDecider.remainingRestartsDescription)), failure was: \(failure)! >>>> \(self.initialBehavior)")
+            traceLog_Supervision(
+                "STOP from \(processingType) (\(self.restartDecider.remainingRestartsDescription)), failure was: \(failure)! >>>> \(self.initialBehavior)"
+            )
 
             return .stop
 
         case .escalate:
-            traceLog_Supervision("ESCALATE from \(processingType) (\(self.restartDecider.remainingRestartsDescription)), failure was: \(failure)! >>>> \(self.initialBehavior)")
+            traceLog_Supervision(
+                "ESCALATE from \(processingType) (\(self.restartDecider.remainingRestartsDescription)), failure was: \(failure)! >>>> \(self.initialBehavior)"
+            )
 
             return .escalate(failure)
 
         case .restartImmediately:
             // TODO: make proper .ordinalString function
-            traceLog_Supervision("RESTART from \(processingType) (\(self.restartDecider.remainingRestartsDescription)), failure was: \(failure)! >>>> \(self.initialBehavior)")
+            traceLog_Supervision(
+                "RESTART from \(processingType) (\(self.restartDecider.remainingRestartsDescription)), failure was: \(failure)! >>>> \(self.initialBehavior)"
+            )
             // TODO: has to modify restart counters here and supervise with modified supervisor
 
             return .restartImmediately(self.initialBehavior)
 
         case .restartBackoff(let delay):
-            traceLog_Supervision("RESTART BACKOFF(\(delay.prettyDescription)) from \(processingType) (\(self.restartDecider.remainingRestartsDescription)), failure was: \(failure)! >>>> \(self.initialBehavior)")
+            traceLog_Supervision(
+                "RESTART BACKOFF(\(delay.prettyDescription)) from \(processingType) (\(self.restartDecider.remainingRestartsDescription)), failure was: \(failure)! >>>> \(self.initialBehavior)"
+            )
 
             return .restartDelayed(delay, self.initialBehavior)
         }
@@ -838,13 +967,19 @@ internal enum SupervisionRestartDelayedBehavior<Message: Codable> {
     @usableFromInline
     static func after(delay: Duration, with replacement: _Behavior<Message>) -> _Behavior<Message> {
         .setup { context in
-            context.timers._startResumeTimer(key: _TimerKey("restartBackoff", isSystemTimer: true), delay: delay, resumeWith: WakeUp())
+            context.timers._startResumeTimer(
+                key: _TimerKey("restartBackoff", isSystemTimer: true),
+                delay: delay,
+                resumeWith: WakeUp()
+            )
 
             return .suspend { (result: Result<WakeUp, Error>) in
                 traceLog_Supervision("RESTART BACKOFF TRIGGER")
                 switch result {
                 case .failure(let error):
-                    context.log.error("Failed result during backoff restart. Error was: \(error). Forcing actor to crash.")
+                    context.log.error(
+                        "Failed result during backoff restart. Error was: \(error). Forcing actor to crash."
+                    )
                     throw error
                 case .success:
                     // _downcast safe, we know this may only ever run for a local ref, thus it will definitely be an ActorCell

@@ -41,7 +41,11 @@ public final class _SerializationPool {
     @usableFromInline
     internal let instrumentation: _InternalActorTransportInstrumentation
 
-    internal init(settings: SerializationPoolSettings, serialization: Serialization, instrumentation: _InternalActorTransportInstrumentation? = nil) throws {
+    internal init(
+        settings: SerializationPoolSettings,
+        serialization: Serialization,
+        instrumentation: _InternalActorTransportInstrumentation? = nil
+    ) throws {
         self.serialization = serialization
         self.instrumentation = instrumentation ?? Noop_InternalActorTransportInstrumentation()
         var workerMapping: [ActorPath: Int] = [:]
@@ -73,13 +77,20 @@ public final class _SerializationPool {
         // TODO: also record thr delay between submitting and starting serialization work here?
         self.enqueue(recipientPath: recipientPath, promise: promise, workerPool: self.serializationWorkerPool) {
             do {
-                self.instrumentation.remoteActorMessageSerializeStart(id: promise.futureResult, recipient: recipientPath, message: message)
+                self.instrumentation.remoteActorMessageSerializeStart(
+                    id: promise.futureResult,
+                    recipient: recipientPath,
+                    message: message
+                )
                 let serialized = try self.serialization.serialize(message)
 
                 traceLog_Serialization("serialize(\(message), to: \(recipientPath))")
 
                 // TODO: collapse those two and only use the instrumentation points, also for metrics
-                self.instrumentation.remoteActorMessageSerializeEnd(id: promise.futureResult, bytes: serialized.buffer.count)
+                self.instrumentation.remoteActorMessageSerializeEnd(
+                    id: promise.futureResult,
+                    bytes: serialized.buffer.count
+                )
                 self.serialization.metrics.recordSerializationMessageOutbound(recipientPath, serialized.buffer.count)
                 traceLog_Serialization("OK serialize(\(message), to: \(recipientPath))")
 
@@ -101,10 +112,18 @@ public final class _SerializationPool {
         // and we use identity of the callback to interact with the instrumentation for start/stop correlation.
         callback: DeserializationCallback
     ) {
-        self.enqueue(recipientPath: recipientPath, onComplete: { callback.call($0) }, workerPool: self.deserializationWorkerPool) {
+        self.enqueue(
+            recipientPath: recipientPath,
+            onComplete: { callback.call($0) },
+            workerPool: self.deserializationWorkerPool
+        ) {
             do {
                 self.serialization.metrics.recordSerializationMessageInbound(recipientPath, buffer.count)
-                self.instrumentation.remoteActorMessageDeserializeStart(id: callback, recipient: recipientPath, bytes: buffer.count)
+                self.instrumentation.remoteActorMessageDeserializeStart(
+                    id: callback,
+                    recipient: recipientPath,
+                    bytes: buffer.count
+                )
 
                 // do the work, this may be "heavy"
                 let deserialized = try self.serialization.deserializeAny(from: buffer, using: manifest)
@@ -125,7 +144,12 @@ public final class _SerializationPool {
         workerPool: AffinityThreadPool,
         task: @escaping () throws -> Message
     ) {
-        self.enqueue(recipientPath: recipientPath, onComplete: promise.completeWith, workerPool: workerPool, task: { try task() })
+        self.enqueue(
+            recipientPath: recipientPath,
+            onComplete: promise.completeWith,
+            workerPool: workerPool,
+            task: { try task() }
+        )
     }
 
     @inline(__always)
@@ -148,7 +172,7 @@ public final class _SerializationPool {
                         onComplete(.failure(error))
                     }
                 }
-            } else { // otherwise handle on the calling thread
+            } else {  // otherwise handle on the calling thread
                 onComplete(.success(try task()))
             }
         } catch {

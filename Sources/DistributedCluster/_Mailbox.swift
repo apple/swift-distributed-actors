@@ -20,8 +20,10 @@ import DistributedActorsConcurrencyHelpers
 internal enum MailboxBitMasks {
     static let activations: UInt64 = 0b0000_0000_0000_0000_0000_0000_0000_0111_1111_1111_1111_1111_1111_1111_1111_1111
 
-    static let hasSystemMessages: UInt64 = 0b0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0001
-    static let processingSystemMessages: UInt64 = 0b0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0010
+    static let hasSystemMessages: UInt64 =
+        0b0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0001
+    static let processingSystemMessages: UInt64 =
+        0b0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0010
 
     // Implementation notes about Termination:
     // Termination MUST first set TERMINATING and only after add the "final" CLOSED state.
@@ -38,11 +40,13 @@ internal enum MailboxBitMasks {
 
     // user message count is stored in bits 2-61, so when incrementing or
     // decrementing the message count, we need to add starting at bit 2
-    static let singleUserMessage: UInt64 = 0b0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0100
+    static let singleUserMessage: UInt64 =
+        0b0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0100
 
     // Mask to use with XOR on the status to unset the 'has system messages' bit
     // and set the 'is processing system messages' bit in a single atomic operation
-    static let becomeSysMsgProcessingXor: UInt64 = 0b0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0011
+    static let becomeSysMsgProcessingXor: UInt64 =
+        0b0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0011
 
     // used to unset the SUSPENDED bit by ANDing with status
     //
@@ -82,7 +86,7 @@ internal final class _Mailbox<Message: Codable> {
     }
 
     deinit {
-//        self._status.destroy()
+        //        self._status.destroy()
         #if SACT_TESTS_LEAKS
         if self.id.segments.first?.value == "user" {
             _ = self.deadLetters._system?.userMailboxInitCounter.loadThenWrappingDecrement(ordering: .relaxed)
@@ -111,8 +115,13 @@ internal final class _Mailbox<Message: Codable> {
         case .needsScheduling:
             traceLog_Mailbox(self.id.path, "Enqueued message \(envelope.payload), scheduling for execution")
             guard let shell = self.shell else {
-                traceLog_Mailbox(self.id.path, "_ActorShell was released! Unable to complete sendMessage, dropping: \(envelope)")
-                self.deadLetters.tell(DeadLetter(envelope.payload, recipient: self.id, sentAtFile: file, sentAtLine: line))
+                traceLog_Mailbox(
+                    self.id.path,
+                    "_ActorShell was released! Unable to complete sendMessage, dropping: \(envelope)"
+                )
+                self.deadLetters.tell(
+                    DeadLetter(envelope.payload, recipient: self.id, sentAtFile: file, sentAtLine: line)
+                )
                 break
             }
             shell._dispatcher.execute(self.run)
@@ -132,7 +141,7 @@ internal final class _Mailbox<Message: Codable> {
 
         case .mailboxFull:
             traceLog_Mailbox(self.id.path, "is full, dropping message \(envelope)")
-            sendAndDropAsDeadLetter() // TODO: "Drop" rather than DeadLetter
+            sendAndDropAsDeadLetter()  // TODO: "Drop" rather than DeadLetter
         }
     }
 
@@ -201,7 +210,11 @@ internal final class _Mailbox<Message: Codable> {
     func sendSystemMessage(_ systemMessage: _SystemMessage, file: String, line: UInt) {
         func sendAndDropAsDeadLetter() {
             // TODO: should deadLetters be special, since watching it is nonsense?
-            self.deadLetters.tell(DeadLetter(systemMessage, recipient: self.id, sentAtFile: file, sentAtLine: line), file: file, line: line)
+            self.deadLetters.tell(
+                DeadLetter(systemMessage, recipient: self.id, sentAtFile: file, sentAtLine: line),
+                file: file,
+                line: line
+            )
         }
 
         switch self.enqueueSystemMessage(systemMessage) {
@@ -209,7 +222,10 @@ internal final class _Mailbox<Message: Codable> {
             traceLog_Mailbox(self.id.path, "Enqueued system message \(systemMessage), scheduling for execution")
             guard let shell = self.shell else {
                 self.deadLetters.tell(DeadLetter(systemMessage, recipient: nil))
-                traceLog_Mailbox(self.id.path, "has already released the actor cell, dropping system message \(systemMessage)")
+                traceLog_Mailbox(
+                    self.id.path,
+                    "has already released the actor cell, dropping system message \(systemMessage)"
+                )
                 break
             }
             shell._dispatcher.execute(self.run)
@@ -218,7 +234,10 @@ internal final class _Mailbox<Message: Codable> {
             traceLog_Mailbox(self.id.path, "Enqueued system message \(systemMessage), someone scheduled already")
 
         case .mailboxTerminating:
-            traceLog_Mailbox(self.id.path, "Mailbox is terminating. This sendSystemMessage MUST be send to dead letters. System Message: \(systemMessage)")
+            traceLog_Mailbox(
+                self.id.path,
+                "Mailbox is terminating. This sendSystemMessage MUST be send to dead letters. System Message: \(systemMessage)"
+            )
             sendAndDropAsDeadLetter()
         case .mailboxClosed:
             // not enqueued, mailbox is closed; it cannot and will not interact with any more messages.
@@ -229,7 +248,9 @@ internal final class _Mailbox<Message: Codable> {
             traceLog_Mailbox(self.id.path, "Dead letter: \(systemMessage), since mailbox is CLOSED")
             sendAndDropAsDeadLetter()
         case .mailboxFull:
-            fatalError("Dropped system message because mailbox is full. This should never happen and is a mailbox bug, please report an issue.")
+            fatalError(
+                "Dropped system message because mailbox is full. This should never happen and is a mailbox bug, please report an issue."
+            )
         }
     }
 
@@ -291,11 +312,13 @@ internal final class _Mailbox<Message: Codable> {
         let oldStatus = self.setHasSystemMessages()
 
         guard oldStatus.isTerminating else {
-            fatalError("""
-            !!! BUG !!! Tombstone was attempted to be enqueued at not terminating actor.
-            Address: \(self.id)
-            System: \(self.shell?._system?.description ?? "<no system>")
-            """)
+            fatalError(
+                """
+                !!! BUG !!! Tombstone was attempted to be enqueued at not terminating actor.
+                Address: \(self.id)
+                System: \(self.shell?._system?.description ?? "<no system>")
+                """
+            )
         }
 
         self.systemMessages.enqueue(.tombstone)
@@ -337,10 +360,13 @@ internal final class _Mailbox<Message: Codable> {
             // We do this since while the mailbox was running, more messages could have been enqueued,
             // and now we need to handle those that made it in, before the terminating status was set.
             traceLog_Mailbox(self.id.path, "interpret CLOSE")
-            self.sendSystemTombstone() // Rest in Peace
+            self.sendSystemTombstone()  // Rest in Peace
 
         case .closed:
-            traceLog_Mailbox(self.id.path, "finishTerminating has completed, and the final run has completed. We are CLOSED.")
+            traceLog_Mailbox(
+                self.id.path,
+                "finishTerminating has completed, and the final run has completed. We are CLOSED."
+            )
         }
     }
 
@@ -362,7 +388,7 @@ internal final class _Mailbox<Message: Codable> {
         // Initial state has to be `.continueRunning`, so messages are being processed. Anything else would
         // mean we are not supposed to run.
         // TODO: rename ActorRunResult -- the mailbox run is "the run", this is more like the actors per reduction directive... need to not overload the name "run"
-        var runResult = ActorRunResult.continueRunning // TODO: hijack the run_length, and reformulate it as "fuel", and set it to zero when we need to stop
+        var runResult = ActorRunResult.continueRunning  // TODO: hijack the run_length, and reformulate it as "fuel", and set it to zero when we need to stop
         if status.isSuspended {
             runResult = .shouldSuspend
         }
@@ -371,8 +397,8 @@ internal final class _Mailbox<Message: Codable> {
 
         if status.hasSystemMessages {
             while runResult != .shouldStop,
-                  runResult != .closed,
-                  let message = self.systemMessages.dequeue()
+                runResult != .closed,
+                let message = self.systemMessages.dequeue()
             {
                 do {
                     try runResult = shell.interpretSystemMessage(message: message)
@@ -416,7 +442,9 @@ internal final class _Mailbox<Message: Codable> {
         // run user messages -------------------------------------------------------------------------------------------
 
         if runResult == .continueRunning {
-            while processedActivations < runLength, runResult == .continueRunning, let message = self.userMessages.dequeue() {
+            while processedActivations < runLength, runResult == .continueRunning,
+                let message = self.userMessages.dequeue()
+            {
                 do {
                     processedActivations += MailboxBitMasks.singleUserMessage
                     switch message.payload {
@@ -428,13 +456,19 @@ internal final class _Mailbox<Message: Codable> {
 
                         runResult = try shell.interpretMessage(message: message)
                     case .closure(let carry):
-                        traceLog_Mailbox(self.id.path, "INVOKE CLOSURE: \(String(describing: carry.function)) defined at \(carry.file):\(carry.line)")
+                        traceLog_Mailbox(
+                            self.id.path,
+                            "INVOKE CLOSURE: \(String(describing: carry.function)) defined at \(carry.file):\(carry.line)"
+                        )
                         runResult = try shell.interpretClosure(carry)
                     case .adaptedMessage(let carry):
                         traceLog_Mailbox(self.id.path, "INVOKE ADAPTED MESSAGE: \(carry.message)")
                         runResult = try shell.interpretAdaptedMessage(carry)
                     case .subMessage(let carry):
-                        traceLog_Mailbox(self.id.path, "INVOKE SUBMSG: \(carry.message) with identifier \(carry.identifier)")
+                        traceLog_Mailbox(
+                            self.id.path,
+                            "INVOKE SUBMSG: \(carry.message) with identifier \(carry.identifier)"
+                        )
                         runResult = try shell.interpretSubMessage(carry)
                     }
                 } catch {
@@ -580,24 +614,30 @@ internal final class _Mailbox<Message: Codable> {
     }
 
     func incrementMessageCount() -> Status {
-        Status(self._status.loadThenWrappingIncrement(
-            by: MailboxBitMasks.singleUserMessage,
-            ordering: .sequentiallyConsistent
-        ))
+        Status(
+            self._status.loadThenWrappingIncrement(
+                by: MailboxBitMasks.singleUserMessage,
+                ordering: .sequentiallyConsistent
+            )
+        )
     }
 
     func decrementMessageCount() -> Status {
-        Status(self._status.loadThenWrappingDecrement(
-            by: MailboxBitMasks.singleUserMessage,
-            ordering: .sequentiallyConsistent
-        ))
+        Status(
+            self._status.loadThenWrappingDecrement(
+                by: MailboxBitMasks.singleUserMessage,
+                ordering: .sequentiallyConsistent
+            )
+        )
     }
 
     func decrementActivations(by count: UInt64) -> Status {
-        Status(self._status.loadThenWrappingDecrement(
-            by: count,
-            ordering: .sequentiallyConsistent
-        ))
+        Status(
+            self._status.loadThenWrappingDecrement(
+                by: count,
+                ordering: .sequentiallyConsistent
+            )
+        )
     }
 
     var status: Status {
@@ -605,10 +645,12 @@ internal final class _Mailbox<Message: Codable> {
     }
 
     func setHasSystemMessages() -> Status {
-        Status(self._status.loadThenBitwiseOr(
-            with: MailboxBitMasks.hasSystemMessages,
-            ordering: .sequentiallyConsistent
-        ))
+        Status(
+            self._status.loadThenBitwiseOr(
+                with: MailboxBitMasks.hasSystemMessages,
+                ordering: .sequentiallyConsistent
+            )
+        )
     }
 
     // Checks if the 'has system messages' bit is set and if it is, unsets it and
@@ -618,10 +660,12 @@ internal final class _Mailbox<Message: Codable> {
     func setProcessingSystemMessages() -> Status {
         let status = self.status
         if status.hasSystemMessages {
-            return Status(self._status.loadThenBitwiseXor(
-                with: MailboxBitMasks.becomeSysMsgProcessingXor,
-                ordering: .sequentiallyConsistent
-            ))
+            return Status(
+                self._status.loadThenBitwiseXor(
+                    with: MailboxBitMasks.becomeSysMsgProcessingXor,
+                    ordering: .sequentiallyConsistent
+                )
+            )
         }
 
         return status
@@ -629,10 +673,12 @@ internal final class _Mailbox<Message: Codable> {
 
     @discardableResult
     func setTerminating() -> Status {
-        Status(self._status.loadThenBitwiseOr(
-            with: MailboxBitMasks.terminating,
-            ordering: .sequentiallyConsistent
-        ))
+        Status(
+            self._status.loadThenBitwiseOr(
+                with: MailboxBitMasks.terminating,
+                ordering: .sequentiallyConsistent
+            )
+        )
     }
 
     @discardableResult
@@ -642,26 +688,32 @@ internal final class _Mailbox<Message: Codable> {
 
     @discardableResult
     func setClosed() -> Status {
-        Status(self._status.loadThenBitwiseOr(
-            with: MailboxBitMasks.closed,
-            ordering: .sequentiallyConsistent
-        ))
+        Status(
+            self._status.loadThenBitwiseOr(
+                with: MailboxBitMasks.closed,
+                ordering: .sequentiallyConsistent
+            )
+        )
     }
 
     @discardableResult
     func setStatusSuspended() -> Status {
-        Status(self._status.loadThenBitwiseOr(
-            with: MailboxBitMasks.suspended,
-            ordering: .sequentiallyConsistent
-        ))
+        Status(
+            self._status.loadThenBitwiseOr(
+                with: MailboxBitMasks.suspended,
+                ordering: .sequentiallyConsistent
+            )
+        )
     }
 
     @discardableResult
     func resetStatusSuspended() -> Status {
-        Status(self._status.loadThenBitwiseAnd(
-            with: MailboxBitMasks.unsuspend,
-            ordering: .sequentiallyConsistent
-        ))
+        Status(
+            self._status.loadThenBitwiseAnd(
+                with: MailboxBitMasks.unsuspend,
+                ordering: .sequentiallyConsistent
+            )
+        )
     }
 }
 
@@ -808,7 +860,7 @@ internal enum ActorRunResult {
 /// INTERNAL API
 public struct _MessageProcessingFailure: Error {
     let messageDescription: String
-    let backtrace: [String] // TODO: Could be worth it to carry it as struct rather than the raw string?
+    let backtrace: [String]  // TODO: Could be worth it to carry it as struct rather than the raw string?
 }
 
 extension _MessageProcessingFailure: CustomStringConvertible, CustomDebugStringConvertible {

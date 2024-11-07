@@ -37,7 +37,7 @@ internal final class FaultyNetworkSimulatingHandler: ChannelDuplexHandler {
         let settings: FaultyNetworkSimulationSettings
 
         func decide() -> GremlinDirective {
-            let randomNumber = Double.random(in: 0.0 ... 1.0)
+            let randomNumber = Double.random(in: 0.0...1.0)
 
             switch self.settings.mode {
             case .drop(let p):
@@ -46,7 +46,7 @@ internal final class FaultyNetworkSimulatingHandler: ChannelDuplexHandler {
         }
 
         enum GremlinDirective {
-            case drop // also known as 'eat' the message
+            case drop  // also known as 'eat' the message
             case passThrough
         }
     }
@@ -62,7 +62,10 @@ internal final class FaultyNetworkSimulatingHandler: ChannelDuplexHandler {
 
         switch self.gremlin.decide() {
         case .drop:
-            self.log.log(level: self.settings.logLevel, "[faulty-network] IN  \(self.settings.effectiveLabel) \(self.settings.formatMessage(message))")
+            self.log.log(
+                level: self.settings.logLevel,
+                "[faulty-network] IN  \(self.settings.effectiveLabel) \(self.settings.formatMessage(message))"
+            )
         case .passThrough:
             context.fireChannelRead(data)
         }
@@ -73,7 +76,10 @@ internal final class FaultyNetworkSimulatingHandler: ChannelDuplexHandler {
 
         switch self.gremlin.decide() {
         case .drop:
-            self.log.log(level: self.settings.logLevel, "[faulty-network] OUT \(self.settings.effectiveLabel) \(self.settings.formatMessage(message))")
+            self.log.log(
+                level: self.settings.logLevel,
+                "[faulty-network] OUT \(self.settings.effectiveLabel) \(self.settings.formatMessage(message))"
+            )
         case .passThrough:
             context.write(data, promise: promise)
         }
@@ -131,7 +137,11 @@ internal final class TransportToWireInboundHandler: ChannelInboundHandler {
         let transportEnvelope = self.unwrapInboundIn(data)
 
         let serialized = try! self.system.serialization.serialize(transportEnvelope.underlyingMessage)
-        let wireEnvelope = Wire.Envelope(recipient: transportEnvelope.recipient, payload: serialized.buffer, manifest: serialized.manifest)
+        let wireEnvelope = Wire.Envelope(
+            recipient: transportEnvelope.recipient,
+            payload: serialized.buffer,
+            manifest: serialized.manifest
+        )
 
         context.fireChannelRead(self.wrapInboundOut(wireEnvelope))
     }

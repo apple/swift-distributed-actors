@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import Distributed
-import Foundation // for Codable
+import Foundation  // for Codable
 import Logging
 import NIO
 import NIOFoundationCompat
@@ -106,7 +106,9 @@ public struct ClusterInvocationDecoder: DistributedTargetInvocationDecoder {
         switch self.state {
         case .remoteCall(let message):
             guard self.argumentIdx < message.arguments.count else {
-                throw SerializationError(.notEnoughArgumentsEncoded(expected: self.argumentIdx + 1, have: message.arguments.count))
+                throw SerializationError(
+                    .notEnoughArgumentsEncoded(expected: self.argumentIdx + 1, have: message.arguments.count)
+                )
             }
 
             argumentData = message.arguments[self.argumentIdx]
@@ -124,7 +126,9 @@ public struct ClusterInvocationDecoder: DistributedTargetInvocationDecoder {
         case .localProxyCall(let invocation):
             // TODO: potentially able to optimize and avoid serialization round trip for such calls
             guard self.argumentIdx < invocation.arguments.count else {
-                throw SerializationError(.notEnoughArgumentsEncoded(expected: self.argumentIdx + 1, have: invocation.arguments.count))
+                throw SerializationError(
+                    .notEnoughArgumentsEncoded(expected: self.argumentIdx + 1, have: invocation.arguments.count)
+                )
             }
 
             argumentData = invocation.arguments[self.argumentIdx]
@@ -143,10 +147,10 @@ public struct ClusterInvocationDecoder: DistributedTargetInvocationDecoder {
     }
 
     public mutating func decodeErrorType() throws -> Any.Type? {
-        return nil // TODO(distributed): might need this
+        nil  // TODO(distributed): might need this// TODO(distributed): might need this
     }
 
     public mutating func decodeReturnType() throws -> Any.Type? {
-        return nil // TODO(distributed): might need this
+        nil  // TODO(distributed): might need this// TODO(distributed): might need this
     }
 }

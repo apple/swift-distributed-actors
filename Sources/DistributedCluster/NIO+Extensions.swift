@@ -29,16 +29,16 @@ extension ByteBuffer {
         func asHex(_ byte: UInt8) -> String {
             let s = String(byte, radix: 16, uppercase: true)
             if byte < 16 {
-                return "0\(s)" // poor-man's leftPad
+                return "0\(s)"  // poor-man's leftPad
             } else {
                 return s
             }
         }
         func asASCII(_ byte: UInt8) -> String {
-            if (0x20 ... 0x7F).contains(byte) {
+            if (0x20...0x7F).contains(byte) {
                 return "\(Character(UnicodeScalar(byte)))"
             } else {
-                return "." // not ascii (e.g. binary data)
+                return "."  // not ascii (e.g. binary data)
             }
         }
 
@@ -48,7 +48,7 @@ extension ByteBuffer {
                 let space: String
                 i += 1
                 if i % 8 == 0 {
-                    space = "  " // double space, to separate octets
+                    space = "  "  // double space, to separate octets
                 } else {
                     space = " "
                 }
@@ -83,7 +83,7 @@ extension ByteBuffer {
             suffix = "\n\(padding)[ \(self.readableBytes - maxBytes) bytes truncated ... ]"
         }
 
-        return "ByteBuffer(readableBytes: \(self.readableBytes)\(limitMessage)), formatHexDump:\n" +
-            "\(formatBytes(bytes: buf.readBytes(length: buf.readableBytes)!))" + suffix
+        return "ByteBuffer(readableBytes: \(self.readableBytes)\(limitMessage)), formatHexDump:\n"
+            + "\(formatBytes(bytes: buf.readBytes(length: buf.readableBytes)!))" + suffix
     }
 }

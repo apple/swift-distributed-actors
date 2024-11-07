@@ -13,19 +13,20 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import Logging
 import NIO
 import XCTest
 
+@testable import DistributedCluster
+
 final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCase {
     override func configureActorSystem(settings: inout ClusterSystemSettings) {
-        settings.enabled = false // not actually clustering, just need a few nodes
+        settings.enabled = false  // not actually clustering, just need a few nodes
     }
 
     override func configureLogCapture(settings: inout LogCapture.Settings) {
         settings.filterActorPaths = [
-            "/user/peer",
+            "/user/peer"
         ]
     }
 
@@ -61,7 +62,10 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
         self.logics.map(\.latestGossip)
     }
 
-    private func makeLogic(_ system: ClusterSystem, _ probe: ActorTestProbe<Cluster.MembershipGossip>) -> MembershipGossipLogic {
+    private func makeLogic(
+        _ system: ClusterSystem,
+        _ probe: ActorTestProbe<Cluster.MembershipGossip>
+    ) -> MembershipGossipLogic {
         MembershipGossipLogic(
             GossipLogicContext<Cluster.MembershipGossip, Cluster.MembershipGossip>(
                 ownerContext: self.testKit(system).makeFakeContext(),
@@ -102,22 +106,25 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
                 let logicA: MembershipGossipLogic = self.logic("A")
 
                 // We simulate that `A` noticed it's the leader and moved `B` and `C` .up
-                logicA.receiveLocalGossipUpdate(Cluster.MembershipGossip.parse(
-                    """
-                    A.up B.up C.up
-                    A: A@5 B@3 C@3
-                    B: A@3 B@3 C@3
-                    C: A@3 B@3 C@3
-                    """,
-                    owner: systemA.cluster.node, nodes: nodes
-                ))
+                logicA.receiveLocalGossipUpdate(
+                    Cluster.MembershipGossip.parse(
+                        """
+                        A.up B.up C.up
+                        A: A@5 B@3 C@3
+                        B: A@3 B@3 C@3
+                        C: A@3 B@3 C@3
+                        """,
+                        owner: systemA.cluster.node,
+                        nodes: nodes
+                    )
+                )
             },
             stopRunWhen: { (logics, _) in
                 logics.allSatisfy { $0.latestGossip.converged() }
             },
             assert: { results in
-                results.roundCounts.max()!.shouldBeLessThanOrEqual(3) // usually 2 but 3 is tolerable; may be 1 if we're very lucky with ordering
-                results.messageCounts.max()!.shouldBeLessThanOrEqual(9) // usually 6, but 9 is tolerable
+                results.roundCounts.max()!.shouldBeLessThanOrEqual(3)  // usually 2 but 3 is tolerable; may be 1 if we're very lucky with ordering
+                results.messageCounts.max()!.shouldBeLessThanOrEqual(9)  // usually 6, but 9 is tolerable
             }
         )
     }
@@ -188,45 +195,51 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
                 let logicA: MembershipGossipLogic = self.logic("A")
                 let logicD: MembershipGossipLogic = self.logic("D")
 
-                logicA.receiveLocalGossipUpdate(Cluster.MembershipGossip.parse(
-                    """
-                    A.up B.up C.up D.up E.up F.up G.up H.up I.up J.up 
-                    A: A@20 B@16 C@16 D@16 E@16 F@16 G@16 H@16 I@16 J@16 
-                    B: A@20 B@16 C@16 D@16 E@16 F@16 G@16 H@16 I@16 J@16
-                    C: A@20 B@16 C@16 D@16 E@16 F@16 G@16 H@16 I@16 J@16
-                    D: A@20 B@16 C@16 D@16 E@16 F@16 G@16 H@16 I@16 J@16
-                    E: A@20 B@16 C@16 D@16 E@16 F@16 G@16 H@16 I@16 J@16
-                    F: A@20 B@16 C@16 D@16 E@16 F@16 G@16 H@16 I@16 J@16
-                    G: A@20 B@16 C@16 D@16 E@16 F@16 G@16 H@16 I@16 J@16
-                    H: A@20 B@16 C@16 D@16 E@16 F@16 G@16 H@16 I@16 J@16
-                    I: A@20 B@16 C@16 D@16 E@16 F@16 G@16 H@16 I@16 J@16
-                    J: A@20 B@16 C@16 D@16 E@16 F@16 G@16 H@16 I@16 J@16
-                    """,
-                    owner: systemA.cluster.node, nodes: nodes
-                ))
+                logicA.receiveLocalGossipUpdate(
+                    Cluster.MembershipGossip.parse(
+                        """
+                        A.up B.up C.up D.up E.up F.up G.up H.up I.up J.up 
+                        A: A@20 B@16 C@16 D@16 E@16 F@16 G@16 H@16 I@16 J@16 
+                        B: A@20 B@16 C@16 D@16 E@16 F@16 G@16 H@16 I@16 J@16
+                        C: A@20 B@16 C@16 D@16 E@16 F@16 G@16 H@16 I@16 J@16
+                        D: A@20 B@16 C@16 D@16 E@16 F@16 G@16 H@16 I@16 J@16
+                        E: A@20 B@16 C@16 D@16 E@16 F@16 G@16 H@16 I@16 J@16
+                        F: A@20 B@16 C@16 D@16 E@16 F@16 G@16 H@16 I@16 J@16
+                        G: A@20 B@16 C@16 D@16 E@16 F@16 G@16 H@16 I@16 J@16
+                        H: A@20 B@16 C@16 D@16 E@16 F@16 G@16 H@16 I@16 J@16
+                        I: A@20 B@16 C@16 D@16 E@16 F@16 G@16 H@16 I@16 J@16
+                        J: A@20 B@16 C@16 D@16 E@16 F@16 G@16 H@16 I@16 J@16
+                        """,
+                        owner: systemA.cluster.node,
+                        nodes: nodes
+                    )
+                )
 
                 // they're trying to join
-                logicD.receiveLocalGossipUpdate(Cluster.MembershipGossip.parse(
-                    """
-                    A.up B.up C.up D.joining E.joining F.joining G.joining H.joining I.joining J.joining 
-                    A: A@11 B@16 C@16 D@9 E@13 F@13 G@13 H@13 I@13 J@13
-                    B: A@12 B@11 C@11 D@9 E@13 F@13 G@13 H@13 I@13 J@13
-                    C: A@12 B@11 C@11 D@9 E@13 F@13 G@13 H@13 I@13 J@13
-                    D: A@12 B@11 C@11 D@9 E@13 F@13 G@13 H@13 I@13 J@13
-                    E: A@12 B@11 C@11 D@9 E@13 F@13 G@13 H@13 I@13 J@13
-                    F: A@12 B@11 C@11 D@9 E@13 F@13 G@13 H@13 I@13 J@13
-                    G: A@12 B@11 C@11 D@9 E@13 F@13 G@13 H@13 I@13 J@13
-                    H: A@12 B@11 C@11 D@9 E@13 F@13 G@13 H@13 I@13 J@13
-                    I: A@12 B@11 C@11 D@9 E@13 F@13 G@13 H@13 I@13 J@13
-                    J: A@12 B@11 C@11 D@9 E@13 F@13 G@13 H@13 I@13 J@13
-                    """,
-                    owner: systemD.cluster.node, nodes: nodes
-                ))
+                logicD.receiveLocalGossipUpdate(
+                    Cluster.MembershipGossip.parse(
+                        """
+                        A.up B.up C.up D.joining E.joining F.joining G.joining H.joining I.joining J.joining 
+                        A: A@11 B@16 C@16 D@9 E@13 F@13 G@13 H@13 I@13 J@13
+                        B: A@12 B@11 C@11 D@9 E@13 F@13 G@13 H@13 I@13 J@13
+                        C: A@12 B@11 C@11 D@9 E@13 F@13 G@13 H@13 I@13 J@13
+                        D: A@12 B@11 C@11 D@9 E@13 F@13 G@13 H@13 I@13 J@13
+                        E: A@12 B@11 C@11 D@9 E@13 F@13 G@13 H@13 I@13 J@13
+                        F: A@12 B@11 C@11 D@9 E@13 F@13 G@13 H@13 I@13 J@13
+                        G: A@12 B@11 C@11 D@9 E@13 F@13 G@13 H@13 I@13 J@13
+                        H: A@12 B@11 C@11 D@9 E@13 F@13 G@13 H@13 I@13 J@13
+                        I: A@12 B@11 C@11 D@9 E@13 F@13 G@13 H@13 I@13 J@13
+                        J: A@12 B@11 C@11 D@9 E@13 F@13 G@13 H@13 I@13 J@13
+                        """,
+                        owner: systemD.cluster.node,
+                        nodes: nodes
+                    )
+                )
             },
             stopRunWhen: { (logics, _) in
                 // keep gossiping until all members become .up and converged
-                logics.allSatisfy { $0.latestGossip.converged() } &&
-                    logics.allSatisfy { $0.latestGossip.membership.count(withStatus: .up) == allSystems.count }
+                logics.allSatisfy { $0.latestGossip.converged() }
+                    && logics.allSatisfy { $0.latestGossip.membership.count(withStatus: .up) == allSystems.count }
             },
             assert: { results in
                 results.roundCounts.max()?.shouldBeLessThanOrEqual(3)
@@ -263,19 +276,22 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
                 let logicA: MembershipGossipLogic = self.logic("A")
 
                 // We simulate that `A` noticed it's the leader and moved `B` and `C` .up
-                logicA.receiveLocalGossipUpdate(Cluster.MembershipGossip.parse(
-                    """
-                    A.up B.up C.up
-                    A: A@5 B@3 C@3
-                    B: A@3 B@3 C@3
-                    C: A@3 B@3 C@3
-                    """,
-                    owner: systemA.cluster.node, nodes: nodes
-                ))
+                logicA.receiveLocalGossipUpdate(
+                    Cluster.MembershipGossip.parse(
+                        """
+                        A.up B.up C.up
+                        A: A@5 B@3 C@3
+                        B: A@3 B@3 C@3
+                        C: A@3 B@3 C@3
+                        """,
+                        owner: systemA.cluster.node,
+                        nodes: nodes
+                    )
+                )
             },
             stopRunWhen: { logics, _ in
                 logics.allSatisfy { logic in
-                    logic.selectPeers(self.peers(of: logic)) == [] // no more peers to talk to
+                    logic.selectPeers(self.peers(of: logic)) == []  // no more peers to talk to
                 }
             },
             assert: { results in
@@ -305,16 +321,17 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
         )
 
         let initialGossips = setUpPeers()
-        self.mockPeers = try! self.systems.map { system -> _ActorRef<GossipShell<Cluster.MembershipGossip, Cluster.MembershipGossip>.Message> in
+        self.mockPeers = try! self.systems.map {
+            system -> _ActorRef<GossipShell<Cluster.MembershipGossip, Cluster.MembershipGossip>.Message> in
             let ref: _ActorRef<GossipShell<Cluster.MembershipGossip, Cluster.MembershipGossip>.Message> =
                 try system._spawn("peer", .receiveMessage { _ in .same })
             return self.systems.first!._resolveKnownRemote(ref, onRemoteSystem: system)
         }.map(\.asAddressable)
 
         var log = self.systems.first!.log
-        log[metadataKey: "actor/path"] = "/user/peer" // mock actor path for log capture
+        log[metadataKey: "actor/path"] = "/user/peer"  // mock actor path for log capture
 
-        for _ in 1 ... runs {
+        for _ in 1...runs {
             // initialize with user provided gossips
             self.logics = initialGossips.map { initialGossip in
                 let system = self.system(initialGossip.owner.systemName)
@@ -325,14 +342,17 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
             }
 
             func allConverged(gossips: [Cluster.MembershipGossip]) -> Bool {
-                var allSatisfied = true // on purpose not via .allSatisfy() since we want to print status of each logic
+                var allSatisfied = true  // on purpose not via .allSatisfy() since we want to print status of each logic
                 for g in gossips.sorted(by: { $0.owner.systemName < $1.owner.systemName }) {
                     let converged = g.converged()
                     let convergenceStatus = converged ? "(locally assumed) converged" : "not converged"
 
-                    log.notice("\(g.owner.endpoint.systemName): \(convergenceStatus)", metadata: [
-                        "gossip": Logger.MetadataValue.pretty(g),
-                    ])
+                    log.notice(
+                        "\(g.owner.endpoint.systemName): \(convergenceStatus)",
+                        metadata: [
+                            "gossip": Logger.MetadataValue.pretty(g)
+                        ]
+                    )
 
                     allSatisfied = allSatisfied && converged
                 }
@@ -340,7 +360,7 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
             }
 
             func simulateGossipRound() {
-                messageCounts.append(0) // make a counter for this run
+                messageCounts.append(0)  // make a counter for this run
 
                 // we shuffle the gossips to simulate the slight timing differences -- not always will the "first" node be the first where the timers trigger
                 // and definitely not always will it always _remain_ the first to be gossiping; there may be others still gossiping around spreading their "not super complete"
@@ -348,32 +368,43 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
                 let participatingGossips = self.logics.shuffled()
                 for logic in participatingGossips {
                     let selectedPeers: [_AddressableActorRef] = logic.selectPeers(self.peers(of: logic))
-                    log.notice("[\(logic.nodeName)] selected peers: \(selectedPeers.map(\.id.node.endpoint.systemName))")
+                    log.notice(
+                        "[\(logic.nodeName)] selected peers: \(selectedPeers.map(\.id.node.endpoint.systemName))"
+                    )
 
                     for targetPeer in selectedPeers {
                         messageCounts[messageCounts.endIndex - 1] += 1
 
                         let targetGossip = logic.makePayload(target: targetPeer)
                         if let gossip = targetGossip {
-                            log.notice("    \(logic.nodeName) -> \(targetPeer.id.node.endpoint.systemName)", metadata: [
-                                "gossip": Logger.MetadataValue.pretty(gossip),
-                            ])
+                            log.notice(
+                                "    \(logic.nodeName) -> \(targetPeer.id.node.endpoint.systemName)",
+                                metadata: [
+                                    "gossip": Logger.MetadataValue.pretty(gossip)
+                                ]
+                            )
 
                             let targetLogic = self.selectLogic(targetPeer)
                             let maybeAck = targetLogic.receiveGossip(gossip, from: self.peer(logic))
-                            log.notice("updated [\(targetPeer.id.node.endpoint.systemName)]", metadata: [
-                                "gossip": Logger.MetadataValue.pretty(targetLogic.latestGossip),
-                            ])
+                            log.notice(
+                                "updated [\(targetPeer.id.node.endpoint.systemName)]",
+                                metadata: [
+                                    "gossip": Logger.MetadataValue.pretty(targetLogic.latestGossip)
+                                ]
+                            )
 
                             if let ack = maybeAck {
-                                log.notice("    \(logic.nodeName) <- \(targetPeer.id.node.endpoint.systemName) (ack)", metadata: [
-                                    "ack": Logger.MetadataValue.pretty(ack),
-                                ])
+                                log.notice(
+                                    "    \(logic.nodeName) <- \(targetPeer.id.node.endpoint.systemName) (ack)",
+                                    metadata: [
+                                        "ack": Logger.MetadataValue.pretty(ack)
+                                    ]
+                                )
                                 logic.receiveAcknowledgement(ack, from: self.peer(targetLogic), confirming: gossip)
                             }
 
                         } else {
-                            () // skipping target...
+                            ()  // skipping target...
                         }
                     }
                 }

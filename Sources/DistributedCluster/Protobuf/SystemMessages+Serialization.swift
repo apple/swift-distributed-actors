@@ -1,3 +1,6 @@
+import NIO
+import SwiftProtobuf
+
 //===----------------------------------------------------------------------===//
 //
 // This source file is part of the Swift Distributed Actors open source project
@@ -12,8 +15,6 @@
 //
 //===----------------------------------------------------------------------===//
 import struct Foundation.Data
-import NIO
-import SwiftProtobuf
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ACK / NACK

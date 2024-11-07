@@ -16,6 +16,7 @@ import CDistributedActorsMailbox
 import Dispatch
 import Logging
 import Metrics
+
 import struct NIO.ByteBuffer
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -23,7 +24,9 @@ import struct NIO.ByteBuffer
 
 /// Represents a reference to an actor.
 /// All communication between actors is handled _through_ actor refs, which guarantee their isolation remains intact.
-public struct _ActorRef<Message: Codable>: @unchecked Sendable, _ReceivesMessages, _DeathWatchable, _ReceivesSystemMessages {
+public struct _ActorRef<Message: Codable>: @unchecked Sendable, _ReceivesMessages, _DeathWatchable,
+    _ReceivesSystemMessages
+{
     /// INTERNAL API: May change without further notice.
     /// The actor ref is "aware" whether it represents a local, remote or otherwise special actor.
     ///
@@ -66,9 +69,9 @@ public struct _ActorRef<Message: Codable>: @unchecked Sendable, _ReceivesMessage
     public func tell(_ message: Message, file: String = #filePath, line: UInt = #line) {
         switch self.personality {
         case .cell(let cell):
-//            if ("\(message)".contains("handshakeWith(")) {
-//                pprint("send = \(message)", file: file, line: line)
-//            }
+            //            if ("\(message)".contains("handshakeWith(")) {
+            //                pprint("send = \(message)", file: file, line: line)
+            //            }
             cell.sendMessage(message, file: file, line: line)
         case .remote(let remote):
             remote.sendUserMessage(message, file: file, line: line)
@@ -79,7 +82,7 @@ public struct _ActorRef<Message: Codable>: @unchecked Sendable, _ReceivesMessage
         case .delegate(let delegate):
             delegate.sendMessage(message, file: file, line: line)
         case .deadLetters(let deadLetters):
-            deadLetters.deliver(message, file: file, line: line) // drop message directly into dead letters
+            deadLetters.deliver(message, file: file, line: line)  // drop message directly into dead letters
         }
     }
 }
@@ -172,16 +175,18 @@ internal protocol _ReceivesSystemMessages: Codable {
     ///
     /// - Reminder: DO NOT use this to deliver messages from the network, deserialization and delivery,
     ///   must be performed in "one go" by `_deserializeDeliver`.
-    func _tellOrDeadLetter(_ message: Any, file: String, line: UInt) // TODO: This must die?
+    func _tellOrDeadLetter(_ message: Any, file: String, line: UInt)  // TODO: This must die?
 
     // INTERNAL API
     func _dropAsDeadLetter(_ message: Any, file: String, line: UInt)
 
     /// INTERNAL API: This way remoting sends messages
     func _deserializeDeliver(
-        _ messageBytes: Serialization.Buffer, using manifest: Serialization.Manifest,
+        _ messageBytes: Serialization.Buffer,
+        using manifest: Serialization.Manifest,
         on pool: _SerializationPool,
-        file: String, line: UInt
+        file: String,
+        line: UInt
     )
 
     /// INTERNAL API
@@ -236,22 +241,31 @@ extension _ActorRef {
     // FIXME: can this be removed?
     public func _tellOrDeadLetter(_ message: Any, file: String = #filePath, line: UInt = #line) {
         guard let _message = message as? Message else {
-            traceLog_Mailbox(self.path, "_tellOrDeadLetter: [\(message)] failed because of invalid message type, to: \(self); Sent at \(file):\(line)")
+            traceLog_Mailbox(
+                self.path,
+                "_tellOrDeadLetter: [\(message)] failed because of invalid message type, to: \(self); Sent at \(file):\(line)"
+            )
             self._dropAsDeadLetter(message, file: file, line: line)
-            return // TODO: "drop" the message rather than dead letter it?
+            return  // TODO: "drop" the message rather than dead letter it?
         }
 
         self.tell(_message, file: file, line: line)
     }
 
     public func _dropAsDeadLetter(_ message: Any, file: String = #filePath, line: UInt = #line) {
-        self._deadLetters.tell(DeadLetter(message, recipient: self.id, sentAtFile: file, sentAtLine: line), file: file, line: line)
+        self._deadLetters.tell(
+            DeadLetter(message, recipient: self.id, sentAtFile: file, sentAtLine: line),
+            file: file,
+            line: line
+        )
     }
 
     public func _deserializeDeliver(
-        _ messageBytes: Serialization.Buffer, using manifest: Serialization.Manifest,
+        _ messageBytes: Serialization.Buffer,
+        using manifest: Serialization.Manifest,
         on pool: _SerializationPool,
-        file: String = #filePath, line: UInt = #line
+        file: String = #filePath,
+        line: UInt = #line
     ) {
         let deserializationStartTime: DispatchTime?
         if self._unwrapActorMetrics.active.contains(.deserialization) {
@@ -290,7 +304,10 @@ extension _ActorRef {
                     ]
 
                     if let system = self._system {
-                        system.log.warning("Failed to deserialize/deliver message to \(self.path), error: \(error)", metadata: metadata)
+                        system.log.warning(
+                            "Failed to deserialize/deliver message to \(self.path), error: \(error)",
+                            metadata: metadata
+                        )
                     } else {
                         // TODO: last resort, print error (system could be going down)
                         print("Failed to deserialize/delivery message to \(self.path). Metadata: \(metadata)")
@@ -319,7 +336,7 @@ extension _ActorRef {
         case .guardian(let guardian):
             return guardian.system
         case .deadLetters(let deadLetters):
-            return deadLetters.system // FIXME: do we really need this
+            return deadLetters.system  // FIXME: do we really need this
         case .delegate(let delegate):
             return delegate.system
         case .remote(let remote):
@@ -383,7 +400,13 @@ public final class _ActorCell<Message: Codable> {
     }
 
     @usableFromInline
-    func sendSubMessage<SubMessage>(_ message: SubMessage, identifier: _AnySubReceiveId, subReceiveAddress: ActorID, file: String = #filePath, line: UInt = #line) {
+    func sendSubMessage<SubMessage>(
+        _ message: SubMessage,
+        identifier: _AnySubReceiveId,
+        subReceiveAddress: ActorID,
+        file: String = #filePath,
+        line: UInt = #line
+    ) {
         traceLog_Mailbox(self.id.path, "sendSubMessage from \(file):\(line) to: \(self)")
         let carry = SubMessageCarry(identifier: identifier, message: message, subReceiveAddress: subReceiveAddress)
         self.mailbox.sendMessage(envelope: Payload(payload: .subMessage(carry)), file: file, line: line)
@@ -453,7 +476,13 @@ open class _CellDelegate<Message: Codable> {
         fatalError("Not implemented: \(#function), called from \(file):\(line)")
     }
 
-    open func sendSubMessage<SubMessage>(_ message: SubMessage, identifier: _AnySubReceiveId, subReceiveAddress: ActorID, file: String = #filePath, line: UInt = #line) {
+    open func sendSubMessage<SubMessage>(
+        _ message: SubMessage,
+        identifier: _AnySubReceiveId,
+        subReceiveAddress: ActorID,
+        file: String = #filePath,
+        line: UInt = #line
+    ) {
         fatalError("Not implemented: \(#function), called from \(file):\(line)")
     }
 
@@ -469,7 +498,7 @@ open class _CellDelegate<Message: Codable> {
 /// It steps on the outer edge of the actor system and does not abide to its rules.
 ///
 /// Only a single instance of this "actor" exists, and it is the parent of all top level guardians.
-internal struct TheOneWhoHasNoParent: _ReceivesSystemMessages { // FIXME: fix the name
+internal struct TheOneWhoHasNoParent: _ReceivesSystemMessages {  // FIXME: fix the name
     // path is breaking the rules -- it never can be empty, but this is "the one", it can do whatever it wants
     @usableFromInline
     let id: ActorID
@@ -480,29 +509,39 @@ internal struct TheOneWhoHasNoParent: _ReceivesSystemMessages { // FIXME: fix th
 
     internal func _sendSystemMessage(_ message: _SystemMessage, file: String = #filePath, line: UInt = #line) {
         CDistributedActorsMailbox.sact_dump_backtrace()
-        fatalError("The \(self.id) actor MUST NOT receive any messages. Yet received \(message); Sent at \(file):\(line)")
+        fatalError(
+            "The \(self.id) actor MUST NOT receive any messages. Yet received \(message); Sent at \(file):\(line)"
+        )
     }
 
     @usableFromInline
     internal func _tellOrDeadLetter(_ message: Any, file: String = #filePath, line: UInt = #line) {
         CDistributedActorsMailbox.sact_dump_backtrace()
-        fatalError("The \(self.id) actor MUST NOT receive any messages. Yet received \(message); Sent at \(file):\(line)")
+        fatalError(
+            "The \(self.id) actor MUST NOT receive any messages. Yet received \(message); Sent at \(file):\(line)"
+        )
     }
 
     @usableFromInline
     internal func _dropAsDeadLetter(_ message: Any, file: String = #filePath, line: UInt = #line) {
         CDistributedActorsMailbox.sact_dump_backtrace()
-        fatalError("The \(self.id) actor MUST NOT receive any messages. Yet received \(message); Sent at \(file):\(line)")
+        fatalError(
+            "The \(self.id) actor MUST NOT receive any messages. Yet received \(message); Sent at \(file):\(line)"
+        )
     }
 
     @usableFromInline
     internal func _deserializeDeliver(
-        _ messageBytes: Serialization.Buffer, using manifest: Serialization.Manifest,
+        _ messageBytes: Serialization.Buffer,
+        using manifest: Serialization.Manifest,
         on pool: _SerializationPool,
-        file: String = #filePath, line: UInt = #line
+        file: String = #filePath,
+        line: UInt = #line
     ) {
         CDistributedActorsMailbox.sact_dump_backtrace()
-        fatalError("The \(self.id) actor MUST NOT receive any messages, yet attempted \(#function); Sent at \(file):\(line)")
+        fatalError(
+            "The \(self.id) actor MUST NOT receive any messages, yet attempted \(#function); Sent at \(file):\(line)"
+        )
     }
 
     @usableFromInline
@@ -511,7 +550,8 @@ internal struct TheOneWhoHasNoParent: _ReceivesSystemMessages { // FIXME: fix th
     }
 
     @usableFromInline
-    internal func _unsafeGetRemotePersonality<M: Codable>(_ type: M.Type = M.self) -> _RemoteClusterActorPersonality<M> {
+    internal func _unsafeGetRemotePersonality<M: Codable>(_ type: M.Type = M.self) -> _RemoteClusterActorPersonality<M>
+    {
         CDistributedActorsMailbox.sact_dump_backtrace()
         fatalError("The \(self.id) actor MUST NOT be interacted with directly!")
     }
@@ -563,7 +603,9 @@ public class _Guardian {
         do {
             self._id = try ActorPath(root: name).makeLocalID(on: localNode, incarnation: .wellKnown)
         } catch {
-            fatalError("Illegal Guardian path, as those are only to be created by ClusterSystem startup, considering this fatal.")
+            fatalError(
+                "Illegal Guardian path, as those are only to be created by ClusterSystem startup, considering this fatal."
+            )
         }
         self._children = _Children()
         self.system = system
@@ -595,35 +637,42 @@ public class _Guardian {
             switch circumstances {
             case .escalating(let failure):
                 guard let system = self.system else {
-                    print("[error] Failure escalated to \(self) yet system already not available. Already shutting down? Failure: \(failure)")
+                    print(
+                        "[error] Failure escalated to \(self) yet system already not available. Already shutting down? Failure: \(failure)"
+                    )
                     return
                 }
 
                 /// Shut down actor system
                 let message = """
-                Escalated failure from [\(ref.id)] reached top-level guardian [\(self.id.path)], SHUTTING DOWN ClusterSystem! \
-                (This can be configured in `system.settings.failure.onGuardianFailure`). \
-                Failure was: \(failure)
-                """
-                system.log.error("\(message)", metadata: [
-                    "actor/path": "\(self.id.path)",
-                    "error": "\(failure)",
-                ])
+                    Escalated failure from [\(ref.id)] reached top-level guardian [\(self.id.path)], SHUTTING DOWN ClusterSystem! \
+                    (This can be configured in `system.settings.failure.onGuardianFailure`). \
+                    Failure was: \(failure)
+                    """
+                system.log.error(
+                    "\(message)",
+                    metadata: [
+                        "actor/path": "\(self.id.path)",
+                        "error": "\(failure)",
+                    ]
+                )
 
                 _ = Task {
-                    try! await system.shutdown().wait() // so we don't block anyone who sent us this signal (as we execute synchronously in the guardian)
+                    try! await system.shutdown().wait()  // so we don't block anyone who sent us this signal (as we execute synchronously in the guardian)
                     print("Guardian shutdown of [\(system.name)] ClusterSystem complete.")
                 }
 
             case .failed:
-                () // ignore, we only react to escalations
+                ()  // ignore, we only react to escalations
 
             case .stopped:
-                () // ignore, we only react to escalations
+                ()  // ignore, we only react to escalations
             }
         default:
             CDistributedActorsMailbox.sact_dump_backtrace()
-            fatalError("The \(self.id) actor MUST NOT receive any messages. Yet received \(message); Sent at \(file):\(line)")
+            fatalError(
+                "The \(self.id) actor MUST NOT receive any messages. Yet received \(message); Sent at \(file):\(line)"
+            )
         }
     }
 
@@ -671,7 +720,7 @@ public class _Guardian {
             } else if self.stopping {
                 // stopping has already been initiated, so we only have to wait
                 // for all children to be removed
-                self.allChildrenRemoved.wait(_childrenLock) // reason for not using our ReadWriteLock
+                self.allChildrenRemoved.wait(_childrenLock)  // reason for not using our ReadWriteLock
                 return
             }
 
@@ -693,7 +742,10 @@ public class _Guardian {
 }
 
 extension _Guardian: _ActorTreeTraversable {
-    func _traverse<T>(context: _TraversalContext<T>, _ visit: (_TraversalContext<T>, _AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
+    func _traverse<T>(
+        context: _TraversalContext<T>,
+        _ visit: (_TraversalContext<T>, _AddressableActorRef) -> _TraversalDirective<T>
+    ) -> _TraversalResult<T> {
         let children: _Children = self.children
 
         var c = context.deeper

@@ -73,6 +73,7 @@ public struct ReceptionistSettings {
     /// Guaranteed small messages.
     public func behavior(settings: ClusterSystemSettings) -> _Behavior<Receptionist.Message> {
         let instrumentation = settings.instrumentation.makeReceptionistInstrumentation()
-        return _OperationLogClusterReceptionist(settings: settings.receptionist, instrumentation: instrumentation).behavior
+        return _OperationLogClusterReceptionist(settings: settings.receptionist, instrumentation: instrumentation)
+            .behavior
     }
 }

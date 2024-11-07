@@ -44,9 +44,12 @@ public final class MultiNodeReceptionistTests: MultiNodeTestSuite {
 
     public let test_receptionist_checkIn = MultiNodeTest(MultiNodeReceptionistTests.self) { multiNode in
         // *All* nodes spawn an echo actor
-        let localEcho = await DistributedEcho(greeting: "Hi from \(multiNode.system.name), ", actorSystem: multiNode.system)
+        let localEcho = await DistributedEcho(
+            greeting: "Hi from \(multiNode.system.name), ",
+            actorSystem: multiNode.system
+        )
 
-        try await multiNode.checkPoint("Spawned actors") // ------------------------------------------------------------
+        try await multiNode.checkPoint("Spawned actors")  // ------------------------------------------------------------
 
         let expectedCount = Nodes.allCases.count
         var discovered: Set<DistributedEcho> = []
@@ -59,7 +62,7 @@ public final class MultiNodeReceptionistTests: MultiNodeTestSuite {
             }
         }
 
-        try await multiNode.checkPoint("All members found \(expectedCount) actors") // ---------------------------------
+        try await multiNode.checkPoint("All members found \(expectedCount) actors")  // ---------------------------------
     }
 
     distributed actor DistributedEcho {

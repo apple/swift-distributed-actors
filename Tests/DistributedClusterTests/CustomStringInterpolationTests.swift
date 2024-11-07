@@ -13,8 +13,9 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import XCTest
+
+@testable import DistributedCluster
 
 class CustomStringInterpolationTests: XCTestCase {
     func test_leftPadTo_whenValueShorterThanPadTo() {

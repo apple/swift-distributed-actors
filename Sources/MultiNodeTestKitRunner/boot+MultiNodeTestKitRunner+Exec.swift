@@ -15,28 +15,30 @@
 import ArgumentParser
 import Dispatch
 import DistributedCluster
-import struct Foundation.Date
-import class Foundation.FileHandle
-import class Foundation.ProcessInfo
-import struct Foundation.URL
 import Logging
 import MultiNodeTestKit
 import NIOCore
 import NIOPosix
 import OrderedCollections
 
+import struct Foundation.Date
+import class Foundation.FileHandle
+import class Foundation.ProcessInfo
+import struct Foundation.URL
+
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Code executing on each specific process/node
 
 extension MultiNodeTestKitRunnerBoot {
     /// Within a dedicated process, execute the test with the specific node:
-    func executeTest(multiNodeTest: MultiNodeTest,
-                     nodeName: String,
-                     allNodes multiNodeEndpoints: [MultiNode.Endpoint]) async throws
-    {
+    func executeTest(
+        multiNodeTest: MultiNodeTest,
+        nodeName: String,
+        allNodes multiNodeEndpoints: [MultiNode.Endpoint]
+    ) async throws {
         var control = multiNodeTest.makeControl(nodeName)
         control._allEndpoints = convertAllNodes(allNodes: multiNodeEndpoints)
-        let myNode = control._allEndpoints[nodeName]! // !-safe, we just prepared this node collection
+        let myNode = control._allEndpoints[nodeName]!  // !-safe, we just prepared this node collection
 
         var multiNodeSettings = MultiNodeTestSettings()
         multiNodeTest.configureMultiNodeTest(&multiNodeSettings)
@@ -54,9 +56,12 @@ extension MultiNodeTestKitRunnerBoot {
 
             /// Configure a nicer logger, that pretty prints metadata and also includes source location of logs
             if multiNodeSettings.installPrettyLogger {
-                settings.logging.baseLogger = Logger(label: nodeName, factory: { label in
-                    PrettyMultiNodeLogHandler(nodeName: label, settings: multiNodeSettings.logCapture)
-                })
+                settings.logging.baseLogger = Logger(
+                    label: nodeName,
+                    factory: { label in
+                        PrettyMultiNodeLogHandler(nodeName: label, settings: multiNodeSettings.logCapture)
+                    }
+                )
             }
 
             // we use the singleton to implement a simple Coordinator
@@ -68,11 +73,15 @@ extension MultiNodeTestKitRunnerBoot {
         }
         control._actorSystem = actorSystem
 
-        let signalQueue = DispatchQueue(label: "multi.node.\(multiNodeTest.testSuiteName).\(multiNodeTest.testName).\(nodeName).SignalHandlerQueue")
+        let signalQueue = DispatchQueue(
+            label: "multi.node.\(multiNodeTest.testSuiteName).\(multiNodeTest.testName).\(nodeName).SignalHandlerQueue"
+        )
         let signalSource = DispatchSource.makeSignalSource(signal: SIGINT, queue: signalQueue)
         signalSource.setEventHandler {
             signalSource.cancel()
-            print("\n[multi-node] received signal, initiating shutdown which should complete after the last request finished.")
+            print(
+                "\n[multi-node] received signal, initiating shutdown which should complete after the last request finished."
+            )
 
             try! actorSystem.shutdown()
         }
@@ -89,7 +98,10 @@ extension MultiNodeTestKitRunnerBoot {
 
         var allNodes: Set<Cluster.Node> = [actorSystem.cluster.node]
         for other in otherEndpoints {
-            let joinedOther = try await actorSystem.cluster.joined(endpoint: other, within: multiNodeSettings.initialJoinTimeout)
+            let joinedOther = try await actorSystem.cluster.joined(
+                endpoint: other,
+                within: multiNodeSettings.initialJoinTimeout
+            )
             guard let joinedOther else {
                 fatalError("[multi-node][\(nodeName)] Failed to join \(other)!")
             }
@@ -99,7 +111,8 @@ extension MultiNodeTestKitRunnerBoot {
 
         let conductorSingletonSettings = ClusterSingletonSettings()
         let conductorName = "$test-conductor"
-        let conductor = try await actorSystem.singleton.host(name: conductorName, settings: conductorSingletonSettings) { [allNodes, multiNodeSettings] actorSystem in
+        let conductor = try await actorSystem.singleton.host(name: conductorName, settings: conductorSingletonSettings)
+        { [allNodes, multiNodeSettings] actorSystem in
             MultiNodeTestConductor(
                 name: conductorName,
                 allNodes: allNodes,

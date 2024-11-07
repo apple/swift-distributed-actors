@@ -13,12 +13,11 @@
 //===----------------------------------------------------------------------===//
 
 import CDistributedActorsMailbox
+import Foundation  // for Codable
 import Logging
 import NIO
 import NIOFoundationCompat
 import SwiftProtobuf
-
-import Foundation // for Codable
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Serialization Settings
@@ -42,7 +41,7 @@ extension Serialization {
         ///
         /// - Warning: Do not set this value to true in production deployments, as it could be used send and deserialize any codable type
         ///   and the serialization infrastructure would attempt deserializing it, potentially opening up for security risks.
-        public var insecureSerializeNotRegisteredMessages: Bool = _isDebugAssertConfiguration() // TODO: We are using an internal function here to allow us to automatically enable the more strict mode in release builds.
+        public var insecureSerializeNotRegisteredMessages: Bool = _isDebugAssertConfiguration()  // TODO: We are using an internal function here to allow us to automatically enable the more strict mode in release builds.
 
         /// Configures which `Codable` serializer (`Encoder` / `Decoder` pair) should be used whenever a
         /// a message is sent however the type does not have a specific serializer requirement configured (via `register` calls).
@@ -60,7 +59,12 @@ extension Serialization {
         ///
         /// This is set automatically when modifying the systems cluster settings.
         internal var localNode: Cluster.Node =
-            .init(systemName: "<mock-value-will-be-replaced-during-system-start>", host: "127.0.0.1", port: 7337, nid: Cluster.Node.ID(0))
+            .init(
+                systemName: "<mock-value-will-be-replaced-during-system-start>",
+                host: "127.0.0.1",
+                port: 7337,
+                nid: Cluster.Node.ID(0)
+            )
 
         /// Applied before automatically selecting a serializer based on manifest.
         /// Allows to deserialize incoming messages when "the same" message is now represented on this system differently.
@@ -101,7 +105,8 @@ extension Serialization.Settings {
     /// regardless if it is codable or not.
     @discardableResult
     public mutating func register<Message: Codable>(
-        _ type: Message.Type, hint hintOverride: String? = nil,
+        _ type: Message.Type,
+        hint hintOverride: String? = nil,
         serializerID overrideSerializerID: SerializerID? = nil,
         alsoRegisterActorRef: Bool = true
     ) -> Manifest {
@@ -146,7 +151,8 @@ extension Serialization.Settings {
     /// This manifest will NOT be used when _sending_ messages of the `Message` type.
     @discardableResult
     public mutating func registerInbound<Message: Codable>(
-        _ type: Message.Type, hint hintOverride: String? = nil,
+        _ type: Message.Type,
+        hint hintOverride: String? = nil,
         serializerID overrideSerializerID: SerializerID? = nil
     ) -> Manifest {
         let hint = hintOverride ?? _mangledTypeName(type) ?? _typeName(type)
@@ -166,7 +172,8 @@ extension Serialization.Settings {
 extension Serialization.Settings {
     /// Register a specialized serializer for a specific `Serialization.Manifest`.
     internal mutating func registerSpecializedSerializer<Message>(
-        _ type: Message.Type, hint hintOverride: String? = nil,
+        _ type: Message.Type,
+        hint hintOverride: String? = nil,
         serializerID: SerializerID,
         makeSerializer: @escaping (NIO.ByteBufferAllocator) -> Serializer<Message>
     ) {
@@ -186,7 +193,6 @@ extension Serialization.Settings {
         _ type: Message.Type,
         serializerID: Serialization.SerializerID
     ) -> Serialization.Manifest {
-        self.typeToManifestRegistry[.init(type)] ??
-            self.register(type, serializerID: serializerID)
+        self.typeToManifestRegistry[.init(type)] ?? self.register(type, serializerID: serializerID)
     }
 }

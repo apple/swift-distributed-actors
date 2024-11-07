@@ -179,7 +179,7 @@ extension Heap: CustomDebugStringConvertible {
             return "<empty heap>"
         }
         let descriptions = self.storage.map { String(describing: $0) }
-        let maxLen: Int = descriptions.map(\.count).max()! // storage checked non-empty above
+        let maxLen: Int = descriptions.map(\.count).max()!  // storage checked non-empty above
         let paddedDescs = descriptions.map { (desc: String) -> String in
             var desc = desc
             while desc.count < maxLen {

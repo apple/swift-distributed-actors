@@ -14,6 +14,7 @@
 
 import Foundation
 import Logging
+
 import struct NIO.CircularBuffer
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -124,7 +125,7 @@ internal final class OutboundSystemMessageRedelivery {
     let metrics: ClusterSystemMetrics?
 
     // highest ACK we got back from the receiving end
-    var highestAcknowledgedSeqNr: SequenceNr = 0 // 0 == no ACKs at all so far.
+    var highestAcknowledgedSeqNr: SequenceNr = 0  // 0 == no ACKs at all so far.
 
     // what is the highest SeqNr we have sent?
     var outgoingSequenceNr: SequenceNr = 0
@@ -231,7 +232,9 @@ internal final class OutboundSystemMessageRedelivery {
 
         guard let nextTickIn = self.redeliveryIntervalBackoff.next() else {
             // technically we could avoid redelivery timers if we wanted to but it's not realistically worth it, the timers will appear all the time
-            fatalError("redeliveryIntervalBackoff yielded no next redelivery time, this MUST NOT happen; re-deliveries must be kept running")
+            fatalError(
+                "redeliveryIntervalBackoff yielded no next redelivery time, this MUST NOT happen; re-deliveries must be kept running"
+            )
         }
 
         let redeliveryBatch = self.messagesPendingAcknowledgement.prefix(self.settings.redeliveryBatchSize)
@@ -330,7 +333,10 @@ internal class InboundSystemMessages {
 }
 
 extension InboundSystemMessages.InboundSystemMessageArrivalDirective {
-    static func == (lhs: InboundSystemMessages.InboundSystemMessageArrivalDirective, rhs: InboundSystemMessages.InboundSystemMessageArrivalDirective) -> Bool {
+    static func == (
+        lhs: InboundSystemMessages.InboundSystemMessageArrivalDirective,
+        rhs: InboundSystemMessages.InboundSystemMessageArrivalDirective
+    ) -> Bool {
         switch (lhs, rhs) {
         case (.accept(let lack), .accept(let rack)):
             return lack == rack

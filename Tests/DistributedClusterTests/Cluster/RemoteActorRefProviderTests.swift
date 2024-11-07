@@ -13,9 +13,10 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import Foundation
 import XCTest
+
+@testable import DistributedCluster
 
 final class RemoteActorRefProviderTests: SingleClusterSystemXCTestCase {
     override func setUp() async throws {
@@ -24,9 +25,23 @@ final class RemoteActorRefProviderTests: SingleClusterSystemXCTestCase {
         }
     }
 
-    let localNode = Cluster.Node(systemName: "RemoteAssociationTests", host: "127.0.0.1", port: 7111, nid: Cluster.Node.ID(777_777))
-    let remoteNode = Cluster.Node(systemName: "RemoteAssociationTests", host: "127.0.0.1", port: 9559, nid: Cluster.Node.ID(888_888))
-    lazy var remoteAddress = ActorID(remote: remoteNode, path: try! ActorPath._user.appending("henry").appending("hacker"), incarnation: .random())
+    let localNode = Cluster.Node(
+        systemName: "RemoteAssociationTests",
+        host: "127.0.0.1",
+        port: 7111,
+        nid: Cluster.Node.ID(777_777)
+    )
+    let remoteNode = Cluster.Node(
+        systemName: "RemoteAssociationTests",
+        host: "127.0.0.1",
+        port: 9559,
+        nid: Cluster.Node.ID(888_888)
+    )
+    lazy var remoteAddress = ActorID(
+        remote: remoteNode,
+        path: try! ActorPath._user.appending("henry").appending("hacker"),
+        incarnation: .random()
+    )
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Properly resolve
@@ -41,15 +56,23 @@ final class RemoteActorRefProviderTests: SingleClusterSystemXCTestCase {
         settings.endpoint = self.localNode.endpoint
         settings.nid = self.localNode.nid
         let clusterShell = ClusterShell(settings: settings)
-        let provider = RemoteActorRefProvider(settings: system.settings, cluster: clusterShell, localProvider: localProvider)
+        let provider = RemoteActorRefProvider(
+            settings: system.settings,
+            cluster: clusterShell,
+            localProvider: localProvider
+        )
 
         let node = Cluster.Node(endpoint: .init(systemName: "system", host: "3.3.3.3", port: 2322), nid: .random())
-        let remoteNode = ActorID(remote: node, path: try ActorPath._user.appending("henry").appending("hacker"), incarnation: ActorIncarnation(1337))
+        let remoteNode = ActorID(
+            remote: node,
+            path: try ActorPath._user.appending("henry").appending("hacker"),
+            incarnation: ActorIncarnation(1337)
+        )
         let resolveContext = _ResolveContext<String>(id: remoteNode, system: system)
 
         // when
         let madeUpRef = provider._resolveAsRemoteRef(resolveContext, remoteAddress: remoteNode)
-        let _: _ActorRef<String> = madeUpRef // check inferred type
+        let _: _ActorRef<String> = madeUpRef  // check inferred type
 
         // then
         pinfo("Made remote ref: \(madeUpRef)")
@@ -76,7 +99,10 @@ final class RemoteActorRefProviderTests: SingleClusterSystemXCTestCase {
         "\(resolvedRef)".shouldEqual("_ActorRef<Int>(/dead/user/ignoresStrings)")
     }
 
-    func test_remoteActorRefProvider_shouldResolveSameAsLocalNodeDeadLettersRef_forTypeMismatchOfActorAndResolveContext() throws {
+    func
+        test_remoteActorRefProvider_shouldResolveSameAsLocalNodeDeadLettersRef_forTypeMismatchOfActorAndResolveContext()
+        throws
+    {
         let ref: _ActorRef<DeadLetter> = self.system.deadLetters
         var id: ActorID = ref.id
         id._location = .remote(self.system.settings.bindNode)
@@ -87,10 +113,14 @@ final class RemoteActorRefProviderTests: SingleClusterSystemXCTestCase {
         "\(resolvedRef)".shouldEqual("_ActorRef<DeadLetter>(/dead/letters)")
     }
 
-    func test_remoteActorRefProvider_shouldResolveRemoteDeadLettersRef_forTypeMismatchOfActorAndResolveContext() throws {
+    func test_remoteActorRefProvider_shouldResolveRemoteDeadLettersRef_forTypeMismatchOfActorAndResolveContext() throws
+    {
         let ref: _ActorRef<DeadLetter> = self.system.deadLetters
         var id: ActorID = ref.id
-        let unknownNode = Cluster.Node(endpoint: .init(systemName: "something", host: "1.1.1.1", port: 1111), nid: Cluster.Node.ID(1211))
+        let unknownNode = Cluster.Node(
+            endpoint: .init(systemName: "something", host: "1.1.1.1", port: 1111),
+            nid: Cluster.Node.ID(1211)
+        )
         id._location = .remote(unknownNode)
 
         let resolveContext = _ResolveContext<DeadLetter>(id: id, system: system)
@@ -99,9 +129,17 @@ final class RemoteActorRefProviderTests: SingleClusterSystemXCTestCase {
         "\(resolvedRef)".shouldEqual("_ActorRef<DeadLetter>(sact://something@1.1.1.1:1111/dead/letters)")
     }
 
-    func test_remoteActorRefProvider_shouldResolveRemoteAlreadyDeadRef_forTypeMismatchOfActorAndResolveContext() throws {
-        let unknownNode = Cluster.Node(endpoint: .init(systemName: "something", host: "1.1.1.1", port: 1111), nid: Cluster.Node.ID(1211))
-        let id: ActorID = try .init(remote: unknownNode, path: ActorPath._dead.appending("already"), incarnation: .wellKnown)
+    func test_remoteActorRefProvider_shouldResolveRemoteAlreadyDeadRef_forTypeMismatchOfActorAndResolveContext() throws
+    {
+        let unknownNode = Cluster.Node(
+            endpoint: .init(systemName: "something", host: "1.1.1.1", port: 1111),
+            nid: Cluster.Node.ID(1211)
+        )
+        let id: ActorID = try .init(
+            remote: unknownNode,
+            path: ActorPath._dead.appending("already"),
+            incarnation: .wellKnown
+        )
 
         let resolveContext = _ResolveContext<DeadLetter>(id: id, system: system)
         let resolvedRef = self.system._resolve(context: resolveContext)

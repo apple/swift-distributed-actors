@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import Distributed
+
 import struct NIO.ByteBuffer
 import protocol NIO.EventLoop
 
@@ -113,9 +114,11 @@ extension _AddressableActorRef: _ReceivesSystemMessages {
     }
 
     public func _deserializeDeliver(
-        _ messageBytes: Serialization.Buffer, using manifest: Serialization.Manifest,
+        _ messageBytes: Serialization.Buffer,
+        using manifest: Serialization.Manifest,
         on pool: _SerializationPool,
-        file: String = #filePath, line: UInt = #line
+        file: String = #filePath,
+        line: UInt = #line
     ) {
         self.ref._deserializeDeliver(messageBytes, using: manifest, on: pool, file: file, line: line)
     }
@@ -129,8 +132,11 @@ extension _RemoteClusterActorPersonality {
     @usableFromInline
     internal func _tellUnsafe(_ message: Any, file: String = #filePath, line: UInt = #line) {
         guard let _message = message as? Message else {
-            traceLog_Remote(self.system.cluster.node, "\(self.id)._tellUnsafe [\(message)] failed because of invalid type; self: \(self); Sent at \(file):\(line)")
-            return // TODO: drop the message
+            traceLog_Remote(
+                self.system.cluster.node,
+                "\(self.id)._tellUnsafe [\(message)] failed because of invalid type; self: \(self); Sent at \(file):\(line)"
+            )
+            return  // TODO: drop the message
         }
 
         self.sendUserMessage(_message, file: file, line: line)
@@ -145,7 +151,10 @@ extension _ActorRef {
     internal var _unsafeUnwrapCell: _ActorCell<Message> {
         switch self.personality {
         case .cell(let cell): return cell
-        default: fatalError("Illegal downcast attempt from \(String(reflecting: self)) to _ActorRefWithCell. This is a Swift Distributed Actors bug, please report this on the issue tracker.")
+        default:
+            fatalError(
+                "Illegal downcast attempt from \(String(reflecting: self)) to _ActorRefWithCell. This is a Swift Distributed Actors bug, please report this on the issue tracker."
+            )
         }
     }
 
@@ -163,7 +172,10 @@ extension _ActorRef {
     internal var _unsafeUnwrapRemote: _RemoteClusterActorPersonality<Message> {
         switch self.personality {
         case .remote(let remote): return remote
-        default: fatalError("Illegal downcast attempt from \(String(reflecting: self)) to _ActorRefWithCell. This is a Swift Distributed Actors bug, please report this on the issue tracker.")
+        default:
+            fatalError(
+                "Illegal downcast attempt from \(String(reflecting: self)) to _ActorRefWithCell. This is a Swift Distributed Actors bug, please report this on the issue tracker."
+            )
         }
     }
 }

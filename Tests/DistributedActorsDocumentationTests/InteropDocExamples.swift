@@ -13,10 +13,11 @@
 //===----------------------------------------------------------------------===//
 
 import Dispatch
-@testable import DistributedActorsTestKit
 import DistributedCluster
 import NIO
 import XCTest
+
+@testable import DistributedActorsTestKit
 
 class InteropDocExamples: XCTestCase {
     func example_asyncOp_sendResult_dispatch() throws {
@@ -38,15 +39,15 @@ class InteropDocExamples: XCTestCase {
         }
 
         // tag::asyncOp_sendResult_dispatch[]
-        let ref: _ActorRef<Messages> = try system._spawn(.anonymous, behavior) // <1>
+        let ref: _ActorRef<Messages> = try system._spawn(.anonymous, behavior)  // <1>
 
-        DispatchQueue.global().async { // <2>
-            let result = someComputation() // <3>
+        DispatchQueue.global().async {  // <2>
+            let result = someComputation()  // <3>
 
-            ref.tell(.string(result)) // <4>
+            ref.tell(.string(result))  // <4>
         }
         // end::asyncOp_sendResult_dispatch[]
-        _ = behavior // avoid not-used warning
+        _ = behavior  // avoid not-used warning
     }
 
     func example_asyncOp_sendResult_insideActor() throws {
@@ -70,16 +71,16 @@ class InteropDocExamples: XCTestCase {
         let behavior: _Behavior<Messages> = .receive { context, message in
             switch message {
             case .fetchData:
-                fetchDataAsync { // <1>
+                fetchDataAsync {  // <1>
                     // beware to NOT touch any mutable actor state as such access can
                     // (and will) result in concurrent access; all access must be
                     // serialized by executing on the actor's thread -- thus any
                     // actions must be performed in reaction to the .result message,
                     // and not earlier
-                    context.myself.tell(.result($0)) // <2>
+                    context.myself.tell(.result($0))  // <2>
                 }
             case .result(let res):
-                print("Received result: \(res)") // <3>
+                print("Received result: \(res)")  // <3>
             }
             return .same
         }
@@ -125,24 +126,24 @@ class InteropDocExamples: XCTestCase {
 
         // tag::asyncOp_onResultAsync[]
         let behavior: _Behavior<Messages> = .setup { context in
-            var cachedUsers: Cache<String, User> = Cache(cacheDuration: .seconds(30)) // <1>
+            var cachedUsers: Cache<String, User> = Cache(cacheDuration: .seconds(30))  // <1>
 
             return .receiveMessage { message in
                 switch message {
                 case .lookupUser(let name, let replyTo):
-                    if let cachedUser = cachedUsers.lookup(name) { // <2>
+                    if let cachedUser = cachedUsers.lookup(name) {  // <2>
                         replyTo.tell(.user(cachedUser))
                     } else {
-                        let userFuture = fetchUser(name) // <3>
+                        let userFuture = fetchUser(name)  // <3>
 
-                        context.onResultAsync(of: userFuture, timeout: .seconds(5)) { // <4>
+                        context.onResultAsync(of: userFuture, timeout: .seconds(5)) {  // <4>
                             switch $0 {
-                            case .success(.some(let user)): // <5>
+                            case .success(.some(let user)):  // <5>
                                 cachedUsers.insert(name, user)
                                 replyTo.tell(.user(user))
-                            case .success(.none): // <6>
+                            case .success(.none):  // <6>
                                 replyTo.tell(.unknownUser(name: name))
-                            case .failure(let error): // <7>
+                            case .failure(let error):  // <7>
                                 replyTo.tell(.lookupFailed(error))
                             }
 
@@ -176,13 +177,13 @@ class InteropDocExamples: XCTestCase {
 
         // tag::asyncOp_awaitResult[]
         let behavior: _Behavior<Message> = .setup { context in
-            let future: EventLoopFuture<String> = fetchDataAsync() // <1>
-            return context.awaitResult(of: future, timeout: .milliseconds(100)) { // <2>
+            let future: EventLoopFuture<String> = fetchDataAsync()  // <1>
+            return context.awaitResult(of: future, timeout: .milliseconds(100)) {  // <2>
                 switch $0 {
                 case .success(let necessaryPrefix):
-                    return prefixer(prefix: necessaryPrefix) // <3>
+                    return prefixer(prefix: necessaryPrefix)  // <3>
                 case .failure(let error):
-                    throw error // <4>
+                    throw error  // <4>
                 }
             }
         }
@@ -197,7 +198,7 @@ class InteropDocExamples: XCTestCase {
             }
         }
         // end::asyncOp_awaitResult[]
-        _ = behavior // avoids warning: unused variable
+        _ = behavior  // avoids warning: unused variable
     }
 
     func example_asyncOp_awaitResultThrowing() throws {
@@ -225,12 +226,12 @@ class InteropDocExamples: XCTestCase {
 
         // tag::asyncOp_awaitResultThrowing[]
         let behavior: _Behavior<Message> = .setup { context in
-            let future: EventLoopFuture<String> = fetchDataAsync() // <1>
-            return context.awaitResultThrowing(of: future, timeout: .milliseconds(100)) { // <2>
+            let future: EventLoopFuture<String> = fetchDataAsync()  // <1>
+            return context.awaitResultThrowing(of: future, timeout: .milliseconds(100)) {  // <2>
                 prefixer(prefix: $0)
             }
         }
         // end::asyncOp_awaitResultThrowing[]
-        _ = behavior // silence not-used warning
+        _ = behavior  // silence not-used warning
     }
 }

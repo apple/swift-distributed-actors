@@ -12,11 +12,12 @@
 //
 //===----------------------------------------------------------------------===//
 
-import struct Foundation.Data
 import NIO
-import protocol Swift.Decoder // to prevent shadowing by the ones in SwiftProtobuf
-import protocol Swift.Encoder // to prevent shadowing by the ones in SwiftProtobuf
 import SwiftProtobuf
+
+import struct Foundation.Data
+import protocol Swift.Decoder  // to prevent shadowing by the ones in SwiftProtobuf
+import protocol Swift.Encoder  // to prevent shadowing by the ones in SwiftProtobuf
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Protobuf representations
@@ -122,7 +123,11 @@ extension _InternalProtobufRepresentable {
 // MARK: Codable -- _ProtobufRepresentable --> Protocol Buffers
 
 extension _InternalProtobufRepresentable {
-    init(context: Serialization.Context, from buffer: Serialization.Buffer, using manifest: Serialization.Manifest) throws {
+    init(
+        context: Serialization.Context,
+        from buffer: Serialization.Buffer,
+        using manifest: Serialization.Manifest
+    ) throws {
         let proto = try ProtobufRepresentation(serializedData: buffer.readData())
         try self.init(fromProto: proto, context: context)
     }
@@ -133,7 +138,11 @@ extension _InternalProtobufRepresentable {
 }
 
 extension _ProtobufRepresentable {
-    public init(context: Serialization.Context, from buffer: Serialization.Buffer, using manifest: Serialization.Manifest) throws {
+    public init(
+        context: Serialization.Context,
+        from buffer: Serialization.Buffer,
+        using manifest: Serialization.Manifest
+    ) throws {
         let proto = try ProtobufRepresentation(serializedData: buffer.readData())
         try self.init(fromProto: proto, context: context)
     }

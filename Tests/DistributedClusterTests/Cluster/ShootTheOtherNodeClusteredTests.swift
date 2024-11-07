@@ -13,17 +13,18 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import NIO
 import XCTest
+
+@testable import DistributedCluster
 
 final class ShootTheOtherNodeClusteredTests: ClusteredActorSystemsXCTestCase {
     override func configureLogCapture(settings: inout LogCapture.Settings) {
         settings.excludeGrep = [
-            "_TimerKey",
+            "_TimerKey"
         ]
         settings.excludeActorPaths = [
-            "/system/cluster/swim",
+            "/system/cluster/swim"
         ]
         settings.minimumLogLevel = .info
     }
@@ -35,7 +36,8 @@ final class ShootTheOtherNodeClusteredTests: ClusteredActorSystemsXCTestCase {
         try await self.joinNodes(node: local, with: remote, ensureWithin: .seconds(5), ensureMembers: .up)
 
         let remoteAssociationControlState0 = local._cluster!.getEnsureAssociation(with: remote.cluster.node)
-        guard case ClusterShell.StoredAssociationState.association(let remoteControl0) = remoteAssociationControlState0 else {
+        guard case ClusterShell.StoredAssociationState.association(let remoteControl0) = remoteAssociationControlState0
+        else {
             throw Boom("Expected the association to exist for \(remote.cluster.node)")
         }
 

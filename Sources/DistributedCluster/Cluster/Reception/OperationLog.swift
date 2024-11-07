@@ -91,7 +91,7 @@ internal class OpLog<Op: OpLogStreamOp> {
 
         func nextOpsChunk() -> ArraySlice<SequencedOp> {
             guard self.atIndex < self.opStream.ops.endIndex else {
-                return .init() // no more chunks
+                return .init()  // no more chunks
             }
             return self.opStream.ops[self.atIndex...].prefix(self.opStream.batchSize)
         }

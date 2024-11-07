@@ -66,7 +66,7 @@ public class _ActorContext<Message: Codable> /* TODO(sendable): NOTSendable*/ {
         get {
             _undefined()
         }
-        set { // has to become settable
+        set {  // has to become settable
             fatalError()
         }
     }
@@ -102,7 +102,8 @@ public class _ActorContext<Message: Codable> /* TODO(sendable): NOTSendable*/ {
     public func watch<Watchee>(
         _ watchee: Watchee,
         with terminationMessage: Message? = nil,
-        file: String = #filePath, line: UInt = #line
+        file: String = #filePath,
+        line: UInt = #line
     ) -> Watchee where Watchee: _DeathWatchable {
         _undefined()
     }
@@ -110,7 +111,8 @@ public class _ActorContext<Message: Codable> /* TODO(sendable): NOTSendable*/ {
     @discardableResult
     public func unwatch<Watchee>(
         _ watchee: Watchee,
-        file: String = #filePath, line: UInt = #line
+        file: String = #filePath,
+        line: UInt = #line
     ) -> Watchee where Watchee: _DeathWatchable {
         _undefined()
     }
@@ -123,11 +125,11 @@ public class _ActorContext<Message: Codable> /* TODO(sendable): NOTSendable*/ {
         _ naming: _ActorNaming,
         of type: M.Type = M.self,
         props: _Props = _Props(),
-        file: String = #filePath, line: UInt = #line,
+        file: String = #filePath,
+        line: UInt = #line,
         _ behavior: _Behavior<M>
     ) throws -> _ActorRef<M>
-        where M: Codable
-    {
+    where M: Codable {
         _undefined()
     }
 
@@ -142,11 +144,11 @@ public class _ActorContext<Message: Codable> /* TODO(sendable): NOTSendable*/ {
         _ naming: _ActorNaming,
         of type: M.Type = M.self,
         props: _Props = _Props(),
-        file: String = #filePath, line: UInt = #line,
+        file: String = #filePath,
+        line: UInt = #line,
         _ behavior: _Behavior<M>
     ) throws -> _ActorRef<M>
-        where M: Codable
-    {
+    where M: Codable {
         _undefined()
     }
 
@@ -175,7 +177,7 @@ public class _ActorContext<Message: Codable> /* TODO(sendable): NOTSendable*/ {
     ///           An actor may not terminate another's child actors. Attempting to stop `myself` using this method will
     ///           also throw, as the proper way of stopping oneself is returning a `_Behavior.stop`.
     public func stop<M>(child ref: _ActorRef<M>) throws where M: Codable {
-        return _undefined()
+        _undefined()
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -192,7 +194,11 @@ public class _ActorContext<Message: Codable> /* TODO(sendable): NOTSendable*/ {
     /// - Parameter callback: the closure that should be executed in this actor's context
     /// - Returns: an `AsynchronousCallback` that is safe to call from outside of this actor
     @usableFromInline
-    internal func makeAsynchronousCallback<T>(file: String = #filePath, line: UInt = #line, _ callback: @escaping (T) throws -> Void) -> AsynchronousCallback<T> {
+    internal func makeAsynchronousCallback<T>(
+        file: String = #filePath,
+        line: UInt = #line,
+        _ callback: @escaping (T) throws -> Void
+    ) -> AsynchronousCallback<T> {
         AsynchronousCallback(callback: callback) { [weak selfRef = self.myself._unsafeUnwrapCell] in
             selfRef?.sendClosure(file: file, line: line, $0)
         }
@@ -209,7 +215,12 @@ public class _ActorContext<Message: Codable> /* TODO(sendable): NOTSendable*/ {
     /// - Parameter callback: the closure that should be executed in this actor's context
     /// - Returns: an `AsynchronousCallback` that is safe to call from outside of this actor
     @usableFromInline
-    internal func makeAsynchronousCallback<T>(for type: T.Type, file: String = #filePath, line: UInt = #line, callback: @escaping (T) throws -> Void) -> AsynchronousCallback<T> {
+    internal func makeAsynchronousCallback<T>(
+        for type: T.Type,
+        file: String = #filePath,
+        line: UInt = #line,
+        callback: @escaping (T) throws -> Void
+    ) -> AsynchronousCallback<T> {
         AsynchronousCallback(callback: callback) { [weak selfRef = self.myself._unsafeUnwrapCell] in
             selfRef?.sendClosure(file: file, line: line, $0)
         }
@@ -234,7 +245,11 @@ public class _ActorContext<Message: Codable> /* TODO(sendable): NOTSendable*/ {
     ///   - continuation: continuation to run after `_AsyncResult` completes. It is safe to access
     ///                   and modify actor state from here.
     /// - Returns: a behavior that causes the actor to suspend until the `_AsyncResult` completes
-    internal func awaitResult<AR: _AsyncResult>(of _AsyncResult: AR, timeout: Duration, _ continuation: @escaping (Result<AR.Value, Error>) throws -> _Behavior<Message>) -> _Behavior<Message> {
+    internal func awaitResult<AR: _AsyncResult>(
+        of _AsyncResult: AR,
+        timeout: Duration,
+        _ continuation: @escaping (Result<AR.Value, Error>) throws -> _Behavior<Message>
+    ) -> _Behavior<Message> {
         _AsyncResult.withTimeout(after: timeout)._onComplete { [weak selfRef = self.myself._unsafeUnwrapCell] result in
             selfRef?.sendSystemMessage(.resume(result.map { $0 }))
         }
@@ -280,7 +295,13 @@ public class _ActorContext<Message: Codable> /* TODO(sendable): NOTSendable*/ {
     ///   - timeout: time after which the _AsyncResult will be failed if it does not complete
     ///   - continuation: continuation to run after `_AsyncResult` completes.
     ///     It is safe to access and modify actor state from here.
-    internal func onResultAsync<AR: _AsyncResult>(of _AsyncResult: AR, timeout: Duration, file: String = #filePath, line: UInt = #line, _ continuation: @escaping (Result<AR.Value, Error>) throws -> _Behavior<Message>) {
+    internal func onResultAsync<AR: _AsyncResult>(
+        of _AsyncResult: AR,
+        timeout: Duration,
+        file: String = #filePath,
+        line: UInt = #line,
+        _ continuation: @escaping (Result<AR.Value, Error>) throws -> _Behavior<Message>
+    ) {
         let asyncCallback = self.makeAsynchronousCallback(for: Result<AR.Value, Error>.self, file: file, line: line) {
             let nextBehavior = try continuation($0)
             let shell = self._downcastUnsafe
@@ -307,7 +328,11 @@ public class _ActorContext<Message: Codable> /* TODO(sendable): NOTSendable*/ {
     ///   - timeout: time after which the _AsyncResult will be failed if it does not complete
     ///   - continuation: continuation to run after `_AsyncResult` completes. It is safe to access
     ///                   and modify actor state from here.
-    internal func onResultAsyncThrowing<AR: _AsyncResult>(of _AsyncResult: AR, timeout: Duration, _ continuation: @escaping (AR.Value) throws -> _Behavior<Message>) {
+    internal func onResultAsyncThrowing<AR: _AsyncResult>(
+        of _AsyncResult: AR,
+        timeout: Duration,
+        _ continuation: @escaping (AR.Value) throws -> _Behavior<Message>
+    ) {
         self.onResultAsync(of: _AsyncResult, timeout: timeout) { res in
             switch res {
             case .success(let value): return try continuation(value)
@@ -332,9 +357,8 @@ public class _ActorContext<Message: Codable> /* TODO(sendable): NOTSendable*/ {
     /// being silently dropped. This can be useful when not all messages `From` have a valid representation in
     /// `Message`, or if not all `From` messages are of interest for this particular actor.
     public final func messageAdapter<From>(_ adapt: @escaping (From) -> Message?) -> _ActorRef<From>
-        where From: Codable
-    {
-        return self.messageAdapter(from: From.self, adapt: adapt)
+    where From: Codable {
+        self.messageAdapter(from: From.self, adapt: adapt)
     }
 
     /// Adapts this `_ActorRef` to accept messages of another type by applying the conversion
@@ -349,9 +373,8 @@ public class _ActorContext<Message: Codable> /* TODO(sendable): NOTSendable*/ {
     /// being silently dropped. This can be useful when not all messages `From` have a valid representation in
     /// `Message`, or if not all `From` messages are of interest for this particular actor.
     public func messageAdapter<From>(from type: From.Type, adapt: @escaping (From) -> Message?) -> _ActorRef<From>
-        where From: Codable
-    {
-        return _undefined()
+    where From: Codable {
+        _undefined()
     }
 
     /// Creates an `_ActorRef` that can receive messages of the specified type, but executed in the same
@@ -364,10 +387,13 @@ public class _ActorContext<Message: Codable> /* TODO(sendable): NOTSendable*/ {
     /// There can only be one `subReceive` per `_SubReceiveId`. When installing a new `subReceive`
     /// with an existing `_SubReceiveId`, it replaces the old one. All references will remain valid and point to
     /// the new behavior.
-    public func subReceive<SubMessage>(_: _SubReceiveId<SubMessage>, _: SubMessage.Type, _: @escaping (SubMessage) throws -> Void) -> _ActorRef<SubMessage>
-        where SubMessage: Codable
-    {
-        return _undefined()
+    public func subReceive<SubMessage>(
+        _: _SubReceiveId<SubMessage>,
+        _: SubMessage.Type,
+        _: @escaping (SubMessage) throws -> Void
+    ) -> _ActorRef<SubMessage>
+    where SubMessage: Codable {
+        _undefined()
     }
 
     /// Creates an `_ActorRef` that can receive messages of the specified type, but executed in the same
@@ -380,7 +406,10 @@ public class _ActorContext<Message: Codable> /* TODO(sendable): NOTSendable*/ {
     /// There can only be one `subReceive` per type. When installing a new `subReceive`
     /// with an existing type, it replaces the old one. All references will remain valid and point to
     /// the new behavior.
-    public func subReceive<SubMessage>(_ type: SubMessage.Type, _ closure: @escaping (SubMessage) throws -> Void) -> _ActorRef<SubMessage> {
+    public func subReceive<SubMessage>(
+        _ type: SubMessage.Type,
+        _ closure: @escaping (SubMessage) throws -> Void
+    ) -> _ActorRef<SubMessage> {
         self.subReceive(_SubReceiveId(type), type, closure)
     }
 
@@ -403,7 +432,8 @@ public struct _SubReceiveId<SubMessage>: Hashable, Equatable {
     }
 
     public init(_ type: SubMessage.Type = SubMessage.self, id: String) {
-        self.id = id
+        self.id =
+            id
             .replacingOccurrences(of: "()", with: "Void")
             .replacingOccurrences(of: " ", with: "")
     }

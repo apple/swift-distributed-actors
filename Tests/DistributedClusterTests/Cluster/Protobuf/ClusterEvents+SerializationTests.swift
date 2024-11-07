@@ -13,10 +13,11 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import Logging
 import NIO
 import XCTest
+
+@testable import DistributedCluster
 
 final class ClusterEventsSerializationTests: SingleClusterSystemXCTestCase {
     lazy var context: Serialization.Context! = Serialization.Context(
@@ -26,7 +27,14 @@ final class ClusterEventsSerializationTests: SingleClusterSystemXCTestCase {
     )
 
     func test_serializationOf_membershipChange() throws {
-        let change = Cluster.MembershipChange(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "first", host: "1.1.1.1", port: 7337), nid: .random()), previousStatus: .leaving, toStatus: .removed)
+        let change = Cluster.MembershipChange(
+            node: Cluster.Node(
+                endpoint: Cluster.Endpoint(systemName: "first", host: "1.1.1.1", port: 7337),
+                nid: .random()
+            ),
+            previousStatus: .leaving,
+            toStatus: .removed
+        )
         let event = Cluster.Event.membershipChange(change)
 
         let proto = try event.toProto(context: self.context)
@@ -36,9 +44,21 @@ final class ClusterEventsSerializationTests: SingleClusterSystemXCTestCase {
     }
 
     func test_serializationOf_leadershipChange() throws {
-        let old = Cluster.Member(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "first", host: "1.1.1.1", port: 7337), nid: .random()), status: .joining)
-        let new = Cluster.Member(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "first", host: "1.2.2.1", port: 2222), nid: .random()), status: .up)
-        let event = Cluster.Event.leadershipChange(Cluster.LeadershipChange(oldLeader: old, newLeader: new)!) // !-safe, since new/old leader known to be different
+        let old = Cluster.Member(
+            node: Cluster.Node(
+                endpoint: Cluster.Endpoint(systemName: "first", host: "1.1.1.1", port: 7337),
+                nid: .random()
+            ),
+            status: .joining
+        )
+        let new = Cluster.Member(
+            node: Cluster.Node(
+                endpoint: Cluster.Endpoint(systemName: "first", host: "1.2.2.1", port: 2222),
+                nid: .random()
+            ),
+            status: .up
+        )
+        let event = Cluster.Event.leadershipChange(Cluster.LeadershipChange(oldLeader: old, newLeader: new)!)  // !-safe, since new/old leader known to be different
 
         let proto = try event.toProto(context: self.context)
         let back = try Cluster.Event(fromProto: proto, context: self.context)

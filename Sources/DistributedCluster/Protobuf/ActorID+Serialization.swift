@@ -23,17 +23,20 @@ extension ActorID: Codable {
 
         var container = encoder.container(keyedBy: ActorCoding.CodingKeys.self)
         try container.encode(self.node, forKey: ActorCoding.CodingKeys.node)
-        try container.encode(self.path, forKey: ActorCoding.CodingKeys.path) // TODO: remove as we remove the tree
+        try container.encode(self.path, forKey: ActorCoding.CodingKeys.path)  // TODO: remove as we remove the tree
         try container.encode(self.incarnation, forKey: ActorCoding.CodingKeys.incarnation)
 
         if !self.metadata.isEmpty {
-            var metadataContainer = container.nestedContainer(keyedBy: ActorCoding.MetadataKeys.self, forKey: ActorCoding.CodingKeys.metadata)
+            var metadataContainer = container.nestedContainer(
+                keyedBy: ActorCoding.MetadataKeys.self,
+                forKey: ActorCoding.CodingKeys.metadata
+            )
 
             let keys = ActorMetadataKeys.__instance
             func shouldPropagate<V: Sendable & Codable>(_ key: ActorMetadataKey<V>, metadata: ActorMetadata) -> V? {
                 if metadataSettings == nil || metadataSettings!.propagateMetadata.contains(key.id) {
                     if let value = metadata[key.id] {
-                        let value = value as! V // as!-safe, the keys guarantee we only store well typed values in metadata
+                        let value = value as! V  // as!-safe, the keys guarantee we only store well typed values in metadata
                         return value
                     }
                 }
@@ -64,17 +67,24 @@ extension ActorID: Codable {
         self.init(remote: node, path: path, incarnation: ActorIncarnation(incarnation))
 
         // Decode any tags:
-        if let metadataContainer = try? container.nestedContainer(keyedBy: ActorCoding.MetadataKeys.self, forKey: ActorCoding.CodingKeys.metadata) {
+        if let metadataContainer = try? container.nestedContainer(
+            keyedBy: ActorCoding.MetadataKeys.self,
+            forKey: ActorCoding.CodingKeys.metadata
+        ) {
             // tags container found, try to decode all known tags:
 
             let metadata = ActorMetadata()
-            if let value = try? metadataContainer.decodeIfPresent(ActorPath.self, forKey: ActorCoding.MetadataKeys.path) {
+            if let value = try? metadataContainer.decodeIfPresent(ActorPath.self, forKey: ActorCoding.MetadataKeys.path)
+            {
                 metadata.path = value
             }
             if let value = try? metadataContainer.decodeIfPresent(String.self, forKey: ActorCoding.MetadataKeys.type) {
                 metadata.type = .init(mangledName: value)
             }
-            if let value = try? metadataContainer.decodeIfPresent(String.self, forKey: ActorCoding.MetadataKeys.wellKnown) {
+            if let value = try? metadataContainer.decodeIfPresent(
+                String.self,
+                forKey: ActorCoding.MetadataKeys.wellKnown
+            ) {
                 metadata.wellKnown = value
             }
 
@@ -82,14 +92,14 @@ extension ActorID: Codable {
                 let decodeCustomMetadata = context.system.settings.actorMetadata.decodeCustomMetadata
                 try decodeCustomMetadata(metadataContainer, self.metadata)
 
-//                for (key, value) in try decodeCustomMetadata(metadataContainer) {
-//                    func store(_: K.Type) {
-//                        if let value = tag.value as? K.Value {
-//                            self.metadata[K.self] = value
-//                        }
-//                    }v
-//                    _openExistential(key, do: store) // the `as` here is required, because: inferred result type 'any ActorTagKey.Type' requires explicit coercion due to loss of generic requirements
-//                }
+                //                for (key, value) in try decodeCustomMetadata(metadataContainer) {
+                //                    func store(_: K.Type) {
+                //                        if let value = tag.value as? K.Value {
+                //                            self.metadata[K.self] = value
+                //                        }
+                //                    }v
+                //                    _openExistential(key, do: store) // the `as` here is required, because: inferred result type 'any ActorTagKey.Type' requires explicit coercion due to loss of generic requirements
+                //                }
             }
 
             self.context = .init(lifecycle: nil, remoteCallInterceptor: nil, metadata: metadata)
@@ -118,7 +128,7 @@ extension ActorID: _ProtobufRepresentable {
             func shouldPropagate<V: Sendable & Codable>(_ key: ActorMetadataKey<V>, metadata: ActorMetadata) -> V? {
                 if metadataSettings.propagateMetadata.contains(key.id) {
                     if let value = metadata[key.id] {
-                        let value = value as! V // as!-safe, the keys guarantee we only store well typed values in metadata
+                        let value = value as! V  // as!-safe, the keys guarantee we only store well typed values in metadata
                         return value
                     }
                 }
@@ -237,7 +247,7 @@ extension ActorPath {
 
 extension _ProtoActorPath {
     init(_ value: ActorPath) {
-        self.segments = value.segments.map(\.value) // TODO: avoiding the mapping could be nice... store segments as strings?
+        self.segments = value.segments.map(\.value)  // TODO: avoiding the mapping could be nice... store segments as strings?
     }
 }
 

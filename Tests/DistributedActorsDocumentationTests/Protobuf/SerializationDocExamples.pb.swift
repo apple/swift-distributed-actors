@@ -30,97 +30,99 @@ import SwiftProtobuf
 // incompatible with the version of SwiftProtobuf to which you are linking.
 // Please ensure that your are building against the same version of the API
 // that was used to generate this file.
-fileprivate struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAPIVersionCheck {
-  struct _2: SwiftProtobuf.ProtobufAPIVersion_2 {}
-  typealias Version = _2
+private struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAPIVersionCheck {
+    struct _2: SwiftProtobuf.ProtobufAPIVersion_2 {}
+    typealias Version = _2
 }
 
 struct _ProtoParkingGarageStatus {
-  // SwiftProtobuf.Message conformance is added in an extension below. See the
-  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
-  // methods supported on all messages.
+    // SwiftProtobuf.Message conformance is added in an extension below. See the
+    // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+    // methods supported on all messages.
 
-  var type: _ProtoParkingGarageStatus.TypeEnum = .available
+    var type: _ProtoParkingGarageStatus.TypeEnum = .available
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+    var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  enum TypeEnum: SwiftProtobuf.Enum {
-    typealias RawValue = Int
-    case available // = 0
-    case full // = 1
-    case UNRECOGNIZED(Int)
+    enum TypeEnum: SwiftProtobuf.Enum {
+        typealias RawValue = Int
+        case available  // = 0
+        case full  // = 1
+        case UNRECOGNIZED(Int)
 
-    init() {
-      self = .available
+        init() {
+            self = .available
+        }
+
+        init?(rawValue: Int) {
+            switch rawValue {
+            case 0: self = .available
+            case 1: self = .full
+            default: self = .UNRECOGNIZED(rawValue)
+            }
+        }
+
+        var rawValue: Int {
+            switch self {
+            case .available: return 0
+            case .full: return 1
+            case .UNRECOGNIZED(let i): return i
+            }
+        }
+
     }
 
-    init?(rawValue: Int) {
-      switch rawValue {
-      case 0: self = .available
-      case 1: self = .full
-      default: self = .UNRECOGNIZED(rawValue)
-      }
-    }
-
-    var rawValue: Int {
-      switch self {
-      case .available: return 0
-      case .full: return 1
-      case .UNRECOGNIZED(let i): return i
-      }
-    }
-
-  }
-
-  init() {}
+    init() {}
 }
 
 #if swift(>=4.2)
 
 extension _ProtoParkingGarageStatus.TypeEnum: CaseIterable {
-  // The compiler won't synthesize support with the UNRECOGNIZED case.
-  static var allCases: [_ProtoParkingGarageStatus.TypeEnum] = [
-    .available,
-    .full,
-  ]
+    // The compiler won't synthesize support with the UNRECOGNIZED case.
+    static var allCases: [_ProtoParkingGarageStatus.TypeEnum] = [
+        .available,
+        .full,
+    ]
 }
 
 #endif  // swift(>=4.2)
 
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
-extension _ProtoParkingGarageStatus: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = "ParkingGarageStatus"
-  static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
-    1: .same(proto: "type"),
-  ]
+extension _ProtoParkingGarageStatus: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf
+        ._ProtoNameProviding
+{
+    static let protoMessageName: String = "ParkingGarageStatus"
+    static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+        1: .same(proto: "type")
+    ]
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      switch fieldNumber {
-      case 1: try decoder.decodeSingularEnumField(value: &self.type)
-      default: break
-      }
+    mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+        while let fieldNumber = try decoder.nextFieldNumber() {
+            switch fieldNumber {
+            case 1: try decoder.decodeSingularEnumField(value: &self.type)
+            default: break
+            }
+        }
     }
-  }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    if self.type != .available {
-      try visitor.visitSingularEnumField(value: self.type, fieldNumber: 1)
+    func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+        if self.type != .available {
+            try visitor.visitSingularEnumField(value: self.type, fieldNumber: 1)
+        }
+        try unknownFields.traverse(visitor: &visitor)
     }
-    try unknownFields.traverse(visitor: &visitor)
-  }
 
-  static func ==(lhs: _ProtoParkingGarageStatus, rhs: _ProtoParkingGarageStatus) -> Bool {
-    if lhs.type != rhs.type {return false}
-    if lhs.unknownFields != rhs.unknownFields {return false}
-    return true
-  }
+    static func == (lhs: _ProtoParkingGarageStatus, rhs: _ProtoParkingGarageStatus) -> Bool {
+        if lhs.type != rhs.type { return false }
+        if lhs.unknownFields != rhs.unknownFields { return false }
+        return true
+    }
 }
 
 extension _ProtoParkingGarageStatus.TypeEnum: SwiftProtobuf._ProtoNameProviding {
-  static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
-    0: .same(proto: "AVAILABLE"),
-    1: .same(proto: "FULL"),
-  ]
+    static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+        0: .same(proto: "AVAILABLE"),
+        1: .same(proto: "FULL"),
+    ]
 }

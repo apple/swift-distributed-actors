@@ -49,7 +49,9 @@ extension Cluster.MembershipGossip: _ProtobufRepresentable {
 
         let ownerID = Cluster.Node.ID(proto.ownerClusterNodeID)
         guard let ownerNode = membership.member(byUniqueNodeID: ownerID)?.node else {
-            throw SerializationError(.unableToDeserialize(hint: "Missing member for ownerNodeID, members: \(membership)"))
+            throw SerializationError(
+                .unableToDeserialize(hint: "Missing member for ownerNodeID, members: \(membership)")
+            )
         }
 
         var gossip = Cluster.MembershipGossip(ownerNode: ownerNode)
@@ -58,7 +60,9 @@ extension Cluster.MembershipGossip: _ProtobufRepresentable {
         for row in proto.seenTable.rows {
             let nodeID: Cluster.Node.ID = .init(row.nodeID)
             guard let member = membership.member(byUniqueNodeID: nodeID) else {
-                throw SerializationError(.unableToDeserialize(hint: "Missing Member for unique node id: \(nodeID), members: \(membership)"))
+                throw SerializationError(
+                    .unableToDeserialize(hint: "Missing Member for unique node id: \(nodeID), members: \(membership)")
+                )
             }
 
             var replicaVersions: [VersionVector.ReplicaVersion] = []
@@ -76,7 +80,9 @@ extension Cluster.MembershipGossip: _ProtobufRepresentable {
                 case .some(.node(let protoUniqueNode)):
                     replicaID = try .node(.init(fromProto: protoUniqueNode, context: context))
                 case .some(.actorID(let address)):
-                    context.log.warning("Unexpected .actorID key in replicaVersion of Cluster.MembershipGossip, which is expected to only use unique node ids as replica versions; was: \(address)")
+                    context.log.warning(
+                        "Unexpected .actorID key in replicaVersion of Cluster.MembershipGossip, which is expected to only use unique node ids as replica versions; was: \(address)"
+                    )
                     continue
                 case .none:
                     continue

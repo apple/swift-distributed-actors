@@ -81,7 +81,11 @@ protocol GossipLogic {
     ///   - peer: The target which has acknowledged the gossiped payload.
     ///     It corresponds to the parameter that was passed to the `makePayload(target:)` which created this gossip payload.
     ///   - gossip:
-    mutating func receiveAcknowledgement(_ acknowledgement: Acknowledgement, from peer: _AddressableActorRef, confirming gossip: Gossip)
+    mutating func receiveAcknowledgement(
+        _ acknowledgement: Acknowledgement,
+        from peer: _AddressableActorRef,
+        confirming gossip: Gossip
+    )
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Local interactions / control messages
@@ -93,7 +97,11 @@ protocol GossipLogic {
 }
 
 extension GossipLogic {
-    mutating func receiveAcknowledgement(_ acknowledgement: Acknowledgement, from peer: _AddressableActorRef, confirming gossip: Gossip) {
+    mutating func receiveAcknowledgement(
+        _ acknowledgement: Acknowledgement,
+        from peer: _AddressableActorRef,
+        confirming gossip: Gossip
+    ) {
         // ignore by default
     }
 
@@ -111,7 +119,10 @@ struct GossipLogicContext<Envelope: Codable, Acknowledgement: Codable> {
 
     private let gossiperContext: _ActorContext<GossipShell<Envelope, Acknowledgement>.Message>
 
-    internal init(ownerContext: _ActorContext<GossipShell<Envelope, Acknowledgement>.Message>, gossipIdentifier: GossipIdentifier) {
+    internal init(
+        ownerContext: _ActorContext<GossipShell<Envelope, Acknowledgement>.Message>,
+        gossipIdentifier: GossipIdentifier
+    ) {
         self.gossiperContext = ownerContext
         self.gossipIdentifier = gossipIdentifier
     }
@@ -158,8 +169,7 @@ struct AnyGossipLogic<Gossip: Codable, Acknowledgement: Codable>: GossipLogic, C
     }
 
     init<Logic>(_ logic: Logic)
-        where Logic: GossipLogic, Logic.Gossip == Gossip, Logic.Acknowledgement == Acknowledgement
-    {
+    where Logic: GossipLogic, Logic.Gossip == Gossip, Logic.Acknowledgement == Acknowledgement {
         var l = logic
         self._selectPeers = { l.selectPeers($0) }
         self._makePayload = { l.makePayload(target: $0) }
@@ -183,7 +193,11 @@ struct AnyGossipLogic<Gossip: Codable, Acknowledgement: Codable>: GossipLogic, C
         self._receiveGossip(gossip, peer)
     }
 
-    func receiveAcknowledgement(_ acknowledgement: Acknowledgement, from peer: _AddressableActorRef, confirming gossip: Gossip) {
+    func receiveAcknowledgement(
+        _ acknowledgement: Acknowledgement,
+        from peer: _AddressableActorRef,
+        confirming gossip: Gossip
+    ) {
         self._receiveAcknowledgement(acknowledgement, peer, gossip)
     }
 

@@ -48,7 +48,8 @@ extension _Reception {
 
         internal func _unsafeAsActorRef(_ addressable: _AddressableActorRef) -> _ActorRef<Guest.Message> {
             if addressable.isRemote() {
-                let remotePersonality: _RemoteClusterActorPersonality<Guest.Message> = addressable.ref._unsafeGetRemotePersonality(Guest.Message.self)
+                let remotePersonality: _RemoteClusterActorPersonality<Guest.Message> = addressable.ref
+                    ._unsafeGetRemotePersonality(Guest.Message.self)
                 return _ActorRef(.remote(remotePersonality))
             } else {
                 guard let ref = addressable.ref as? _ActorRef<Guest.Message> else {
@@ -138,8 +139,9 @@ extension _Reception.Listing where Guest: _ReceivesMessages {
     /// Special handling is applied to message adapters (e.g. `/uses/example/two/$messageAdapter` in which case the last segment is ignored).
     public func first(named name: String) -> _ActorRef<Guest.Message>? {
         self.underlying.first {
-            $0.path.name == name ||
-                ($0.path.segments.last?.value == "$messageAdapter" && $0.path.segments.dropLast(1).last?.value == name)
+            $0.path.name == name
+                || ($0.path.segments.last?.value == "$messageAdapter"
+                    && $0.path.segments.dropLast(1).last?.value == name)
         }.map {
             self.key._unsafeAsActorRef($0)
         }
@@ -202,6 +204,6 @@ extension _Reception.Registered where Guest: DistributedActor, Guest.ActorSystem
     public var actor: Guest {
         let system = self._guest.actorSystem
 
-        return try! Guest.resolve(id: self._guest._ref.id, using: system) // FIXME: cleanup these APIs, should never need throws, resolve earlier
+        return try! Guest.resolve(id: self._guest._ref.id, using: system)  // FIXME: cleanup these APIs, should never need throws, resolve earlier
     }
 }

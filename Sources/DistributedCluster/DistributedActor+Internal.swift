@@ -29,7 +29,7 @@ struct AnyDistributedActor: Sendable, Hashable {
 
     @usableFromInline
     var id: ClusterSystem.ActorID {
-        self.underlying.id as! ActorID // FIXME: could remove this entire wrapper?
+        self.underlying.id as! ActorID  // FIXME: could remove this entire wrapper?
     }
 
     @usableFromInline
@@ -44,7 +44,9 @@ struct AnyDistributedActor: Sendable, Hashable {
             return resolved
         }
 
-        return fatalErrorBacktrace("Failed to cast [\(self.underlying)]\(reflecting: type(of: self.underlying)) or resolve \(self.underlying.id) as \(reflecting: T.self)")
+        return fatalErrorBacktrace(
+            "Failed to cast [\(self.underlying)]\(reflecting: type(of: self.underlying)) or resolve \(self.underlying.id) as \(reflecting: T.self)"
+        )
     }
 
     @usableFromInline

@@ -14,11 +14,12 @@
 
 import ArgumentParser
 import DistributedCluster
+import NIOCore
+import NIOPosix
+
 import class Foundation.FileHandle
 import class Foundation.Process
 import struct Foundation.URL
-import NIOCore
-import NIOPosix
 
 // Compatible with Swift on all macOS versions as well as Linux
 extension Process {

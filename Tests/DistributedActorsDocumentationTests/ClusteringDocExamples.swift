@@ -12,22 +12,25 @@
 //
 //===----------------------------------------------------------------------===//
 
-@testable import DistributedActorsTestKit
 import DistributedCluster
 import NIOSSL
 import XCTest
+
+@testable import DistributedActorsTestKit
 
 class ClusteringDocExamples: XCTestCase {
     func example_config_tls() throws {
         // tag::config_tls[]
         let system = ClusterSystem("TestSystem") { settings in
             // ...
-            settings.tls = TLSConfiguration.makeServerConfiguration( // <1>
-                certificateChain: try! NIOSSLCertificate.fromPEMFile("/path/to/certificate.pem").map { NIOSSLCertificateSource.certificate($0) }, // <2>
-                privateKey: .file("/path/to/private-key.pem") // , // <3>
-//                certificateVerification: .fullVerification, // <4>
-//                trustRoots: .file("/path/to/certificateChain.pem")
-            ) // <5>
+            settings.tls = TLSConfiguration.makeServerConfiguration(  // <1>
+                certificateChain: try! NIOSSLCertificate.fromPEMFile("/path/to/certificate.pem").map {
+                    NIOSSLCertificateSource.certificate($0)
+                },  // <2>
+                privateKey: .file("/path/to/private-key.pem")  // , // <3>
+                //                certificateVerification: .fullVerification, // <4>
+                //                trustRoots: .file("/path/to/certificateChain.pem")
+            )  // <5>
             settings.tls?.certificateVerification = .fullVerification
             settings.tls?.trustRoots = .file("/path/to/certificateChain.pem")
         }

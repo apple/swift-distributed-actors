@@ -51,7 +51,9 @@ extension ClusterSystem.ActorID {
             get {
                 let key = myself[keyPath: storageKeyPath]
                 guard let value = myself.id.metadata[key.id] else {
-                    fatalError("ActorID Metadata for key \(key.id):\(key.keyType) was not assigned initial value, assign one in the distributed actor's initializer.")
+                    fatalError(
+                        "ActorID Metadata for key \(key.id):\(key.keyType) was not assigned initial value, assign one in the distributed actor's initializer."
+                    )
                 }
                 return value as! Value
             }
@@ -59,7 +61,9 @@ extension ClusterSystem.ActorID {
                 let metadata = myself.id.metadata
                 let key = myself[keyPath: storageKeyPath]
                 if let value = metadata[key.id] {
-                    fatalError("Attempted to override ActorID Metadata for key \(key.id):\(key.keyType) which already had value: [\(value)] with new value: [\(String(describing: newValue))]")
+                    fatalError(
+                        "Attempted to override ActorID Metadata for key \(key.id):\(key.keyType) which already had value: [\(value)] with new value: [\(String(describing: newValue))]"
+                    )
                 }
                 metadata[key.id] = newValue
 
@@ -160,10 +164,12 @@ extension ClusterSystem {
         internal var context: DistributedActorContext
 
         /// Underlying path representation, not attached to a specific Actor instance.
-        public var path: ActorPath { // FIXME(distributed): make optional
+        public var path: ActorPath {  // FIXME(distributed): make optional
             get {
                 guard let path = metadata.path else {
-                    fatalError("FIXME: ActorTags.path was not set on \(self.incarnation)! NOTE THAT PATHS ARE TO BECOME OPTIONAL!!!") // FIXME(distributed): must be removed
+                    fatalError(
+                        "FIXME: ActorTags.path was not set on \(self.incarnation)! NOTE THAT PATHS ARE TO BECOME OPTIONAL!!!"
+                    )  // FIXME(distributed): must be removed
                 }
                 return path
             }
@@ -174,7 +180,7 @@ extension ClusterSystem {
 
         /// Returns the name of the actor represented by this path.
         /// This is equal to the last path segments string representation.
-        public var name: String { // FIXME(distributed): make optional
+        public var name: String {  // FIXME(distributed): make optional
             self.path.name
         }
 
@@ -204,38 +210,43 @@ extension ClusterSystem {
         }
 
         public init<Act>(remote node: Cluster.Node, type: Act.Type, incarnation: ActorIncarnation)
-            where Act: DistributedActor, Act.ActorSystem == ClusterSystem
-        {
+        where Act: DistributedActor, Act.ActorSystem == ClusterSystem {
             self.context = .init(lifecycle: nil, remoteCallInterceptor: nil)
             self._location = .remote(node)
             self.incarnation = incarnation
-            if let mangledName = _mangledTypeName(type) { // TODO: avoid mangling names on every spawn?
+            if let mangledName = _mangledTypeName(type) {  // TODO: avoid mangling names on every spawn?
                 self.context.metadata.type = .init(mangledName: mangledName)
             }
             traceLog_DeathWatch("Made ID: \(self)")
         }
 
-        init<Act>(local node: Cluster.Node, type: Act.Type, incarnation: ActorIncarnation,
-                  context: DistributedActorContext)
-            where Act: DistributedActor, Act.ActorSystem == ClusterSystem
-        {
+        init<Act>(
+            local node: Cluster.Node,
+            type: Act.Type,
+            incarnation: ActorIncarnation,
+            context: DistributedActorContext
+        )
+        where Act: DistributedActor, Act.ActorSystem == ClusterSystem {
             self.context = context
             self._location = .local(node)
             self.incarnation = incarnation
-            if let mangledName = _mangledTypeName(type) { // TODO: avoid mangling names on every spawn?
+            if let mangledName = _mangledTypeName(type) {  // TODO: avoid mangling names on every spawn?
                 self.context.metadata.type = .init(mangledName: mangledName)
             }
             traceLog_DeathWatch("Made ID: \(self)")
         }
 
-        init<Act>(remote node: Cluster.Node, type: Act.Type, incarnation: ActorIncarnation,
-                  context: DistributedActorContext)
-            where Act: DistributedActor, Act.ActorSystem == ClusterSystem
-        {
+        init<Act>(
+            remote node: Cluster.Node,
+            type: Act.Type,
+            incarnation: ActorIncarnation,
+            context: DistributedActorContext
+        )
+        where Act: DistributedActor, Act.ActorSystem == ClusterSystem {
             self.context = context
             self._location = .remote(node)
             self.incarnation = incarnation
-            if let mangledName = _mangledTypeName(type) { // TODO: avoid mangling names on every spawn?
+            if let mangledName = _mangledTypeName(type) {  // TODO: avoid mangling names on every spawn?
                 self.context.metadata.type = .init(mangledName: mangledName)
             }
             traceLog_DeathWatch("Made ID: \(self)")
@@ -303,9 +314,7 @@ extension ActorID: Hashable {
         // quickest to check if the incarnations are the same
         // if they happen to be equal, we don't know yet for sure if it's the same actor or not,
         // as incarnation is just a random ID thus we need to compare the node and path as well
-        return lhs.incarnation == rhs.incarnation &&
-            lhs.node == rhs.node &&
-            lhs.path == rhs.path
+        return lhs.incarnation == rhs.incarnation && lhs.node == rhs.node && lhs.path == rhs.path
     }
 
     public func hash(into hasher: inout Hasher) {
@@ -452,9 +461,8 @@ extension ActorID: _PathRelationships {
 /// Offers arbitrary ordering for predictable ordered printing of things keyed by addresses.
 extension ActorID: Comparable {
     public static func < (lhs: ActorID, rhs: ActorID) -> Bool {
-        lhs.node < rhs.node ||
-            (lhs.node == rhs.node && lhs.path < rhs.path) ||
-            (lhs.node == rhs.node && lhs.path == rhs.path && lhs.incarnation < rhs.incarnation)
+        lhs.node < rhs.node || (lhs.node == rhs.node && lhs.path < rhs.path)
+            || (lhs.node == rhs.node && lhs.path == rhs.path && lhs.incarnation < rhs.incarnation)
     }
 }
 
@@ -573,7 +581,7 @@ extension ActorPath: CustomStringConvertible {
 }
 
 extension ActorPath {
-    public static let _root: ActorPath = .init() // also known as "/"
+    public static let _root: ActorPath = .init()  // also known as "/"
     public static let _user: ActorPath = try! ActorPath(root: "user")
     public static let _system: ActorPath = try! ActorPath(root: "system")
 
@@ -621,7 +629,7 @@ extension _PathRelationships {
     /// - Parameter path: The path that is suspected to be the parent of `self`
     /// - Returns: `true` if this [ActorPath] is a direct descendant of `maybeParentPath`, `false` otherwise
     public func isChildPathOf(_ maybeParentPath: _PathRelationships) -> Bool {
-        Array(self.segments.dropLast()) == maybeParentPath.segments // TODO: more efficient impl, without the copying
+        Array(self.segments.dropLast()) == maybeParentPath.segments  // TODO: more efficient impl, without the copying
     }
 
     /// Checks whether this [ActorPath] is a direct ancestor of the passed in path.
@@ -666,10 +674,10 @@ public struct ActorPathSegment: Hashable, Sendable {
 
         // TODO: benchmark
         func isValidASCII(_ scalar: Unicode.Scalar) -> Bool {
-            (scalar >= ValidActorPathSymbols.a && scalar <= ValidActorPathSymbols.z) ||
-                (scalar >= ValidActorPathSymbols.A && scalar <= ValidActorPathSymbols.Z) ||
-                (scalar >= ValidActorPathSymbols.zero && scalar <= ValidActorPathSymbols.nine) ||
-                ValidActorPathSymbols.extraSymbols.contains(scalar)
+            (scalar >= ValidActorPathSymbols.a && scalar <= ValidActorPathSymbols.z)
+                || (scalar >= ValidActorPathSymbols.A && scalar <= ValidActorPathSymbols.Z)
+                || (scalar >= ValidActorPathSymbols.zero && scalar <= ValidActorPathSymbols.nine)
+                || ValidActorPathSymbols.extraSymbols.contains(scalar)
         }
 
         // TODO: accept hex and url encoded things as well
@@ -768,15 +776,18 @@ extension ActorIncarnation {
     internal static let wellKnown: ActorIncarnation = .init(0)
 
     public static func random() -> ActorIncarnation {
-        ActorIncarnation(UInt32.random(in: UInt32(1) ... UInt32.max))
+        ActorIncarnation(UInt32.random(in: UInt32(1)...UInt32.max))
     }
 }
 
 extension ActorIncarnation {
     internal init?(_ value: String?) {
-        guard let int = (value.flatMap {
-            Int($0)
-        }), int >= 0 else {
+        guard
+            let int =
+                (value.flatMap {
+                    Int($0)
+                }), int >= 0
+        else {
             return nil
         }
         self.init(int)

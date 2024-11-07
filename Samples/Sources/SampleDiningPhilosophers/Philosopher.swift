@@ -32,8 +32,8 @@ distributed actor Philosopher: CustomStringConvertible {
         self.log.info("\(self.name) joined the table!")
 
         Task {
-//            context.watch(self.leftFork)
-//            context.watch(self.rightFork)
+            //            context.watch(self.leftFork)
+            //            context.watch(self.rightFork)
             try await self.think()
         }
     }
@@ -114,13 +114,15 @@ distributed actor Philosopher: CustomStringConvertible {
     }
 
     private func forkTaken(_ fork: Fork) {
-        if self.state == .thinking { // We couldn't get the first fork and have already gone back to thinking.
+        if self.state == .thinking {  // We couldn't get the first fork and have already gone back to thinking.
             Task { try await fork.putBack() }
             return
         }
 
         guard case .takingForks(let leftForkIsTaken, let rightForkIsTaken) = self.state else {
-            self.log.error("Received fork \(fork) but was not in .takingForks state. State was \(self.state)! Ignoring...")
+            self.log.error(
+                "Received fork \(fork) but was not in .takingForks state. State was \(self.state)! Ignoring..."
+            )
             Task { try await fork.putBack() }
             return
         }

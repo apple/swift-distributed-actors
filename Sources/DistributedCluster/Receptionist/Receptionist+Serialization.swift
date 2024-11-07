@@ -54,7 +54,9 @@ extension _Reception.Key {
         let guestManifest = try container.decode(Serialization.Manifest.self, forKey: .manifest)
         let guestType = try context.summonType(from: guestManifest)
         guard guestType is Guest.Type else {
-            throw SerializationError(.notAbleToDeserialize(hint: "manifest type results in [\(guestType)] type, which is NOT \(Guest.self)"))
+            throw SerializationError(
+                .notAbleToDeserialize(hint: "manifest type results in [\(guestType)] type, which is NOT \(Guest.self)")
+            )
         }
 
         self.init(Guest.self, id: id)

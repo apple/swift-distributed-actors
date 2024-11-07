@@ -37,11 +37,16 @@ public protocol LifecycleWatch: DistributedActor where ActorSystem == ClusterSys
 
 extension LifecycleWatch {
     /// Watch the `watchee` actor for termination, and trigger the `whenTerminated` callback when
-    @available(*, deprecated, message: "Replaced with the much safer `watchTermination(of:)` paired with `actorTerminated(_:)`")
+    @available(
+        *,
+        deprecated,
+        message: "Replaced with the much safer `watchTermination(of:)` paired with `actorTerminated(_:)`"
+    )
     public func watchTermination<Watchee>(
         of watchee: Watchee,
         @_inheritActorContext whenTerminated: @escaping @Sendable (ID) async -> Void,
-        file: String = #filePath, line: UInt = #line
+        file: String = #filePath,
+        line: UInt = #line
     ) -> Watchee where Watchee: DistributedActor, Watchee.ActorSystem == ClusterSystem {
         guard let watch = self.context.lifecycle else {
             return watchee
@@ -64,15 +69,21 @@ extension LifecycleWatch {
     @discardableResult
     public func watchTermination<Watchee>(
         of watchee: Watchee,
-        file: String = #filePath, line: UInt = #line
+        file: String = #filePath,
+        line: UInt = #line
     ) -> Watchee where Watchee: DistributedActor, Watchee.ActorSystem == ClusterSystem {
         guard let watch = self.context.lifecycle else {
             return watchee
         }
 
-        watch.termination(of: watchee.id, whenTerminated: { id in
-            await self.terminated(actor: id)
-        }, file: file, line: line)
+        watch.termination(
+            of: watchee.id,
+            whenTerminated: { id in
+                await self.terminated(actor: id)
+            },
+            file: file,
+            line: line
+        )
 
         return watchee
     }
@@ -88,7 +99,8 @@ extension LifecycleWatch {
     /// actor takes immediate effect.
     ///
     /// - Returns: the passed in watchee reference for easy chaining `e.g. return context.unwatch(ref)`
-    public func isWatching<Watchee>(_ watchee: Watchee) -> Bool where Watchee: DistributedActor, Watchee.ActorSystem == ClusterSystem {
+    public func isWatching<Watchee>(_ watchee: Watchee) -> Bool
+    where Watchee: DistributedActor, Watchee.ActorSystem == ClusterSystem {
         guard let watch = self.context.lifecycle else {
             return false
         }
@@ -111,15 +123,17 @@ extension LifecycleWatch {
     @discardableResult
     public func unwatch<Watchee: DistributedActor>(
         _ watchee: Watchee,
-        file: String = #filePath, line: UInt = #line
+        file: String = #filePath,
+        line: UInt = #line
     ) -> Watchee where Watchee.ActorSystem == ClusterSystem {
-        return self.unwatchTermination(of: watchee, file: file, line: line)
+        self.unwatchTermination(of: watchee, file: file, line: line)
     }
 
     @discardableResult
     public func unwatchTermination<Watchee: DistributedActor>(
         of watchee: Watchee,
-        file: String = #filePath, line: UInt = #line
+        file: String = #filePath,
+        line: UInt = #line
     ) -> Watchee where Watchee.ActorSystem == ClusterSystem {
         guard let watch = self.context.lifecycle else {
             return watchee

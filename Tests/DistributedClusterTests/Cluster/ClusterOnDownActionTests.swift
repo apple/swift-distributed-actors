@@ -13,9 +13,10 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import NIOSSL
 import XCTest
+
+@testable import DistributedCluster
 
 final class ClusterOnDownActionTests: ClusteredActorSystemsXCTestCase {
     func test_onNodeDowned_performShutdown() async throws {
@@ -31,7 +32,9 @@ final class ClusterOnDownActionTests: ClusteredActorSystemsXCTestCase {
 
         try self.testKit(first).eventually(within: .seconds(3)) {
             guard first.isShuttingDown else {
-                throw TestError("System \(first) was not shutting down. It was marked down and the default onDownAction should have triggered!")
+                throw TestError(
+                    "System \(first) was not shutting down. It was marked down and the default onDownAction should have triggered!"
+                )
             }
         }
     }

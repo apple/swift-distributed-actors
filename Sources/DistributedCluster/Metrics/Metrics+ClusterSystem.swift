@@ -47,7 +47,7 @@ final class ClusterSystemMetrics {
         // TODO: use specific dimensions if shell has it configured or groups etc
         // TODO: generalize this such that we can do props -> dimensions -> done, and not special case the system ones
         guard let root = shell.path.segments.first else {
-            return // do nothing
+            return  // do nothing
         }
         switch root {
         case ActorPathSegment._system:
@@ -63,7 +63,7 @@ final class ClusterSystemMetrics {
         // TODO: use specific dimensions if shell has it configured or groups etc
         // TODO: generalize this such that we can do props -> dimensions -> done, and not special case the system ones
         guard let root = shell.path.segments.first else {
-            return // do nothing
+            return  // do nothing
         }
         switch root {
         case ActorPathSegment._system:
@@ -120,7 +120,7 @@ final class ClusterSystemMetrics {
             case .unreachable:
                 unreachable += 1
             default:
-                () // skip
+                ()  // skip
             }
 
             self._cluster_members.record(up)
@@ -216,8 +216,16 @@ final class ClusterSystemMetrics {
         let rootSystem = ("root", "/system")
 
         let actorsLifecycleLabel = settings.makeLabel("actors", "lifecycle")
-        self._actors_lifecycle_user = .init(label: actorsLifecycleLabel, positive: [rootUser, dimStart], negative: [rootUser, dimStop])
-        self._actors_lifecycle_system = .init(label: actorsLifecycleLabel, positive: [rootSystem, dimStart], negative: [rootSystem, dimStop])
+        self._actors_lifecycle_user = .init(
+            label: actorsLifecycleLabel,
+            positive: [rootUser, dimStart],
+            negative: [rootUser, dimStop]
+        )
+        self._actors_lifecycle_system = .init(
+            label: actorsLifecycleLabel,
+            positive: [rootSystem, dimStart],
+            negative: [rootSystem, dimStop]
+        )
 
         // ==== Serialization -----------------------------------------------
         self._system_msg_redelivery_buffer = .init(label: settings.makeLabel("system", "redelivery_buffer", "count"))
@@ -226,26 +234,60 @@ final class ClusterSystemMetrics {
         let serializationLabel = settings.makeLabel("serialization")
         let dimInbound = ("direction", "in")
         let dimOutbound = ("direction", "out")
-        self._serialization_system_outbound_msg_size = .init(label: serializationLabel, dimensions: [rootSystem, dimOutbound])
-        self._serialization_system_inbound_msg_size = .init(label: serializationLabel, dimensions: [rootSystem, dimInbound])
-        self._serialization_user_outbound_msg_size = .init(label: serializationLabel, dimensions: [rootUser, dimOutbound])
-        self._serialization_user_inbound_msg_size = .init(label: serializationLabel, dimensions: [rootUser, dimInbound])
+        self._serialization_system_outbound_msg_size = .init(
+            label: serializationLabel,
+            dimensions: [rootSystem, dimOutbound]
+        )
+        self._serialization_system_inbound_msg_size = .init(
+            label: serializationLabel,
+            dimensions: [rootSystem, dimInbound]
+        )
+        self._serialization_user_outbound_msg_size = .init(
+            label: serializationLabel,
+            dimensions: [rootUser, dimOutbound]
+        )
+        self._serialization_user_inbound_msg_size = .init(
+            label: serializationLabel,
+            dimensions: [rootUser, dimInbound]
+        )
         // TODO: record message types by type
 
         // ==== Receptionist ----------------------------------------
         self._receptionist_keys = .init(label: settings.makeLabel("receptionist", "keys"))
-        self._receptionist_registrations = .init(label: settings.makeLabel("receptionist", "actors"), positive: [("type", "registered")], negative: [("type", "removed")])
+        self._receptionist_registrations = .init(
+            label: settings.makeLabel("receptionist", "actors"),
+            positive: [("type", "registered")],
+            negative: [("type", "removed")]
+        )
         self._receptionist_oplog_size = .init(label: settings.makeLabel("receptionist", "oplog", "size"))
 
         // ==== Cluster ---------------------------------------------
         let clusterMembersLabel = settings.makeLabel("cluster", "members")
         self._cluster_members = .init(label: clusterMembersLabel)
-        self._cluster_members_joining = .init(label: clusterMembersLabel, dimensions: [("status", Cluster.MemberStatus.joining.rawValue)])
-        self._cluster_members_up = .init(label: clusterMembersLabel, dimensions: [("status", Cluster.MemberStatus.joining.rawValue)])
-        self._cluster_members_leaving = .init(label: clusterMembersLabel, dimensions: [("status", Cluster.MemberStatus.leaving.rawValue)])
-        self._cluster_members_down = .init(label: clusterMembersLabel, dimensions: [("status", Cluster.MemberStatus.down.rawValue)])
-        self._cluster_members_removed = .init(label: clusterMembersLabel, dimensions: [("status", Cluster.MemberStatus.removed.rawValue)]) // TODO: this is equal to number of stored tombstones kind of
-        self._cluster_unreachable_members = .init(label: clusterMembersLabel, dimensions: [("reachability", Cluster.MemberReachability.unreachable.rawValue)])
+        self._cluster_members_joining = .init(
+            label: clusterMembersLabel,
+            dimensions: [("status", Cluster.MemberStatus.joining.rawValue)]
+        )
+        self._cluster_members_up = .init(
+            label: clusterMembersLabel,
+            dimensions: [("status", Cluster.MemberStatus.joining.rawValue)]
+        )
+        self._cluster_members_leaving = .init(
+            label: clusterMembersLabel,
+            dimensions: [("status", Cluster.MemberStatus.leaving.rawValue)]
+        )
+        self._cluster_members_down = .init(
+            label: clusterMembersLabel,
+            dimensions: [("status", Cluster.MemberStatus.down.rawValue)]
+        )
+        self._cluster_members_removed = .init(
+            label: clusterMembersLabel,
+            dimensions: [("status", Cluster.MemberStatus.removed.rawValue)]
+        )  // TODO: this is equal to number of stored tombstones kind of
+        self._cluster_unreachable_members = .init(
+            label: clusterMembersLabel,
+            dimensions: [("reachability", Cluster.MemberReachability.unreachable.rawValue)]
+        )
 
         let clusterAssociations = settings.makeLabel("cluster", "associations")
         self._cluster_association_tombstones = .init(label: clusterAssociations)

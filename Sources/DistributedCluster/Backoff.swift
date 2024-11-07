@@ -169,11 +169,23 @@ public struct ExponentialBackoffStrategy: BackoffStrategy {
     // interval that will be used in the `next()` call, does NOT include the random noise component
     private var currentBaseInterval: Duration
 
-    internal init(initialInterval: Duration, multiplier: Double, capInterval: Duration, randomFactor: Double, maxAttempts: Int?) {
-        precondition(initialInterval.nanoseconds > 0, "initialInterval MUST be > 0ns, was: [\(initialInterval.prettyDescription)]")
+    internal init(
+        initialInterval: Duration,
+        multiplier: Double,
+        capInterval: Duration,
+        randomFactor: Double,
+        maxAttempts: Int?
+    ) {
+        precondition(
+            initialInterval.nanoseconds > 0,
+            "initialInterval MUST be > 0ns, was: [\(initialInterval.prettyDescription)]"
+        )
         precondition(multiplier >= 1.0, "multiplier MUST be >= 1.0, was: [\(multiplier)]")
         precondition(initialInterval <= capInterval, "capInterval MUST be >= initialInterval, was: [\(capInterval)]")
-        precondition(randomFactor >= 0.0 && randomFactor <= 1.0, "randomFactor MUST be within between 0 and 1, was: [\(randomFactor)]")
+        precondition(
+            randomFactor >= 0.0 && randomFactor <= 1.0,
+            "randomFactor MUST be within between 0 and 1, was: [\(randomFactor)]"
+        )
         if let n = maxAttempts {
             precondition(n > 0, "maxAttempts MUST be nil or > 0, was: [\(n)]")
         }
@@ -190,10 +202,10 @@ public struct ExponentialBackoffStrategy: BackoffStrategy {
         defer { self.limitedRemainingAttempts? -= 1 }
         if let remainingAttempts = self.limitedRemainingAttempts, remainingAttempts <= 0 {
             return nil
-        } // else, still attempts remaining, or no limit set
+        }  // else, still attempts remaining, or no limit set
 
         let baseInterval = self.currentBaseInterval
-        let randomizeMultiplier = Double.random(in: (1 - self.randomFactor) ... (1 + self.randomFactor))
+        let randomizeMultiplier = Double.random(in: (1 - self.randomFactor)...(1 + self.randomFactor))
 
         if baseInterval > self.capInterval {
             let randomizedCappedInterval = self.capInterval * randomizeMultiplier

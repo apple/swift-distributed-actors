@@ -80,7 +80,9 @@ extension Cluster.MemberReachability {
         case .unreachable:
             return .unreachable
         case ._PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE:
-            throw SerializationError(.unableToSerialize(hint: "\(Self.self) is [\(self)]. This should not happen, please file an issue."))
+            throw SerializationError(
+                .unableToSerialize(hint: "\(Self.self) is [\(self)]. This should not happen, please file an issue.")
+            )
         }
     }
 
@@ -89,7 +91,9 @@ extension Cluster.MemberReachability {
         case .unspecified:
             throw SerializationError(.missingField("reachability", type: "\(_ProtoClusterMemberReachability.self)"))
         case .UNRECOGNIZED(let n):
-            throw SerializationError(.missingField("reachability:\(n)", type: "\(_ProtoClusterMemberReachability.self)"))
+            throw SerializationError(
+                .missingField("reachability:\(n)", type: "\(_ProtoClusterMemberReachability.self)")
+            )
         case .reachable:
             self = .reachable
         case .unreachable:
@@ -114,7 +118,9 @@ extension Cluster.MemberStatus {
         case .removed:
             proto = .removed
         case ._PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE:
-            throw SerializationError(.unableToSerialize(hint: "\(Self.self) is [\(self)]. This should not happen, please file an issue."))
+            throw SerializationError(
+                .unableToSerialize(hint: "\(Self.self) is [\(self)]. This should not happen, please file an issue.")
+            )
         }
         return proto
     }

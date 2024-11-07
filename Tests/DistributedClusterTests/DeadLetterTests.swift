@@ -14,9 +14,10 @@
 
 import Distributed
 import DistributedActorsTestKit
+import XCTest
+
 @testable import DistributedCluster
 @testable import Logging
-import XCTest
 
 final class DeadLetterTests: SingleClusterSystemXCTestCase {
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -25,7 +26,11 @@ final class DeadLetterTests: SingleClusterSystemXCTestCase {
     func test_deadLetters_logWithSourcePosition() throws {
         let log = self.logCapture.logger(label: "/dead/letters")
 
-        let id = try ActorID(local: self.system.cluster.node, path: ActorPath._user.appending("someone"), incarnation: .random())
+        let id = try ActorID(
+            local: self.system.cluster.node,
+            path: ActorPath._user.appending("someone"),
+            incarnation: .random()
+        )
         let office = DeadLetterOffice(log, id: id, system: system)
 
         office.deliver("Hello")

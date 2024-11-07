@@ -37,10 +37,16 @@ extension GossipShell.Message: Codable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         switch try container.decode(DiscriminatorKeys.self, forKey: ._case) {
         case .gossip:
-            let identifierManifest = try container.decode(Serialization.Manifest.self, forKey: .gossip_identifier_manifest)
+            let identifierManifest = try container.decode(
+                Serialization.Manifest.self,
+                forKey: .gossip_identifier_manifest
+            )
             let identifierPayload = try container.decode(Data.self, forKey: .gossip_identifier)
-            let identifierAny = try context.serialization.deserializeAny(from: .data(identifierPayload), using: identifierManifest)
-            guard let identifier = identifierAny as? GossipIdentifier else { // FIXME: just force GossipIdentifier to be codable, avoid this hacky dance?
+            let identifierAny = try context.serialization.deserializeAny(
+                from: .data(identifierPayload),
+                using: identifierManifest
+            )
+            guard let identifier = identifierAny as? GossipIdentifier else {  // FIXME: just force GossipIdentifier to be codable, avoid this hacky dance?
                 fatalError("Cannot cast to GossipIdentifier, was: \(identifierAny)")
             }
 
@@ -50,7 +56,11 @@ extension GossipShell.Message: Codable {
             // FIXME: sometimes we could encode raw and not via the Data -- think about it and fix it
             let payloadManifest = try container.decode(Serialization.Manifest.self, forKey: .gossip_payload_manifest)
             let payloadPayload = try container.decode(Data.self, forKey: .gossip_payload)
-            let payload = try context.serialization.deserialize(as: Gossip.self, from: .data(payloadPayload), using: payloadManifest)
+            let payload = try context.serialization.deserialize(
+                as: Gossip.self,
+                from: .data(payloadPayload),
+                using: payloadManifest
+            )
 
             let ackRefAddress = try container.decodeIfPresent(ActorID.self, forKey: .ackRef)
             let ackRef = ackRefAddress.map { context._resolveActorRef(Acknowledgement.self, identifiedBy: $0) }

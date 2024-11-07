@@ -138,7 +138,7 @@ struct ConcatCodeBlocks: MarkupWalker {
 
             codeBlockStrings.append(s)
         }
-        codeBlockStrings.append("}") // end of __test()
+        codeBlockStrings.append("}")  // end of __test()
 
         return codeBlockStrings.joined(separator: "\n")
     }

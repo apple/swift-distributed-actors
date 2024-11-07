@@ -207,7 +207,7 @@ public struct Receptionist {
                 return RefMappingRemovalResult(registeredUnderKeys: [])
             }
 
-            var registeredKeys: Set<AnyReceptionKey> = [] // TODO: OR we store it directly as registeredUnderKeys/subscribedToKeys in the dict
+            var registeredKeys: Set<AnyReceptionKey> = []  // TODO: OR we store it directly as registeredUnderKeys/subscribedToKeys in the dict
             for key in associatedKeys {
                 if self._registrations[key]?.remove(ref) != nil {
                     _ = registeredKeys.insert(key)
@@ -280,7 +280,11 @@ public struct Receptionist {
         }
 
         /// - returns: `true` if the value was a newly inserted value, `false` otherwise
-        private func addTo<Value: Hashable>(dict: inout [AnyReceptionKey: Set<Value>], key: AnyReceptionKey, value: Value) -> Bool {
+        private func addTo<Value: Hashable>(
+            dict: inout [AnyReceptionKey: Set<Value>],
+            key: AnyReceptionKey,
+            value: Value
+        ) -> Bool {
             guard !(dict[key]?.contains(value) ?? false) else {
                 return false
             }
@@ -289,7 +293,11 @@ public struct Receptionist {
             return true
         }
 
-        private func removeFrom<Value: Hashable>(dict: inout [AnyReceptionKey: Set<Value>], key: AnyReceptionKey, value: Value) -> Set<Value>? {
+        private func removeFrom<Value: Hashable>(
+            dict: inout [AnyReceptionKey: Set<Value>],
+            key: AnyReceptionKey,
+            value: Value
+        ) -> Set<Value>? {
             if dict[key]?.remove(value) != nil, dict[key]?.isEmpty ?? false {
                 dict.removeValue(forKey: key)
             }

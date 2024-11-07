@@ -14,8 +14,9 @@
 
 import Distributed
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import XCTest
+
+@testable import DistributedCluster
 
 final class RemoteCallTests: ClusteredActorSystemsXCTestCase {
     func test_remoteCall() async throws {
@@ -144,7 +145,9 @@ final class RemoteCallTests: ClusteredActorSystemsXCTestCase {
             }
         }
 
-        guard let remoteCallError = error as? RemoteCallError, case .timedOut(_, let timeoutError) = remoteCallError.underlying.error else {
+        guard let remoteCallError = error as? RemoteCallError,
+            case .timedOut(_, let timeoutError) = remoteCallError.underlying.error
+        else {
             throw TestError("Expected RemoteCallError.timedOut, got \(error)")
         }
         guard timeoutError.timeout == .milliseconds(200) else {
@@ -166,7 +169,9 @@ final class RemoteCallTests: ClusteredActorSystemsXCTestCase {
             }
         }
 
-        guard let remoteCallError = error as? RemoteCallError, case .timedOut(_, let timeoutError) = remoteCallError.underlying.error else {
+        guard let remoteCallError = error as? RemoteCallError,
+            case .timedOut(_, let timeoutError) = remoteCallError.underlying.error
+        else {
             throw TestError("Expected RemoteCallError.timedOut, got \(error)")
         }
         guard timeoutError.timeout == .milliseconds(200) else {
@@ -240,12 +245,16 @@ final class RemoteCallTests: ClusteredActorSystemsXCTestCase {
 
     func test_remoteCall_customCodableErrorAllowList_errorInList() async throws {
         let local = await setUpNode("local") { settings in
-            settings.remoteCall.codableErrorAllowance = .custom(allowedTypes: [GreeterCodableError.self, AnotherGreeterCodableError.self])
+            settings.remoteCall.codableErrorAllowance = .custom(allowedTypes: [
+                GreeterCodableError.self, AnotherGreeterCodableError.self,
+            ])
             settings.serialization.registerInbound(GreeterCodableError.self)
             settings.serialization.registerInbound(AnotherGreeterCodableError.self)
         }
         let remote = await setUpNode("remote") { settings in
-            settings.remoteCall.codableErrorAllowance = .custom(allowedTypes: [GreeterCodableError.self, AnotherGreeterCodableError.self])
+            settings.remoteCall.codableErrorAllowance = .custom(allowedTypes: [
+                GreeterCodableError.self, AnotherGreeterCodableError.self,
+            ])
             settings.serialization.registerInbound(GreeterCodableError.self)
             settings.serialization.registerInbound(AnotherGreeterCodableError.self)
         }
@@ -264,10 +273,14 @@ final class RemoteCallTests: ClusteredActorSystemsXCTestCase {
 
     func test_remoteCall_customCodableErrorAllowList_errorInListButNotRegistered() async throws {
         let local = await setUpNode("local") { settings in
-            settings.remoteCall.codableErrorAllowance = .custom(allowedTypes: [GreeterCodableError.self, AnotherGreeterCodableError.self])
+            settings.remoteCall.codableErrorAllowance = .custom(allowedTypes: [
+                GreeterCodableError.self, AnotherGreeterCodableError.self,
+            ])
         }
         let remote = await setUpNode("remote") { settings in
-            settings.remoteCall.codableErrorAllowance = .custom(allowedTypes: [GreeterCodableError.self, AnotherGreeterCodableError.self])
+            settings.remoteCall.codableErrorAllowance = .custom(allowedTypes: [
+                GreeterCodableError.self, AnotherGreeterCodableError.self,
+            ])
         }
         local.cluster.join(endpoint: remote.cluster.endpoint)
 

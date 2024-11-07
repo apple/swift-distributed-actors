@@ -12,14 +12,15 @@
 //
 //===----------------------------------------------------------------------===//
 
-@testable import CoreMetrics
 import DistributedActorsConcurrencyHelpers
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import Foundation
-@testable import Metrics
 import NIO
 import XCTest
+
+@testable import CoreMetrics
+@testable import DistributedCluster
+@testable import Metrics
 
 final class ActorMetricsTests: ClusteredActorSystemsXCTestCase {
     var metrics: TestMetrics! = TestMetrics()
@@ -36,7 +37,7 @@ final class ActorMetricsTests: ClusteredActorSystemsXCTestCase {
     }
 
     func test_serialization_reportsMetrics() async throws {
-        throw XCTSkip("!!! Skipping test \(#function) !!!") // FIXME(distributed): this crashes the cluster with a message on setup
+        throw XCTSkip("!!! Skipping test \(#function) !!!")  // FIXME(distributed): this crashes the cluster with a message on setup
 
         let first = await setUpNode("first")
         let second = await setUpNode("second")
@@ -66,13 +67,13 @@ final class ActorMetricsTests: ClusteredActorSystemsXCTestCase {
             _Behavior.receive { _, _ in .same }
         )
 
-        for _ in 0 ... 256 {
+        for _ in 0...256 {
             one.tell("hello")
         }
 
         sleep(5)
         let gauge = try self.metrics.expectGauge("first.measuredActorGroup.mailbox.count")
         // we can't really reliably test that we get to some "maximum" since the actor starts processing messages as they come in
-        gauge.lastValue.shouldEqual(0) // after processing we must always go back to zero
+        gauge.lastValue.shouldEqual(0)  // after processing we must always go back to zero
     }
 }

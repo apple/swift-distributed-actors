@@ -13,11 +13,12 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import Foundation
 import Logging
 import NIO
 import XCTest
+
+@testable import DistributedCluster
 
 final class RemoteHandshakeStateMachineTests: XCTestCase {
     typealias HSM = HandshakeStateMachine
@@ -36,11 +37,15 @@ final class RemoteHandshakeStateMachineTests: XCTestCase {
         }
 
         // client
-        let clientInitiated = HSM.InitiatedState(settings: clientKernel.settings, localNode: clientKernel.selfNode, connectTo: serverAddress.endpoint)
+        let clientInitiated = HSM.InitiatedState(
+            settings: clientKernel.settings,
+            localNode: clientKernel.selfNode,
+            connectTo: serverAddress.endpoint
+        )
         let offer = clientInitiated.makeOffer()
 
         // server
-        let received = HSM.HandshakeOfferReceivedState(state: serverKernel, offer: offer) // TODO: test that it completes?
+        let received = HSM.HandshakeOfferReceivedState(state: serverKernel, offer: offer)  // TODO: test that it completes?
 
         let serverCompleted: HSM.CompletedState
         switch received.negotiate() {
@@ -74,11 +79,15 @@ final class RemoteHandshakeStateMachineTests: XCTestCase {
             settings._protocolVersion.patch += 1
         }
 
-        let clientInitiated = HSM.InitiatedState(settings: clientKernel.settings, localNode: clientKernel.selfNode, connectTo: serverAddress.endpoint)
+        let clientInitiated = HSM.InitiatedState(
+            settings: clientKernel.settings,
+            localNode: clientKernel.selfNode,
+            connectTo: serverAddress.endpoint
+        )
         let offer = clientInitiated.makeOffer()
 
         // server
-        let received = HSM.HandshakeOfferReceivedState(state: serverKernel, offer: offer) // TODO: test that it completes?
+        let received = HSM.HandshakeOfferReceivedState(state: serverKernel, offer: offer)  // TODO: test that it completes?
 
         // then
 
@@ -99,11 +108,15 @@ final class RemoteHandshakeStateMachineTests: XCTestCase {
             settings._protocolVersion.major += 1
         }
 
-        let clientInitiated = HSM.InitiatedState(settings: clientKernel.settings, localNode: clientKernel.selfNode, connectTo: serverAddress.endpoint)
+        let clientInitiated = HSM.InitiatedState(
+            settings: clientKernel.settings,
+            localNode: clientKernel.selfNode,
+            connectTo: serverAddress.endpoint
+        )
         let offer = clientInitiated.makeOffer()
 
         // server
-        let received = HSM.HandshakeOfferReceivedState(state: serverKernel, offer: offer) // TODO: test that it completes?
+        let received = HSM.HandshakeOfferReceivedState(state: serverKernel, offer: offer)  // TODO: test that it completes?
 
         // then
 
@@ -115,7 +128,9 @@ final class RemoteHandshakeStateMachineTests: XCTestCase {
             error = rejected.error
         }
 
-        "\(error)".shouldEqual("incompatibleProtocolVersion(local: Version(1.0.0, reserved:0), remote: Version(2.0.0, reserved:0))")
+        "\(error)".shouldEqual(
+            "incompatibleProtocolVersion(local: Version(1.0.0, reserved:0), remote: Version(2.0.0, reserved:0))"
+        )
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -130,7 +145,11 @@ final class RemoteHandshakeStateMachineTests: XCTestCase {
         }
 
         // client
-        var clientInitiated = HSM.InitiatedState(settings: clientKernel.settings, localNode: clientKernel.selfNode, connectTo: serverAddress.endpoint)
+        var clientInitiated = HSM.InitiatedState(
+            settings: clientKernel.settings,
+            localNode: clientKernel.selfNode,
+            connectTo: serverAddress.endpoint
+        )
 
         guard case .scheduleRetryHandshake = clientInitiated.onHandshakeTimeout() else {
             throw shouldNotHappen("Expected retry attempt after handshake timeout")

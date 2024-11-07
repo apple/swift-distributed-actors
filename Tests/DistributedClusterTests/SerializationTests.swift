@@ -14,11 +14,12 @@
 //
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import Foundation
 import NIO
 import NIOFoundationCompat
 import XCTest
+
+@testable import DistributedCluster
 
 class SerializationTests: SingleClusterSystemXCTestCase {
     override func setUp() async throws {
@@ -55,7 +56,11 @@ class SerializationTests: SingleClusterSystemXCTestCase {
 
         let serialized = try system.serialization.serialize(value)
         // Deserialize from `Data`
-        let deserialized = try system.serialization.deserialize(as: Int.self, from: .data(serialized.buffer.readData()), using: serialized.manifest)
+        let deserialized = try system.serialization.deserialize(
+            as: Int.self,
+            from: .data(serialized.buffer.readData()),
+            using: serialized.manifest
+        )
 
         deserialized.shouldEqual(value)
     }
@@ -65,7 +70,11 @@ class SerializationTests: SingleClusterSystemXCTestCase {
 
         let serialized = try system.serialization.serialize(value)
         // Deserialize from `Data`
-        let deserialized = try system.serialization.deserialize(as: Bool.self, from: .data(serialized.buffer.readData()), using: serialized.manifest)
+        let deserialized = try system.serialization.deserialize(
+            as: Bool.self,
+            from: .data(serialized.buffer.readData()),
+            using: serialized.manifest
+        )
 
         deserialized.shouldEqual(value)
     }
@@ -171,7 +180,7 @@ class SerializationTests: SingleClusterSystemXCTestCase {
         pinfo("serialized ref: \(serializedFormat)")
         serializedFormat.shouldContain("sact")
         serializedFormat.shouldContain("\(remoteCapableSystem.settings.bindNode.nid)")
-        serializedFormat.shouldContain(remoteCapableSystem.name) // automatically picked up name from system
+        serializedFormat.shouldContain(remoteCapableSystem.name)  // automatically picked up name from system
         serializedFormat.shouldContain("\(remoteCapableSystem.settings.bindHost)")
         serializedFormat.shouldContain("\(remoteCapableSystem.settings.bindPort)")
 
@@ -210,7 +219,7 @@ class SerializationTests: SingleClusterSystemXCTestCase {
     }
 
     func test_deserialize_alreadyDeadActorRef_shouldDeserializeAsDeadLetters_forUserDefinedMessageType() throws {
-        let stoppedRef: _ActorRef<InterestingMessage> = try system._spawn("dead-on-arrival", .stop) // stopped
+        let stoppedRef: _ActorRef<InterestingMessage> = try system._spawn("dead-on-arrival", .stop)  // stopped
         let hasRef = HasInterestingMessageRef(containedInterestingRef: stoppedRef)
 
         let serialized = try shouldNotThrow {
@@ -224,7 +233,9 @@ class SerializationTests: SingleClusterSystemXCTestCase {
 
             back.containedInterestingRef.tell(InterestingMessage())
             guard "\(back.containedInterestingRef.id)" == "/dead/user/dead-on-arrival" else {
-                throw self.testKit.error("\(back.containedInterestingRef.id) is not equal to expected /dead/user/dead-on-arrival")
+                throw self.testKit.error(
+                    "\(back.containedInterestingRef.id) is not equal to expected /dead/user/dead-on-arrival"
+                )
             }
         }
     }
@@ -271,7 +282,11 @@ class SerializationTests: SingleClusterSystemXCTestCase {
         back.sysRef.id.shouldEqual(sysRef.id)
 
         // Only to see that the deserialized ref indeed works for sending system messages to it
-        back.sysRef._sendSystemMessage(.terminated(ref: watchMe.asAddressable, existenceConfirmed: false), file: #filePath, line: #line)
+        back.sysRef._sendSystemMessage(
+            .terminated(ref: watchMe.asAddressable, existenceConfirmed: false),
+            file: #filePath,
+            line: #line
+        )
         try p.expectMessage("terminated:watchMe")
     }
 
@@ -339,7 +354,13 @@ class SerializationTests: SingleClusterSystemXCTestCase {
     // MARK: PList coding
 
     func test_plist_binary() throws {
-        let test = PListBinCodableTest(name: "foo", items: ["bar", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz"])
+        let test = PListBinCodableTest(
+            name: "foo",
+            items: [
+                "bar", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz",
+                "baz",
+            ]
+        )
 
         let serialized = try! shouldNotThrow {
             try system.serialization.serialize(test)
@@ -370,7 +391,7 @@ class SerializationTests: SingleClusterSystemXCTestCase {
         }
 
         let system2 = await self.setUpNode("OtherSystem") { settings in
-            settings.serialization.register(PListXMLCodableTest.self, serializerID: .foundationPropertyListBinary) // on purpose "wrong" format
+            settings.serialization.register(PListXMLCodableTest.self, serializerID: .foundationPropertyListBinary)  // on purpose "wrong" format
         }
 
         _ = try shouldThrow {
@@ -510,18 +531,18 @@ struct ManifestArray<Element: Codable>: Codable, ExpressibleByArrayLiteral {
         guard let count = container.count else {
             throw SerializationError(.missingField("count", type: "Int"))
         }
-        self.elements = try (0 ..< count).map { _ in
+        self.elements = try (0..<count).map { _ in
             var nested = try container.nestedContainer(keyedBy: BoxCodingKeys.self)
             let typeHint = try nested.decode(String.self, forKey: .type)
-            let manifest = Serialization.Manifest(serializerID: .foundationJSON, hint: typeHint) // we assume JSON rather than (en/de)-coding the full manifest
+            let manifest = Serialization.Manifest(serializerID: .foundationJSON, hint: typeHint)  // we assume JSON rather than (en/de)-coding the full manifest
             guard let T = try context.summonType(from: manifest) as? Decodable.Type else {
                 fatalError("Can't summon type from \(manifest)")
             }
             guard T is Element.Type else {
                 fatalError("Summoned type T (\(T)) is not subtype of \(Element.self)")
             }
-            let element = try T._decode(from: &nested, forKey: .data, using: decoder) // the magic, with the recovered "right" T
-            return element as! Element // as!-safe, since we checked the T is Element
+            let element = try T._decode(from: &nested, forKey: .data, using: decoder)  // the magic, with the recovered "right" T
+            return element as! Element  // as!-safe, since we checked the T is Element
         }
     }
 
@@ -532,7 +553,7 @@ struct ManifestArray<Element: Codable>: Codable, ExpressibleByArrayLiteral {
         var container = encoder.unkeyedContainer()
         for element in self.elements {
             let manifest = try context.outboundManifest(type(of: element))
-            let box = Box(type: manifest.hint!, data: element) // we assume JSON rather than (en/de)-coding the full manifest
+            let box = Box(type: manifest.hint!, data: element)  // we assume JSON rather than (en/de)-coding the full manifest
             try container.encode(box)
         }
     }

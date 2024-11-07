@@ -40,7 +40,10 @@ extension Cluster {
         }
 
         public init(protocol: String, systemName: String, host: String, port: Int, nid: NodeID) {
-            self.init(endpoint: Cluster.Endpoint(protocol: `protocol`, systemName: systemName, host: host, port: port), nid: nid)
+            self.init(
+                endpoint: Cluster.Endpoint(protocol: `protocol`, systemName: systemName, host: host, port: port),
+                nid: nid
+            )
         }
 
         public init(systemName: String, host: String, port: Int, nid: NodeID) {

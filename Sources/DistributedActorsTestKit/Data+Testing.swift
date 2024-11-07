@@ -12,10 +12,11 @@
 //
 //===----------------------------------------------------------------------===//
 
-@testable import DistributedCluster
 import Foundation
 import NIO
 import NIOFoundationCompat
+
+@testable import DistributedCluster
 
 // FIXME: this is obviously not a good idea
 private let testOnlyAllocator = ByteBufferAllocator()
