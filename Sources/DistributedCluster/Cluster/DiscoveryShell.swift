@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -42,7 +42,7 @@ final class DiscoveryShell {
                     context.log.debug("Service discovery failed: \(error)")
                 }
             }, onComplete: { reason in
-                // if for some reason the subscription completes, we also kill the discovery actor
+                // if for some reason the subscription completes, we also terminate the discovery actor
                 // TODO: would there be cases where we want to reconnect the discovery mechanism instead? (we could handle it here)
                 context.myself.tell(.stop(reason))
             })

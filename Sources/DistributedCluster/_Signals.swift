@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -108,7 +108,7 @@ public enum _Signals {
     /// ### Death Pacts with Children
     ///
     /// If the child is NOT being watched by the parent, this signal will NOT cause the parent (recipient of this signal)
-    /// to kill kill itself by throwing an [DeathPactError], as this is reserved only to when a death pact is formed.
+    /// to terminate itself by throwing an [DeathPactError], as this is reserved only to when a death pact is formed.
     /// In other words, if the parent spawns child actors but does not watch them, this is taken as not caring enough about
     /// their lifetime as to trigger termination itself if one of them terminates.
     ///

@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -23,7 +23,7 @@ public final class MultiNodeConductorTests: MultiNodeTestSuite {
     ///
     /// ## Default execution
     /// Unlike normal unit tests, each node is spawned in a separate process,
-    /// allowing is to kill nodes harshly by killing entire processes.
+    /// allowing is to terminate nodes harshly by terminating entire processes.
     ///
     /// It also eliminates the possibility of "cheating" and a node peeking
     /// at shared state, since the nodes are properly isolated as if in a real cluster.

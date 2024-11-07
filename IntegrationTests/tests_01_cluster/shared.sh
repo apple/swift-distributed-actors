@@ -7,7 +7,7 @@
 ## Licensed under Apache License v2.0
 ##
 ## See LICENSE.txt for license information
-## See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+## See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 ##
 ## SPDX-License-Identifier: Apache-2.0
 ##
@@ -24,7 +24,7 @@ function _killall() {
     set +e
     local killall_app_name="$1"
     echo "> KILLALL: $killall_app_name"
-    ps aux | grep ${killall_app_name} | awk '{ print $2 }' | xargs kill -9
+    ps aux | grep ${killall_app_name} | awk '{ print $2 }' | xargs kill -9  # ignore-unacceptable-language
     set -e
 }
 

@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -26,7 +26,7 @@ extension Cluster {
     /// ### Replacement (Unique)Nodes
     /// A node (or member) is referred to as a "replacement" if it shares _the same_ protocol+host+address (i.e. ``Cluster/Endpoint``),
     /// with another member; It MAY join "over" an existing node and will immediately cause the previous node to be marked ``Cluster/MemberStatus/down``
-    /// upon such transition. Such situations can take place when an actor system node is killed and started on the same host+port immediately,
+    /// upon such transition. Such situations can take place when an actor system node is terminated and started on the same host+port immediately,
     /// and attempts to connect to the same cluster as its previous "incarnation". Such situation is called a replacement, and by the assumption
     /// of that it should not be possible to run many nodes on exact same host+port the previous node is immediately ejected and marked down.
     ///

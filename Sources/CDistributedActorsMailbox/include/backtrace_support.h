@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -20,7 +20,7 @@
  * Use only internally, mostly for 
  *
  * Swift names will be mangled.
- * Paste as: `pbpaste | ./scripts/sact_backtrace_demangle` to easily demangle the entire trace.
+ * Paste as: `pbpaste | ./scripts/sact_backtrace_demangle.sh` to easily demangle the entire trace.
  */
 void sact_dump_backtrace(void);
 
