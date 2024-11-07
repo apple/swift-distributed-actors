@@ -13,9 +13,10 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import Foundation
 import XCTest
+
+@testable import DistributedCluster
 
 final class ActorAskTests: SingleClusterSystemXCTestCase {
     struct TestMessage: Codable {
@@ -164,7 +165,8 @@ final class ActorAskTests: SingleClusterSystemXCTestCase {
         let _: _ActorRef<Never> = try system._spawn(
             "onResultAsync",
             .setup { context in
-                let askResult = void
+                let askResult =
+                    void
                     .ask(for: String.self, timeout: .seconds(1)) { AnswerMePlease(replyTo: $0) }
 
                 return context.awaitResult(of: askResult, timeout: .milliseconds(100)) { greeting in
@@ -181,7 +183,9 @@ final class ActorAskTests: SingleClusterSystemXCTestCase {
 
         let message = try p.expectMessage()
         message.shouldStartWith(prefix: "RemoteCallError(timedOut(")
-        message.shouldContain("DistributedCluster.TimeoutError(message: \"AskResponse<String> timed out after 100ms\", timeout: 0.1 seconds))")
+        message.shouldContain(
+            "DistributedCluster.TimeoutError(message: \"AskResponse<String> timed out after 100ms\", timeout: 0.1 seconds))"
+        )
     }
 
     func test_ask_onDeadLetters_shouldPutMessageIntoDeadLetters() async throws {

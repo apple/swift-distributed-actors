@@ -13,9 +13,10 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import Foundation
 import XCTest
+
+@testable import DistributedCluster
 
 final class ClusterSystemTests: SingleClusterSystemXCTestCase {
     let MaxSpecialTreatedValueTypeSizeInBytes = 24
@@ -27,7 +28,9 @@ final class ClusterSystemTests: SingleClusterSystemXCTestCase {
             let _: _ActorRef<String> = try system._spawn("test", .ignore)
         }
 
-        guard let systemError = error as? ClusterSystemError, case .duplicateActorPath(let path, _) = systemError.underlying.error else {
+        guard let systemError = error as? ClusterSystemError,
+            case .duplicateActorPath(let path, _) = systemError.underlying.error
+        else {
             XCTFail("Expected ClusterSystemError.duplicateActorPath, but was: \(error)")
             return
         }
@@ -81,7 +84,7 @@ final class ClusterSystemTests: SingleClusterSystemXCTestCase {
     }
 
     func test_shutdown_shouldReUseReceptacleWhenCalledMultipleTimes() async throws {
-        throw XCTSkip("Needs to be re-enabled") // FIXME: re-enable this test
+        throw XCTSkip("Needs to be re-enabled")  // FIXME: re-enable this test
         let system2 = await ClusterSystem("ShutdownSystem")
         let shutdown1 = try system2.shutdown()
         let shutdown2 = try system2.shutdown()
@@ -111,19 +114,19 @@ final class ClusterSystemTests: SingleClusterSystemXCTestCase {
 
     func test_terminated_triggerOnceSystemIsShutdown() async throws {
         let system2 = await ClusterSystem("ShutdownSystem") {
-            $0.enabled = false // no clustering
+            $0.enabled = false  // no clustering
         }
 
         Task.detached {
             try system2.shutdown()
         }
 
-        try await system2.terminated // should be terminated after shutdown()
+        try await system2.terminated  // should be terminated after shutdown()
     }
 
     func test_shutdownWait_triggerOnceSystemIsShutdown() async throws {
         let system2 = await ClusterSystem("ShutdownSystem") {
-            $0.enabled = false // no clustering
+            $0.enabled = false  // no clustering
         }
 
         try await system2.shutdown().wait()
@@ -150,7 +153,8 @@ final class ClusterSystemTests: SingleClusterSystemXCTestCase {
         local.cluster.join(endpoint: remote.cluster.endpoint)
 
         let remoteAssociationControlState0 = local._cluster!.getEnsureAssociation(with: remote.cluster.node)
-        guard case ClusterShell.StoredAssociationState.association(let remoteControl0) = remoteAssociationControlState0 else {
+        guard case ClusterShell.StoredAssociationState.association(let remoteControl0) = remoteAssociationControlState0
+        else {
             throw Boom("Expected the association to exist for \(remote.cluster.node)")
         }
 

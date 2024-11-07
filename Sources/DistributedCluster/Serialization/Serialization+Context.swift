@@ -13,9 +13,10 @@
 //===----------------------------------------------------------------------===//
 
 import Distributed
+import Logging
+
 import class Foundation.JSONDecoder
 import class Foundation.JSONEncoder
-import Logging
 import struct NIO.ByteBufferAllocator
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -58,7 +59,8 @@ extension Serialization {
         ///
         /// - Returns: the `_ActorRef` for given actor if if exists and is alive in the tree, `nil` otherwise
         public func _resolveActorRef<Message>(
-            _ messageType: Message.Type = Message.self, identifiedBy id: ActorID,
+            _ messageType: Message.Type = Message.self,
+            identifiedBy id: ActorID,
             userInfo: [CodingUserInfoKey: Any] = [:]
         ) -> _ActorRef<Message> where Message: Codable {
             let context = _ResolveContext<Message>(id: id, system: self.system, userInfo: userInfo)
@@ -66,7 +68,10 @@ extension Serialization {
         }
 
         /// Similar to `_resolveActorRef` but for an untyped `_AddressableActorRef`.
-        public func _resolveAddressableActorRef(identifiedBy id: ActorID, userInfo: [CodingUserInfoKey: Any] = [:]) -> _AddressableActorRef {
+        public func _resolveAddressableActorRef(
+            identifiedBy id: ActorID,
+            userInfo: [CodingUserInfoKey: Any] = [:]
+        ) -> _AddressableActorRef {
             let context = _ResolveContext<Never>(id: id, system: self.system, userInfo: userInfo)
             return self.system._resolveUntyped(context: context)
         }

@@ -36,7 +36,9 @@ public protocol DistributedWorker: DistributedActor {
 /// dynamically, e.g. if a node joins or removes itself from the cluster.
 ///
 // TODO: A pool can be configured to terminate itself when any of its workers terminate or attempt to spawn replacements.
-public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorker, LifecycleWatch, CustomStringConvertible where Worker.ActorSystem == ClusterSystem {
+public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorker, LifecycleWatch,
+    CustomStringConvertible
+where Worker.ActorSystem == ClusterSystem {
     public typealias ActorSystem = ClusterSystem
     public typealias WorkItem = Worker.WorkItem
     public typealias WorkResult = Worker.WorkResult
@@ -155,7 +157,7 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
     }
 }
 
-internal extension WorkerPool {
+extension WorkerPool {
     /// Directive that decides how the pool should react when all of its workers have terminated.
     enum AllWorkersTerminatedDirective {
         /// Move the pool back to its initial state and wait for new workers to join.
@@ -277,15 +279,15 @@ public struct WorkerPoolSettings<Worker: DistributedWorker> where Worker.ActorSy
         case .static(let workers):
             if case .awaitNewWorkers = self.whenAllWorkersTerminated {
                 let message = """
-                WorkerPool configured as [.static(\(workers))], MUST NOT be configured to await for new workers \
-                as new workers are impossible to spawn and add to the pool in the static configuration. The pool \
-                MUST terminate when in .static mode and all workers terminate. Alternatively, use a .dynamic pool, \
-                and provide an initial set of workers.
-                """
+                    WorkerPool configured as [.static(\(workers))], MUST NOT be configured to await for new workers \
+                    as new workers are impossible to spawn and add to the pool in the static configuration. The pool \
+                    MUST terminate when in .static mode and all workers terminate. Alternatively, use a .dynamic pool, \
+                    and provide an initial set of workers.
+                    """
                 throw WorkerPoolError(.illegalAwaitNewWorkersForStaticPoolConfigured(message))
             }
         default:
-            () // ok
+            ()  // ok
         }
 
         return self

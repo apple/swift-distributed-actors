@@ -59,7 +59,10 @@ public struct DeadLetter: _NotActuallyCodableMessage {
 
 extension ClusterSystem {
     /// Dead letters reference dedicated to a specific address.
-    public func personalDeadLetters<Message: Codable>(type: Message.Type = Message.self, recipient: ActorID) -> _ActorRef<Message> {
+    public func personalDeadLetters<Message: Codable>(
+        type: Message.Type = Message.self,
+        recipient: ActorID
+    ) -> _ActorRef<Message> {
         // TODO: rather could we send messages to self._deadLetters with enough info so it handles properly?
 
         guard recipient.node == self.settings.bindNode else {
@@ -75,10 +78,18 @@ extension ClusterSystem {
         let localRecipient: ActorID
         if recipient.path.segments.first == ActorPath._dead.segments.first {
             // drop the node from the address; and we know the pointed at ref is already dead; do not prefix it again
-            localRecipient = ActorID(local: self.settings.bindNode, path: recipient.path, incarnation: recipient.incarnation)
+            localRecipient = ActorID(
+                local: self.settings.bindNode,
+                path: recipient.path,
+                incarnation: recipient.incarnation
+            )
         } else {
             // drop the node from the address; and prepend it as known-to-be-dead
-            localRecipient = ActorID(local: self.settings.bindNode, path: ActorPath._dead.appending(segments: recipient.segments), incarnation: recipient.incarnation)
+            localRecipient = ActorID(
+                local: self.settings.bindNode,
+                path: ActorPath._dead.appending(segments: recipient.segments),
+                incarnation: recipient.incarnation
+            )
         }
         return _ActorRef(.deadLetters(.init(self.log, id: localRecipient, system: self))).adapt(from: Message.self)
     }
@@ -168,9 +179,17 @@ public final class DeadLetterOffice {
 
     func deliver(_ message: Any, file: String = #filePath, line: UInt = #line) {
         if let alreadyDeadLetter = message as? DeadLetter {
-            self.onDeadLetter(alreadyDeadLetter, file: alreadyDeadLetter.sentAtFile ?? file, line: alreadyDeadLetter.sentAtLine ?? line)
+            self.onDeadLetter(
+                alreadyDeadLetter,
+                file: alreadyDeadLetter.sentAtFile ?? file,
+                line: alreadyDeadLetter.sentAtLine ?? line
+            )
         } else {
-            self.onDeadLetter(DeadLetter(message, recipient: self.id, sentAtFile: file, sentAtLine: line), file: file, line: line)
+            self.onDeadLetter(
+                DeadLetter(message, recipient: self.id, sentAtFile: file, sentAtLine: line),
+                file: file,
+                line: line
+            )
         }
     }
 
@@ -184,13 +203,17 @@ public final class DeadLetterOffice {
 
         let recipientString: String
         if let recipient = deadLetter.recipient {
-            let deadID: ActorID = .init(remote: recipient.node, path: recipient.path, incarnation: recipient.incarnation)
+            let deadID: ActorID = .init(
+                remote: recipient.node,
+                path: recipient.path,
+                incarnation: recipient.incarnation
+            )
 
             // should not really happen, as the only way to get a remote ref is to resolve it, and a remote resolve always yields a remote ref
             // thus, it is impossible to resolve a remote address into a dead ref; however keeping this path in case we manually make such mistake
             // somewhere in internals, and can spot it then easily
             if recipient.path.starts(with: ._system), self.isShuttingDown() {
-                return // do not log dead letters to /system actors while shutting down
+                return  // do not log dead letters to /system actors while shutting down
             }
 
             metadata["actor/path"] = Logger.MetadataValue.stringConvertible(deadID.path)
@@ -199,8 +222,10 @@ public final class DeadLetterOffice {
             recipientString = ""
         }
 
-        if let systemMessage = deadLetter.message as? _SystemMessage, self.specialHandled(systemMessage, recipient: deadLetter.recipient) {
-            return // system message was special handled; no need to log it anymore
+        if let systemMessage = deadLetter.message as? _SystemMessage,
+            self.specialHandled(systemMessage, recipient: deadLetter.recipient)
+        {
+            return  // system message was special handled; no need to log it anymore
         }
 
         // in all other cases, we want to log the dead letter:
@@ -229,7 +254,7 @@ public final class DeadLetterOffice {
         case .tombstone:
             // FIXME: this should never happen; tombstone must always be taken in by the actor as last message
             traceLog_Mailbox(self.id.path, "Tombstone arrived in dead letters. TODO: make sure these dont happen")
-            return true // TODO: would be better to avoid them ending up here at all, this means that likely a double dead letter was sent
+            return true  // TODO: would be better to avoid them ending up here at all, this means that likely a double dead letter was sent
         case .watch(let watchee, let watcher):
             // if a watch message arrived here it either:
             //   - was sent to an actor which has terminated and arrived after the .tombstone, thus was drained to deadLetters

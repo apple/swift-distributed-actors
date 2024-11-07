@@ -59,13 +59,13 @@ extension Cluster {
 
         init(member: Member, toStatus: MemberStatus? = nil) {
             // FIXME: enable these assertions
-//            assertBacktrace(
-//                toStatus == nil || !(toStatus == .removed && member.status != .down),
-//                """
-//                Only legal and expected -> [.removed] transitions are from [.down], \
-//                yet attempted to move \(member) to \(toStatus, orElse: "nil")
-//                """
-//            )
+            //            assertBacktrace(
+            //                toStatus == nil || !(toStatus == .removed && member.status != .down),
+            //                """
+            //                Only legal and expected -> [.removed] transitions are from [.down], \
+            //                yet attempted to move \(member) to \(toStatus, orElse: "nil")
+            //                """
+            //            )
             self.replaced = nil
             if let to = toStatus {
                 var m = member
@@ -82,13 +82,13 @@ extension Cluster {
 
         init(node: Cluster.Node, previousStatus: MemberStatus?, toStatus: MemberStatus) {
             // FIXME: enable these assertions
-//          assertBacktrace(
-//                !(toStatus == .removed && fromStatus != .down),
-//                """
-//                Only legal and expected -> [.removed] transitions are from [.down], \
-//                yet attempted to move \(node) from \(fromStatus, orElse: "nil") to \(toStatus)
-//                """
-//            )
+            //          assertBacktrace(
+            //                !(toStatus == .removed && fromStatus != .down),
+            //                """
+            //                Only legal and expected -> [.removed] transitions are from [.down], \
+            //                yet attempted to move \(node) from \(fromStatus, orElse: "nil") to \(toStatus)
+            //                """
+            //            )
             self.member = .init(node: node, status: toStatus)
             self.replaced = nil
             self.previousStatus = previousStatus
@@ -97,9 +97,18 @@ extension Cluster {
 
         /// Use to create a "replacement", when the previousNode and node are different (i.e. they should only differ in ID, not host/port)
         init(replaced: Member, by newMember: Member) {
-            assert(replaced.node.host == newMember.node.host, "Replacement Cluster.MembershipChange should be for same non-unique node; Was: \(replaced), and \(newMember)")
-            assert(replaced.node.port == newMember.node.port, "Replacement Cluster.MembershipChange should be for same non-unique node; Was: \(replaced), and \(newMember)")
-            assert(newMember.status != .down, "Attempted to replace a member \(replaced) with a .down member: \(newMember)! This should never happen.")
+            assert(
+                replaced.node.host == newMember.node.host,
+                "Replacement Cluster.MembershipChange should be for same non-unique node; Was: \(replaced), and \(newMember)"
+            )
+            assert(
+                replaced.node.port == newMember.node.port,
+                "Replacement Cluster.MembershipChange should be for same non-unique node; Was: \(replaced), and \(newMember)"
+            )
+            assert(
+                newMember.status != .down,
+                "Attempted to replace a member \(replaced) with a .down member: \(newMember)! This should never happen."
+            )
 
             self.replaced = replaced
             self.member = newMember
@@ -112,10 +121,8 @@ extension Cluster {
         }
 
         public static func == (lhs: MembershipChange, rhs: MembershipChange) -> Bool {
-            lhs.member == rhs.member &&
-                lhs.replaced == rhs.replaced &&
-                lhs.previousStatus == rhs.previousStatus &&
-                lhs.status == rhs.status
+            lhs.member == rhs.member && lhs.replaced == rhs.replaced && lhs.previousStatus == rhs.previousStatus
+                && lhs.status == rhs.status
         }
     }
 }
@@ -162,11 +169,9 @@ extension Cluster.MembershipChange: CustomStringConvertible {
         } else {
             base = "\(reflecting: self.node)"
         }
-        return base +
-            " :: " +
-            "[\(self.previousStatus?.rawValue ?? "unknown", leftPadTo: Cluster.MemberStatus.maxStrLen)]" +
-            " -> " +
-            "[\(self.status.rawValue, leftPadTo: Cluster.MemberStatus.maxStrLen)]"
+        return base + " :: "
+            + "[\(self.previousStatus?.rawValue ?? "unknown", leftPadTo: Cluster.MemberStatus.maxStrLen)]" + " -> "
+            + "[\(self.status.rawValue, leftPadTo: Cluster.MemberStatus.maxStrLen)]"
     }
 }
 
@@ -213,7 +218,12 @@ extension Cluster {
         #endif
 
         #if DEBUG
-        public init?(oldLeader: Cluster.Member?, newLeader: Cluster.Member?, file: String = #filePath, line: UInt = #line) {
+        public init?(
+            oldLeader: Cluster.Member?,
+            newLeader: Cluster.Member?,
+            file: String = #filePath,
+            line: UInt = #line
+        ) {
             guard oldLeader != newLeader else {
                 return nil
             }

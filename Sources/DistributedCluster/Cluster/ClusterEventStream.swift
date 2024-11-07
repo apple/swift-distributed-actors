@@ -46,7 +46,7 @@ public struct ClusterEventStream: AsyncSequence {
     func _subscribe(_ ref: _ActorRef<Cluster.Event>, file: String = #filePath, line: UInt = #line) async {
         guard let actor = self.actor else { return }
 
-        await actor.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
+        await actor.whenLocal { __secretlyKnownToBeLocal in  // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
             __secretlyKnownToBeLocal.subscribe(ref)
         }
     }
@@ -60,7 +60,7 @@ public struct ClusterEventStream: AsyncSequence {
     func _unsubscribe(_ ref: _ActorRef<Cluster.Event>, file: String = #filePath, line: UInt = #line) async {
         guard let actor = self.actor else { return }
 
-        await actor.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
+        await actor.whenLocal { __secretlyKnownToBeLocal in  // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
             __secretlyKnownToBeLocal.unsubscribe(ref)
         }
     }
@@ -68,7 +68,7 @@ public struct ClusterEventStream: AsyncSequence {
     private func subscribe(_ oid: ObjectIdentifier, eventHandler: @escaping (Cluster.Event) -> Void) async {
         guard let actor = self.actor else { return }
 
-        await actor.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
+        await actor.whenLocal { __secretlyKnownToBeLocal in  // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
             __secretlyKnownToBeLocal.subscribe(oid, eventHandler: eventHandler)
         }
     }
@@ -76,7 +76,7 @@ public struct ClusterEventStream: AsyncSequence {
     private func unsubscribe(_ oid: ObjectIdentifier) async {
         guard let actor = self.actor else { return }
 
-        await actor.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
+        await actor.whenLocal { __secretlyKnownToBeLocal in  // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
             __secretlyKnownToBeLocal.unsubscribe(oid)
         }
     }
@@ -84,7 +84,7 @@ public struct ClusterEventStream: AsyncSequence {
     func publish(_ event: Cluster.Event, file: String = #filePath, line: UInt = #line) async {
         guard let actor = self.actor else { return }
 
-        await actor.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
+        await actor.whenLocal { __secretlyKnownToBeLocal in  // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
             __secretlyKnownToBeLocal.publish(event)
         }
     }
@@ -192,12 +192,16 @@ internal distributed actor ClusterEventStreamActor: LifecycleWatch {
                 "Published event \(event) to \(self.subscribers.count) subscribers and \(self.asyncSubscribers.count) async subscribers",
                 metadata: [
                     "eventStream/event": "\(reflecting: event)",
-                    "eventStream/subscribers": Logger.MetadataValue.array(self.subscribers.map {
-                        Logger.MetadataValue.stringConvertible($0.key)
-                    }),
-                    "eventStream/asyncSubscribers": Logger.MetadataValue.array(self.asyncSubscribers.map {
-                        Logger.MetadataValue.stringConvertible("\($0.key)")
-                    }),
+                    "eventStream/subscribers": Logger.MetadataValue.array(
+                        self.subscribers.map {
+                            Logger.MetadataValue.stringConvertible($0.key)
+                        }
+                    ),
+                    "eventStream/asyncSubscribers": Logger.MetadataValue.array(
+                        self.asyncSubscribers.map {
+                            Logger.MetadataValue.stringConvertible("\($0.key)")
+                        }
+                    ),
                 ]
             )
         } catch {

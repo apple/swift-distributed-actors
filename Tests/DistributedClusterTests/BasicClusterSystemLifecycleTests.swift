@@ -13,8 +13,9 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import XCTest
+
+@testable import DistributedCluster
 
 final class BasicClusterSystemLifecycleTests: SingleClusterSystemXCTestCase, @unchecked Sendable {
     func test_system_shouldAssignIdentityAndReadyActor() async throws {

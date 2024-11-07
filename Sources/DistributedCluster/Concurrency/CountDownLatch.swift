@@ -46,7 +46,7 @@ internal class CountDownLatch {
         self.lock.synchronized {
             while true {
                 if self.counter == 0 {
-                    return // done
+                    return  // done
                 }
 
                 if let duration = duration {

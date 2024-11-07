@@ -12,11 +12,11 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Distributed
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import XCTest
 
-import Distributed
+@testable import DistributedCluster
 
 private let defaultRunAndBlockTimeout: Duration = .seconds(60)
 

@@ -12,11 +12,10 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Foundation  // for Codable
 import NIO
 import NIOFoundationCompat
 import SwiftProtobuf
-
-import Foundation // for Codable
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: String Serializer
@@ -49,7 +48,9 @@ internal class StringSerializer: Serializer<String> {
             }
             return s
         case ._PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE:
-            throw SerializationError(.notAbleToDeserialize(hint: "\(Self.self) is [\(self)]. This should not happen, please file an issue."))
+            throw SerializationError(
+                .notAbleToDeserialize(hint: "\(Self.self) is [\(self)]. This should not happen, please file an issue.")
+            )
         }
     }
 }
@@ -81,7 +82,9 @@ internal class IntegerSerializer<Number: FixedWidthInteger>: Serializer<Number> 
             }
             return i
         case ._PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE:
-            throw SerializationError(.notAbleToDeserialize(hint: "\(Self.self) is [\(self)]. This should not happen, please file an issue."))
+            throw SerializationError(
+                .notAbleToDeserialize(hint: "\(Self.self) is [\(self)]. This should not happen, please file an issue.")
+            )
         }
     }
 }
@@ -112,7 +115,9 @@ internal class BoolSerializer: Serializer<Bool> {
             }
             return i == 1
         case ._PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE:
-            throw SerializationError(.notAbleToDeserialize(hint: "\(Self.self) is [\(self)]. This should not happen, please file an issue."))
+            throw SerializationError(
+                .notAbleToDeserialize(hint: "\(Self.self) is [\(self)]. This should not happen, please file an issue.")
+            )
         }
     }
 }

@@ -13,9 +13,10 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import Foundation
 import XCTest
+
+@testable import DistributedCluster
 
 final class EndpointTests: XCTestCase {
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -41,7 +42,10 @@ final class EndpointTests: XCTestCase {
     }
 
     func test_node_comparison_equal() {
-        let two = Cluster.Node(endpoint: Cluster.Endpoint(systemName: "SystemName", host: "188.121.122.3", port: 1111), nid: Cluster.Node.ID(2222))
+        let two = Cluster.Node(
+            endpoint: Cluster.Endpoint(systemName: "SystemName", host: "188.121.122.3", port: 1111),
+            nid: Cluster.Node.ID(2222)
+        )
         let anotherTwo = two
 
         two.shouldEqual(anotherTwo)
@@ -49,8 +53,14 @@ final class EndpointTests: XCTestCase {
     }
 
     func test_node_comparison_lessThan() {
-        let two = Cluster.Node(endpoint: Cluster.Endpoint(systemName: "SystemName", host: "188.121.122.3", port: 1111), nid: Cluster.Node.ID(2222))
-        let three = Cluster.Node(endpoint: Cluster.Endpoint(systemName: "SystemName", host: "188.121.122.3", port: 1111), nid: Cluster.Node.ID(3333))
+        let two = Cluster.Node(
+            endpoint: Cluster.Endpoint(systemName: "SystemName", host: "188.121.122.3", port: 1111),
+            nid: Cluster.Node.ID(2222)
+        )
+        let three = Cluster.Node(
+            endpoint: Cluster.Endpoint(systemName: "SystemName", host: "188.121.122.3", port: 1111),
+            nid: Cluster.Node.ID(3333)
+        )
 
         two.shouldBeLessThan(three)
     }

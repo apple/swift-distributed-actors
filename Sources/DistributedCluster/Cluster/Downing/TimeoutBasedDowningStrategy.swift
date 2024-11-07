@@ -76,13 +76,13 @@ public final class TimeoutBasedDowningStrategy: DowningStrategy {
             }
 
         case ._PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE:
-            return .none // do nothing
+            return .none  // do nothing
         }
     }
 
     public func onTimeout(_ member: Cluster.Member) -> DowningStrategyDirective {
         guard let nodeToDown = self._unreachable.remove(member) else {
-            return .none // perhaps we removed it already for other reasons (e.g. node replacement)
+            return .none  // perhaps we removed it already for other reasons (e.g. node replacement)
         }
         if self.isLeader {
             return .markAsDown(members: [nodeToDown])

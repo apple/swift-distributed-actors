@@ -13,15 +13,20 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import Foundation
 import NIO
 import SwiftProtobuf
 import XCTest
 
+@testable import DistributedCluster
+
 final class ProtobufRoundTripTests: SingleClusterSystemXCTestCase {
     func check<Value: _ProtobufRepresentable & Equatable>(_ value: Value) throws {
-        let context = Serialization.Context(log: self.system.log, system: self.system, allocator: self.system.serialization.allocator)
+        let context = Serialization.Context(
+            log: self.system.log,
+            system: self.system,
+            allocator: self.system.serialization.allocator
+        )
         let proto = try value.toProto(context: context)
         let back = try Value(fromProto: proto, context: context)
         back.shouldEqual(value)
@@ -48,7 +53,11 @@ final class ProtobufRoundTripTests: SingleClusterSystemXCTestCase {
     // MARK: Handshake protocol
 
     func test_roundTrip_Wire_HandshakeOffer() throws {
-        let offer = Wire.HandshakeOffer(version: .init(reserved: 2, major: 3, minor: 5, patch: 5), originNode: self.node, targetEndpoint: self.node.endpoint)
+        let offer = Wire.HandshakeOffer(
+            version: .init(reserved: 2, major: 3, minor: 5, patch: 5),
+            originNode: self.node,
+            targetEndpoint: self.node.endpoint
+        )
         let proto = _ProtoHandshakeOffer(offer)
         let back = try Wire.HandshakeOffer(fromProto: proto)
         back.shouldEqual(offer)

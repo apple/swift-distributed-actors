@@ -13,11 +13,12 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import Foundation
 import NIO
 import NIOFoundationCompat
 import XCTest
+
+@testable import DistributedCluster
 
 final class SerializationPoolTests: XCTestCase {
     struct Test1: Codable {
@@ -69,8 +70,14 @@ final class SerializationPoolTests: XCTestCase {
         init() {}
     }
 
-    let manifest1 = Serialization.Manifest(serializerID: Serialization.SerializerID.foundationJSON, hint: Serialization.getTypeHint(Test1.self))
-    let manifest2 = Serialization.Manifest(serializerID: Serialization.SerializerID.foundationJSON, hint: Serialization.getTypeHint(Test2.self))
+    let manifest1 = Serialization.Manifest(
+        serializerID: Serialization.SerializerID.foundationJSON,
+        hint: Serialization.getTypeHint(Test1.self)
+    )
+    let manifest2 = Serialization.Manifest(
+        serializerID: Serialization.SerializerID.foundationJSON,
+        hint: Serialization.getTypeHint(Test2.self)
+    )
 
     var system: ClusterSystem!
     var testKit: ActorTestKit!
@@ -86,8 +93,10 @@ final class SerializationPoolTests: XCTestCase {
         DeserializationCallback {
             switch $0 {
             case .success(.message(let message as T)): promise.succeed(message)
-            case .success(.message(let message)): promise.fail(TestError("Could not treat [\(message)]:\(type(of: message as Any)) as \(T.self)"))
-            case .success(.deadLetter(let deadLetter)): promise.fail(TestError("Got unexpected dead letter: \(deadLetter)"))
+            case .success(.message(let message)):
+                promise.fail(TestError("Could not treat [\(message)]:\(type(of: message as Any)) as \(T.self)"))
+            case .success(.deadLetter(let deadLetter)):
+                promise.fail(TestError("Got unexpected dead letter: \(deadLetter)"))
             case .failure(let error): promise.fail(error)
             }
         }
@@ -147,7 +156,10 @@ final class SerializationPoolTests: XCTestCase {
     }
 
     func test_serializationPool_shouldSerializeMessagesInTheSameNonDefaultGroupInSequence() throws {
-        let serializationPool = try _SerializationPool(settings: SerializationPoolSettings(serializationGroups: [[self.actorPath1, self.actorPath2]]), serialization: self.system.serialization)
+        let serializationPool = try _SerializationPool(
+            settings: SerializationPoolSettings(serializationGroups: [[self.actorPath1, self.actorPath2]]),
+            serialization: self.system.serialization
+        )
         defer { serializationPool.shutdown() }
 
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
@@ -182,7 +194,10 @@ final class SerializationPoolTests: XCTestCase {
     }
 
     func test_serializationPool_shouldSerializeMessagesInDifferentNonDefaultGroupsInParallel() throws {
-        let serializationPool = try _SerializationPool(settings: SerializationPoolSettings(serializationGroups: [[self.actorPath1], [self.actorPath2]]), serialization: self.system.serialization)
+        let serializationPool = try _SerializationPool(
+            settings: SerializationPoolSettings(serializationGroups: [[self.actorPath1], [self.actorPath2]]),
+            serialization: self.system.serialization
+        )
         defer { serializationPool.shutdown() }
 
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
@@ -246,14 +261,27 @@ final class SerializationPoolTests: XCTestCase {
             p.tell("p2")
         }
 
-        serializationPool.deserializeAny(from: .nioByteBuffer(buffer1), using: self.manifest1, recipientPath: self.actorPath1, callback: self.completePromise(Test1.self, promise1))
+        serializationPool.deserializeAny(
+            from: .nioByteBuffer(buffer1),
+            using: self.manifest1,
+            recipientPath: self.actorPath1,
+            callback: self.completePromise(Test1.self, promise1)
+        )
         try p.expectMessage("p1")
-        serializationPool.deserializeAny(from: .nioByteBuffer(buffer2), using: self.manifest2, recipientPath: self.actorPath2, callback: self.completePromise(Test2.self, promise2))
+        serializationPool.deserializeAny(
+            from: .nioByteBuffer(buffer2),
+            using: self.manifest2,
+            recipientPath: self.actorPath2,
+            callback: self.completePromise(Test2.self, promise2)
+        )
         try p.expectMessage("p2")
     }
 
     func test_serializationPool_shouldDeserializeMessagesInTheSameNonDefaultGroupInSequence() throws {
-        let serializationPool = try _SerializationPool(settings: SerializationPoolSettings(serializationGroups: [[self.actorPath1, self.actorPath2]]), serialization: self.system.serialization)
+        let serializationPool = try _SerializationPool(
+            settings: SerializationPoolSettings(serializationGroups: [[self.actorPath1, self.actorPath2]]),
+            serialization: self.system.serialization
+        )
         defer { serializationPool.shutdown() }
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
         let json = "{}"
@@ -281,8 +309,18 @@ final class SerializationPoolTests: XCTestCase {
             p.tell("p2")
         }
 
-        serializationPool.deserializeAny(from: .nioByteBuffer(buffer1), using: self.manifest1, recipientPath: self.actorPath1, callback: self.completePromise(Test1.self, promise1))
-        serializationPool.deserializeAny(from: .nioByteBuffer(buffer2), using: self.manifest2, recipientPath: self.actorPath2, callback: self.completePromise(Test2.self, promise2))
+        serializationPool.deserializeAny(
+            from: .nioByteBuffer(buffer1),
+            using: self.manifest1,
+            recipientPath: self.actorPath1,
+            callback: self.completePromise(Test1.self, promise1)
+        )
+        serializationPool.deserializeAny(
+            from: .nioByteBuffer(buffer2),
+            using: self.manifest2,
+            recipientPath: self.actorPath2,
+            callback: self.completePromise(Test2.self, promise2)
+        )
 
         Test2.deserializerLock.unlock()
 
@@ -294,7 +332,10 @@ final class SerializationPoolTests: XCTestCase {
     }
 
     func test_serializationPool_shouldDeserializeMessagesInDifferentNonDefaultGroupsInParallel() throws {
-        let serializationPool = try _SerializationPool(settings: SerializationPoolSettings(serializationGroups: [[self.actorPath1], [self.actorPath2]]), serialization: self.system.serialization)
+        let serializationPool = try _SerializationPool(
+            settings: SerializationPoolSettings(serializationGroups: [[self.actorPath1], [self.actorPath2]]),
+            serialization: self.system.serialization
+        )
         defer { serializationPool.shutdown() }
 
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
@@ -321,8 +362,18 @@ final class SerializationPoolTests: XCTestCase {
         promise2.futureResult.whenSuccess { _ in
             p.tell("p2")
         }
-        serializationPool.deserializeAny(from: .nioByteBuffer(buffer1), using: self.manifest1, recipientPath: self.actorPath1, callback: self.completePromise(Test1.self, promise1))
-        serializationPool.deserializeAny(from: .nioByteBuffer(buffer2), using: self.manifest2, recipientPath: self.actorPath2, callback: self.completePromise(Test2.self, promise2))
+        serializationPool.deserializeAny(
+            from: .nioByteBuffer(buffer1),
+            using: self.manifest1,
+            recipientPath: self.actorPath1,
+            callback: self.completePromise(Test1.self, promise1)
+        )
+        serializationPool.deserializeAny(
+            from: .nioByteBuffer(buffer2),
+            using: self.manifest2,
+            recipientPath: self.actorPath2,
+            callback: self.completePromise(Test2.self, promise2)
+        )
 
         Test2.deserializerLock.unlock()
         try p.expectMessage("p2")
@@ -332,7 +383,10 @@ final class SerializationPoolTests: XCTestCase {
     }
 
     func test_serializationPool_shouldExecuteSerializationAndDeserializationGroupsOnSeparateWorkerPools() throws {
-        let serializationPool = try _SerializationPool(settings: SerializationPoolSettings(serializationGroups: [[self.actorPath1]]), serialization: self.system.serialization)
+        let serializationPool = try _SerializationPool(
+            settings: SerializationPoolSettings(serializationGroups: [[self.actorPath1]]),
+            serialization: self.system.serialization
+        )
         defer { serializationPool.shutdown() }
 
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
@@ -357,7 +411,12 @@ final class SerializationPoolTests: XCTestCase {
         promise1.futureResult.whenFailure { print("\($0)") }
 
         serializationPool.serialize(message: test1, recipientPath: self.actorPath1, promise: promise1)
-        serializationPool.deserializeAny(from: .nioByteBuffer(buffer), using: self.manifest1, recipientPath: self.actorPath1, callback: self.completePromise(Test1.self, promise2))
+        serializationPool.deserializeAny(
+            from: .nioByteBuffer(buffer),
+            using: self.manifest1,
+            recipientPath: self.actorPath1,
+            callback: self.completePromise(Test1.self, promise2)
+        )
 
         try p.expectNoMessage(for: .milliseconds(20))
 

@@ -74,7 +74,10 @@ public final class _OperationLogClusterReceptionist {
     /// gives a good idea how far "behind" we are with regards to changed performed at that peer.
     var appliedSequenceNrs: VersionVector
 
-    internal init(settings: ReceptionistSettings, instrumentation: _ReceptionistInstrumentation = NoopReceptionistInstrumentation()) {
+    internal init(
+        settings: ReceptionistSettings,
+        instrumentation: _ReceptionistInstrumentation = NoopReceptionistInstrumentation()
+    ) {
         self.instrumentation = instrumentation
 
         self.ops = .init(batchSize: settings.syncBatchSize)
@@ -104,7 +107,8 @@ public final class _OperationLogClusterReceptionist {
             // periodically gossip to other receptionists with the last seqNr we've seen,
             // and if it happens to be outdated by then this will cause a push from that node.
             context.timers.startPeriodic(
-                key: Self.slowACKReplicationTick, message: Self.PeriodicAckTick(),
+                key: Self.slowACKReplicationTick,
+                message: Self.PeriodicAckTick(),
                 interval: context.system.settings.receptionist.ackPullReplicationIntervalSlow
             )
 
@@ -124,21 +128,21 @@ public final class _OperationLogClusterReceptionist {
                     do {
                         try self.onRegister(context: context, message: message)
                     } catch {
-                        context.log.error("Receptionist error caught: \(error)") // TODO: simplify, but we definitely cannot escalate here
+                        context.log.error("Receptionist error caught: \(error)")  // TODO: simplify, but we definitely cannot escalate here
                     }
 
                 case let message as _Lookup:
                     do {
-                        try self.onLookup(context: context, message: message) // FIXME: would kill the receptionist!
+                        try self.onLookup(context: context, message: message)  // FIXME: would kill the receptionist!
                     } catch {
-                        context.log.error("Receptionist error caught: \(error)") // TODO: simplify, but we definitely cannot escalate here
+                        context.log.error("Receptionist error caught: \(error)")  // TODO: simplify, but we definitely cannot escalate here
                     }
 
                 case let message as _Subscribe:
                     do {
-                        try self.onSubscribe(context: context, message: message) // FIXME: would kill the receptionist!
+                        try self.onSubscribe(context: context, message: message)  // FIXME: would kill the receptionist!
                     } catch {
-                        context.log.error("Receptionist error caught: \(error)") // TODO: simplify, but we definitely cannot escalate here
+                        context.log.error("Receptionist error caught: \(error)")  // TODO: simplify, but we definitely cannot escalate here
                     }
 
                 case let message as _ReceptionistDelayedListingFlushTick:
@@ -184,11 +188,13 @@ extension _OperationLogClusterReceptionist {
         let ref = message._addressableActorRef
 
         guard ref.id._isLocal || (ref.id.node == context.system.cluster.node) else {
-            context.log.warning("""
-            Actor [\(ref)] attempted to register under key [\(key)], with NOT-local receptionist! \
-            Actors MUST register with their local receptionist in today's Receptionist implementation.
-            """)
-            return // TODO: This restriction could be lifted; perhaps we can direct the register to the right node?
+            context.log.warning(
+                """
+                Actor [\(ref)] attempted to register under key [\(key)], with NOT-local receptionist! \
+                Actors MUST register with their local receptionist in today's Receptionist implementation.
+                """
+            )
+            return  // TODO: This restriction could be lifted; perhaps we can direct the register to the right node?
         }
 
         if self.storage.addRegistration(key: key, ref: ref) {
@@ -227,19 +233,26 @@ extension _OperationLogClusterReceptionist {
 
         if self.storage.registrations(forKey: key)?.isEmpty ?? true {
             self.notifySubscribers(of: key)
-            return // no need to schedule, there are no registered actors at all, we eagerly emit this info
+            return  // no need to schedule, there are no registered actors at all, we eagerly emit this info
         }
 
         guard !context.timers.exists(key: timerKey) else {
-            return // timer exists nothing to do
+            return  // timer exists nothing to do
         }
 
         // TODO: also flush when a key has seen e.g. 100 changes?
         let flushDelay = context.system.settings.receptionist.listingFlushDelay
-        context.timers.startSingle(key: timerKey, message: _ReceptionistDelayedListingFlushTick(key: key), delay: flushDelay)
+        context.timers.startSingle(
+            key: timerKey,
+            message: _ReceptionistDelayedListingFlushTick(key: key),
+            delay: flushDelay
+        )
     }
 
-    func onDelayedListingFlushTick(context: _ActorContext<_ReceptionistMessage>, message: _ReceptionistDelayedListingFlushTick) {
+    func onDelayedListingFlushTick(
+        context: _ActorContext<_ReceptionistMessage>,
+        message: _ReceptionistDelayedListingFlushTick
+    ) {
         context.log.trace("Delayed listing flush: \(message.key)")
 
         self.notifySubscribers(of: message.key)
@@ -250,10 +263,14 @@ extension _OperationLogClusterReceptionist {
 
         guard let subscriptions = self.storage.subscriptions(forKey: key) else {
             self.instrumentation.listingPublished(key: key, subscribers: 0, registrations: registrations.count)
-            return // ok, no-one to notify
+            return  // ok, no-one to notify
         }
 
-        self.instrumentation.listingPublished(key: key, subscribers: subscriptions.count, registrations: registrations.count)
+        self.instrumentation.listingPublished(
+            key: key,
+            subscribers: subscriptions.count,
+            registrations: registrations.count
+        )
         for subscription in subscriptions {
             subscription._replyWith(registrations)
         }
@@ -292,7 +309,9 @@ extension _OperationLogClusterReceptionist {
             metadata: [
                 "receptionist/peer": "\(push.peer.id)",
                 "receptionist/lastKnownSeqNrAtPeer": "\(lastAppliedSeqNrAtPeer)",
-                "receptionist/opsToApply": Logger.Metadata.Value.array(opsToApply.map { Logger.Metadata.Value.string("\($0)") }),
+                "receptionist/opsToApply": Logger.Metadata.Value.array(
+                    opsToApply.map { Logger.Metadata.Value.string("\($0)") }
+                ),
             ]
         )
 
@@ -315,8 +334,8 @@ extension _OperationLogClusterReceptionist {
         // Note that we purposefully also skip replying to the peer (sender) to the sender of this push yet,
         // we will do so below in any case, regardless if we are behind or not; See (4) for ACKing the peer
         for replica in push.observedSeqNrs.replicaIDs
-            where replica != peerReplicaId && replica != myselfReplicaID &&
-            self.observedSequenceNrs[replica] < push.observedSeqNrs[replica]
+        where replica != peerReplicaId && replica != myselfReplicaID
+            && self.observedSequenceNrs[replica] < push.observedSeqNrs[replica]
         {
             switch replica.storage {
             case .actorID(let address):
@@ -342,13 +361,17 @@ extension _OperationLogClusterReceptionist {
         //    ops it might want to send, so we want to allow it to get those over to us as quickly as possible,
         //    without waiting for our Ack ticks to trigger (which could be configured pretty slow).
         let nextPeriodicAckAllowedIn: Duration = context.system.settings.receptionist.ackPullReplicationIntervalSlow * 2
-        self.nextPeriodicAckPermittedDeadline[peer] = .fromNow(nextPeriodicAckAllowedIn) // TODO: context.system.timeSource
+        self.nextPeriodicAckPermittedDeadline[peer] = .fromNow(nextPeriodicAckAllowedIn)  // TODO: context.system.timeSource
     }
 
     /// Apply incoming operation from `peer` and update the associated applied sequenceNumber tracking
     ///
     /// - Returns: Set of keys which have been updated during this
-    func applyIncomingOp(_ context: _ActorContext<Message>, from peer: _ActorRef<Message>, _ sequenced: OpLog<ReceptionistOp>.SequencedOp) -> AnyReceptionKey {
+    func applyIncomingOp(
+        _ context: _ActorContext<Message>,
+        from peer: _ActorRef<Message>,
+        _ sequenced: OpLog<ReceptionistOp>.SequencedOp
+    ) -> AnyReceptionKey {
         let op = sequenced.op
 
         // apply operation to storage
@@ -383,9 +406,12 @@ extension _OperationLogClusterReceptionist {
         receptionistAddress: ActorID,
         maybeReceptionistRef: ReceptionistRef? = nil
     ) {
-        assert(maybeReceptionistRef == nil || maybeReceptionistRef?.id == receptionistAddress, "Provided receptionistRef does NOT match passed Address, this is a bug in receptionist.")
+        assert(
+            maybeReceptionistRef == nil || maybeReceptionistRef?.id == receptionistAddress,
+            "Provided receptionistRef does NOT match passed Address, this is a bug in receptionist."
+        )
         guard case .remote = receptionistAddress._location else {
-            return // this would mean we tried to pull from a "local" receptionist, bail out
+            return  // this would mean we tried to pull from a "local" receptionist, bail out
         }
 
         guard self.membership.contains(receptionistAddress.node) else {
@@ -396,9 +422,11 @@ extension _OperationLogClusterReceptionist {
 
         let peerReceptionistRef: ReceptionistRef
         if let ref = maybeReceptionistRef {
-            peerReceptionistRef = ref // allows avoiding to have to perform a resolve here
+            peerReceptionistRef = ref  // allows avoiding to have to perform a resolve here
         } else {
-            peerReceptionistRef = context.system._resolve(context: .init(id: receptionistAddress, system: context.system))
+            peerReceptionistRef = context.system._resolve(
+                context: .init(id: receptionistAddress, system: context.system)
+            )
         }
 
         // Get the latest seqNr of the op that we have applied to our state
@@ -419,13 +447,17 @@ extension _OperationLogClusterReceptionist {
     /// Listings have changed for this key, thus we need to publish them to all subscribers
     private func publishListings(_ context: _ActorContext<Message>, forKey key: AnyReceptionKey) {
         guard let subscribers = self.storage.subscriptions(forKey: key) else {
-            return // no subscribers for this key
+            return  // no subscribers for this key
         }
 
         self.publishListings(context, forKey: key, to: subscribers)
     }
 
-    private func publishListings(_ context: _ActorContext<Message>, forKey key: AnyReceptionKey, to subscribers: Set<AnySubscribe>) {
+    private func publishListings(
+        _ context: _ActorContext<Message>,
+        forKey key: AnyReceptionKey,
+        to subscribers: Set<AnySubscribe>
+    ) {
         let registrations = self.storage.registrations(forKey: key) ?? []
 
         context.log.trace(
@@ -454,7 +486,7 @@ extension _OperationLogClusterReceptionist {
             /// - if we are NOT in the middle of receiving ops, we share our observed versions and ack as means of spreading information about the seen SeqNrs
             ///   - this may cause the other peer to pull (ack) from any other peer receptionist, if it notices it is "behind" with regards to any of them. // FIXME: what if a peer notices "twice" so we also need to prevent a timer from resending that ack?
             if let periodicAckAllowedAgainDeadline = self.nextPeriodicAckPermittedDeadline[peer],
-               periodicAckAllowedAgainDeadline.hasTimeLeft()
+                periodicAckAllowedAgainDeadline.hasTimeLeft()
             {
                 // we still cannot send acks to this peer, it is in the middle of a message exchange with us already
                 continue
@@ -468,9 +500,15 @@ extension _OperationLogClusterReceptionist {
     }
 
     /// Receive an Ack and potentially continue streaming ops to peer if still pending operations available.
-    private func receiveAckOps(_ context: _ActorContext<Message>, until: UInt64, by peer: _ActorRef<_OperationLogClusterReceptionist.Message>) {
+    private func receiveAckOps(
+        _ context: _ActorContext<Message>,
+        until: UInt64,
+        by peer: _ActorRef<_OperationLogClusterReceptionist.Message>
+    ) {
         guard var replayer = self.peerReceptionistReplayers[peer] else {
-            context.log.trace("Received a confirmation until \(until) from \(peer) but no replayer available for it, ignoring")
+            context.log.trace(
+                "Received a confirmation until \(until) from \(peer) but no replayer available for it, ignoring"
+            )
             return
         }
 
@@ -482,7 +520,7 @@ extension _OperationLogClusterReceptionist {
 
     private func replicateOpsBatch(_ context: _ActorContext<Message>, to peer: _ActorRef<Receptionist.Message>) {
         guard peer.id != context.id else {
-            return // no reason to stream updates to myself
+            return  // no reason to stream updates to myself
         }
 
         guard let replayer = self.peerReceptionistReplayers[peer] else {
@@ -492,7 +530,7 @@ extension _OperationLogClusterReceptionist {
 
         let sequencedOps = replayer.nextOpsChunk()
         guard !sequencedOps.isEmpty else {
-            return // nothing to stream, done
+            return  // nothing to stream, done
         }
 
         context.log.debug(
@@ -502,7 +540,7 @@ extension _OperationLogClusterReceptionist {
                 "receptionist/ops/replay/atSeqNr": "\(replayer.atSeqNr)",
                 "receptionist/ops/maxSeqNr": "\(self.ops.maxSeqNr)",
             ]
-        ) // TODO: metadata pattern
+        )  // TODO: metadata pattern
 
         let pushOps = PushOps(
             peer: context.myself,
@@ -581,12 +619,12 @@ extension _OperationLogClusterReceptionist {
         case .snapshot(let snapshot):
             let diff = Cluster.Membership._diff(from: .empty, to: snapshot)
             guard !diff.changes.isEmpty else {
-                return // empty changes, nothing to act on
+                return  // empty changes, nothing to act on
             }
             context.log.debug(
                 "Changes from initial snapshot, applying one by one",
                 metadata: [
-                    "membership/changes": "\(diff.changes)",
+                    "membership/changes": "\(diff.changes)"
                 ]
             )
             diff.changes.forEach { change in
@@ -607,27 +645,32 @@ extension _OperationLogClusterReceptionist {
             }
 
         case .leadershipChange, .reachabilityChange:
-            return // we ignore those
+            return  // we ignore those
 
         case ._PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE:
             context.log.error("Received Cluster.Event [\(event)]. This should not happen, please file an issue.")
         }
     }
 
-    private func onNewClusterMember(_ context: _ActorContext<_OperationLogClusterReceptionist.Message>, change: Cluster.MembershipChange) {
+    private func onNewClusterMember(
+        _ context: _ActorContext<_OperationLogClusterReceptionist.Message>,
+        change: Cluster.MembershipChange
+    ) {
         guard change.previousStatus == nil else {
-            return // not a new member
+            return  // not a new member
         }
 
         guard change.node != context.system.cluster.node else {
-            return // no need to contact our own node, this would be "us"
+            return  // no need to contact our own node, this would be "us"
         }
 
         context.log.debug("New member, contacting its receptionist: \(change.node)")
 
         // resolve receptionist on the other node, so we can stream our registrations to it
         let remoteReceptionistAddress = ActorID._receptionist(on: change.node, for: .actorRefs)
-        let remoteReceptionist: _ActorRef<Message> = context.system._resolve(context: .init(id: remoteReceptionistAddress, system: context.system))
+        let remoteReceptionist: _ActorRef<Message> = context.system._resolve(
+            context: .init(id: remoteReceptionistAddress, system: context.system)
+        )
 
         // ==== "push" replication -----------------------------
         // we noticed a new member, and want to offer it our information right away
@@ -639,10 +682,15 @@ extension _OperationLogClusterReceptionist {
         self.replicateOpsBatch(context, to: remoteReceptionist)
     }
 
-    private func pruneClusterMember(_ context: _ActorContext<_OperationLogClusterReceptionist.Message>, removedNode: Cluster.Node) {
+    private func pruneClusterMember(
+        _ context: _ActorContext<_OperationLogClusterReceptionist.Message>,
+        removedNode: Cluster.Node
+    ) {
         context.log.trace("Pruning cluster member: \(removedNode)")
         let terminatedReceptionistAddress = ActorID._receptionist(on: removedNode, for: .actorRefs)
-        let equalityHackPeerRef = _ActorRef<Message>(.deadLetters(.init(context.log, id: terminatedReceptionistAddress, system: nil)))
+        let equalityHackPeerRef = _ActorRef<Message>(
+            .deadLetters(.init(context.log, id: terminatedReceptionistAddress, system: nil))
+        )
 
         guard self.peerReceptionistReplayers.removeValue(forKey: equalityHackPeerRef) != nil else {
             // we already removed it, so no need to keep scanning for it.
@@ -685,7 +733,11 @@ extension _OperationLogClusterReceptionist {
 
         let sequencedOps: [OpLog<ReceptionistOp>.SequencedOp]
 
-        init(peer: _ActorRef<Receptionist.Message>, observedSeqNrs: VersionVector, sequencedOps: [OpLog<ReceptionistOp>.SequencedOp]) {
+        init(
+            peer: _ActorRef<Receptionist.Message>,
+            observedSeqNrs: VersionVector,
+            sequencedOps: [OpLog<ReceptionistOp>.SequencedOp]
+        ) {
             self.peer = peer
             self.observedSeqNrs = observedSeqNrs
             self.sequencedOps = sequencedOps
@@ -727,7 +779,7 @@ extension _OperationLogClusterReceptionist {
         ///
         /// If a recipient has more ops than the `confirmedUntil` confirms seeing, it shall offer
         /// those to the `peer` which initiated this `ConfirmOps`
-        let until: UInt64 // inclusive
+        let until: UInt64  // inclusive
 
         let otherObservedSeqNrs: VersionVector
 
@@ -810,14 +862,20 @@ extension _OperationLogClusterReceptionist {
     ///
     /// Enabled by `Settings.traceLogLevel` or `-DSACT_TRACELOG_RECEPTIONIST`
     func tracelog(
-        _ context: _ActorContext<Message>, _ type: TraceLogType, message: Any,
-        file: String = #filePath, function: String = #function, line: UInt = #line
+        _ context: _ActorContext<Message>,
+        _ type: TraceLogType,
+        message: Any,
+        file: String = #filePath,
+        function: String = #function,
+        line: UInt = #line
     ) {
         if let level = context.system.settings.receptionist.traceLogLevel {
             context.log.log(
                 level: level,
                 "[tracelog:receptionist] \(type.description): \(message)",
-                file: file, function: function, line: line
+                file: file,
+                function: function,
+                line: line
             )
         }
     }

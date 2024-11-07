@@ -87,7 +87,7 @@ extension Logger {
     }
 
     internal static func make(_ base: Logger, path: ActorPath) -> Logger {
-        var log = base // yes
+        var log = base  // yes
         log[metadataKey: "actor/path"] = Logger.MetadataValue.stringConvertible(path)
         return log
     }
@@ -129,7 +129,7 @@ struct ActorOriginLogHandler: LogHandler {
                 logger: context.log,
                 identifier: context.path.description,
                 useBuiltInFormatter: context.system.settings.logging.useBuiltInFormatter,
-                dispatcher: { () in dispatcherName } // beware of closing over the context here (!)
+                dispatcher: { () in dispatcherName }  // beware of closing over the context here (!)
             )
         )
     }
@@ -145,7 +145,14 @@ struct ActorOriginLogHandler: LogHandler {
         )
     }
 
-    func log(level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata?, file: String, function: String, line: UInt) {
+    func log(
+        level: Logger.Level,
+        message: Logger.Message,
+        metadata: Logger.Metadata?,
+        file: String,
+        function: String,
+        line: UInt
+    ) {
         // TODO: this actually would be dispatching to the logging infra (has ticket)
 
         let logMessage = LogMessage(
@@ -153,7 +160,7 @@ struct ActorOriginLogHandler: LogHandler {
             time: Date(),
             level: level,
             message: message,
-            effectiveMetadata: self.context.effectiveMetadata(overrides: metadata), // TODO: should force lazies
+            effectiveMetadata: self.context.effectiveMetadata(overrides: metadata),  // TODO: should force lazies
             file: file,
             function: function,
             line: line
@@ -166,7 +173,14 @@ struct ActorOriginLogHandler: LogHandler {
         // TODO: here we can either log... or dispatch to actor... or invoke Logging. etc
 
         guard self.context.useBuiltInFormatter else {
-            self.targetLogger.log(level: logMessage.level, logMessage.message, metadata: self.metadata, file: logMessage.file, function: logMessage.function, line: logMessage.line)
+            self.targetLogger.log(
+                level: logMessage.level,
+                logMessage.message,
+                metadata: self.metadata,
+                file: logMessage.file,
+                function: logMessage.function,
+                line: logMessage.line
+            )
             return
         }
 
@@ -195,14 +209,21 @@ struct ActorOriginLogHandler: LogHandler {
 
         var msg = ""
         msg += "\(actorSystemIdentity)"
-        msg += "[\(l.file.description.split(separator: "/").last ?? "<unknown-file>"):\(l.line)]" // we only print "file" rather than full path
+        msg += "[\(l.file.description.split(separator: "/").last ?? "<unknown-file>"):\(l.line)]"  // we only print "file" rather than full path
         msg += "\(dispatcherPart)"
         msg += "\(actorPathPart)"
         msg += " \(l.message)"
 
         guard ProcessInfo.processInfo.environment["SACT_PRETTY_LOG"] != nil else {
             // no "pretty" logging
-            self.targetLogger.log(level: logMessage.level, Logger.Message(stringLiteral: msg), metadata: l.effectiveMetadata, file: logMessage.file, function: logMessage.function, line: logMessage.line)
+            self.targetLogger.log(
+                level: logMessage.level,
+                Logger.Message(stringLiteral: msg),
+                metadata: l.effectiveMetadata,
+                file: logMessage.file,
+                function: logMessage.function,
+                line: logMessage.line
+            )
             return
         }
 
@@ -228,7 +249,14 @@ struct ActorOriginLogHandler: LogHandler {
 
             msg += metadataString
         }
-        self.targetLogger.log(level: logMessage.level, Logger.Message(stringLiteral: msg), metadata: [:], file: logMessage.file, function: logMessage.function, line: logMessage.line)
+        self.targetLogger.log(
+            level: logMessage.level,
+            Logger.Message(stringLiteral: msg),
+            metadata: [:],
+            file: logMessage.file,
+            function: logMessage.function,
+            line: logMessage.line
+        )
     }
 
     // TODO: hope to remove this one
@@ -318,7 +346,9 @@ struct CustomPrettyStringConvertibleMetadataValue: CustomStringConvertible {
 }
 
 extension Optional where Wrapped == Logger.MetadataValue {
-    public static func lazyStringConvertible(_ makeValue: @escaping () -> CustomStringConvertible) -> Logger.Metadata.Value {
+    public static func lazyStringConvertible(
+        _ makeValue: @escaping () -> CustomStringConvertible
+    ) -> Logger.Metadata.Value {
         .stringConvertible(LazyMetadataBox { makeValue() })
     }
 
@@ -365,7 +395,9 @@ extension Logger {
         level: Logger.Level?,
         _ message: @autoclosure () -> Logger.Message,
         metadata: @autoclosure () -> Logger.Metadata? = nil,
-        file: String = #filePath, function: String = #function, line: UInt = #line
+        file: String = #filePath,
+        function: String = #function,
+        line: UInt = #line
     ) {
         if let level = level {
             self.log(level: level, message(), metadata: metadata(), file: file, function: function, line: line)

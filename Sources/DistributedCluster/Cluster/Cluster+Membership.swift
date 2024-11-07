@@ -74,7 +74,9 @@ extension Cluster {
         /// for a non-unique `Node`. In practice, this happens when an existing node is superseded by a "replacement", and the
         /// previous node becomes immediately down.
         public func anyMember(forEndpoint endpoint: Cluster.Endpoint) -> Cluster.Member? {
-            self._members.values.sorted(by: Cluster.MemberStatus.lifecycleOrdering).first(where: { $0.node.endpoint == endpoint })
+            self._members.values.sorted(by: Cluster.MemberStatus.lifecycleOrdering).first(where: {
+                $0.node.endpoint == endpoint
+            })
         }
 
         public func youngestMember() -> Cluster.Member? {
@@ -121,7 +123,10 @@ extension Cluster {
         ///   - statuses: statuses for which to check the members for
         ///   - reachability: optional reachability that is the members will be filtered by
         /// - Returns: array of members matching those checks. Can be empty.
-        public func members(withStatus status: Cluster.MemberStatus, reachability: Cluster.MemberReachability? = nil) -> [Cluster.Member] {
+        public func members(
+            withStatus status: Cluster.MemberStatus,
+            reachability: Cluster.MemberReachability? = nil
+        ) -> [Cluster.Member] {
             self.members(withStatus: [status], reachability: reachability)
         }
 
@@ -132,7 +137,10 @@ extension Cluster {
         ///   - statuses: statuses for which to check the members for
         ///   - reachability: optional reachability that is the members will be filtered by
         /// - Returns: array of members matching those checks. Can be empty.
-        public func members(withStatus statuses: Set<Cluster.MemberStatus>, reachability: Cluster.MemberReachability? = nil) -> [Cluster.Member] {
+        public func members(
+            withStatus statuses: Set<Cluster.MemberStatus>,
+            reachability: Cluster.MemberReachability? = nil
+        ) -> [Cluster.Member] {
             let reachabilityFilter: (Cluster.Member) -> Bool = { member in
                 reachability == nil || member.reachability == reachability
             }
@@ -148,7 +156,10 @@ extension Cluster {
         ///   - statuses: statuses for which to check the members for
         ///   - reachability: optional reachability that is the members will be filtered by
         /// - Returns: array of members matching those checks. Can be empty.
-        public func members(atLeast status: Cluster.MemberStatus, reachability: Cluster.MemberReachability? = nil) -> [Cluster.Member] {
+        public func members(
+            atLeast status: Cluster.MemberStatus,
+            reachability: Cluster.MemberReachability? = nil
+        ) -> [Cluster.Member] {
             if status == .joining, reachability == nil {
                 return Array(self._members.values)
             }
@@ -168,7 +179,10 @@ extension Cluster {
         ///   - status: "at most" status for which to check the members for
         ///   - reachability: optional reachability that the members will be filtered by
         /// - Returns: array of members matching those checks. Can be empty.
-        public func members(atMost status: Cluster.MemberStatus, reachability: Cluster.MemberReachability? = nil) -> [Cluster.Member] {
+        public func members(
+            atMost status: Cluster.MemberStatus,
+            reachability: Cluster.MemberReachability? = nil
+        ) -> [Cluster.Member] {
             if status == .removed, reachability == nil {
                 return Array(self._members.values)
             }
@@ -280,9 +294,8 @@ extension Cluster.Membership: Hashable {
         }
         for (lNode, lMember) in lhs._members {
             if let rMember = rhs._members[lNode],
-               lMember.node != rMember.node ||
-               lMember.status != rMember.status ||
-               lMember.reachability != rMember.reachability
+                lMember.node != rMember.node || lMember.status != rMember.status
+                    || lMember.reachability != rMember.reachability
             {
                 return false
             }
@@ -297,7 +310,8 @@ extension Cluster.Membership: CustomStringConvertible, CustomDebugStringConverti
     public var prettyDescription: String {
         var res = "leader: \(self.leader, orElse: ".none")"
         for member in self._members.values.sorted(by: { $0.node.endpoint.port < $1.node.endpoint.port }) {
-            res += "\n  \(reflecting: member.node) status [\(member.status.rawValue, leftPadTo: Cluster.MemberStatus.maxStrLen)]"
+            res +=
+                "\n  \(reflecting: member.node) status [\(member.status.rawValue, leftPadTo: Cluster.MemberStatus.maxStrLen)]"
         }
         return res
     }
@@ -346,7 +360,7 @@ extension Cluster.Membership {
             if previousMember.status < .down {
                 _ = self.mark(previousMember.node, as: .down)
             } else {
-                _ = self.removeCompletely(previousMember.node) // the replacement event will handle the down notifications
+                _ = self.removeCompletely(previousMember.node)  // the replacement event will handle the down notifications
             }
             self._members[change.node] = change.member
 
@@ -388,7 +402,7 @@ extension Cluster.Membership {
         }
 
         if self.leader == wannabeLeader {
-            return nil // no change was made
+            return nil  // no change was made
         } else {
             // in other cases, nil or not, we change the leader
             let oldLeader = self.leader
@@ -398,7 +412,8 @@ extension Cluster.Membership {
     }
 
     /// Alias for `applyLeadershipChange(to:)`
-    public mutating func applyLeadershipChange(_ change: Cluster.LeadershipChange?) throws -> Cluster.LeadershipChange? {
+    public mutating func applyLeadershipChange(_ change: Cluster.LeadershipChange?) throws -> Cluster.LeadershipChange?
+    {
         try self.applyLeadershipChange(to: change?.newLeader)
     }
 
@@ -503,7 +518,7 @@ extension Cluster.Membership {
             self._members.removeValue(forKey: node)
             return .init(member: member, toStatus: .removed)
         } else {
-            return nil // no member to remove
+            return nil  // no member to remove
         }
     }
 
@@ -571,7 +586,7 @@ extension Cluster.Membership {
                 self._members[incomingMember.node] = incomingMember
 
                 var change = Cluster.MembershipChange(member: incomingMember)
-                change.previousStatus = nil // since "new"
+                change.previousStatus = nil  // since "new"
                 changes.append(change)
                 continue
             }
@@ -636,7 +651,7 @@ extension Cluster.Membership {
             _ = self.applyReachabilityChange(change)
 
         case ._PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE:
-            () // do nothing
+            ()  // do nothing
         }
     }
 }
@@ -718,9 +733,11 @@ extension Cluster {
                 case .notFoundAny(let node, let membership):
                     return "[\(node)] is not a member [\(membership)]"
                 case .atLeastStatusRequirementNotMet(let expectedAtLeastStatus, let foundMember):
-                    return "Expected \(reflecting: foundMember.node) to be seen as at-least [\(expectedAtLeastStatus)] but was [\(foundMember.status)]"
+                    return
+                        "Expected \(reflecting: foundMember.node) to be seen as at-least [\(expectedAtLeastStatus)] but was [\(foundMember.status)]"
                 case .statusRequirementNotMet(let expectedStatus, let foundMember):
-                    return "Expected \(reflecting: foundMember.node) to be seen as [\(expectedStatus)] but was [\(foundMember.status)]"
+                    return
+                        "Expected \(reflecting: foundMember.node) to be seen as [\(expectedStatus)] but was [\(foundMember.status)]"
                 case .awaitStatusTimedOut(let duration, let lastError):
                     let lastErrorMessage: String
                     if let error = lastError {

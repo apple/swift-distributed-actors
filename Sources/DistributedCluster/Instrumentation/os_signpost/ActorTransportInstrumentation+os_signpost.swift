@@ -87,9 +87,15 @@ extension OSSignpost_InternalActorTransportInstrumentation {
             .begin,
             log: OSSignpost_InternalActorTransportInstrumentation.logTransportSerialization,
             name: Self.nameSerialization,
-            signpostID: .init(log: OSSignpost_InternalActorTransportInstrumentation.logTransportSerialization, object: id),
+            signpostID: .init(
+                log: OSSignpost_InternalActorTransportInstrumentation.logTransportSerialization,
+                object: id
+            ),
             Self.actorMessageSerializeStartPattern,
-            "todo", "\(recipient)", String(reflecting: type(of: message)), "\(message)"
+            "todo",
+            "\(recipient)",
+            String(reflecting: type(of: message)),
+            "\(message)"
         )
     }
 
@@ -102,7 +108,10 @@ extension OSSignpost_InternalActorTransportInstrumentation {
             .end,
             log: OSSignpost_InternalActorTransportInstrumentation.logTransportSerialization,
             name: Self.nameSerialization,
-            signpostID: .init(log: OSSignpost_InternalActorTransportInstrumentation.logTransportSerialization, object: id),
+            signpostID: .init(
+                log: OSSignpost_InternalActorTransportInstrumentation.logTransportSerialization,
+                object: id
+            ),
             Self.actorMessageSerializeEndPattern,
             bytes
         )
@@ -117,9 +126,14 @@ extension OSSignpost_InternalActorTransportInstrumentation {
             .begin,
             log: OSSignpost_InternalActorTransportInstrumentation.logTransportSerialization,
             name: Self.nameDeserialization,
-            signpostID: .init(log: OSSignpost_InternalActorTransportInstrumentation.logTransportSerialization, object: id),
+            signpostID: .init(
+                log: OSSignpost_InternalActorTransportInstrumentation.logTransportSerialization,
+                object: id
+            ),
             Self.actorMessageDeserializeStartPattern,
-            "todo", "\(recipient)", bytes
+            "todo",
+            "\(recipient)",
+            bytes
         )
     }
 
@@ -132,9 +146,13 @@ extension OSSignpost_InternalActorTransportInstrumentation {
             .end,
             log: OSSignpost_InternalActorTransportInstrumentation.logTransportSerialization,
             name: Self.nameDeserialization,
-            signpostID: .init(log: OSSignpost_InternalActorTransportInstrumentation.logTransportSerialization, object: id),
+            signpostID: .init(
+                log: OSSignpost_InternalActorTransportInstrumentation.logTransportSerialization,
+                object: id
+            ),
             Self.actorMessageDeserializeEndPattern,
-            "\(message.map { "\($0)" } ?? "<nil>")", "\(message.map { String(reflecting: type(of: $0)) } ?? "<unknown-type>")"
+            "\(message.map { "\($0)" } ?? "<nil>")",
+            "\(message.map { String(reflecting: type(of: $0)) } ?? "<unknown-type>")"
         )
     }
 }

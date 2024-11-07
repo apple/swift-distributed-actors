@@ -12,8 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-import struct Foundation.Data
 import NIO
+
+import struct Foundation.Data
 
 /// A `Never` can never be sent as message, even more so over the wire.
 extension Never: _NotActuallyCodableMessage {}
@@ -112,7 +113,10 @@ public struct ErrorEnvelope: Error, Codable {
         }
 
         var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(context.serialization.outboundManifest(type(of: self.codableError as Any)), forKey: .manifest)
+        try container.encode(
+            context.serialization.outboundManifest(type(of: self.codableError as Any)),
+            forKey: .manifest
+        )
 
         let errorEncoder = container.superEncoder(forKey: .error)
         try self.codableError.encode(to: errorEncoder)
@@ -161,8 +165,14 @@ extension _NotActuallyCodableMessage {
         fatalError("Attempted to encode _NotActuallyCodableMessage message: \(Self.self)! This should never happen.")
     }
 
-    public init(context: Serialization.Context, from buffer: inout ByteBuffer, using manifest: Serialization.Manifest) throws {
-        fatalError("Attempted to deserialize _NotActuallyCodableMessage message: \(Self.self)! This should never happen.")
+    public init(
+        context: Serialization.Context,
+        from buffer: inout ByteBuffer,
+        using manifest: Serialization.Manifest
+    ) throws {
+        fatalError(
+            "Attempted to deserialize _NotActuallyCodableMessage message: \(Self.self)! This should never happen."
+        )
     }
 
     public func serialize(context: Serialization.Context, to bytes: inout ByteBuffer) throws {

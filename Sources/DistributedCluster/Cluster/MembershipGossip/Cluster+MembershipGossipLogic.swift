@@ -93,7 +93,7 @@ final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
                 // and also likely receive multiple pings within a very short time frame.
                 //
                 // This is adopted from the SWIM membership implementation and related papers.
-                let insertIndex = Int.random(in: self.peers.startIndex ... self.peers.endIndex)
+                let insertIndex = Int.random(in: self.peers.startIndex...self.peers.endIndex)
                 self.peers.insert(peer, at: insertIndex)
             }
         }
@@ -166,7 +166,11 @@ final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
         return self.latestGossip
     }
 
-    func receiveAcknowledgement(_ acknowledgement: Acknowledgement, from peer: _AddressableActorRef, confirming gossip: Cluster.MembershipGossip) {
+    func receiveAcknowledgement(
+        _ acknowledgement: Acknowledgement,
+        from peer: _AddressableActorRef,
+        confirming gossip: Cluster.MembershipGossip
+    ) {
         // 1) store the direct gossip we got from this peer; we can use this to know if there's no need to gossip to that peer by inspecting seen table equality
         self.lastGossipFrom[peer] = acknowledgement
 

@@ -12,17 +12,18 @@
 //
 //===----------------------------------------------------------------------===//
 
-import class Foundation.ProcessInfo
 import Logging
 import NIO
 import NIOSSL
-import ServiceDiscovery
 import SWIM
+import ServiceDiscovery
+
+import class Foundation.ProcessInfo
 
 /// Configures default actor id metadta behavior, like which metadata should be propagated cross process and which not.
 internal struct ActorIDMetadataSettings {
     public static var `default`: ActorIDMetadataSettings {
-        return .init()
+        .init()
     }
 
     /// Configures metadata which should be
@@ -50,9 +51,11 @@ internal struct ActorIDMetadataSettings {
         ActorMetadataKeys.__instance.wellKnown.id,
     ]
 
-    internal var encodeCustomMetadata: (ActorMetadata, inout KeyedEncodingContainer<ActorCoding.MetadataKeys>) throws -> Void =
-        { _, _ in () }
+    internal var encodeCustomMetadata:
+        (ActorMetadata, inout KeyedEncodingContainer<ActorCoding.MetadataKeys>) throws -> Void =
+            { _, _ in () }
 
-    internal var decodeCustomMetadata: ((KeyedDecodingContainer<ActorCoding.MetadataKeys>, ActorMetadata) throws -> Void) =
-        { _, _ in () }
+    internal var decodeCustomMetadata:
+        ((KeyedDecodingContainer<ActorCoding.MetadataKeys>, ActorMetadata) throws -> Void) =
+            { _, _ in () }
 }

@@ -33,16 +33,25 @@ internal protocol Scheduler: Sendable {
     func scheduleOnce<Message>(delay: Duration, receiver: _ActorRef<Message>, message: Message) -> Cancelable
 
     func schedule(initialDelay: Duration, interval: Duration, _ f: @escaping () -> Void) -> Cancelable
-    func scheduleAsync(initialDelay: Duration, interval: Duration, _ f: @Sendable @escaping () async -> Void) -> Cancelable
+    func scheduleAsync(
+        initialDelay: Duration,
+        interval: Duration,
+        _ f: @Sendable @escaping () async -> Void
+    ) -> Cancelable
 
-    func schedule<Message>(initialDelay: Duration, interval: Duration, receiver: _ActorRef<Message>, message: Message) -> Cancelable
+    func schedule<Message>(
+        initialDelay: Duration,
+        interval: Duration,
+        receiver: _ActorRef<Message>,
+        message: Message
+    ) -> Cancelable
 }
 
 final class FlagCancelable: Cancelable, @unchecked Sendable {
     private let flag: ManagedAtomic<Bool> = .init(false)
 
     deinit {
-//        self.flag.destroy()
+        //        self.flag.destroy()
     }
 
     func cancel() {
@@ -102,7 +111,11 @@ extension DispatchQueue: Scheduler, @unchecked Sendable {
         return cancellable
     }
 
-    func scheduleAsync(initialDelay: Duration, interval: Duration, _ f: @Sendable @escaping () async -> Void) -> Cancelable {
+    func scheduleAsync(
+        initialDelay: Duration,
+        interval: Duration,
+        _ f: @Sendable @escaping () async -> Void
+    ) -> Cancelable {
         let cancellable = FlagCancelable()
 
         @Sendable func sched() {
@@ -120,7 +133,12 @@ extension DispatchQueue: Scheduler, @unchecked Sendable {
         return cancellable
     }
 
-    func schedule<Message>(initialDelay: Duration, interval: Duration, receiver: _ActorRef<Message>, message: Message) -> Cancelable {
+    func schedule<Message>(
+        initialDelay: Duration,
+        interval: Duration,
+        receiver: _ActorRef<Message>,
+        message: Message
+    ) -> Cancelable {
         self.schedule(initialDelay: initialDelay, interval: interval) {
             receiver.tell(message)
         }

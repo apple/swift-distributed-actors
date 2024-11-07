@@ -15,10 +15,11 @@
 import Dispatch
 import Distributed
 import Logging
+
 import struct NIO.TimeAmount
 
 @usableFromInline
-struct Timer<Message> { // FIXME(distributed): deprecate and remove in favor of DistributedActorTimers
+struct Timer<Message> {  // FIXME(distributed): deprecate and remove in favor of DistributedActorTimers
     let key: _TimerKey
     @usableFromInline
     let message: Message?
@@ -103,7 +104,7 @@ public final class _BehaviorTimers<Message: Codable> {
     }
 
     internal func _cancelAll(includeSystemTimers: Bool) {
-        for key in self.installedTimers.keys where includeSystemTimers || !key.isSystemTimer { // TODO: represent with "system timer key" type?
+        for key in self.installedTimers.keys where includeSystemTimers || !key.isSystemTimer {  // TODO: represent with "system timer key" type?
             // TODO: the reason the `_` keys are not cancelled is because we want to cancel timers in _restartPrepare but we need "our restart timer" to remain
             self.cancel(for: key)
         }
@@ -115,7 +116,10 @@ public final class _BehaviorTimers<Message: Codable> {
     internal func cancel(for key: _TimerKey) {
         if let timer = self.installedTimers.removeValue(forKey: key) {
             if context.system.settings.logging.verboseTimers {
-                self.context.log.trace("Cancel timer [\(key)] with generation [\(timer.generation)]", metadata: self.metadata)
+                self.context.log.trace(
+                    "Cancel timer [\(key)] with generation [\(timer.generation)]",
+                    metadata: self.metadata
+                )
             }
             timer.handle.cancel()
         }
@@ -168,7 +172,13 @@ public final class _BehaviorTimers<Message: Codable> {
         if context.system.settings.logging.verboseTimers {
             self.context.log.trace("Started timer [\(key)] with generation [\(generation)]", metadata: self.metadata)
         }
-        self.installedTimers[key] = Timer(key: key, message: message, repeated: repeated, generation: generation, handle: handle)
+        self.installedTimers[key] = Timer(
+            key: key,
+            message: message,
+            repeated: repeated,
+            generation: generation,
+            handle: handle
+        )
     }
 
     internal func nextTimerGen() -> Int {
@@ -180,13 +190,19 @@ public final class _BehaviorTimers<Message: Codable> {
         self.context.makeAsynchronousCallback { [weak context = self.context] timerEvent in
             if let context = context {
                 if timerEvent.owner.path != context.path {
-                    context.log.warning("Received timer signal with key [\(timerEvent.key)] for different actor with path [\(context.path)]. Will ignore and continue.", metadata: self.metadata)
+                    context.log.warning(
+                        "Received timer signal with key [\(timerEvent.key)] for different actor with path [\(context.path)]. Will ignore and continue.",
+                        metadata: self.metadata
+                    )
                     return
                 }
 
                 if let timer = self.installedTimers[timerEvent.key] {
                     if timer.generation != timerEvent.generation {
-                        context.log.warning("Received timer event for old generation [\(timerEvent.generation)], expected [\(timer.generation)]. Will ignore and continue.", metadata: self.metadata)
+                        context.log.warning(
+                            "Received timer event for old generation [\(timerEvent.generation)], expected [\(timer.generation)]. Will ignore and continue.",
+                            metadata: self.metadata
+                        )
                         return
                     }
 
@@ -206,7 +222,7 @@ extension _BehaviorTimers {
     @usableFromInline
     var metadata: Logger.Metadata {
         [
-            "tag": "timers",
+            "tag": "timers"
         ]
     }
 }
@@ -223,7 +239,10 @@ extension _BehaviorTimers {
     /// Dangerous version of `_startTimer` which allows scheduling a `.resume` system message (directly!) with a token `T`, after a time `delay`.
     /// This can be used e.g. to implement restarting an actor after a backoff delay.
     internal func _startResumeTimer<T>(key: _TimerKey, delay: Duration, resumeWith token: T) {
-        assert(key.isSystemTimer, "_startResumeTimer MUST ONLY be used by system internal tasks, and keys MUST be `_` prefixed. Key was: \(key)")
+        assert(
+            key.isSystemTimer,
+            "_startResumeTimer MUST ONLY be used by system internal tasks, and keys MUST be `_` prefixed. Key was: \(key)"
+        )
         self.cancel(for: key)
 
         let generation = self.nextTimerGen()
@@ -238,8 +257,19 @@ extension _BehaviorTimers {
             context.myself.asAddressable._sendSystemMessage(.resume(.success(token)))
         }
 
-        traceLog_Supervision("Scheduled actor wake-up [\(key)] with generation [\(generation)], in \(delay.prettyDescription)")
-        self.context.log.debug("Scheduled actor wake-up [\(key)] with generation [\(generation)], in \(delay.prettyDescription)", metadata: self.metadata)
-        self.installedTimers[key] = Timer(key: key, message: nil, repeated: false, generation: generation, handle: handle)
+        traceLog_Supervision(
+            "Scheduled actor wake-up [\(key)] with generation [\(generation)], in \(delay.prettyDescription)"
+        )
+        self.context.log.debug(
+            "Scheduled actor wake-up [\(key)] with generation [\(generation)], in \(delay.prettyDescription)",
+            metadata: self.metadata
+        )
+        self.installedTimers[key] = Timer(
+            key: key,
+            message: nil,
+            repeated: false,
+            generation: generation,
+            handle: handle
+        )
     }
 }

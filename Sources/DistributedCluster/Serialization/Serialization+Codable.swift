@@ -12,10 +12,10 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Foundation  // JSON and PList coders
 import NIO
 import NIOFoundationCompat
 
-import Foundation // JSON and PList coders
 import struct Foundation.Data
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -28,14 +28,17 @@ extension Decodable {
     }
 
     static func _decode<C>(from container: inout C, forKey key: C.Key, using decoder: Decoder) throws -> Self
-        where C: KeyedDecodingContainerProtocol
-    {
+    where C: KeyedDecodingContainerProtocol {
         try container.decode(Self.self, forKey: key)
     }
 }
 
 extension Decodable {
-    static func _decode(from buffer: Serialization.Buffer, using decoder: PropertyListDecoder, format _format: PropertyListSerialization.PropertyListFormat) throws -> Self {
+    static func _decode(
+        from buffer: Serialization.Buffer,
+        using decoder: PropertyListDecoder,
+        format _format: PropertyListSerialization.PropertyListFormat
+    ) throws -> Self {
         var format = _format
         return try decoder.decode(Self.self, from: buffer.readData(), format: &format)
     }

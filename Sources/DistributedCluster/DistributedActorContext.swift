@@ -24,10 +24,11 @@ public final class DistributedActorContext {
     let metadata: ActorMetadata
     let remoteCallInterceptor: (any RemoteCallInterceptor)?
 
-    init(lifecycle: LifecycleWatchContainer?,
-         remoteCallInterceptor: RemoteCallInterceptor?,
-         metadata: ActorMetadata? = nil)
-    {
+    init(
+        lifecycle: LifecycleWatchContainer?,
+        remoteCallInterceptor: RemoteCallInterceptor?,
+        metadata: ActorMetadata? = nil
+    ) {
         self.lifecycle = lifecycle
         self.remoteCallInterceptor = remoteCallInterceptor
         self.metadata = metadata ?? ActorMetadata()
@@ -52,7 +53,8 @@ internal protocol RemoteCallInterceptor {
         throwing: Err.Type,
         returning: Res.Type
     ) async throws -> Res
-        where Act: DistributedActor,
+    where
+        Act: DistributedActor,
         Act.ID == ActorID,
         Err: Error,
         Res: Codable
@@ -63,7 +65,8 @@ internal protocol RemoteCallInterceptor {
         invocation: inout ClusterSystem.InvocationEncoder,
         throwing: Err.Type
     ) async throws
-        where Act: DistributedActor,
+    where
+        Act: DistributedActor,
         Act.ID == ActorID,
         Err: Error
 }

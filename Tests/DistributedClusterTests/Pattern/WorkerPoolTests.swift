@@ -14,9 +14,10 @@
 
 import Distributed
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import Foundation
 import XCTest
+
+@testable import DistributedCluster
 
 // TODO: "ActorGroup" perhaps could be better name?
 final class WorkerPoolTests: SingleClusterSystemXCTestCase {
@@ -56,7 +57,7 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
         await fulfillment(of: [finished], timeout: 3.0)
 
         // Submit work with all workers available
-        for i in 0 ... 7 {
+        for i in 0...7 {
             _ = try await workers.submit(work: "\(i)")
 
             // We are submitting more work than there are workers
@@ -69,7 +70,7 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
     }
 
     func test_workerPool_dynamic_removeDeadActors() async throws {
-        throw XCTSkip("!!! Skipping test \(#function) !!!") // FIXME(distributed): Pending fix for #831 to be able to terminate worker by setting it to nil
+        throw XCTSkip("!!! Skipping test \(#function) !!!")  // FIXME(distributed): Pending fix for #831 to be able to terminate worker by setting it to nil
 
         let workerKey = DistributedReception.Key(Greeter.self, id: "request-workers")
 
@@ -106,7 +107,7 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
         await fulfillment(of: [finished], timeout: 3.0)
 
         // Submit work with all workers available
-        for i in 0 ... 2 {
+        for i in 0...2 {
             _ = try await workers.submit(work: "all-available-\(i)")
 
             let workerID = sortedWorkerIDs[i]
@@ -122,7 +123,7 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
         try pA.expectMessage("Greeter deinit")
 
         // The remaining workers should take over
-        for i in 0 ... 2 {
+        for i in 0...2 {
             _ = try await workers.submit(work: "after-A-dead-\(i)")
 
             // We cannot be certain how round-robin position gets reset after A's termination,
@@ -164,7 +165,10 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
         var workerC: Greeter? = Greeter(probe: pC, actorSystem: self.system)
 
         // !-safe since we initialize workers above
-        let workers = try await WorkerPool(settings: .init(selector: .static([workerA!, workerB!, workerC!])), actorSystem: system)
+        let workers = try await WorkerPool(
+            settings: .init(selector: .static([workerA!, workerB!, workerC!])),
+            actorSystem: system
+        )
 
         let workerProbes: [ClusterSystem.ActorID: ActorTestProbe<String>] = [
             workerA!.id: pA,
@@ -175,7 +179,7 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
         var sortedWorkerIDs = Array(workerProbes.keys).sorted()
 
         // Submit work with all workers available
-        for i in 0 ... 2 {
+        for i in 0...2 {
             _ = try await workers.submit(work: "all-available-\(i)")
 
             let workerID = sortedWorkerIDs[i]
@@ -191,7 +195,7 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
         try pA.expectMessage("Greeter deinit")
 
         // The remaining workers should take over
-        for i in 0 ... 2 {
+        for i in 0...2 {
             _ = try await workers.submit(work: "after-A-dead-\(i)")
 
             // We cannot be certain how round-robin position gets reset after A's termination,
@@ -219,7 +223,9 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
             _ = try await workers.submit(work: "after-all-dead")
         }
 
-        guard let workerPoolError = error as? WorkerPoolError, case .staticPoolExhausted(let errorMessage) = workerPoolError.underlying.error else {
+        guard let workerPoolError = error as? WorkerPoolError,
+            case .staticPoolExhausted(let errorMessage) = workerPoolError.underlying.error
+        else {
             throw testKit.fail("Expected WorkerPoolError.staticPoolExhausted, got \(error)")
         }
         errorMessage.shouldContain("Static worker pool exhausted, all workers have terminated")
@@ -230,7 +236,9 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
             let _: WorkerPool<Greeter> = try await WorkerPool(selector: .static([]), actorSystem: system)
         }
 
-        guard let workerPoolError = error as? WorkerPoolError, case .emptyStaticWorkerPool(let errorMessage) = workerPoolError.underlying.error else {
+        guard let workerPoolError = error as? WorkerPoolError,
+            case .emptyStaticWorkerPool(let errorMessage) = workerPoolError.underlying.error
+        else {
             throw testKit.fail("Expected WorkerPoolError.emptyStaticWorkerPool, got \(error)")
         }
         errorMessage.shouldContain("Illegal empty collection passed to `.static` worker pool")
@@ -266,12 +274,12 @@ private distributed actor Greeter: DistributedWorker {
     }
 }
 
-private extension Array where Element == ClusterSystem.ActorID {
-    mutating func sort() {
+extension Array where Element == ClusterSystem.ActorID {
+    fileprivate mutating func sort() {
         self.sort(by: { l, r in l.description < r.description })
     }
 
-    func sorted() -> [Element] {
+    fileprivate func sorted() -> [Element] {
         self.sorted(by: { l, r in l.description < r.description })
     }
 }

@@ -176,7 +176,7 @@ public class _Children {
             try self.container.values.forEach {
                 switch $0 {
                 case .cell(let child): try body(child.asAddressable)
-                case .adapter: () // do not apply onto adapters, only real actors
+                case .adapter: ()  // do not apply onto adapters, only real actors
                 }
             }
         }
@@ -199,7 +199,10 @@ public class _Children {
 // MARK: Traversal
 
 extension _Children: _ActorTreeTraversable {
-    func _traverse<T>(context: _TraversalContext<T>, _ visit: (_TraversalContext<T>, _AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
+    func _traverse<T>(
+        context: _TraversalContext<T>,
+        _ visit: (_TraversalContext<T>, _AddressableActorRef) -> _TraversalDirective<T>
+    ) -> _TraversalResult<T> {
         var c = context.deeper
 
         let children = self.rwLock.withReaderLock {
@@ -227,7 +230,7 @@ extension _Children: _ActorTreeTraversable {
             case .completed:
                 continue
             case .failed:
-                return descendResult // early return, failures abort traversal
+                return descendResult  // early return, failures abort traversal
             }
         }
 
@@ -325,14 +328,14 @@ extension _ActorShell {
         let name = naming.makeName(&self.namingContext)
 
         try behavior.validateAsInitial()
-        try self.validateUniqueName(name) // FIXME: reserve name
+        try self.validateUniqueName(name)  // FIXME: reserve name
 
         let incarnation: ActorIncarnation = props._wellKnown ? .wellKnown : .random()
         let id: ActorID = try self.id.makeChildID(name: name, incarnation: incarnation)
 
         let dispatcher: MessageDispatcher
         switch props.dispatcher {
-        case .default: dispatcher = self._dispatcher // TODO: this is dispatcher inheritance, not sure about it
+        case .default: dispatcher = self._dispatcher  // TODO: this is dispatcher inheritance, not sure about it
         case .callingThread: dispatcher = CallingThreadDispatcher()
         case .nio(let group): dispatcher = NIOEventLoopGroupDispatcher(group)
         default: fatalError("not implemented yet, only default dispatcher and calling thread one work")

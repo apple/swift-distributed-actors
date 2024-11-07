@@ -12,9 +12,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-@testable import DistributedCluster
 import Logging
 import NIO
+
+@testable import DistributedCluster
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Membership Testing DSL
@@ -25,7 +26,10 @@ extension Cluster.MembershipGossip {
         let dslLines = dsl.split(separator: "\n")
         var gossip = Cluster.MembershipGossip(ownerNode: owner)
         gossip.membership = Cluster.Membership.parse(String(dslLines.first!), nodes: nodes)
-        gossip.seen = Cluster.MembershipGossip.SeenTable.parse(dslLines.dropFirst().joined(separator: "\n"), nodes: nodes)
+        gossip.seen = Cluster.MembershipGossip.SeenTable.parse(
+            dslLines.dropFirst().joined(separator: "\n"),
+            nodes: nodes
+        )
         return gossip
     }
 }
@@ -33,13 +37,22 @@ extension Cluster.MembershipGossip {
 extension Cluster.MembershipGossip.SeenTable {
     /// Express seen tables using a DSL
     /// Syntax: each line: `<owner>: <node>@<version>*`
-    static func parse(_ dslString: String, nodes: [Cluster.Node], file: StaticString = #file, line: UInt = #line) -> Cluster.MembershipGossip.SeenTable {
+    static func parse(
+        _ dslString: String,
+        nodes: [Cluster.Node],
+        file: StaticString = #file,
+        line: UInt = #line
+    ) -> Cluster.MembershipGossip.SeenTable {
         let lines = dslString.split(separator: "\n")
         func nodeById(id: String.SubSequence) -> Cluster.Node {
             if let found = nodes.first(where: { $0.systemName.contains(id) }) {
                 return found
             } else {
-                fatalError("Could not find node containing [\(id)] in \(nodes), for seen table: \(dslString)", file: file, line: line)
+                fatalError(
+                    "Could not find node containing [\(id)] in \(nodes), for seen table: \(dslString)",
+                    file: file,
+                    line: line
+                )
             }
         }
 
@@ -71,12 +84,21 @@ extension Cluster.MembershipGossip.SeenTable {
 }
 
 extension VersionVector {
-    static func parse(_ dslString: String, nodes: [Cluster.Node], file: StaticString = #file, line: UInt = #line) -> VersionVector {
+    static func parse(
+        _ dslString: String,
+        nodes: [Cluster.Node],
+        file: StaticString = #file,
+        line: UInt = #line
+    ) -> VersionVector {
         func nodeById(id: String.SubSequence) -> Cluster.Node {
             if let found = nodes.first(where: { $0.systemName.contains(id) }) {
                 return found
             } else {
-                fatalError("Could not find node containing [\(id)] in \(nodes), for seen table: \(dslString)", file: file, line: line)
+                fatalError(
+                    "Could not find node containing [\(id)] in \(nodes), for seen table: \(dslString)",
+                    file: file,
+                    line: line
+                )
             }
         }
 
@@ -96,12 +118,21 @@ extension Cluster.Membership {
     /// ```
     /// <node identifier>[.:]<node status> || [leader:<node identifier>]
     /// ```
-    static func parse(_ dslString: String, nodes: [Cluster.Node], file: StaticString = #file, line: UInt = #line) -> Cluster.Membership {
+    static func parse(
+        _ dslString: String,
+        nodes: [Cluster.Node],
+        file: StaticString = #file,
+        line: UInt = #line
+    ) -> Cluster.Membership {
         func nodeById(id: String.SubSequence) -> Cluster.Node {
             if let found = nodes.first(where: { $0.systemName.contains(id) }) {
                 return found
             } else {
-                fatalError("Could not find node containing [\(id)] in \(nodes), for seen table: \(dslString)", file: file, line: line)
+                fatalError(
+                    "Could not find node containing [\(id)] in \(nodes), for seen table: \(dslString)",
+                    file: file,
+                    line: line
+                )
             }
         }
 

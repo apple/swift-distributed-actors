@@ -9,7 +9,7 @@ that your contributions are licensed under the Apache 2.0 license (see
 
 Please ensure to specify the following:
 
-* SwiftMetrics commit hash
+* Commit hash
 * Contextual information (e.g. what you were trying to achieve with SwiftMetrics)
 * Simplest possible steps to reproduce
   * More complex the steps are, lower the priority will be.
@@ -60,29 +60,10 @@ We require that your commit messages match our template. The easiest way to do t
 
     git config commit.template scripts/dev/git.commit.template
 
-### Run `./scripts/soundness.sh`
 
-The scripts directory contains a [soundness.sh script](https://github.com/apple/swift-metrics/blob/main/scripts/soundness.sh) 
-that enforces additional checks, like license headers and formatting style.
+### Run CI checks locally
 
-Please make sure to `./scripts/soundness.sh` before pushing a change upstream, otherwise it is likely the PR validation will fail
-on minor changes such as a missing `self.` or similar formatting issues.
-
-For frequent contributors, we recommend adding the script as a [git pre-push hook](https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks), which you can do via executing the following command in the project root directory: 
-
-```bash
-cat << EOF > .git/hooks/pre-push
-#!/bin/bash
-
-if [[ -f "scripts/soundness.sh" ]]; then
-  scripts/soundness.sh
-fi
-EOF
-```
-
-Which makes the script execute, and only allow the `git push` to complete if the check has passed.
-
-In the case of formatting issues, you can then `git add` the formatting changes, and attempt the push again. 
+You can run the Github Actions workflows locally using [act](https://github.com/nektos/act). For detailed steps on how to do this please see [https://github.com/swiftlang/github-workflows?tab=readme-ov-file#running-workflows-locally](https://github.com/swiftlang/github-workflows?tab=readme-ov-file#running-workflows-locally). 
 
 ## How to contribute your work
 

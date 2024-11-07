@@ -12,10 +12,11 @@
 //
 //===----------------------------------------------------------------------===//
 
-@testable import DistributedActorsTestKit
-@testable import DistributedCluster
 import Foundation
 import XCTest
+
+@testable import DistributedActorsTestKit
+@testable import DistributedCluster
 
 class DeadlineTests: XCTestCase {
     func test_deadline_nowIsNotPastNow() {

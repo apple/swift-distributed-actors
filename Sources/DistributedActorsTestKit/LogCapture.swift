@@ -13,10 +13,12 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsConcurrencyHelpers
-@testable import DistributedCluster
-import struct Foundation.Date
-@testable import Logging
 import XCTest
+
+import struct Foundation.Date
+
+@testable import DistributedCluster
+@testable import Logging
 
 /// Testing only utility: Captures all log statements for later inspection.
 ///
@@ -64,9 +66,11 @@ public final class LogCapture {
     /// Throws: an ``EventuallyError`` when the deadline is exceeded without matching a log message.
     @discardableResult
     public func awaitLogContaining(
-        _ testKit: ActorTestKit, text: String,
+        _ testKit: ActorTestKit,
+        text: String,
         within: Duration = .seconds(3),
-        file: StaticString = #filePath, line: UInt = #line
+        file: StaticString = #filePath,
+        line: UInt = #line
     ) throws -> CapturedLogMessage {
         try testKit.eventually(within: within, file: file, line: line) {
             let logs = self.logs
@@ -93,7 +97,7 @@ extension LogCapture {
         public var grep: Set<String> = []
 
         public var ignoredMetadata: Set<String> = [
-            "cluster/node",
+            "cluster/node"
         ]
 
         public init() {}
@@ -106,9 +110,13 @@ extension LogCapture {
 extension LogCapture {
     public func printIfFailed(_ testRun: XCTestRun?) {
         if let failureCount = testRun?.failureCount, failureCount > 0 {
-            print("------------------------------------------------------------------------------------------------------------------------")
+            print(
+                "------------------------------------------------------------------------------------------------------------------------"
+            )
             self.printLogs()
-            print("========================================================================================================================")
+            print(
+                "========================================================================================================================"
+            )
         }
     }
 
@@ -119,7 +127,7 @@ extension LogCapture {
             if var metadata = log.metadata {
                 if let id = metadata.removeValue(forKey: "actor/id") {
                     actorIdentifier = "[\(id)]"
-                    _ = metadata.removeValue(forKey: "actor/path") // discard it
+                    _ = metadata.removeValue(forKey: "actor/path")  // discard it
                 } else if let path = metadata.removeValue(forKey: "actor/path") {
                     actorIdentifier = "[\(path)]"
                 }
@@ -154,7 +162,9 @@ extension LogCapture {
             let date = ActorOriginLogHandler._createSimpleFormatter().string(from: log.date)
             let file = log.file.split(separator: "/").last ?? ""
             let line = log.line
-            print("[captured] [\(self.captureLabel)] \(date) \(log.level) \(actorIdentifier) [\(file):\(line)] \(log.message)\(metadataString)")
+            print(
+                "[captured] [\(self.captureLabel)] \(date) \(log.level) \(actorIdentifier) [\(file):\(line)] \(log.message)\(metadataString)"
+            )
         }
     }
 
@@ -204,26 +214,38 @@ struct LogCaptureLogHandler: LogHandler {
         self.capture = capture
     }
 
-    public func log(level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata?, file: String, function: String, line: UInt) {
+    public func log(
+        level: Logger.Level,
+        message: Logger.Message,
+        metadata: Logger.Metadata?,
+        file: String,
+        function: String,
+        line: UInt
+    ) {
         let actorPath = self.metadata["actor/path"].map { "\($0)" } ?? ""
 
-        guard self.capture.settings.filterActorPaths.contains(where: { path in
-            if (path == "") { // TODO(swift): rdar://98691039 String.starts(with:) has a bug when given an empty string, so we have to avoid it
-                return true
-            }
+        guard
+            self.capture.settings.filterActorPaths.contains(where: { path in
+                if path == "" {  // TODO(swift): rdar://98691039 String.starts(with:) has a bug when given an empty string, so we have to avoid it
+                    return true
+                }
 
-            return actorPath.starts(with: path)
-        }) else {
-            return // ignore this actor's logs, it was filtered out
+                return actorPath.starts(with: path)
+            })
+        else {
+            return  // ignore this actor's logs, it was filtered out
         }
         guard !self.capture.settings.excludeActorPaths.contains(actorPath) else {
-            return // actor was excluded explicitly
+            return  // actor was excluded explicitly
         }
-        guard self.capture.settings.grep.isEmpty || self.capture.settings.grep.contains(where: { "\(message)".contains($0) }) else {
-            return // log was included explicitly
+        guard
+            self.capture.settings.grep.isEmpty
+                || self.capture.settings.grep.contains(where: { "\(message)".contains($0) })
+        else {
+            return  // log was included explicitly
         }
         guard !self.capture.settings.excludeGrep.contains(where: { "\(message)".contains($0) }) else {
-            return // log was excluded explicitly
+            return  // log was excluded explicitly
         }
 
         let date = Date()
@@ -231,7 +253,17 @@ struct LogCaptureLogHandler: LogHandler {
         _metadata.merge(metadata ?? [:], uniquingKeysWith: { _, r in r })
         _metadata["label"] = "\(self.label)"
 
-        self.capture.append(CapturedLogMessage(date: date, level: level, message: message, metadata: _metadata, file: file, function: function, line: line))
+        self.capture.append(
+            CapturedLogMessage(
+                date: date,
+                level: level,
+                message: message,
+                metadata: _metadata,
+                file: file,
+                function: function,
+                line: line
+            )
+        )
     }
 
     public subscript(metadataKey metadataKey: String) -> Logger.Metadata.Value? {
@@ -271,9 +303,14 @@ extension LogCapture {
         expectedFile: String? = nil,
         expectedLine: Int = -1,
         failTest: Bool = true,
-        file: StaticString = #filePath, line: UInt = #line, column: UInt = #column
+        file: StaticString = #filePath,
+        line: UInt = #line,
+        column: UInt = #column
     ) throws -> CapturedLogMessage {
-        precondition(prefix != nil || message != nil || grep != nil || level != nil || level != nil || expectedFile != nil, "At least one query parameter must be not `nil`!")
+        precondition(
+            prefix != nil || message != nil || grep != nil || level != nil || level != nil || expectedFile != nil,
+            "At least one query parameter must be not `nil`!"
+        )
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
 
         let found = self.logs.lazy
@@ -333,10 +370,10 @@ extension LogCapture {
                 .joined(separator: ", ")
 
             let message = """
-            Did not find expected log, matching query: 
-                [\(query)]
-            in captured logs at \(file):\(line)
-            """
+                Did not find expected log, matching query: 
+                    [\(query)]
+                in captured logs at \(file):\(line)
+                """
             let callSiteError = callSite.error(message)
             if failTest {
                 XCTFail(message, file: callSite.file, line: callSite.line)
@@ -362,7 +399,7 @@ extension LogCapture {
                     if queryValue != "\(value)" {
                         // mismatch, exclude it
                         return false
-                    } // ok, continue checking other keys
+                    }  // ok, continue checking other keys
                 } else {
                     // key did not exist
                     return false

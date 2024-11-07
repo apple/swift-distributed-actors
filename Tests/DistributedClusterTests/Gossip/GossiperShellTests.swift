@@ -13,10 +13,11 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import Foundation
 import NIOSSL
 import XCTest
+
+@testable import DistributedCluster
 
 final class GossiperShellTests: SingleClusterSystemXCTestCase {
     func peerBehavior<T: Codable>() -> _Behavior<GossipShell<T, String>.Message> {
@@ -85,7 +86,11 @@ final class GossiperShellTests: SingleClusterSystemXCTestCase {
             nil
         }
 
-        func receiveAcknowledgement(_ acknowledgement: Acknowledgement, from peer: _AddressableActorRef, confirming gossip: Gossip) {}
+        func receiveAcknowledgement(
+            _ acknowledgement: Acknowledgement,
+            from peer: _AddressableActorRef,
+            confirming gossip: Gossip
+        ) {}
 
         func receiveGossip(_ gossip: Gossip, from peer: _AddressableActorRef) -> Acknowledgement? {
             nil
@@ -118,14 +123,16 @@ final class GossiperShellTests: SingleClusterSystemXCTestCase {
         control.ref.tell(
             .gossip(
                 identity: StringGossipIdentifier("example"),
-                origin: first, .init("unexpected"),
-                ackRef: system.deadLetters.adapted() // this is wrong on purpose; we're configured as `unidirectional`; this should cause warnings
+                origin: first,
+                .init("unexpected"),
+                ackRef: system.deadLetters.adapted()  // this is wrong on purpose; we're configured as `unidirectional`; this should cause warnings
             )
         )
 
         try self.logCapture.awaitLogContaining(
             self.testKit,
-            text: " Incoming gossip has acknowledgement actor ref and seems to be expecting an ACK, while this gossiper is configured as .unidirectional!"
+            text:
+                " Incoming gossip has acknowledgement actor ref and seems to be expecting an ACK, while this gossiper is configured as .unidirectional!"
         )
     }
 
@@ -149,10 +156,14 @@ final class GossiperShellTests: SingleClusterSystemXCTestCase {
         }
 
         func makePayload(target: _AddressableActorRef) -> Gossip? {
-            .init("Hello") // legal but will produce a warning
+            .init("Hello")  // legal but will produce a warning
         }
 
-        func receiveAcknowledgement(_ acknowledgement: Acknowledgement, from peer: _AddressableActorRef, confirming gossip: Gossip) {
+        func receiveAcknowledgement(
+            _ acknowledgement: Acknowledgement,
+            from peer: _AddressableActorRef,
+            confirming gossip: Gossip
+        ) {
             self.probe.tell("un-expected acknowledgement: \(acknowledgement) from \(peer) confirming \(gossip)")
         }
 

@@ -48,7 +48,10 @@ extension Cluster {
         }
 
         internal init(node: Cluster.Node, status: Cluster.MemberStatus, upNumber: Int) {
-            assert(!status.isJoining, "Node \(node) was \(status) yet was given upNumber: \(upNumber). This is incorrect, as only at-least .up members may have upNumbers!")
+            assert(
+                !status.isJoining,
+                "Node \(node) was \(status) yet was given upNumber: \(upNumber). This is incorrect, as only at-least .up members may have upNumbers!"
+            )
             self.node = node
             self.status = status
             self._upNumber = upNumber
@@ -217,7 +220,7 @@ extension Cluster {
 
         case _PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE
 
-        internal static let maxStrLen = 7 // hardcoded strlen of the words used for joining...removed; used for padding
+        internal static let maxStrLen = 7  // hardcoded strlen of the words used for joining...removed; used for padding
     }
 }
 

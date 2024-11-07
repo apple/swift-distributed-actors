@@ -13,10 +13,11 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import Foundation
 import NIOSSL
 import XCTest
+
+@testable import DistributedCluster
 
 // Unit tests of the actions, see `ClusterLeaderActionsClusteredTests` for integration tests
 final class ClusterLeaderActionsTests: XCTestCase {
@@ -79,11 +80,14 @@ final class ClusterLeaderActionsTests: XCTestCase {
 
     func test_leaderActions_removeDownMembers_ifKnownAsDownToAllMembers() {
         // make A the leader
-        let makeFirstTheLeader = Cluster.LeadershipChange(oldLeader: nil, newLeader: self.stateA.membership.anyMember(forEndpoint: self.nodeA.endpoint)!)!
+        let makeFirstTheLeader = Cluster.LeadershipChange(
+            oldLeader: nil,
+            newLeader: self.stateA.membership.anyMember(forEndpoint: self.nodeA.endpoint)!
+        )!
         _ = self.stateA.applyClusterEvent(.leadershipChange(makeFirstTheLeader))
 
         // time to mark B as .down
-        _ = self.stateA.membership.mark(self.nodeB, as: .down) // only F knows that S is .down
+        _ = self.stateA.membership.mark(self.nodeB, as: .down)  // only F knows that S is .down
 
         // ensure some nodes are up, so they participate in the convergence check
         _ = self.stateA.membership.mark(self.nodeA, as: .up)
@@ -110,7 +114,7 @@ final class ClusterLeaderActionsTests: XCTestCase {
 
         // now first knows that all other up/leaving members also know about second being .down
         self.stateA.latestGossip.converged().shouldBeTrue()
-        self.stateC.latestGossip.converged().shouldBeTrue() // also true, but not needed for the leader to make the decision
+        self.stateC.latestGossip.converged().shouldBeTrue()  // also true, but not needed for the leader to make the decision
 
         let hopefullyRemovalActions = self.stateA.collectLeaderActions()
         hopefullyRemovalActions.count.shouldEqual(1)
@@ -134,14 +138,17 @@ final class ClusterLeaderActionsTests: XCTestCase {
 
     func test_leaderActions_removeDownMembers_dontRemoveIfDownNotKnownToAllMembersYet() {
         // A is .down, but
-        _ = self.stateB._latestGossip = .parse(
-            """
-            A.down B.up C.up [leader:B]
-            A: A:7 B:2
-            B: A:7 B:10 C:6
-            C: A:7 B:5 C:6
-            """, owner: self.nodeB, nodes: self.allNodes
-        )
+        _ =
+            self.stateB._latestGossip = .parse(
+                """
+                A.down B.up C.up [leader:B]
+                A: A:7 B:2
+                B: A:7 B:10 C:6
+                C: A:7 B:5 C:6
+                """,
+                owner: self.nodeB,
+                nodes: self.allNodes
+            )
 
         self.stateB.latestGossip.converged().shouldBeFalse()
         let moveMembersUp = self.stateA.collectLeaderActions()
@@ -149,7 +156,8 @@ final class ClusterLeaderActionsTests: XCTestCase {
     }
 
     @discardableResult
-    private func gossip(from: ClusterShellState, to: inout ClusterShellState) -> Cluster.MembershipGossip.MergeDirective {
+    private func gossip(from: ClusterShellState, to: inout ClusterShellState) -> Cluster.MembershipGossip.MergeDirective
+    {
         to.latestGossip.mergeForward(incoming: from.latestGossip)
     }
 

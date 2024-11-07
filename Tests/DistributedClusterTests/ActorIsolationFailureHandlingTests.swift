@@ -13,9 +13,10 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import Foundation
 import XCTest
+
+@testable import DistributedCluster
 
 final class ActorIsolationFailureHandlingTests: SingleClusterSystemXCTestCase {
     private enum SimpleTestError: Error {
@@ -40,7 +41,7 @@ final class ActorIsolationFailureHandlingTests: SingleClusterSystemXCTestCase {
         .receive { context, message in
             context.log.info("Working on: \(message)")
             switch message {
-            case .work(let n, let divideBy): // Fault handling is not implemented
+            case .work(let n, let divideBy):  // Fault handling is not implemented
                 pw.tell(n / divideBy)
                 return .same
             case .throwError(let error):
@@ -68,7 +69,10 @@ final class ActorIsolationFailureHandlingTests: SingleClusterSystemXCTestCase {
         let pm: ActorTestProbe<SimpleProbeMessage> = self.testKit.makeTestProbe("testProbe-boss-1")
         let pw: ActorTestProbe<Int> = self.testKit.makeTestProbe("testProbeForWorker-1")
 
-        let healthyBoss: _ActorRef<String> = try system._spawn("healthyBoss", self.healthyBossBehavior(pm: pm.ref, pw: pw.ref))
+        let healthyBoss: _ActorRef<String> = try system._spawn(
+            "healthyBoss",
+            self.healthyBossBehavior(pm: pm.ref, pw: pw.ref)
+        )
 
         // watch parent and see it spawn the worker:
         pm.watch(healthyBoss)
@@ -81,7 +85,7 @@ final class ActorIsolationFailureHandlingTests: SingleClusterSystemXCTestCase {
         try pw.expectMessage(10)
 
         // issue a message that will cause the worker to crash
-        worker.tell(.throwError(error: WorkerError.error(code: 418))) // BOOM!
+        worker.tell(.throwError(error: WorkerError.error(code: 418)))  // BOOM!
 
         // the worker, should have terminated due to the error:
         try pw.expectTerminated(worker)

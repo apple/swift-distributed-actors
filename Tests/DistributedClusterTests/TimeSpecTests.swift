@@ -13,8 +13,9 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import XCTest
+
+@testable import DistributedCluster
 
 private let NANOS = 1_000_000_000
 

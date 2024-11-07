@@ -30,8 +30,12 @@ public distributed actor MultiNodeTestConductor: ClusterSingleton, CustomStringC
 
     // === Checkpoints
     var activeCheckPoint: MultiNode.Checkpoint?
-    var nodesAtCheckPoint: [String /* FIXME: should be Cluster.Node*/: CheckedContinuation<MultiNode.Checkpoint, Error>]
-    func setContinuation(node: String /* FIXME: should be Cluster.Node*/, cc: CheckedContinuation<MultiNode.Checkpoint, Error>) {
+    var nodesAtCheckPoint:
+        [String /* FIXME: should be Cluster.Node*/: CheckedContinuation<MultiNode.Checkpoint, Error>]
+    func setContinuation(
+        node: String /* FIXME: should be Cluster.Node*/,
+        cc: CheckedContinuation<MultiNode.Checkpoint, Error>
+    ) {
         self.nodesAtCheckPoint[node] = cc
     }
 
@@ -48,7 +52,7 @@ public distributed actor MultiNodeTestConductor: ClusterSingleton, CustomStringC
     }
 
     deinit {
-        guard __isLocalActor(self) else { // workaround for old toolchains
+        guard __isLocalActor(self) else {  // workaround for old toolchains
             return
         }
         self.clusterEventsTask?.cancel()
@@ -82,19 +86,21 @@ extension MultiNodeTestConductor {
 
 extension MultiNodeTestConductor {
     /// Helper function which sets a large timeout for this remote call -- the call will suspend until all nodes have arrived at the checkpoint
-    public nonisolated func enterCheckPoint(node: String /* FIXME: should be Cluster.Node*/,
-                                            checkPoint: MultiNode.Checkpoint,
-                                            waitTime: Duration) async throws
-    {
+    public nonisolated func enterCheckPoint(
+        node: String /* FIXME: should be Cluster.Node*/,
+        checkPoint: MultiNode.Checkpoint,
+        waitTime: Duration
+    ) async throws {
         try await RemoteCall.with(timeout: waitTime) {
             try await self._enterCheckPoint(node: node, checkPoint: checkPoint)
         }
     }
 
     /// Reentrant; all nodes will enter the checkpoint and eventually be resumed once all have arrived.
-    internal distributed func _enterCheckPoint(node: String /* FIXME: should be Cluster.Node*/,
-                                               checkPoint: MultiNode.Checkpoint) async throws
-    {
+    internal distributed func _enterCheckPoint(
+        node: String /* FIXME: should be Cluster.Node*/,
+        checkPoint: MultiNode.Checkpoint
+    ) async throws {
         self.actorSystem.log.warning("Conductor received `enterCheckPoint` FROM \(node) INNER RECEIVED")
         self.log.notice("[multi-node][checkpoint:\(checkPoint.name)] Node [\(node)] entering checkpoint...")
         self.ensureClusterEventsListening()
@@ -110,22 +116,33 @@ extension MultiNodeTestConductor {
         }
     }
 
-    func enterActiveCheckPoint(_ node: String /* FIXME: should be Cluster.Node*/, checkPoint: MultiNode.Checkpoint) async throws {
+    func enterActiveCheckPoint(
+        _ node: String /* FIXME: should be Cluster.Node*/,
+        checkPoint: MultiNode.Checkpoint
+    ) async throws {
         guard self.nodesAtCheckPoint[node] == nil else {
             throw MultiNodeCheckPointError(
                 nodeName: node,
-                message: "[multi-node][checkpoint:\(checkPoint.name)] Node [\(node)] entered checkpoint [\(checkPoint)] more than once!"
+                message:
+                    "[multi-node][checkpoint:\(checkPoint.name)] Node [\(node)] entered checkpoint [\(checkPoint)] more than once!"
             )
         }
         let remainingNodes = self.allNodes.count - 1 - self.nodesAtCheckPoint.count
-        self.log.notice("[multi-node][checkpoint:\(checkPoint.name) @ \(self.nodesAtCheckPoint.count + 1)/\(self.allNodes.count)] \(node) entered checkpoint [\(checkPoint)]... Waiting for \(remainingNodes) remaining nodes.", metadata: [
-            "multiNode/checkpoint": "\(checkPoint.name)",
-            "multiNode/checkpoint/missing": Logger.MetadataValue.array(self.checkpointMissingNodes.map { Logger.MetadataValue.string($0) }),
-        ])
+        self.log.notice(
+            "[multi-node][checkpoint:\(checkPoint.name) @ \(self.nodesAtCheckPoint.count + 1)/\(self.allNodes.count)] \(node) entered checkpoint [\(checkPoint)]... Waiting for \(remainingNodes) remaining nodes.",
+            metadata: [
+                "multiNode/checkpoint": "\(checkPoint.name)",
+                "multiNode/checkpoint/missing": Logger.MetadataValue.array(
+                    self.checkpointMissingNodes.map { Logger.MetadataValue.string($0) }
+                ),
+            ]
+        )
 
         // last node arriving at the checkpoint, resume them all!
         if remainingNodes == 0 {
-            print("[multi-node] [checkpoint:\(checkPoint.name)] All [\(self.allNodes.count)] nodes entered checkpoint! Release: \(checkPoint.name) at \(checkPoint.file):\(checkPoint.line)")
+            print(
+                "[multi-node] [checkpoint:\(checkPoint.name)] All [\(self.allNodes.count)] nodes entered checkpoint! Release: \(checkPoint.name) at \(checkPoint.file):\(checkPoint.line)"
+            )
 
             for waitingAtCheckpoint in self.nodesAtCheckPoint.values {
                 waitingAtCheckpoint.resume(returning: checkPoint)
@@ -154,12 +171,17 @@ extension MultiNodeTestConductor {
 
                 let checkPointError =
                     MultiNodeCheckPointError(
-                        nodeName: node, message: "Checkpoint failed, members arrived: \(self.nodesAtCheckPoint) but missing [\(missingNodes)] nodes!"
+                        nodeName: node,
+                        message:
+                            "Checkpoint failed, members arrived: \(self.nodesAtCheckPoint) but missing [\(missingNodes)] nodes!"
                     )
-                self.log.warning("Checkpoint failed, informing node [\(node)]", metadata: [
-                    "checkPoint/node": "\(node)",
-                    "checkPoint/error": "\(checkPointError)",
-                ])
+                self.log.warning(
+                    "Checkpoint failed, informing node [\(node)]",
+                    metadata: [
+                        "checkPoint/node": "\(node)",
+                        "checkPoint/error": "\(checkPointError)",
+                    ]
+                )
                 cc.resume(throwing: checkPointError)
 
             } catch {
@@ -182,7 +204,10 @@ extension MultiNodeTestConductor {
         return missing
     }
 
-    func activateCheckPoint(_ node: String /* FIXME: should be Cluster.Node*/, checkPoint: MultiNode.Checkpoint) async throws {
+    func activateCheckPoint(
+        _ node: String /* FIXME: should be Cluster.Node*/,
+        checkPoint: MultiNode.Checkpoint
+    ) async throws {
         guard self.activeCheckPoint == nil else {
             throw MultiNodeCheckPointError(
                 nodeName: node,
@@ -194,13 +219,15 @@ extension MultiNodeTestConductor {
         try await self.enterActiveCheckPoint(node, checkPoint: checkPoint)
     }
 
-    func enterIllegalCheckpoint(_ node: String /* FIXME: should be Cluster.Node*/,
-                                active activeCheckPoint: MultiNode.Checkpoint,
-                                entered enteredCheckPoint: MultiNode.Checkpoint) throws
-    {
+    func enterIllegalCheckpoint(
+        _ node: String /* FIXME: should be Cluster.Node*/,
+        active activeCheckPoint: MultiNode.Checkpoint,
+        entered enteredCheckPoint: MultiNode.Checkpoint
+    ) throws {
         throw MultiNodeCheckPointError(
             nodeName: node,
-            message: "Attempted to enter \(enteredCheckPoint), but the current active checkpoint was: \(activeCheckPoint)"
+            message:
+                "Attempted to enter \(enteredCheckPoint), but the current active checkpoint was: \(activeCheckPoint)"
         )
     }
 
@@ -212,13 +239,17 @@ extension MultiNodeTestConductor {
 
         let error = MultiNodeCheckPointError(
             nodeName: nodeName,
-            message: "Checkpoint [\(checkpoint.name)] failed, node [\(nodeName)] became [\(change.status)] and therefore unable to reach the checkpoint!"
+            message:
+                "Checkpoint [\(checkpoint.name)] failed, node [\(nodeName)] became [\(change.status)] and therefore unable to reach the checkpoint!"
         )
 
         for (name, cc) in self.nodesAtCheckPoint {
-            self.log.warning("Checkpoint [\(checkpoint.name)] failing. Node \(nodeName) became at least [.down]. Failing waiting node [\(name)]", metadata: [
-                "multiNode/checkpoint/error": "\(error)",
-            ])
+            self.log.warning(
+                "Checkpoint [\(checkpoint.name)] failing. Node \(nodeName) became at least [.down]. Failing waiting node [\(name)]",
+                metadata: [
+                    "multiNode/checkpoint/error": "\(error)"
+                ]
+            )
             cc.resume(throwing: error)
         }
 

@@ -22,7 +22,10 @@ internal struct InspectKit {
         FileManager.default.currentDirectoryPath
     }
 
-    private static func runCommand(cmd: String, args: String...) -> (output: [Substring], error: [Substring], exitCode: Int32) {
+    private static func runCommand(
+        cmd: String,
+        args: String...
+    ) -> (output: [Substring], error: [Substring], exitCode: Int32) {
         var output: [Substring] = []
         var error: [Substring] = []
 

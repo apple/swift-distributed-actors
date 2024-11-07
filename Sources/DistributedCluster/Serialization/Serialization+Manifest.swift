@@ -13,12 +13,11 @@
 //===----------------------------------------------------------------------===//
 
 import CDistributedActorsMailbox
+import Foundation  // for Codable
 import Logging
 import NIO
 import NIOFoundationCompat
 import SwiftProtobuf
-
-import Foundation // for Codable
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Serialization Manifest
@@ -111,9 +110,9 @@ extension Serialization {
         let hint: String = Self.getTypeHint(messageType)
 
         let manifest: Manifest?
-//        if messageType is _AnyProtobufRepresentable.Type {
-//            manifest = Manifest(serializerID: ._ProtobufRepresentable, hint: hint)
-//        } else
+        //        if messageType is _AnyProtobufRepresentable.Type {
+        //            manifest = Manifest(serializerID: ._ProtobufRepresentable, hint: hint)
+        //        } else
         if messageType is Codable.Type {
             manifest = Manifest(serializerID: self.settings.defaultSerializerID, hint: hint)
         } else if messageType is _NotActuallyCodableMessage.Type {
@@ -123,7 +122,9 @@ extension Serialization {
         }
 
         guard let selectedManifest = manifest else {
-            throw SerializationError(.unableToCreateManifest(hint: "Cannot create manifest for type [\(String(reflecting: messageType))]"))
+            throw SerializationError(
+                .unableToCreateManifest(hint: "Cannot create manifest for type [\(String(reflecting: messageType))]")
+            )
         }
 
         return selectedManifest
@@ -148,7 +149,7 @@ extension Serialization {
         }
 
         if let hint = manifest.hint,
-           let type = _typeByName(hint)
+            let type = _typeByName(hint)
         {
             return type
         }

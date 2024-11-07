@@ -13,22 +13,35 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import XCTest
+
+@testable import DistributedCluster
 
 final class TimeoutBasedDowningInstanceTests: XCTestCase {
     var instance: TimeoutBasedDowningStrategy!
 
-    let selfNode = Cluster.Node(endpoint: Cluster.Endpoint(systemName: "Test", host: "localhost", port: 8888), nid: .random())
+    let selfNode = Cluster.Node(
+        endpoint: Cluster.Endpoint(systemName: "Test", host: "localhost", port: 8888),
+        nid: .random()
+    )
     lazy var selfMember = Cluster.Member(node: self.selfNode, status: .up)
 
-    let otherNode = Cluster.Node(endpoint: Cluster.Endpoint(systemName: "Test", host: "localhost", port: 9999), nid: .random())
+    let otherNode = Cluster.Node(
+        endpoint: Cluster.Endpoint(systemName: "Test", host: "localhost", port: 9999),
+        nid: .random()
+    )
     lazy var otherMember = Cluster.Member(node: self.otherNode, status: .up)
 
-    let yetAnotherNode = Cluster.Node(endpoint: Cluster.Endpoint(systemName: "Test", host: "localhost", port: 2222), nid: .random())
+    let yetAnotherNode = Cluster.Node(
+        endpoint: Cluster.Endpoint(systemName: "Test", host: "localhost", port: 2222),
+        nid: .random()
+    )
     lazy var yetAnotherMember = Cluster.Member(node: self.yetAnotherNode, status: .up)
 
-    let nonMemberNode = Cluster.Node(endpoint: Cluster.Endpoint(systemName: "Test", host: "localhost", port: 1111), nid: .random())
+    let nonMemberNode = Cluster.Node(
+        endpoint: Cluster.Endpoint(systemName: "Test", host: "localhost", port: 1111),
+        nid: .random()
+    )
     lazy var nonMember = Cluster.Member(node: self.nonMemberNode, status: .up)
 
     override func setUp() {
@@ -233,7 +246,8 @@ final class TimeoutBasedDowningInstanceTests: XCTestCase {
 
     func test_onMemberUnreachable_shouldAddAddressOfMemberToUnreachableSet() throws {
         let member = Cluster.Member(node: self.otherNode, status: .up)
-        guard case .startTimer = self.instance.onMemberUnreachable(.init(member: member.asUnreachable)).underlying else {
+        guard case .startTimer = self.instance.onMemberUnreachable(.init(member: member.asUnreachable)).underlying
+        else {
             throw TestError("Expected directive to be .startTimer")
         }
         self.instance._unreachable.shouldContain(member.asUnreachable)

@@ -14,14 +14,15 @@
 
 import ArgumentParser
 import DistributedCluster
-import struct Foundation.Date
-import class Foundation.FileHandle
-import class Foundation.Process
-import struct Foundation.URL
 import MultiNodeTestKit
 import NIOCore
 import NIOPosix
 import OrderedCollections
+
+import struct Foundation.Date
+import class Foundation.FileHandle
+import class Foundation.Process
+import struct Foundation.URL
 
 enum Rainbow: String {
     case black = "\u{001B}[0;30m"

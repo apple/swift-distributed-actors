@@ -13,17 +13,24 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import XCTest
+
+@testable import DistributedCluster
 
 final class VersionVectorTests: XCTestCase {
     private typealias VV = VersionVector
     private typealias V = VersionVector.Version
 
     let node = Cluster.Node(systemName: "Test", host: "127.0.0.1", port: 7337, nid: .random())
-    lazy var replicaA = ReplicaID.actorID(try! ActorPath._user.appending("A").makeLocalID(on: node, incarnation: .random()))
-    lazy var replicaB = ReplicaID.actorID(try! ActorPath._user.appending("B").makeLocalID(on: node, incarnation: .random()))
-    lazy var replicaC = ReplicaID.actorID(try! ActorPath._user.appending("C").makeLocalID(on: node, incarnation: .random()))
+    lazy var replicaA = ReplicaID.actorID(
+        try! ActorPath._user.appending("A").makeLocalID(on: node, incarnation: .random())
+    )
+    lazy var replicaB = ReplicaID.actorID(
+        try! ActorPath._user.appending("B").makeLocalID(on: node, incarnation: .random())
+    )
+    lazy var replicaC = ReplicaID.actorID(
+        try! ActorPath._user.appending("C").makeLocalID(on: node, incarnation: .random())
+    )
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: VersionVector tests
@@ -34,16 +41,16 @@ final class VersionVectorTests: XCTestCase {
 
         // Add "A"
         vv.increment(at: self.replicaA).shouldEqual(1)
-        vv[self.replicaA].shouldEqual(1) // New replica gets added with version 1
+        vv[self.replicaA].shouldEqual(1)  // New replica gets added with version 1
 
         // Increment "A"
         vv.increment(at: self.replicaA).shouldEqual(2)
-        vv[self.replicaA].shouldEqual(2) // 1 + 1
+        vv[self.replicaA].shouldEqual(2)  // 1 + 1
 
         // Add "B"
         vv.increment(at: self.replicaB).shouldEqual(1)
-        vv[self.replicaA].shouldEqual(2) // No change
-        vv[self.replicaB].shouldEqual(1) // New replica gets added with version 1
+        vv[self.replicaA].shouldEqual(2)  // No change
+        vv[self.replicaB].shouldEqual(1)  // New replica gets added with version 1
     }
 
     func test_VersionVector_init_fromVersionVector_canModify() throws {
@@ -53,16 +60,16 @@ final class VersionVectorTests: XCTestCase {
 
         vv[self.replicaA].shouldEqual(1)
         vv[self.replicaB].shouldEqual(2)
-        vv[self.replicaC].shouldEqual(0) // default
+        vv[self.replicaC].shouldEqual(0)  // default
 
         // Increment "B"
         vv.increment(at: self.replicaB).shouldEqual(3)
-        vv[self.replicaA].shouldEqual(1) // No change
-        vv[self.replicaB].shouldEqual(3) // 2 + 1
+        vv[self.replicaA].shouldEqual(1)  // No change
+        vv[self.replicaB].shouldEqual(3)  // 2 + 1
 
         // Add "C"
         vv.increment(at: self.replicaC).shouldEqual(1)
-        vv[self.replicaC].shouldEqual(1) // New replica gets added with version 1
+        vv[self.replicaC].shouldEqual(1)  // New replica gets added with version 1
     }
 
     func test_VersionVector_init_fromArrayOfReplicaVersionTuples_canModify() throws {
@@ -71,16 +78,16 @@ final class VersionVectorTests: XCTestCase {
 
         vv[self.replicaA].shouldEqual(1)
         vv[self.replicaB].shouldEqual(2)
-        vv[self.replicaC].shouldEqual(0) // default
+        vv[self.replicaC].shouldEqual(0)  // default
 
         // Increment "B"
         vv.increment(at: self.replicaB).shouldEqual(3)
-        vv[self.replicaA].shouldEqual(1) // No change
-        vv[self.replicaB].shouldEqual(3) // 2 + 1
+        vv[self.replicaA].shouldEqual(1)  // No change
+        vv[self.replicaB].shouldEqual(3)  // 2 + 1
 
         // Add "C"
         vv.increment(at: self.replicaC).shouldEqual(1)
-        vv[self.replicaC].shouldEqual(1) // New replica gets added with version 1
+        vv[self.replicaC].shouldEqual(1)  // New replica gets added with version 1
     }
 
     func test_VersionVector_merge_shouldMutate() throws {
@@ -90,9 +97,9 @@ final class VersionVectorTests: XCTestCase {
         // Mutates vv1
         vv1.merge(other: vv2)
 
-        vv1[self.replicaA].shouldEqual(2) // 2 (vv1) > 1 (vv2)
-        vv1[self.replicaB].shouldEqual(4) // 4 (vv2) > 3 (vv1)
-        vv1[self.replicaC].shouldEqual(5) // From vv2
+        vv1[self.replicaA].shouldEqual(2)  // 2 (vv1) > 1 (vv2)
+        vv1[self.replicaB].shouldEqual(4)  // 4 (vv2) > 3 (vv1)
+        vv1[self.replicaC].shouldEqual(5)  // From vv2
 
         // vv2 should remain the same
         vv2[self.replicaA].shouldEqual(1)
@@ -102,16 +109,16 @@ final class VersionVectorTests: XCTestCase {
 
     func test_VersionVector_contains() throws {
         let emptyVV = VV()
-        emptyVV.contains(self.replicaA, 0).shouldBeTrue() // This is no version basically; always included
+        emptyVV.contains(self.replicaA, 0).shouldBeTrue()  // This is no version basically; always included
         emptyVV.contains(self.replicaA, 1).shouldBeFalse()
 
         let vv = VV([(replicaA, V(2)), (replicaB, V(3))])
-        vv.contains(self.replicaA, V(1)).shouldBeTrue() // 2 ≥ 1
-        vv.contains(self.replicaA, V(2)).shouldBeTrue() // 2 ≥ 2
-        vv.contains(self.replicaA, V(3)).shouldBeFalse() // 2 ≱ 3
-        vv.contains(self.replicaB, V(3)).shouldBeTrue() // 3 ≥ 3
-        vv.contains(self.replicaB, V(4)).shouldBeFalse() // 3 ≱ 4
-        vv.contains(self.replicaC, V(2)).shouldBeFalse() // "C" not in vv
+        vv.contains(self.replicaA, V(1)).shouldBeTrue()  // 2 ≥ 1
+        vv.contains(self.replicaA, V(2)).shouldBeTrue()  // 2 ≥ 2
+        vv.contains(self.replicaA, V(3)).shouldBeFalse()  // 2 ≱ 3
+        vv.contains(self.replicaB, V(3)).shouldBeTrue()  // 3 ≥ 3
+        vv.contains(self.replicaB, V(4)).shouldBeFalse()  // 3 ≱ 4
+        vv.contains(self.replicaC, V(2)).shouldBeFalse()  // "C" not in vv
     }
 
     func test_VersionVector_comparisonOperators() throws {
@@ -120,29 +127,37 @@ final class VersionVectorTests: XCTestCase {
         // Empty version vector is always less than non-empty
         (VV() < VV([(self.replicaA, V(2))])).shouldBeTrue()
         // Every entry in lhs is <= rhs, and at least one is strictly less than
-        (VV([(self.replicaA, V(1)), (self.replicaB, V(2))]) < VV([(self.replicaA, V(2)), (self.replicaB, V(3))])).shouldBeTrue()
+        (VV([(self.replicaA, V(1)), (self.replicaB, V(2))]) < VV([(self.replicaA, V(2)), (self.replicaB, V(3))]))
+            .shouldBeTrue()
         // Not every entry in lhs is <= rhs
-        (VV([(self.replicaA, V(1)), (self.replicaB, V(3))]) < VV([(self.replicaA, V(2)), (self.replicaB, V(2))])).shouldBeFalse()
+        (VV([(self.replicaA, V(1)), (self.replicaB, V(3))]) < VV([(self.replicaA, V(2)), (self.replicaB, V(2))]))
+            .shouldBeFalse()
         // At least one entry in lhs must be strictly less than
-        (VV([(self.replicaA, V(1)), (self.replicaB, V(2))]) < VV([(self.replicaA, V(2)), (self.replicaB, V(2))])).shouldBeTrue()
+        (VV([(self.replicaA, V(1)), (self.replicaB, V(2))]) < VV([(self.replicaA, V(2)), (self.replicaB, V(2))]))
+            .shouldBeTrue()
 
         // Two empty version vectors should be considered equal instead of greater than
         (VV() > VV()).shouldBeFalse()
         // Non-empty version vector is always greater than empty
         (VV([(self.replicaA, V(2))]) > VV()).shouldBeTrue()
         // Every entry in lhs is >= rhs, and at least one is strictly greater than
-        (VV([(self.replicaA, V(2)), (self.replicaB, V(3))]) > VV([(self.replicaA, V(1)), (self.replicaB, V(2))])).shouldBeTrue()
+        (VV([(self.replicaA, V(2)), (self.replicaB, V(3))]) > VV([(self.replicaA, V(1)), (self.replicaB, V(2))]))
+            .shouldBeTrue()
         // Not every entry in lhs is >= rhs
-        (VV([(self.replicaA, V(2)), (self.replicaB, V(2))]) > VV([(self.replicaA, V(1)), (self.replicaB, V(3))])).shouldBeFalse()
+        (VV([(self.replicaA, V(2)), (self.replicaB, V(2))]) > VV([(self.replicaA, V(1)), (self.replicaB, V(3))]))
+            .shouldBeFalse()
         // At least one entry in lhs must be strictly greater than
-        (VV([(self.replicaA, V(2)), (self.replicaB, V(2))]) > VV([(self.replicaA, V(1)), (self.replicaB, V(2))])).shouldBeTrue()
+        (VV([(self.replicaA, V(2)), (self.replicaB, V(2))]) > VV([(self.replicaA, V(1)), (self.replicaB, V(2))]))
+            .shouldBeTrue()
 
         // Two empty version vectors are considered equal
         (VV() == VV()).shouldBeTrue()
         // Two version vectors should be considered equal if elements are equal
-        (VV([(self.replicaA, V(2)), (self.replicaB, V(1))]) == VV([(self.replicaB, V(1)), (self.replicaA, V(2))])).shouldBeTrue()
+        (VV([(self.replicaA, V(2)), (self.replicaB, V(1))]) == VV([(self.replicaB, V(1)), (self.replicaA, V(2))]))
+            .shouldBeTrue()
         (VV() == VV([(self.replicaA, V(2))])).shouldBeFalse()
-        (VV([(self.replicaA, V(2)), (self.replicaB, V(3))]) == VV([(self.replicaB, V(1)), (self.replicaA, V(2))])).shouldBeFalse()
+        (VV([(self.replicaA, V(2)), (self.replicaB, V(3))]) == VV([(self.replicaB, V(1)), (self.replicaA, V(2))]))
+            .shouldBeFalse()
 
         // x = [A:1, B:4, C:6], y = [A:2, B:7, C:2]
         // x ≮ y, y ≮ x, x != y
@@ -159,35 +174,73 @@ final class VersionVectorTests: XCTestCase {
         guard case .happenedBefore = VV().compareTo(VV([(self.replicaA, V(2))])) else {
             throw shouldNotHappen("An empty version vector is always before a non-empty one")
         }
-        guard case .happenedBefore = VV([(self.replicaA, V(1)), (self.replicaB, V(2))]).compareTo(VV([(self.replicaA, V(2)), (self.replicaB, V(3))])) else {
-            throw shouldNotHappen("Should be .happenedBefore relation since all entries in LHS are strictly less than RHS")
+        guard
+            case .happenedBefore = VV([(self.replicaA, V(1)), (self.replicaB, V(2))]).compareTo(
+                VV([(self.replicaA, V(2)), (self.replicaB, V(3))])
+            )
+        else {
+            throw shouldNotHappen(
+                "Should be .happenedBefore relation since all entries in LHS are strictly less than RHS"
+            )
         }
-        guard case .happenedBefore = VV([(self.replicaA, V(1)), (self.replicaB, V(1)), (self.replicaC, V(1))]).compareTo(VV([(self.replicaA, V(1)), (self.replicaB, V(1)), (self.replicaC, V(2))])) else {
-            throw shouldNotHappen("Should be .happenedBefore relation since 2 entries in LHS are equal, and at least one is strictly less than RHS")
+        guard
+            case .happenedBefore = VV([(self.replicaA, V(1)), (self.replicaB, V(1)), (self.replicaC, V(1))]).compareTo(
+                VV([(self.replicaA, V(1)), (self.replicaB, V(1)), (self.replicaC, V(2))])
+            )
+        else {
+            throw shouldNotHappen(
+                "Should be .happenedBefore relation since 2 entries in LHS are equal, and at least one is strictly less than RHS"
+            )
         }
 
         guard case .happenedAfter = VV([(self.replicaA, V(2))]).compareTo(VV()) else {
             throw shouldNotHappen("A non-empty version vector is always after an empty one")
         }
-        guard case .happenedAfter = VV([(self.replicaA, V(2)), (self.replicaB, V(3))]).compareTo(VV([(self.replicaA, V(1)), (self.replicaB, V(2))])) else {
-            throw shouldNotHappen("Should be .happenedAfter relation since all entries in LHS are strictly greater than RHS")
+        guard
+            case .happenedAfter = VV([(self.replicaA, V(2)), (self.replicaB, V(3))]).compareTo(
+                VV([(self.replicaA, V(1)), (self.replicaB, V(2))])
+            )
+        else {
+            throw shouldNotHappen(
+                "Should be .happenedAfter relation since all entries in LHS are strictly greater than RHS"
+            )
         }
-        guard case .happenedAfter = VV([(self.replicaA, V(1)), (self.replicaB, V(1)), (self.replicaC, V(2))]).compareTo(VV([(self.replicaA, V(1)), (self.replicaB, V(1)), (self.replicaC, V(1))])) else {
-            throw shouldNotHappen("Should be .happenedAfter relation since all entries in LHS are strictly greater than RHS")
+        guard
+            case .happenedAfter = VV([(self.replicaA, V(1)), (self.replicaB, V(1)), (self.replicaC, V(2))]).compareTo(
+                VV([(self.replicaA, V(1)), (self.replicaB, V(1)), (self.replicaC, V(1))])
+            )
+        else {
+            throw shouldNotHappen(
+                "Should be .happenedAfter relation since all entries in LHS are strictly greater than RHS"
+            )
         }
 
         guard case .same = VV().compareTo(VV()) else {
             throw shouldNotHappen("Two empty version vectors should be considered the same")
         }
-        guard case .same = VV([(self.replicaA, V(2)), (self.replicaB, V(1))]).compareTo(VV([(self.replicaB, V(1)), (self.replicaA, V(2))])) else {
+        guard
+            case .same = VV([(self.replicaA, V(2)), (self.replicaB, V(1))]).compareTo(
+                VV([(self.replicaB, V(1)), (self.replicaA, V(2))])
+            )
+        else {
             throw shouldNotHappen("Two version vectors should be considered the same if elements are equal")
         }
 
-        guard case .concurrent = VV([(self.replicaA, V(1)), (self.replicaB, V(4)), (self.replicaC, V(6))]).compareTo(VV([(self.replicaA, V(2)), (self.replicaB, V(7)), (self.replicaC, V(2))])) else {
+        guard
+            case .concurrent = VV([(self.replicaA, V(1)), (self.replicaB, V(4)), (self.replicaC, V(6))]).compareTo(
+                VV([(self.replicaA, V(2)), (self.replicaB, V(7)), (self.replicaC, V(2))])
+            )
+        else {
             throw shouldNotHappen("Must be .concurrent relation if the two version vectors are not ordered or the same")
         }
-        guard case .concurrent = VV([(self.replicaA, V(1))]).compareTo(VV([(self.replicaA, V(1)), (self.replicaB, V(1))])) else {
-            throw shouldNotHappen("Should be .concurrent, since even if rhs has more information, there is not at least `one strictly less than`")
+        guard
+            case .concurrent = VV([(self.replicaA, V(1))]).compareTo(
+                VV([(self.replicaA, V(1)), (self.replicaB, V(1))])
+            )
+        else {
+            throw shouldNotHappen(
+                "Should be .concurrent, since even if rhs has more information, there is not at least `one strictly less than`"
+            )
         }
     }
 

@@ -13,9 +13,10 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import SWIM
 import XCTest
+
+@testable import DistributedCluster
 
 final class SWIMSerializationTests: SingleClusterSystemXCTestCase {
     func test_serializationOf_ack() async throws {
@@ -28,8 +29,15 @@ final class SWIMSerializationTests: SingleClusterSystemXCTestCase {
         }
 
         let targetPeer = try SWIMActor.resolve(id: target.id._asRemote, using: self.system)
-        let payload: SWIM.GossipPayload = .membership([.init(peer: targetPeer, status: .alive(incarnation: 0), protocolPeriod: 0)])
-        let pingReq: SWIM.PingResponse<SWIMActor, SWIMActor> = .ack(target: targetPeer, incarnation: 1, payload: payload, sequenceNumber: 13)
+        let payload: SWIM.GossipPayload = .membership([
+            .init(peer: targetPeer, status: .alive(incarnation: 0), protocolPeriod: 0)
+        ])
+        let pingReq: SWIM.PingResponse<SWIMActor, SWIMActor> = .ack(
+            target: targetPeer,
+            incarnation: 1,
+            payload: payload,
+            sequenceNumber: 13
+        )
         try self.shared_serializationRoundtrip(pingReq)
     }
 

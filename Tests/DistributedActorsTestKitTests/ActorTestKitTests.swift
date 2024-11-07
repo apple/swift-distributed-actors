@@ -12,9 +12,10 @@
 //
 //===----------------------------------------------------------------------===//
 
+import XCTest
+
 @testable import DistributedActorsTestKit
 @testable import DistributedCluster
-import XCTest
 
 final class ActorTestKitTests: XCTestCase {
     var system: ClusterSystem!

@@ -13,9 +13,10 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import Foundation
 import XCTest
+
+@testable import DistributedCluster
 
 final class RemoteMessagingClusteredTests: ClusteredActorSystemsXCTestCase {
     // TODO: This will start failing once we implement _mangledTypeName manifests
@@ -51,7 +52,12 @@ final class RemoteMessagingClusteredTests: ClusteredActorSystemsXCTestCase {
 
         try assertAssociated(local, withExactly: remote.settings.bindNode)
 
-        let nonCodableResolvedRef = self.resolveRef(local, type: SerializationTestMessage.self, id: nonCodableRefOnRemoteSystem.id, on: remote)
+        let nonCodableResolvedRef = self.resolveRef(
+            local,
+            type: SerializationTestMessage.self,
+            id: nonCodableRefOnRemoteSystem.id,
+            on: remote
+        )
         nonCodableResolvedRef.tell(SerializationTestMessage(serializationBehavior: .succeed))
 
         try probeOnRemote.expectNoMessage(for: .milliseconds(500))
@@ -82,7 +88,12 @@ final class RemoteMessagingClusteredTests: ClusteredActorSystemsXCTestCase {
 
             try assertAssociated(local, withExactly: remote.settings.bindNode)
 
-            let nonCodableResolvedRef = self.resolveRef(local, type: SerializationTestMessage.self, id: refOnRemoteSystem.id, on: remote)
+            let nonCodableResolvedRef = self.resolveRef(
+                local,
+                type: SerializationTestMessage.self,
+                id: refOnRemoteSystem.id,
+                on: remote
+            )
             nonCodableResolvedRef.tell(SerializationTestMessage(serializationBehavior: .failEncoding))
 
             try probeOnRemote.expectNoMessage(for: .milliseconds(100))
@@ -111,7 +122,12 @@ final class RemoteMessagingClusteredTests: ClusteredActorSystemsXCTestCase {
 
         try assertAssociated(local, withExactly: remote.settings.bindNode)
 
-        let nonCodableResolvedRef = self.resolveRef(local, type: SerializationTestMessage.self, id: nonCodableRefOnRemoteSystem.id, on: remote)
+        let nonCodableResolvedRef = self.resolveRef(
+            local,
+            type: SerializationTestMessage.self,
+            id: nonCodableRefOnRemoteSystem.id,
+            on: remote
+        )
         nonCodableResolvedRef.tell(SerializationTestMessage(serializationBehavior: .failDecoding))
 
         try probeOnRemote.expectNoMessage(for: .milliseconds(100))

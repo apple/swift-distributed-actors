@@ -12,9 +12,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-@testable import DistributedActorsTestKit
 import DistributedCluster
 import XCTest
+
+@testable import DistributedActorsTestKit
 
 final class ActorTestProbeTests: SingleClusterSystemXCTestCase {
     func test_maybeExpectMessage_shouldReturnTheReceivedMessage() throws {

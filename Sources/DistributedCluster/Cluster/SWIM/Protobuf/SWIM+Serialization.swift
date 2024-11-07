@@ -48,7 +48,9 @@ extension SWIM.Status: _ProtobufRepresentable {
         case .alive:
             self = .alive(incarnation: proto.incarnation)
         case .suspect:
-            let suspectedBy = try Set(proto.suspectedBy.map { try ClusterMembership.Node(fromProto: $0, context: context) })
+            let suspectedBy = try Set(
+                proto.suspectedBy.map { try ClusterMembership.Node(fromProto: $0, context: context) }
+            )
             self = .suspect(incarnation: proto.incarnation, suspectedBy: suspectedBy)
         case .unreachable:
             self = .unreachable(incarnation: proto.incarnation)
@@ -84,7 +86,7 @@ extension SWIM.GossipPayload: _ProtobufRepresentable {
             let members: [SWIM.Member<SWIMActor>] = try proto.member.map { proto in
                 try .init(fromProto: proto, context: context)
             }
-            self = .membership(members as! [SWIM.Member<Peer>]) // as!-safe, since Peer always is SWIMActor in this implementation
+            self = .membership(members as! [SWIM.Member<Peer>])  // as!-safe, since Peer always is SWIMActor in this implementation
         }
     }
 }
@@ -95,7 +97,9 @@ extension SWIM.Member: _ProtobufRepresentable {
     public func toProto(context: Serialization.Context) throws -> _ProtoSWIMMember {
         var proto = _ProtoSWIMMember()
         guard let peer = self.peer as? SWIMActor else {
-            throw SerializationError(.unableToSerialize(hint: "Expected peer to be \(SWIMActor.self) but was \(self.peer)!"))
+            throw SerializationError(
+                .unableToSerialize(hint: "Expected peer to be \(SWIMActor.self) but was \(self.peer)!")
+            )
         }
         proto.id = try peer.id.toProto(context: context)
         proto.status = try self.status.toProto(context: context)
@@ -109,7 +113,7 @@ extension SWIM.Member: _ProtobufRepresentable {
         let peer = try SWIMActor.resolve(id: id, using: context.system)
         let status = try SWIM.Status(fromProto: proto.status, context: context)
         let protocolPeriod = proto.protocolPeriod
-        self.init(peer: peer as! Peer, status: status, protocolPeriod: protocolPeriod) // as!-safe since we only deal with Actor impls
+        self.init(peer: peer as! Peer, status: status, protocolPeriod: protocolPeriod)  // as!-safe since we only deal with Actor impls
     }
 }
 
@@ -122,7 +126,9 @@ extension SWIM.PingResponse: _ProtobufRepresentable {
         case .ack(let target, let incarnation, let payload, let sequenceNumber):
             var ack = _ProtoSWIMPingResponse.Ack()
             guard let target = target as? SWIMActor else {
-                throw SerializationError(.unableToSerialize(hint: "Can't serialize SWIM target as \(SWIMActor.self), was: \(target)"))
+                throw SerializationError(
+                    .unableToSerialize(hint: "Can't serialize SWIM target as \(SWIMActor.self), was: \(target)")
+                )
             }
             ack.target = try target.id.toProto(context: context)
             ack.incarnation = incarnation
@@ -132,7 +138,9 @@ extension SWIM.PingResponse: _ProtobufRepresentable {
         case .nack(let target, let sequenceNumber):
             var nack = _ProtoSWIMPingResponse.Nack()
             guard let target = target as? SWIMActor else {
-                throw SerializationError(.unableToSerialize(hint: "Can't serialize SWIM target as \(SWIMActor.self), was: \(target)"))
+                throw SerializationError(
+                    .unableToSerialize(hint: "Can't serialize SWIM target as \(SWIMActor.self), was: \(target)")
+                )
             }
             nack.target = try target.id.toProto(context: context)
             nack.sequenceNumber = sequenceNumber
@@ -146,21 +154,28 @@ extension SWIM.PingResponse: _ProtobufRepresentable {
     public init(fromProto proto: _ProtoSWIMPingResponse, context: Serialization.Context) throws {
         precondition(Peer.self == SWIMActor.self)
         guard let pingResponse = proto.pingResponse else {
-            throw SerializationError(.missingField("pingResponse", type: String(describing: SWIM.PingResponse<SWIMActor, SWIMActor>.self)))
+            throw SerializationError(
+                .missingField("pingResponse", type: String(describing: SWIM.PingResponse<SWIMActor, SWIMActor>.self))
+            )
         }
         switch pingResponse {
         case .ack(let ack):
             let targetID = try ActorID(fromProto: ack.target, context: context)
             let target = try SWIMActor.resolve(id: targetID, using: context.system)
-            let targetPeer = target as! Peer // as!-safe, since we only ever deal with Actor
+            let targetPeer = target as! Peer  // as!-safe, since we only ever deal with Actor
             let payload = try SWIM.GossipPayload<Peer>(fromProto: ack.payload, context: context)
             let sequenceNumber = ack.sequenceNumber
-            self = .ack(target: targetPeer, incarnation: ack.incarnation, payload: payload, sequenceNumber: sequenceNumber)
+            self = .ack(
+                target: targetPeer,
+                incarnation: ack.incarnation,
+                payload: payload,
+                sequenceNumber: sequenceNumber
+            )
 
         case .nack(let nack):
             let targetID = try ActorID(fromProto: nack.target, context: context)
             let target = try SWIMActor.resolve(id: targetID, using: context.system)
-            let targetPeer = target as! Peer // as!-safe, since we only ever deal with Actor impls
+            let targetPeer = target as! Peer  // as!-safe, since we only ever deal with Actor impls
             let sequenceNumber = nack.sequenceNumber
             self = .nack(target: targetPeer, sequenceNumber: sequenceNumber)
         }

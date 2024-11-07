@@ -97,14 +97,18 @@ extension Serialization {
         internal static let SystemMessage: SerializerID = .doNotSerialize
         internal static let SystemMessageACK: SerializerID = ._checkProtobufRepresentable(_SystemMessage.ACK.self)
         internal static let SystemMessageNACK: SerializerID = ._checkProtobufRepresentable(_SystemMessage.NACK.self)
-        internal static let SystemMessageEnvelope: SerializerID = ._checkProtobufRepresentable(DistributedCluster.SystemMessageEnvelope.self)
+        internal static let SystemMessageEnvelope: SerializerID = ._checkProtobufRepresentable(
+            DistributedCluster.SystemMessageEnvelope.self
+        )
 
         internal static let ActorID: SerializerID = ._checkProtobufRepresentable(DistributedCluster.ActorID.self)
 
         internal static let ClusterShellMessage: SerializerID = ._checkProtobufRepresentable(ClusterShell.Message.self)
         internal static let ClusterEvent: SerializerID = ._checkProtobufRepresentable(Cluster.Event.self)
 
-        internal static let SWIMPingResponse: SerializerID = ._checkProtobufRepresentable(SWIM.PingResponse<SWIMActor, SWIMActor>.self)
+        internal static let SWIMPingResponse: SerializerID = ._checkProtobufRepresentable(
+            SWIM.PingResponse<SWIMActor, SWIMActor>.self
+        )
 
         // op log receptionist
         internal static let PushOps: SerializerID = .foundationJSON

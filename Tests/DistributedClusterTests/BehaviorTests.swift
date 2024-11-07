@@ -14,10 +14,11 @@
 
 import DistributedActorsConcurrencyHelpers
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import Foundation
 import NIO
 import XCTest
+
+@testable import DistributedCluster
 
 final class BehaviorTests: SingleClusterSystemXCTestCase {
     public struct TestMessage: Codable {
@@ -45,7 +46,7 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
 
         var counter = 0
 
-        for _ in 0 ... 10 {
+        for _ in 0...10 {
             counter += 1
             let payload = "message-\(counter)"
             p.tell(payload)
@@ -67,7 +68,7 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
                 }
             )
 
-        for _ in 0 ... 10 {
+        for _ in 0...10 {
             counter += 1
             let payload = "message-\(counter)"
             echoPayload.tell(TestMessage(message: payload, replyTo: p.ref))
@@ -99,12 +100,12 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         let ref = try system._spawn("countTill\(n)", countTillNThenDieBehavior(n: n))
 
         // first we send many messages
-        for i in 0 ... n {
+        for i in 0...n {
             ref.tell(i)
         }
 
         // then we expect they arrive in the expected order
-        for i in 0 ... n {
+        for i in 0...n {
             try p.expectMessage(i)
         }
     }
@@ -206,7 +207,7 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
             return .same
         }
 
-        for i in (0 ... 100).reversed() {
+        for i in (0...100).reversed() {
             behavior = _Behavior<Int>.receiveMessage { message in
                 if message == i {
                     p.tell(-i)
@@ -261,7 +262,7 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
 
         try p.expectMessage("first:terminated-name:child")
         try p.expectMessage("second:terminated-name:child")
-        try p.expectTerminated(ref) // due to death pact, since none of the signal handlers handled Terminated
+        try p.expectTerminated(ref)  // due to death pact, since none of the signal handlers handled Terminated
     }
 
     func test_orElse_shouldCanonicalizeNestedSetupInAlternative() throws {
@@ -352,9 +353,11 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         let p: ActorTestProbe<ContextClosureMessage> = self.testKit.makeTestProbe()
 
         let behavior: _Behavior<String> = .setup { context in
-            p.tell(.context {
-                context.myself
-            })
+            p.tell(
+                .context {
+                    context.myself
+                }
+            )
 
             return .stop
         }
@@ -362,7 +365,7 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         let ref = try system._spawn("myselfStillValidAfterStopped", behavior)
         p.watch(ref)
 
-        ref.tell("test") // this does nothing
+        ref.tell("test")  // this does nothing
         try p.expectTerminated(ref)
         switch try p.expectMessage() {
         case .context(let closure):
@@ -389,11 +392,11 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
 
         let ref = try system._spawn(.anonymous, behavior)
 
-        ref.tell("something") // this message causes the actor the suspend
+        ref.tell("something")  // this message causes the actor the suspend
 
         try p.expectMessage("something")
 
-        ref.tell("something else") // actor is suspended and should not process this message
+        ref.tell("something else")  // actor is suspended and should not process this message
 
         try p.expectNoMessage(for: .milliseconds(50))
 
@@ -424,18 +427,18 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
 
         let ref = try system._spawn("suspender", behavior)
 
-        ref.tell("something") // this message causes the actor the suspend
+        ref.tell("something")  // this message causes the actor the suspend
 
         try p.expectMessage("something")
 
-        ref.tell("something else") // actor is suspended and should not process this message
+        ref.tell("something else")  // actor is suspended and should not process this message
         try p.expectNoMessage(for: .milliseconds(50))
 
-        ref._sendSystemMessage(.resume(.success(1))) // actor will process the resume handler, but stay suspended
+        ref._sendSystemMessage(.resume(.success(1)))  // actor will process the resume handler, but stay suspended
         try p.expectMessage("suspended:success(1)")
         try p.expectNoMessage(for: .milliseconds(50))
 
-        ref.tell("last") // actor is still suspended and should not process this message
+        ref.tell("last")  // actor is still suspended and should not process this message
         try p.expectNoMessage(for: .milliseconds(50))
 
         ref._sendSystemMessage(.resume(.success("test")))
@@ -473,11 +476,11 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
 
         let ref = try system._spawn(.anonymous, behavior)
 
-        ref.tell("something") // this message causes the actor the suspend
+        ref.tell("something")  // this message causes the actor the suspend
 
         try p.expectMessage("something")
 
-        ref.tell("something else") // actor is suspended and should not process this message
+        ref.tell("something else")  // actor is suspended and should not process this message
 
         try p.expectNoMessage(for: .milliseconds(50))
 
@@ -487,7 +490,12 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         try p.expectMessage("resumed:something else")
     }
 
-    private func awaitResultBehavior(future: EventLoopFuture<Int>, timeout: Duration, probe: ActorTestProbe<String>? = nil, suspendProbe: ActorTestProbe<Result<Int, ErrorEnvelope>>? = nil) -> _Behavior<String> {
+    private func awaitResultBehavior(
+        future: EventLoopFuture<Int>,
+        timeout: Duration,
+        probe: ActorTestProbe<String>? = nil,
+        suspendProbe: ActorTestProbe<Result<Int, ErrorEnvelope>>? = nil
+    ) -> _Behavior<String> {
         .receive { context, message in
             switch message {
             case "suspend":
@@ -502,7 +510,12 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         }
     }
 
-    private func awaitResultThrowingBehavior(future: EventLoopFuture<Int>, timeout: Duration, probe: ActorTestProbe<String>, suspendProbe: ActorTestProbe<Int>) -> _Behavior<String> {
+    private func awaitResultThrowingBehavior(
+        future: EventLoopFuture<Int>,
+        timeout: Duration,
+        probe: ActorTestProbe<String>,
+        suspendProbe: ActorTestProbe<Int>
+    ) -> _Behavior<String> {
         .receive { context, message in
             switch message {
             case "suspend":
@@ -524,7 +537,12 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         let suspendProbe: ActorTestProbe<Result<Int, ErrorEnvelope>> = self.testKit.makeTestProbe()
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
-        let behavior: _Behavior<String> = self.awaitResultBehavior(future: future, timeout: .seconds(1), probe: p, suspendProbe: suspendProbe)
+        let behavior: _Behavior<String> = self.awaitResultBehavior(
+            future: future,
+            timeout: .seconds(1),
+            probe: p,
+            suspendProbe: suspendProbe
+        )
 
         let ref = try system._spawn(.anonymous, behavior)
 
@@ -556,7 +574,12 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         let suspendProbe: ActorTestProbe<Result<Int, ErrorEnvelope>> = self.testKit.makeTestProbe()
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
-        let behavior: _Behavior<String> = self.awaitResultBehavior(future: future, timeout: .seconds(1), probe: p, suspendProbe: suspendProbe)
+        let behavior: _Behavior<String> = self.awaitResultBehavior(
+            future: future,
+            timeout: .seconds(1),
+            probe: p,
+            suspendProbe: suspendProbe
+        )
 
         let ref = try system._spawn(.anonymous, behavior)
 
@@ -569,10 +592,13 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         let suspendResult = try suspendProbe.expectMessage()
         switch suspendResult {
         case .failure(let errorEnvelope):
-            guard let error = errorEnvelope.error as? BestEffortStringError, error.representation.contains("\(String(reflecting: CallSiteError.self))") else {
+            guard let error = errorEnvelope.error as? BestEffortStringError,
+                error.representation.contains("\(String(reflecting: CallSiteError.self))")
+            else {
                 throw p.error("Expected failure(ExecutionException(underlying: CallSiteError())), got \(suspendResult)")
             }
-        default: throw p.error("Expected failure(ExecutionException(underlying: CallSiteError())), got \(suspendResult)")
+        default:
+            throw p.error("Expected failure(ExecutionException(underlying: CallSiteError())), got \(suspendResult)")
         }
 
         try p.expectMessage("another test")
@@ -585,7 +611,12 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         let suspendProbe: ActorTestProbe<Int> = self.testKit.makeTestProbe()
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
-        let behavior: _Behavior<String> = self.awaitResultThrowingBehavior(future: future, timeout: .seconds(1), probe: p, suspendProbe: suspendProbe)
+        let behavior: _Behavior<String> = self.awaitResultThrowingBehavior(
+            future: future,
+            timeout: .seconds(1),
+            probe: p,
+            suspendProbe: suspendProbe
+        )
 
         let ref = try system._spawn(.anonymous, behavior)
 
@@ -612,7 +643,12 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         let suspendProbe: ActorTestProbe<Int> = self.testKit.makeTestProbe()
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
-        let behavior: _Behavior<String> = self.awaitResultThrowingBehavior(future: future, timeout: .seconds(1), probe: p, suspendProbe: suspendProbe)
+        let behavior: _Behavior<String> = self.awaitResultThrowingBehavior(
+            future: future,
+            timeout: .seconds(1),
+            probe: p,
+            suspendProbe: suspendProbe
+        )
 
         let ref = try system._spawn(.anonymous, behavior)
         p.watch(ref)
@@ -640,7 +676,12 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         let suspendProbe: ActorTestProbe<Result<Int, ErrorEnvelope>> = self.testKit.makeTestProbe()
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
-        let behavior: _Behavior<String> = self.awaitResultBehavior(future: future, timeout: .milliseconds(10), probe: p, suspendProbe: suspendProbe)
+        let behavior: _Behavior<String> = self.awaitResultBehavior(
+            future: future,
+            timeout: .milliseconds(10),
+            probe: p,
+            suspendProbe: suspendProbe
+        )
 
         let ref = try system._spawn(.anonymous, behavior)
 
@@ -649,7 +690,9 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         let suspendResult = try suspendProbe.expectMessage()
         switch suspendResult {
         case .failure(let errorEnvelope):
-            guard let error = errorEnvelope.error as? BestEffortStringError, error.representation.contains("\(String(reflecting: TimeoutError.self))") else {
+            guard let error = errorEnvelope.error as? BestEffortStringError,
+                error.representation.contains("\(String(reflecting: TimeoutError.self))")
+            else {
                 throw p.error("Expected failure(ExecutionException(underlying: TimeoutError)), got \(suspendResult)")
             }
         default: throw p.error("Expected failure(ExecutionException(underlying: TimeoutError)), got \(suspendResult)")
@@ -680,12 +723,14 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         let ref = try system._spawn(.anonymous, behavior)
 
         try p.expectMessage("initializing")
-        ref.tell("while-suspended") // hits the actor while it's still suspended
+        ref.tell("while-suspended")  // hits the actor while it's still suspended
 
         let suspendResult = try suspendProbe.expectMessage()
         switch suspendResult {
         case .failure(let errorEnvelope):
-            guard let error = errorEnvelope.error as? BestEffortStringError, error.representation.contains("\(String(reflecting: TimeoutError.self))") else {
+            guard let error = errorEnvelope.error as? BestEffortStringError,
+                error.representation.contains("\(String(reflecting: TimeoutError.self))")
+            else {
                 throw p.error("Expected failure(ExecutionException(underlying: TimeoutError)), got \(suspendResult)")
             }
         default:
@@ -721,7 +766,9 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         let suspendResult = try suspendProbe.expectMessage()
         switch suspendResult {
         case .failure(let errorEnvelope):
-            guard let error = errorEnvelope.error as? BestEffortStringError, error.representation.contains("\(String(reflecting: TimeoutError.self))") else {
+            guard let error = errorEnvelope.error as? BestEffortStringError,
+                error.representation.contains("\(String(reflecting: TimeoutError.self))")
+            else {
                 throw p.error("Expected failure(ExecutionException(underlying: TimeoutError)), got \(suspendResult)")
             }
         default:
@@ -773,7 +820,12 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         let suspendProbe: ActorTestProbe<Int> = self.testKit.makeTestProbe()
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
-        let behavior: _Behavior<String> = self.awaitResultThrowingBehavior(future: future, timeout: .milliseconds(10), probe: p, suspendProbe: suspendProbe)
+        let behavior: _Behavior<String> = self.awaitResultThrowingBehavior(
+            future: future,
+            timeout: .milliseconds(10),
+            probe: p,
+            suspendProbe: suspendProbe
+        )
 
         let ref = try system._spawn(.anonymous, behavior)
         p.watch(ref)
@@ -811,7 +863,7 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         let ref = try system._spawn(.anonymous, behavior)
         p.watch(ref)
 
-        ref.tell("something") // this message causes the actor the suspend
+        ref.tell("something")  // this message causes the actor the suspend
 
         ref._sendSystemMessage(.stop)
 
@@ -846,10 +898,10 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
 
         let ref = try system._spawn("parent", behavior)
 
-        ref.tell("something") // this message causes the actor to suspend
+        ref.tell("something")  // this message causes the actor to suspend
         try p.expectMessage("suspended")
 
-        ref.tell("something else") // this message should not get processed until we resume, even though the behavior is changed by the signal
+        ref.tell("something else")  // this message should not get processed until we resume, even though the behavior is changed by the signal
 
         try p.expectMessage("signal:child")
 
@@ -879,7 +931,7 @@ final class BehaviorTests: SingleClusterSystemXCTestCase {
         let ref = try system._spawn("parent", behavior)
         p.watch(ref)
 
-        ref.tell("something") // this message causes the actor the suspend
+        ref.tell("something")  // this message causes the actor the suspend
         try p.expectMessage("suspended")
 
         try p.expectTerminated(ref)

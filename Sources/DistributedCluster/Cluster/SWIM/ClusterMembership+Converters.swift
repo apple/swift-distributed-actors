@@ -13,9 +13,10 @@
 //===----------------------------------------------------------------------===//
 
 import ClusterMembership
-import enum Dispatch.DispatchTimeInterval
 import Logging
 import SWIM
+
+import enum Dispatch.DispatchTimeInterval
 
 extension ClusterMembership.Node {
     init(node: Cluster.Node) {
@@ -32,7 +33,9 @@ extension ClusterMembership.Node {
         do {
             return try SWIMActor.resolve(id: ._swim(on: self.asClusterNode!), using: system)
         } catch {
-            fatalError("Failed to resolve \(ActorID._swim(on: self.asClusterNode!).detailedDescription): \(error), tree: \n\(system._treeString())")
+            fatalError(
+                "Failed to resolve \(ActorID._swim(on: self.asClusterNode!).detailedDescription): \(error), tree: \n\(system._treeString())"
+            )
         }
     }
 
@@ -41,7 +44,13 @@ extension ClusterMembership.Node {
             return nil
         }
 
-        return .init(protocol: self.protocol, systemName: self.name ?? "", host: self.host, port: self.port, nid: .init(uid))
+        return .init(
+            protocol: self.protocol,
+            systemName: self.name ?? "",
+            host: self.host,
+            port: self.port,
+            nid: .init(uid)
+        )
     }
 
     var asNode: DistributedCluster.Cluster.Endpoint {
@@ -51,6 +60,12 @@ extension ClusterMembership.Node {
 
 extension Cluster.Node {
     var asSWIMNode: ClusterMembership.Node {
-        .init(protocol: self.endpoint.protocol, name: self.endpoint.systemName, host: self.endpoint.host, port: self.port, uid: self.nid.value)
+        .init(
+            protocol: self.endpoint.protocol,
+            name: self.endpoint.systemName,
+            host: self.endpoint.host,
+            port: self.port,
+            uid: self.nid.value
+        )
     }
 }

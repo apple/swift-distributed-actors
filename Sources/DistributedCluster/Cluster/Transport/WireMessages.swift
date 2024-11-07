@@ -27,7 +27,7 @@ internal enum Wire {
     /// Envelope type carrying messages over the network.
     struct Envelope: Codable {
         /// This is a very blessed type hint, as it encapsulates all messages and is _assumed_ on the receiving end as the outer wrapper.
-        static var typeHint: String = "_$Awe" // Swift Actors wire envelope
+        static var typeHint: String = "_$Awe"  // Swift Actors wire envelope
 
         var recipient: ActorID
 
@@ -78,7 +78,12 @@ internal enum Wire {
         /// MUST be called after the reply is written to the wire; triggers messages being flushed from the association.
         internal var onHandshakeReplySent: (() -> Void)?
 
-        init(version: Version, targetNode: Cluster.Node, originNode: Cluster.Node, whenHandshakeReplySent: (() -> Void)?) {
+        init(
+            version: Version,
+            targetNode: Cluster.Node,
+            originNode: Cluster.Node,
+            whenHandshakeReplySent: (() -> Void)?
+        ) {
             self.version = version
             self.targetNode = targetNode
             self.originNode = originNode
@@ -97,7 +102,13 @@ internal enum Wire {
         /// MUST be called after the reply is written to the wire; triggers messages being flushed from the association.
         internal let onHandshakeReplySent: (() -> Void)?
 
-        init(version: Wire.Version, targetNode: Cluster.Node, originNode: Cluster.Node, reason: String, whenHandshakeReplySent: (() -> Void)?) {
+        init(
+            version: Wire.Version,
+            targetNode: Cluster.Node,
+            originNode: Cluster.Node,
+            reason: String,
+            whenHandshakeReplySent: (() -> Void)?
+        ) {
             self.version = version
             self.targetNode = targetNode
             self.originNode = originNode
