@@ -27,6 +27,10 @@
      ]
    },
    "rules" : {
+     "NoBlockComments" : false,
+     "EndOfLineComment" : false,
+     "ReplaceForEachWithForLoop" : false,
+
      "AllPublicDeclarationsHaveDocumentation" : false,
      "AlwaysUseLiteralForEmptyCollectionInit" : false,
      "AlwaysUseLowerCamelCase" : false,
