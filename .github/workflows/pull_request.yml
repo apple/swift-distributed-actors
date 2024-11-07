@@ -19,7 +19,7 @@ jobs:
       name: "Unit tests"
       matrix_linux_command: "swift test"
       matrix_linux_5_9_enabled: false
-      matrix_linux_5_10_enabled: false
+      matrix_linux_5_10_enabled: true
       matrix_linux_6_0_enabled: true
       matrix_linux_6_0_command_override: "swift test"
       matrix_linux_nightly_6_0_enabled: true

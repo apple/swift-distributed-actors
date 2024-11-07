@@ -1,4 +1,4 @@
-// swift-tools-version:6.0
+// swift-tools-version:5.10
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
@@ -45,9 +45,6 @@ var targets: [PackageDescription.Target] = [
             .product(name: "ServiceDiscovery", package: "swift-service-discovery"),
             .product(name: "Backtrace", package: "swift-backtrace"),
             .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
-        ],
-        swiftSettings: [
-            .swiftLanguageMode(.v5)
         ]
     ),
 
@@ -61,9 +58,6 @@ var targets: [PackageDescription.Target] = [
             "DistributedCluster",
             "DistributedActorsConcurrencyHelpers",
             .product(name: "Atomics", package: "swift-atomics"),
-        ],
-        swiftSettings: [
-            .swiftLanguageMode(.v5)
         ]
     ),
 
@@ -76,9 +70,6 @@ var targets: [PackageDescription.Target] = [
             "DistributedCluster",
             "DistributedActorsTestKit",
             .product(name: "Atomics", package: "swift-atomics"),
-        ],
-        swiftSettings: [
-           .swiftLanguageMode(.v5)
         ]
     ),
 
@@ -87,9 +78,6 @@ var targets: [PackageDescription.Target] = [
         dependencies: [
             "DistributedCluster",
             "DistributedActorsTestKit",
-        ],
-        swiftSettings: [
-           .swiftLanguageMode(.v5)
         ]
     ),
 
@@ -117,9 +105,6 @@ var targets: [PackageDescription.Target] = [
             .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
             .product(name: "Atomics", package: "swift-atomics"),
             .product(name: "OrderedCollections", package: "swift-collections"),
-        ],
-        swiftSettings: [
-            .swiftLanguageMode(.v5)
         ]
     ),
     .executableTarget(
@@ -131,9 +116,6 @@ var targets: [PackageDescription.Target] = [
             // Dependencies:
             "MultiNodeTestKit",
             .product(name: "ArgumentParser", package: "swift-argument-parser"),
-        ],
-        swiftSettings: [
-            .swiftLanguageMode(.v5)
         ]
     ),
 
@@ -146,10 +128,7 @@ var targets: [PackageDescription.Target] = [
         dependencies: [
             "MultiNodeTestKit"
         ],
-        path: "MultiNodeTests/DistributedActorsMultiNodeTests",
-        swiftSettings: [
-            .swiftLanguageMode(.v5)
-        ]
+        path: "MultiNodeTests/DistributedActorsMultiNodeTests"
     ),
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -161,10 +140,7 @@ var targets: [PackageDescription.Target] = [
         dependencies: [
             "DistributedCluster"
         ],
-        path: "IntegrationTests/tests_01_cluster/it_Clustered_swim_suspension_reachability",
-        swiftSettings: [
-            .swiftLanguageMode(.v5)
-        ]
+        path: "IntegrationTests/tests_01_cluster/it_Clustered_swim_suspension_reachability"
     ),
 
     // ==== ----------------------------------------------------------------------------------------------------------------
@@ -184,9 +160,6 @@ var targets: [PackageDescription.Target] = [
         dependencies: [],
         exclude: [
             "README.md"
-        ],
-        swiftSettings: [
-            .swiftLanguageMode(.v5)
         ]
     ),
 ]
