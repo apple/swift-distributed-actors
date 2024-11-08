@@ -114,7 +114,14 @@ var targets: [PackageDescription.Target] = [
             .product(name: "ArgumentParser", package: "swift-argument-parser"),
         ]
     ),
-
+    .executableTarget(
+        name: "swift-clusterd",
+        dependencies: [
+            "DistributedCluster",
+            .product(name: "ArgumentParser", package: "swift-argument-parser"),
+        ],
+        path: "Sources/ClusterD"
+    ),
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Multi Node Tests
 
