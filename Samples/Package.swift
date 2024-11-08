@@ -29,6 +29,14 @@ var targets: [PackageDescription.Target] = [
         ]
     ),
 
+    .executableTarget(
+        name: "SamplePair",
+        dependencies: [
+            .product(name: "DistributedCluster", package: "swift-distributed-actors"),
+        ],
+        path: "Sources/SamplePair"
+    ),
+
     /* --- tests --- */
 
     // no-tests placeholder project to not have `swift test` fail on Samples/
