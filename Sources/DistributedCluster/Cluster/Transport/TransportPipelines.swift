@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -541,9 +541,9 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
             self.scheduleNextRedeliveryTick(context, in: nextRedeliveryTickDelay)
 
         case .giveUpAndSeverTies:
-            // FIXME: implement this once we have the Kill or Down command on cluster shell
+            // FIXME: implement this once we have the Terminate or Down command on cluster shell
             // cluster.tell(Down(that node))
-            fatalError("TODO; kill the connection notify the membership!!!!")
+            fatalError("TODO; terminate the connection notify the membership!!!!")
         }
     }
 
@@ -736,7 +736,7 @@ extension ClusterShell {
                 var log = system.log
                 log[metadataKey: "actor/path"] = "/system/transport.server" // TODO: this is a fake path, we could use log source: here if it gets merged
 
-                // FIXME: PASS IN FROM ASSOCIATION SINCE MUST SURVIVE CONNECTIONS! // TODO: tests about killing connections the hard way
+                // FIXME: PASS IN FROM ASSOCIATION SINCE MUST SURVIVE CONNECTIONS! // TODO: tests about terminating connections the hard way
                 let outboundSysMsgs = OutboundSystemMessageRedelivery(settings: .default)
                 let inboundSysMsgs = InboundSystemMessages(settings: .default)
 

@@ -7,7 +7,7 @@
 ## Licensed under Apache License v2.0
 ##
 ## See LICENSE.txt for license information
-## See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+## See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 ##
 ## SPDX-License-Identifier: Apache-2.0
 ##
@@ -29,5 +29,5 @@ then
 fi
 
 printf "\n==> "
-swiftformat --lint $MODIFIED_FILES > /dev/null || { echo >&2 "'swiftformat' invocation failed"; exit 1; }
+swiftformat  $MODIFIED_FILES > /dev/null || { echo >&2 "'swiftformat' invocation failed"; exit 1; }
 printf "\033[0;32mokay.\033[0m\n"

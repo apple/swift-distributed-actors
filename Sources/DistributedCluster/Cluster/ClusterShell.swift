@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -178,7 +178,7 @@ internal class ClusterShell {
     /// We "Shoot The Other Node ..." (STONITH) in order to let it know as soon as possible (i.e. directly, without waiting for gossip to reach it).
     ///
     /// This is a best-effort message; as we may be downing it because we cannot communicate with it after all, in such situation (and many others)
-    /// the other node would never receive this direct kill/down eager "gossip." We hope it will either receive the down via some means, or determine
+    /// the other node would never receive this direct terminate/down eager "gossip." We hope it will either receive the down via some means, or determine
     /// by itself that it should down itself.
     internal static func shootTheOtherNodeAndCloseConnection(system: ClusterSystem, targetNodeAssociation: Association) {
         let log = system.log
@@ -1081,7 +1081,7 @@ extension ClusterShell {
         var state = state
 
         // we MAY be seeing a handshake failure from a 2 nodes concurrently shaking hands on 2 connections,
-        // and we decided to tie-break and kill one of the connections. As such, the handshake COMPLETED successfully but
+        // and we decided to tie-break and terminate one of the connections. As such, the handshake COMPLETED successfully but
         // on the other connection; and the terminated one may yield an error (e.g. truncation error during proto parsing etc),
         // however that error is harmless - as we associated with the "other" right connection.
         if let existingAssociation = self.getSpecificExistingAssociation(with: reject.targetNode),
@@ -1116,7 +1116,7 @@ extension ClusterShell {
 
     private func onHandshakeFailed(_ context: _ActorContext<Message>, _ state: ClusterShellState, with endpoint: Cluster.Endpoint, error: Error) -> _Behavior<Message> {
         // we MAY be seeing a handshake failure from a 2 nodes concurrently shaking hands on 2 connections,
-        // and we decided to tie-break and kill one of the connections. As such, the handshake COMPLETED successfully but
+        // and we decided to tie-break and terminate one of the connections. As such, the handshake COMPLETED successfully but
         // on the other connection; and the terminated one may yield an error (e.g. truncation error during proto parsing etc),
         // however that error is harmless - as we associated with the "other" right connection.
         if let existingAssociation = self.getAnyExistingAssociation(with: endpoint),

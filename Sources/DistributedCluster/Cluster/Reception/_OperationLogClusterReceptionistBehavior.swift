@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -129,14 +129,14 @@ public final class _OperationLogClusterReceptionist {
 
                 case let message as _Lookup:
                     do {
-                        try self.onLookup(context: context, message: message) // FIXME: would kill the receptionist!
+                        try self.onLookup(context: context, message: message) // FIXME: would terminate the receptionist!
                     } catch {
                         context.log.error("Receptionist error caught: \(error)") // TODO: simplify, but we definitely cannot escalate here
                     }
 
                 case let message as _Subscribe:
                     do {
-                        try self.onSubscribe(context: context, message: message) // FIXME: would kill the receptionist!
+                        try self.onSubscribe(context: context, message: message) // FIXME: would terminate the receptionist!
                     } catch {
                         context.log.error("Receptionist error caught: \(error)") // TODO: simplify, but we definitely cannot escalate here
                     }

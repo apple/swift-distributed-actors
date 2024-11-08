@@ -126,7 +126,7 @@ Starting Local Preview Server
 
 ## Integration tests
 
-Integration tests include running actual multiple nodes of a cluster and e.g. killing them off to test the recovery mechanisms of the cluster.
+Integration tests include running actual multiple nodes of a cluster and e.g. terminating them to test the recovery mechanisms of the cluster.
 
 Requirements:
 - macOS: `brew install coreutils` to install `stdbuf`

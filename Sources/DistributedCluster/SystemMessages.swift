@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -27,14 +27,14 @@
 /// System messages enjoy preferential treatment over normal ("user") messages due to their importance
 /// on overall system correctness, and thus are: buffered, acknowledged and redelivered upon lack of acknowledgement
 /// to their destination nodes. They are also guaranteed to be emitted on the remote system in the exact same order
-/// as they have been sent into the transport pipelines on the sending side, which may matter for `watch -> unwatch -> kill`
+/// as they have been sent into the transport pipelines on the sending side, which may matter for `watch -> unwatch -> stop`
 /// or similar message patterns.
 ///
 /// ## Implications of importance to system availability
 /// If system messages are not able to be delivered over a long period of time and the redelivery buffer is about to
-/// overflow; the system will forcefully and *undeniably* kill the association (connection) with the offending node.
+/// overflow; the system will forcefully and *undeniably* terminate the association (connection) with the offending node.
 /// This is because system correctness with regards to deathwatches will no longer be able to be guaranteed with missing
-/// system messages, thus the only safe option is to kill the entire connection and mark the offending node as `.down`
+/// system messages, thus the only safe option is to terminate the entire connection and mark the offending node as `.down`
 /// in the cluster membership.
 ///
 /// - SeeAlso: `OutboundSystemMessageRedeliverySettings` to configure the `redeliveryBufferLimit`

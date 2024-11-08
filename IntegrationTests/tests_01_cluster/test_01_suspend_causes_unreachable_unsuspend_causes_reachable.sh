@@ -7,7 +7,7 @@
 ## Licensed under Apache License v2.0
 ##
 ## See LICENSE.txt for license information
-## See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+## See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 ##
 ## SPDX-License-Identifier: Apache-2.0
 ##
@@ -41,14 +41,14 @@ wait_log_exists ${first_logs} 'Event: membershipChange(sact://System@127.0.0.1:8
 echo 'Second member seen .up, good...'
 
 # suspend the second process, causing unreachability
-kill -SIGSTOP ${second_pid}
+kill -SIGSTOP ${second_pid}  # ignore-unacceptable-language
 jobs
 
 wait_log_exists ${first_logs} 'Event: reachabilityChange(DistributedCluster.Cluster.ReachabilityChange.*127.0.0.1:8228, status: up, reachability: unreachable' 50
 echo 'Second member seen .unreachable, good...'
 
 # resume it in the background
-kill -SIGCONT ${second_pid}
+kill -SIGCONT ${second_pid}  # ignore-unacceptable-language
 
 # it should become reachable again
 declare -r expected_second_member_unreachable=
@@ -58,7 +58,7 @@ echo 'Second member seen .unreachable, good...'
 
 # === cleanup ----------------------------------------------------------------------------------------------------------
 
-kill -9 ${first_pid}
-kill -9 ${second_pid}
+kill -9 ${first_pid}  # ignore-unacceptable-language
+kill -9 ${second_pid}  # ignore-unacceptable-language
 
-_killall ${app_name}
+_killall ${app_name}  # ignore-unacceptable-language

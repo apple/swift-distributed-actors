@@ -188,7 +188,6 @@ var dependencies: [Package.Dependency] = [
     .package(url: "https://github.com/apple/swift-service-discovery", from: "1.3.0"),
 
     // ~~~ SwiftPM Plugins ~~~
-    .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.0.0"),
 
     // ~~~ Command Line ~~~~
     .package(url: "https://github.com/apple/swift-argument-parser", from: "1.2.3"),

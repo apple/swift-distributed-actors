@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -78,7 +78,7 @@ internal struct HandshakeStateMachine {
         var handshakeReconnectBackoff: BackoffStrategy
 
         /// Channel which was established when we initiated the handshake (outgoing connection),
-        /// which may want to be closed when we `abortHandshake` and want to kill the related outgoing connection as we do so.
+        /// which may want to be closed when we `abortHandshake` and want to terminate the related outgoing connection as we do so.
         ///
         /// This is ALWAYS set once the initial clientBootstrap has completed.
         var channel: Channel?

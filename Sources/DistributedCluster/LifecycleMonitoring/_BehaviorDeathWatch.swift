@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -41,7 +41,7 @@ public protocol _DeathWatchProtocol {
     /// Death Pact: By watching an actor one enters a so-called "death pact" with the watchee,
     /// meaning that this actor will also terminate itself once it receives the `.terminated` signal
     /// for the watchee. A simple mnemonic to remember this is to think of the Romeo & Juliet scene where
-    /// the lovers each kill themselves, thinking the other has died.
+    /// the lovers each end their lives, thinking the other has died.
     ///
     /// Alternatively, one can handle the `.terminated` signal using the `.receiveSignal(Signal -> _Behavior<Message>)` method,
     /// which gives this actor the ability to react to the watchee's death in some other fashion,

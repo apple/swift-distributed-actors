@@ -7,7 +7,7 @@
 ## Licensed under Apache License v2.0
 ##
 ## See LICENSE.txt for license information
-## See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+## See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 ##
 ## SPDX-License-Identifier: Apache-2.0
 ##
@@ -40,20 +40,20 @@ stdbuf -i0 -o0 -e0 swift run it_Clustered_swim_ungraceful_shutdown Second 8228 1
 declare -r second_pid=$(echo $!)
 wait_log_exists ${second_logs} 'Binding to: ' 200 # since it might be compiling again...
 
-stdbuf -i0 -o0 -e0 swift run it_Clustered_swim_ungraceful_shutdown Killed 9119 127.0.0.1 7337 > ${killed_logs} 2>&1 &
-declare -r killed_pid=$(echo $!)
+stdbuf -i0 -o0 -e0 swift run it_Clustered_swim_ungraceful_shutdown Killed 9119 127.0.0.1 7337 > ${killed_logs} 2>&1 &  # ignore-unacceptable-language
+declare -r killed_pid=$(echo $!)  # ignore-unacceptable-language
 wait_log_exists ${killed_logs} 'Binding to: ' 200 # since it might be compiling again...
 
 echo "Waiting nodes to become .up..."
 wait_log_exists ${first_logs} 'Event: membershipChange(sact://Second@127.0.0.1:8228 :: \[joining\] -> \[     up\])' 50
-wait_log_exists ${first_logs} 'Event: membershipChange(sact://Killed@127.0.0.1:9119 :: \[joining\] -> \[     up\])' 50
+wait_log_exists ${first_logs} 'Event: membershipChange(sact://Killed@127.0.0.1:9119 :: \[joining\] -> \[     up\])' 50  # ignore-unacceptable-language
 echo 'Other two members seen .up, good...'
 
 sleep 1
 
 # SIGKILL the third member, causing ungraceful shutdown
-echo "Killing PID ${killed_pid}"
-kill -9 ${killed_pid}
+echo "Killing PID ${killed_pid}"  # ignore-unacceptable-language
+kill -9 ${killed_pid}  # ignore-unacceptable-language
 
 # Immediately restart the third process
 stdbuf -i0 -o0 -e0 swift run it_Clustered_swim_ungraceful_shutdown Replacement 9119 127.0.0.1 7337 >> ${replacement_logs} 2>&1 &
@@ -61,15 +61,15 @@ declare -r replacement_pid=$(echo $!)
 wait_log_exists ${replacement_logs} 'Binding to: ' 200 # just to be safe...
 
 # The original third node should go .down while the replacement becomes .up
-wait_log_exists ${first_logs} 'Event: membershipChange(sact://Killed@127.0.0.1:9119 :: \[     up\] -> \[   down\])' 50
-echo 'Killed member .down, good...'
+wait_log_exists ${first_logs} 'Event: membershipChange(sact://Killed@127.0.0.1:9119 :: \[     up\] -> \[   down\])' 50  # ignore-unacceptable-language
+echo 'Killed member .down, good...'  # ignore-unacceptable-language
 wait_log_exists ${first_logs} 'Event: membershipChange(sact://Replacement@127.0.0.1:9119 :: \[joining\] -> \[     up\])' 50
 echo 'Replacement member .up, good...'
 
 # === cleanup ----------------------------------------------------------------------------------------------------------
 
-kill -9 ${first_pid}
-kill -9 ${second_pid}
-kill -9 ${replacement_pid}
+kill -9 ${first_pid}  # ignore-unacceptable-language
+kill -9 ${second_pid}  # ignore-unacceptable-language
+kill -9 ${replacement_pid}  # ignore-unacceptable-language
 
 _killall ${app_name}

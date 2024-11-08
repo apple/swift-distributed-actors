@@ -206,7 +206,7 @@ network issues, message loss, serialization errors, or other reasons such as the
 processes the message. Even replies to remote calls could sometimes fail being delivered, so you might need to 
 design your distributed actors with idempotency (the resilience of a method being called more than once, e.g. due to a retry) in mind.
 
-By default, to avoid "hanging" a remote caller forever on a suspended remote call as the recipient node fails to reply to it,
+By default, to avoid wedging a remote caller forever on a suspended remote call as the recipient node fails to reply to it,
 for example because it (or the network itself), is currently unresponsive, remote calls have a default timeout configured.
 If no reply is received within this duration, the call will fail with a ``RemoteCallError``.
 
