@@ -193,7 +193,7 @@ public struct ClusterSystemSettings {
 
     /// If set, this event loop group will be used by the cluster infrastructure.
     // TODO: do we need to separate server and client sides? Sounds like a reasonable thing to do.
-    public var eventLoopGroup: EventLoopGroup?
+    public weak var eventLoopGroup: EventLoopGroup?
 
     /// Unless the `eventLoopGroup` property is set, this function is used to create a new event loop group
     /// for the underlying NIO pipelines.
