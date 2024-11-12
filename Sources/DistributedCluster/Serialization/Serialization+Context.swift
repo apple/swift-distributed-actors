@@ -30,7 +30,7 @@ extension Serialization {
         public let system: ClusterSystem
 
         public var serialization: Serialization {
-            self.system.serialization
+            get throws { try self.system.serialization }
         }
 
         /// Shared among serializers allocator for purposes of (de-)serializing messages.

@@ -88,10 +88,11 @@ internal distributed actor ClusterSingletonBoss<Act: ClusterSingleton>: ClusterS
 
         self.wellKnownName = Self.makeSingletonBossWellKnownName(settings)
 
+        let events = system.cluster.events
         if system.settings.enabled {
             self.clusterEventsSubscribeTask = Task {
                 // Subscribe to ``Cluster/Event`` in order to update `targetNode`
-                for await event in system.cluster.events {
+                for await event in events {
                     try await self.receiveClusterEvent(event)
                 }
             }
