@@ -15,23 +15,23 @@
 // tag::imports[]
 
 import DistributedCluster
-
-// end::imports[]
-
-@testable import DistributedActorsTestKit
 import ServiceDiscovery
 import XCTest
+
+@testable import DistributedActorsTestKit
+
+// end::imports[]
 
 class ClusterDocExamples: XCTestCase {
     func example_receive_behavior() throws {
         // tag::joining[]
         let system = ClusterSystem("ClusterJoining") { settings in
-            settings.enabled = true // <1>
+            settings.enabled = true  // <1>
             // system will bind by default on `localhost:7337`
         }
 
         let otherNode = Endpoint(systemName: "ClusterJoining", host: "localhost", port: 8228)
-        system.cluster.join(endpoint: otherNode) // <2>
+        system.cluster.join(endpoint: otherNode)  // <2>
 
         // end::joining[]
     }
@@ -55,8 +55,8 @@ class ClusterDocExamples: XCTestCase {
         // tag::discovery-joining-config[]
         let system = ClusterSystem("DiscoveryJoining") { settings in
             settings.discovery = ServiceDiscoverySettings(
-                SomeSpecificServiceDiscovery( /* configuration */ ),
-                service: "my-service" // `Service` type aligned with what SomeSpecificServiceDiscovery expects
+                SomeSpecificServiceDiscovery(),  // pass in the configuration
+                service: "my-service"  // `Service` type aligned with what SomeSpecificServiceDiscovery expects
             )
         }
         // end::discovery-joining-config[]
@@ -85,9 +85,9 @@ class ClusterDocExamples: XCTestCase {
         // tag::discovery-joining-config-2[]
         let system = ClusterSystem("DiscoveryJoining") { settings in
             settings.discovery = ServiceDiscoverySettings(
-                SomeGenericServiceDiscovery( /* configuration */ ), // <1>
+                SomeGenericServiceDiscovery(),  // <1>
                 service: "my-service",
-                mapInstanceToNode: { (instance: SomeGenericServiceDiscovery.Instance) -> Endpoint in // <2>
+                mapInstanceToNode: { (instance: SomeGenericServiceDiscovery.Instance) -> Endpoint in  // <2>
                     Endpoint(systemName: "", host: instance.host, port: instance.port)
                 }
             )
@@ -104,14 +104,14 @@ class ClusterDocExamples: XCTestCase {
             of: String.self,
             .setup { context in
                 // tag::subscribe-events-apply-general[]
-                var membership: Cluster.Membership = .empty // <1>
+                var membership: Cluster.Membership = .empty  // <1>
 
-                let subRef = context.subReceive(Cluster.Event.self) { event in // <2>
-                    try membership.apply(event: event) // <3>
+                let subRef = context.subReceive(Cluster.Event.self) { event in  // <2>
+                    try membership.apply(event: event)  // <3>
                     context.log.info("The most up to date membership is: \(membership)")
                 }
 
-                context.system.cluster.events.subscribe(subRef) // <4>
+                context.system.cluster.events.subscribe(subRef)  // <4>
                 // end::subscribe-events-apply-general[]
                 return .same
             }
@@ -120,6 +120,6 @@ class ClusterDocExamples: XCTestCase {
         // tag::membership-snapshot[]
         let snapshot: Cluster.Membership = system.cluster.membershipSnapshot
         // end::membership-snapshot[]
-        _ = snapshot // silence not-used warning
+        _ = snapshot  // silence not-used warning
     }
 }

@@ -12,10 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Distributed
 import DistributedCluster
 import XCTest
-
-import Distributed
 
 extension XCTestCase {
     // FIXME(distributed): remove once XCTest supports async functions on Linux

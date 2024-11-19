@@ -12,8 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-import struct Foundation.Data
 import NIO
+
+import struct Foundation.Data
 
 /// A `Never` can never be sent as message, even more so over the wire.
 extension Never: _NotActuallyCodableMessage {}

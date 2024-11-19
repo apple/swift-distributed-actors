@@ -37,7 +37,7 @@ internal struct VersionVector: Equatable {
     // TODO: should we disallow mixing ReplicaID types somehow?
 
     typealias Version = UInt64
-    typealias ReplicaVersion = (replicaID: ReplicaID, version: Version) // TODO: struct?
+    typealias ReplicaVersion = (replicaID: ReplicaID, version: Version)  // TODO: struct?
 
     // Internal state is a dictionary of replicas and their corresponding version
     internal var state: [ReplicaID: Version] = [:]
@@ -255,12 +255,12 @@ internal struct ReplicaID: Hashable {
             }
         }
 
-//        var isActorIdentity: Bool {
-//            switch self {
-//            case .actorIdentity: return true
-//            default: return false
-//            }
-//        }
+        //        var isActorIdentity: Bool {
+        //            switch self {
+        //            case .actorIdentity: return true
+        //            default: return false
+        //            }
+        //        }
 
         var isNode: Bool {
             switch self {
@@ -310,7 +310,7 @@ internal struct ReplicaID: Hashable {
         case .node(let existingNode):
             assert(existingNode.nid == node.nid, "Attempted to ensureNode with non-matching node identifier, was: \(existingNode)], attempted: \(node)")
             return self
-        case .nodeID(let nid): // drops the nid
+        case .nodeID(let nid):  // drops the nid
             assert(nid == node.nid, "Attempted to ensureNode with non-matching node identifier, was: \(nid)], attempted: \(node)")
             return .node(node)
         }

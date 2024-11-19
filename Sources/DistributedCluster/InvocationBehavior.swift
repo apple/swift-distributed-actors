@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import Distributed
+
 import struct Foundation.Data
 
 /// Representation of the distributed invocation in the Behavior APIs.
@@ -35,8 +36,8 @@ public struct InvocationMessage: Sendable, Codable, CustomStringConvertible {
 // FIXME(distributed): remove [#957](https://github.com/apple/swift-distributed-actors/issues/957)
 enum InvocationBehavior {
     static func behavior(instance weakInstance: Weak<some DistributedActor>) -> _Behavior<InvocationMessage> {
-        return _Behavior.setup { context in
-            return ._receiveMessageAsync { (message) async throws -> _Behavior<InvocationMessage> in
+        _Behavior.setup { context in
+            ._receiveMessageAsync { (message) async throws -> _Behavior<InvocationMessage> in
                 guard let _ = weakInstance.actor else {
                     context.log.warning("Received message \(message) while distributed actor instance was released! Stopping...")
                     context.system.personalDeadLetters(type: InvocationMessage.self, recipient: context.id).tell(message)

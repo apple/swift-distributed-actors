@@ -13,8 +13,9 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import XCTest
+
+@testable import DistributedCluster
 
 class BlockingReceptacleTests: XCTestCase {
     func test_blockingReceptacle_singleThreadedOfferWait() {

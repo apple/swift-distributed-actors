@@ -23,7 +23,7 @@ import Distributed
 /// - Warning: Users MUST NOT implement new signals.
 ///            Instances of them are reserved to only be created and managed by the actor system itself.
 /// - SeeAlso: `Signals`, for a complete listing of pre-defined signals.
-public protocol _Signal: _NotActuallyCodableMessage, Sendable {} // FIXME: we could allow them as Codable, we never send them over the wire, but people might manually if they wanted to I suppose
+public protocol _Signal: _NotActuallyCodableMessage, Sendable {}  // FIXME: we could allow them as Codable, we never send them over the wire, but people might manually if they wanted to I suppose
 
 /// Namespace for all pre-defined `Signal` types.
 ///
@@ -85,7 +85,7 @@ public enum _Signals {
 
         /// True if the actor was located on a remote node, and this entire node has terminated (marked as `MemberStatus.down`),
         /// meaning that no communication with any actor on this node will be possible anymore, resulting in this `Terminated` signal.
-        public let nodeTerminated: Bool // TODO: Making this a `Reason` could be nicer.
+        public let nodeTerminated: Bool  // TODO: Making this a `Reason` could be nicer.
 
         public init(id: ActorID, existenceConfirmed: Bool, nodeTerminated: Bool = false) {
             self.id = id
@@ -166,8 +166,7 @@ public enum _Signals {
 
 extension _Signals.Terminated: Equatable, Hashable {
     public static func == (lhs: _Signals.Terminated, rhs: _Signals.Terminated) -> Bool {
-        lhs.id == rhs.id &&
-            lhs.existenceConfirmed == rhs.existenceConfirmed
+        lhs.id == rhs.id && lhs.existenceConfirmed == rhs.existenceConfirmed
     }
 
     public func hash(into hasher: inout Hasher) {

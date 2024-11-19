@@ -64,9 +64,10 @@ public struct ClusterSingletonAllocationStrategySettings: Sendable {
         self.allocationStrategy = allocationStrategy
     }
 
-    func makeAllocationStrategy(settings: ClusterSingletonSettings,
-                                actorSystem: ClusterSystem) async -> ClusterSingletonAllocationStrategy
-    {
+    func makeAllocationStrategy(
+        settings: ClusterSingletonSettings,
+        actorSystem: ClusterSystem
+    ) async -> ClusterSingletonAllocationStrategy {
         switch self.allocationStrategy {
         case .byLeadership:
             return ClusterSingletonAllocationByLeadership(settings: settings, actorSystem: actorSystem)

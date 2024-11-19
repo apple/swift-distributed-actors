@@ -15,10 +15,11 @@
 import Dispatch
 import Distributed
 import Logging
+
 import struct NIO.TimeAmount
 
 @usableFromInline
-struct Timer<Message> { // FIXME(distributed): deprecate and remove in favor of DistributedActorTimers
+struct Timer<Message> {  // FIXME(distributed): deprecate and remove in favor of DistributedActorTimers
     let key: _TimerKey
     @usableFromInline
     let message: Message?
@@ -103,7 +104,7 @@ public final class _BehaviorTimers<Message: Codable> {
     }
 
     internal func _cancelAll(includeSystemTimers: Bool) {
-        for key in self.installedTimers.keys where includeSystemTimers || !key.isSystemTimer { // TODO: represent with "system timer key" type?
+        for key in self.installedTimers.keys where includeSystemTimers || !key.isSystemTimer {  // TODO: represent with "system timer key" type?
             // TODO: the reason the `_` keys are not cancelled is because we want to cancel timers in _restartPrepare but we need "our restart timer" to remain
             self.cancel(for: key)
         }
@@ -206,7 +207,7 @@ extension _BehaviorTimers {
     @usableFromInline
     var metadata: Logger.Metadata {
         [
-            "tag": "timers",
+            "tag": "timers"
         ]
     }
 }

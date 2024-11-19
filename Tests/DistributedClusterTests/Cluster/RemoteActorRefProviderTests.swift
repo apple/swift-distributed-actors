@@ -13,9 +13,10 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import Foundation
 import XCTest
+
+@testable import DistributedCluster
 
 final class RemoteActorRefProviderTests: SingleClusterSystemXCTestCase {
     override func setUp() async throws {
@@ -49,7 +50,7 @@ final class RemoteActorRefProviderTests: SingleClusterSystemXCTestCase {
 
         // when
         let madeUpRef = provider._resolveAsRemoteRef(resolveContext, remoteAddress: remoteNode)
-        let _: _ActorRef<String> = madeUpRef // check inferred type
+        let _: _ActorRef<String> = madeUpRef  // check inferred type
 
         // then
         pinfo("Made remote ref: \(madeUpRef)")

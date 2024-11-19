@@ -13,11 +13,12 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import Foundation
 import Logging
 import NIO
 import XCTest
+
+@testable import DistributedCluster
 
 final class RemoteHandshakeStateMachineTests: XCTestCase {
     typealias HSM = HandshakeStateMachine
@@ -40,7 +41,7 @@ final class RemoteHandshakeStateMachineTests: XCTestCase {
         let offer = clientInitiated.makeOffer()
 
         // server
-        let received = HSM.HandshakeOfferReceivedState(state: serverKernel, offer: offer) // TODO: test that it completes?
+        let received = HSM.HandshakeOfferReceivedState(state: serverKernel, offer: offer)  // TODO: test that it completes?
 
         let serverCompleted: HSM.CompletedState
         switch received.negotiate() {
@@ -78,7 +79,7 @@ final class RemoteHandshakeStateMachineTests: XCTestCase {
         let offer = clientInitiated.makeOffer()
 
         // server
-        let received = HSM.HandshakeOfferReceivedState(state: serverKernel, offer: offer) // TODO: test that it completes?
+        let received = HSM.HandshakeOfferReceivedState(state: serverKernel, offer: offer)  // TODO: test that it completes?
 
         // then
 
@@ -103,7 +104,7 @@ final class RemoteHandshakeStateMachineTests: XCTestCase {
         let offer = clientInitiated.makeOffer()
 
         // server
-        let received = HSM.HandshakeOfferReceivedState(state: serverKernel, offer: offer) // TODO: test that it completes?
+        let received = HSM.HandshakeOfferReceivedState(state: serverKernel, offer: offer)  // TODO: test that it completes?
 
         // then
 

@@ -13,11 +13,12 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import Foundation
 import NIO
 import NIOFoundationCompat
 import XCTest
+
+@testable import DistributedCluster
 
 final class SerializationPoolTests: XCTestCase {
     struct Test1: Codable {

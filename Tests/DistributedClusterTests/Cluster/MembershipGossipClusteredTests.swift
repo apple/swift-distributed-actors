@@ -13,18 +13,19 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import Foundation
 import NIOSSL
 import XCTest
 
+@testable import DistributedCluster
+
 final class MembershipGossipClusteredTests: ClusteredActorSystemsXCTestCase {
     override func configureLogCapture(settings: inout LogCapture.Settings) {
         settings.filterActorPaths = [
-            "/system/cluster",
+            "/system/cluster"
         ]
         settings.excludeActorPaths = [
-            "/system/cluster/swim", // we assume it works fine
+            "/system/cluster/swim",  // we assume it works fine
             "/system/receptionist",
         ]
         settings.excludeGrep = [

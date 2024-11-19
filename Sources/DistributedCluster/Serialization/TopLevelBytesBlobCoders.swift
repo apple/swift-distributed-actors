@@ -194,7 +194,7 @@ class TopLevelBytesBlobDecoder: _TopLevelBlobDecoder {
     }
 
     func decode<T>(_ type: T.Type, from: Input) throws -> T where T: Decodable {
-        return try T._decode(from: from, using: TopLevelProtobufBlobDecoder())
+        try T._decode(from: from, using: TopLevelProtobufBlobDecoder())
     }
 }
 

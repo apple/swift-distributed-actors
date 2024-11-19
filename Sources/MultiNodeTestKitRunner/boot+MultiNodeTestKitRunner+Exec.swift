@@ -15,28 +15,30 @@
 import ArgumentParser
 import Dispatch
 import DistributedCluster
-import struct Foundation.Date
-import class Foundation.FileHandle
-import class Foundation.ProcessInfo
-import struct Foundation.URL
 import Logging
 import MultiNodeTestKit
 import NIOCore
 import NIOPosix
 import OrderedCollections
 
+import struct Foundation.Date
+import class Foundation.FileHandle
+import class Foundation.ProcessInfo
+import struct Foundation.URL
+
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Code executing on each specific process/node
 
 extension MultiNodeTestKitRunnerBoot {
     /// Within a dedicated process, execute the test with the specific node:
-    func executeTest(multiNodeTest: MultiNodeTest,
-                     nodeName: String,
-                     allNodes multiNodeEndpoints: [MultiNode.Endpoint]) async throws
-    {
+    func executeTest(
+        multiNodeTest: MultiNodeTest,
+        nodeName: String,
+        allNodes multiNodeEndpoints: [MultiNode.Endpoint]
+    ) async throws {
         var control = multiNodeTest.makeControl(nodeName)
         control._allEndpoints = convertAllNodes(allNodes: multiNodeEndpoints)
-        let myNode = control._allEndpoints[nodeName]! // !-safe, we just prepared this node collection
+        let myNode = control._allEndpoints[nodeName]!  // !-safe, we just prepared this node collection
 
         var multiNodeSettings = MultiNodeTestSettings()
         multiNodeTest.configureMultiNodeTest(&multiNodeSettings)
@@ -54,9 +56,12 @@ extension MultiNodeTestKitRunnerBoot {
 
             /// Configure a nicer logger, that pretty prints metadata and also includes source location of logs
             if multiNodeSettings.installPrettyLogger {
-                settings.logging.baseLogger = Logger(label: nodeName, factory: { label in
-                    PrettyMultiNodeLogHandler(nodeName: label, settings: multiNodeSettings.logCapture)
-                })
+                settings.logging.baseLogger = Logger(
+                    label: nodeName,
+                    factory: { label in
+                        PrettyMultiNodeLogHandler(nodeName: label, settings: multiNodeSettings.logCapture)
+                    }
+                )
             }
 
             // we use the singleton to implement a simple Coordinator

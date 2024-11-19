@@ -42,7 +42,7 @@ extension Task {
                 defer {
                     group.cancelAll()
                 }
-                return try await group.next()! // return or throw the first one; the group will wait for the other one
+                return try await group.next()!  // return or throw the first one; the group will wait for the other one
             }
         }
     }

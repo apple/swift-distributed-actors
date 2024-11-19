@@ -14,13 +14,12 @@
 
 import CDistributedActorsMailbox
 import Distributed
+import Foundation  // for Codable
 import Logging
 import NIO
 import NIOFoundationCompat
-import SwiftProtobuf
 import SWIM
-
-import Foundation // for Codable
+import SwiftProtobuf
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Serialization sub-system
@@ -46,7 +45,7 @@ public class Serialization {
     public let allocator: ByteBufferAllocator
 
     @usableFromInline
-    internal let metrics: ClusterSystemMetrics // TODO: rather, do this via instrumentation
+    internal let metrics: ClusterSystemMetrics  // TODO: rather, do this via instrumentation
 
     /// WARNING: This WILL be mutated during runtime!
     ///
@@ -76,10 +75,10 @@ public class Serialization {
         settings.register(InvocationMessage.self, serializerID: .foundationJSON)
 
         // ==== Declare mangled names of some known popular types // TODO: hardcoded mangled name until we have _mangledTypeName
-//        settings.register(Bool.self, hint: "b", serializerID: .specializedWithTypeHint)
-//        settings.registerSpecializedSerializer(Bool.self, hint: "b", serializerID: .specializedWithTypeHint) { allocator in
-//            BoolSerializer(allocator)
-//        }
+        //        settings.register(Bool.self, hint: "b", serializerID: .specializedWithTypeHint)
+        //        settings.registerSpecializedSerializer(Bool.self, hint: "b", serializerID: .specializedWithTypeHint) { allocator in
+        //            BoolSerializer(allocator)
+        //        }
         // harder since no direct mapping to write... onto a byte buffer
         // settings.register(Float.self, hint: "f", serializerID: .specializedWithTypeHint)
         // settings.register(Float32.self, hint: "f", serializerID: .specializedWithTypeHint)
@@ -94,10 +93,10 @@ public class Serialization {
             IntegerSerializer(UInt.self, allocator)
         }
 
-//        settings.register(Int64.self, hint: "i64", serializerID: .specializedWithTypeHint)
-//        settings.registerSpecializedSerializer(Int64.self, hint: "i64", serializerID: .specializedWithTypeHint) { allocator in
-//            IntegerSerializer(Int64.self, allocator)
-//        }
+        //        settings.register(Int64.self, hint: "i64", serializerID: .specializedWithTypeHint)
+        //        settings.registerSpecializedSerializer(Int64.self, hint: "i64", serializerID: .specializedWithTypeHint) { allocator in
+        //            IntegerSerializer(Int64.self, allocator)
+        //        }
         ////        settings.register(UInt64.self, hint: "u64", serializerID: .specializedWithTypeHint)
         ////        settings.registerSpecializedSerializer(UInt64.self, hint: "u64", serializerID: .specializedWithTypeHint) { allocator in
         ////            IntegerSerializer(UInt64.self, allocator)
@@ -106,7 +105,7 @@ public class Serialization {
         settings.registerSpecializedSerializer(String.self, hint: "S", serializerID: .specializedWithTypeHint) { allocator in
             StringSerializer(allocator)
         }
-//        settings.register(String?.self, hint: "qS")
+        //        settings.register(String?.self, hint: "qS")
         settings.register(Int?.self, hint: "qI")
 
         // ==== Declare some system messages to be handled with specialized serializers:
@@ -137,7 +136,7 @@ public class Serialization {
 
         // TODO: Allow plugins to register types...?
 
-        settings.register(ActorID.self, serializerID: .foundationJSON) // TODO: this was protobuf
+        settings.register(ActorID.self, serializerID: .foundationJSON)  // TODO: this was protobuf
         settings.register(ClusterSystem.ActorID.self, serializerID: .foundationJSON)
         settings.register(ReplicaID.self, serializerID: .foundationJSON)
         settings.register(VersionDot.self, serializerID: ._ProtobufRepresentable)
@@ -152,7 +151,7 @@ public class Serialization {
         var log = system.log
         // TODO: Dry up setting this metadata
         log[metadataKey: "node"] = .stringConvertible(systemSettings.bindNode)
-        log[metadataKey: "actor/path"] = "/system/serialization" // TODO: this is a fake path, we could use log source: here if it gets merged
+        log[metadataKey: "actor/path"] = "/system/serialization"  // TODO: this is a fake path, we could use log source: here if it gets merged
         log.logLevel = systemSettings.logging.logLevel
         self.log = log
 
@@ -163,7 +162,7 @@ public class Serialization {
         )
 
         // == eagerly ensure serializers for message types which would not otherwise be registered for some reason ----
-        try! self._ensureAllRegisteredSerializers() // try!-crash on purpose
+        try! self._ensureAllRegisteredSerializers()  // try!-crash on purpose
 
         #if SACT_TRACE_SERIALIZATION
         self.debugPrintSerializerTable(header: "SACT_TRACE_SERIALIZATION: Registered serializers")
@@ -250,13 +249,13 @@ extension Serialization {
             traceLog_Serialization("Registered [\(manifest)] for [\(reflecting: type)]")
             // TODO: decide if we log or crash when new things reg ensured during runtime
             // FIXME: https://github.com/apple/swift-distributed-actors/issues/552
-//            if self.settings.insecureSerializeNotRegisteredMessages {
-//                self.log.warning("""
-//                                 Type [\(String(reflecting: type))] was not registered with Serialization, \
-//                                 sending this message will cause it to be dropped in release mode! Use: \
-//                                 settings.serialization.register(\(type).self) to avoid this in production.
-//                                 """)
-//            }
+            //            if self.settings.insecureSerializeNotRegisteredMessages {
+            //                self.log.warning("""
+            //                                 Type [\(String(reflecting: type))] was not registered with Serialization, \
+            //                                 sending this message will cause it to be dropped in release mode! Use: \
+            //                                 settings.serialization.register(\(type).self) to avoid this in production.
+            //                                 """)
+            //            }
         }
     }
 
@@ -267,12 +266,15 @@ extension Serialization {
 
         case Serialization.SerializerID.specializedWithTypeHint:
             guard let make = self.settings.specializedSerializerMakers[manifest] else {
-                throw SerializationError(.unableToMakeSerializer(
-                    hint: """
-                    Type: \(String(reflecting: type)), \
-                    Manifest: \(manifest), \
-                    Specialized serializer makers: \(self.settings.specializedSerializerMakers)
-                    """))
+                throw SerializationError(
+                    .unableToMakeSerializer(
+                        hint: """
+                            Type: \(String(reflecting: type)), \
+                            Manifest: \(manifest), \
+                            Specialized serializer makers: \(self.settings.specializedSerializerMakers)
+                            """
+                    )
+                )
             }
 
             let serializer = make(self.allocator)
@@ -285,7 +287,7 @@ extension Serialization {
             return serializer
 
         case Serialization.SerializerID.foundationPropertyListBinary,
-             Serialization.SerializerID.foundationPropertyListXML:
+            Serialization.SerializerID.foundationPropertyListXML:
             let format: PropertyListSerialization.PropertyListFormat
             switch manifest.serializerID {
             case Serialization.SerializerID.foundationPropertyListBinary:
@@ -351,7 +353,7 @@ extension Serialization {
                 return data
             case .nioByteBuffer(var buffer):
                 // TODO: metrics how often we really have to copy
-                return buffer.readData(length: buffer.readableBytes)! // !-safe since reading readableBytes
+                return buffer.readData(length: buffer.readableBytes)!  // !-safe since reading readableBytes
             case ._PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE:
                 fatalError("\(Self.self) is [\(self)]. This should not happen, please file an issue.")
             }
@@ -382,7 +384,8 @@ extension Serialization {
     ///   a serializer (by ID) that is not registered with the system, or the serializer failing to serialize the message.
     public func serialize<Message>(
         _ message: Message,
-        file: String = #filePath, line: UInt = #line
+        file: String = #filePath,
+        line: UInt = #line
     ) throws -> Serialized {
         do {
             // Implementation notes: It is tremendously important to use the `messageType` for all type identification
@@ -399,7 +402,7 @@ extension Serialization {
             //
             // let erased: Any = 2
             // take(erased) // m = 2, M = Any, tM = Any.Protocol, tMA = Int // (!)
-            let messageType = type(of: message as Any) // `as Any` on purpose (!), see above.
+            let messageType = type(of: message as Any)  // `as Any` on purpose (!), see above.
             assert(messageType != Any.self, "Underlying message type resolved as Any.Type. This should never happen, please file a bug. Was: \(message)")
 
             let manifest = try self.outboundManifest(messageType)
@@ -419,14 +422,16 @@ extension Serialization {
                 // TODO: we need to be able to abstract over Coders to collapse this into "giveMeACoder().encode()"
                 switch manifest.serializerID {
                 case .specializedWithTypeHint:
-                    throw SerializationError(.unableToMakeSerializer(
-                        hint:
-                        """
-                        Manifest hints at using specialized serializer for \(message), \
-                        however no specialized serializer could be made for it! Manifest: \(manifest), \
-                        known specializedSerializerMakers: \(self.settings.specializedSerializerMakers)
-                        """
-                    ))
+                    throw SerializationError(
+                        .unableToMakeSerializer(
+                            hint:
+                                """
+                                Manifest hints at using specialized serializer for \(message), \
+                                however no specialized serializer could be made for it! Manifest: \(manifest), \
+                                known specializedSerializerMakers: \(self.settings.specializedSerializerMakers)
+                                """
+                        )
+                    )
 
                 case ._ProtobufRepresentable:
                     let encoder = TopLevelProtobufBlobEncoder(allocator: self.allocator)
@@ -475,8 +480,10 @@ extension Serialization {
     ///   - as: expected type that the deserialized message should be
     ///   - from: `Serialized` containing the manifest used to identify which serializer should be used to deserialize the bytes and the serialized bytes of the message
     public func deserialize<T>(
-        as messageType: T.Type, from serialized: Serialized,
-        file: String = #filePath, line: UInt = #line
+        as messageType: T.Type,
+        from serialized: Serialized,
+        file: String = #filePath,
+        line: UInt = #line
     ) throws -> T {
         try self.deserialize(as: messageType, from: serialized.buffer, using: serialized.manifest, file: file, line: line)
     }
@@ -488,8 +495,11 @@ extension Serialization {
     ///   - from: `Buffer` containing the serialized bytes of the message
     ///   - using: `Manifest` used to identify which serializer should be used to deserialize the bytes (json? protobuf? other?)
     public func deserialize<T>(
-        as messageType: T.Type, from buffer: Serialization.Buffer, using manifest: Serialization.Manifest,
-        file: String = #filePath, line: UInt = #line
+        as messageType: T.Type,
+        from buffer: Serialization.Buffer,
+        using manifest: Serialization.Manifest,
+        file: String = #filePath,
+        line: UInt = #line
     ) throws -> T {
         guard messageType != Any.self else {
             // most likely deadLetters is trying to deserialize (!), and it only has an `Any` in hand.
@@ -501,11 +511,13 @@ extension Serialization {
         if let deserialized = deserializedAny as? T {
             return deserialized
         } else {
-            throw SerializationError(.serializationError(
-                SerializationError(.unableToDeserialize(hint: "Deserialized value is NOT an instance of \(String(reflecting: T.self)), was: \(deserializedAny)")),
-                file: file,
-                line: line
-            ))
+            throw SerializationError(
+                .serializationError(
+                    SerializationError(.unableToDeserialize(hint: "Deserialized value is NOT an instance of \(String(reflecting: T.self)), was: \(deserializedAny)")),
+                    file: file,
+                    line: line
+                )
+            )
         }
     }
 
@@ -524,8 +536,10 @@ extension Serialization {
     ///   - from: `Buffer` containing the serialized bytes of the message
     ///   - using: `Manifest` used identify the decoder as well as summon the Type of the message. The resulting message is NOT cast to the summoned type.
     public func deserializeAny(
-        from buffer: Serialization.Buffer, using manifest: Serialization.Manifest,
-        file: String = #filePath, line: UInt = #line
+        from buffer: Serialization.Buffer,
+        using manifest: Serialization.Manifest,
+        file: String = #filePath,
+        line: UInt = #line
     ) throws -> Any {
         do {
             // Manifest type may be used to summon specific instances of types from the manifest
@@ -543,14 +557,16 @@ extension Serialization {
                 // TODO: we need to be able to abstract over Coders to collapse this into "giveMeACoder().decode()"
                 switch manifest.serializerID {
                 case .specializedWithTypeHint:
-                    throw SerializationError(.unableToMakeSerializer(
-                        hint:
-                        """
-                        Manifest hints at using specialized serializer for manifest \(manifest), \
-                        however no specialized serializer could be made for it! \
-                        Known specializedSerializerMakers: \(self.settings.specializedSerializerMakers)
-                        """
-                    ))
+                    throw SerializationError(
+                        .unableToMakeSerializer(
+                            hint:
+                                """
+                                Manifest hints at using specialized serializer for manifest \(manifest), \
+                                however no specialized serializer could be made for it! \
+                                Known specializedSerializerMakers: \(self.settings.specializedSerializerMakers)
+                                """
+                        )
+                    )
 
                 case ._ProtobufRepresentable:
                     let decoder = TopLevelProtobufBlobDecoder()
@@ -580,9 +596,12 @@ extension Serialization {
                 }
             } else {
                 // TODO: Do we really need to store them at all?
-                guard let serializer: AnySerializer = (self._serializersLock.withReaderLock {
-                    self._serializers[manifestMessageTypeID]
-                }) else {
+                guard
+                    let serializer: AnySerializer =
+                        (self._serializersLock.withReaderLock {
+                            self._serializers[manifestMessageTypeID]
+                        })
+                else {
                     self.debugPrintSerializerTable(header: "Unable to find serializer for manifest (\(manifest)),message type: \(String(reflecting: manifestMessageType))")
                     throw SerializationError(.noSerializerRegisteredFor(manifest: manifest, hint: "Manifest Type: \(manifestMessageType), id: \(messageTypeID), known serializers: \(self._serializers)"))
                 }
@@ -603,7 +622,7 @@ extension Serialization {
     public func verifySerializable<Message: Codable>(message: Message) throws {
         switch message {
         case is _NotActuallyCodableMessage:
-            return // skip
+            return  // skip
         default:
             let serialized = try self.serialize(message)
             do {
@@ -633,7 +652,7 @@ internal struct MetaType<T>: Hashable, CustomStringConvertible {
     }
 
     init(from value: T) {
-        let t = type(of: value as Any) // `as Any` on purpose(!), see `serialize(_:)` for details
+        let t = type(of: value as Any)  // `as Any` on purpose(!), see `serialize(_:)` for details
         self._underlying = t
         self.id = ObjectIdentifier(t)
     }
@@ -819,29 +838,33 @@ public struct SerializationError: Error, CustomStringConvertible {
     }
 
     public static func missingSerializationContext(_ coder: Swift.Decoder, _ _type: Any.Type, file: String = #filePath, line: UInt = #line) -> SerializationError {
-        SerializationError(.missingSerializationContext(
-            _type,
-            details:
-            """
-            \(String(reflecting: Serialization.Context.self)) not available in \(String(reflecting: type(of: coder))).userInfo, \
-            but is necessary decode message of type: \(String(reflecting: _type))
-            """,
-            file: file,
-            line: line
-        ))
+        SerializationError(
+            .missingSerializationContext(
+                _type,
+                details:
+                    """
+                    \(String(reflecting: Serialization.Context.self)) not available in \(String(reflecting: type(of: coder))).userInfo, \
+                    but is necessary decode message of type: \(String(reflecting: _type))
+                    """,
+                file: file,
+                line: line
+            )
+        )
     }
 
     public static func missingSerializationContext(_ coder: Swift.Encoder, _ message: Any, file: String = #filePath, line: UInt = #line) -> SerializationError {
-        SerializationError(.missingSerializationContext(
-            type(of: message),
-            details:
-            """
-            \(String(reflecting: Serialization.Context.self)) not available in \(String(reflecting: type(of: coder))).userInfo, \
-            but is necessary encode message: [\(message)]:\(String(reflecting: type(of: message)))
-            """,
-            file: file,
-            line: line
-        ))
+        SerializationError(
+            .missingSerializationContext(
+                type(of: message),
+                details:
+                    """
+                    \(String(reflecting: Serialization.Context.self)) not available in \(String(reflecting: type(of: coder))).userInfo, \
+                    but is necessary encode message: [\(message)]:\(String(reflecting: type(of: message)))
+                    """,
+                file: file,
+                line: line
+            )
+        )
     }
 }
 

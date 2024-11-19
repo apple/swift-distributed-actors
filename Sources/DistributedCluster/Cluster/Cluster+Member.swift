@@ -217,7 +217,7 @@ extension Cluster {
 
         case _PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE
 
-        internal static let maxStrLen = 7 // hardcoded strlen of the words used for joining...removed; used for padding
+        internal static let maxStrLen = 7  // hardcoded strlen of the words used for joining...removed; used for padding
     }
 }
 

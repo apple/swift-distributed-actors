@@ -52,7 +52,8 @@ public protocol _ActorRefFactory {
         _ naming: _ActorNaming,
         of type: Message.Type,
         props: _Props,
-        file: String, line: UInt,
+        file: String,
+        line: UInt,
         _ behavior: _Behavior<Message>
     ) throws -> _ActorRef<Message> where Message: Codable
 }
@@ -61,10 +62,10 @@ public protocol _ActorRefFactory {
 // MARK: _ChildActorRefFactory
 
 public protocol _ChildActorRefFactory: _ActorRefFactory {
-    var children: _Children { get set } // lock-protected
+    var children: _Children { get set }  // lock-protected
 
     func stop<Message>(child ref: _ActorRef<Message>) throws
-        where Message: Codable
+    where Message: Codable
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------

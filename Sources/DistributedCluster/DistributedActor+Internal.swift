@@ -29,7 +29,7 @@ struct AnyDistributedActor: Sendable, Hashable {
 
     @usableFromInline
     var id: ClusterSystem.ActorID {
-        self.underlying.id as! ActorID // FIXME: could remove this entire wrapper?
+        self.underlying.id as! ActorID  // FIXME: could remove this entire wrapper?
     }
 
     @usableFromInline

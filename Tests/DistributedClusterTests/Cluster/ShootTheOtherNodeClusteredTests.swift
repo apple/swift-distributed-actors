@@ -13,17 +13,18 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import NIO
 import XCTest
+
+@testable import DistributedCluster
 
 final class ShootTheOtherNodeClusteredTests: ClusteredActorSystemsXCTestCase {
     override func configureLogCapture(settings: inout LogCapture.Settings) {
         settings.excludeGrep = [
-            "_TimerKey",
+            "_TimerKey"
         ]
         settings.excludeActorPaths = [
-            "/system/cluster/swim",
+            "/system/cluster/swim"
         ]
         settings.minimumLogLevel = .info
     }

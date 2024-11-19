@@ -15,9 +15,10 @@
 import AsyncAlgorithms
 import Distributed
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import Logging
 import XCTest
+
+@testable import DistributedCluster
 
 final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCase {
     override func configureLogCapture(settings: inout LogCapture.Settings) {
@@ -79,7 +80,7 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
 
         let first = await self.setUpNode("first") { settings in
             settings.endpoint.port = 7111
-            settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 1) // just myself
+            settings.autoLeaderElection = .lowestReachable(minNumberOfMembers: 1)  // just myself
             settings.plugins.install(plugin: ClusterSingletonPlugin())
         }
 
@@ -394,7 +395,8 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
                     """
                     Received no reply from singleton [\(singleton)] while sending from [\(system.cluster.node.endpoint)], \
                     perhaps request was lost. Sent greeting [\(greetingName)] and expected prefix: [\(expectedPrefix)] (attempts: \(attempts))
-                    """)
+                    """
+                )
             }
         }
     }
@@ -436,7 +438,7 @@ distributed actor LifecycleTestSingleton: ClusterSingleton {
     }
 
     deinit {
-        guard __isLocalActor(self) else { // FIXME: workaround until fixed Swift is released
+        guard __isLocalActor(self) else {  // FIXME: workaround until fixed Swift is released
             return
         }
 

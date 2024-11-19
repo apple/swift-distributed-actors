@@ -37,13 +37,13 @@ enum Gossiper {
         props: _Props = .init(),
         makeLogic: @escaping (Logic.Context) -> Logic
     ) throws -> GossiperControl<Envelope, Acknowledgement>
-        where Logic: GossipLogic, Logic.Gossip == Envelope, Logic.Acknowledgement == Acknowledgement
-    {
+    where Logic: GossipLogic, Logic.Gossip == Envelope, Logic.Acknowledgement == Acknowledgement {
         let ref = try context._spawn(
             naming,
             of: GossipShell<Envelope, Acknowledgement>.Message.self,
             props: props,
-            file: #filePath, line: #line,
+            file: #filePath,
+            line: #line,
             GossipShell<Envelope, Acknowledgement>(settings: settings, makeLogic: makeLogic).behavior
         )
         return GossiperControl(ref)

@@ -13,9 +13,10 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import Foundation
 import XCTest
+
+@testable import DistributedCluster
 
 final class NodeDeathWatcherTests: ClusteredActorSystemsXCTestCase {
     func test_nodeDeath_shouldFailAllRefsOnSpecificAddress() async throws {

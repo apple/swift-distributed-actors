@@ -75,9 +75,9 @@ internal final class _ActorRefAdapter<To: Codable>: _AbstractAdapter {
         case .unwatch(let watchee, let watcher):
             self.removeWatcher(watchee: watchee, watcher: watcher)
         case .terminated(let ref, _, _):
-            self.removeWatcher(watchee: self.myselfAddressable, watcher: ref) // note: this was nice, always is correct after all now
+            self.removeWatcher(watchee: self.myselfAddressable, watcher: ref)  // note: this was nice, always is correct after all now
         case .carrySignal, .nodeTerminated, .childTerminated, .resume, .start, .stop, .tombstone:
-            () // ignore all other messages // TODO: why?
+            ()  // ignore all other messages // TODO: why?
         }
     }
 
@@ -167,7 +167,7 @@ extension _ActorRefAdapter {
 
     func _resolve<Message>(context: _ResolveContext<Message>) -> _ActorRef<Message> {
         guard context.selectorSegments.first == nil,
-              self.id.incarnation == context.id.incarnation
+            self.id.incarnation == context.id.incarnation
         else {
             return context.personalDeadLetters
         }
@@ -279,9 +279,9 @@ internal final class SubReceiveAdapter<Message: Codable, OwnerMessage: Codable>:
         case .unwatch(let watchee, let watcher):
             self.removeWatcher(watchee: watchee, watcher: watcher)
         case .terminated(let ref, _, _):
-            self.removeWatcher(watchee: self.myself.asAddressable, watcher: ref) // note: this was nice, always is correct after all now
+            self.removeWatcher(watchee: self.myself.asAddressable, watcher: ref)  // note: this was nice, always is correct after all now
         case .nodeTerminated, .childTerminated, .carrySignal, .resume, .start, .stop, .tombstone:
-            () // ignore all other messages // TODO: why?
+            ()  // ignore all other messages // TODO: why?
         }
     }
 
@@ -296,11 +296,13 @@ internal final class SubReceiveAdapter<Message: Codable, OwnerMessage: Codable>:
             self._sendUserMessage(message, file: file, line: line)
         } else {
             if let directMessage = message as? OwnerMessage {
-                fatalError("trySendUserMessage on subReceive \(self.myself) was attempted with `To = \(OwnerMessage.self)` message [\(directMessage)], " +
-                    "which is the original adapted-to message type. This should never happen, as on compile-level the message type should have been enforced to be `From = \(Message.self)`.")
+                fatalError(
+                    "trySendUserMessage on subReceive \(self.myself) was attempted with `To = \(OwnerMessage.self)` message [\(directMessage)], "
+                        + "which is the original adapted-to message type. This should never happen, as on compile-level the message type should have been enforced to be `From = \(Message.self)`."
+                )
             } else {
                 traceLog_Mailbox(self.id.path, "trySendUserMessage: [\(message)] failed because of invalid message type, to: \(self)")
-                return // TODO: "drop" the message
+                return  // TODO: "drop" the message
             }
         }
     }
@@ -386,7 +388,7 @@ extension SubReceiveAdapter {
 
     func _resolve<M>(context: _ResolveContext<M>) -> _ActorRef<M> {
         guard context.selectorSegments.first == nil,
-              self.id.incarnation == context.id.incarnation
+            self.id.incarnation == context.id.incarnation
         else {
             return context.personalDeadLetters
         }

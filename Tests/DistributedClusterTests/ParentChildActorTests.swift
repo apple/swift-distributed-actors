@@ -13,9 +13,10 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import Foundation
 import XCTest
+
+@testable import DistributedCluster
 
 final class ParentChildActorTests: SingleClusterSystemXCTestCase {
     typealias ParentRef = _ActorRef<ParentProtocol>
@@ -68,7 +69,7 @@ final class ParentChildActorTests: SingleClusterSystemXCTestCase {
                     } else {
                         throw error
                     }
-                } // bubble up others
+                }  // bubble up others
             case .spawnAnonymousChild(let behavior):
                 do {
                     let kid = try context._spawn(.anonymous, behavior)
@@ -82,7 +83,7 @@ final class ParentChildActorTests: SingleClusterSystemXCTestCase {
                     } else {
                         throw error
                     }
-                } // bubble up others
+                }  // bubble up others
 
             case .findByName(let name):
                 if let found = context.children.find(named: name, withType: ChildProtocol.self) {
@@ -139,7 +140,7 @@ final class ParentChildActorTests: SingleClusterSystemXCTestCase {
                         } else {
                             throw error
                         }
-                    } // bubble up others
+                    }  // bubble up others
                 }
                 return .same
             }
@@ -159,15 +160,15 @@ final class ParentChildActorTests: SingleClusterSystemXCTestCase {
         try p.expectMessage(.childNotFound(name: unknownName))
 
         parent.tell(.findByName(name: child.id.name))
-        try p.expectMessage(.childFound(name: child.id.name, ref: child)) // should return same (or equal) ref
+        try p.expectMessage(.childFound(name: child.id.name, ref: child))  // should return same (or equal) ref
 
-        parent.tell(.stopByName(name: child.id.name)) // stopping by name
-        try p.expectMessage(.childFound(name: child.id.name, ref: child)) // we get the same, now dead, ref back
+        parent.tell(.stopByName(name: child.id.name))  // stopping by name
+        try p.expectMessage(.childFound(name: child.id.name, ref: child))  // we get the same, now dead, ref back
 
-        p.watch(child) // watching dead ref triggers terminated
+        p.watch(child)  // watching dead ref triggers terminated
         try p.expectTerminated(child)
 
-        parent.tell(.findByName(name: child.id.name)) // should not find that child anymore, it was stopped
+        parent.tell(.findByName(name: child.id.name))  // should not find that child anymore, it was stopped
         try p.expectMessage(.childNotFound(name: child.id.name))
     }
 
@@ -180,15 +181,15 @@ final class ParentChildActorTests: SingleClusterSystemXCTestCase {
         guard case .spawned(let child) = try p.expectMessage() else { throw p.error() }
 
         parent.tell(.findByName(name: child.id.name))
-        try p.expectMessage(.childFound(name: child.id.name, ref: child)) // should return same (or equal) ref
+        try p.expectMessage(.childFound(name: child.id.name, ref: child))  // should return same (or equal) ref
 
-        parent.tell(.stopByName(name: child.id.name)) // stopping by name
-        try p.expectMessage(.childFound(name: child.id.name, ref: child)) // we get the same, now dead, ref back
+        parent.tell(.stopByName(name: child.id.name))  // stopping by name
+        try p.expectMessage(.childFound(name: child.id.name, ref: child))  // we get the same, now dead, ref back
 
-        p.watch(child) // watching dead ref triggers terminated
+        p.watch(child)  // watching dead ref triggers terminated
         try p.expectTerminated(child)
 
-        parent.tell(.findByName(name: child.id.name)) // should not find that child anymore, it was stopped
+        parent.tell(.findByName(name: child.id.name))  // should not find that child anymore, it was stopped
         try p.expectMessage(.childNotFound(name: child.id.name))
     }
 
@@ -246,7 +247,7 @@ final class ParentChildActorTests: SingleClusterSystemXCTestCase {
                     try context.stop(child: p.ref)
                 } catch {
                     p.tell("Errored:\(error)")
-                    throw error // throw as if we did not catch it
+                    throw error  // throw as if we did not catch it
                 }
                 return .same
             }
@@ -270,7 +271,7 @@ final class ParentChildActorTests: SingleClusterSystemXCTestCase {
                     try context.stop(child: context.myself)
                 } catch {
                     p.tell("Errored:\(error)")
-                    throw error // throw as if we did not catch it
+                    throw error  // throw as if we did not catch it
                 }
                 return .same
             }
@@ -443,7 +444,7 @@ final class ParentChildActorTests: SingleClusterSystemXCTestCase {
         p.watch(child)
 
         child.tell(.howAreYou(replyTo: pChild.ref))
-        _ = try pChild.expectMessage() // only expecting the ping pong to give parent time enough to watch the child "properly" and not its dead cell
+        _ = try pChild.expectMessage()  // only expecting the ping pong to give parent time enough to watch the child "properly" and not its dead cell
 
         child.tell(.throwWhoops)
 
@@ -455,7 +456,7 @@ final class ParentChildActorTests: SingleClusterSystemXCTestCase {
         default:
             throw p.error()
         }
-        try p.expectNoMessage(for: .milliseconds(100)) // no second terminated should happen
+        try p.expectNoMessage(for: .milliseconds(100))  // no second terminated should happen
     }
 
     func test_spawnWatch_shouldSpawnAWatchedActor() throws {
@@ -520,7 +521,7 @@ final class ParentChildActorTests: SingleClusterSystemXCTestCase {
             .receive { context, msg in
                 switch msg {
                 case "spawn":
-                    for count in 1 ... childCount {
+                    for count in 1...childCount {
                         let behavior: _Behavior<Int> = .receiveMessage { _ in .ignore }
                         let ref: _ActorRef<Int> = try context._spawn(
                             "child",
@@ -545,6 +546,6 @@ final class ParentChildActorTests: SingleClusterSystemXCTestCase {
         parent.tell("spawn")
 
         let messages = try p.expectMessages(count: childCount)
-        messages.sorted().shouldEqual((1 ... childCount).sorted())
+        messages.sorted().shouldEqual((1...childCount).sorted())
     }
 }

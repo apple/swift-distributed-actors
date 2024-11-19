@@ -17,6 +17,7 @@ import DistributedCluster
 import Foundation
 import NIO
 import NIOFoundationCompat
+
 // end::serialize_manifest_any[]
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -44,7 +45,7 @@ extension ParkingTicketMessage {
         case pay
     }
 
-    enum CodingKeys: CodingKey { // or Int
+    enum CodingKeys: CodingKey {  // or Int
         case _case
         case issued_ticket
         case pay_ticket
@@ -147,7 +148,7 @@ class SerializationDocExamples {
             settings.serialization.register(ParkingSpotStatus.self)
         }
         // end::prepare_system_codable[]
-        _ = system // silence not-used warnings
+        _ = system  // silence not-used warnings
     }
 
     func sending_serialized_codable_messages() throws {
@@ -172,7 +173,7 @@ class SerializationDocExamples {
             settings.serialization.register(ParkingGarageStatus.self)
         }
         // end::prepare_system_protobuf[]
-        _ = system // silence not-used warnings
+        _ = system  // silence not-used warnings
     }
 
     func sending_serialized_protobuf_messages() throws {
@@ -199,7 +200,7 @@ class SerializationDocExamples {
             }
         }
         // end::prepare_system_custom[]
-        _ = system // silence not-used warnings
+        _ = system  // silence not-used warnings
     }
 
     func serialization_specific_coder() throws {
@@ -208,7 +209,7 @@ class SerializationDocExamples {
             settings.serialization.register(MyMessage.self, serializerID: .foundationJSON)
         }
         // end::serialization_specific_coder[]
-        _ = system // silence not-used warnings
+        _ = system  // silence not-used warnings
     }
 
     struct MyMessage: Codable {}
@@ -221,7 +222,7 @@ class SerializationDocExamples {
             settings.serialization.register(OtherGenericMessage<Int>.self)
         }
         // end::serialization_register_types[]
-        _ = system // silence serialization_register_types-used warnings
+        _ = system  // silence serialization_register_types-used warnings
     }
 
     // tag::custom_serializer[]
@@ -234,7 +235,7 @@ class SerializationDocExamples {
         init(_ allocator: ByteBufferAllocator) {
             self.allocator = allocator
 
-            var availableRepr: ByteBuffer = allocator.buffer(capacity: 1) // <1>
+            var availableRepr: ByteBuffer = allocator.buffer(capacity: 1)  // <1>
             availableRepr.writeStaticString("A")
             self.availableRepr = availableRepr
 
@@ -243,14 +244,14 @@ class SerializationDocExamples {
             self.takenRepr = takenRepr
         }
 
-        override func serialize(_ message: CustomlyEncodedMessage) throws -> Serialization.Buffer { // <2>
+        override func serialize(_ message: CustomlyEncodedMessage) throws -> Serialization.Buffer {  // <2>
             switch message {
             case .available: return .nioByteBuffer(self.availableRepr)
             case .taken: return .nioByteBuffer(self.takenRepr)
             }
         }
 
-        override func deserialize(from buffer: Serialization.Buffer) throws -> CustomlyEncodedMessage { // <3>
+        override func deserialize(from buffer: Serialization.Buffer) throws -> CustomlyEncodedMessage {  // <3>
             guard case .nioByteBuffer(var buffer) = buffer else {
                 throw CodingError.unknownEncoding("expected ByteBuffer")
             }
@@ -287,7 +288,7 @@ class SerializationDocExamples {
         }
 
         override func setSerializationContext(_ context: Serialization.Context) {
-            self.context = context // <1>
+            self.context = context  // <1>
         }
 
         override func serialize(_ message: ContainsActorRef) throws -> Serialization.Buffer {
@@ -299,7 +300,7 @@ class SerializationDocExamples {
             guard let context = self.context else {
                 throw CustomCodingError.serializationContextNotAvailable
             }
-            let resolved: _ActorRef<String> = context._resolveActorRef(identifiedBy: id) // <2>
+            let resolved: _ActorRef<String> = context._resolveActorRef(identifiedBy: id)  // <2>
             return ContainsActorRef(ref: resolved)
         }
 
@@ -338,7 +339,7 @@ struct DistributedAlgorithmExampleEnvelope<Payload: ForSomeReasonNotCodable>: Co
         buffer.writeBytes(data)
 
         // Option 1: raw bytes ----------------------------------------------------------------
-        let payload = try context.serialization.deserialize(as: Payload.self, from: .nioByteBuffer(buffer), using: manifest) // <1>
+        let payload = try context.serialization.deserialize(as: Payload.self, from: .nioByteBuffer(buffer), using: manifest)  // <1>
 
         // Option 2: manually coding + manifest -----------------------------------------------
         // let payloadType = try context.serialization.summonType(from: manifest) // <2>
@@ -362,14 +363,14 @@ struct DistributedAlgorithmExampleEnvelope<Payload: ForSomeReasonNotCodable>: Co
         var container = encoder.container(keyedBy: CodingKeys.self)
 
         // Option 1: raw bytes ----------------------------------------------------------------
-        let serialized = try context.serialization.serialize(self.payload) // TODO: mangled name type manifests only work on Swift 5.3 (!)
+        let serialized = try context.serialization.serialize(self.payload)  // TODO: mangled name type manifests only work on Swift 5.3 (!)
         try container.encode(serialized.manifest, forKey: .payloadManifest)
         let data: Data
         switch serialized.buffer {
         case .data(let d):
             data = d
         case .nioByteBuffer(let buffer):
-            data = buffer.getData(at: 0, length: buffer.readableBytes)! // !-safe, we know the range from 0-readableBytes is correct
+            data = buffer.getData(at: 0, length: buffer.readableBytes)!  // !-safe, we know the range from 0-readableBytes is correct
         }
         try container.encode(data, forKey: .payload)
 

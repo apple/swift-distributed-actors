@@ -29,7 +29,7 @@ extension Cluster {
         var seen: Cluster.MembershipGossip.SeenTable
         /// The version vector of this gossip and the `Membership` state owned by it.
         var version: VersionVector {
-            self.seen.underlying[self.owner]! // !-safe, since we _always_ know our own world view
+            self.seen.underlying[self.owner]!  // !-safe, since we _always_ know our own world view
         }
 
         // Would be Payload of the generic envelope.
@@ -42,7 +42,7 @@ extension Cluster {
             self.seen = Cluster.MembershipGossip.SeenTable(myselfNode: ownerNode, version: VersionVector())
 
             // The actual payload
-            self.membership = .empty // MUST be empty, as on the first "self gossip, we cause all ClusterEvents
+            self.membership = .empty  // MUST be empty, as on the first "self gossip, we cause all ClusterEvents
         }
 
         /// Bumps the version via the owner.
@@ -77,14 +77,13 @@ extension Cluster {
                 // we have likely removed it, and it is down anyway, so we ignore it completely
                 return .init(causalRelation: causalRelation, effectiveChanges: [])
             default:
-                () // ok, so it is fine and still alive
+                ()  // ok, so it is fine and still alive
             }
 
             // 1.2) Protect from zombies: Any nodes that we know are dead or down, we should not accept any information from
             let incomingConcurrentDownMembers = incoming.membership.members(atLeast: .down)
             for pruneFromIncomingBeforeMerge in incomingConcurrentDownMembers
-                where self.membership.member(pruneFromIncomingBeforeMerge.node) == nil
-            {
+            where self.membership.member(pruneFromIncomingBeforeMerge.node) == nil {
                 _ = incoming.pruneMember(pruneFromIncomingBeforeMerge)
             }
 
@@ -105,8 +104,7 @@ extension Cluster {
 
             // 3) if any removals happened, we need to prune the removed nodes from the seen table
             for change in changes
-                where change.status.isRemoved && change.member.node != self.owner
-            {
+            where change.status.isRemoved && change.member.node != self.owner {
                 self.seen.prune(change.member.node)
             }
 
@@ -115,7 +113,7 @@ extension Cluster {
 
         /// Remove member from `membership` and prune the seen tables of any trace of the removed node.
         mutating func pruneMember(_ member: Member) -> Cluster.MembershipChange? {
-            self.seen.prune(member.node) // always prune is okey
+            self.seen.prune(member.node)  // always prune is okey
             let change = self.membership.removeCompletely(member.node)
             return change
         }
@@ -136,23 +134,23 @@ extension Cluster {
         /// Only `.up` and `.leaving` members are considered, since joining members are "too early"
         /// to matter in decisions, and down members shall never participate in decision making.
         func converged() -> Bool {
-            let members = self.membership.members(withStatus: [.joining, .up, .leaving]) // FIXME: we should not require joining nodes in convergence, can losen up a bit here I hope
+            let members = self.membership.members(withStatus: [.joining, .up, .leaving])  // FIXME: we should not require joining nodes in convergence, can losen up a bit here I hope
             let requiredVersion = self.version
 
             if members.isEmpty {
-                return true // no-one is around disagree with me! }:-)
+                return true  // no-one is around disagree with me! }:-)
             }
 
             let laggingBehindMemberFound = members.contains { member in
                 if let memberSeenVersion = self.seen.version(at: member.node) {
                     switch memberSeenVersion.compareTo(requiredVersion) {
                     case .happenedBefore, .concurrent:
-                        return true // found an offending member, it is lagging behind, thus no convergence
+                        return true  // found an offending member, it is lagging behind, thus no convergence
                     case .happenedAfter, .same:
                         return false
                     }
                 } else {
-                    return true // no version in other member, thus we have no idea where it's at -> assuming it is behind
+                    return true  // no version in other member, thus we have no idea where it's at -> assuming it is behind
                 }
             }
 
@@ -289,11 +287,11 @@ extension Cluster.MembershipGossip.SeenTable: CustomStringConvertible, CustomPre
         let entryHeadingPadding = String(repeating: " ", count: 4 * depth)
         let entryPadding = String(repeating: " ", count: 4 * (depth + 1))
 
-        underlying.sorted(by: { $0.key < $1.key }).forEach { node, vv in
+        for (node, vv) in underlying.sorted(by: { $0.key < $1.key }) {
             let entryHeader = "\(entryHeadingPadding)\(node) observed versions:\n"
 
             s.append(entryHeader)
-            vv.state.sorted(by: { $0.key < $1.key }).forEach { node, v in
+            for (node, v) in vv.state.sorted(by: { $0.key < $1.key }) {
                 s.append("\(entryPadding)\(node) @ \(v)\n")
             }
         }

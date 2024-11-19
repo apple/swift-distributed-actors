@@ -14,6 +14,7 @@
 
 import Foundation
 import Logging
+
 import struct NIO.CircularBuffer
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -124,7 +125,7 @@ internal final class OutboundSystemMessageRedelivery {
     let metrics: ClusterSystemMetrics?
 
     // highest ACK we got back from the receiving end
-    var highestAcknowledgedSeqNr: SequenceNr = 0 // 0 == no ACKs at all so far.
+    var highestAcknowledgedSeqNr: SequenceNr = 0  // 0 == no ACKs at all so far.
 
     // what is the highest SeqNr we have sent?
     var outgoingSequenceNr: SequenceNr = 0

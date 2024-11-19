@@ -63,7 +63,7 @@ public struct OnDownActionStrategySettings {
     func make() -> (ClusterSystem) throws -> Void {
         switch self.underlying {
         case .none:
-            return { _ in () } // do nothing
+            return { _ in () }  // do nothing
 
         case .gracefulShutdown(let shutdownDelay):
             return { system in

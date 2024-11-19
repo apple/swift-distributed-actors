@@ -44,8 +44,8 @@ extension DistributedReception {
     /// actors which do not opt-into discovery by registering themselves WILL NOT be discovered using this, or any other, key).
     public struct Key<Guest: DistributedActor>: Codable, Sendable,
         ExpressibleByStringLiteral, ExpressibleByStringInterpolation,
-        CustomStringConvertible where Guest.ActorSystem == ClusterSystem
-    {
+        CustomStringConvertible
+    where Guest.ActorSystem == ClusterSystem {
         public let id: String
         public var guestType: Any.Type {
             Guest.self

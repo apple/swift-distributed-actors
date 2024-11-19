@@ -13,9 +13,10 @@
 //===----------------------------------------------------------------------===//
 
 import ClusterMembership
-import enum Dispatch.DispatchTimeInterval
 import Logging
 import SWIM
+
+import enum Dispatch.DispatchTimeInterval
 
 extension ClusterMembership.Node {
     init(node: Cluster.Node) {

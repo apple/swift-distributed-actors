@@ -14,9 +14,10 @@
 
 import Distributed
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import Foundation
 import XCTest
+
+@testable import DistributedCluster
 
 final class _ActorRefReceptionistTests: SingleClusterSystemXCTestCase {
     let receptionistBehavior = _OperationLogClusterReceptionist(settings: .default).behavior

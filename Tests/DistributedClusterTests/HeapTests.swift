@@ -26,8 +26,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-@testable import DistributedCluster
 import XCTest
+
+@testable import DistributedCluster
 
 public func getRandomNumbers(count: Int) -> [UInt8] {
     var values: [UInt8] = .init(repeating: 0, count: count)
@@ -57,9 +58,9 @@ class HeapTests: XCTestCase {
         var minHeap = Heap<Int>(type: .minHeap)
 
         let input = [16, 14, 10, 9, 8, 7, 4, 3, 2, 1]
-        input.forEach {
-            minHeap.append($0)
-            maxHeap.append($0)
+        for value in input {
+            minHeap.append(value)
+            maxHeap.append(value)
             XCTAssertTrue(minHeap.checkHeapProperty())
             XCTAssertTrue(maxHeap.checkHeapProperty())
         }
@@ -82,9 +83,9 @@ class HeapTests: XCTestCase {
         var minHeap = Heap<Int>(type: .minHeap)
 
         let input = Array([16, 14, 10, 9, 8, 7, 4, 3, 2, 1].reversed())
-        input.forEach {
-            minHeap.append($0)
-            maxHeap.append($0)
+        for value in input {
+            minHeap.append(value)
+            maxHeap.append(value)
         }
         var minHeapInputPtr = 0
         var maxHeapInputPtr = input.count - 1
@@ -111,9 +112,9 @@ class HeapTests: XCTestCase {
         }
 
         let input = Array([16, 14, 10, 9, 8, 7, 4, 3, 2, 1].reversed().map { Test(x: $0) })
-        input.forEach {
-            minHeap.append($0)
-            maxHeap.append($0)
+        for value in input {
+            minHeap.append(value)
+            maxHeap.append(value)
         }
         var minHeapInputPtr = 0
         var maxHeapInputPtr = input.count - 1
@@ -145,7 +146,7 @@ class HeapTests: XCTestCase {
             XCTAssertEqual(Array(maxHeap.sorted().reversed()), Array(maxHeap))
         }
 
-        for _ in 0 ..< N / 2 {
+        for _ in 0..<N / 2 {
             var value = maxHeap.removeRoot()!
             XCTAssertLessThanOrEqual(value, maxHeapLast)
             maxHeapLast = value
@@ -170,7 +171,7 @@ class HeapTests: XCTestCase {
             XCTAssertTrue(minHeap.checkHeapProperty(), maxHeap.debugDescription)
         }
 
-        for _ in 0 ..< N / 2 + N {
+        for _ in 0..<N / 2 + N {
             var value = maxHeap.removeRoot()!
             XCTAssertLessThanOrEqual(value, maxHeapLast)
             maxHeapLast = value

@@ -11,9 +11,10 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-import struct Foundation.Data // TODO: would refer to not go "through" Data as our target always is ByteBuffer
 import NIO
 import SwiftProtobuf
+
+import struct Foundation.Data  // TODO: would refer to not go "through" Data as our target always is ByteBuffer
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: _ProtoEnvelope

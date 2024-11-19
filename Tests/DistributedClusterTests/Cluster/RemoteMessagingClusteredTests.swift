@@ -13,9 +13,10 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import Foundation
 import XCTest
+
+@testable import DistributedCluster
 
 final class RemoteMessagingClusteredTests: ClusteredActorSystemsXCTestCase {
     // TODO: This will start failing once we implement _mangledTypeName manifests

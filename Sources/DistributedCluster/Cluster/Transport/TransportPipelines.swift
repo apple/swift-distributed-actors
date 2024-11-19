@@ -12,16 +12,16 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Foundation
+import Logging
 import NIO
-import class NIOExtras.LengthFieldBasedFrameDecoder
-import class NIOExtras.LengthFieldPrepender
 import NIOFoundationCompat
 import NIOSSL
-
-import Foundation
-import struct Foundation.Data // FIXME: would want to not have to use Data in our infra as it forces us to copy
-import Logging
 import SwiftProtobuf
+
+import struct Foundation.Data  // FIXME: would want to not have to use Data in our infra as it forces us to copy
+import class NIOExtras.LengthFieldBasedFrameDecoder
+import class NIOExtras.LengthFieldPrepender
 
 typealias Framing = LengthFieldBasedFrameDecoder
 
@@ -73,7 +73,7 @@ private final class InitiatingHandshakeHandler: ChannelInboundHandler, Removable
     private func readHandshakeResponse(context: ChannelHandlerContext, bytes: InboundIn) {
         var bytes = bytes
         let metadata: Logger.Metadata = [
-            "handshake/channel": "\(context.channel)",
+            "handshake/channel": "\(context.channel)"
         ]
 
         do {
@@ -128,7 +128,7 @@ final class ReceivingHandshakeHandler: ChannelInboundHandler, RemovableChannelHa
             let offer = try self.readHandshakeOffer(bytes: &bytes)
 
             let metadata: Logger.Metadata = [
-                "handshake/channel": "\(context.channel)",
+                "handshake/channel": "\(context.channel)"
             ]
 
             self.log.debug("Received handshake offer from: [\(reflecting: offer.originNode)] with protocol version: [\(offer.version)]", metadata: metadata)
@@ -158,7 +158,7 @@ final class ReceivingHandshakeHandler: ChannelInboundHandler, RemovableChannelHa
 
                 case .failure(let err):
                     context.fireErrorCaught(err)
-                    // _ = context.close() // TODO: maybe?
+                // _ = context.close() // TODO: maybe?
                 }
             }
         } catch {
@@ -212,7 +212,7 @@ private final class ProtocolMagicBytesPrepender: ChannelOutboundHandler, Removab
 
     func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
         var b = context.channel.allocator.buffer(capacity: 2)
-        b.writeInteger(HandshakeMagicBytes, endianness: .big) // first bytes MUST be magic when initiating connection
+        b.writeInteger(HandshakeMagicBytes, endianness: .big)  // first bytes MUST be magic when initiating connection
         context.write(self.wrapOutboundOut(b), promise: nil)
 
         context.writeAndFlush(data, promise: promise)
@@ -263,13 +263,16 @@ private final class WireEnvelopeHandler: ChannelDuplexHandler {
         let envelope: Wire.Envelope = self.unwrapOutboundIn(data)
         do {
             let serialized = try serialization.serialize(envelope)
-            let buffer = serialized.buffer.asByteBuffer(allocator: self.serialization.allocator) // FIXME: yes we double allocate, no good ways around it today
+            let buffer = serialized.buffer.asByteBuffer(allocator: self.serialization.allocator)  // FIXME: yes we double allocate, no good ways around it today
             context.writeAndFlush(NIOAny(buffer), promise: promise)
         } catch {
-            self.log.error("Failed to serialize message!", metadata: [
-                "message": "\(envelope)",
-                "error": "\(error)",
-            ])
+            self.log.error(
+                "Failed to serialize message!",
+                metadata: [
+                    "message": "\(envelope)",
+                    "error": "\(error)",
+                ]
+            )
             context.fireErrorCaught(error)
         }
     }
@@ -281,10 +284,13 @@ private final class WireEnvelopeHandler: ChannelDuplexHandler {
             let envelope = try self.serialization.deserialize(as: Wire.Envelope.self, from: .nioByteBuffer(buffer), using: knownSpecializedWireEnvelopeManifest)
             context.fireChannelRead(self.wrapInboundOut(envelope))
         } catch {
-            self.log.error("Failed to deserialize message", metadata: [
-                "buffer": "\(buffer)",
-                "error": "\(error)",
-            ])
+            self.log.error(
+                "Failed to deserialize message",
+                metadata: [
+                    "buffer": "\(buffer)",
+                    "error": "\(error)",
+                ]
+            )
             context.fireErrorCaught(error)
         }
     }
@@ -356,8 +362,8 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
     typealias OutboundIn = TransportEnvelope
     typealias OutboundOut = TransportEnvelope
 
-    typealias InboundIn = Wire.Envelope // we handle deserialization in case it is about a system message (since message == system message envelope)
-    typealias InboundOut = Wire.Envelope // we pass along user messages; all system messages are handled in-place here (ack, nack), or delivered directly to the recipient from this handler
+    typealias InboundIn = Wire.Envelope  // we handle deserialization in case it is about a system message (since message == system message envelope)
+    typealias InboundOut = Wire.Envelope  // we pass along user messages; all system messages are handled in-place here (ack, nack), or delivered directly to the recipient from this handler
 
     private let log: Logger
     private let system: ClusterSystem
@@ -412,9 +418,12 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
             context.writeAndFlush(self.wrapOutboundOut(redeliveryEnvelope), promise: promise)
 
         case .bufferOverflowMustAbortAssociation:
-            self.log.error("Outbound system message queue overflow! MUST abort association, system state integrity cannot be ensured (e.g. terminated signals may have been lost).", metadata: [
-                "recipient": "\(transportEnvelope.recipient)",
-            ])
+            self.log.error(
+                "Outbound system message queue overflow! MUST abort association, system state integrity cannot be ensured (e.g. terminated signals may have been lost).",
+                metadata: [
+                    "recipient": "\(transportEnvelope.recipient)"
+                ]
+            )
             self.clusterShell.tell(.command(.downCommand(transportEnvelope.recipient.node.endpoint)))
         }
     }
@@ -440,10 +449,12 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
                 self.onInboundNACK(context, nack: nack)
             }
         } else if Type == _SystemMessage.self {
-            log.error("""
-            Received _SystemMessage manifest! This should never happen, as system messages should ALWAYS travel in `SystemMessageEnvelope`s. \
-            Remote: \(reflecting: context.remoteAddress), manifest: \(wireEnvelope.manifest)
-            """)
+            log.error(
+                """
+                Received _SystemMessage manifest! This should never happen, as system messages should ALWAYS travel in `SystemMessageEnvelope`s. \
+                Remote: \(reflecting: context.remoteAddress), manifest: \(wireEnvelope.manifest)
+                """
+            )
         } else {
             // it's a normal message, so we should directly pass it along
             context.fireChannelRead(self.wrapInboundOut(wireEnvelope))
@@ -452,8 +463,9 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
 
     private func deserializeThenHandle<T>(type: T.Type, wireEnvelope: Wire.Envelope, callback: @escaping (T) -> Void) {
         self.serializationPool.deserializeAny(
-            from: wireEnvelope.payload, using: wireEnvelope.manifest,
-            recipientPath: wireEnvelope.recipient.path, // TODO: use addresses
+            from: wireEnvelope.payload,
+            using: wireEnvelope.manifest,
+            recipientPath: wireEnvelope.recipient.path,  // TODO: use addresses
             callback: .init { result in
                 self.tracelog(.inbound, message: wireEnvelope)
                 switch result {
@@ -502,14 +514,16 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
     private func onInboundACK(ack: _SystemMessage.ACK) {
         switch self.outboundSystemMessages.acknowledge(ack) {
         case .acknowledged:
-            return // good, and do not pass the ACK through the pipeline, we handled it completely just now
+            return  // good, and do not pass the ACK through the pipeline, we handled it completely just now
 
         case .ackWasForFutureSequenceNr(let highestKnownSeqNr):
-            self.log.warning("""
-            Received unexpected system message [ACK(\(ack.sequenceNr))], while highest known (sent) \
-            system message was [sequenceNr:\(highestKnownSeqNr)]. \
-            Ignoring as harmless, however peer might be misbehaving.
-            """) // TODO: metadata: self.outboundSystemMessages.metadata
+            self.log.warning(
+                """
+                Received unexpected system message [ACK(\(ack.sequenceNr))], while highest known (sent) \
+                system message was [sequenceNr:\(highestKnownSeqNr)]. \
+                Ignoring as harmless, however peer might be misbehaving.
+                """
+            )  // TODO: metadata: self.outboundSystemMessages.metadata
         }
     }
 
@@ -521,11 +535,13 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
             self.log.trace("Received NACK however no messages to redeliver.")
 
         case .nackWasForFutureSequenceNr(let highestKnownSeqNr):
-            self.log.warning("""
-            Received unexpected system message [NACK(\(nack.sequenceNr))], while highest known (sent) \
-            system message was [sequenceNd:\(highestKnownSeqNr)]. \
-            Ignoring as harmless, however peer migh be misbehaving.
-            """) // TODO: metadata: self.outboundSystemMessages.metadata
+            self.log.warning(
+                """
+                Received unexpected system message [NACK(\(nack.sequenceNr))], while highest known (sent) \
+                system message was [sequenceNd:\(highestKnownSeqNr)]. \
+                Ignoring as harmless, however peer migh be misbehaving.
+                """
+            )  // TODO: metadata: self.outboundSystemMessages.metadata
         }
     }
 
@@ -549,7 +565,7 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
 
     private func scheduleNextRedeliveryTick(_ context: ChannelHandlerContext, in nextRedeliveryDelay: Duration) {
         guard self.redeliveryScheduled == nil else {
-            return // already a tick scheduled, we'll ride on that one rather than kick off a new one
+            return  // already a tick scheduled, we'll ride on that one rather than kick off a new one
         }
 
         self.redeliveryScheduled = context.eventLoop.scheduleTask(in: nextRedeliveryDelay.toNIO) {
@@ -565,8 +581,11 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
 extension SystemMessageRedeliveryHandler {
     /// Optional "dump all messages" logging.
     private func tracelog(
-        _ type: TraceLogType, message: Any,
-        file: String = #filePath, function: String = #function, line: UInt = #line
+        _ type: TraceLogType,
+        message: Any,
+        file: String = #filePath,
+        function: String = #function,
+        line: UInt = #line
     ) {
         let level: Logger.Level?
         switch type {
@@ -580,7 +599,9 @@ extension SystemMessageRedeliveryHandler {
             self.log.log(
                 level: level,
                 "[tracelog:sys-msg-redelivery] \(type.description): \(message)",
-                file: file, function: function, line: line
+                file: file,
+                function: function,
+                line: line
             )
         }
     }
@@ -606,7 +627,7 @@ extension SystemMessageRedeliveryHandler {
 /// Deserializes and delivers user messages (i.e. anything that is not a system message).
 private final class UserMessageHandler: ChannelInboundHandler {
     typealias InboundIn = Wire.Envelope
-    typealias InboundOut = Never // we terminate here, by sending messages off to local actors
+    typealias InboundOut = Never  // we terminate here, by sending messages off to local actors
 
     let log: Logger
 
@@ -664,7 +685,8 @@ private final class UserMessageHandler: ChannelInboundHandler {
 
         // all other messages are "normal" and should be delivered to the target actor normally
         ref._deserializeDeliver(
-            wireEnvelope.payload, using: wireEnvelope.manifest,
+            wireEnvelope.payload,
+            using: wireEnvelope.manifest,
             on: self.serializationPool
         )
     }
@@ -707,7 +729,7 @@ private final class DumpRawBytesDebugHandler: ChannelInboundHandler {
 
 extension ClusterShell {
     internal func bootstrapServerSide(system: ClusterSystem, shell: ClusterShell.Ref, bindNode: Cluster.Node, settings: ClusterSystemSettings, serializationPool: _SerializationPool) -> EventLoopFuture<Channel> {
-        let group: EventLoopGroup = settings.eventLoopGroup ?? settings.makeDefaultEventLoopGroup() // TODO: share the loop with client side?
+        let group: EventLoopGroup = settings.eventLoopGroup ?? settings.makeDefaultEventLoopGroup()  // TODO: share the loop with client side?
 
         let bootstrap = ServerBootstrap(group: group)
             // Specify backlog and enable SO_REUSEADDR for the server itself
@@ -734,7 +756,7 @@ extension ClusterShell {
                 }
 
                 var log = system.log
-                log[metadataKey: "actor/path"] = "/system/transport.server" // TODO: this is a fake path, we could use log source: here if it gets merged
+                log[metadataKey: "actor/path"] = "/system/transport.server"  // TODO: this is a fake path, we could use log source: here if it gets merged
 
                 // FIXME: PASS IN FROM ASSOCIATION SINCE MUST SURVIVE CONNECTIONS! // TODO: tests about terminating connections the hard way
                 let outboundSysMsgs = OutboundSystemMessageRedelivery(settings: .default)
@@ -766,10 +788,17 @@ extension ClusterShell {
             .childChannelOption(ChannelOptions.maxMessagesPerRead, value: 16)
             .childChannelOption(ChannelOptions.recvAllocator, value: AdaptiveRecvByteBufferAllocator())
 
-        return bootstrap.bind(host: bindNode.endpoint.host, port: Int(bindNode.endpoint.port)) // TODO: separate setup from using it
+        return bootstrap.bind(host: bindNode.endpoint.host, port: Int(bindNode.endpoint.port))  // TODO: separate setup from using it
     }
 
-    internal func bootstrapClientSide(system: ClusterSystem, shell: ClusterShell.Ref, targetNode: Cluster.Endpoint, handshakeOffer: Wire.HandshakeOffer, settings: ClusterSystemSettings, serializationPool: _SerializationPool) -> EventLoopFuture<Channel> {
+    internal func bootstrapClientSide(
+        system: ClusterSystem,
+        shell: ClusterShell.Ref,
+        targetNode: Cluster.Endpoint,
+        handshakeOffer: Wire.HandshakeOffer,
+        settings: ClusterSystemSettings,
+        serializationPool: _SerializationPool
+    ) -> EventLoopFuture<Channel> {
         let group: EventLoopGroup = settings.eventLoopGroup ?? settings.makeDefaultEventLoopGroup()
 
         // TODO: Implement "setup" inside settings, so that parts of bootstrap can be done there, e.g. by end users without digging into remoting internals
@@ -798,7 +827,7 @@ extension ClusterShell {
                 }
 
                 var log = system.log
-                log[metadataKey: "actor/path"] = "/system/transport.client" // TODO: this is a fake path, we could use log source: here if it gets merged
+                log[metadataKey: "actor/path"] = "/system/transport.client"  // TODO: this is a fake path, we could use log source: here if it gets merged
 
                 // FIXME: PASS IN FROM ASSOCIATION SINCE MUST SURVIVE CONNECTIONS !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                 let outboundSysMsgs = OutboundSystemMessageRedelivery(settings: .default)
@@ -824,7 +853,7 @@ extension ClusterShell {
                 return self.addChannelHandlers(channelHandlers, to: channel.pipeline)
             }
 
-        return bootstrap.connect(host: targetNode.host, port: Int(targetNode.port)) // TODO: separate setup from using it
+        return bootstrap.connect(host: targetNode.host, port: Int(targetNode.port))  // TODO: separate setup from using it
     }
 
     private func addChannelHandlers(_ handlers: [(String?, ChannelHandler)], to pipeline: ChannelPipeline) -> EventLoopFuture<Void> {

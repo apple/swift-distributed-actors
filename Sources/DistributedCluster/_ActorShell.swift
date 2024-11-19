@@ -68,7 +68,8 @@ public final class _ActorShell<Message: Codable>: _ActorContext<Message>, Abstra
                 Accessed context.system (of actor: \(self.id)) while system was already stopped and released, this should never happen. \
                 This may indicate that the context was stored somewhere or passed to another asynchronously executing non-actor context, \
                 which is always a programming bug (!). An actor's context MUST NOT ever be accessed by anyone else rather than the actor itself.
-                """)
+                """
+            )
         }
     }
 
@@ -141,9 +142,12 @@ public final class _ActorShell<Message: Codable>: _ActorContext<Message>, Abstra
     // MARK: _ActorShell implementation
 
     internal init(
-        system: ClusterSystem, parent: _AddressableActorRef,
-        behavior: _Behavior<Message>, id: ActorID,
-        props: _Props, dispatcher: MessageDispatcher
+        system: ClusterSystem,
+        parent: _AddressableActorRef,
+        behavior: _Behavior<Message>,
+        id: ActorID,
+        props: _Props,
+        dispatcher: MessageDispatcher
     ) {
         self._system = system
         self._parent = parent
@@ -191,7 +195,7 @@ public final class _ActorShell<Message: Codable>: _ActorContext<Message>, Abstra
     /// INTERNAL API: MUST be called immediately after constructing the cell and ref,
     /// as the actor needs to access its ref from its context during setup or other behavior reductions
     internal func set(ref: _ActorCell<Message>) {
-        self._myCell = ref // TODO: atomic?
+        self._myCell = ref  // TODO: atomic?
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -277,7 +281,7 @@ public final class _ActorShell<Message: Codable>: _ActorContext<Message>, Abstra
 
             #if SACT_TRACE_ACTOR_SHELL
             self.log.info("Applied [\(message)]:\(type(of: message)), becoming: \(next)")
-            #endif // TODO: make the \next printout nice TODO dont log messages (could leak pass etc)
+            #endif  // TODO: make the \next printout nice TODO dont log messages (could leak pass etc)
 
             let runResult = try self.finishInterpretAnyMessage(next)
             return runResult
@@ -363,10 +367,10 @@ public final class _ActorShell<Message: Codable>: _ActorContext<Message>, Abstra
             self.log.warning(
                 "Received adapted message [\(carry.message)]:\(type(of: carry.message as Any)) for which no adapter was registered.",
                 metadata: [
-                    "actorRef/adapters": "\(self.messageAdapters)",
+                    "actorRef/adapters": "\(self.messageAdapters)"
                 ]
             )
-            try self.becomeNext(behavior: .ignore) // TODO: make .drop once implemented
+            try self.becomeNext(behavior: .ignore)  // TODO: make .drop once implemented
             return self.runState
         }
 
@@ -374,7 +378,7 @@ public final class _ActorShell<Message: Codable>: _ActorContext<Message>, Abstra
         if let adapted = adapter(carry.message) {
             next = try self.supervisor.interpretSupervised(target: self.behavior, context: self, message: adapted)
         } else {
-            next = .unhandled // TODO: could be .drop
+            next = .unhandled  // TODO: could be .drop
         }
         traceLog_Cell("Applied adapted message \(carry.message), becoming: \(next)")
 
@@ -432,10 +436,10 @@ public final class _ActorShell<Message: Codable>: _ActorContext<Message>, Abstra
 
         switch error {
         case DeathPactError.unhandledDeathPact(_, _, let message):
-            self.log.error("\(message)") // TODO: configurable logging? in props?
+            self.log.error("\(message)")  // TODO: configurable logging? in props?
 
         default:
-            self.log.warning("Actor threw error, reason: [\(error)]:\(type(of: error)). Terminating.") // TODO: configurable logging? in props?
+            self.log.warning("Actor threw error, reason: [\(error)]:\(type(of: error)). Terminating.")  // TODO: configurable logging? in props?
         }
     }
 
@@ -463,7 +467,7 @@ public final class _ActorShell<Message: Codable>: _ActorContext<Message>, Abstra
     ///            If this happens the actor MUST be terminated immediately as we suspect things went very bad™ somehow.
     @inlinable public func _restartPrepare() throws {
         self.children.stopAll(includeAdapters: false)
-        self.timers.cancelAll() // TODO: cancel all except the restart timer
+        self.timers.cancelAll()  // TODO: cancel all except the restart timer
 
         /// Yes, we ignore the behavior returned by pre-restart on purpose, the supervisor decided what we should `become`,
         /// and we can not change this decision; at least not in the current scheme (which is simple and good enough for most cases).
@@ -616,11 +620,11 @@ public final class _ActorShell<Message: Codable>: _ActorContext<Message>, Abstra
         _ naming: _ActorNaming,
         of type: M.Type = M.self,
         props: _Props = _Props(),
-        file: String = #filePath, line: UInt = #line,
+        file: String = #filePath,
+        line: UInt = #line,
         _ behavior: _Behavior<M>
     ) throws -> _ActorRef<M>
-        where M: Codable
-    {
+    where M: Codable {
         try self.system.serialization._ensureSerializer(type, file: file, line: line)
         return try self._spawn(naming, props: props, behavior)
     }
@@ -630,11 +634,11 @@ public final class _ActorShell<Message: Codable>: _ActorContext<Message>, Abstra
         _ naming: _ActorNaming,
         of type: M.Type = M.self,
         props: _Props = _Props(),
-        file: String = #filePath, line: UInt = #line,
+        file: String = #filePath,
+        line: UInt = #line,
         _ behavior: _Behavior<M>
     ) throws -> _ActorRef<M>
-        where M: Codable
-    {
+    where M: Codable {
         self.watch(try self._spawn(naming, props: props, behavior))
     }
 
@@ -649,7 +653,8 @@ public final class _ActorShell<Message: Codable>: _ActorContext<Message>, Abstra
     override public func watch<Watchee>(
         _ watchee: Watchee,
         with terminationMessage: Message? = nil,
-        file: String = #filePath, line: UInt = #line
+        file: String = #filePath,
+        line: UInt = #line
     ) -> Watchee where Watchee: _DeathWatchable {
         self.deathWatch.watch(watchee: watchee, with: terminationMessage, myself: self, file: file, line: line)
         return watchee
@@ -658,7 +663,8 @@ public final class _ActorShell<Message: Codable>: _ActorContext<Message>, Abstra
     @discardableResult
     override public func unwatch<Watchee>(
         _ watchee: Watchee,
-        file: String = #filePath, line: UInt = #line
+        file: String = #filePath,
+        line: UInt = #line
     ) -> Watchee where Watchee: _DeathWatchable {
         self.deathWatch.unwatch(watchee: watchee, myself: self.myself, file: file, line: line)
         return watchee
@@ -675,13 +681,12 @@ public final class _ActorShell<Message: Codable>: _ActorContext<Message>, Abstra
     }
 
     override public func subReceive<SubMessage>(_ id: _SubReceiveId<SubMessage>, _ subType: SubMessage.Type, _ closure: @escaping (SubMessage) throws -> Void) -> _ActorRef<SubMessage>
-        where SubMessage: Codable
-    {
+    where SubMessage: Codable {
         do {
             let wrappedClosure: (SubMessageCarry) throws -> _Behavior<Message> = { carry in
                 guard let message = carry.message as? SubMessage else {
                     self.log.warning("Received message [\(carry.message)] of type [\(String(reflecting: type(of: carry.message)))] for identifier [\(carry.identifier)] and address [\(carry.subReceiveAddress)] ")
-                    return .same // TODO: make .drop once implemented
+                    return .same  // TODO: make .drop once implemented
                 }
 
                 try closure(message)
@@ -699,18 +704,20 @@ public final class _ActorShell<Message: Codable>: _ActorContext<Message>, Abstra
 
             let naming = _ActorNaming(unchecked: .prefixed(prefix: "$sub-\(id.id)", suffixScheme: .letters))
             let name = naming.makeName(&self.namingContext)
-            let adaptedAddress = try self.id.makeChildID(name: name, incarnation: .random()) // TODO: actor name to BE the identity
+            let adaptedAddress = try self.id.makeChildID(name: name, incarnation: .random())  // TODO: actor name to BE the identity
             let ref = SubReceiveAdapter(SubMessage.self, owner: self.myself, id: adaptedAddress, identifier: identifier)
 
-            self._children.insert(ref) // TODO: separate adapters collection?
+            self._children.insert(ref)  // TODO: separate adapters collection?
             self.subReceives[identifier] = (wrappedClosure, ref)
             return .init(.adapter(ref))
         } catch {
-            fatalError("""
-            Failed while creating a sub receive with id [\(id.id)] and type [\(subType)]. This should never happen, since sub receives have unique names \
-            generated for them using sequential names. Maybe `ActorContext.subReceive` was accessed concurrently (which is unsafe!)? \
-            Error: \(error)
-            """)
+            fatalError(
+                """
+                Failed while creating a sub receive with id [\(id.id)] and type [\(subType)]. This should never happen, since sub receives have unique names \
+                generated for them using sequential names. Maybe `ActorContext.subReceive` was accessed concurrently (which is unsafe!)? \
+                Error: \(error)
+                """
+            )
         }
     }
 
@@ -728,14 +735,15 @@ public final class _ActorShell<Message: Codable>: _ActorContext<Message>, Abstra
     }
 
     override public func messageAdapter<From>(from fromType: From.Type, adapt: @escaping (From) -> Message?) -> _ActorRef<From>
-        where From: Codable
-    {
+    where From: Codable {
         do {
             let metaType = MetaType(fromType)
             let anyAdapter: (Any) -> Message? = { message in
                 guard let typedMessage = message as? From else {
-                    fatalError("messageAdapter was applied to message [\(message)] of incompatible type `\(String(reflecting: type(of: message)))` message." +
-                        "This should never happen, as at compile-time the message type should have been enforced to be `\(From.self)`.")
+                    fatalError(
+                        "messageAdapter was applied to message [\(message)] of incompatible type `\(String(reflecting: type(of: message)))` message."
+                            + "This should never happen, as at compile-time the message type should have been enforced to be `\(From.self)`."
+                    )
                 }
 
                 return adapt(typedMessage)
@@ -753,16 +761,18 @@ public final class _ActorShell<Message: Codable>: _ActorContext<Message>, Abstra
                 let adapter = _ActorRefAdapter(fromType: fromType, to: self.myself, id: adaptedAddress)
 
                 self.messageAdapter = adapter
-                self._children.insert(adapter) // TODO: separate adapters collection?
+                self._children.insert(adapter)  // TODO: separate adapters collection?
 
                 return .init(.adapter(adapter))
             }
         } catch {
-            fatalError("""
-            Failed while creating message adapter. This should never happen, since message adapters have a unique name.
-            Maybe `ActorContext.messageAdapter` was accessed concurrently (which is unsafe!)?
-            Error: \(error)
-            """)
+            fatalError(
+                """
+                Failed while creating message adapter. This should never happen, since message adapters have a unique name.
+                Maybe `ActorContext.messageAdapter` was accessed concurrently (which is unsafe!)?
+                Error: \(error)
+                """
+            )
         }
     }
 }
@@ -802,10 +812,12 @@ extension _ActorShell {
             switch terminatedDirective {
             case .wasNotWatched:
                 // it is not an actor we currently watch, thus we should not take actions nor deliver the signal to the user
-                self.log.trace("""
-                Actor not known to [\(self.path)], but [\(terminated)] received for it. This may mean we received node terminated earlier, \
-                and already have removed the actor from our death watch.
-                """)
+                self.log.trace(
+                    """
+                    Actor not known to [\(self.path)], but [\(terminated)] received for it. This may mean we received node terminated earlier, \
+                    and already have removed the actor from our death watch.
+                    """
+                )
                 return
 
             case .signal:
@@ -819,12 +831,12 @@ extension _ActorShell {
         switch next.underlying {
         case .unhandled:
             throw DeathPactError.unhandledDeathPact(
-                dead, myself: self.myself.asAddressable,
-                message: "DeathPactError: Unhandled [\(terminated)] signal about watched actor [\(dead)]. " +
-                    "Handle the `.terminated` signal in `.receiveSignal()` in order react to this situation differently than termination."
+                dead,
+                myself: self.myself.asAddressable,
+                message: "DeathPactError: Unhandled [\(terminated)] signal about watched actor [\(dead)]. " + "Handle the `.terminated` signal in `.receiveSignal()` in order react to this situation differently than termination."
             )
         default:
-            try self.becomeNext(behavior: next) // FIXME: make sure we don't drop the behavior...?
+            try self.becomeNext(behavior: next)  // FIXME: make sure we don't drop the behavior...?
         }
     }
 
@@ -933,7 +945,7 @@ extension _ActorShell: CustomStringConvertible {
 /// The purpose of this cell is to allow storing cells of different types in a collection, i.e. Children
 internal protocol AbstractShellProtocol: _ActorTreeTraversable {
     var _myselfReceivesSystemMessages: _ReceivesSystemMessages { get }
-    var children: _Children { get set } // lock-protected
+    var children: _Children { get set }  // lock-protected
     var asAddressable: _AddressableActorRef { get }
     var metrics: ActiveActorMetrics { get }
 }
@@ -964,8 +976,7 @@ extension AbstractShellProtocol {
     }
 
     public func _resolve<Message>(context: _ResolveContext<Message>) -> _ActorRef<Message>
-        where Message: Codable
-    {
+    where Message: Codable {
         let myself: _ReceivesSystemMessages = self._myselfReceivesSystemMessages
 
         do {

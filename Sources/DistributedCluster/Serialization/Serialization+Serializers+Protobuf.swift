@@ -12,11 +12,12 @@
 //
 //===----------------------------------------------------------------------===//
 
-import struct Foundation.Data
 import NIO
-import protocol Swift.Decoder // to prevent shadowing by the ones in SwiftProtobuf
-import protocol Swift.Encoder // to prevent shadowing by the ones in SwiftProtobuf
 import SwiftProtobuf
+
+import struct Foundation.Data
+import protocol Swift.Decoder  // to prevent shadowing by the ones in SwiftProtobuf
+import protocol Swift.Encoder  // to prevent shadowing by the ones in SwiftProtobuf
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Protobuf serializers

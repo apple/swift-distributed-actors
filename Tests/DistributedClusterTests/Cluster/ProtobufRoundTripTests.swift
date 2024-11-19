@@ -13,11 +13,12 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import Foundation
 import NIO
 import SwiftProtobuf
 import XCTest
+
+@testable import DistributedCluster
 
 final class ProtobufRoundTripTests: SingleClusterSystemXCTestCase {
     func check<Value: _ProtobufRepresentable & Equatable>(_ value: Value) throws {

@@ -280,9 +280,7 @@ extension Cluster.Membership: Hashable {
         }
         for (lNode, lMember) in lhs._members {
             if let rMember = rhs._members[lNode],
-               lMember.node != rMember.node ||
-               lMember.status != rMember.status ||
-               lMember.reachability != rMember.reachability
+                lMember.node != rMember.node || lMember.status != rMember.status || lMember.reachability != rMember.reachability
             {
                 return false
             }
@@ -346,7 +344,7 @@ extension Cluster.Membership {
             if previousMember.status < .down {
                 _ = self.mark(previousMember.node, as: .down)
             } else {
-                _ = self.removeCompletely(previousMember.node) // the replacement event will handle the down notifications
+                _ = self.removeCompletely(previousMember.node)  // the replacement event will handle the down notifications
             }
             self._members[change.node] = change.member
 
@@ -388,7 +386,7 @@ extension Cluster.Membership {
         }
 
         if self.leader == wannabeLeader {
-            return nil // no change was made
+            return nil  // no change was made
         } else {
             // in other cases, nil or not, we change the leader
             let oldLeader = self.leader
@@ -503,7 +501,7 @@ extension Cluster.Membership {
             self._members.removeValue(forKey: node)
             return .init(member: member, toStatus: .removed)
         } else {
-            return nil // no member to remove
+            return nil  // no member to remove
         }
     }
 
@@ -571,7 +569,7 @@ extension Cluster.Membership {
                 self._members[incomingMember.node] = incomingMember
 
                 var change = Cluster.MembershipChange(member: incomingMember)
-                change.previousStatus = nil // since "new"
+                change.previousStatus = nil  // since "new"
                 changes.append(change)
                 continue
             }
@@ -636,7 +634,7 @@ extension Cluster.Membership {
             _ = self.applyReachabilityChange(change)
 
         case ._PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE:
-            () // do nothing
+            ()  // do nothing
         }
     }
 }

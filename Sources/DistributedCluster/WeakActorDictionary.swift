@@ -16,8 +16,7 @@ import Distributed
 
 /// A dictionary which only weakly retains the
 public struct WeakActorDictionary<Act: DistributedActor>: ExpressibleByDictionaryLiteral
-    where Act.ID == ClusterSystem.ActorID
-{
+where Act.ID == ClusterSystem.ActorID {
     var underlying: [ClusterSystem.ActorID: WeakContainer]
 
     final class WeakContainer {
@@ -27,9 +26,9 @@ public struct WeakActorDictionary<Act: DistributedActor>: ExpressibleByDictionar
             self.actor = actor
         }
 
-//        init(idForRemoval id: ClusterSystem.ActorID) {
-//            self.actor = nil
-//        }
+        //        init(idForRemoval id: ClusterSystem.ActorID) {
+        //            self.actor = nil
+        //        }
     }
 
     /// Initialize an empty dictionary.
@@ -72,7 +71,7 @@ public struct WeakActorDictionary<Act: DistributedActor>: ExpressibleByDictionar
     }
 
     public mutating func removeActor(identifiedBy id: ClusterSystem.ActorID) -> Act? {
-        return self.underlying.removeValue(forKey: id)?.actor
+        self.underlying.removeValue(forKey: id)?.actor
     }
 }
 
@@ -96,7 +95,7 @@ public struct WeakAnyDistributedActorDictionary {
     }
 
     mutating func removeActor(identifiedBy id: ClusterSystem.ActorID) -> Bool {
-        return self.underlying.removeValue(forKey: id) != nil
+        self.underlying.removeValue(forKey: id) != nil
     }
 
     mutating func insert<Act: DistributedActor>(actor: Act) where Act.ID == ClusterSystem.ActorID {

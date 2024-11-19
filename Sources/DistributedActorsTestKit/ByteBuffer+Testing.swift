@@ -12,13 +12,13 @@
 //
 //===----------------------------------------------------------------------===//
 
-@testable import DistributedCluster
-import Foundation
-
 import DistributedActorsConcurrencyHelpers
+import Foundation
 import NIO
 import NIOFoundationCompat
 import XCTest
+
+@testable import DistributedCluster
 
 // TODO: probably remove those?
 

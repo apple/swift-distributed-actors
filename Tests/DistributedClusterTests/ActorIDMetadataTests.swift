@@ -14,8 +14,9 @@
 
 import Distributed
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import XCTest
+
+@testable import DistributedCluster
 
 extension ActorMetadataKeys {
     var exampleUserID: Key<String> { "user-id" }

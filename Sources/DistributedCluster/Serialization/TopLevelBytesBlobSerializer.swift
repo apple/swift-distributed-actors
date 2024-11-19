@@ -12,10 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Foundation  // for Codable
 import NIO
 import NIOFoundationCompat
-
-import Foundation // for Codable
 
 /// Allows for serialization of a *single* blob at the top level.
 /// Used for messages encoded using external serializers, such as protobuf, flat buffers or similar.
@@ -30,7 +29,7 @@ public class _TopLevelBytesBlobSerializer<Message: Codable>: Serializer<Message>
     }
 
     override public func serialize(_ message: Message) throws -> Serialization.Buffer {
-        let encoder = TopLevelBytesBlobEncoder(allocator: self.allocator) // TODO: make it not a class?
+        let encoder = TopLevelBytesBlobEncoder(allocator: self.allocator)  // TODO: make it not a class?
         encoder.userInfo[.actorSystemKey] = self.context.system
         encoder.userInfo[.actorSerializationContext] = self.context
         try message.encode(to: encoder)
