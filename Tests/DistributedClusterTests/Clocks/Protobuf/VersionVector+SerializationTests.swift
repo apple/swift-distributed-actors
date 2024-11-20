@@ -13,8 +13,9 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import XCTest
+
+@testable import DistributedCluster
 
 final class VersionVectorSerializationTests: SingleClusterSystemXCTestCase {
     var node: Cluster.Node {
@@ -33,7 +34,7 @@ final class VersionVectorSerializationTests: SingleClusterSystemXCTestCase {
         let serialized = try system.serialization.serialize(vv)
         let deserialized = try system.serialization.deserialize(as: VersionVector.self, from: serialized)
 
-        deserialized.state.count.shouldEqual(2) // replicas A and B
+        deserialized.state.count.shouldEqual(2)  // replicas A and B
         "\(deserialized)".shouldContain("actor:sact://VersionVectorSerializationTests@127.0.0.1:9001/user/A: 2")
         "\(deserialized)".shouldContain("actor:sact://VersionVectorSerializationTests@127.0.0.1:9001/user/B: 5")
     }

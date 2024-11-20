@@ -12,11 +12,10 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Foundation  // for Codable
 import NIO
 import NIOFoundationCompat
 import SwiftProtobuf
-
-import Foundation // for Codable
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: String Serializer

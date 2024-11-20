@@ -28,10 +28,11 @@
 
 import Distributed
 import DistributedCluster
-import class Foundation.Pipe
 import NIOCore
 import NIOFoundationCompat
 import NIOPosix
+
+import class Foundation.Pipe
 
 internal struct OutputGrepper {
     internal var result: EventLoopFuture<ProgramOutput>
@@ -43,7 +44,7 @@ internal struct OutputGrepper {
         programLogRecipient: (any ProgramLogReceiver)? = nil
     ) -> OutputGrepper {
         let processToChannel = Pipe()
-        let deadPipe = Pipe() // just so we have an output...
+        let deadPipe = Pipe()  // just so we have an output...
 
         let eventLoop = group.next()
         let outputPromise = eventLoop.makePromise(of: ProgramOutput.self)
@@ -103,10 +104,11 @@ private final class GrepHandler: ChannelInboundHandler {
     var logs: [String] = []
     var programLogReceiver: (any ProgramLogReceiver)?
 
-    init(nodeName: String,
-         promise: EventLoopPromise<ProgramOutput>,
-         programLogRecipient: ProgramLogReceiver?)
-    {
+    init(
+        nodeName: String,
+        promise: EventLoopPromise<ProgramOutput>,
+        programLogRecipient: ProgramLogReceiver?
+    ) {
         self.nodeName = nodeName
         self.promise = promise
         self.programLogReceiver = programLogRecipient
@@ -122,7 +124,7 @@ private final class GrepHandler: ChannelInboundHandler {
 
         if let receiver = self.programLogReceiver {
             // send to receiver
-            Task { // FIXME: ordering is messed up here, isn't it.
+            Task {  // FIXME: ordering is messed up here, isn't it.
                 try await receiver.logProgramOutput(line: line)
             }
         } else {
@@ -132,10 +134,7 @@ private final class GrepHandler: ChannelInboundHandler {
         // TODO: send to log recipient
 
         // Detect crashes
-        if line.lowercased().contains("fatal error") ||
-            line.lowercased().contains("precondition failed") ||
-            line.lowercased().contains("assertion failed")
-        {
+        if line.lowercased().contains("fatal error") || line.lowercased().contains("precondition failed") || line.lowercased().contains("assertion failed") {
             if line.contains("MULTI-NODE-EXPECTED-EXIT") {
                 self.promise.succeed(.init(logs: logs, expectedExit: true))
                 context.close(promise: nil)

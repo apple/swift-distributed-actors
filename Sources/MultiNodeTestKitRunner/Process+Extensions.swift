@@ -14,24 +14,25 @@
 
 import ArgumentParser
 import DistributedCluster
+import NIOCore
+import NIOPosix
+
 import class Foundation.FileHandle
 import class Foundation.Process
 import struct Foundation.URL
-import NIOCore
-import NIOPosix
 
 // Compatible with Swift on all macOS versions as well as Linux
 extension Process {
     var binaryPath: String? {
         get {
-            if #available(macOS 10.13, /* Linux */ *) {
+            if #available(macOS 10.13, *) {  // '*' covers Linux
                 return self.executableURL?.path
             } else {
                 return self.launchPath
             }
         }
         set {
-            if #available(macOS 10.13, /* Linux */ *) {
+            if #available(macOS 10.13, *) {  // '*' covers Linux
                 self.executableURL = newValue.map { URL(fileURLWithPath: $0) }
             } else {
                 self.launchPath = newValue

@@ -44,7 +44,7 @@ public final class ClusterSingletonAllocationByLeadership: ClusterSingletonAlloc
         case .snapshot(let membership):
             self._node = membership.leader?.node
         default:
-            () // ignore other events
+            ()  // ignore other events
         }
         return self._node
     }

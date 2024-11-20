@@ -11,9 +11,10 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-import struct Foundation.Data
 import NIO
 import SwiftProtobuf
+
+import struct Foundation.Data
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ACK / NACK

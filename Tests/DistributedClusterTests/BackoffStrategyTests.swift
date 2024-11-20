@@ -13,8 +13,9 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import XCTest
+
+@testable import DistributedCluster
 
 class BackoffStrategyTests: XCTestCase {
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -91,6 +92,6 @@ class BackoffStrategyTests: XCTestCase {
     }
 
     func test_exponentialBackoff_withLargeInitial_shouldAdjustCap() {
-        _ = Backoff.exponential(initialInterval: .seconds(60)) // cap used to be hardcoded which would cause this to precondition crash
+        _ = Backoff.exponential(initialInterval: .seconds(60))  // cap used to be hardcoded which would cause this to precondition crash
     }
 }

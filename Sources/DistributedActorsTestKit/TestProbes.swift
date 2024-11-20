@@ -14,9 +14,10 @@
 
 import Distributed
 import DistributedActorsConcurrencyHelpers
-@testable import DistributedCluster
 import Foundation
 import XCTest
+
+@testable import DistributedCluster
 
 internal enum ActorTestProbeCommand<M> {
     case watchCommand(who: _AddressableActorRef, file: String, line: UInt)
@@ -76,7 +77,8 @@ public final class ActorTestProbe<Message: Codable>: @unchecked Sendable {
         _ makeRef: (_Behavior<ProbeCommands>) throws -> _ActorRef<ProbeCommands>,
         settings: ActorTestKitSettings,
         system: ClusterSystem,
-        file: StaticString = #filePath, line: UInt = #line
+        file: StaticString = #filePath,
+        line: UInt = #line
     ) {
         self.settings = settings
 
@@ -104,7 +106,7 @@ public final class ActorTestProbe<Message: Codable>: @unchecked Sendable {
 
     private static func behavior(
         messageQueue: _LinkedBlockingQueue<Message>,
-        signalQueue: _LinkedBlockingQueue<_SystemMessage>, // TODO: maybe we don't need this one
+        signalQueue: _LinkedBlockingQueue<_SystemMessage>,  // TODO: maybe we don't need this one
         terminationsQueue: _LinkedBlockingQueue<_Signals.Terminated>
     ) -> _Behavior<ProbeCommands> {
         _Behavior<ProbeCommands>.receive { context, message in
@@ -217,8 +219,11 @@ extension ActorTestProbe {
     /// Once `MessageFishingDirective.catchComplete` or `MessageFishingDirective.complete` is returned,
     /// the function returns all so-far accumulated messages.
     public func fishFor<CaughtMessage>(
-        _ type: CaughtMessage.Type, within timeout: Duration,
-        file: StaticString = #filePath, line: UInt = #line, column: UInt = #column,
+        _ type: CaughtMessage.Type,
+        within timeout: Duration,
+        file: StaticString = #filePath,
+        line: UInt = #line,
+        column: UInt = #column,
         _ fisher: (Message) throws -> FishingDirective<CaughtMessage>
     ) throws -> [CaughtMessage] {
         let deadline = ContinuousClock.Instant.fromNow(timeout)
@@ -268,7 +273,9 @@ extension ActorTestProbe {
     /// the function returns all so-far accumulated messages.
     public func fishForMessages(
         within timeout: Duration,
-        file: StaticString = #filePath, line: UInt = #line, column: UInt = #column,
+        file: StaticString = #filePath,
+        line: UInt = #line,
+        column: UInt = #column,
         _ fisher: (Message) throws -> MessageFishingDirective
     ) throws -> [Message] {
         try self.fishFor(Message.self, within: timeout, file: file, line: line, column: column) { message in
@@ -493,10 +500,10 @@ extension ActorTestProbe {
     public func clearMessages() {
         do {
             while try self.maybeExpectMessage() != nil {
-                () // dropping messages
+                ()  // dropping messages
             }
         } catch {
-            () // no messages in queue; i.e. nothing to clear; we're good
+            ()  // no messages in queue; i.e. nothing to clear; we're good
         }
     }
 }
@@ -603,8 +610,7 @@ extension ActorTestProbe {
         do {
             let receivedMessage: Message = try self.receiveMessage(within: timeout)
             guard let extracted = try matchExtract(receivedMessage) else {
-                let message = "Received \(Message.self) message, however it did not pass the matching check, " +
-                    "and did not produce the requested \(T.self)."
+                let message = "Received \(Message.self) message, however it did not pass the matching check, " + "and did not produce the requested \(T.self)."
                 throw callSite.error(message)
             }
             return extracted
@@ -731,11 +737,10 @@ extension ActorTestProbe {
             throw callSite.error("Expected [\(ref.id)] to terminate within \(timeout.prettyDescription)")
         }
         guard terminated.id == ref.id else {
-            throw callSite.error("Expected [\(ref.id)] to terminate, but received [\(terminated.id)] terminated signal first instead. " +
-                "This could be an ordering issue, inspect your signal order assumptions.")
+            throw callSite.error("Expected [\(ref.id)] to terminate, but received [\(terminated.id)] terminated signal first instead. " + "This could be an ordering issue, inspect your signal order assumptions.")
         }
 
-        return terminated // ok!
+        return terminated  // ok!
     }
 
     /// Awaits termination of all passed in actors in any order within the default `expectationTimeout`.
@@ -754,8 +759,7 @@ extension ActorTestProbe {
             }
 
             guard pathSet.remove(terminated.id) != nil else {
-                throw callSite.error("Expected any of \(pathSet) to terminate, but received [\(terminated.id)] terminated signal first instead. " +
-                    "This could be an ordering issue, inspect your signal order assumptions.")
+                throw callSite.error("Expected any of \(pathSet) to terminate, but received [\(terminated.id)] terminated signal first instead. " + "This could be an ordering issue, inspect your signal order assumptions.")
             }
         }
     }
@@ -793,12 +797,14 @@ extension ActorTestProbe {
     @discardableResult
     public func watch<Act>(
         _ watchee: Act,
-        file: String = #filePath, line: UInt = #line
+        file: String = #filePath,
+        line: UInt = #line
     ) async -> Act
-        where Act: DistributedActor,
+    where
+        Act: DistributedActor,
         Act.ActorSystem == ClusterSystem
     {
-        _ = await self._internal.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
+        _ = await self._internal.whenLocal { __secretlyKnownToBeLocal in  // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
             __secretlyKnownToBeLocal.watchTermination(of: watchee, file: file, line: line)
         }
         return watchee
@@ -813,7 +819,9 @@ extension ActorTestProbe {
     public func expectTermination(
         of actor: ActorID,
         within timeout: Duration? = nil,
-        file: StaticString = #filePath, line: UInt = #line, column: UInt = #column
+        file: StaticString = #filePath,
+        line: UInt = #line,
+        column: UInt = #column
     ) async throws {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
         let timeout = timeout ?? self.expectationTimeout
@@ -822,11 +830,10 @@ extension ActorTestProbe {
             timeout: timeout,
             timeoutError: callSite.error("Expected [\(actor)] to terminate within \(timeout.prettyDescription)")
         ) {
-            _ = try await self._internal.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
+            _ = try await self._internal.whenLocal { __secretlyKnownToBeLocal in  // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
                 for await terminated in __secretlyKnownToBeLocal.terminatedQueue.items {
                     guard terminated == actor else {
-                        throw callSite.error("Expected [\(actor)] to terminate, but received [\(terminated)] terminated signal first instead. " +
-                            "This could be an ordering issue, inspect your signal order assumptions.")
+                        throw callSite.error("Expected [\(actor)] to terminate, but received [\(terminated)] terminated signal first instead. " + "This could be an ordering issue, inspect your signal order assumptions.")
                     }
                     // Only expecting one, so we are done
                     break

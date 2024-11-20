@@ -11,8 +11,9 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-@testable import FishyDocsLib
 import XCTest
+
+@testable import FishyDocsLib
 
 final class FishyDocsTests: XCTestCase {
     func testExample() throws {}

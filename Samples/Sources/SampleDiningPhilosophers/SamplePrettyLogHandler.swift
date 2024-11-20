@@ -13,8 +13,9 @@
 //===----------------------------------------------------------------------===//
 
 import Distributed
-@testable import DistributedCluster
 import Logging
+
+@testable import DistributedCluster
 
 #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
 import Darwin
@@ -34,7 +35,7 @@ struct SamplePrettyLogHandler: LogHandler {
     static let CONSOLE_BOLD = "\u{001B}[1m"
 
     public static func make(label: String) -> SamplePrettyLogHandler {
-        return SamplePrettyLogHandler(label: label)
+        SamplePrettyLogHandler(label: label)
     }
 
     private let label: String
@@ -45,7 +46,7 @@ struct SamplePrettyLogHandler: LogHandler {
 
     public subscript(metadataKey metadataKey: String) -> Logger.Metadata.Value? {
         get {
-            return self.metadata[metadataKey]
+            self.metadata[metadataKey]
         }
         set {
             self.metadata[metadataKey] = newValue

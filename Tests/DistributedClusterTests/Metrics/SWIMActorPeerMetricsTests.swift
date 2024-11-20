@@ -12,14 +12,15 @@
 //
 //===----------------------------------------------------------------------===//
 
-@testable import CoreMetrics
 import DistributedActorsConcurrencyHelpers
 import DistributedActorsTestKit
+import NIO
+import XCTest
+
+@testable import CoreMetrics
 @testable import DistributedCluster
 @testable import Metrics
-import NIO
 @testable import SWIM
-import XCTest
 
 final class ActorMetricsSWIMActorPeerMetricsTests: ClusteredActorSystemsXCTestCase {
     var metrics: TestMetrics! = TestMetrics()
@@ -41,7 +42,7 @@ final class ActorMetricsSWIMActorPeerMetricsTests: ClusteredActorSystemsXCTestCa
 
     func test_swimPeer_ping_shouldRemoteMetrics() async throws {
         let originNode = await setUpNode("origin") { settings in
-            settings.swim.probeInterval = .seconds(30) // Don't let gossip interfere with the test
+            settings.swim.probeInterval = .seconds(30)  // Don't let gossip interfere with the test
         }
         let targetNode = await setUpNode("target")
 
@@ -62,7 +63,7 @@ final class ActorMetricsSWIMActorPeerMetricsTests: ClusteredActorSystemsXCTestCa
 
         let targetPeer = try SWIMActor.resolve(id: target.id._asRemote, using: originNode)
 
-        _ = await origin.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
+        _ = await origin.whenLocal { __secretlyKnownToBeLocal in  // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
             await __secretlyKnownToBeLocal.sendPing(
                 to: targetPeer,
                 payload: .none,
@@ -88,7 +89,7 @@ final class ActorMetricsSWIMActorPeerMetricsTests: ClusteredActorSystemsXCTestCa
 
     func test_swimPeer_pingRequest_shouldRemoteMetrics() async throws {
         let originNode = await setUpNode("origin") { settings in
-            settings.swim.probeInterval = .seconds(30) // Don't let gossip interfere with the test
+            settings.swim.probeInterval = .seconds(30)  // Don't let gossip interfere with the test
         }
         let targetNode = await setUpNode("target")
         let throughNode = await setUpNode("through")
@@ -118,11 +119,11 @@ final class ActorMetricsSWIMActorPeerMetricsTests: ClusteredActorSystemsXCTestCa
             target: targetPeer,
             timeout: .seconds(1),
             requestDetails: [
-                .init(peerToPingRequestThrough: throughPeer, payload: .none, sequenceNumber: 1),
+                .init(peerToPingRequestThrough: throughPeer, payload: .none, sequenceNumber: 1)
             ]
         )
 
-        _ = await origin.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
+        _ = await origin.whenLocal { __secretlyKnownToBeLocal in  // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
             await __secretlyKnownToBeLocal.sendPingRequests(directive)
         }
 
@@ -149,7 +150,7 @@ final class ActorMetricsSWIMActorPeerMetricsTests: ClusteredActorSystemsXCTestCa
 
 extension TestMetrics {
     func getSWIMTimer(_ swimShell: SWIMActor, _ body: (SWIM.Metrics.ShellMetrics) -> Timer) async throws -> TestTimer? {
-        let timer = await swimShell.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
+        let timer = await swimShell.whenLocal { __secretlyKnownToBeLocal in  // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
             body(__secretlyKnownToBeLocal.metrics.shell)
         }
 
@@ -161,7 +162,7 @@ extension TestMetrics {
     }
 
     func getSWIMCounter(_ swimShell: SWIMActor, _ body: (SWIM.Metrics.ShellMetrics) -> Counter) async throws -> TestCounter? {
-        let counter = await swimShell.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
+        let counter = await swimShell.whenLocal { __secretlyKnownToBeLocal in  // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
             body(__secretlyKnownToBeLocal.metrics.shell)
         }
 

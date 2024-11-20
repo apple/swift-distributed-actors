@@ -13,8 +13,9 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import XCTest
+
+@testable import DistributedCluster
 
 final class TimeoutBasedDowningInstanceTests: XCTestCase {
     var instance: TimeoutBasedDowningStrategy!

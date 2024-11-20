@@ -14,8 +14,9 @@
 
 import Distributed
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import XCTest
+
+@testable import DistributedCluster
 
 final class RemoteCallTests: ClusteredActorSystemsXCTestCase {
     func test_remoteCall() async throws {

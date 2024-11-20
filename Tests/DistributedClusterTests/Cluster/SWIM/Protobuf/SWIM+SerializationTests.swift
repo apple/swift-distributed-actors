@@ -13,9 +13,10 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import SWIM
 import XCTest
+
+@testable import DistributedCluster
 
 final class SWIMSerializationTests: SingleClusterSystemXCTestCase {
     func test_serializationOf_ack() async throws {

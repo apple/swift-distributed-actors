@@ -201,7 +201,7 @@ extension String.StringInterpolation {
     }
 
     internal mutating func appendInterpolation<Message>(uniquePath ref: _ActorRef<Message>) {
-        self.appendLiteral("[\(ref.id)]") // TODO: make those address
+        self.appendLiteral("[\(ref.id)]")  // TODO: make those address
     }
 
     internal mutating func appendInterpolation<Message>(path ref: _ActorRef<Message>) {

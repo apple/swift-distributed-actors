@@ -12,9 +12,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-@testable import DistributedCluster
 import Logging
 import NIO
+
+@testable import DistributedCluster
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Membership Testing DSL

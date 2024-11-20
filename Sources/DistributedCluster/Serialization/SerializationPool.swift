@@ -101,6 +101,7 @@ public final class _SerializationPool {
         // and we use identity of the callback to interact with the instrumentation for start/stop correlation.
         callback: DeserializationCallback
     ) {
+        // swift-format-ignore: OnlyOneTrailingClosureArgument
         self.enqueue(recipientPath: recipientPath, onComplete: { callback.call($0) }, workerPool: self.deserializationWorkerPool) {
             do {
                 self.serialization.metrics.recordSerializationMessageInbound(recipientPath, buffer.count)
@@ -148,7 +149,7 @@ public final class _SerializationPool {
                         onComplete(.failure(error))
                     }
                 }
-            } else { // otherwise handle on the calling thread
+            } else {  // otherwise handle on the calling thread
                 onComplete(.success(try task()))
             }
         } catch {

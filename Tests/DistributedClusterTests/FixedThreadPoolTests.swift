@@ -12,8 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-@testable import DistributedCluster
 import XCTest
+
+@testable import DistributedCluster
 
 final class FixedThreadPoolTests: XCTestCase {
     func test_pool_shouldProperlyShutdownAllThreads() throws {

@@ -13,8 +13,9 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import XCTest
+
+@testable import DistributedCluster
 
 // "Get down!"
 final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
@@ -28,7 +29,7 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
     }
 
     enum NodeStopMethod {
-        case leaveSelfNode // TODO: eventually this one will be more graceful, ensure others see us leave etc
+        case leaveSelfNode  // TODO: eventually this one will be more graceful, ensure others see us leave etc
         case downSelf
         case shutdownSelf
         case downFromOtherMember
@@ -36,7 +37,7 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
 
     /// Selects which node to stop
     enum StopNodeSelection {
-        case firstLeader // the first node is going to be the leader, so testing for downing the leader and a non-leader is recommended.
+        case firstLeader  // the first node is going to be the leader, so testing for downing the leader and a non-leader is recommended.
         case secondNonLeader
     }
 
@@ -98,7 +99,8 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
 
         func expectedDownMemberEventsFishing(
             on: ClusterSystem,
-            file: StaticString = #filePath, line: UInt = #line
+            file: StaticString = #filePath,
+            line: UInt = #line
         ) -> (Cluster.Event) -> ActorTestProbe<Cluster.Event>.FishingDirective<Cluster.MembershipChange> {
             pinfo("Expecting [\(expectedDownSystem)] to become [.down] on [\(on.cluster.node.endpoint)], method to stop the node [\(stopMethod)]")
 
@@ -221,12 +223,12 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
     // MARK: "Mass" Downing
 
     func test_many_nonLeaders_shouldPropagateToOtherNodes() async throws {
-        if Int.random(in: 10 ... 100) > 0 {
-            throw XCTSkip("SKIPPING FLAKY TEST, REVISIT IT SOON") // FIXME: https://github.com/apple/swift-distributed-actors/issues/712
+        if Int.random(in: 10...100) > 0 {
+            throw XCTSkip("SKIPPING FLAKY TEST, REVISIT IT SOON")  // FIXME: https://github.com/apple/swift-distributed-actors/issues/712
         }
 
         var nodes: [ClusterSystem] = []
-        for i in (1 ... 7) {
+        for i in (1...7) {
             nodes[i] = await setUpNode("node-\(i)")
         }
         let first = nodes.first!
@@ -239,7 +241,7 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
         pinfo("Joining \(nodes.count) nodes...")
         let joiningStart = ContinuousClock.Instant.now
 
-        nodes.forEach { first.cluster.join(endpoint: $0.cluster.node.endpoint) }
+        for node in nodes { first.cluster.join(endpoint: node.cluster.node.endpoint) }
         try await self.ensureNodes(.up, within: .seconds(30), nodes: nodes.map(\.cluster.node))
 
         let joiningStop = ContinuousClock.Instant.now
@@ -256,7 +258,8 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
 
         func expectedDownMemberEventsFishing(
             on: ClusterSystem,
-            file: StaticString = #filePath, line: UInt = #line
+            file: StaticString = #filePath,
+            line: UInt = #line
         ) -> (Cluster.Event) -> ActorTestProbe<Cluster.Event>.FishingDirective<Cluster.MembershipChange> {
             pinfo("Expecting \(nodesToDown.map(\.cluster.node.endpoint)) to become [.down] on [\(on.cluster.node.endpoint)]")
             var removalsFound = 0

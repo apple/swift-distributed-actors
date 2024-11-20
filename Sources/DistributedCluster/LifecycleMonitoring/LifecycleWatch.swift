@@ -41,7 +41,8 @@ extension LifecycleWatch {
     public func watchTermination<Watchee>(
         of watchee: Watchee,
         @_inheritActorContext whenTerminated: @escaping @Sendable (ID) async -> Void,
-        file: String = #filePath, line: UInt = #line
+        file: String = #filePath,
+        line: UInt = #line
     ) -> Watchee where Watchee: DistributedActor, Watchee.ActorSystem == ClusterSystem {
         guard let watch = self.context.lifecycle else {
             return watchee
@@ -64,15 +65,21 @@ extension LifecycleWatch {
     @discardableResult
     public func watchTermination<Watchee>(
         of watchee: Watchee,
-        file: String = #filePath, line: UInt = #line
+        file: String = #filePath,
+        line: UInt = #line
     ) -> Watchee where Watchee: DistributedActor, Watchee.ActorSystem == ClusterSystem {
         guard let watch = self.context.lifecycle else {
             return watchee
         }
 
-        watch.termination(of: watchee.id, whenTerminated: { id in
-            await self.terminated(actor: id)
-        }, file: file, line: line)
+        watch.termination(
+            of: watchee.id,
+            whenTerminated: { id in
+                await self.terminated(actor: id)
+            },
+            file: file,
+            line: line
+        )
 
         return watchee
     }
@@ -111,15 +118,17 @@ extension LifecycleWatch {
     @discardableResult
     public func unwatch<Watchee: DistributedActor>(
         _ watchee: Watchee,
-        file: String = #filePath, line: UInt = #line
+        file: String = #filePath,
+        line: UInt = #line
     ) -> Watchee where Watchee.ActorSystem == ClusterSystem {
-        return self.unwatchTermination(of: watchee, file: file, line: line)
+        self.unwatchTermination(of: watchee, file: file, line: line)
     }
 
     @discardableResult
     public func unwatchTermination<Watchee: DistributedActor>(
         of watchee: Watchee,
-        file: String = #filePath, line: UInt = #line
+        file: String = #filePath,
+        line: UInt = #line
     ) -> Watchee where Watchee.ActorSystem == ClusterSystem {
         guard let watch = self.context.lifecycle else {
             return watchee

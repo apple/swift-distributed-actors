@@ -87,7 +87,7 @@ extension Logger {
     }
 
     internal static func make(_ base: Logger, path: ActorPath) -> Logger {
-        var log = base // yes
+        var log = base  // yes
         log[metadataKey: "actor/path"] = Logger.MetadataValue.stringConvertible(path)
         return log
     }
@@ -129,7 +129,7 @@ struct ActorOriginLogHandler: LogHandler {
                 logger: context.log,
                 identifier: context.path.description,
                 useBuiltInFormatter: context.system.settings.logging.useBuiltInFormatter,
-                dispatcher: { () in dispatcherName } // beware of closing over the context here (!)
+                dispatcher: { () in dispatcherName }  // beware of closing over the context here (!)
             )
         )
     }
@@ -153,7 +153,7 @@ struct ActorOriginLogHandler: LogHandler {
             time: Date(),
             level: level,
             message: message,
-            effectiveMetadata: self.context.effectiveMetadata(overrides: metadata), // TODO: should force lazies
+            effectiveMetadata: self.context.effectiveMetadata(overrides: metadata),  // TODO: should force lazies
             file: file,
             function: function,
             line: line
@@ -195,7 +195,7 @@ struct ActorOriginLogHandler: LogHandler {
 
         var msg = ""
         msg += "\(actorSystemIdentity)"
-        msg += "[\(l.file.description.split(separator: "/").last ?? "<unknown-file>"):\(l.line)]" // we only print "file" rather than full path
+        msg += "[\(l.file.description.split(separator: "/").last ?? "<unknown-file>"):\(l.line)]"  // we only print "file" rather than full path
         msg += "\(dispatcherPart)"
         msg += "\(actorPathPart)"
         msg += " \(l.message)"
@@ -365,7 +365,9 @@ extension Logger {
         level: Logger.Level?,
         _ message: @autoclosure () -> Logger.Message,
         metadata: @autoclosure () -> Logger.Metadata? = nil,
-        file: String = #filePath, function: String = #function, line: UInt = #line
+        file: String = #filePath,
+        function: String = #function,
+        line: UInt = #line
     ) {
         if let level = level {
             self.log(level: level, message(), metadata: metadata(), file: file, function: function, line: line)

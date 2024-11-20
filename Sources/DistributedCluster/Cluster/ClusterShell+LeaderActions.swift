@@ -23,11 +23,11 @@ extension ClusterShellState {
     /// If, and only if, the current node is a leader it performs a set of tasks, such as moving nodes to `.up` etc.
     func collectLeaderActions() -> [LeaderAction] {
         guard self.membership.isLeader(self.selfNode) else {
-            return [] // since we are not the leader, we perform no tasks
+            return []  // since we are not the leader, we perform no tasks
         }
 
         guard self.latestGossip.converged() else {
-            return [] // leader actions are only performed when up nodes are converged
+            return []  // leader actions are only performed when up nodes are converged
         }
 
         func collectMemberUpMoves() -> [LeaderAction] {
@@ -153,7 +153,7 @@ extension ClusterShell {
             "Leader removed member: \(memberToRemove), all nodes are certain to have seen it as [.down] before",
             metadata: { () -> Logger.Metadata in
                 var metadata: Logger.Metadata = [
-                    "tag": "leader-action",
+                    "tag": "leader-action"
                 ]
                 if state.log.logLevel == .trace {
                     metadata["gossip/current"] = "\(state.latestGossip)"

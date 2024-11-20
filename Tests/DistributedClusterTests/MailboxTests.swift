@@ -13,9 +13,10 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import Foundation
 import XCTest
+
+@testable import DistributedCluster
 
 final class MailboxTests: SingleClusterSystemXCTestCase {
     func test_sendMessage_shouldDropMessagesWhenFull() {

@@ -81,7 +81,8 @@ public protocol _DeathWatchProtocol {
     func watch<Watchee>(
         _ watchee: Watchee,
         with terminationMessage: Message?,
-        file: String, line: UInt
+        file: String,
+        line: UInt
     ) -> Watchee where Watchee: _DeathWatchable
 
     /// Reverts the watching of an previously watched actor.
@@ -101,7 +102,8 @@ public protocol _DeathWatchProtocol {
     @discardableResult
     func unwatch<Watchee>(
         _ watchee: Watchee,
-        file: String, line: UInt
+        file: String,
+        line: UInt
     ) -> Watchee where Watchee: _DeathWatchable
 }
 
@@ -148,7 +150,8 @@ internal struct DeathWatchImpl<Message: Codable> {
         watchee: Watchee,
         with terminationMessage: Message?,
         myself watcher: _ActorShell<Message>,
-        file: String, line: UInt
+        file: String,
+        line: UInt
     ) where Watchee: _DeathWatchable {
         traceLog_DeathWatch("issue watch: \(watchee) (from \(watcher) (myself))")
         let addressableWatchee: _AddressableActorRef = watchee.asAddressable
@@ -188,7 +191,8 @@ internal struct DeathWatchImpl<Message: Codable> {
     public mutating func unwatch<Watchee>(
         watchee: Watchee,
         myself watcher: _ActorRef<Message>,
-        file: String = #filePath, line: UInt = #line
+        file: String = #filePath,
+        line: UInt = #line
     ) where Watchee: _DeathWatchable {
         traceLog_DeathWatch("issue unwatch: watchee: \(watchee) (from \(watcher) myself)")
         let addressableWatchee = watchee.asAddressable
@@ -210,8 +214,9 @@ internal struct DeathWatchImpl<Message: Codable> {
 
     public mutating func becomeWatchedBy(watcher: _AddressableActorRef, myself: _ActorRef<Message>, parent: _AddressableActorRef) {
         guard watcher.id != myself.id else {
-            traceLog_DeathWatch("Attempted to watch 'myself' [\(myself)], which is a no-op, since such watch's terminated can never be observed. " +
-                "Likely a programming error where the wrong actor ref was passed to watch(), please check your code.")
+            traceLog_DeathWatch(
+                "Attempted to watch 'myself' [\(myself)], which is a no-op, since such watch's terminated can never be observed. " + "Likely a programming error where the wrong actor ref was passed to watch(), please check your code."
+            )
             return
         }
 

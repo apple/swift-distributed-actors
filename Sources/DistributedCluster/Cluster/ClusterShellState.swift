@@ -51,12 +51,14 @@ internal struct ClusterShellState: ReadOnlyClusterState {
         if let member = self.membership.member(self.selfNode) {
             return member
         } else {
-            fatalError("""
-            ClusterShellState.selfMember was nil! This should be impossible by construction, because a node ALWAYS knows about itself. 
-            Please report a bug on the distributed-actors issue tracker. Details:
-            Membership: \(self.membership)
-            Settings: \(self.settings)
-            """)
+            fatalError(
+                """
+                ClusterShellState.selfMember was nil! This should be impossible by construction, because a node ALWAYS knows about itself. 
+                Please report a bug on the distributed-actors issue tracker. Details:
+                Membership: \(self.membership)
+                Settings: \(self.settings)
+                """
+            )
         }
     }
 
@@ -173,7 +175,8 @@ extension ClusterShellState {
                     """
                     onHandshakeChannelConnected MUST be called with the existing ongoing initiated \
                     handshake! Existing: \(existingInitiated), passed in: \(initiated).
-                    """)
+                    """
+                )
             }
             if existingInitiated.channel != nil {
                 fatalError("onHandshakeChannelConnected should only be invoked once on an initiated state; yet seems the state already has a channel! Was: \(String(reflecting: handshakeInProgress))")
@@ -209,7 +212,7 @@ extension ClusterShellState {
                 channel.close().whenFailure { [log = self.log] error in
                     log.debug("Failed to abortOutgoingHandshake (close) channel [\(channel)], error: \(error)")
                 }
-            } // else, no channel to close?
+            }  // else, no channel to close?
         case .wasOfferedHandshake:
             fatalError("abortOutgoingHandshake was called in a context where the handshake was not an outgoing one! Was: \(state)")
         case .completed:
@@ -264,7 +267,7 @@ extension ClusterShellState {
         if let assoc = existingAssociation {
             switch assoc.state {
             case .associating:
-                () // continue, we'll perform the tie-breaker logic below
+                ()  // continue, we'll perform the tie-breaker logic below
             case .associated:
                 let error = HandshakeStateMachine.HandshakeConnectionError(
                     endpoint: offer.originNode.endpoint,
@@ -295,14 +298,17 @@ extension ClusterShellState {
 
             /// order on nodes is somewhat arbitrary, but that is fine, since we only need this for tiebreakers
             let tieBreakWinner = initiated.localNode < offer.originNode
-            self.log.debug("""
-            Concurrently initiated handshakes from nodes [\(initiated.localNode)](local) and [\(offer.originNode)](remote) \
-            detected! Resolving race by address ordering; This node \(tieBreakWinner ? "WON (will negotiate and reply)" : "LOST (will await reply)") tie-break. 
-            """, metadata: [
-                "handshake/inProgress": "\(initiated)",
-                "handshake/incoming/offer": "\(offer)",
-                "handshake/incoming/channel": "\(incomingChannel)",
-            ])
+            self.log.debug(
+                """
+                Concurrently initiated handshakes from nodes [\(initiated.localNode)](local) and [\(offer.originNode)](remote) \
+                detected! Resolving race by address ordering; This node \(tieBreakWinner ? "WON (will negotiate and reply)" : "LOST (will await reply)") tie-break. 
+                """,
+                metadata: [
+                    "handshake/inProgress": "\(initiated)",
+                    "handshake/incoming/offer": "\(offer)",
+                    "handshake/incoming/channel": "\(incomingChannel)",
+                ]
+            )
 
             if tieBreakWinner {
                 if self.closeOutboundHandshakeChannel(with: offer.originNode.endpoint) != nil {
@@ -323,9 +329,9 @@ extension ClusterShellState {
                 let error = HandshakeStateMachine.HandshakeConnectionError(
                     endpoint: offer.originNode.endpoint,
                     message: """
-                    Terminating this connection, as there is a concurrently established connection with same host [\(offer.originNode)] \
-                    which will be used to complete the handshake.
-                    """
+                        Terminating this connection, as there is a concurrently established connection with same host [\(offer.originNode)] \
+                        which will be used to complete the handshake.
+                        """
                 )
                 return .abortIncomingHandshake(error)
             }
@@ -353,10 +359,13 @@ extension ClusterShellState {
 
     mutating func incomingHandshakeAccept(_ accept: Wire.HandshakeAccept) -> HandshakeStateMachine.CompletedState? {
         guard let inProgressHandshake = self._handshakes[accept.targetNode.endpoint] else {
-            self.log.warning("Attempted to accept incoming [\(accept)] for handshake which was not in progress!", metadata: [
-                "clusterShell": "\(self)",
-                "membership": "\(self.membership)",
-            ])
+            self.log.warning(
+                "Attempted to accept incoming [\(accept)] for handshake which was not in progress!",
+                metadata: [
+                    "clusterShell": "\(self)",
+                    "membership": "\(self.membership)",
+                ]
+            )
             return nil
         }
 
@@ -382,8 +391,11 @@ extension ClusterShellState {
     ///
     /// Does NOT by itself move the member to joining, but via the directive asks the outer to do this.
     mutating func completeHandshakeAssociate(
-        _ clusterShell: ClusterShell, _ handshake: HandshakeStateMachine.CompletedState, channel: Channel,
-        file: String = #filePath, line: UInt = #line
+        _ clusterShell: ClusterShell,
+        _ handshake: HandshakeStateMachine.CompletedState,
+        channel: Channel,
+        file: String = #filePath,
+        line: UInt = #line
     ) -> AssociatedDirective {
         guard self._handshakes.removeValue(forKey: handshake.remoteNode.endpoint) != nil else {
             fatalError("Can not complete a handshake which was not in progress!")
@@ -406,7 +418,7 @@ extension ClusterShellState {
 
     struct AssociatedDirective {
         let membershipChange: Cluster.MembershipChange?
-//        let membershipChange: Cluster.MembershipChange
+        //        let membershipChange: Cluster.MembershipChange
         let handshake: HandshakeStateMachine.CompletedState
         let channel: Channel
     }
@@ -481,14 +493,14 @@ extension ClusterShellState {
 extension ClusterShellState {
     var metadata: Logger.Metadata {
         [
-            "membership/count": "\(String(describing: self.membership.count(atLeast: .joining)))",
+            "membership/count": "\(String(describing: self.membership.count(atLeast: .joining)))"
         ]
     }
 
     func metadataForHandshakes(endpoint: Cluster.Endpoint? = nil, node: Cluster.Node? = nil, error err: Error?) -> Logger.Metadata {
         var metadata: Logger.Metadata =
             [
-                "handshakes": "\(self.handshakes())",
+                "handshakes": "\(self.handshakes())"
             ]
 
         if let n = node {

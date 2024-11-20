@@ -14,9 +14,10 @@
 
 import ClusterMembership
 import CoreMetrics
+import SWIM
+
 import struct Dispatch.DispatchTime
 import enum Dispatch.DispatchTimeInterval
-import SWIM
 
 extension SWIMActor: SWIMPingOriginPeer {
     nonisolated func ack(acknowledging sequenceNumber: SWIM.SequenceNumber, target: SWIMActor, incarnation: SWIM.Incarnation, payload: SWIM.GossipPayload<SWIMActor>) async throws {

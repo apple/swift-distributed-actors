@@ -45,7 +45,7 @@ public final class MultiNodeConductorTests: MultiNodeTestSuite {
     }
 
     public static func configureActorSystem(settings: inout ClusterSystemSettings) {
-//        settings.logging.logLevel = .debug
+        //        settings.logging.logLevel = .debug
     }
 
     public let testCrashSecondNode = MultiNodeTest(MultiNodeConductorTests.self) { multiNode in

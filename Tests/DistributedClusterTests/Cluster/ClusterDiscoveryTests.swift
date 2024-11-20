@@ -14,10 +14,11 @@
 
 import Dispatch
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import NIO
 import ServiceDiscovery
 import XCTest
+
+@testable import DistributedCluster
 
 final class ClusterDiscoveryTests: SingleClusterSystemXCTestCase {
     let A = Cluster.Member(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "A", host: "1.1.1.1", port: 7337), nid: .random()), status: .up)
@@ -44,7 +45,7 @@ final class ClusterDiscoveryTests: SingleClusterSystemXCTestCase {
             throw testKit.fail(line: #line - 1)
         }
         node2.shouldEqual(self.B.node.endpoint)
-        try clusterProbe.expectNoMessage(for: .milliseconds(300)) // i.e. it should not send another join for `A` we already did that
+        try clusterProbe.expectNoMessage(for: .milliseconds(300))  // i.e. it should not send another join for `A` we already did that
         // sending another join for A would be harmless in general, but let's avoid causing more work for the system?
 
         // [A, B]; should not really emit like this but even if it did, no reason to issue more joins
@@ -69,7 +70,7 @@ final class ClusterDiscoveryTests: SingleClusterSystemXCTestCase {
         let clusterProbe = testKit.makeTestProbe(expecting: ClusterShell.Message.self)
         _ = try system._spawn("discovery", DiscoveryShell(settings: settings, cluster: clusterProbe.ref).behavior)
 
-        try clusterProbe.expectMessages(count: 2).forEach { message in
+        for message in try clusterProbe.expectMessages(count: 2) {
             guard case .command(.handshakeWith(let node)) = message else {
                 throw testKit.fail(line: #line - 1)
             }
@@ -109,7 +110,7 @@ final class ClusterDiscoveryTests: SingleClusterSystemXCTestCase {
             throw testKit.fail(line: #line - 1)
         }
         node2.shouldEqual(self.B.node.endpoint)
-        try clusterProbe.expectNoMessage(for: .milliseconds(300)) // i.e. it should not send another join for `A` we already did that
+        try clusterProbe.expectNoMessage(for: .milliseconds(300))  // i.e. it should not send another join for `A` we already did that
     }
 
     func test_discovery_stoppingActor_shouldCancelSubscription() throws {

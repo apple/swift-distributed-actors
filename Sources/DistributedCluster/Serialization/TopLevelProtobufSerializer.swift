@@ -12,10 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Foundation  // for Codable
 import NIO
 import NIOFoundationCompat
-
-import Foundation // for Codable
 
 internal class _TopLevel_ProtobufSerializer<Message>: Serializer<Message> {
     let allocator: ByteBufferAllocator
@@ -53,7 +52,7 @@ internal class _TopLevel_ProtobufSerializer<Message>: Serializer<Message> {
         decoder.userInfo[.actorSystemKey] = self.context.system
         decoder.userInfo[.actorSerializationContext] = self.context
 
-        return try ProtoType.init(from: decoder) as! Message // explicit .init() is required here (!)
+        return try ProtoType.init(from: decoder) as! Message  // explicit .init() is required here (!)
     }
 
     override public func setSerializationContext(_ context: Serialization.Context) {

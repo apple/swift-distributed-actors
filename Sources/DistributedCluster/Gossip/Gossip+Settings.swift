@@ -36,7 +36,7 @@ extension Gossiper {
 
         var effectiveInterval: Duration {
             let baseInterval = self.interval
-            let randomizeMultiplier = Double.random(in: (1 - self.intervalRandomFactor) ... (1 + self.intervalRandomFactor))
+            let randomizeMultiplier = Double.random(in: (1 - self.intervalRandomFactor)...(1 + self.intervalRandomFactor))
             let randomizedInterval = baseInterval * randomizeMultiplier
             return randomizedInterval
         }

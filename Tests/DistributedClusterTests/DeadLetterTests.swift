@@ -14,9 +14,10 @@
 
 import Distributed
 import DistributedActorsTestKit
+import XCTest
+
 @testable import DistributedCluster
 @testable import Logging
-import XCTest
 
 final class DeadLetterTests: SingleClusterSystemXCTestCase {
     // ==== ------------------------------------------------------------------------------------------------------------

@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import Distributed
-import Foundation // for Codable
+import Foundation  // for Codable
 import Logging
 import NIO
 import NIOFoundationCompat
@@ -143,10 +143,10 @@ public struct ClusterInvocationDecoder: DistributedTargetInvocationDecoder {
     }
 
     public mutating func decodeErrorType() throws -> Any.Type? {
-        return nil // TODO(distributed): might need this
+        nil  // TODO(distributed): might need this
     }
 
     public mutating func decodeReturnType() throws -> Any.Type? {
-        return nil // TODO(distributed): might need this
+        nil  // TODO(distributed): might need this
     }
 }

@@ -12,9 +12,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-@testable import DistributedCluster
 import Logging
 import NIO
+
+@testable import DistributedCluster
 
 // usual reminder that Swift Distributed Actors is not inherently "client/server" once associated, only the handshake is
 enum HandshakeSide: String {
@@ -32,13 +33,13 @@ extension ClusterShellState {
             )
         )
         configureSettings(&settings)
-        let log = Logger(label: "handshake-\(side)") // TODO: could be a mock logger we can assert on?
+        let log = Logger(label: "handshake-\(side)")  // TODO: could be a mock logger we can assert on?
 
         let node = Cluster.Node(systemName: "Test", host: "127.0.0.1", port: 7337, nid: .random())
         return ClusterShellState(
             settings: settings,
             channel: EmbeddedChannel(),
-            events: ClusterEventStream(), // this event stream does nothing
+            events: ClusterEventStream(),  // this event stream does nothing
             gossiperControl: GossiperControl(_ActorRef(.deadLetters(.init(log, id: ._deadLetters(on: node), system: nil)))),
             log: log
         )

@@ -35,7 +35,7 @@ internal final class AffinityThreadPool {
         self.workerCount = workerCount
         self.stopped = .init(false)
 
-        for _ in 0 ..< workerCount {
+        for _ in 0..<workerCount {
             workers.append(try Worker(stopped: self.stopped))
         }
 
@@ -43,7 +43,7 @@ internal final class AffinityThreadPool {
     }
 
     deinit {
-//        self.stopped.destroy()
+        //        self.stopped.destroy()
     }
 
     /// Executes `task` on the specified worker thread.

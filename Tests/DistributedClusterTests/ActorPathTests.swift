@@ -13,8 +13,9 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import XCTest
+
+@testable import DistributedCluster
 
 final class ActorPathTests: XCTestCase {
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -63,7 +64,7 @@ final class ActorPathTests: XCTestCase {
 
     func test_path_startsWith() throws {
         let path = try ActorPath(root: "test").appending("foo").appending("bar")
-        path.starts(with: path).shouldBeTrue() // TODO: fixme consistency of matchers, some throw and some not
+        path.starts(with: path).shouldBeTrue()  // TODO: fixme consistency of matchers, some throw and some not
         try path.starts(with: path.appending("nope")).shouldBeFalse()
         try path.starts(with: ActorPath(root: "test").appending("foo").appending("nope")).shouldBeFalse()
         try path.starts(with: ActorPath(root: "test").appending("nein").appending("bar")).shouldBeFalse()

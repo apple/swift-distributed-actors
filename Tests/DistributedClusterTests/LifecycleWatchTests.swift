@@ -14,10 +14,11 @@
 
 import Distributed
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import Foundation
 import Logging
 import XCTest
+
+@testable import DistributedCluster
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Romeo
@@ -33,7 +34,7 @@ distributed actor Romeo: LifecycleWatch, CustomStringConvertible {
     }
 
     deinit {
-//         probe.tell("Romeo deinit")
+        //         probe.tell("Romeo deinit")
     }
 
     distributed func greet(_ greeting: String) {
@@ -137,7 +138,7 @@ final class LifecycleWatchTests: SingleClusterSystemXCTestCase, @unchecked Senda
             let pj = self.testKit.makeTestProbe(expecting: String.self)
             let pr = self.testKit.makeTestProbe(expecting: String.self)
 
-            let (first, second) = await self.setUpPair() { settings in
+            let (first, second) = await self.setUpPair { settings in
                 settings.enabled = true
             }
             try await joinNodes(node: first, with: second, ensureMembers: .up)

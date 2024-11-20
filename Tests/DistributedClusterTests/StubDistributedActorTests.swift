@@ -14,10 +14,11 @@
 
 import Dispatch
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import Foundation
 import NIO
 import XCTest
+
+@testable import DistributedCluster
 
 final class StubDistributedActorTests: SingleClusterSystemXCTestCase {
     func test_StubDistributedActor_shouldAlwaysResolveAsRemote() {

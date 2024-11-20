@@ -13,9 +13,10 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import NIO
 import XCTest
+
+@testable import DistributedCluster
 
 /// Tests of just the datatype
 final class MembershipGossipTests: XCTestCase {
@@ -43,14 +44,18 @@ final class MembershipGossipTests: XCTestCase {
             """
             A.joining
             A: A:1
-            """, owner: self.nodeA, nodes: self.allNodes
+            """,
+            owner: self.nodeA,
+            nodes: self.allNodes
         )
 
         let incoming = Cluster.MembershipGossip.parse(
             """
             B.joining
             B: B:1
-            """, owner: self.nodeB, nodes: self.allNodes
+            """,
+            owner: self.nodeB,
+            nodes: self.allNodes
         )
 
         let directive = gossip.mergeForward(incoming: incoming)
@@ -65,7 +70,9 @@ final class MembershipGossipTests: XCTestCase {
                 A.joining B.joining
                 A: A:1 B:1
                 B: B:1
-                """, owner: self.nodeA, nodes: self.allNodes
+                """,
+                owner: self.nodeA,
+                nodes: self.allNodes
             )
         )
     }
@@ -75,7 +82,9 @@ final class MembershipGossipTests: XCTestCase {
             """
             A.joining
             A: A:1
-            """, owner: self.nodeA, nodes: self.allNodes
+            """,
+            owner: self.nodeA,
+            nodes: self.allNodes
         )
 
         let incoming = Cluster.MembershipGossip.parse(
@@ -83,7 +92,9 @@ final class MembershipGossipTests: XCTestCase {
             B.joining C.joining
             B: B:1 C:1
             C: B:1 C:1
-            """, owner: self.nodeB, nodes: self.allNodes
+            """,
+            owner: self.nodeB,
+            nodes: self.allNodes
         )
 
         let directive = gossip.mergeForward(incoming: incoming)
@@ -103,7 +114,9 @@ final class MembershipGossipTests: XCTestCase {
             A: A:1 B:1 C:1
             B: B:1 C:1
             C: B:1 C:1
-            """, owner: self.nodeA, nodes: self.allNodes
+            """,
+            owner: self.nodeA,
+            nodes: self.allNodes
         )
 
         gossip.seen.shouldEqual(expected.seen)
@@ -117,8 +130,8 @@ final class MembershipGossipTests: XCTestCase {
     func test_mergeForward_incomingGossip_sameVersions() {
         var gossip = Cluster.MembershipGossip(ownerNode: self.nodeA)
         _ = gossip.membership.join(self.nodeA)
-        gossip.seen.incrementVersion(owner: self.nodeB, at: self.nodeA) // v: myself:1, second:1
-        _ = gossip.membership.join(self.nodeB) // myself:joining, second:joining
+        gossip.seen.incrementVersion(owner: self.nodeB, at: self.nodeA)  // v: myself:1, second:1
+        _ = gossip.membership.join(self.nodeB)  // myself:joining, second:joining
 
         let gossipFromSecond = Cluster.MembershipGossip(ownerNode: self.nodeB)
         let directive = gossip.mergeForward(incoming: gossipFromSecond)
@@ -131,7 +144,9 @@ final class MembershipGossipTests: XCTestCase {
             """
             A.joining B.joining B.joining
             A: A@1 B@1 C@1
-            """, owner: self.nodeA, nodes: self.allNodes
+            """,
+            owner: self.nodeA,
+            nodes: self.allNodes
         )
 
         // only knows about fourth, while myGossip has first, second and third
@@ -139,7 +154,9 @@ final class MembershipGossipTests: XCTestCase {
             """
             D.joining
             D: D@1
-            """, owner: self.fourthNode, nodes: self.allNodes
+            """,
+            owner: self.fourthNode,
+            nodes: self.allNodes
         )
 
         let directive = gossip.mergeForward(incoming: incomingGossip)
@@ -155,7 +172,9 @@ final class MembershipGossipTests: XCTestCase {
                 A.joining B.joining C.joining
                 A: A@1 B@1 C@1 D@1
                 D: D@1
-                """, owner: self.nodeA, nodes: self.allNodes
+                """,
+                owner: self.nodeA,
+                nodes: self.allNodes
             )
         )
     }
@@ -168,11 +187,12 @@ final class MembershipGossipTests: XCTestCase {
             B: A@5 B@5 C@6
             C: A@5 B@5 C@6
             """,
-            owner: self.nodeA, nodes: self.allNodes
+            owner: self.nodeA,
+            nodes: self.allNodes
         )
 
         // while we just removed it:
-        gossip.converged().shouldBeTrue() // soundness check
+        gossip.converged().shouldBeTrue()  // soundness check
         let removedMember: Cluster.Member = gossip.membership.member(self.nodeB)!
         _ = gossip.pruneMember(removedMember)
         gossip.incrementOwnerVersion()
@@ -184,15 +204,16 @@ final class MembershipGossipTests: XCTestCase {
             B: A@5 B@10 C@6
             C: A@5 B@5  C@6
             """,
-            owner: self.nodeB, nodes: self.allNodes
-        ) // TODO: this will be rejected since owner is the downed node (!) add another test with third sending the same info
+            owner: self.nodeB,
+            nodes: self.allNodes
+        )  // TODO: this will be rejected since owner is the downed node (!) add another test with third sending the same info
 
         let gossipBeforeMerge = gossip
         let directive = gossip.mergeForward(incoming: incomingOldGossip)
 
         directive.causalRelation.shouldEqual(.concurrent)
         directive.effectiveChanges.shouldEqual(
-            [] // no effect
+            []  // no effect
         )
 
         gossip.membership.members(atLeast: .joining).shouldNotContain(removedMember)
@@ -209,7 +230,8 @@ final class MembershipGossipTests: XCTestCase {
             A: A@5 B@5 
             B: A@5 B@5
             """,
-            owner: self.nodeA, nodes: self.allNodes
+            owner: self.nodeA,
+            nodes: self.allNodes
         )
 
         // this may happen after healing a cluster partition,
@@ -222,7 +244,8 @@ final class MembershipGossipTests: XCTestCase {
             B: B@2 C@1
             C: B@5 C@9
             """,
-            owner: self.nodeC, nodes: self.allNodes
+            owner: self.nodeC,
+            nodes: self.allNodes
         )
 
         let directive = gossip.mergeForward(incoming: incomingGossip)
@@ -236,7 +259,7 @@ final class MembershipGossipTests: XCTestCase {
                 // in dramatic situations (e.g. we add more nodes on one side than quorum, so it gets "its illegal quorum"),
                 // such is the case with any "dynamic" quorum however. We CAN and will provide strategies to select leaders which
                 // strongly militate such risk though.
-                Cluster.MembershipChange(node: self.nodeC, previousStatus: nil, toStatus: .up),
+                Cluster.MembershipChange(node: self.nodeC, previousStatus: nil, toStatus: .up)
                 // note that this has NO effect on the leader; we keep trusting "our" leader,
                 // leader election should kick in and reconcile those two
             ]
@@ -248,7 +271,9 @@ final class MembershipGossipTests: XCTestCase {
             A: A:5 B:5 C:9
             B: A:5 B:5 C@1
             C:     B:5 C:9
-            """, owner: self.nodeA, nodes: self.allNodes
+            """,
+            owner: self.nodeA,
+            nodes: self.allNodes
         )
 
         gossip.seen.shouldEqual(expected.seen)
@@ -261,14 +286,18 @@ final class MembershipGossipTests: XCTestCase {
             """
             A.up B.joining
             A: A@4
-            """, owner: self.nodeA, nodes: self.allNodes
+            """,
+            owner: self.nodeA,
+            nodes: self.allNodes
         )
 
         let concurrent = Cluster.MembershipGossip.parse(
             """
             A.joining B.joining
             B: B@2
-            """, owner: self.nodeB, nodes: self.allNodes
+            """,
+            owner: self.nodeB,
+            nodes: self.allNodes
         )
 
         let directive = gossip.mergeForward(incoming: concurrent)
@@ -281,7 +310,9 @@ final class MembershipGossipTests: XCTestCase {
                 A.up B.joining
                 A: A@4 B@2
                 B: B@2
-                """, owner: self.nodeA, nodes: self.allNodes
+                """,
+                owner: self.nodeA,
+                nodes: self.allNodes
             )
         )
     }
@@ -292,7 +323,8 @@ final class MembershipGossipTests: XCTestCase {
             A.up
             A: A@5
             """,
-            owner: self.nodeA, nodes: self.allNodes
+            owner: self.nodeA,
+            nodes: self.allNodes
         )
 
         var incomingGossip = gossip
@@ -317,7 +349,8 @@ final class MembershipGossipTests: XCTestCase {
             B: A@5 B@5 C@6
             C: A@5 B@5 C@6
             """,
-            owner: self.nodeA, nodes: self.allNodes
+            owner: self.nodeA,
+            nodes: self.allNodes
         )
 
         let incomingGossip = Cluster.MembershipGossip.parse(
@@ -325,7 +358,9 @@ final class MembershipGossipTests: XCTestCase {
             A.up C.up
             A: A@5 C@6
             C: A@5 C@7
-            """, owner: self.nodeC, nodes: self.allNodes
+            """,
+            owner: self.nodeC,
+            nodes: self.allNodes
         )
 
         let directive = gossip.mergeForward(incoming: incomingGossip)
@@ -335,7 +370,7 @@ final class MembershipGossipTests: XCTestCase {
 
         directive.effectiveChanges.shouldEqual(
             [
-                Cluster.MembershipChange(node: self.nodeB, previousStatus: .down, toStatus: .removed),
+                Cluster.MembershipChange(node: self.nodeB, previousStatus: .down, toStatus: .removed)
             ]
         )
 
@@ -345,7 +380,9 @@ final class MembershipGossipTests: XCTestCase {
                 A.up C.up [leader:A]
                 A: A@5 C@7
                 C: A@5 C@7
-                """, owner: self.nodeA, nodes: self.allNodes
+                """,
+                owner: self.nodeA,
+                nodes: self.allNodes
             )
         )
     }
@@ -358,7 +395,8 @@ final class MembershipGossipTests: XCTestCase {
             B: A@5 B@5 C@6
             C: A@5 B@5 C@6
             """,
-            owner: self.nodeB, nodes: self.allNodes
+            owner: self.nodeB,
+            nodes: self.allNodes
         )
 
         let incomingGossip = Cluster.MembershipGossip.parse(
@@ -366,7 +404,9 @@ final class MembershipGossipTests: XCTestCase {
             A.up C.up
             A: A@5 C@6
             C: A@5 C@7
-            """, owner: self.nodeC, nodes: self.allNodes
+            """,
+            owner: self.nodeC,
+            nodes: self.allNodes
         )
 
         let directive = gossip.mergeForward(incoming: incomingGossip)
@@ -374,7 +414,7 @@ final class MembershipGossipTests: XCTestCase {
         directive.causalRelation.shouldEqual(.concurrent)
         directive.effectiveChanges.shouldEqual(
             [
-                Cluster.MembershipChange(node: self.nodeB, previousStatus: .down, toStatus: .removed),
+                Cluster.MembershipChange(node: self.nodeB, previousStatus: .down, toStatus: .removed)
             ]
         )
 
@@ -386,7 +426,9 @@ final class MembershipGossipTests: XCTestCase {
             A: A@5 B@5 C@6
             B: A@5 B@5 C@7
             C: A@5 B@5 C@7
-            """, owner: self.nodeB, nodes: self.allNodes
+            """,
+            owner: self.nodeB,
+            nodes: self.allNodes
         )
         gossip.seen.version(at: self.nodeA).shouldEqual(expected.seen.version(at: self.nodeA))
         gossip.seen.version(at: self.nodeB).shouldEqual(expected.seen.version(at: self.nodeB))
@@ -457,7 +499,9 @@ final class MembershipGossipTests: XCTestCase {
             A: A@8 B@5 
             B: B@6
             C: A@7 B@5
-            """, owner: self.nodeA, nodes: self.allNodes
+            """,
+            owner: self.nodeA,
+            nodes: self.allNodes
         )
 
         // since all other nodes other than A are down or joining, thus we do not count them in convergence
@@ -553,7 +597,7 @@ final class MembershipGossipTests: XCTestCase {
             4: fourthGossip,
         ]
 
-        gossips.forEach { _, gossip in
+        for (_, gossip) in gossips {
             assert(!gossip.converged(), "Should not start out convergent")
         }
 
@@ -575,10 +619,12 @@ final class MembershipGossipTests: XCTestCase {
 
         let allConverged = gossips.allSatisfy { $1.converged() }
         guard allConverged else {
-            XCTFail("""
-            Gossips among \(gossips.count) members did NOT converge after \(gossipSend) (individual) sends.
-            \(gossips.values.map { "\($0)" }.joined(separator: "\n"))
-            """)
+            XCTFail(
+                """
+                Gossips among \(gossips.count) members did NOT converge after \(gossipSend) (individual) sends.
+                \(gossips.values.map { "\($0)" }.joined(separator: "\n"))
+                """
+            )
             return
         }
 

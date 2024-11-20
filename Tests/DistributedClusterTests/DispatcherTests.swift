@@ -14,10 +14,11 @@
 
 import Dispatch
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import Foundation
 import NIO
 import XCTest
+
+@testable import DistributedCluster
 
 final class DispatcherTests: SingleClusterSystemXCTestCase {
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -92,10 +93,10 @@ final class DispatcherTests: SingleClusterSystemXCTestCase {
         try p.expectMessage("World")
         try expectWasOnDispatchQueue(p: p)
 
-        for i in 1 ... 100 {
+        for i in 1...100 {
             w.tell("\(i)")
         }
-        for i in 1 ... 100 {
+        for i in 1...100 {
             try p.expectMessage("\(i)")
             try expectWasOnDispatchQueue(p: p)
         }

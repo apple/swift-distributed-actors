@@ -13,8 +13,9 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import XCTest
+
+@testable import DistributedCluster
 
 final class ClusterSingletonPluginTests: SingleClusterSystemXCTestCase {
     func test_singletonPlugin_clusterDisabled() async throws {
@@ -75,7 +76,7 @@ final class ClusterSingletonPluginTests: SingleClusterSystemXCTestCase {
         }
 
         distributed func getGreeter() -> Greeter {
-            return self.greeter
+            self.greeter
         }
     }
 

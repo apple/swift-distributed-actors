@@ -31,9 +31,7 @@ struct PrettyMultiNodeLogHandler: LogHandler {
         var _metadata: Logger.Metadata = metadata ?? [:]
 
         for excludeGrep in self.settings.excludeGrep {
-            if file.contains(excludeGrep) ||
-                "\(message)".contains(excludeGrep)
-            {
+            if file.contains(excludeGrep) || "\(message)".contains(excludeGrep) {
                 return
             }
         }

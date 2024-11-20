@@ -13,9 +13,10 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import NIO
 import XCTest
+
+@testable import DistributedCluster
 
 final class AggressiveNodeReplacementClusteredTests: ClusteredActorSystemsXCTestCase {
     override func configureLogCapture(settings: inout LogCapture.Settings) {
@@ -31,7 +32,7 @@ final class AggressiveNodeReplacementClusteredTests: ClusteredActorSystemsXCTest
         }
 
         let rounds = 5
-        for round in 0 ..< rounds {
+        for round in 0..<rounds {
             main.log.info("Joining second replacement node, round: \(round)")
 
             // We purposefully make sure the `second` node becomes leader -- it has the lowest port.
@@ -41,7 +42,7 @@ final class AggressiveNodeReplacementClusteredTests: ClusteredActorSystemsXCTest
             let second = await setUpNode("second-\(round)") { settings in
                 // always the same host/port (!), this means we'll be continuously replacing the "old" (previous) node
                 settings.endpoint.host = main.cluster.endpoint.host
-                settings.endpoint.port = main.cluster.endpoint.port - 100 // we want the this node to be the leader -- lowest address
+                settings.endpoint.port = main.cluster.endpoint.port - 100  // we want the this node to be the leader -- lowest address
             }
 
             let service = await ServiceActor(actorSystem: second)
@@ -57,7 +58,7 @@ final class AggressiveNodeReplacementClusteredTests: ClusteredActorSystemsXCTest
                 break
             }
 
-            try second.shutdown() // shutdown and immediately create a new instance on the same host-port to replace it
+            try second.shutdown()  // shutdown and immediately create a new instance on the same host-port to replace it
             // On purpose: do NOT wait for it to shut down completely.
         }
 
@@ -83,8 +84,8 @@ final class AggressiveNodeReplacementClusteredTests: ClusteredActorSystemsXCTest
             actorSystem.log.notice("Registering actor with \(DistributedReception.Key<ServiceActor>.aggressiveNodeReplacementService)!")
         }
 
-        distributed func randomInt(in range: Range<Int> = 0 ..< 10) async throws -> Int {
-            return Int.random(in: range)
+        distributed func randomInt(in range: Range<Int> = 0..<10) async throws -> Int {
+            Int.random(in: range)
         }
     }
 }

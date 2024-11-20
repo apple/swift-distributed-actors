@@ -78,9 +78,13 @@ extension _Behavior {
         _ message: Message
     ) -> _Behavior<Message> {
         .setup { context in
-            receiveAsync0({ message in
-                try await recv(context, message)
-            }, context: context, message: message)
+            receiveAsync0(
+                { message in
+                    try await recv(context, message)
+                },
+                context: context,
+                message: message
+            )
         }
     }
 
@@ -238,7 +242,7 @@ extension _Behavior {
                 if signal is _Signals._PostStop {
                     try postStop(context)
                 }
-                return .stop // will be ignored
+                return .stop  // will be ignored
             },
             reason: .stopMyself
         )
@@ -425,9 +429,11 @@ extension _Behavior {
     /// MUST be canonicalized (to .suspended before storing in an `ActorCell`, as thr suspend behavior CAN NOT handle messages.
     @usableFromInline
     internal static func suspend<T>(handler: @escaping (Result<T, Error>) throws -> _Behavior<Message>) -> _Behavior<Message> {
-        _Behavior(underlying: .suspend(handler: { result in
-            try handler(result.map { $0 as! T }) // cast here is okay, as user APIs are typed, so we should always get a T
-        }))
+        _Behavior(
+            underlying: .suspend(handler: { result in
+                try handler(result.map { $0 as! T })  // cast here is okay, as user APIs are typed, so we should always get a T
+            })
+        )
     }
 
     /// Represents a behavior in suspended state.
@@ -478,7 +484,7 @@ internal enum __Behavior<Message: Codable> {
     case ignore
     case unhandled
 
-    indirect case intercept(behavior: _Behavior<Message>, with: _Interceptor<Message>) // TODO: for printing it would be nicer to have "supervised" here, though, modeling wise it is exactly an intercept
+    indirect case intercept(behavior: _Behavior<Message>, with: _Interceptor<Message>)  // TODO: for printing it would be nicer to have "supervised" here, though, modeling wise it is exactly an intercept
 
     indirect case orElse(first: _Behavior<Message>, second: _Behavior<Message>)
 
@@ -601,8 +607,8 @@ extension _Behavior {
         case .receive(let recv): return try recv(context, message)
         case .receiveAsync(let recv): return self.receiveAsync(recv, message)
 
-        case .signalHandling(let recvMsg, _): return try recvMsg.interpretMessage(context: context, message: message) // TODO: should we keep the signal handler even if not .same? // TODO: more signal handling tests
-        case .signalHandlingAsync(let recvMsg, _): return try recvMsg.interpretMessage(context: context, message: message) // TODO: should we keep the signal handler even if not .same? // TODO: more signal handling tests
+        case .signalHandling(let recvMsg, _): return try recvMsg.interpretMessage(context: context, message: message)  // TODO: should we keep the signal handler even if not .same? // TODO: more signal handling tests
+        case .signalHandlingAsync(let recvMsg, _): return try recvMsg.interpretMessage(context: context, message: message)  // TODO: should we keep the signal handler even if not .same? // TODO: more signal handling tests
 
         case .intercept(let inner, let interceptor): return try _Interceptor.handleMessage(context: context, behavior: inner, interceptor: interceptor, message: message)
         case .orElse(let first, let second): return try self.interpretOrElse(context: context, first: first, orElse: second, message: message, file: file, line: line)
@@ -613,13 +619,17 @@ extension _Behavior {
         case .unhandled: fatalError("Illegal attempt to interpret message with .unhandled behavior! _Behavior should have been canonicalized before interpreting; This is a bug, please open a ticket.", file: file, line: line)
 
         case .setup:
-            return fatalErrorBacktrace("""
-            Illegal attempt to interpret message with .setup behavior! Behaviors MUST be canonicalized before interpreting. This is a bug, please open a ticket. 
-              System: \(context.system)
-              Address: \(context.id.detailedDescription)
-              Message: \(message): \(type(of: message))
-              _Behavior: \(self)
-            """, file: file, line: line)
+            return fatalErrorBacktrace(
+                """
+                Illegal attempt to interpret message with .setup behavior! Behaviors MUST be canonicalized before interpreting. This is a bug, please open a ticket. 
+                  System: \(context.system)
+                  Address: \(context.id.detailedDescription)
+                  Message: \(message): \(type(of: message))
+                  _Behavior: \(self)
+                """,
+                file: file,
+                line: line
+            )
 
         case .stop:
             return .unhandled
@@ -629,12 +639,16 @@ extension _Behavior {
         case .suspend:
             fatalError("Illegal to attempt to interpret message with .suspend behavior! _Behavior should have been canonicalized. This is a bug, please open a ticket.", file: file, line: line)
         case .suspended:
-            fatalError("""
-            No message should ever be delivered to a .suspended behavior!
-              Message: \(message)
-              Actor: \(context)
-              This is a bug, please open a ticket.
-            """, file: file, line: line)
+            fatalError(
+                """
+                No message should ever be delivered to a .suspended behavior!
+                  Message: \(message)
+                  Actor: \(context)
+                  This is a bug, please open a ticket.
+                """,
+                file: file,
+                line: line
+            )
         }
     }
 
@@ -666,7 +680,7 @@ extension _Behavior {
                 return maybeHandled
             }
         case .intercept(let behavior, let interceptor):
-            return try interceptor.interceptSignal(target: behavior, context: context, signal: signal) // TODO: do we need to try?
+            return try interceptor.interceptSignal(target: behavior, context: context, signal: signal)  // TODO: do we need to try?
         case .suspended(let previous, let handler):
             let nextBehavior = try previous.interpretSignal(context: context, signal: signal)
             if nextBehavior.isTerminal {
@@ -701,8 +715,11 @@ extension _Behavior {
 extension _Behavior {
     internal func interpretOrElse(
         context: _ActorContext<Message>,
-        first: _Behavior<Message>, orElse second: _Behavior<Message>, message: Message,
-        file: StaticString = #filePath, line: UInt = #line
+        first: _Behavior<Message>,
+        orElse second: _Behavior<Message>,
+        message: Message,
+        file: StaticString = #filePath,
+        line: UInt = #line
     ) throws -> _Behavior<Message> {
         var nextBehavior = try first.interpretMessage(context: context, message: message, file: file, line: line)
         if nextBehavior.isUnhandled {
@@ -817,7 +834,7 @@ extension _Behavior {
     ///           in order to avoid attempting to start an possibly infinitely deferred behavior.
     internal func canonicalize(_ context: _ActorContext<Message>, next: _Behavior<Message>) throws -> _Behavior<Message> {
         guard self.isStillAlive else {
-            return self // ignore, we're already dead and cannot become any other behavior
+            return self  // ignore, we're already dead and cannot become any other behavior
         }
 
         // Note: on purpose not implemented as tail recursive function since tail-call elimination is not guaranteed
@@ -915,7 +932,7 @@ extension _Behavior {
             case .suspended(let previousBehavior, _):
                 return try start0(previousBehavior, depth: depth + 1)
 
-            default: // TODO: remove the use of default: it is the devil </3
+            default:  // TODO: remove the use of default: it is the devil </3
                 return behavior
             }
         }

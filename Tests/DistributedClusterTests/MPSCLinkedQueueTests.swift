@@ -12,8 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-@testable import DistributedCluster
 import XCTest
+
+@testable import DistributedCluster
 
 class MPSCLinkedQueueTests: XCTestCase {
     func test_dequeueWhenEmpty() {
@@ -35,9 +36,9 @@ class MPSCLinkedQueueTests: XCTestCase {
         let totalMessageCount = writerCount * messageCountPerWriter
         let q = MPSCLinkedQueue<Int>()
 
-        for _ in 1 ... writerCount {
+        for _ in 1...writerCount {
             _ = try _Thread {
-                for i in 0 ..< messageCountPerWriter {
+                for i in 0..<messageCountPerWriter {
                     q.enqueue(i)
                 }
             }

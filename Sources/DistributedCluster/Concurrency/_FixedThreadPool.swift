@@ -61,7 +61,7 @@ public final class _FixedThreadPool {
         self.stopping = .init(false)
         self.runningWorkers = .init(threadCount)
 
-        for _ in 1 ... threadCount {
+        for _ in 1...threadCount {
             let worker = Worker()
             let thread = try _Thread {
                 // threads in the pool keep running as long as the pool is not stopping
@@ -92,8 +92,8 @@ public final class _FixedThreadPool {
     }
 
     deinit {
-//        self.stopping.destroy()
-//        self.runningWorkers.destroy()
+        //        self.stopping.destroy()
+        //        self.runningWorkers.destroy()
     }
 
     /// Initiates shutdown of the pool. Active threads will complete processing

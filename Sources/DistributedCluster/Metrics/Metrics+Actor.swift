@@ -38,7 +38,7 @@ enum ActiveMetricID: Int, Hashable {
 @usableFromInline
 struct ActiveActorMetrics {
     @usableFromInline
-    typealias AnyActiveMetric = Any // since there is no `Metric` protocol
+    typealias AnyActiveMetric = Any  // since there is no `Metric` protocol
 
     // Cheaper to check if a metric is enabled than the dictionary?
     @usableFromInline

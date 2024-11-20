@@ -13,9 +13,10 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import Foundation
 import XCTest
+
+@testable import DistributedCluster
 
 final class ActorAskTests: SingleClusterSystemXCTestCase {
     struct TestMessage: Codable {
@@ -164,7 +165,8 @@ final class ActorAskTests: SingleClusterSystemXCTestCase {
         let _: _ActorRef<Never> = try system._spawn(
             "onResultAsync",
             .setup { context in
-                let askResult = void
+                let askResult =
+                    void
                     .ask(for: String.self, timeout: .seconds(1)) { AnswerMePlease(replyTo: $0) }
 
                 return context.awaitResult(of: askResult, timeout: .milliseconds(100)) { greeting in

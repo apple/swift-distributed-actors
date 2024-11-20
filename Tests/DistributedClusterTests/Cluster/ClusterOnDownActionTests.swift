@@ -13,9 +13,10 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import NIOSSL
 import XCTest
+
+@testable import DistributedCluster
 
 final class ClusterOnDownActionTests: ClusteredActorSystemsXCTestCase {
     func test_onNodeDowned_performShutdown() async throws {

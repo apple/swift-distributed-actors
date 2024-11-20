@@ -34,7 +34,7 @@ public actor ClusterSingletonPlugin {
     private var actorSystem: ClusterSystem!
 
     public init() {
-        self.actorSystem = nil // 'actorSystem' is filled in later on in _Plugin.start()
+        self.actorSystem = nil  // 'actorSystem' is filled in later on in _Plugin.start()
     }
 
     public func proxy<Act>(

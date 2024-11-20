@@ -190,10 +190,10 @@ public struct ExponentialBackoffStrategy: BackoffStrategy {
         defer { self.limitedRemainingAttempts? -= 1 }
         if let remainingAttempts = self.limitedRemainingAttempts, remainingAttempts <= 0 {
             return nil
-        } // else, still attempts remaining, or no limit set
+        }  // else, still attempts remaining, or no limit set
 
         let baseInterval = self.currentBaseInterval
-        let randomizeMultiplier = Double.random(in: (1 - self.randomFactor) ... (1 + self.randomFactor))
+        let randomizeMultiplier = Double.random(in: (1 - self.randomFactor)...(1 + self.randomFactor))
 
         if baseInterval > self.capInterval {
             let randomizedCappedInterval = self.capInterval * randomizeMultiplier

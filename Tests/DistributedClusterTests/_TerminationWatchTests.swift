@@ -69,7 +69,7 @@ final class TerminationWatchTests: SingleClusterSystemXCTestCase {
                         p.tell(message)
                         return .same
                     }).receiveSpecificSignal(_Signals.Terminated.self) { _, terminated in
-                        p.tell("signal:\(terminated.id.path)") // should not be signalled (!)
+                        p.tell("signal:\(terminated.id.path)")  // should not be signalled (!)
                         return .same
                     }
             }
@@ -100,7 +100,7 @@ final class TerminationWatchTests: SingleClusterSystemXCTestCase {
                         p.tell(message)
                         return .same
                     }).receiveSpecificSignal(_Signals.Terminated.self) { _, terminated in
-                        p.tell("signal:\(terminated)") // should not be signalled (!)
+                        p.tell("signal:\(terminated)")  // should not be signalled (!)
                         return .same
                     }
             }
@@ -128,10 +128,10 @@ final class TerminationWatchTests: SingleClusterSystemXCTestCase {
                 stoppableRef.tell(.stop)
                 return
                     (_Behavior<String>.receiveMessage { message in
-                        p.tell(message) // should NOT be signalled, we're back to Signals
+                        p.tell(message)  // should NOT be signalled, we're back to Signals
                         return .same
                     }).receiveSpecificSignal(_Signals.Terminated.self) { _, terminated in
-                        p.tell("signal:\(terminated.id.path)") // should be signalled (!)
+                        p.tell("signal:\(terminated.id.path)")  // should be signalled (!)
                         return .same
                     }
             }
@@ -156,9 +156,9 @@ final class TerminationWatchTests: SingleClusterSystemXCTestCase {
         p2.watch(stoppableRef)
 
         stoppableRef.tell(.stop)
-        stoppableRef.tell(.stop) // should result in dead letter
-        stoppableRef.tell(.stop) // should result in dead letter
-        stoppableRef.tell(.stop) // should result in dead letter
+        stoppableRef.tell(.stop)  // should result in dead letter
+        stoppableRef.tell(.stop)  // should result in dead letter
+        stoppableRef.tell(.stop)  // should result in dead letter
 
         try p.expectMessage("I (stopMePlz1) will now stop")
         // since the first message results in the actor becoming .stop
@@ -185,8 +185,8 @@ final class TerminationWatchTests: SingleClusterSystemXCTestCase {
         let notActuallyWatching: _ActorRef<String> = try system._spawn(
             "notActuallyWatching",
             .setup { context in
-                context.watch(stoppableRef) // watching...
-                context.unwatch(stoppableRef) // ... not *actually* watching!
+                context.watch(stoppableRef)  // watching...
+                context.unwatch(stoppableRef)  // ... not *actually* watching!
                 return _Behavior<String>.receiveMessage { message in
                     switch message {
                     case "ping":
@@ -214,7 +214,7 @@ final class TerminationWatchTests: SingleClusterSystemXCTestCase {
 
         try p1.expectTerminated(stoppableRef)
         try p2.expectTerminated(stoppableRef)
-        try p3_partnerOfNotActuallyWatching.expectNoMessage(for: .milliseconds(1000)) // make su
+        try p3_partnerOfNotActuallyWatching.expectNoMessage(for: .milliseconds(1000))  // make su
     }
 
     func test_minimized_terminationContract_shouldTriggerForWatchedActor() throws {
@@ -337,7 +337,7 @@ final class TerminationWatchTests: SingleClusterSystemXCTestCase {
                     probe.tell(.done)
                     return .same
                 }
-            } // NOT handling signal on purpose, we are in a Death Pact
+            }  // NOT handling signal on purpose, we are in a Death Pact
         )
 
         let juliet = try system._spawn(
@@ -345,7 +345,7 @@ final class TerminationWatchTests: SingleClusterSystemXCTestCase {
             _Behavior<JulietMessage>.receiveMessage { message in
                 switch message {
                 case .takePoison:
-                    return .stop // "stop myself"
+                    return .stop  // "stop myself"
                 }
             }
         )
@@ -373,7 +373,7 @@ final class TerminationWatchTests: SingleClusterSystemXCTestCase {
                     probe.tell(.done)
                     return .same
                 }
-            } // NOT handling signal on purpose, we are in a Death Pact
+            }  // NOT handling signal on purpose, we are in a Death Pact
         )
 
         let juliet = try system._spawn(
@@ -381,7 +381,7 @@ final class TerminationWatchTests: SingleClusterSystemXCTestCase {
             _Behavior<JulietMessage>.receiveMessage { message in
                 switch message {
                 case .takePoison:
-                    throw TakePoisonError() // "stop myself"
+                    throw TakePoisonError()  // "stop myself"
                 }
             }
         )
@@ -423,10 +423,10 @@ final class TerminationWatchTests: SingleClusterSystemXCTestCase {
             case let terminated as _Signals.Terminated:
                 p.tell(terminated)
             default:
-                () // ok
+                ()  // ok
             }
             pp.tell("\(signal)")
-            return .same // ignore the child termination, remain alive
+            return .same  // ignore the child termination, remain alive
         }
 
         let _: _ActorRef<String> = try system._spawn("parent", spawnSomeStoppers)
