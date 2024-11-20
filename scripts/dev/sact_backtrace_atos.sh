@@ -55,10 +55,10 @@ BIN=$1
 PID=$2
 # PID=$(ps aux | grep "SampleLetItCrash" | grep -v "grep" | awk '{print $2}')
 
-while read line
+while read -r line
 do
   address="$(echo "$line" | awk '{ print $3 }')"
-  source_pos=$(atos -p $PID -o $BIN -fullPath $address 2> /dev/null)
+  source_pos=$(atos -p "$PID" -o "$BIN" -fullPath "$address" 2> /dev/null)
 
   echo -n "$line" | awk 'BEGIN{} { printf "%s\t%s\t%s\t atos:", $1, $2, $3 }'
   echo -e "$CYAN$source_pos$NC"

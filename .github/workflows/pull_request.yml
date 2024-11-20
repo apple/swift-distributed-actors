@@ -9,7 +9,6 @@ jobs:
     name: Soundness
     uses: swiftlang/github-workflows/.github/workflows/soundness.yml@main
     with:
-      shell_check_enabled: false
       license_header_check_project_name: "Swift Distributed Actors"
       # We need to move to 6.0 here but have to fix the new warnings first
       docs_check_container_image: "swift:5.10-noble"
