@@ -23,3 +23,8 @@ jobs:
     with:
       matrix_linux_5_9_enabled: false
       matrix_linux_command: "swift package --disable-sandbox multi-node test"
+
+  static-sdk:
+    name: Static SDK
+    # Workaround https://github.com/nektos/act/issues/1875
+    uses: apple/swift-nio/.github/workflows/static_sdk.yml@main
