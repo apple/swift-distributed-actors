@@ -24,3 +24,17 @@ jobs:
       name: "Integration tests"
       matrix_linux_5_9_enabled: false
       matrix_linux_command: "swift package --disable-sandbox multi-node test"
+
+  sample-philosophers:
+    name: Sample dining philosophers
+    uses: apple/swift-nio/.github/workflows/swift_matrix.yml@main
+    with:
+      name: "Sample dining philosophers"
+      matrix_linux_5_9_enabled: false
+      matrix_linux_command: "swift run --package-path Samples SampleDiningPhilosophers"
+
+  cxx-interop:
+    name: Cxx interop
+    uses: apple/swift-nio/.github/workflows/cxx_interop.yml@main
+    with:
+      linux_5_9_enabled: false
