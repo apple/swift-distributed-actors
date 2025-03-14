@@ -21,5 +21,6 @@ jobs:
     name: Integration tests
     uses: apple/swift-nio/.github/workflows/swift_matrix.yml@main
     with:
+      name: "Integration tests"
       matrix_linux_5_9_enabled: false
       matrix_linux_command: "swift package --disable-sandbox multi-node test"
