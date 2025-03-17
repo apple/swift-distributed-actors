@@ -12,9 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Foundation
 import Logging
 import NIO
-import Foundation
 
 @testable import DistributedCluster
 

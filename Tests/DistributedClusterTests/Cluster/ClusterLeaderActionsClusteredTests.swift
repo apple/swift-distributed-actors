@@ -15,8 +15,8 @@
 import DistributedActorsTestKit
 import Foundation
 import NIOSSL
-import XCTest
 import SWIM
+import XCTest
 
 @testable import DistributedCluster
 

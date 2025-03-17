@@ -13,11 +13,11 @@
 //===----------------------------------------------------------------------===//
 
 import ClusterMembership
+import CoreMetrics
 import Distributed
 import Logging
 import NIOCore
 import SWIM
-import CoreMetrics
 
 import struct Dispatch.DispatchTime
 

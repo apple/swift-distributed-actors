@@ -14,8 +14,8 @@
 
 import DistributedActorsTestKit
 import Foundation
-import XCTest
 import SWIM
+import XCTest
 
 @testable import DistributedCluster
 

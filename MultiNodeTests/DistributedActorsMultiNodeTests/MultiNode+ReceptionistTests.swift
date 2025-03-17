@@ -13,8 +13,8 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedCluster
-import MultiNodeTestKit
 import Logging
+import MultiNodeTestKit
 
 public final class MultiNodeReceptionistTests: MultiNodeTestSuite {
     public init() {}

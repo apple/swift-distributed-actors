@@ -14,9 +14,9 @@
 
 import DistributedActorsConcurrencyHelpers
 import Foundation
-import XCTest
 import Logging
 import SWIM
+import XCTest
 
 @testable import DistributedCluster
 

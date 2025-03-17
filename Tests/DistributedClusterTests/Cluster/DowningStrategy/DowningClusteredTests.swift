@@ -13,8 +13,8 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-import XCTest
 import SWIM
+import XCTest
 
 @testable import DistributedCluster
 

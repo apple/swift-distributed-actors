@@ -14,8 +14,8 @@
 
 import Dispatch
 import Distributed
-import NIO
 import Logging
+import NIO
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Death Watch

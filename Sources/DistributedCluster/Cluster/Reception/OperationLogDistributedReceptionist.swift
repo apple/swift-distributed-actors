@@ -13,9 +13,9 @@
 //===----------------------------------------------------------------------===//
 
 import AsyncAlgorithms
+import CoreMetrics
 import Distributed
 import Logging
-import CoreMetrics
 import OrderedCollections
 
 // ==== ----------------------------------------------------------------------------------------------------------------
