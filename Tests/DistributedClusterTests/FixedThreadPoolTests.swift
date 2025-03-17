@@ -13,6 +13,8 @@
 //===----------------------------------------------------------------------===//
 
 import XCTest
+import Atomics
+import DistributedActorsTestKit
 
 @testable import DistributedCluster
 

@@ -12,6 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
+import NIOCore
+import NIOPosix
+
 /// A `_Behavior` is what executes when an `Actor` handles messages.
 ///
 /// The most important behavior is `_Behavior.receive` since it allows handling incoming messages with a simple block.

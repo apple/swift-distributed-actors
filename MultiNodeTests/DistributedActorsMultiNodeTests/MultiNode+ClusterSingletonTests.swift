@@ -14,6 +14,7 @@
 
 import DistributedCluster
 import MultiNodeTestKit
+import Logging
 
 public final class MultiNodeClusterSingletonTests: MultiNodeTestSuite {
     public init() {}

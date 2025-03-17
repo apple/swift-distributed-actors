@@ -15,6 +15,7 @@
 import DistributedActorsTestKit
 import NIO
 import XCTest
+import Logging
 
 @testable import DistributedCluster
 

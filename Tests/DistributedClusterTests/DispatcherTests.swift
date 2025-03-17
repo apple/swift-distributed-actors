@@ -16,6 +16,7 @@ import Dispatch
 import DistributedActorsTestKit
 import Foundation
 import NIO
+import Logging
 import XCTest
 
 @testable import DistributedCluster

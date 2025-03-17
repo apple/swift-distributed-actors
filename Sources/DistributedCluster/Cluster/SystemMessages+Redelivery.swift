@@ -14,6 +14,7 @@
 
 import Foundation
 import Logging
+import CoreMetrics
 
 import struct NIO.CircularBuffer
 

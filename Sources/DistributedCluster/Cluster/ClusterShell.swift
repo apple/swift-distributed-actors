@@ -16,6 +16,7 @@ import DistributedActorsConcurrencyHelpers
 import Logging
 import NIO
 import SWIM
+import CoreMetrics
 
 /// Cluster namespace.
 public enum Cluster {}

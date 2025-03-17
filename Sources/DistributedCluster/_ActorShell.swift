@@ -16,6 +16,7 @@ import CDistributedActorsMailbox
 import Logging
 import Metrics
 import NIO
+import Atomics
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Actor internals

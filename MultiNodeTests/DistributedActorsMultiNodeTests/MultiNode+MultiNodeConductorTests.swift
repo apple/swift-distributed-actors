@@ -14,6 +14,7 @@
 
 import DistributedCluster
 import MultiNodeTestKit
+import Logging
 
 /// Tests of the ``MultiNodeTestConductor`` itself.
 public final class MultiNodeConductorTests: MultiNodeTestSuite {

@@ -16,6 +16,7 @@ import Dispatch
 import Distributed
 import DistributedActorsConcurrencyHelpers
 import NIO
+import Logging
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: LifecycleWatchContainer
