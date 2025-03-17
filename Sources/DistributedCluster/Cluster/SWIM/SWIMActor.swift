@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import ClusterMembership
+import CoreMetrics
 import Distributed
 import Logging
 import NIOCore

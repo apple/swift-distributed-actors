@@ -14,6 +14,7 @@
 
 import Distributed
 import DistributedActorsTestKit
+import NIOCore
 import XCTest
 
 @testable import DistributedCluster
