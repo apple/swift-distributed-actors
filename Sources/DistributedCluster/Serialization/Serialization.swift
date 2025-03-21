@@ -378,7 +378,10 @@ extension Serialization {
 
     /// Generate `Serialization.Manifest` and serialize the passed in message.
     ///
-    /// - Parameter message: The message intended to be serialized. Existence of an apropriate serializer should be ensured before calling this method.
+    /// - Parameters:
+    ///   - message: The message intended to be serialized. Existence of an apropriate serializer should be ensured before calling this method.
+    ///   - file: The file path.
+    ///   - line: The line number.
     /// - Returns: `Serialized` describing what serializer was used to serialize the value, and its serialized bytes
     /// - Throws: If no manifest could be created for the value, or a manifest was created however it selected
     ///   a serializer (by ID) that is not registered with the system, or the serializer failing to serialize the message.
@@ -477,8 +480,10 @@ extension Serialization {
     /// Deserialize a given payload as the expected type, using the passed type and manifest.
     ///
     /// - Parameters:
-    ///   - as: expected type that the deserialized message should be
-    ///   - from: `Serialized` containing the manifest used to identify which serializer should be used to deserialize the bytes and the serialized bytes of the message
+    ///   - messageType: expected type that the deserialized message should be
+    ///   - serialized: `Serialized` containing the manifest used to identify which serializer should be used to deserialize the bytes and the serialized bytes of the message
+    ///   - file: The file path.
+    ///   - line: The line number.
     public func deserialize<T>(
         as messageType: T.Type,
         from serialized: Serialized,
@@ -491,9 +496,11 @@ extension Serialization {
     /// Deserialize a given payload as the expected type, using the passed type and manifest.
     ///
     /// - Parameters:
-    ///   - as: expected type that the deserialized message should be
-    ///   - from: `Buffer` containing the serialized bytes of the message
-    ///   - using: `Manifest` used to identify which serializer should be used to deserialize the bytes (json? protobuf? other?)
+    ///   - messageType: expected type that the deserialized message should be
+    ///   - buffer: `Buffer` containing the serialized bytes of the message
+    ///   - manifest: `Manifest` used to identify which serializer should be used to deserialize the bytes (json? protobuf? other?)
+    ///   - file: The file path.
+    ///   - line: The line number.
     public func deserialize<T>(
         as messageType: T.Type,
         from buffer: Serialization.Buffer,
@@ -533,8 +540,10 @@ extension Serialization {
     /// is to carry it as an `Any` inside a `DeadLetter` notification.
     ///
     /// - Parameters:
-    ///   - from: `Buffer` containing the serialized bytes of the message
-    ///   - using: `Manifest` used identify the decoder as well as summon the Type of the message. The resulting message is NOT cast to the summoned type.
+    ///   - buffer: `Buffer` containing the serialized bytes of the message
+    ///   - manifest: `Manifest` used identify the decoder as well as summon the Type of the message. The resulting message is NOT cast to the summoned type.
+    ///   - file: The file path.
+    ///   - line: The line number.
     public func deserializeAny(
         from buffer: Serialization.Buffer,
         using manifest: Serialization.Manifest,

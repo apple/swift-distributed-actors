@@ -61,6 +61,8 @@ extension LifecycleWatch {
     ///
     /// - Parameters:
     ///   - watchee: the actor to watch
+    ///   - file: the file path
+    ///   - line: the line number
     /// - Returns: the watched actor
     @discardableResult
     public func watchTermination<Watchee>(

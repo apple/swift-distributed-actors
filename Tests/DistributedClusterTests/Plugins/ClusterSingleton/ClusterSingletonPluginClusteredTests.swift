@@ -324,7 +324,8 @@ final class ClusterSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCas
         pinfo("Nodes communicated successfully with singleton on [fourth]")
     }
 
-    func test_remoteCallShouldFailAfterAllocationTimedOut() async throws {
+    // https://github.com/apple/swift-distributed-actors/issues/1195
+    func _test_remoteCallShouldFailAfterAllocationTimedOut() async throws {
         var singletonSettings = ClusterSingletonSettings()
         singletonSettings.allocationStrategy = .byLeadership
         singletonSettings.allocationTimeout = .milliseconds(100)

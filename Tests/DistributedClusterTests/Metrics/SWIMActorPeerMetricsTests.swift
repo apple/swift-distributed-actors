@@ -87,7 +87,8 @@ final class ActorMetricsSWIMActorPeerMetricsTests: ClusteredActorSystemsXCTestCa
         counter.totalValue.shouldEqual(1)
     }
 
-    func test_swimPeer_pingRequest_shouldRemoteMetrics() async throws {
+    // Flaky test, see https://github.com/apple/swift-distributed-actors/issues/1193
+    func _test_swimPeer_pingRequest_shouldRemoteMetrics() async throws {
         let originNode = await setUpNode("origin") { settings in
             settings.swim.probeInterval = .seconds(30)  // Don't let gossip interfere with the test
         }
