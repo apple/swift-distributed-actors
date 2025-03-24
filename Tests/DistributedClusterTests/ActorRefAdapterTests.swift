@@ -12,11 +12,43 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if os(Linux)
+@preconcurrency import Glibc
+#endif
+
 import DistributedActorsTestKit
 import Foundation
 import XCTest
 
 @testable import DistributedCluster
+
+final class __ForceFlush2StartTest: XCTestCase {
+    override class func setUp() {
+        super.setUp()
+        
+        fflush(stdout)
+        fflush(stderr)
+        for channel in [0, 1] as [Int32] {
+           write(channel, Array(repeating: UInt8(ascii: "_"), count: 32*1024) + [UInt8(ascii: "\n"), 0], 32*1024 + 2)
+        }
+    }
+    
+    func test() {}
+}
+
+final class Z_ForceFlush2EndTest: XCTestCase {
+    override class func setUp() {
+        super.setUp()
+        
+        fflush(stdout)
+        fflush(stderr)
+        for channel in [0, 1] as [Int32] {
+           write(channel, Array(repeating: UInt8(ascii: "_"), count: 32*1024) + [UInt8(ascii: "\n"), 0], 32*1024 + 2)
+        }
+    }
+    
+    func test() {}
+}
 
 class _ActorRefAdapterTests: SingleClusterSystemXCTestCase {
     func test_adaptedRef_shouldConvertMessages() throws {
