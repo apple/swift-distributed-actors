@@ -42,3 +42,24 @@ jobs:
     uses: apple/swift-nio/.github/workflows/cxx_interop.yml@main
     with:
       linux_5_9_enabled: false
+
+  split-build-test:
+    name: Build and test separately
+    runs-on: ubuntu-latest
+    container:
+      image: "swiftlang/swift:nightly-main-jammy"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          submodules: true
+      - name: Mark the workspace as safe
+        # https://github.com/actions/checkout/issues/766
+        run: git config --global --add safe.directory ${GITHUB_WORKSPACE}
+      - name: Build
+        run: |
+          swift build --explicit-target-dependency-import-check error -Xswiftc -require-explicit-sendable
+      - name: Test
+        run: |
+          swift test --explicit-target-dependency-import-check error -Xswiftc -require-explicit-sendable
