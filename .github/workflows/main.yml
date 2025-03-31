@@ -38,3 +38,9 @@ jobs:
     uses: apple/swift-nio/.github/workflows/cxx_interop.yml@main
     with:
       linux_5_9_enabled: false
+
+  macos-tests:
+    name: macOS tests
+    uses: apple/swift-nio/.github/workflows/macos_tests.yml@main
+    with:
+      build_scheme: swift-distributed-actors-Package
