@@ -42,3 +42,7 @@ jobs:
     uses: apple/swift-nio/.github/workflows/cxx_interop.yml@main
     with:
       linux_5_9_enabled: false
+
+  macos-tests:
+    with:
+      runner_pool: general
