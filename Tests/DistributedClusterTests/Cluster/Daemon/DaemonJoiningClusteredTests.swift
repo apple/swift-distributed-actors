@@ -14,8 +14,9 @@
 
 import Distributed
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import XCTest
+
+@testable import DistributedCluster
 
 final class DaemonJoiningClusteredTests: ClusteredActorSystemsXCTestCase {
     override func configureLogCapture(settings: inout LogCapture.Settings) {
@@ -28,10 +29,10 @@ final class DaemonJoiningClusteredTests: ClusteredActorSystemsXCTestCase {
             "/system/cluster/leadership",
             "/system/nodeDeathWatcher",
 
-            "/dead/system/receptionist-ref", // FIXME(distributed): it should simply be quiet
+            "/dead/system/receptionist-ref",  // FIXME(distributed): it should simply be quiet
         ]
         settings.excludeGrep = [
-            "timer",
+            "timer"
         ]
     }
 

@@ -39,7 +39,7 @@ final class DiscoveryShell {
             // Try to initialise clusterd if needed
             self.settings.initializeClusterd(context.system)
             context.log.info("Initializing discovery, done.")
-            
+
             self.subscription = self.settings.subscribe(
                 onNext: { result in
                     switch result {

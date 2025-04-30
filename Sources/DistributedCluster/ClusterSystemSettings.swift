@@ -478,7 +478,7 @@ public struct ServiceDiscoverySettings {
     func subscribe(onNext nextResultHandler: @escaping (Result<[Cluster.Endpoint], Error>) -> Void, onComplete completionHandler: @escaping (CompletionReason) -> Void) -> CancellationToken? {
         switch self.implementation {
         case .static(_, let subscribe),
-             .dynamic(_, let subscribe):
+            .dynamic(_, let subscribe):
             subscribe(nextResultHandler, completionHandler)
         case .clusterDaemon:
             .none
