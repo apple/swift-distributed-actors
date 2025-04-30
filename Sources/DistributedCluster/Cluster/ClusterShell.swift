@@ -120,7 +120,7 @@ internal class ClusterShell {
 
         // 2) Ensure the failure detector knows about this node
         Task {
-            await self._swimShell.whenLocal { __secretlyKnownToBeLocal in  // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
+            await self._swimShell?.whenLocal { __secretlyKnownToBeLocal in  // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
                 __secretlyKnownToBeLocal.monitor(node: associated.handshake.remoteNode)
             }
         }
