@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -14,9 +14,11 @@
 
 import Distributed
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import Foundation
+import Logging
 import XCTest
+
+@testable import DistributedCluster
 
 final class DistributedReceptionistTests: SingleClusterSystemXCTestCase {
     let receptionistBehavior = _OperationLogClusterReceptionist(settings: .default).behavior
@@ -216,101 +218,101 @@ final class DistributedReceptionistTests: SingleClusterSystemXCTestCase {
         }
     }
 
-//    func test_receptionist_shouldReplyWithRegistered() throws {
-//        let receptionist = SystemReceptionist(ref: try system._spawn("receptionist", self.receptionistBehavior))
-//        let probe: ActorTestProbe<_Reception.Registered<_ActorRef<String>>> = self.testKit.makeTestProbe()
-//
-//        let key = DistributedReception.Key(_ActorRef<String>.self, id: "test")
-//
-//        receptionist.checkIn(ref, with: key, replyTo: probe.ref)
-//
-//        let checkedIn = try probe.expectMessage()
-//
-//        checkedIn.key.id.shouldEqual(key.id)
-//        checkedIn.ref.shouldEqual(ref)
-//    }
-//
-//    func test_receptionist_shouldCheckOutTerminatedRefs() throws {
-//        let receptionist = SystemReceptionist(ref: try system._spawn("receptionist", self.receptionistBehavior))
-//        let lookupProbe: ActorTestProbe<_Reception.Listing<_ActorRef<String>>> = self.testKit.makeTestProbe()
-//
-//        let ref: _ActorRef<String> = try system._spawn(
-//                .anonymous,
-//                .receiveMessage { _ in
-//                    .stop
-//                }
-//        )
-//
-//        let key = _Reception.Key(_ActorRef<String>.self, id: "test")
-//
-//        receptionist.checkIn(ref, with: key)
-//
-//        ref.tell("stop")
-//
-//        try self.testKit.eventually(within: .seconds(1)) {
-//            receptionist.lookup(key, replyTo: lookupProbe.ref)
-//            let message = try lookupProbe.expectMessage()
-//
-//            // TODO: modify TestKit to allow usage of matchers instead
-//            guard message.refs.isEmpty else {
-//                throw self.testKit.error()
-//            }
-//        }
-//    }
-//
-//    func test_receptionist_shouldContinuouslySendUpdatesForSubscriptions() throws {
-//        let receptionist = SystemReceptionist(ref: try system._spawn("receptionist", self.receptionistBehavior))
-//        let lookupProbe: ActorTestProbe<_Reception.Listing<_ActorRef<String>>> = self.testKit.makeTestProbe()
-//
-//        let refA: _ActorRef<String> = try system._spawn(
-//                .anonymous,
-//                .receiveMessage { _ in
-//                    .same
-//                }
-//        )
-//
-//        let refB: _ActorRef<String> = try system._spawn(
-//                .anonymous,
-//                .receiveMessage { _ in
-//                    .stop
-//                }
-//        )
-//
-//        let key = _Reception.Key(_ActorRef<String>.self, id: "test")
-//
-//        receptionist.listing(lookupProbe.ref, to: key)
-//        try lookupProbe.expectMessage(_Reception.Listing(refs: [], key: key))
-//
-//        receptionist.checkIn(refA, with: key)
-//        try lookupProbe.expectMessage(_Reception.Listing(refs: [refA.asAddressable], key: key))
-//
-//        receptionist.checkIn(refB, with: key)
-//        try lookupProbe.expectMessage(_Reception.Listing(refs: [refA.asAddressable, refB.asAddressable], key: key))
-//
-//        refB.tell("stop")
-//        try lookupProbe.expectMessage(_Reception.Listing(refs: [refA.asAddressable], key: key))
-//    }
-//
-//    // ==== ------------------------------------------------------------------------------------------------------------
-//    // MARK: Delayed flush
-//
-//    func test_delayedFlush_shouldEmitEvenWhenAllPeersRemoved() throws {
-//        let receptionist = SystemReceptionist(ref: try system._spawn("receptionist", self.receptionistBehavior))
-//        let lookupProbe: ActorTestProbe<_Reception.Listing<_ActorRef<String>>> = self.testKit.makeTestProbe()
-//
-//        let key = _Reception.Key(_ActorRef<String>.self, id: "test")
-//
-//        receptionist.listing(lookupProbe.ref, to: key)
-//        _ = try lookupProbe.expectMessage()
-//
-//        receptionist.checkIn(try system._spawn(.anonymous, .receiveMessage { _ in .same }), with: key)
-//        receptionist.checkIn(try system._spawn(.anonymous, .receiveMessage { _ in .same }), with: key)
-//        receptionist.checkIn(try system._spawn(.anonymous, .receiveMessage { _ in .same }), with: key)
-//
-//        // we're expecting to get the update in batch, thanks to the delayed flushing
-//        let listing1 = try lookupProbe.expectMessage()
-//        listing1.count.shouldEqual(3)
-//    }
+    //    func test_receptionist_shouldReplyWithRegistered() throws {
+    //        let receptionist = SystemReceptionist(ref: try system._spawn("receptionist", self.receptionistBehavior))
+    //        let probe: ActorTestProbe<_Reception.Registered<_ActorRef<String>>> = self.testKit.makeTestProbe()
+    //
+    //        let key = DistributedReception.Key(_ActorRef<String>.self, id: "test")
+    //
+    //        receptionist.checkIn(ref, with: key, replyTo: probe.ref)
+    //
+    //        let checkedIn = try probe.expectMessage()
+    //
+    //        checkedIn.key.id.shouldEqual(key.id)
+    //        checkedIn.ref.shouldEqual(ref)
+    //    }
+    //
+    //    func test_receptionist_shouldCheckOutTerminatedRefs() throws {
+    //        let receptionist = SystemReceptionist(ref: try system._spawn("receptionist", self.receptionistBehavior))
+    //        let lookupProbe: ActorTestProbe<_Reception.Listing<_ActorRef<String>>> = self.testKit.makeTestProbe()
+    //
+    //        let ref: _ActorRef<String> = try system._spawn(
+    //                .anonymous,
+    //                .receiveMessage { _ in
+    //                    .stop
+    //                }
+    //        )
+    //
+    //        let key = _Reception.Key(_ActorRef<String>.self, id: "test")
+    //
+    //        receptionist.checkIn(ref, with: key)
+    //
+    //        ref.tell("stop")
+    //
+    //        try self.testKit.eventually(within: .seconds(1)) {
+    //            receptionist.lookup(key, replyTo: lookupProbe.ref)
+    //            let message = try lookupProbe.expectMessage()
+    //
+    //            // TODO: modify TestKit to allow usage of matchers instead
+    //            guard message.refs.isEmpty else {
+    //                throw self.testKit.error()
+    //            }
+    //        }
+    //    }
+    //
+    //    func test_receptionist_shouldContinuouslySendUpdatesForSubscriptions() throws {
+    //        let receptionist = SystemReceptionist(ref: try system._spawn("receptionist", self.receptionistBehavior))
+    //        let lookupProbe: ActorTestProbe<_Reception.Listing<_ActorRef<String>>> = self.testKit.makeTestProbe()
+    //
+    //        let refA: _ActorRef<String> = try system._spawn(
+    //                .anonymous,
+    //                .receiveMessage { _ in
+    //                    .same
+    //                }
+    //        )
+    //
+    //        let refB: _ActorRef<String> = try system._spawn(
+    //                .anonymous,
+    //                .receiveMessage { _ in
+    //                    .stop
+    //                }
+    //        )
+    //
+    //        let key = _Reception.Key(_ActorRef<String>.self, id: "test")
+    //
+    //        receptionist.listing(lookupProbe.ref, to: key)
+    //        try lookupProbe.expectMessage(_Reception.Listing(refs: [], key: key))
+    //
+    //        receptionist.checkIn(refA, with: key)
+    //        try lookupProbe.expectMessage(_Reception.Listing(refs: [refA.asAddressable], key: key))
+    //
+    //        receptionist.checkIn(refB, with: key)
+    //        try lookupProbe.expectMessage(_Reception.Listing(refs: [refA.asAddressable, refB.asAddressable], key: key))
+    //
+    //        refB.tell("stop")
+    //        try lookupProbe.expectMessage(_Reception.Listing(refs: [refA.asAddressable], key: key))
+    //    }
+    //
+    //    // ==== ------------------------------------------------------------------------------------------------------------
+    //    // MARK: Delayed flush
+    //
+    //    func test_delayedFlush_shouldEmitEvenWhenAllPeersRemoved() throws {
+    //        let receptionist = SystemReceptionist(ref: try system._spawn("receptionist", self.receptionistBehavior))
+    //        let lookupProbe: ActorTestProbe<_Reception.Listing<_ActorRef<String>>> = self.testKit.makeTestProbe()
+    //
+    //        let key = _Reception.Key(_ActorRef<String>.self, id: "test")
+    //
+    //        receptionist.listing(lookupProbe.ref, to: key)
+    //        _ = try lookupProbe.expectMessage()
+    //
+    //        receptionist.checkIn(try system._spawn(.anonymous, .receiveMessage { _ in .same }), with: key)
+    //        receptionist.checkIn(try system._spawn(.anonymous, .receiveMessage { _ in .same }), with: key)
+    //        receptionist.checkIn(try system._spawn(.anonymous, .receiveMessage { _ in .same }), with: key)
+    //
+    //        // we're expecting to get the update in batch, thanks to the delayed flushing
+    //        let listing1 = try lookupProbe.expectMessage()
+    //        listing1.count.shouldEqual(3)
+    //    }
 }
 
 distributed actor Forwarder {

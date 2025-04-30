@@ -6,16 +6,17 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import NIO
 import XCTest
+
+@testable import DistributedCluster
 
 final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
     override func configureLogCapture(settings: inout LogCapture.Settings) {
@@ -119,7 +120,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
         try assertAssociated(second, withExactly: first.cluster.node)
 
         let oldSecond = second
-        let shutdown = try oldSecond.shutdown() // kill second node
+        let shutdown = try oldSecond.shutdown()  // terminate second node
         try shutdown.wait(atMost: .seconds(3))
 
         let secondReplacement = await setUpNode(secondName + "-REPLACEMENT") { settings in
@@ -168,7 +169,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
     func test_ignore_attemptToSelfJoinANode() async throws {
         let alone = await setUpNode("alone")
 
-        alone.cluster.join(endpoint: alone.cluster.node.endpoint) // "self join", should simply be ignored
+        alone.cluster.join(endpoint: alone.cluster.node.endpoint)  // "self join", should simply be ignored
 
         let testKit = self.testKit(alone)
         try await testKit.eventually(within: .seconds(3)) {
@@ -216,7 +217,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
         let secondEndpoint = Cluster.Endpoint(systemName: "second", host: "127.0.0.1", port: secondPort)
 
         first.cluster.join(endpoint: secondEndpoint)
-        sleep(3) // we give it some time to keep failing to connect, so the second node is not yet started
+        sleep(3)  // we give it some time to keep failing to connect, so the second node is not yet started
 
         let second = await setUpNode("second") { settings in
             settings.bindPort = secondPort
@@ -239,7 +240,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
         let secondEndpoint = Cluster.Endpoint(systemName: "second", host: "127.0.0.1", port: secondPort)
 
         first.cluster.join(endpoint: secondEndpoint)
-        sleep(1) // we give it some time to keep failing to connect (and exhaust the retries)
+        sleep(1)  // we give it some time to keep failing to connect (and exhaust the retries)
 
         let logs = self.capturedLogs(of: first)
         try logs.awaitLogContaining(self.testKit(first), text: "Giving up on handshake with node [sact://second@127.0.0.1:9011]")
@@ -247,7 +248,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
 
     func test_handshake_shouldNotAssociateWhenRejected() async throws {
         let first = await setUpNode("first") { settings in
-            settings._protocolVersion.major += 1 // handshake will be rejected on major version difference
+            settings._protocolVersion.major += 1  // handshake will be rejected on major version difference
         }
         let second = await setUpNode("second")
 
@@ -259,7 +260,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
 
     func test_handshake_shouldNotifyOnRejection() async throws {
         let first = await setUpNode("first") { settings in
-            settings._protocolVersion.major += 1 // handshake will be rejected on major version difference
+            settings._protocolVersion.major += 1  // handshake will be rejected on major version difference
         }
         let second = await setUpNode("second")
 
@@ -280,7 +281,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
 
     func test_handshake_shouldRejectIfNodeIsLeavingOrDown() async throws {
         let first = await setUpNode("first") { settings in
-            settings.onDownAction = .none // don't shutdown this node (keep process alive)
+            settings.onDownAction = .none  // don't shutdown this node (keep process alive)
         }
         let second = await setUpNode("second")
 
@@ -291,7 +292,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
             let snapshot: Cluster.Membership = await first.cluster.membershipSnapshot
             if let selfMember = snapshot.member(first.cluster.node) {
                 if selfMember.status == .down {
-                    () // good
+                    ()  // good
                 } else {
                     throw testKit.error("Expecting \(first.cluster.node) to become [.down] but was \(selfMember.status). Membership: \(pretty: snapshot)")
                 }
@@ -339,10 +340,13 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
 
         // actor on `second` node
         let p2 = self.testKit(second).makeTestProbe(expecting: String.self)
-        let secondOne: _ActorRef<String> = try second._spawn("second-1", .receive { _, message in
-            p2.tell("Got:\(message)")
-            return .same
-        })
+        let secondOne: _ActorRef<String> = try second._spawn(
+            "second-1",
+            .receive { _, message in
+                p2.tell("Got:\(message)")
+                return .same
+            }
+        )
         let secondFullAddress = ActorID(remote: second.cluster.node, path: secondOne.path, incarnation: secondOne.id.incarnation)
 
         // we somehow obtained a ref to secondOne (on second node) without associating second yet
@@ -372,7 +376,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
 
     func test_down_self_shouldChangeMembershipSelfToBeDown() async throws {
         let (first, second) = await setUpPair { settings in
-            settings.onDownAction = .none // as otherwise we can't inspect if we really changed the status to .down, as we might shutdown too quickly :-)
+            settings.onDownAction = .none  // as otherwise we can't inspect if we really changed the status to .down, as we might shutdown too quickly :-)
         }
 
         second.cluster.join(endpoint: first.cluster.node.endpoint)

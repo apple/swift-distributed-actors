@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -158,8 +158,7 @@ struct AnyGossipLogic<Gossip: Codable, Acknowledgement: Codable>: GossipLogic, C
     }
 
     init<Logic>(_ logic: Logic)
-        where Logic: GossipLogic, Logic.Gossip == Gossip, Logic.Acknowledgement == Acknowledgement
-    {
+    where Logic: GossipLogic, Logic.Gossip == Gossip, Logic.Acknowledgement == Acknowledgement {
         var l = logic
         self._selectPeers = { l.selectPeers($0) }
         self._makePayload = { l.makePayload(target: $0) }

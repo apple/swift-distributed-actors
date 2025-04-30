@@ -6,18 +6,18 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsConcurrencyHelpers
-@testable import DistributedCluster
 import Foundation
 import Logging
-
 import XCTest
+
+@testable import DistributedCluster
 
 /// Contains helper functions for testing Actor based code.
 /// Due to their asynchronous nature Actors are sometimes tricky to write assertions for,
@@ -68,7 +68,8 @@ extension ActorTestKit {
     public func makeTestProbe<Message: Codable>(
         _ naming: _ActorNaming? = nil,
         expecting type: Message.Type = Message.self,
-        file: StaticString = #filePath, line: UInt = #line
+        file: StaticString = #filePath,
+        line: UInt = #line
     ) -> ActorTestProbe<Message> {
         self.makeProbesLock.lock()
         defer { self.makeProbesLock.unlock() }
@@ -102,7 +103,9 @@ extension ActorTestKit {
     /// - Hint: Use `fishForMessages` and `fishFor` to filter expectations for specific events.
     public func spawnClusterEventStreamTestProbe(
         _ naming: _ActorNaming? = nil,
-        file: String = #filePath, line: UInt = #line, column: UInt = #column
+        file: String = #filePath,
+        line: UInt = #line,
+        column: UInt = #column
     ) async -> ActorTestProbe<Cluster.Event> {
         let eventStream = self.system.cluster.events
         let p = self.makeTestProbe(naming ?? _ActorNaming.prefixed(with: "\(ClusterEventStream.self)-subscriberProbe"), expecting: Cluster.Event.self)
@@ -126,8 +129,11 @@ extension ActorTestKit {
     // TODO: should use default `within` from TestKit
     @discardableResult
     public func eventually<T>(
-        within duration: Duration, interval: Duration = .milliseconds(100),
-        file: StaticString = #filePath, line: UInt = #line, column: UInt = #column,
+        within duration: Duration,
+        interval: Duration = .milliseconds(100),
+        file: StaticString = #filePath,
+        line: UInt = #line,
+        column: UInt = #column,
         _ block: () throws -> T
     ) throws -> T {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
@@ -172,8 +178,11 @@ extension ActorTestKit {
     // TODO: should use default `within` from TestKit
     @discardableResult
     public func eventually<T>(
-        within duration: Duration, interval: Duration = .milliseconds(100),
-        file: StaticString = #filePath, line: UInt = #line, column: UInt = #column,
+        within duration: Duration,
+        interval: Duration = .milliseconds(100),
+        file: StaticString = #filePath,
+        line: UInt = #line,
+        column: UInt = #column,
         _ block: () async throws -> T
     ) async throws -> T {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
@@ -237,10 +246,10 @@ public struct EventuallyError: Error, CustomStringConvertible, CustomDebugString
         }
 
         message += """
-        No result within \(self.duration.prettyDescription) for block at \(self.callSite.file):\(self.callSite.line). \
-        Queried \(self.polledTimes) times, within \(self.duration.prettyDescription). \
-        \(lastErrorMessage)
-        """
+            No result within \(self.duration.prettyDescription) for block at \(self.callSite.file):\(self.callSite.line). \
+            Queried \(self.polledTimes) times, within \(self.duration.prettyDescription). \
+            \(lastErrorMessage)
+            """
 
         return message
     }
@@ -249,7 +258,8 @@ public struct EventuallyError: Error, CustomStringConvertible, CustomDebugString
         let error = self.callSite.error(
             """
             Eventually block failed, after \(self.duration) (polled \(self.polledTimes) times), last error: \(optional: self.lastError)
-            """)
+            """
+        )
         return "\(error)"
     }
 }
@@ -261,8 +271,11 @@ extension ActorTestKit {
     /// Executes passed in block numerous times, to check the assertion holds over time.
     /// Throws an error when the block fails within the specified time amount.
     public func assertHolds(
-        for duration: Duration, interval: Duration = .milliseconds(100),
-        file: StaticString = #filePath, line: UInt = #line, column: UInt = #column,
+        for duration: Duration,
+        interval: Duration = .milliseconds(100),
+        file: StaticString = #filePath,
+        line: UInt = #line,
+        column: UInt = #column,
         _ block: () throws -> Void
     ) throws {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
@@ -309,7 +322,7 @@ extension ActorTestKit {
         }
 
         switch res {
-        case .result: return // good
+        case .result: return  // good
         case .results(let refs): throw callSiteInfo.error("Found more than a single ref for assertion! Got \(refs).")
         case .completed: throw callSiteInfo.error("Failed to find actor occupying [\(path)]!")
         case .failed(let err): throw callSiteInfo.error("Path \(path) was not occupied by any actor! Error: \(err)")
@@ -354,10 +367,8 @@ extension ActorTestKit {
 
 struct MockActorContextError: Error, CustomStringConvertible {
     var description: String {
-        "MockActorContextError(" +
-            "A mock context can not be used to perform any real actions! " +
-            "If you find yourself needing to perform assertions on an actor context please file a ticket." + // this would be "EffectfulContext"
-            ")"
+        "MockActorContextError(" + "A mock context can not be used to perform any real actions! " + "If you find yourself needing to perform assertions on an actor context please file a ticket."  // this would be "EffectfulContext"
+            + ")"
     }
 }
 
@@ -395,14 +406,15 @@ public final class Mock_ActorContext<Message: Codable>: _ActorContext<Message> {
     }
 
     override public var props: _Props {
-        .init() // mock impl
+        .init()  // mock impl
     }
 
     @discardableResult
     override public func watch<Watchee>(
         _ watchee: Watchee,
         with terminationMessage: Message? = nil,
-        file: String = #filePath, line: UInt = #line
+        file: String = #filePath,
+        line: UInt = #line
     ) -> Watchee where Watchee: _DeathWatchable {
         fatalError("Failed: \(MockActorContextError())")
     }
@@ -410,30 +422,35 @@ public final class Mock_ActorContext<Message: Codable>: _ActorContext<Message> {
     @discardableResult
     override public func unwatch<Watchee>(
         _ watchee: Watchee,
-        file: String = #filePath, line: UInt = #line
+        file: String = #filePath,
+        line: UInt = #line
     ) -> Watchee where Watchee: _DeathWatchable {
         fatalError("Failed: \(MockActorContextError())")
     }
 
     @discardableResult
     override public func _spawn<M>(
-        _ naming: _ActorNaming, of type: M.Type = M.self, props: _Props = _Props(),
-        file: String = #filePath, line: UInt = #line,
+        _ naming: _ActorNaming,
+        of type: M.Type = M.self,
+        props: _Props = _Props(),
+        file: String = #filePath,
+        line: UInt = #line,
         _ behavior: _Behavior<M>
     ) throws -> _ActorRef<M>
-        where M: Codable
-    {
+    where M: Codable {
         fatalError("Failed: \(MockActorContextError())")
     }
 
     @discardableResult
     override public func _spawnWatch<M>(
-        _ naming: _ActorNaming, of type: M.Type = M.self, props: _Props = _Props(),
-        file: String = #filePath, line: UInt = #line,
+        _ naming: _ActorNaming,
+        of type: M.Type = M.self,
+        props: _Props = _Props(),
+        file: String = #filePath,
+        line: UInt = #line,
         _ behavior: _Behavior<M>
     ) throws -> _ActorRef<M>
-        where M: Codable
-    {
+    where M: Codable {
         fatalError("Failed: \(MockActorContextError())")
     }
 
@@ -488,6 +505,7 @@ extension ActorTestKit {
 // Used to mark a repeatable context, in which `ActorTestProbe.expectX` does not
 // immediately fail the test, but instead lets the `ActorTestKit.eventually`
 // block handle it.
+// swift-format-ignore: AmbiguousTrailingClosureOverload
 extension ActorTestKit {
     @TaskLocal
     static var repeatableContextCounter = 0

@@ -6,21 +6,21 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+
+import Atomics
+import DistributedActorsConcurrencyHelpers
+import NIO
 
 #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
 import Darwin
 #else
 import Glibc
 #endif
-
-import Atomics
-import DistributedActorsConcurrencyHelpers
-import NIO
 
 /// Not intended for general use.
 internal enum ThreadError: Error {
@@ -45,14 +45,16 @@ public class _Thread {
     public init(_ f: @escaping () -> Void) throws {
         let lock = _Mutex()
         let isRunning = ManagedAtomic<Bool>(true)
-        let ref = Unmanaged.passRetained(BoxedClosure {
-            defer {
-                lock.synchronized {
-                    isRunning.store(false, ordering: .relaxed)
+        let ref = Unmanaged.passRetained(
+            BoxedClosure {
+                defer {
+                    lock.synchronized {
+                        isRunning.store(false, ordering: .relaxed)
+                    }
                 }
+                f()
             }
-            f()
-        })
+        )
 
         #if os(Linux)
         var t = pthread_t()
@@ -78,7 +80,7 @@ public class _Thread {
     }
 
     deinit {
-//        self.isRunning.destroy()
+        //        self.isRunning.destroy()
     }
 
     public func cancel() {

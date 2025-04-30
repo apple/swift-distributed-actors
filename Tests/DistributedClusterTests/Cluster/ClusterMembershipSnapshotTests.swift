@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -70,7 +70,7 @@ final class ClusterMembershipSnapshotTests: ClusteredActorSystemsXCTestCase {
             // snapshot MUST NOT be "behind" it may be HEAD though (e.g. 3 events are being emitted now, and we'll get them in order)
             // but the snapshot already knows about all of them.
             snapshot.count.shouldBeGreaterThanOrEqual(membership.count)
-            membership.members(atLeast: .joining).forEach { mm in
+            for mm in membership.members(atLeast: .joining) {
                 if let nm = snapshot.member(mm.node) {
                     nm.status.shouldBeGreaterThanOrEqual(mm.status)
                 }

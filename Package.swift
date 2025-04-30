@@ -1,8 +1,9 @@
 // swift-tools-version:5.10
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
-import class Foundation.ProcessInfo
 import PackageDescription
+
+import class Foundation.ProcessInfo
 
 // Workaround: Since we cannot include the flat just as command line options since then it applies to all targets,
 // and ONE of our dependencies currently produces one warning, we have to use this workaround to enable it in _our_
@@ -16,7 +17,7 @@ let products: [PackageDescription.Product] = [
     .library(
         name: "DistributedCluster",
         targets: ["DistributedCluster"]
-    ),
+    )
 ]
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -30,11 +31,12 @@ var targets: [PackageDescription.Target] = [
         name: "DistributedCluster",
         dependencies: [
             "DistributedActorsConcurrencyHelpers",
-            "CDistributedActorsMailbox", // TODO(swift): remove mailbox runtime, use Swift actors directly
+            "CDistributedActorsMailbox",  // TODO(swift): remove mailbox runtime, use Swift actors directly
             .product(name: "OrderedCollections", package: "swift-collections"),
             .product(name: "Atomics", package: "swift-atomics"),
             .product(name: "SWIM", package: "swift-cluster-membership"),
             .product(name: "NIO", package: "swift-nio"),
+            .product(name: "NIOPosix", package: "swift-nio"),
             .product(name: "NIOFoundationCompat", package: "swift-nio"),
             .product(name: "NIOSSL", package: "swift-nio-ssl"),
             .product(name: "NIOExtras", package: "swift-nio-extras"),
@@ -88,7 +90,7 @@ var targets: [PackageDescription.Target] = [
         name: "MultiNodeTestPlugin",
         capability: .command(
             intent: .custom(verb: "multi-node", description: "Run MultiNodeTestKit based tests across multiple processes or physical compute nodes")
-            /* permissions: needs full network access */
+            // permissions: needs full network access
         ),
         dependencies: []
     ),
@@ -122,7 +124,7 @@ var targets: [PackageDescription.Target] = [
     .target(
         name: "DistributedActorsMultiNodeTests",
         dependencies: [
-            "MultiNodeTestKit",
+            "MultiNodeTestKit"
         ],
         path: "MultiNodeTests/DistributedActorsMultiNodeTests"
     ),
@@ -134,7 +136,7 @@ var targets: [PackageDescription.Target] = [
     .executableTarget(
         name: "it_Clustered_swim_suspension_reachability",
         dependencies: [
-            "DistributedCluster",
+            "DistributedCluster"
         ],
         path: "IntegrationTests/tests_01_cluster/it_Clustered_swim_suspension_reachability"
     ),
@@ -155,7 +157,7 @@ var targets: [PackageDescription.Target] = [
         name: "DistributedActorsConcurrencyHelpers",
         dependencies: [],
         exclude: [
-            "README.md",
+            "README.md"
         ]
     ),
 ]
@@ -164,7 +166,7 @@ var dependencies: [Package.Dependency] = [
     .package(url: "https://github.com/apple/swift-atomics", from: "1.1.0"),
 
     // .package(url: "https://github.com/apple/swift-cluster-membership", from: "0.3.0"),
-//    .package(name: "swift-cluster-membership", path: "Packages/swift-cluster-membership"), // FIXME: just work in progress
+    //    .package(name: "swift-cluster-membership", path: "Packages/swift-cluster-membership"), // FIXME: just work in progress
     .package(url: "https://github.com/apple/swift-cluster-membership", branch: "main"),
 
     .package(url: "https://github.com/apple/swift-nio", from: "2.61.1"),
@@ -184,11 +186,10 @@ var dependencies: [Package.Dependency] = [
     // ~~~ Observability ~~~
     .package(url: "https://github.com/apple/swift-log", from: "1.0.0"),
     // swift-metrics 1.x and 2.x are almost API compatible, so most clients should use
-    .package(url: "https://github.com/apple/swift-metrics", "1.0.0" ..< "3.0.0"),
+    .package(url: "https://github.com/apple/swift-metrics", "1.0.0"..<"3.0.0"),
     .package(url: "https://github.com/apple/swift-service-discovery", from: "1.3.0"),
 
     // ~~~ SwiftPM Plugins ~~~
-    .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.0.0"),
 
     // ~~~ Command Line ~~~~
     .package(url: "https://github.com/apple/swift-argument-parser", from: "1.2.3"),
@@ -208,13 +209,13 @@ if ProcessInfo.processInfo.environment["VALIDATE_DOCS"] != nil {
         .testTarget(
             name: "DocsTests",
             dependencies: [
-                "DistributedCluster",
+                "DistributedCluster"
             ],
             exclude: [
-                "README.md",
+                "README.md"
             ],
             plugins: [
-                .plugin(name: "FishyDocsPlugin", package: "FishyDocsPlugin"),
+                .plugin(name: "FishyDocsPlugin", package: "FishyDocsPlugin")
             ]
         )
     )
@@ -254,3 +255,14 @@ var package = Package(
 
     cxxLanguageStandard: .cxx11
 )
+
+// ---    STANDARD CROSS-REPO SETTINGS DO NOT EDIT   --- //
+for target in package.targets {
+    if target.type != .plugin {
+        var settings = target.swiftSettings ?? []
+        // https://github.com/swiftlang/swift-evolution/blob/main/proposals/0444-member-import-visibility.md
+        settings.append(.enableUpcomingFeature("MemberImportVisibility"))
+        target.swiftSettings = settings
+    }
+}
+// --- END: STANDARD CROSS-REPO SETTINGS DO NOT EDIT --- //

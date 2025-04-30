@@ -6,12 +6,13 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
 
+import CoreMetrics
 import DistributedActorsConcurrencyHelpers
 import Logging
 import NIO
@@ -110,8 +111,7 @@ internal class ClusterShell {
         // 1) Complete and store the association
         try self._associationsLock.withLockVoid {
             let node: Cluster.Node = associated.handshake.remoteNode
-            let association = self._associations[node] ??
-                Association(selfNode: associated.handshake.localNode, remoteNode: node)
+            let association = self._associations[node] ?? Association(selfNode: associated.handshake.localNode, remoteNode: node)
 
             try association.completeAssociation(handshake: associated.handshake, over: associated.channel)
 
@@ -120,7 +120,7 @@ internal class ClusterShell {
 
         // 2) Ensure the failure detector knows about this node
         Task {
-            await self._swimShell.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
+            await self._swimShell.whenLocal { __secretlyKnownToBeLocal in  // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
                 __secretlyKnownToBeLocal.monitor(node: associated.handshake.remoteNode)
             }
         }
@@ -162,11 +162,12 @@ internal class ClusterShell {
             if state.membership.mark(remoteNode, as: .down) == nil {
                 // it was already removed, nothing to do
                 state.log.trace(
-                    "Terminate association with \(reflecting: remoteNode), yet node not in membership already?", metadata: [
-                        "cluster/membership": "\(pretty: state.membership)",
+                    "Terminate association with \(reflecting: remoteNode), yet node not in membership already?",
+                    metadata: [
+                        "cluster/membership": "\(pretty: state.membership)"
                     ]
                 )
-            } // else: Note that we CANNOT remove() just yet, as we only want to do this when all nodes have seen the down/leaving
+            }  // else: Note that we CANNOT remove() just yet, as we only want to do this when all nodes have seen the down/leaving
         }
 
         // The last thing we attempt to do with the other node is to shoot it,
@@ -178,7 +179,7 @@ internal class ClusterShell {
     /// We "Shoot The Other Node ..." (STONITH) in order to let it know as soon as possible (i.e. directly, without waiting for gossip to reach it).
     ///
     /// This is a best-effort message; as we may be downing it because we cannot communicate with it after all, in such situation (and many others)
-    /// the other node would never receive this direct kill/down eager "gossip." We hope it will either receive the down via some means, or determine
+    /// the other node would never receive this direct terminate/down eager "gossip." We hope it will either receive the down via some means, or determine
     /// by itself that it should down itself.
     internal static func shootTheOtherNodeAndCloseConnection(system: ClusterSystem, targetNodeAssociation: Association) {
         let log = system.log
@@ -196,9 +197,9 @@ internal class ClusterShell {
             promise: shootTheOtherNodePromise
         )
 
-        let shootTheNodeWriteTimeout: NIO.TimeAmount = .seconds(10) // FIXME: hardcoded last write timeout...
+        let shootTheNodeWriteTimeout: NIO.TimeAmount = .seconds(10)  // FIXME: hardcoded last write timeout...
         system._eventLoopGroup.next().scheduleTask(deadline: NIODeadline.now() + shootTheNodeWriteTimeout) {
-            shootTheOtherNodePromise.fail(TimeoutError(message: "Timed out writing final STONITH to \(remoteNode), should close forcefully.", timeout: .seconds(10))) // FIXME: same timeout but diff type
+            shootTheOtherNodePromise.fail(TimeoutError(message: "Timed out writing final STONITH to \(remoteNode), should close forcefully.", timeout: .seconds(10)))  // FIXME: same timeout but diff type
         }
 
         shootTheOtherNodePromise.futureResult.map { _ in
@@ -309,7 +310,7 @@ internal class ClusterShell {
         /// E.g. signalling a down twice for whatever reason, needs not be notified two times to all subscribers of cluster events.
         ///
         /// If the passed in event applied to the current membership is an effective change, the change will be published using the `system.cluster.events`.
-        case requestMembershipChange(Cluster.Event) // TODO: make a command
+        case requestMembershipChange(Cluster.Event)  // TODO: make a command
         /// Gossiping is handled by /system/cluster/gossip, however acting on it still is our task,
         /// thus the gossiper forwards gossip whenever interesting things happen ("more up to date gossip")
         /// to the shell, using this message, so we may act on it -- e.g. perform leader actions or change membership that we store.
@@ -329,15 +330,15 @@ internal class ClusterShell {
         case failureDetectorReachabilityChanged(Cluster.Node, Cluster.MemberReachability)
 
         /// Used to signal a "down was issued" either by the user, or another part of the system.
-        case downCommand(Cluster.Endpoint) // TODO: add reason
+        case downCommand(Cluster.Endpoint)  // TODO: add reason
         /// Used to signal a "down was issued" either by the user, or another part of the system.
         case downCommandMember(Cluster.Member)
-        case shutdown(BlockingReceptacle<Void>) // TODO: could be NIO future
+        case shutdown(BlockingReceptacle<Void>)  // TODO: could be NIO future
         case cleanUpAssociationTombstones
     }
 
     enum QueryMessage: _NotActuallyCodableMessage {
-        case associatedNodes(_ActorRef<Set<Cluster.Node>>) // TODO: better type here
+        case associatedNodes(_ActorRef<Set<Cluster.Node>>)  // TODO: better type here
         case currentMembership(_ActorRef<Cluster.Membership>)
     }
 
@@ -362,8 +363,8 @@ internal class ClusterShell {
 
     private let props: _Props =
         .init()
-            .supervision(strategy: .escalate) // always escalate failures, if this actor fails we're in big trouble -> terminate the system
-            ._asWellKnown
+        .supervision(strategy: .escalate)  // always escalate failures, if this actor fails we're in big trouble -> terminate the system
+        ._asWellKnown
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -374,7 +375,7 @@ extension ClusterShell {
     ///
     /// Once bound proceeds to `ready` state, where it remains to accept or initiate new handshakes.
     private func bind() -> _Behavior<Message> {
-        return .setup { context in
+        .setup { context in
             // let clusterSettings = context.system.settings
             let bindNode = self.selfNode
 
@@ -390,7 +391,7 @@ extension ClusterShell {
             if let leaderElection = self.settings.autoLeaderElection.make(context.system.cluster.settings) {
                 let leadershipShell = Leadership.Shell(leaderElection)
                 let leadership = try context._spawn(Leadership.Shell.naming, leadershipShell.behavior)
-                context.watch(leadership) // if leadership fails for some reason, we are in trouble and need to know about it
+                context.watch(leadership)  // if leadership fails for some reason, we are in trouble and need to know about it
             }
 
             context.log.info("Binding to: [\(bindNode)]")
@@ -413,10 +414,13 @@ extension ClusterShell {
                         interval: self.settings.membershipGossipInterval,
                         intervalRandomFactor: self.settings.membershipGossipIntervalRandomFactor,
                         style: .acknowledged(timeout: self.settings.membershipGossipInterval),
-                        peerDiscovery: .onClusterMember(atLeast: .joining, resolve: { member in
-                            let resolveContext = _ResolveContext<GossipShell<Cluster.MembershipGossip, Cluster.MembershipGossip>.Message>(id: ._clusterGossip(on: member.node), system: context.system)
-                            return context.system._resolve(context: resolveContext).asAddressable
-                        })
+                        peerDiscovery: .onClusterMember(
+                            atLeast: .joining,
+                            resolve: { member in
+                                let resolveContext = _ResolveContext<GossipShell<Cluster.MembershipGossip, Cluster.MembershipGossip>.Message>(id: ._clusterGossip(on: member.node), system: context.system)
+                                return context.system._resolve(context: resolveContext).asAddressable
+                            }
+                        )
                     ),
                     props: ._wellKnown,
                     makeLogic: {
@@ -458,7 +462,7 @@ extension ClusterShell {
     private func publish(_ event: Cluster.Event, to eventStream: ClusterEventStream) {
         Task {
             await eventStream.publish(event)
-        } // TODO(send): we need "send"
+        }  // TODO(send): we need "send"
     }
 
     /// Called periodically to remove association tombstones after the configured TTL.
@@ -490,7 +494,7 @@ extension ClusterShell {
 
             case .failureDetectorReachabilityChanged(let node, let reachability):
                 guard let member = state.membership.member(node) else {
-                    return .same // reachability change of unknown node
+                    return .same  // reachability change of unknown node
                 }
                 switch reachability {
                 case .reachable:
@@ -547,7 +551,7 @@ extension ClusterShell {
 
             case .handshakeFailed(let fromNode, let error):
                 self.tracelog(context, .receive(from: fromNode), message: error)
-                return self.onHandshakeFailed(context, state, with: fromNode, error: error) // FIXME: implement this basically disassociate() right away?
+                return self.onHandshakeFailed(context, state, with: fromNode, error: error)  // FIXME: implement this basically disassociate() right away?
 
             case .restInPeace(let intendedNode, let fromNode):
                 self.tracelog(context, .receiveUnique(from: fromNode), message: message)
@@ -578,7 +582,7 @@ extension ClusterShell {
 
                 // we only publish the event if it really caused a change in membership, to avoid echoing "the same" change many times.
                 self.publish(event)
-            } // else no "effective change", thus we do not publish events
+            }  // else no "effective change", thus we do not publish events
 
             // 3) Collect and interpret leader actions which may result changing the membership and publishing events for the changes
             let actions: [ClusterShellState.LeaderAction] = state.collectLeaderActions()
@@ -602,14 +606,16 @@ extension ClusterShell {
 
             let beforeGossipMerge = state.latestGossip
 
-            let mergeDirective = state.latestGossip.mergeForward(incoming: gossip) // mutates the gossip
+            let mergeDirective = state.latestGossip.mergeForward(incoming: gossip)  // mutates the gossip
             context.log.trace(
                 "Local membership version is [.\(mergeDirective.causalRelation)] to incoming gossip; Merge resulted in \(mergeDirective.effectiveChanges.count) changes.",
                 metadata: [
                     "tag": "membership",
-                    "membership/changes": Logger.MetadataValue.array(mergeDirective.effectiveChanges.map {
-                        Logger.MetadataValue.stringConvertible($0)
-                    }),
+                    "membership/changes": Logger.MetadataValue.array(
+                        mergeDirective.effectiveChanges.map {
+                            Logger.MetadataValue.stringConvertible($0)
+                        }
+                    ),
                     "gossip/incoming": "\(pretty: gossip)",
                     "gossip/before": "\(pretty: beforeGossipMerge)",
                     "gossip/now": "\(pretty: state.latestGossip)",
@@ -621,7 +627,7 @@ extension ClusterShell {
 
             // Publish the events
             var eventsToPublish: [Cluster.Event] = []
-            mergeDirective.effectiveChanges.forEach { effectiveChange in
+            for effectiveChange in mergeDirective.effectiveChanges {
                 // a change COULD have also been a replacement, in which case we need to publish it as well the removal od the
                 if let replacementChange = effectiveChange.replacementDownPreviousNodeChange {
                     eventsToPublish.append(.membershipChange(replacementChange))
@@ -657,7 +663,7 @@ extension ClusterShell {
             .receiveSpecificSignal(_Signals.Terminated.self) { context, signal in
                 context.log.error("Cluster actor \(signal.id) terminated unexpectedly! Will initiate cluster shutdown.")
                 try context.system.shutdown()
-                return .same // the system shutdown will cause downing which we may want to still handle, and then will stop us
+                return .same  // the system shutdown will cause downing which we may want to still handle, and then will stop us
             }
     }
 
@@ -724,9 +730,12 @@ extension ClusterShell {
 
         switch handshakeState {
         case .initiated(let initiated):
-            state.log.debug("Initiated handshake: \(initiated)", metadata: [
-                "cluster/associatedNodes": "\(self._associatedNodes())",
-            ])
+            state.log.debug(
+                "Initiated handshake: \(initiated)",
+                metadata: [
+                    "cluster/associatedNodes": "\(self._associatedNodes())"
+                ]
+            )
             return self.connectSendHandshakeOffer(context, state, initiated: initiated)
 
         case .wasOfferedHandshake, .inFlight, .completed:
@@ -739,18 +748,21 @@ extension ClusterShell {
 
     func retryHandshake(_ context: _ActorContext<Message>, _ state: ClusterShellState, initiated: HandshakeStateMachine.InitiatedState) -> _Behavior<Message> {
         state.log.debug("Retry handshake with: \(initiated.remoteEndpoint)")
-//
-//        // FIXME: this needs more work...
-//        let assoc = self.getRetryAssociation(with: initiated.remoteNode)
+        //
+        //        // FIXME: this needs more work...
+        //        let assoc = self.getRetryAssociation(with: initiated.remoteNode)
 
         return self.connectSendHandshakeOffer(context, state, initiated: initiated)
     }
 
     func connectSendHandshakeOffer(_ context: _ActorContext<Message>, _ state: ClusterShellState, initiated: HandshakeStateMachine.InitiatedState) -> _Behavior<Message> {
         var state = state
-        state.log.debug("Extending handshake offer", metadata: [
-            "handshake/remoteNode": "\(initiated.remoteEndpoint)",
-        ])
+        state.log.debug(
+            "Extending handshake offer",
+            metadata: [
+                "handshake/remoteNode": "\(initiated.remoteEndpoint)"
+            ]
+        )
 
         let offer: Wire.HandshakeOffer = initiated.makeOffer()
         self.tracelog(context, .send(to: initiated.remoteEndpoint), message: offer)
@@ -808,8 +820,10 @@ extension ClusterShell {
     /// - parameter inboundChannel: the inbound connection channel that the other node has opened and is offering its handshake on,
     ///   (as opposed to the channel which we may have opened when we first extended a handshake to that node which would be stored in `state`)
     func onHandshakeOffer(
-        _ context: _ActorContext<Message>, _ state: ClusterShellState,
-        _ offer: Wire.HandshakeOffer, inboundChannel: Channel,
+        _ context: _ActorContext<Message>,
+        _ state: ClusterShellState,
+        _ offer: Wire.HandshakeOffer,
+        inboundChannel: Channel,
         replyInto handshakePromise: EventLoopPromise<Wire.HandshakeResponse>
     ) -> _Behavior<Message> {
         var state = state
@@ -834,9 +848,12 @@ extension ClusterShell {
             // 1) handshake is allowed to proceed
             switch hsm.negotiate() {
             case .acceptAndAssociate(let handshakeCompleted):
-                state.log.trace("Accept handshake with \(reflecting: offer.originNode)!", metadata: [
-                    "handshake/channel": "\(inboundChannel)",
-                ])
+                state.log.trace(
+                    "Accept handshake with \(reflecting: offer.originNode)!",
+                    metadata: [
+                        "handshake/channel": "\(inboundChannel)"
+                    ]
+                )
 
                 // 1.1) we're accepting; prepare accept
                 let accept = handshakeCompleted.makeAccept(whenHandshakeReplySent: nil)
@@ -860,16 +877,22 @@ extension ClusterShell {
 
                 do {
                     try self.completeAssociation(directive)
-                    state.log.trace("Associated with: \(reflecting: handshakeCompleted.remoteNode)", metadata: [
-                        "membership/change": "\(optional: directive.membershipChange)",
-                        "membership": "\(state.membership)",
-                    ])
+                    state.log.trace(
+                        "Associated with: \(reflecting: handshakeCompleted.remoteNode)",
+                        metadata: [
+                            "membership/change": "\(optional: directive.membershipChange)",
+                            "membership": "\(state.membership)",
+                        ]
+                    )
                 } catch {
-                    state.log.warning("Error while trying to complete association with: \(reflecting: handshakeCompleted.remoteNode), error: \(error)", metadata: [
-                        "membership/change": "\(optional: directive.membershipChange)",
-                        "membership": "\(state.membership)",
-                        "association/error": "\(error)",
-                    ])
+                    state.log.warning(
+                        "Error while trying to complete association with: \(reflecting: handshakeCompleted.remoteNode), error: \(error)",
+                        metadata: [
+                            "membership/change": "\(optional: directive.membershipChange)",
+                            "membership": "\(state.membership)",
+                            "association/error": "\(error)",
+                        ]
+                    )
                 }
 
                 // 4) Emit cluster events (i.e. .join the new member)
@@ -877,7 +900,7 @@ extension ClusterShell {
                 // As the new association is stored, any reactions to these events will use the right underlying connection
                 if let change = directive.membershipChange {
                     context.system.cluster.updateMembershipSnapshot(state.membership)
-                    self.publish(.membershipChange(change), to: state.events) // TODO: need a test where a leader observes a replacement, and we ensure that it does not end up signalling up or removal twice?
+                    self.publish(.membershipChange(change), to: state.events)  // TODO: need a test where a leader observes a replacement, and we ensure that it does not end up signalling up or removal twice?
                     self.tryIntroduceGossipPeer(context, state, change: change)
                 }
 
@@ -919,16 +942,22 @@ extension ClusterShell {
 extension ClusterShell {
     func onOutboundConnectionError(_ context: _ActorContext<Message>, _ state: ClusterShellState, with remoteNode: Cluster.Endpoint, error: Error) -> _Behavior<Message> {
         var state = state
-        state.log.debug("Failed to establish outbound channel to \(remoteNode), error: \(error)", metadata: [
-            "handshake/remoteNode": "\(remoteNode)",
-            "handshake/error": "\(error)",
-        ])
-
-        guard let handshakeState = state.handshakeInProgress(with: remoteNode) else {
-            state.log.warning("Connection error for handshake which is not in progress, this should not happen, but is harmless.", metadata: [
+        state.log.debug(
+            "Failed to establish outbound channel to \(remoteNode), error: \(error)",
+            metadata: [
                 "handshake/remoteNode": "\(remoteNode)",
                 "handshake/error": "\(error)",
-            ])
+            ]
+        )
+
+        guard let handshakeState = state.handshakeInProgress(with: remoteNode) else {
+            state.log.warning(
+                "Connection error for handshake which is not in progress, this should not happen, but is harmless.",
+                metadata: [
+                    "handshake/remoteNode": "\(remoteNode)",
+                    "handshake/error": "\(error)",
+                ]
+            )
             return .same
         }
 
@@ -940,10 +969,13 @@ extension ClusterShell {
 
             switch initiated.onConnectionError(error) {
             case .scheduleRetryHandshake(let retryDelay):
-                state.log.debug("Schedule handshake retry", metadata: [
-                    "handshake/remoteNote": "\(initiated.remoteEndpoint)",
-                    "handshake/retryDelay": "\(retryDelay)",
-                ])
+                state.log.debug(
+                    "Schedule handshake retry",
+                    metadata: [
+                        "handshake/remoteNote": "\(initiated.remoteEndpoint)",
+                        "handshake/retryDelay": "\(retryDelay)",
+                    ]
+                )
                 context.timers.startSingle(
                     key: _TimerKey("handshake-timer-\(remoteNode)"),
                     message: .command(.retryHandshake(initiated)),
@@ -955,10 +987,13 @@ extension ClusterShell {
 
             case .giveUpOnHandshake:
                 if let hsmState = state.closeOutboundHandshakeChannel(with: remoteNode) {
-                    state.log.warning("Giving up on handshake with node [\(remoteNode)]", metadata: [
-                        "handshake/error": "\(error)",
-                        "handshake/state": "\(hsmState)",
-                    ])
+                    state.log.warning(
+                        "Giving up on handshake with node [\(remoteNode)]",
+                        metadata: [
+                            "handshake/error": "\(error)",
+                            "handshake/state": "\(hsmState)",
+                        ]
+                    )
                 }
             }
 
@@ -966,11 +1001,14 @@ extension ClusterShell {
             preconditionFailure("Outbound connection error should never happen on receiving end. State was: [\(state)], error was: \(error)")
         case .completed(let completedState):
             // this could mean that another (perhaps inbound, rather than the outbound handshake we're attempting here) actually succeeded
-            state.log.notice("Stored handshake state is .completed, while outbound connection establishment failed. Assuming existing completed association is correct.", metadata: [
-                "handshake/error": "\(error)",
-                "handshake/state": "\(state)",
-                "handshake/completed": "\(completedState)",
-            ])
+            state.log.notice(
+                "Stored handshake state is .completed, while outbound connection establishment failed. Assuming existing completed association is correct.",
+                metadata: [
+                    "handshake/error": "\(error)",
+                    "handshake/state": "\(state)",
+                    "handshake/completed": "\(completedState)",
+                ]
+            )
         case .inFlight:
             preconditionFailure("An in-flight marker state should never be stored, yet was encountered in \(#function). State was: [\(state)], error was: \(error)")
         }
@@ -984,13 +1022,16 @@ extension ClusterShell {
 
 extension ClusterShell {
     private func onHandshakeAccepted(_ context: _ActorContext<Message>, _ state: ClusterShellState, _ inboundAccept: Wire.HandshakeAccept, channel: Channel) -> _Behavior<Message> {
-        var state = state // local copy for mutation
+        var state = state  // local copy for mutation
 
-        state.log.debug("Accept association with \(reflecting: inboundAccept.targetNode)!", metadata: [
-            "handshake/localNode": "\(inboundAccept.originNode)",
-            "handshake/remoteNode": "\(inboundAccept.targetNode)",
-            "handshake/channel": "\(channel)",
-        ])
+        state.log.debug(
+            "Accept association with \(reflecting: inboundAccept.targetNode)!",
+            metadata: [
+                "handshake/localNode": "\(inboundAccept.originNode)",
+                "handshake/remoteNode": "\(inboundAccept.targetNode)",
+                "handshake/channel": "\(channel)",
+            ]
+        )
 
         guard let handshakeCompleted = state.incomingHandshakeAccept(inboundAccept) else {
             if self._associatedNodes().contains(inboundAccept.targetNode) {
@@ -1015,16 +1056,22 @@ extension ClusterShell {
         // 2) Store the (now completed) association first, as it may be immediately used by remote _ActorRefs attempting to send to the remoteNode
         do {
             try self.completeAssociation(directive)
-            state.log.trace("Associated with: \(reflecting: handshakeCompleted.remoteNode)", metadata: [
-                "membership/change": "\(optional: directive.membershipChange)",
-                "membership": "\(state.membership)",
-            ])
+            state.log.trace(
+                "Associated with: \(reflecting: handshakeCompleted.remoteNode)",
+                metadata: [
+                    "membership/change": "\(optional: directive.membershipChange)",
+                    "membership": "\(state.membership)",
+                ]
+            )
         } catch {
-            state.log.warning("Error while trying to complete association with: \(reflecting: handshakeCompleted.remoteNode), error: \(error)", metadata: [
-                "membership/change": "\(optional: directive.membershipChange)",
-                "membership": "\(state.membership)",
-                "association/error": "\(error)",
-            ])
+            state.log.warning(
+                "Error while trying to complete association with: \(reflecting: handshakeCompleted.remoteNode), error: \(error)",
+                metadata: [
+                    "membership/change": "\(optional: directive.membershipChange)",
+                    "membership": "\(state.membership)",
+                    "association/error": "\(error)",
+                ]
+            )
         }
 
         // we want to update the snapshot before the events are published
@@ -1033,7 +1080,7 @@ extension ClusterShell {
         // 3) publish any cluster events this association caused.
         //    As the new association is stored, any reactions to these events will use the right underlying connection
         if let change = directive.membershipChange {
-            self.publish(.membershipChange(change), to: state.events) // TODO: need a test where a leader observes a replacement, and we ensure that it does not end up signalling up or removal twice?
+            self.publish(.membershipChange(change), to: state.events)  // TODO: need a test where a leader observes a replacement, and we ensure that it does not end up signalling up or removal twice?
             self.tryConfirmDeadToSWIM(context, state, change: change)
             self.tryIntroduceGossipPeer(context, state, change: change)
         }
@@ -1081,11 +1128,11 @@ extension ClusterShell {
         var state = state
 
         // we MAY be seeing a handshake failure from a 2 nodes concurrently shaking hands on 2 connections,
-        // and we decided to tie-break and kill one of the connections. As such, the handshake COMPLETED successfully but
+        // and we decided to tie-break and terminate one of the connections. As such, the handshake COMPLETED successfully but
         // on the other connection; and the terminated one may yield an error (e.g. truncation error during proto parsing etc),
         // however that error is harmless - as we associated with the "other" right connection.
         if let existingAssociation = self.getSpecificExistingAssociation(with: reject.targetNode),
-           existingAssociation.isAssociating
+            existingAssociation.isAssociating
         {
             state.log.warning(
                 "Handshake rejected by [\(reject.targetNode)], it was associating and is now tombstoned",
@@ -1096,7 +1143,7 @@ extension ClusterShell {
         }
 
         if let existingAssociation = self.getAnyExistingAssociation(with: reject.targetNode.endpoint),
-           existingAssociation.isAssociated || existingAssociation.isTombstone
+            existingAssociation.isAssociated || existingAssociation.isTombstone
         {
             state.log.debug(
                 "Handshake rejected by [\(reject.targetNode)], however existing association with node exists. Could be that a concurrent handshake was failed on purpose.",
@@ -1116,11 +1163,11 @@ extension ClusterShell {
 
     private func onHandshakeFailed(_ context: _ActorContext<Message>, _ state: ClusterShellState, with endpoint: Cluster.Endpoint, error: Error) -> _Behavior<Message> {
         // we MAY be seeing a handshake failure from a 2 nodes concurrently shaking hands on 2 connections,
-        // and we decided to tie-break and kill one of the connections. As such, the handshake COMPLETED successfully but
+        // and we decided to tie-break and terminate one of the connections. As such, the handshake COMPLETED successfully but
         // on the other connection; and the terminated one may yield an error (e.g. truncation error during proto parsing etc),
         // however that error is harmless - as we associated with the "other" right connection.
         if let existingAssociation = self.getAnyExistingAssociation(with: endpoint),
-           existingAssociation.isAssociated || existingAssociation.isTombstone
+            existingAssociation.isAssociated || existingAssociation.isTombstone
         {
             state.log.debug(
                 "Handshake failed, however existing association with node exists. Could be that a concurrent handshake was failed on purpose.",
@@ -1130,9 +1177,12 @@ extension ClusterShell {
         }
 
         guard state.handshakeInProgress(with: endpoint) != nil else {
-            state.log.debug("Received handshake failed notification, however handshake is not in progress, error: \(message: error)", metadata: [
-                "handshake/node": "\(endpoint)",
-            ])
+            state.log.debug(
+                "Received handshake failed notification, however handshake is not in progress, error: \(message: error)",
+                metadata: [
+                    "handshake/node": "\(endpoint)"
+                ]
+            )
             return .same
         }
 
@@ -1160,7 +1210,7 @@ extension ClusterShell {
             state.log.trace(
                 "Already shutting down, received .restInPeace from [\(fromNode)], this is expected, other nodes may sever their connections with this node while we terminate.",
                 metadata: [
-                    "sender/node": "\(String(reflecting: fromNode))",
+                    "sender/node": "\(String(reflecting: fromNode))"
                 ]
             )
             return .same
@@ -1169,7 +1219,7 @@ extension ClusterShell {
         state.log.warning(
             "Received .restInPeace from \(fromNode), meaning this node is known to be .down or worse, and should terminate. Initiating self .down-ing.",
             metadata: [
-                "sender/node": "\(String(reflecting: fromNode))",
+                "sender/node": "\(String(reflecting: fromNode))"
             ]
         )
 
@@ -1181,18 +1231,18 @@ extension ClusterShell {
         return self.ready(state: self.onDownCommand(context, state: state, member: myselfMember))
     }
 
-//    private func notifyHandshakeFailure(state: HandshakeStateMachine.State, node: Cluster.Node, error: Error) {
-//        switch state {
-//        case .initiated(let initiated):
-//            initiated.whenCompleted.fail(HandshakeConnectionError(node: node, message: "\(error)"))
-//        case .wasOfferedHandshake(let offered):
-//            offered.whenCompleted.fail(HandshakeConnectionError(node: node, message: "\(error)"))
-//        case .completed(let completed):
-//            completed.whenCompleted.fail(HandshakeConnectionError(node: node, message: "\(error)"))
-//        case .inFlight:
-//            preconditionFailure("An in-flight marker state should never be stored, yet was encountered in \(#function)")
-//        }
-//    }
+    //    private func notifyHandshakeFailure(state: HandshakeStateMachine.State, node: Cluster.Node, error: Error) {
+    //        switch state {
+    //        case .initiated(let initiated):
+    //            initiated.whenCompleted.fail(HandshakeConnectionError(node: node, message: "\(error)"))
+    //        case .wasOfferedHandshake(let offered):
+    //            offered.whenCompleted.fail(HandshakeConnectionError(node: node, message: "\(error)"))
+    //        case .completed(let completed):
+    //            completed.whenCompleted.fail(HandshakeConnectionError(node: node, message: "\(error)"))
+    //        case .inFlight:
+    //            preconditionFailure("An in-flight marker state should never be stored, yet was encountered in \(#function)")
+    //        }
+    //    }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -1201,6 +1251,7 @@ extension ClusterShell {
 extension ClusterShell {
     private func onShutdownCommand(_ context: _ActorContext<Message>, state: ClusterShellState, signalOnceUnbound: BlockingReceptacle<Void>) -> _Behavior<Message> {
         // we exit the death-pact with any children we spawned, even if they fail now, we don't mind because we're shutting down
+        // swift-format-ignore: ReplaceForEachWithForLoop
         context.children.forEach { ref in
             context.unwatch(ref)
         }
@@ -1264,10 +1315,14 @@ extension ClusterShell {
         self.tryConfirmDeadToSWIM(context, state, change: change)
 
         if let logChangeLevel = state.settings.logMembershipChanges {
-            context.log.log(level: logChangeLevel, "Cluster membership change: \(reflecting: change)", metadata: [
-                "cluster/membership/change": "\(change)",
-                "cluster/membership": Logger.MetadataValue.array(state.membership.members(atMost: .down).map { "\($0)" }),
-            ])
+            context.log.log(
+                level: logChangeLevel,
+                "Cluster membership change: \(reflecting: change)",
+                metadata: [
+                    "cluster/membership/change": "\(change)",
+                    "cluster/membership": Logger.MetadataValue.array(state.membership.members(atMost: .down).map { "\($0)" }),
+                ]
+            )
         }
 
         // whenever we down a node we must ensure to confirm it to swim, so it won't keep monitoring it forever needlessly
@@ -1278,14 +1333,14 @@ extension ClusterShell {
             // Down(self node); ensuring SWIM knows about this and should likely initiate graceful shutdown
             context.log.warning(
                 "Self node was marked [.down]!",
-                metadata: [ // TODO: carry reason why -- was it gossip, manual or other?
-                    "cluster/membership": "\(state.membership)",
+                metadata: [  // TODO: carry reason why -- was it gossip, manual or other?
+                    "cluster/membership": "\(state.membership)"
                 ]
             )
 
             do {
                 let onDownAction = context.system.settings.onDownAction.make()
-                try onDownAction(context.system) // TODO: return a future and run with a timeout
+                try onDownAction(context.system)  // TODO: return a future and run with a timeout
             } catch {
                 context.system.log.error("Failed to executed onDownAction! Shutting down system forcefully!", metadata: ["error": "\(error)"])
                 do {

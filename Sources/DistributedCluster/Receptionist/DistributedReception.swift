@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -44,8 +44,8 @@ extension DistributedReception {
     /// actors which do not opt-into discovery by registering themselves WILL NOT be discovered using this, or any other, key).
     public struct Key<Guest: DistributedActor>: Codable, Sendable,
         ExpressibleByStringLiteral, ExpressibleByStringInterpolation,
-        CustomStringConvertible where Guest.ActorSystem == ClusterSystem
-    {
+        CustomStringConvertible
+    where Guest.ActorSystem == ClusterSystem {
         public let id: String
         public var guestType: Any.Type {
             Guest.self

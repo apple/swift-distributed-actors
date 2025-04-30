@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -194,12 +194,12 @@ public struct ClusterControl {
     public func joined(node: Cluster.Node, within: Duration) async throws -> Cluster.Member {
         // waiting to be "joined" means having passed the "joining" member status
         if let member = await self.membershipSnapshot.member(node),
-           member.status > .joining
+            member.status > .joining
         {
             return member
         }
 
-        self.join(node: node) // kick off the joining process in case we're not trying to already
+        self.join(node: node)  // kick off the joining process in case we're not trying to already
         return try await self.waitFor(node, .up, within: within)
     }
 
@@ -214,12 +214,12 @@ public struct ClusterControl {
     public func joined(endpoint: Cluster.Endpoint, within: Duration) async throws -> Cluster.Member? {
         // waiting to be "joined" means having passed the "joining" member status
         if let member = await self.membershipSnapshot.anyMember(forEndpoint: endpoint),
-           member.status > .joining
+            member.status > .joining
         {
             return member
         }
 
-        self.join(endpoint: endpoint) // kick off the joining process in case we're not trying to already
+        self.join(endpoint: endpoint)  // kick off the joining process in case we're not trying to already
         return try await self.waitFor(endpoint, .up, within: within)
     }
 
@@ -354,11 +354,12 @@ public struct ClusterControl {
         }
     }
 
-    private func waitForMembershipEventually<T>(_: T.Type = T.self,
-                                                within: Duration,
-                                                interval: Duration = .milliseconds(100),
-                                                _ block: (Cluster.Membership) async throws -> T) async throws -> T
-    {
+    private func waitForMembershipEventually<T>(
+        _: T.Type = T.self,
+        within: Duration,
+        interval: Duration = .milliseconds(100),
+        _ block: (Cluster.Membership) async throws -> T
+    ) async throws -> T {
         let deadline = ContinuousClock.Instant.fromNow(within)
 
         var lastError: Error?

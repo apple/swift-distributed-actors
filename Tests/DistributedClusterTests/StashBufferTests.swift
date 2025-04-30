@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -43,11 +43,11 @@ final class _StashBufferTests: SingleClusterSystemXCTestCase {
 
         let stasher = try system._spawn(.anonymous, behavior)
 
-        for i in 0 ... 10 {
+        for i in 0...10 {
             stasher.tell(i)
         }
 
-        for i in 0 ... 9 {
+        for i in 0...9 {
             try probe.expectMessage(i)
         }
 
@@ -113,12 +113,12 @@ final class _StashBufferTests: SingleClusterSystemXCTestCase {
 
         let stasher = try system._spawn(.anonymous, behavior)
 
-        for i in 0 ... 10 {
+        for i in 0...10 {
             stasher.tell(i)
         }
 
         // we are expecting to get each stashed message once
-        for i in 0 ... 9 {
+        for i in 0...9 {
             try probe.expectMessage(i)
         }
 

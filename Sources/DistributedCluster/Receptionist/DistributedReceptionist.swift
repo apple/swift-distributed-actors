@@ -1,12 +1,12 @@
 //===----------------------------------------------------------------------===//
 //
-// This source file is part of the swift-distributed-actors open source project
+// This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2022 Apple Inc. and the swift-distributed-actors project authors
+// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.txt for the list of swift-distributed-actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -31,8 +31,7 @@ public protocol DistributedReceptionist: DistributedActor {
     ///
     /// - Parameters:
     ///   - guest: the actor to register with the receptionist.
-    ///   - id: id used for the key identifier. E.g. when aiming to register all instances of "Sensor" in the same group,
-    ///         the recommended id is "all/sensors".
+    ///   - key: key identifier. E.g. when aiming to register all instances of "Sensor" in the same group, the recommended id is "all/sensors".
     func checkIn<Guest>(
         _ guest: Guest,
         with key: DistributedReception.Key<Guest>
@@ -41,7 +40,7 @@ public protocol DistributedReceptionist: DistributedActor {
 
     func checkIn<Guest>(
         _ guest: Guest
-        // TODO(distributed): should gain a "retain (or not)" version, the receptionist can keep alive actors, but sometimes we don't want that, it depends
+            // TODO(distributed): should gain a "retain (or not)" version, the receptionist can keep alive actors, but sometimes we don't want that, it depends
     ) async where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem
 
     /// Returns a "listing" asynchronous sequence which will emit actor references,
@@ -50,14 +49,14 @@ public protocol DistributedReceptionist: DistributedActor {
     /// It emits both values for already existing, checked-in before the listing was created,
     /// actors; as well as new actors which are checked-in while the listing was already subscribed to.
     func listing<Guest>(of key: DistributedReception.Key<Guest>, file: String, line: UInt) async -> DistributedReception.GuestListing<Guest>
-        where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem
+    where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem
 
     /// Perform a *single* lookup for a distributed actor identified by the passed in `key`.
     ///
     /// - Parameters:
     ///   - key: selects which actors we are interested in.
     func lookup<Guest>(_ key: DistributedReception.Key<Guest>) async -> Set<Guest>
-        where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem
+    where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem
 }
 
 extension DistributedReceptionist {
@@ -67,8 +66,7 @@ extension DistributedReceptionist {
     /// It emits both values for already existing, checked-in before the listing was created,
     /// actors; as well as new actors which are checked-in while the listing was already subscribed to.
     func listing<Guest>(of key: DistributedReception.Key<Guest>, file: String = #file, line: UInt = #line) async -> DistributedReception.GuestListing<Guest>
-        where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem
-    {
+    where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem {
         await self.listing(of: key, file: file, line: line)
     }
 }
@@ -84,9 +82,12 @@ extension DistributedReception {
         let file: String
         let line: UInt
 
-        init(receptionist: OpLogDistributedReceptionist, key: DistributedReception.Key<Guest>,
-             file: String, line: UInt)
-        {
+        init(
+            receptionist: OpLogDistributedReceptionist,
+            key: DistributedReception.Key<Guest>,
+            file: String,
+            line: UInt
+        ) {
             self.receptionist = receptionist
             self.key = key
             self.file = file
@@ -100,14 +101,18 @@ extension DistributedReception {
         public class AsyncIterator: AsyncIteratorProtocol {
             var underlying: AsyncStream<Element>.Iterator!
 
-            init(receptionist __secretlyKnownToBeLocal: OpLogDistributedReceptionist, key: DistributedReception.Key<Guest>,
-                 file: String, line: UInt)
-            {
+            init(
+                receptionist __secretlyKnownToBeLocal: OpLogDistributedReceptionist,
+                key: DistributedReception.Key<Guest>,
+                file: String,
+                line: UInt
+            ) {
                 let system = __secretlyKnownToBeLocal.actorSystem
                 self.underlying = AsyncStream<Guest> { continuation in
                     let anySubscribe = AnyDistributedReceptionListingSubscription(
                         subscriptionID: ObjectIdentifier(self),
-                        file: file, line: line,
+                        file: file,
+                        line: line,
                         key: key.asAnyKey,
                         onNext: { [weak system] guestID in
                             guard let system else {
@@ -125,7 +130,7 @@ extension DistributedReception {
                             case .terminated, .dropped:
                                 continuation.finish()
                             case .enqueued:
-                                () // ok
+                                ()  // ok
                             default:
                                 assertionFailure("Unexpected case!")
                             }
@@ -208,8 +213,7 @@ internal final class DistributedReceptionistStorage {
         key: AnyDistributedReceptionKey,
         guest: Guest
     ) -> Bool
-        where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem
-    {
+    where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem {
         guard sequenced.op.isRegister else {
             fatalError("\(#function) can only be called with .register operations, was: \(sequenced)")
         }
@@ -225,8 +229,7 @@ internal final class DistributedReceptionistStorage {
     }
 
     func removeRegistration<Guest>(key: AnyDistributedReceptionKey, guest: Guest) -> OrderedSet<VersionedRegistration>?
-        where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem
-    {
+    where Guest: DistributedActor, Guest.ActorSystem == ClusterSystem {
         let address = guest.id
 
         _ = self.removeFromKeyMappings(guest.id)
@@ -276,7 +279,7 @@ internal final class DistributedReceptionistStorage {
             return RefMappingRemovalResult(registeredUnderKeys: [])
         }
 
-        var registeredKeys: Set<AnyDistributedReceptionKey> = [] // TODO: OR we store it directly as registeredUnderKeys/subscribedToKeys in the dict
+        var registeredKeys: Set<AnyDistributedReceptionKey> = []  // TODO: OR we store it directly as registeredUnderKeys/subscribedToKeys in the dict
         for key in associatedKeys {
             if self._registrations[key]?.remove(.init(forRemovalOf: id)) != nil {
                 _ = registeredKeys.insert(key)
@@ -310,7 +313,7 @@ internal final class DistributedReceptionistStorage {
         for key in keys {
             // 1) we remove any registrations that it hosted
             let registrations = self._registrations.removeValue(forKey: key) ?? []
-            let remainingRegistrations = registrations._filter { registration in // FIXME(collections): missing type preserving filter on OrderedSet https://github.com/apple/swift-collections/pull/159
+            let remainingRegistrations = registrations._filter { registration in  // FIXME(collections): missing type preserving filter on OrderedSet https://github.com/apple/swift-collections/pull/159
                 registration.actorID.node != node
             }
             if !remainingRegistrations.isEmpty {
@@ -396,7 +399,8 @@ internal final class AnyDistributedReceptionListingSubscription: Hashable, @unch
 
     init(
         subscriptionID: ObjectIdentifier,
-        file: String, line: UInt,
+        file: String,
+        line: UInt,
         key: AnyDistributedReceptionKey,
         onNext: @escaping @Sendable (ClusterSystem.ActorID) -> Void
     ) {
@@ -440,13 +444,15 @@ internal final class AnyDistributedReceptionListingSubscription: Hashable, @unch
             self.onNext(registration.actorID)
             return true
         case .happenedBefore:
-            fatalError("""
-            It should not be possible for a *merged* version vector to be in the PAST as compared with itself before the merge
-               Previously: \(oldSeenRegistrations)
-               Current: \(self.seenActorRegistrations)
-               Registration: \(registration)
-               Self: \(self)
-            """)
+            fatalError(
+                """
+                It should not be possible for a *merged* version vector to be in the PAST as compared with itself before the merge
+                   Previously: \(oldSeenRegistrations)
+                   Current: \(self.seenActorRegistrations)
+                   Registration: \(registration)
+                   Self: \(self)
+                """
+            )
         }
     }
 
