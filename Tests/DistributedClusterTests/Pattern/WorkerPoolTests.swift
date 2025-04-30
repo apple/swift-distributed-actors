@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -14,9 +14,10 @@
 
 import Distributed
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import Foundation
 import XCTest
+
+@testable import DistributedCluster
 
 // TODO: "ActorGroup" perhaps could be better name?
 final class WorkerPoolTests: SingleClusterSystemXCTestCase {
@@ -55,7 +56,7 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
         await fulfillment(of: [finished], timeout: 3.0)
 
         // Submit work with all workers available
-        for i in 0 ... 7 {
+        for i in 0...7 {
             _ = try await workers.submit(work: "\(i)")
 
             // We are submitting more work than there are workers
@@ -102,7 +103,7 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
         await fulfillment(of: [finished], timeout: 3.0)
 
         // Submit work with all workers available
-        for i in 0 ... 2 {
+        for i in 0...2 {
             _ = try await workers.submit(work: "all-available-\(i)")
 
             let workerID = workerIDs[i % workerIDs.count]
@@ -118,7 +119,7 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
         try pA.expectMessage("Greeter deinit")
 
         // The remaining workers should take over
-        for i in 0 ... 2 {
+        for i in 0...2 {
             _ = try await workers.submit(work: "after-A-dead-\(i)")
 
             // We cannot be certain how round-robin position gets reset after A's termination,
@@ -178,7 +179,7 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
         ]
 
         // Submit work with all workers available
-        for i in 0 ... 2 {
+        for i in 0...2 {
             _ = try await workerPool.submit(work: "all-available-\(i)")
 
             let workerID = workerIDs[i % workerIDs.count]
@@ -194,7 +195,7 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
         try pA.expectMessage("Greeter deinit")
 
         // The remaining workers should take over
-        for i in 0 ... 2 {
+        for i in 0...2 {
             _ = try await workerPool.submit(work: "after-A-dead-\(i)")
 
             // We cannot be certain how round-robin position gets reset after A's termination,
@@ -285,7 +286,7 @@ final class WorkerPoolTests: SingleClusterSystemXCTestCase {
         await fulfillment(of: [finished], timeout: 3.0)
 
         // Submit work with all workers available
-        for i in 0 ... 7 {
+        for i in 0...7 {
             _ = try await workers.submit(work: "\(i)")
 
             // We are submitting more work than there are workers

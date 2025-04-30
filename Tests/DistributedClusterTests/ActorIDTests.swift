@@ -6,15 +6,16 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import XCTest
+
+@testable import DistributedCluster
 
 final class ActorIDTests: ClusteredActorSystemsXCTestCase {
     func test_local_actorAddress_shouldPrintNicely() throws {
@@ -150,7 +151,7 @@ final class ActorIDTests: ClusteredActorSystemsXCTestCase {
         let addressWithoutTestTag = a
         a.metadata.test = "test-value"
 
-        let data = try JSONEncoder().encode(a) // should skip the test tag, it does not know how to encode it
+        let data = try JSONEncoder().encode(a)  // should skip the test tag, it does not know how to encode it
         let serializedJson = String(data: data, encoding: .utf8)!
 
         serializedJson.shouldContain(#""incarnation":1"#)

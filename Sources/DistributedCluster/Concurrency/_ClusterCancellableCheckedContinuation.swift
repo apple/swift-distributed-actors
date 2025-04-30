@@ -108,7 +108,7 @@ extension ClusterCancellableCheckedContinuation where Success == Void {
 
 extension ClusterCancellableCheckedContinuation {
     static func == (lhs: ClusterCancellableCheckedContinuation, rhs: ClusterCancellableCheckedContinuation) -> Bool {
-        return ObjectIdentifier(lhs) == ObjectIdentifier(rhs)
+        ObjectIdentifier(lhs) == ObjectIdentifier(rhs)
     }
 
     func hash(into hasher: inout Hasher) {
@@ -123,7 +123,7 @@ func _withClusterCancellableCheckedContinuation<Success>(
 ) async throws -> Success where Success: Sendable {
     let cccc = ClusterCancellableCheckedContinuation<Success>()
     return try await withTaskCancellationHandler {
-        return try await withCheckedThrowingContinuation(function: function) { continuation in
+        try await withCheckedThrowingContinuation(function: function) { continuation in
             if cccc.setContinuation(continuation) {
                 body(cccc)
             }

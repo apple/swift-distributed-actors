@@ -6,17 +6,18 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import Logging
 import NIO
 import XCTest
+
+@testable import DistributedCluster
 
 final class LeadershipTests: XCTestCase {
     let memberA = Cluster.Member(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "C", host: "1.1.1.1", port: 7337), nid: .random()), status: .up)
@@ -92,7 +93,7 @@ final class LeadershipTests: XCTestCase {
         var election = Leadership.LowestReachableMember(minimumNrOfMembers: 3)
 
         var membership = self.initialMembership
-        _ = try! membership.applyLeadershipChange(to: self.memberA) // try! because `memberA` is a member
+        _ = try! membership.applyLeadershipChange(to: self.memberA)  // try! because `memberA` is a member
 
         var leader = membership.leader
         leader.shouldEqual(self.memberA)
@@ -164,7 +165,7 @@ final class LeadershipTests: XCTestCase {
         // - third leaves
         // - second leaves
         // ! no need to drop the leadership from the first node, it shall remain the leader;
-        var election = Leadership.LowestReachableMember(minimumNrOfMembers: 3) // loseLeadershipIfBelowMinNrOfMembers: false by default
+        var election = Leadership.LowestReachableMember(minimumNrOfMembers: 3)  // loseLeadershipIfBelowMinNrOfMembers: false by default
 
         var membership: Cluster.Membership = self.initialMembership
         let applyToMembership: (Cluster.LeadershipChange?) throws -> (Cluster.LeadershipChange?) = { change in

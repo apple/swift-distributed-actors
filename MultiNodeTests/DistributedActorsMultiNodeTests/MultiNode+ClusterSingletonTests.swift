@@ -6,13 +6,14 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
 
 import DistributedCluster
+import Logging
 import MultiNodeTestKit
 
 public final class MultiNodeClusterSingletonTests: MultiNodeTestSuite {
@@ -59,11 +60,11 @@ public final class MultiNodeClusterSingletonTests: MultiNodeTestSuite {
             TheSingleton(greeting: "Hello-\(actorSystem.name)", actorSystem: actorSystem)
         }
 
-        try await multiNode.checkPoint("Hosted singleton") // ----------------------------------------------------------
+        try await multiNode.checkPoint("Hosted singleton")  // ----------------------------------------------------------
         let reply = try await ref.greet(name: "Hello from \(multiNode.system.name)")
         print("[ON: \(multiNode.system.name)] Got reply: \(reply)")
 
-        try await multiNode.checkPoint("Got reply from singleton") // --------------------------------------------------
+        try await multiNode.checkPoint("Got reply from singleton")  // --------------------------------------------------
         // Since now all nodes have made a message exchange with the singleton, we can exit this process.
         // This barrier is important in so that we don't exit the host of the singleton WHILE the others are still getting to talking to it.
     }

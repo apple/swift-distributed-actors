@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -89,10 +89,14 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
                     self.workers.append(WeakLocalRef(worker))
 
                     // Notify those waiting for new worker
-                    log.log(level: self.logLevel, "Updated workers for \(key)", metadata: [
-                        "workers": "\(self.workers)",
-                        "newWorkerContinuations": "\(self.newWorkerContinuations.count)",
-                    ])
+                    log.log(
+                        level: self.logLevel,
+                        "Updated workers for \(key)",
+                        metadata: [
+                            "workers": "\(self.workers)",
+                            "newWorkerContinuations": "\(self.newWorkerContinuations.count)",
+                        ]
+                    )
                     for (i, continuation) in self.newWorkerContinuations.enumerated().reversed() {
                         continuation.resume()
                         self.newWorkerContinuations.remove(at: i)
@@ -114,15 +118,23 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
     }
 
     public distributed func submit(work: WorkItem) async throws -> WorkResult {
-        self.log.log(level: self.logLevel, "Incoming work, selecting worker", metadata: [
-            "workers/count": "\(self.size)",
-            "worker/item": "\(work)",
-        ])
+        self.log.log(
+            level: self.logLevel,
+            "Incoming work, selecting worker",
+            metadata: [
+                "workers/count": "\(self.size)",
+                "worker/item": "\(work)",
+            ]
+        )
         let worker = try await self.selectWorker(for: work)
-        self.log.log(level: self.logLevel, "Selected worker, submitting [\(work)] to [\(worker)]", metadata: [
-            "worker": "\(worker.id)",
-            "workers/count": "\(self.size)",
-        ])
+        self.log.log(
+            level: self.logLevel,
+            "Selected worker, submitting [\(work)] to [\(worker)]",
+            metadata: [
+                "worker": "\(worker.id)",
+                "workers/count": "\(self.size)",
+            ]
+        )
         return try await worker.submit(work: work)
     }
 
@@ -136,8 +148,8 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
         // in which case we either wait for new worker or throw error.
         if self.workers.isEmpty {
             switch (self.hasTerminatedWorkers, self.whenAllWorkersTerminated) {
-            case (false, _), // if we never received any workers yet, wait for some to show up.
-                 (true, .awaitNewWorkers):
+            case (false, _),  // if we never received any workers yet, wait for some to show up.
+                (true, .awaitNewWorkers):
                 self.log.log(level: self.logLevel, "Worker pool is empty, waiting for new worker.")
 
                 try await _withClusterCancellableCheckedContinuation(of: Void.self) { cccc in
@@ -187,7 +199,7 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
             return self.workers.shuffled().first
         case .simpleRoundRobin:
             if self.roundRobinPos >= self.size {
-                self.roundRobinPos = 0 // loop around from zero
+                self.roundRobinPos = 0  // loop around from zero
             }
             let selected = self.workers[self.roundRobinPos]
             self.roundRobinPos = self.workers.index(after: self.roundRobinPos) % self.size
@@ -199,7 +211,7 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
         self.log.debug("Worker terminated: \(id)", metadata: ["worker": "\(id)"])
         self.workers.remove(WeakLocalRef<Worker>(forRemoval: id))
         self.hasTerminatedWorkers = true
-        self.roundRobinPos = 0 // FIXME: naively reset the round robin counter; we should do better than that
+        self.roundRobinPos = 0  // FIXME: naively reset the round robin counter; we should do better than that
     }
 
     public nonisolated var description: String {
@@ -207,7 +219,7 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
     }
 }
 
-internal extension WorkerPool {
+extension WorkerPool {
     /// Directive that decides how the pool should react when all of its workers have terminated.
     enum AllWorkersTerminatedDirective {
         /// Move the pool back to its initial state and wait for new workers to join.
@@ -362,15 +374,15 @@ public struct WorkerPoolSettings<Worker: DistributedWorker> where Worker.ActorSy
         case .static(let workers):
             if case .awaitNewWorkers = self.whenAllWorkersTerminated {
                 let message = """
-                WorkerPool configured as [.static(\(workers))], MUST NOT be configured to await for new workers \
-                as new workers are impossible to spawn and add to the pool in the static configuration. The pool \
-                MUST terminate when in .static mode and all workers terminate. Alternatively, use a .dynamic pool, \
-                and provide an initial set of workers.
-                """
+                    WorkerPool configured as [.static(\(workers))], MUST NOT be configured to await for new workers \
+                    as new workers are impossible to spawn and add to the pool in the static configuration. The pool \
+                    MUST terminate when in .static mode and all workers terminate. Alternatively, use a .dynamic pool, \
+                    and provide an initial set of workers.
+                    """
                 throw WorkerPoolError(.illegalAwaitNewWorkersForStaticPoolConfigured(message))
             }
         default:
-            () // ok
+            ()  // ok
         }
 
         return self

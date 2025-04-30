@@ -6,19 +6,18 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
 
 import CDistributedActorsMailbox
+import Foundation  // for Codable
 import Logging
 import NIO
 import NIOFoundationCompat
 import SwiftProtobuf
-
-import Foundation // for Codable
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Serializer
@@ -56,12 +55,14 @@ extension Serializer: AnySerializer {
 
     public func trySerialize(_ message: Any) throws -> Serialization.Buffer {
         guard let _message = message as? Message else {
-            throw SerializationError(.wrongSerializer(
-                hint: """
-                Attempted to serialize message type [\(String(reflecting: type(of: message)))] \
-                as [\(String(reflecting: Message.self))], which do not match! Serializer: [\(self)]
-                """
-            ))
+            throw SerializationError(
+                .wrongSerializer(
+                    hint: """
+                        Attempted to serialize message type [\(String(reflecting: type(of: message)))] \
+                        as [\(String(reflecting: Message.self))], which do not match! Serializer: [\(self)]
+                        """
+                )
+            )
         }
 
         return try self.serialize(_message)

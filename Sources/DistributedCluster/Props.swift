@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -178,7 +178,7 @@ internal enum _DispatcherProps {
     ///
     /// This dispatcher will keep a real dedicated _Thread for this actor. This is very rarely something you want,
     // unless designing an actor that is intended to spin without others interrupting it on some resource and may block on it etc.
-    case pinnedThread // TODO: implement pinned thread dispatcher
+    case pinnedThread  // TODO: implement pinned thread dispatcher
     // TODO: CPU Affinity when pinning
 
     /// WARNING: Use with Caution!

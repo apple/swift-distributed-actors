@@ -6,16 +6,17 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import Foundation
 import XCTest
+
+@testable import DistributedCluster
 
 final class BehaviorCanonicalizeTests: SingleClusterSystemXCTestCase {
     func test_canonicalize_nestedSetupBehaviors() throws {
@@ -64,7 +65,7 @@ final class BehaviorCanonicalizeTests: SingleClusterSystemXCTestCase {
 
         // we attempt to cause a stack overflow by nesting tons of setups inside each other.
         // this could fail if canonicalization were implemented in some naive way.
-        let depthLimit = self.system.settings.actor.maxBehaviorNestingDepth - 2 // not a good idea, but we should not crash
+        let depthLimit = self.system.settings.actor.maxBehaviorNestingDepth - 2  // not a good idea, but we should not crash
         let ref = try system._spawn("deepSetupNestedRabbitHole", deepSetupRabbitHole(currentDepth: 0, stopAt: depthLimit))
 
         ref.tell("ping")
@@ -105,7 +106,7 @@ final class BehaviorCanonicalizeTests: SingleClusterSystemXCTestCase {
             return .same
         }
 
-        for i in (0 ... self.system.settings.actor.maxBehaviorNestingDepth).reversed() {
+        for i in (0...self.system.settings.actor.maxBehaviorNestingDepth).reversed() {
             behavior = _Behavior<Int>.receiveMessage { message in
                 if message == i {
                     p.tell(-i)
@@ -179,7 +180,7 @@ final class BehaviorCanonicalizeTests: SingleClusterSystemXCTestCase {
         let behavior = setupDaDoRunRunRunDaDoRunRun()
         try system._spawn("nestedSetups", behavior)
 
-        for depth in 0 ..< self.system.settings.actor.maxBehaviorNestingDepth {
+        for depth in 0..<self.system.settings.actor.maxBehaviorNestingDepth {
             try p.expectMessage("at:\(depth)")
         }
         try p.expectNoMessage(for: .milliseconds(50))

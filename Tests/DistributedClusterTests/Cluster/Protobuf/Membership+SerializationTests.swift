@@ -6,18 +6,19 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
-import Foundation // for pretty printing JSON
+import Foundation  // for pretty printing JSON
 import Logging
 import NIO
 import XCTest
+
+@testable import DistributedCluster
 
 final class MembershipSerializationTests: SingleClusterSystemXCTestCase {
     lazy var context: Serialization.Context! = Serialization.Context(
@@ -47,11 +48,11 @@ final class MembershipSerializationTests: SingleClusterSystemXCTestCase {
     // MARK: Measuring serialization sizes
 
     func test_gossip_serialization() throws {
-        let members = (1 ... 15).map { id in
+        let members = (1...15).map { id in
             Cluster.Member(
                 node: Cluster.Node(
                     endpoint: Cluster.Endpoint(systemName: "\(id)", host: "1.1.1.\(id)", port: 1111),
-                    nid: .init(UInt64("\(id)\(id)\(id)\(id)")!) // pretend a real-ish looking ID, but be easier to read
+                    nid: .init(UInt64("\(id)\(id)\(id)\(id)")!)  // pretend a real-ish looking ID, but be easier to read
                 ),
                 status: .up
             )
@@ -71,7 +72,9 @@ final class MembershipSerializationTests: SingleClusterSystemXCTestCase {
             8: 1:4 2:4 3:4 4:6 5:7 6:7 7:8 8:8 9:12 10:12 11:8 12:8 13:8 14:9 15:6
             9: 1:4 2:4 3:4 4:6 5:7 6:7 7:8 8:8 9:12 10:12 11:8 12:8 13:8 14:9 15:6
             10: 1:4 2:4 3:4 4:6 5:7 6:7 7:8 8:8 9:12 10:12 11:8 12:8 13:8 14:9 15:6
-            """, owner: nodes.first!, nodes: nodes
+            """,
+            owner: nodes.first!,
+            nodes: nodes
         )
 
         let serialized = try system.serialization.serialize(gossip)
@@ -85,7 +88,7 @@ final class MembershipSerializationTests: SingleClusterSystemXCTestCase {
         serialized.buffer.count.shouldEqual(2105)
 
         let back = try system.serialization.deserialize(as: Cluster.MembershipGossip.self, from: serialized)
-        "\(pretty: back)".shouldStartWith(prefix: "\(pretty: gossip)") // nicer human readable error
-        back.shouldEqual(gossip) // the actual soundness check
+        "\(pretty: back)".shouldStartWith(prefix: "\(pretty: gossip)")  // nicer human readable error
+        back.shouldEqual(gossip)  // the actual soundness check
     }
 }

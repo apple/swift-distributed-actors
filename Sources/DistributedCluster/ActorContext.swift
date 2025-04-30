@@ -6,12 +6,13 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
 
+import Foundation
 import Logging
 
 /// The `_ActorContext` exposes an actors details and capabilities, such as names and timers.
@@ -19,7 +20,7 @@ import Logging
 /// - Warning:
 ///   - It MUST only ever be accessed from its own Actor. It is fine though to close over it in the actors behaviours.
 ///   - It MUST NOT be shared to other actors, and MUST NOT be accessed concurrently (e.g. from outside the actor).
-public class _ActorContext<Message: Codable> /* TODO(sendable): NOTSendable*/ {
+public class _ActorContext<Message: Codable> {  // TODO(sendable): NOTSendable
     public typealias Myself = _ActorRef<Message>
 
     /// Returns `ClusterSystem` which this context belongs to.
@@ -66,7 +67,7 @@ public class _ActorContext<Message: Codable> /* TODO(sendable): NOTSendable*/ {
         get {
             _undefined()
         }
-        set { // has to become settable
+        set {  // has to become settable
             fatalError()
         }
     }
@@ -102,7 +103,8 @@ public class _ActorContext<Message: Codable> /* TODO(sendable): NOTSendable*/ {
     public func watch<Watchee>(
         _ watchee: Watchee,
         with terminationMessage: Message? = nil,
-        file: String = #filePath, line: UInt = #line
+        file: String = #filePath,
+        line: UInt = #line
     ) -> Watchee where Watchee: _DeathWatchable {
         _undefined()
     }
@@ -110,7 +112,8 @@ public class _ActorContext<Message: Codable> /* TODO(sendable): NOTSendable*/ {
     @discardableResult
     public func unwatch<Watchee>(
         _ watchee: Watchee,
-        file: String = #filePath, line: UInt = #line
+        file: String = #filePath,
+        line: UInt = #line
     ) -> Watchee where Watchee: _DeathWatchable {
         _undefined()
     }
@@ -123,11 +126,11 @@ public class _ActorContext<Message: Codable> /* TODO(sendable): NOTSendable*/ {
         _ naming: _ActorNaming,
         of type: M.Type = M.self,
         props: _Props = _Props(),
-        file: String = #filePath, line: UInt = #line,
+        file: String = #filePath,
+        line: UInt = #line,
         _ behavior: _Behavior<M>
     ) throws -> _ActorRef<M>
-        where M: Codable
-    {
+    where M: Codable {
         _undefined()
     }
 
@@ -142,11 +145,11 @@ public class _ActorContext<Message: Codable> /* TODO(sendable): NOTSendable*/ {
         _ naming: _ActorNaming,
         of type: M.Type = M.self,
         props: _Props = _Props(),
-        file: String = #filePath, line: UInt = #line,
+        file: String = #filePath,
+        line: UInt = #line,
         _ behavior: _Behavior<M>
     ) throws -> _ActorRef<M>
-        where M: Codable
-    {
+    where M: Codable {
         _undefined()
     }
 
@@ -175,7 +178,7 @@ public class _ActorContext<Message: Codable> /* TODO(sendable): NOTSendable*/ {
     ///           An actor may not terminate another's child actors. Attempting to stop `myself` using this method will
     ///           also throw, as the proper way of stopping oneself is returning a `_Behavior.stop`.
     public func stop<M>(child ref: _ActorRef<M>) throws where M: Codable {
-        return _undefined()
+        _undefined()
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -332,9 +335,8 @@ public class _ActorContext<Message: Codable> /* TODO(sendable): NOTSendable*/ {
     /// being silently dropped. This can be useful when not all messages `From` have a valid representation in
     /// `Message`, or if not all `From` messages are of interest for this particular actor.
     public final func messageAdapter<From>(_ adapt: @escaping (From) -> Message?) -> _ActorRef<From>
-        where From: Codable
-    {
-        return self.messageAdapter(from: From.self, adapt: adapt)
+    where From: Codable {
+        self.messageAdapter(from: From.self, adapt: adapt)
     }
 
     /// Adapts this `_ActorRef` to accept messages of another type by applying the conversion
@@ -349,9 +351,8 @@ public class _ActorContext<Message: Codable> /* TODO(sendable): NOTSendable*/ {
     /// being silently dropped. This can be useful when not all messages `From` have a valid representation in
     /// `Message`, or if not all `From` messages are of interest for this particular actor.
     public func messageAdapter<From>(from type: From.Type, adapt: @escaping (From) -> Message?) -> _ActorRef<From>
-        where From: Codable
-    {
-        return _undefined()
+    where From: Codable {
+        _undefined()
     }
 
     /// Creates an `_ActorRef` that can receive messages of the specified type, but executed in the same
@@ -365,9 +366,8 @@ public class _ActorContext<Message: Codable> /* TODO(sendable): NOTSendable*/ {
     /// with an existing `_SubReceiveId`, it replaces the old one. All references will remain valid and point to
     /// the new behavior.
     public func subReceive<SubMessage>(_: _SubReceiveId<SubMessage>, _: SubMessage.Type, _: @escaping (SubMessage) throws -> Void) -> _ActorRef<SubMessage>
-        where SubMessage: Codable
-    {
-        return _undefined()
+    where SubMessage: Codable {
+        _undefined()
     }
 
     /// Creates an `_ActorRef` that can receive messages of the specified type, but executed in the same
@@ -403,7 +403,8 @@ public struct _SubReceiveId<SubMessage>: Hashable, Equatable {
     }
 
     public init(_ type: SubMessage.Type = SubMessage.self, id: String) {
-        self.id = id
+        self.id =
+            id
             .replacingOccurrences(of: "()", with: "Void")
             .replacingOccurrences(of: " ", with: "")
     }

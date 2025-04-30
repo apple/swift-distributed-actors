@@ -7,7 +7,7 @@
 ## Licensed under Apache License v2.0
 ##
 ## See LICENSE.txt for license information
-## See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+## See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 ##
 ## SPDX-License-Identifier: Apache-2.0
 ##
@@ -46,7 +46,7 @@
 # 13 SampleLetItCrash	0x000000010a64f1db	 atos:closure #1 in faultyWorkerBehavior() (in SampleLetItCrash) (/Users/ktoso/code/sact/Sources/SampleLetItCrash/main.swift:0)
 #
 # Example usage snippet:
-#       clear; pbpaste | bash ./scripts/sact_backtrace_atos
+#       clear; pbpaste | bash ./scripts/sact_backtrace_atos.sh
 CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
@@ -55,10 +55,10 @@ BIN=$1
 PID=$2
 # PID=$(ps aux | grep "SampleLetItCrash" | grep -v "grep" | awk '{print $2}')
 
-while read line
+while read -r line
 do
   address="$(echo "$line" | awk '{ print $3 }')"
-  source_pos=$(atos -p $PID -o $BIN -fullPath $address 2> /dev/null)
+  source_pos=$(atos -p "$PID" -o "$BIN" -fullPath "$address" 2> /dev/null)
 
   echo -n "$line" | awk 'BEGIN{} { printf "%s\t%s\t%s\t atos:", $1, $2, $3 }'
   echo -e "$CYAN$source_pos$NC"

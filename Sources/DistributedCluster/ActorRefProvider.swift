@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -32,11 +32,13 @@ internal protocol _ActorRefProvider: _ActorTreeTraversable {
     /// `.supervision(strategy: .escalate))` as failures bubbling up through the system may indeed be a reason to terminate.
     func _spawn<Message>(
         system: ClusterSystem,
-        behavior: _Behavior<Message>, id: ActorID,
-        dispatcher: MessageDispatcher, props: _Props,
+        behavior: _Behavior<Message>,
+        id: ActorID,
+        dispatcher: MessageDispatcher,
+        props: _Props,
         startImmediately: Bool
     ) throws -> _ActorRef<Message>
-        where Message: Codable
+    where Message: Codable
 
     /// Stops all actors created by this `_ActorRefProvider` and blocks until they have all stopped.
     func stopAll()
@@ -77,14 +79,15 @@ extension RemoteActorRefProvider {
 
     func _spawn<Message>(
         system: ClusterSystem,
-        behavior: _Behavior<Message>, id: ActorID,
-        dispatcher: MessageDispatcher, props: _Props,
+        behavior: _Behavior<Message>,
+        id: ActorID,
+        dispatcher: MessageDispatcher,
+        props: _Props,
         startImmediately: Bool
     ) throws -> _ActorRef<Message>
-        where Message: Codable
-    {
+    where Message: Codable {
         // spawn is always local, thus we delegate to the underlying provider
-        return try self.localProvider._spawn(system: system, behavior: behavior, id: id, dispatcher: dispatcher, props: props, startImmediately: startImmediately)
+        try self.localProvider._spawn(system: system, behavior: behavior, id: id, dispatcher: dispatcher, props: props, startImmediately: startImmediately)
     }
 
     func stopAll() {
@@ -142,13 +145,14 @@ internal struct LocalActorRefProvider: _ActorRefProvider {
 
     func _spawn<Message>(
         system: ClusterSystem,
-        behavior: _Behavior<Message>, id: ActorID,
-        dispatcher: MessageDispatcher, props: _Props,
+        behavior: _Behavior<Message>,
+        id: ActorID,
+        dispatcher: MessageDispatcher,
+        props: _Props,
         startImmediately: Bool
     ) throws -> _ActorRef<Message>
-        where Message: Codable
-    {
-        return try self.root.makeChild(path: id.path) {
+    where Message: Codable {
+        try self.root.makeChild(path: id.path) {
             // the cell that holds the actual "actor", though one could say the cell *is* the actor...
             let actor: _ActorShell<Message> = _ActorShell(
                 system: system,
@@ -245,13 +249,13 @@ internal struct CompositeActorTreeTraversable: _ActorTreeTraversable {
             return self.userTree._traverse(context: c, visit)
 
         case .failed(let err):
-            return .failed(err) // short circuit
+            return .failed(err)  // short circuit
         }
     }
 
     func _resolve<Message>(context: _ResolveContext<Message>) -> _ActorRef<Message> {
         guard let selector = context.selectorSegments.first else {
-            return context.personalDeadLetters // i.e. we resolved a "dead reference" as it points to nothing
+            return context.personalDeadLetters  // i.e. we resolved a "dead reference" as it points to nothing
         }
         switch selector.value {
         case "system": return self.systemTree._resolve(context: context)
@@ -263,7 +267,7 @@ internal struct CompositeActorTreeTraversable: _ActorTreeTraversable {
 
     func _resolveUntyped(context: _ResolveContext<Never>) -> _AddressableActorRef {
         guard let selector = context.selectorSegments.first else {
-            return context.personalDeadLetters.asAddressable // i.e. we resolved a "dead reference" as it points to nothing
+            return context.personalDeadLetters.asAddressable  // i.e. we resolved a "dead reference" as it points to nothing
         }
         switch selector.value {
         case "system": return self.systemTree._resolveUntyped(context: context)
@@ -278,7 +282,7 @@ internal struct CompositeActorTreeTraversable: _ActorTreeTraversable {
 internal struct _TraversalContext<T> {
     var depth: Int
     var accumulated: [T]
-    var selectorSegments: ArraySlice<ActorPathSegment> // "remaining path" that we try to locate, if `nil` we select all actors
+    var selectorSegments: ArraySlice<ActorPathSegment>  // "remaining path" that we try to locate, if `nil` we select all actors
 
     init(depth: Int, accumulated: [T], selectorSegments: [ActorPathSegment]) {
         self.depth = depth

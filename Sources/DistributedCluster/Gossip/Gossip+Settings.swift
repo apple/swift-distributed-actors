@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -36,7 +36,7 @@ extension Gossiper {
 
         var effectiveInterval: Duration {
             let baseInterval = self.interval
-            let randomizeMultiplier = Double.random(in: (1 - self.intervalRandomFactor) ... (1 + self.intervalRandomFactor))
+            let randomizeMultiplier = Double.random(in: (1 - self.intervalRandomFactor)...(1 + self.intervalRandomFactor))
             let randomizedInterval = baseInterval * randomizeMultiplier
             return randomizedInterval
         }

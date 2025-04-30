@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -71,7 +71,7 @@ extension TestMatchers where T: Collection, T.Element: Equatable {
             m += "\(self.it.dropFirst(partialMatch.underestimatedCount))] "
             m += "to start with prefix: "
             if isTty { m += "\n" }
-            if isTty { m += String(repeating: " ", count: "[error] Expected ".count) } // align with the error message prefix
+            if isTty { m += String(repeating: " ", count: "[error] Expected ".count) }  // align with the error message prefix
             m += "["
             if isTty { m += "\(ANSIColors.bold.rawValue)" }
             m += "\(partialMatch)"
@@ -101,7 +101,7 @@ extension TestMatchers where T: Collection, T.Element: Equatable {
             m += "\(ANSIColors.bold.rawValue)"
             m += "\(suffix)\n"
             m += "\(ANSIColors.reset.rawValue)\(ANSIColors.red.rawValue)"
-            if isTty { m += String(repeating: " ", count: "[error] Expected".count) } // align with the error message prefix
+            if isTty { m += String(repeating: " ", count: "[error] Expected".count) }  // align with the error message prefix
             m += "[\(String(repeating: ".", count: prefix.count))"
             m += "\(ANSIColors.red.rawValue)\(ANSIColors.bold.rawValue)"
             m += "\(suffix)"
@@ -286,7 +286,8 @@ extension Set {
             }
 
             XCTAssertEqual(
-                self, rhs,
+                self,
+                rhs,
                 "\(callSiteInfo.error(message))",
                 file: callSiteInfo.file,
                 line: callSiteInfo.line
@@ -370,26 +371,24 @@ extension Comparable {
 extension Collection {
     public func shouldBeEmpty(file: StaticString = #filePath, line: UInt = #line, column: UInt = #column) {
         let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
-        return TestMatchers(it: self, callSite: callSiteInfo).toBeEmpty() // TODO: lazy impl, should get "expected empty" messages etc
+        return TestMatchers(it: self, callSite: callSiteInfo).toBeEmpty()  // TODO: lazy impl, should get "expected empty" messages etc
     }
 
     public func shouldBeNotEmpty(file: StaticString = #filePath, line: UInt = #line, column: UInt = #column) {
         let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
-        return TestMatchers(it: self, callSite: callSiteInfo).toBeNotEmpty() // TODO: lazy impl, should get "expected non-empty" messages etc
+        return TestMatchers(it: self, callSite: callSiteInfo).toBeNotEmpty()  // TODO: lazy impl, should get "expected non-empty" messages etc
     }
 }
 
 extension Collection where Element: Equatable {
     public func shouldStartWith<PossiblePrefix>(prefix: PossiblePrefix, file: StaticString = #filePath, line: UInt = #line, column: UInt = #column)
-        where PossiblePrefix: Collection, Element == PossiblePrefix.Element
-    {
+    where PossiblePrefix: Collection, Element == PossiblePrefix.Element {
         let csInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
         return TestMatchers(it: self, callSite: csInfo).toStartWith(prefix: prefix)
     }
 
     public func shouldEndWith<PossibleSuffix>(suffix: PossibleSuffix, file: StaticString = #filePath, line: UInt = #line, column: UInt = #column)
-        where PossibleSuffix: Collection, Element == PossibleSuffix.Element
-    {
+    where PossibleSuffix: Collection, Element == PossibleSuffix.Element {
         let csInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
         return TestMatchers(it: self, callSite: csInfo).toEndWith(suffix: suffix)
     }
@@ -531,7 +530,7 @@ public struct CallSiteInfo {
         self.file = file
         self.line = line
         self.column = column
-        self.appliedAssertionName = String(function[function.startIndex ... function.firstIndex(of: "(")!])
+        self.appliedAssertionName = String(function[function.startIndex...function.firstIndex(of: "(")!])
     }
 }
 
@@ -541,11 +540,14 @@ extension CallSiteInfo {
     /// - Warning: Performs file IO in order to read source location line where failure happened
     func notEqualError(got it: Any, expected: Any, failTest: Bool = true) -> CallSiteError {
         let padding = String(repeating: " ", count: "[error]".count)
-        return self.error("""
-        [\(it)] 
-        does not equal expected:
-        \(padding)[\(expected)]\n
-        """, failTest: failTest)
+        return self.error(
+            """
+            [\(it)] 
+            does not equal expected:
+            \(padding)[\(expected)]\n
+            """,
+            failTest: failTest
+        )
     }
 
     /// - Warning: Performs file IO in order to read source location line where failure happened
@@ -568,11 +570,14 @@ extension CallSiteInfo {
     /// - Warning: Performs file IO in order to read source location line where failure happened
     func notMatchingPrefixError(got it: any StringProtocol, expected: any StringProtocol, failTest: Bool = true) -> CallSiteError {
         let padding = String(repeating: " ", count: "[error]".count)
-        return self.error("""
-        [\(it)]
-        does start with expected prefix:
-        \(padding)[\(expected)]\n
-        """, failTest: failTest)
+        return self.error(
+            """
+            [\(it)]
+            does start with expected prefix:
+            \(padding)[\(expected)]\n
+            """,
+            failTest: failTest
+        )
     }
 }
 
@@ -599,7 +604,8 @@ public struct CallSiteError: Error, CustomStringConvertible {
         var s = ""
         let lines = try! String(contentsOfFile: "\(self.callSite.file)")
             .components(separatedBy: .newlines)
-        let failingLine = lines
+        let failingLine =
+            lines
             .dropFirst(Int(self.callSite.line - 1))
             .first!
 

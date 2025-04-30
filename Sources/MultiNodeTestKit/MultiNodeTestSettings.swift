@@ -1,12 +1,12 @@
 //===----------------------------------------------------------------------===//
 //
-// This source file is part of the swift-distributed-actors open source project
+// This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2022 Apple Inc. and the swift-distributed-actors project authors
+// Copyright (c) 2022 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.txt for the list of swift-distributed-actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -19,8 +19,8 @@ public struct MultiNodeTestSettings {
     public init() {}
 
     /// Total deadline for an 'exec' run of a test to complete running.
-    /// After this deadline is exceeded the process is KILLED, harshly, without any error collecting or reporting.
-    /// This is to prevent hanging nodes/tests lingering around.
+    /// After this deadline is exceeded the process is TERMINATED, harshly, without any error collecting or reporting.
+    /// This is to prevent wedged nodes/tests lingering around.
     public var execRunHardTimeout: Duration = .seconds(120)
 
     /// Install a pretty print logger which prints metadata as multi-line comment output and also includes source location of log statements

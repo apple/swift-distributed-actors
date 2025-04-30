@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -47,7 +47,7 @@ final class ClusterSystemMetrics {
         // TODO: use specific dimensions if shell has it configured or groups etc
         // TODO: generalize this such that we can do props -> dimensions -> done, and not special case the system ones
         guard let root = shell.path.segments.first else {
-            return // do nothing
+            return  // do nothing
         }
         switch root {
         case ActorPathSegment._system:
@@ -63,7 +63,7 @@ final class ClusterSystemMetrics {
         // TODO: use specific dimensions if shell has it configured or groups etc
         // TODO: generalize this such that we can do props -> dimensions -> done, and not special case the system ones
         guard let root = shell.path.segments.first else {
-            return // do nothing
+            return  // do nothing
         }
         switch root {
         case ActorPathSegment._system:
@@ -120,7 +120,7 @@ final class ClusterSystemMetrics {
             case .unreachable:
                 unreachable += 1
             default:
-                () // skip
+                ()  // skip
             }
 
             self._cluster_members.record(up)
@@ -244,7 +244,7 @@ final class ClusterSystemMetrics {
         self._cluster_members_up = .init(label: clusterMembersLabel, dimensions: [("status", Cluster.MemberStatus.joining.rawValue)])
         self._cluster_members_leaving = .init(label: clusterMembersLabel, dimensions: [("status", Cluster.MemberStatus.leaving.rawValue)])
         self._cluster_members_down = .init(label: clusterMembersLabel, dimensions: [("status", Cluster.MemberStatus.down.rawValue)])
-        self._cluster_members_removed = .init(label: clusterMembersLabel, dimensions: [("status", Cluster.MemberStatus.removed.rawValue)]) // TODO: this is equal to number of stored tombstones kind of
+        self._cluster_members_removed = .init(label: clusterMembersLabel, dimensions: [("status", Cluster.MemberStatus.removed.rawValue)])  // TODO: this is equal to number of stored tombstones kind of
         self._cluster_unreachable_members = .init(label: clusterMembersLabel, dimensions: [("reachability", Cluster.MemberReachability.unreachable.rawValue)])
 
         let clusterAssociations = settings.makeLabel("cluster", "associations")

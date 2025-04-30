@@ -6,19 +6,18 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
 
 import CDistributedActorsMailbox
+import Foundation  // for Codable
 import Logging
 import NIO
 import NIOFoundationCompat
 import SwiftProtobuf
-
-import Foundation // for Codable
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Serialization Manifest
@@ -111,9 +110,9 @@ extension Serialization {
         let hint: String = Self.getTypeHint(messageType)
 
         let manifest: Manifest?
-//        if messageType is _AnyProtobufRepresentable.Type {
-//            manifest = Manifest(serializerID: ._ProtobufRepresentable, hint: hint)
-//        } else
+        //        if messageType is _AnyProtobufRepresentable.Type {
+        //            manifest = Manifest(serializerID: ._ProtobufRepresentable, hint: hint)
+        //        } else
         if messageType is Codable.Type {
             manifest = Manifest(serializerID: self.settings.defaultSerializerID, hint: hint)
         } else if messageType is _NotActuallyCodableMessage.Type {
@@ -148,7 +147,7 @@ extension Serialization {
         }
 
         if let hint = manifest.hint,
-           let type = _typeByName(hint)
+            let type = _typeByName(hint)
         {
             return type
         }

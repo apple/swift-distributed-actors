@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -16,8 +16,7 @@ import Distributed
 
 /// A dictionary which only weakly retains the
 public struct WeakLocalRefDictionary<Act: DistributedActor>: ExpressibleByDictionaryLiteral
-    where Act.ID == ClusterSystem.ActorID
-{
+where Act.ID == ClusterSystem.ActorID {
     var underlying: [ClusterSystem.ActorID: WeakLocalRef<Act>]
 
     /// Initialize an empty dictionary.
@@ -58,7 +57,7 @@ public struct WeakLocalRefDictionary<Act: DistributedActor>: ExpressibleByDictio
     }
 
     public mutating func removeActor(identifiedBy id: ClusterSystem.ActorID) -> Act? {
-        return self.underlying.removeValue(forKey: id)?.actor
+        self.underlying.removeValue(forKey: id)?.actor
     }
 }
 
@@ -78,7 +77,7 @@ public struct WeakAnyDistributedActorDictionary {
     }
 
     mutating func removeActor(identifiedBy id: ClusterSystem.ActorID) -> Bool {
-        return self.underlying.removeValue(forKey: id) != nil
+        self.underlying.removeValue(forKey: id) != nil
     }
 
     mutating func insert<Act: DistributedActor>(actor: Act) where Act.ID == ClusterSystem.ActorID {

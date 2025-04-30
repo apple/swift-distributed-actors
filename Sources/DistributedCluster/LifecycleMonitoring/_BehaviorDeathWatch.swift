@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -14,6 +14,7 @@
 
 import Dispatch
 import Distributed
+import Logging
 import NIO
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -41,7 +42,7 @@ public protocol _DeathWatchProtocol {
     /// Death Pact: By watching an actor one enters a so-called "death pact" with the watchee,
     /// meaning that this actor will also terminate itself once it receives the `.terminated` signal
     /// for the watchee. A simple mnemonic to remember this is to think of the Romeo & Juliet scene where
-    /// the lovers each kill themselves, thinking the other has died.
+    /// the lovers each end their lives, thinking the other has died.
     ///
     /// Alternatively, one can handle the `.terminated` signal using the `.receiveSignal(Signal -> _Behavior<Message>)` method,
     /// which gives this actor the ability to react to the watchee's death in some other fashion,
@@ -81,7 +82,8 @@ public protocol _DeathWatchProtocol {
     func watch<Watchee>(
         _ watchee: Watchee,
         with terminationMessage: Message?,
-        file: String, line: UInt
+        file: String,
+        line: UInt
     ) -> Watchee where Watchee: _DeathWatchable
 
     /// Reverts the watching of an previously watched actor.
@@ -101,7 +103,8 @@ public protocol _DeathWatchProtocol {
     @discardableResult
     func unwatch<Watchee>(
         _ watchee: Watchee,
-        file: String, line: UInt
+        file: String,
+        line: UInt
     ) -> Watchee where Watchee: _DeathWatchable
 }
 
@@ -148,7 +151,8 @@ internal struct DeathWatchImpl<Message: Codable> {
         watchee: Watchee,
         with terminationMessage: Message?,
         myself watcher: _ActorShell<Message>,
-        file: String, line: UInt
+        file: String,
+        line: UInt
     ) where Watchee: _DeathWatchable {
         traceLog_DeathWatch("issue watch: \(watchee) (from \(watcher) (myself))")
         let addressableWatchee: _AddressableActorRef = watchee.asAddressable
@@ -188,7 +192,8 @@ internal struct DeathWatchImpl<Message: Codable> {
     public mutating func unwatch<Watchee>(
         watchee: Watchee,
         myself watcher: _ActorRef<Message>,
-        file: String = #filePath, line: UInt = #line
+        file: String = #filePath,
+        line: UInt = #line
     ) where Watchee: _DeathWatchable {
         traceLog_DeathWatch("issue unwatch: watchee: \(watchee) (from \(watcher) myself)")
         let addressableWatchee = watchee.asAddressable
@@ -210,8 +215,9 @@ internal struct DeathWatchImpl<Message: Codable> {
 
     public mutating func becomeWatchedBy(watcher: _AddressableActorRef, myself: _ActorRef<Message>, parent: _AddressableActorRef) {
         guard watcher.id != myself.id else {
-            traceLog_DeathWatch("Attempted to watch 'myself' [\(myself)], which is a no-op, since such watch's terminated can never be observed. " +
-                "Likely a programming error where the wrong actor ref was passed to watch(), please check your code.")
+            traceLog_DeathWatch(
+                "Attempted to watch 'myself' [\(myself)], which is a no-op, since such watch's terminated can never be observed. " + "Likely a programming error where the wrong actor ref was passed to watch(), please check your code."
+            )
             return
         }
 

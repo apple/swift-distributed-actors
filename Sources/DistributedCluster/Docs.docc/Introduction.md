@@ -6,7 +6,6 @@ A high-level introduction to distributed actor systems.
 
 Distributed actors extend Swift's "local only" concept of `actor` types to the world of distributed systems.
 
-
 ### Actors
 
 As distributed actors are an extension of Swift's actor based concurrency model, it is recommended to familiarize yourself with Swift actors first, before diving into the world of distributed actors.
@@ -15,7 +14,7 @@ To do so, you can refer to:
 - [Concurrency: Actors](https://docs.swift.org/swift-book/LanguageGuide/Concurrency.html#ID645) section of the Swift Book,
 - or the [Protect mutable state with Swift actors](https://developer.apple.com/videos/play/wwdc2021/10133/) introduction video from WWDC 2021.
 
-## Thinking in (distributed) actors
+### Thinking in (distributed) actors
 
 In order to build distributed systems successfully you will need to get into the right mindset. 
 
@@ -25,7 +24,7 @@ Distribution comes with the added complexity of _partial failure_ of systems. Me
 
 In this section we will try to guide you towards "thinking in actors," but perhaps it’s also best to first realize that: "you probably already know actors!" As any time you implement some form of identity that is given tasks that it should work on, most likely using some concurrent queue or other synchronization mechanism, you are probably inventing some form of actor-like structures there yourself!
 
-## Distributed actors
+### Distributed actors
 
 Distributed actors are a type of nominal type in Swift. Similarly to actors, they are introduced using the `distributed actor` pair of keywords.
 
@@ -41,7 +40,7 @@ distributed actor Greeter {
 }
 ```
 
-### Module-wide default actor system typealias
+#### Module-wide default actor system typealias
 
 Instead of declaring the `typealias ActorSystem = ClusterSystem` in every actor you declare, you can instead declare a module-wide `DefaultDistributedActorSystem` typealias instead. Generally it is recommended to keep that type-alias at the default (module wide) access control level, like this:
 
@@ -77,13 +76,13 @@ distributed actor WebSocketWorker {
 }
 ```
 
-### Location Transparency
+#### Location Transparency
 
 Distributed actors gain most of their features from the fact that they can be interacted with "the same way" (only by asynchronous and throwing `distributed func` calls), regardless where they are "located". This means that if one is passed an instance of a `distributed actor Greeter` we do not know (by design and on purpose!) if it is really a local instance, or actually only a reference to a remote distributed actor, located on some other host.
 
 This capability along with strong isolation guarantees, enables a concept called [location transparency](https://en.wikipedia.org/wiki/Location_transparency), which is a programming style in which we describe network resources by some form of identity, and not their actual location. In distributed actors, this means that practically speaking, we do not have to know "where" a distributed actor is located. Or in some more advanced patterns, it may actually be "moving" from one host to another, while we still only refer to it using some abstract identifier. 
 
-## Distributed actor isolation
+### Distributed actor isolation
 
 In order to function properly, distributed actors must impose stronger isolation guarantees than their local-only cousins.
 
@@ -144,7 +143,7 @@ distributed actor Example {
 
 It is possible to declare nonisolated computed properties as well as methods, and they follow the same rules as such declarations in actor types.
 
-## Distributed actor initialization
+### Distributed actor initialization
 
 Distributed actors **must** declare a type of `ActorSystem` they are intended to be used with (which in case of the swift-distributed-actors cluster library is always the ``ClusterSystem``), and initialize the implicit `actorSystem` property that stores the system.
 
@@ -159,7 +158,7 @@ Worker() // ❌ error: missing argument for 'actorSystem' parameter
 
 Distributed actor initializers are allowed to be throwing, failing, or even `async`. For more details on actor initializer semantics, please refer to [SE-0327: On Actors and Initialization](https://github.com/apple/swift-evolution/blob/main/proposals/0327-actor-initializers.md).
 
-## Distributed actor methods
+### Distributed actor methods
 
 Distributed actors may declare distributed instance methods by prepending the `distributed` keyword in front of a `func` or _computed property_ declaration, like so:
 
@@ -217,11 +216,11 @@ The `self.work(on:)` call still needed to use the `await` keyword, since we were
 > try await worker.work(item, settings)
 > ```
 
-## Distributed actors conforming to protocols
+### Distributed actors conforming to protocols
 
 Distributed actors may conform to `protocol` types, however they face similar restrictions in doing so as local-only `actor` types do.
 
-### Witnessing protocol requirements
+#### Witnessing protocol requirements
 
 As distributed actor methods are implicitly asynchronous and throwing when called from the outside of the actor, they can only witness asynchronous and throwing protocol requirements.
 
@@ -247,7 +246,7 @@ distributed actor Example: SampleProtocol {
 }
 ```
 
-### Synchronous protocol requirements
+#### Synchronous protocol requirements
 
 A `distributed actor` may conform to a synchronous protocol requirement **only** with a `nonisolated` computed property or function declaration.
 
@@ -268,7 +267,7 @@ This is correct, since it is only accessing other `nonisolated` computed propert
 > 
 > This is also how the `Hashable` and `Equatable` protocols are implemented for distributed actors, by delegating to the `self.id` property. 
 
-### DistributedActor constrained protocols
+#### DistributedActor constrained protocols
 
 Protocols may require that types extending it be distributed actors, this can be expressed using the following:
 
@@ -294,7 +293,7 @@ However, the `DistributedActor` **does not** refine the `Actor` protocol! This i
 
 In practice, we do not see this as a problem, but a natural fallout of the isolation models. If necessary to require a type to be "some actor", please use the `protocol Worker: AnyActor` constraint.
 
-## Where to go from here?
+### Where to go from here?
 
 Continue your journey with those articles:
 

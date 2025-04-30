@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -20,7 +20,7 @@
 // Based on the "The C Programming Language" implementation of itoa (since part of standard C), and extended to accept radix.
 // See: https://en.wikibooks.org/wiki/C_Programming/stdlib.h/itoa
 
-/* reverse:  reverse string s in place */
+// reverse:  reverse string s in place
 void reverse(char s[]) {
     int i, j;
     char c;
@@ -32,7 +32,7 @@ void reverse(char s[]) {
     }
 }
 
-/* itoa:  convert n to characters in s */
+// itoa:  convert n to characters in s
 void itoa(int n, char s[], int radix) {
     int i, sign;
 

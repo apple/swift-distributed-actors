@@ -6,17 +6,17 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
 
+import Distributed
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import XCTest
 
-import Distributed
+@testable import DistributedCluster
 
 private let defaultRunAndBlockTimeout: Duration = .seconds(60)
 
