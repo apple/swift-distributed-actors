@@ -26,7 +26,7 @@ import Atomics
 public final class _RemoteClusterActorPersonality<Message: Codable> {
     let id: ActorID
 
-    weak var clusterShell: ClusterShell?
+    let clusterShell: ClusterShell
     let system: ClusterSystem  // TODO: maybe don't need to store it and access via clusterShell?
 
     var deadLetters: _ActorRef<Message> {
@@ -68,7 +68,7 @@ public final class _RemoteClusterActorPersonality<Message: Codable> {
     //   we only pay the cost of this atomic read, rather than the expensive hashmap lookup and locking!
     private var _cachedAssociation: ManagedAtomicLazyReference<Association>
 
-    init(shell: ClusterShell?, id: ActorID, system: ClusterSystem) {
+    init(shell: ClusterShell, id: ActorID, system: ClusterSystem) {
         if !id._isRemote {
             let _: Void = fatalErrorBacktrace("RemoteActorRef MUST be remote. ActorID was: \(id.detailedDescription)")
         }
@@ -94,7 +94,6 @@ public final class _RemoteClusterActorPersonality<Message: Codable> {
         case .tombstone:
             // TODO: metric for dead letter: self.instrumentation.deadLetter(message: message, from: nil)
             self.deadLetters.tell(message, file: file, line: line)
-        case .none: ()
         }
     }
 
@@ -108,7 +107,6 @@ public final class _RemoteClusterActorPersonality<Message: Codable> {
         case .tombstone:
             // TODO: metric for dead letter: self.instrumentation.deadLetter(message: message, from: nil)
             self.system.deadLetters.tell(DeadLetter(invocation, recipient: self.id), file: file, line: line)
-        case .none: ()
         }
     }
 
@@ -123,16 +121,15 @@ public final class _RemoteClusterActorPersonality<Message: Codable> {
         case .tombstone:
             // TODO: metric for dead letter: self.instrumentation.deadLetter(message: message, from: nil)
             self.system.personalDeadLetters(recipient: self.id).tell(message, file: file, line: line)
-        case .none: ()
         }
     }
 
-    private var association: ClusterShell.StoredAssociationState? {
+    private var association: ClusterShell.StoredAssociationState {
         if let assoc = self._cachedAssociation.load() {
             return .association(assoc)
         }
 
-        let associationState = self.clusterShell?.getEnsureAssociation(with: self.id.node)
+        let associationState = self.clusterShell.getEnsureAssociation(with: self.id.node)
         switch associationState {
         case .association(let assoc):
             return .association(self._cachedAssociation.storeIfNilThenLoad(assoc))

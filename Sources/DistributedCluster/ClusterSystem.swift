@@ -559,7 +559,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
             self._serialization = nil
         }
 
-        self._clusterControlStore.load()?.value._events.clean()
+        self._clusterControlStore.load()?.value.events.clean()
         self._clusterStore.load()?.value = nil
 
         _ = self._clusterStore.storeIfNilThenLoad(Box(nil))

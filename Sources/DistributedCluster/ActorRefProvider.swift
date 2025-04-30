@@ -52,13 +52,13 @@ internal struct RemoteActorRefProvider: _ActorRefProvider {
     private let localNode: Cluster.Node
     private let localProvider: LocalActorRefProvider
 
-    weak var cluster: ClusterShell?
+    let cluster: ClusterShell
     // TODO: should cache perhaps also associations to inject them eagerly to actor refs?
 
     // TODO: restructure it somehow, perhaps we dont need the full abstraction like this
     init(
         settings: ClusterSystemSettings,
-        cluster: ClusterShell?,
+        cluster: ClusterShell,
         localProvider: LocalActorRefProvider
     ) {
         precondition(settings.enabled, "Remote actor provider should only be used when clustering is enabled")

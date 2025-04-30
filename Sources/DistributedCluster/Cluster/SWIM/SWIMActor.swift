@@ -321,7 +321,7 @@ internal distributed actor SWIMActor: SWIMPeer, SWIMAddressablePeer, CustomStrin
 
             case .alive(let previousStatus):
                 self.log.debug("Member [\(pinged)] is alive")
-                if previousStatus.isUnreachable, let member = swim?.member(for: pinged) {
+                if previousStatus.isUnreachable, let member = swim.member(for: pinged) {
                     // member was unreachable but now is alive, we should emit an event
                     let event = SWIM.MemberStatusChangedEvent(previousStatus: previousStatus, member: member)  // FIXME: make SWIM emit an option of the event
                     self.tryAnnounceMemberReachability(change: event)
@@ -457,7 +457,7 @@ internal distributed actor SWIMActor: SWIMPeer, SWIMAddressablePeer, CustomStrin
         self.metrics.shell.messageInboundCount.increment()
 
         for directive
-            in (self.swim?.onPing(
+            in (self.swim.onPing(
                 pingOrigin: origin,
                 payload: payload,
                 sequenceNumber: sequenceNumber
@@ -511,12 +511,12 @@ internal distributed actor SWIMActor: SWIMPeer, SWIMAddressablePeer, CustomStrin
         self.metrics.shell.messageInboundCount.increment()
 
         for directive
-            in (self.swim?.onPingRequest(
+            in (self.swim.onPingRequest(
                 target: target,
                 pingRequestOrigin: pingRequestOrigin,
                 payload: payload,
                 sequenceNumber: pingRequestSequenceNumber
-            ) ?? [])
+            ))
         {
             switch directive {
             case .gossipProcessed(let gossipDirective):
@@ -553,11 +553,11 @@ internal distributed actor SWIMActor: SWIMPeer, SWIMAddressablePeer, CustomStrin
     nonisolated func confirmDead(node: Cluster.Node) {
         Task {
             await self.whenLocal { myself in
-                let directive = myself.swim?.confirmDead(peer: node.asSWIMNode.swimShell(myself.actorSystem))
+                let directive = myself.swim.confirmDead(peer: node.asSWIMNode.swimShell(myself.actorSystem))
                 switch directive {
                 case .applied(let change):
-                    myself.log.warning("Confirmed node .dead: \(change)", metadata: myself.swim?.metadata(["swim/change": "\(change)"]))
-                case .ignored, .none:
+                    myself.log.warning("Confirmed node .dead: \(change)", metadata: myself.swim.metadata(["swim/change": "\(change)"]))
+                case .ignored:
                     return
                 }
             }
@@ -573,14 +573,13 @@ internal distributed actor SWIMActor: SWIMPeer, SWIMAddressablePeer, CustomStrin
         let fakeGossip = SWIM.GossipPayload.membership([
             SWIM.Member(peer: targetPeer, status: .alive(incarnation: 0), protocolPeriod: 0)
         ])
-        _ = self.swim?.onPingResponse(
+        _ = self.swim.onPingResponse(
             response: .ack(target: targetPeer, incarnation: 0, payload: fakeGossip, sequenceNumber: 0),
             pingRequestOrigin: nil,
             pingRequestSequenceNumber: nil
         )
 
         Task {
-            guard var swim = self.swim else { return }
             // TODO: we are sending the ping here to initiate cluster membership. Once available this should do a state sync instead
             await self.sendPing(
                 to: targetPeer,
@@ -588,7 +587,7 @@ internal distributed actor SWIMActor: SWIMPeer, SWIMAddressablePeer, CustomStrin
                 pingRequestOrigin: nil,
                 pingRequestSequenceNumber: nil,
                 timeout: .seconds(1),
-                sequenceNumber: swim.nextSequenceNumber()
+                sequenceNumber: self.swim.nextSequenceNumber()
             )
         }
     }
@@ -597,25 +596,15 @@ internal distributed actor SWIMActor: SWIMPeer, SWIMAddressablePeer, CustomStrin
     // MARK: For testing only
 
     func _getMembershipState() -> [SWIM.Member<SWIMActor>] {
-        self.swim.map { Array($0.members) } ?? []
+        Array(self.swim.members)
     }
 
     func _configureSWIM(_ configure: (inout SWIM.Instance<SWIMActor, SWIMActor, SWIMActor>) throws -> Void) rethrows {
-        guard var swim else { return }
-        try configure(&swim)
-        self.swim = swim
+        try configure(&self.swim)
     }
 
     nonisolated var description: String {
         "\(Self.self)(\(self.id))"
-    }
-
-    nonisolated func clean() {
-        Task { [weak self] in await self?.whenLocal { $0.cleanAll() } }
-    }
-
-    private func cleanAll() {
-        self.swim = nil
     }
 }
 

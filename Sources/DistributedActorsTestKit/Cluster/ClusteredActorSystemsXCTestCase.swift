@@ -168,10 +168,6 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
             self.printAllCapturedLogs()
         }
 
-        self.lock.withLockVoid {
-            self._logCaptures = []
-        }
-
         for node in self._nodes {
             node.log.warning("======================== TEST TEAR DOWN: SHUTDOWN ========================")
             try! await node.shutdown().wait()
@@ -180,6 +176,7 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
         self.lock.withLockVoid {
             self._nodes = []
             self._testKits = []
+            self._logCaptures = []
         }
 
         if self.inspectDetectActorLeaks {
@@ -193,10 +190,7 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
     }
 
     public func testKit(_ system: ClusterSystem) -> ActorTestKit {
-        let idx = self.lock.withLock {
-            self._nodes.firstIndex(where: { s in s.cluster.node == system.cluster.node })
-        }
-        guard let idx else {
+        guard let idx = self._nodes.firstIndex(where: { s in s.cluster.node == system.cluster.node }) else {
             fatalError("Must only call with system that was spawned using `setUpNode()`, was: \(system)")
         }
 

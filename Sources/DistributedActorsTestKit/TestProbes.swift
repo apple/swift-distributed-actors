@@ -860,8 +860,8 @@ private distributed actor _TestProbeInternal: LifecycleWatch {
         private var onEnqueue: ((Item) -> Void)?
 
         init() {
-            self.items = AsyncStream { [weak self] continuation in
-                self?.onEnqueue = { item in
+            self.items = AsyncStream { continuation in
+                self.onEnqueue = { item in
                     continuation.yield(item)
                 }
             }

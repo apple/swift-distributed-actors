@@ -368,7 +368,6 @@ internal class ClusterShell {
 
     deinit {
         self.clusterEvents?.clean()
-        self._swimShell?.clean()
     }
 }
 
