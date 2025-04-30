@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -23,7 +23,7 @@ import Distributed
 /// - Warning: Users MUST NOT implement new signals.
 ///            Instances of them are reserved to only be created and managed by the actor system itself.
 /// - SeeAlso: `Signals`, for a complete listing of pre-defined signals.
-public protocol _Signal: _NotActuallyCodableMessage, Sendable {} // FIXME: we could allow them as Codable, we never send them over the wire, but people might manually if they wanted to I suppose
+public protocol _Signal: _NotActuallyCodableMessage, Sendable {}  // FIXME: we could allow them as Codable, we never send them over the wire, but people might manually if they wanted to I suppose
 
 /// Namespace for all pre-defined `Signal` types.
 ///
@@ -85,7 +85,7 @@ public enum _Signals {
 
         /// True if the actor was located on a remote node, and this entire node has terminated (marked as `MemberStatus.down`),
         /// meaning that no communication with any actor on this node will be possible anymore, resulting in this `Terminated` signal.
-        public let nodeTerminated: Bool // TODO: Making this a `Reason` could be nicer.
+        public let nodeTerminated: Bool  // TODO: Making this a `Reason` could be nicer.
 
         public init(id: ActorID, existenceConfirmed: Bool, nodeTerminated: Bool = false) {
             self.id = id
@@ -108,7 +108,7 @@ public enum _Signals {
     /// ### Death Pacts with Children
     ///
     /// If the child is NOT being watched by the parent, this signal will NOT cause the parent (recipient of this signal)
-    /// to kill kill itself by throwing an [DeathPactError], as this is reserved only to when a death pact is formed.
+    /// to terminate itself by throwing an [DeathPactError], as this is reserved only to when a death pact is formed.
     /// In other words, if the parent spawns child actors but does not watch them, this is taken as not caring enough about
     /// their lifetime as to trigger termination itself if one of them terminates.
     ///
@@ -166,8 +166,7 @@ public enum _Signals {
 
 extension _Signals.Terminated: Equatable, Hashable {
     public static func == (lhs: _Signals.Terminated, rhs: _Signals.Terminated) -> Bool {
-        lhs.id == rhs.id &&
-            lhs.existenceConfirmed == rhs.existenceConfirmed
+        lhs.id == rhs.id && lhs.existenceConfirmed == rhs.existenceConfirmed
     }
 
     public func hash(into hasher: inout Hasher) {

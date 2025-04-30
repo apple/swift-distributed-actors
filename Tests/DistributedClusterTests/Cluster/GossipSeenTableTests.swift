@@ -6,16 +6,17 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import NIO
 import XCTest
+
+@testable import DistributedCluster
 
 /// Tests of just the datatype
 final class GossipSeenTableTests: XCTestCase {
@@ -40,13 +41,15 @@ final class GossipSeenTableTests: XCTestCase {
         let table = Cluster.MembershipGossip.SeenTable.parse(
             """
             A: A@1
-            """, nodes: self.allNodes
+            """,
+            nodes: self.allNodes
         )
 
         let incoming = Cluster.MembershipGossip.SeenTable.parse(
             """
             B: B@1
-            """, nodes: self.allNodes
+            """,
+            nodes: self.allNodes
         )
 
         // neither node knew about each other, so the updates were concurrent;
@@ -86,13 +89,15 @@ final class GossipSeenTableTests: XCTestCase {
         var table = Cluster.MembershipGossip.SeenTable.parse(
             """
             A: A:1
-            """, nodes: self.allNodes
+            """,
+            nodes: self.allNodes
         )
 
         let incoming = Cluster.MembershipGossip.SeenTable.parse(
             """
             B: B:2
-            """, nodes: self.allNodes
+            """,
+            nodes: self.allNodes
         )
 
         table.merge(selfOwner: self.nodeA, incoming: incoming)
@@ -107,14 +112,14 @@ final class GossipSeenTableTests: XCTestCase {
         // a situation in which the two nodes have converged, so their versions are .same
 
         var table = Cluster.MembershipGossip.SeenTable(myselfNode: self.nodeA, version: .init())
-        table.incrementVersion(owner: self.nodeA, at: self.nodeA) // A observed: A:1
-        table.incrementVersion(owner: self.nodeA, at: self.nodeB) // A observed: A:1 B:1
-        table.incrementVersion(owner: self.nodeA, at: self.nodeB) // A observed: A:1 B:2
+        table.incrementVersion(owner: self.nodeA, at: self.nodeA)  // A observed: A:1
+        table.incrementVersion(owner: self.nodeA, at: self.nodeB)  // A observed: A:1 B:1
+        table.incrementVersion(owner: self.nodeA, at: self.nodeB)  // A observed: A:1 B:2
 
-        var incoming = Cluster.MembershipGossip(ownerNode: self.nodeB) // B observed:
-        incoming.incrementOwnerVersion() // B observed: B:1
-        incoming.incrementOwnerVersion() // B observed: B:2
-        incoming.seen.incrementVersion(owner: self.nodeB, at: self.nodeA) // B observed: A:1 B:2
+        var incoming = Cluster.MembershipGossip(ownerNode: self.nodeB)  // B observed:
+        incoming.incrementOwnerVersion()  // B observed: B:1
+        incoming.incrementOwnerVersion()  // B observed: B:2
+        incoming.seen.incrementVersion(owner: self.nodeB, at: self.nodeA)  // B observed: A:1 B:2
 
         table.merge(selfOwner: self.nodeA, incoming: incoming.seen)
 
@@ -126,12 +131,12 @@ final class GossipSeenTableTests: XCTestCase {
         // the incoming gossip is "ahead" and has some more information
 
         var table = Cluster.MembershipGossip.SeenTable(myselfNode: self.nodeA, version: .init())
-        table.incrementVersion(owner: self.nodeA, at: self.nodeA) // A observed: A:1
+        table.incrementVersion(owner: self.nodeA, at: self.nodeA)  // A observed: A:1
 
-        var incoming = Cluster.MembershipGossip(ownerNode: self.nodeB) // B observed:
-        incoming.incrementOwnerVersion() // B observed: B:1
-        incoming.incrementOwnerVersion() // B observed: B:2
-        incoming.seen.incrementVersion(owner: self.nodeB, at: self.nodeA) // B observed: A:1 B:2
+        var incoming = Cluster.MembershipGossip(ownerNode: self.nodeB)  // B observed:
+        incoming.incrementOwnerVersion()  // B observed: B:1
+        incoming.incrementOwnerVersion()  // B observed: B:2
+        incoming.seen.incrementVersion(owner: self.nodeB, at: self.nodeA)  // B observed: A:1 B:2
 
         table.merge(selfOwner: self.nodeA, incoming: incoming.seen)
 
@@ -143,13 +148,13 @@ final class GossipSeenTableTests: XCTestCase {
         // the incoming gossip is "behind"
 
         var table = Cluster.MembershipGossip.SeenTable(myselfNode: self.nodeA, version: .init())
-        table.incrementVersion(owner: self.nodeA, at: self.nodeA) // A observed: A:1
-        table.incrementVersion(owner: self.nodeA, at: self.nodeB) // A observed: A:1 B:1
-        table.incrementVersion(owner: self.nodeA, at: self.nodeB) // A observed: A:1 B:2
+        table.incrementVersion(owner: self.nodeA, at: self.nodeA)  // A observed: A:1
+        table.incrementVersion(owner: self.nodeA, at: self.nodeB)  // A observed: A:1 B:1
+        table.incrementVersion(owner: self.nodeA, at: self.nodeB)  // A observed: A:1 B:2
 
-        var incoming = Cluster.MembershipGossip(ownerNode: self.nodeB) // B observed:
-        incoming.incrementOwnerVersion() // B observed: B:1
-        incoming.incrementOwnerVersion() // B observed: B:2
+        var incoming = Cluster.MembershipGossip(ownerNode: self.nodeB)  // B observed:
+        incoming.incrementOwnerVersion()  // B observed: B:1
+        incoming.incrementOwnerVersion()  // B observed: B:2
 
         table.merge(selfOwner: self.nodeA, incoming: incoming.seen)
 
@@ -161,20 +166,20 @@ final class GossipSeenTableTests: XCTestCase {
         // the incoming gossip is "concurrent"
 
         var table = Cluster.MembershipGossip.SeenTable(myselfNode: self.nodeA, version: .init())
-        table.incrementVersion(owner: self.nodeA, at: self.nodeA) // A observed: A:1
-        table.incrementVersion(owner: self.nodeA, at: self.nodeB) // A observed: A:1 B:1
-        table.incrementVersion(owner: self.nodeA, at: self.nodeB) // A observed: A:1 B:2
-        table.incrementVersion(owner: self.nodeA, at: self.nodeC) // A observed: A:1 B:2 C:1
+        table.incrementVersion(owner: self.nodeA, at: self.nodeA)  // A observed: A:1
+        table.incrementVersion(owner: self.nodeA, at: self.nodeB)  // A observed: A:1 B:1
+        table.incrementVersion(owner: self.nodeA, at: self.nodeB)  // A observed: A:1 B:2
+        table.incrementVersion(owner: self.nodeA, at: self.nodeC)  // A observed: A:1 B:2 C:1
         // M has seen gossip from S, when it was at t=2
-        table.incrementVersion(owner: self.nodeB, at: self.nodeB) // B observed: B:2
-        table.incrementVersion(owner: self.nodeB, at: self.nodeB) // B observed: B:3
+        table.incrementVersion(owner: self.nodeB, at: self.nodeB)  // B observed: B:2
+        table.incrementVersion(owner: self.nodeB, at: self.nodeB)  // B observed: B:3
 
         // in reality S is quite more far ahead, already at t=4
-        var incoming = Cluster.MembershipGossip(ownerNode: self.nodeB) // B observed
-        incoming.incrementOwnerVersion() // B observed: B:1
-        incoming.incrementOwnerVersion() // B observed: B:2
-        incoming.incrementOwnerVersion() // B observed: B:3
-        incoming.seen.incrementVersion(owner: self.nodeB, at: self.nodeC) // B observed: B:3 C:1
+        var incoming = Cluster.MembershipGossip(ownerNode: self.nodeB)  // B observed
+        incoming.incrementOwnerVersion()  // B observed: B:1
+        incoming.incrementOwnerVersion()  // B observed: B:2
+        incoming.incrementOwnerVersion()  // B observed: B:3
+        incoming.seen.incrementVersion(owner: self.nodeB, at: self.nodeC)  // B observed: B:3 C:1
 
         table.merge(selfOwner: self.nodeA, incoming: incoming.seen)
 
@@ -188,7 +193,8 @@ final class GossipSeenTableTests: XCTestCase {
         var table = Cluster.MembershipGossip.SeenTable.parse(
             """
             A: A:4
-            """, nodes: self.allNodes
+            """,
+            nodes: self.allNodes
         )
 
         let incoming = Cluster.MembershipGossip.SeenTable.parse(
@@ -196,7 +202,8 @@ final class GossipSeenTableTests: XCTestCase {
             A: A:1
             B: B:2 C:1
             C: C:1
-            """, nodes: self.allNodes
+            """,
+            nodes: self.allNodes
         )
 
         table.merge(selfOwner: self.nodeA, incoming: incoming)

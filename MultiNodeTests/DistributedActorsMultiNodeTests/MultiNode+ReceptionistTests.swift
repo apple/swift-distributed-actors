@@ -6,13 +6,14 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
 
 import DistributedCluster
+import Logging
 import MultiNodeTestKit
 
 public final class MultiNodeReceptionistTests: MultiNodeTestSuite {
@@ -46,7 +47,7 @@ public final class MultiNodeReceptionistTests: MultiNodeTestSuite {
         // *All* nodes spawn an echo actor
         let localEcho = await DistributedEcho(greeting: "Hi from \(multiNode.system.name), ", actorSystem: multiNode.system)
 
-        try await multiNode.checkPoint("Spawned actors") // ------------------------------------------------------------
+        try await multiNode.checkPoint("Spawned actors")  // ------------------------------------------------------------
 
         let expectedCount = Nodes.allCases.count
         var discovered: Set<DistributedEcho> = []
@@ -59,7 +60,7 @@ public final class MultiNodeReceptionistTests: MultiNodeTestSuite {
             }
         }
 
-        try await multiNode.checkPoint("All members found \(expectedCount) actors") // ---------------------------------
+        try await multiNode.checkPoint("All members found \(expectedCount) actors")  // ---------------------------------
     }
 
     distributed actor DistributedEcho {

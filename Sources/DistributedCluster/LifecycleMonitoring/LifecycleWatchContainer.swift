@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -15,6 +15,7 @@
 import Dispatch
 import Distributed
 import DistributedActorsConcurrencyHelpers
+import Logging
 import NIO
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -41,7 +42,7 @@ final class LifecycleWatchContainer {
     /// Warning: DO NOT RETAIN THE WATCHER.
     init(watcherID: ActorID, actorSystem: ClusterSystem) {
         traceLog_DeathWatch("Make LifecycleWatchContainer owned by \(watcherID)")
-        self.watcherID = watcherID.withoutLifecycle // make sure we don't retain the context
+        self.watcherID = watcherID.withoutLifecycle  // make sure we don't retain the context
         self.system = actorSystem
     }
 
@@ -58,7 +59,7 @@ final class LifecycleWatchContainer {
         traceLog_DeathWatch("Clear LifecycleWatchContainer owned by \(self.watcherID)")
         self.watching = [:]
         self.watchedBy = [:]
-        for _ in self.watching.values { // FIXME: something off
+        for _ in self.watching.values {  // FIXME: something off
             self.nodeDeathWatcher?.tell(.removeWatcher(watcherID: self.watcherID))
         }
     }
@@ -73,7 +74,8 @@ extension LifecycleWatchContainer {
     public func termination(
         of watcheeID: ActorID,
         @_implicitSelfCapture whenTerminated: @escaping @Sendable (ClusterSystem.ActorID) async -> Void,
-        file: String = #filePath, line: UInt = #line
+        file: String = #filePath,
+        line: UInt = #line
     ) throws {
         guard let system = self.system else {
             throw ClusterSystemError(.shuttingDown("system shut down"))
@@ -125,7 +127,8 @@ extension LifecycleWatchContainer {
     /// - Returns: the passed in watchee reference for easy chaining `e.g. return context.unwatch(ref)`
     public func unwatch<Watchee>(
         watchee: Watchee,
-        file: String = #filePath, line: UInt = #line
+        file: String = #filePath,
+        line: UInt = #line
     ) -> Watchee where Watchee: DistributedActor, Watchee.ActorSystem == ClusterSystem {
         self._lock.wait()
         defer {
@@ -145,9 +148,11 @@ extension LifecycleWatchContainer {
         if self.watching.removeValue(forKey: watchee.id) != nil {
             addressableWatchee._sendSystemMessage(
                 .unwatch(
-                    watchee: addressableWatchee, watcher: addressableMyself
+                    watchee: addressableWatchee,
+                    watcher: addressableMyself
                 ),
-                file: file, line: line
+                file: file,
+                line: line
             )
         }
 
@@ -180,8 +185,10 @@ extension LifecycleWatchContainer {
         }
 
         guard watcher.id != self.watcherID else {
-            traceLog_DeathWatch("Attempted to watch 'myself' [\(self.watcherID)], which is a no-op, since such watch's terminated can never be observed. " +
-                "Likely a programming error where the wrong actor ref was passed to watch(), please check your code.")
+            traceLog_DeathWatch(
+                "Attempted to watch 'myself' [\(self.watcherID)], which is a no-op, since such watch's terminated can never be observed. "
+                    + "Likely a programming error where the wrong actor ref was passed to watch(), please check your code."
+            )
             return
         }
 
@@ -269,9 +276,10 @@ extension LifecycleWatchContainer {
 
     private func subscribeNodeTerminatedEvents(
         watchedID: ActorID,
-        file: String = #filePath, line: UInt = #line
+        file: String = #filePath,
+        line: UInt = #line
     ) {
-        self.nodeDeathWatcher?.tell( // different actor
+        self.nodeDeathWatcher?.tell(  // different actor
             .remoteDistributedActorWatched(
                 remoteNode: watchedID.node,
                 watcherID: self.watcherID,

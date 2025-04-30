@@ -6,16 +6,17 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsConcurrencyHelpers
-import struct Foundation.Date
 import Logging
 import NIO
+
+import struct Foundation.Date
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Association
@@ -47,7 +48,7 @@ final class Association: CustomStringConvertible, @unchecked Sendable {
 
     enum State {
         case associating(queue: MPSCLinkedQueue<TransportEnvelope>)
-        case associated(channel: Channel) // TODO: _InternalActorTransport.Node/Peer/Target ???
+        case associated(channel: Channel)  // TODO: _InternalActorTransport.Node/Peer/Target ???
         case tombstone(_ActorRef<DeadLetter>)
     }
 
@@ -145,7 +146,7 @@ final class Association: CustomStringConvertible, @unchecked Sendable {
                 // in case someone stored a reference to this association in a ref, we swap it into a dead letter sink
                 self.state = .tombstone(system.deadLetters)
             case .tombstone:
-                () // ok
+                ()  // ok
             }
         }
 
@@ -260,7 +261,7 @@ extension Association {
 
         /// Used to create "any" tombstone, for being able to lookup in Set<TombstoneSet>
         init(_ node: Cluster.Node) {
-            self.removalDeadline = .now // ANY value here is ok, we do not use it in hash/equals
+            self.removalDeadline = .now  // ANY value here is ok, we do not use it in hash/equals
             self.remoteNode = node
         }
 

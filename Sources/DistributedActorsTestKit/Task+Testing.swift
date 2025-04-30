@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -42,7 +42,7 @@ extension Task {
                 defer {
                     group.cancelAll()
                 }
-                return try await group.next()! // return or throw the first one; the group will wait for the other one
+                return try await group.next()!  // return or throw the first one; the group will wait for the other one
             }
         }
     }

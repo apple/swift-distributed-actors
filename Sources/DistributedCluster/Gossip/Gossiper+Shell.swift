@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -61,7 +61,7 @@ internal final class GossipShell<Gossip: Codable, Acknowledgement: Codable> {
 
                 case .sideChannelMessage(let identifier, let message):
                     switch self.onSideChannelMessage(context, identifier: identifier, message) {
-                    case .received: () // ok
+                    case .received: ()  // ok
                     case .unhandled: return .unhandled
                     }
 
@@ -93,11 +93,14 @@ internal final class GossipShell<Gossip: Codable, Acknowledgement: Codable> {
         payload: Gossip,
         ackRef: _ActorRef<Acknowledgement>?
     ) {
-        context.log.trace("Received gossip [\(identifier.gossipIdentifier)]", metadata: [
-            "gossip/identity": "\(identifier.gossipIdentifier)",
-            "gossip/origin": "\(origin.id)",
-            "gossip/incoming": Logger.MetadataValue.pretty(payload),
-        ])
+        context.log.trace(
+            "Received gossip [\(identifier.gossipIdentifier)]",
+            metadata: [
+                "gossip/identity": "\(identifier.gossipIdentifier)",
+                "gossip/origin": "\(origin.id)",
+                "gossip/incoming": Logger.MetadataValue.pretty(payload),
+            ]
+        )
 
         let logic = self.getEnsureLogic(context, identifier: identifier)
 
@@ -115,7 +118,8 @@ internal final class GossipShell<Gossip: Codable, Acknowledgement: Codable> {
                     """
                     GossipLogic attempted to offer Acknowledgement while it is configured as .unidirectional!\
                     This is potentially a bug in the logic or the Gossiper's configuration. Dropping acknowledgement.
-                    """, metadata: [
+                    """,
+                    metadata: [
                         "gossip/identity": "\(identifier.gossipIdentifier)",
                         "gossip/origin": "\(origin.id)",
                         "gossip/ack": "\(unexpectedAck)",
@@ -127,7 +131,8 @@ internal final class GossipShell<Gossip: Codable, Acknowledgement: Codable> {
                     """
                     Incoming gossip has acknowledgement actor ref and seems to be expecting an ACK, while this gossiper is configured as .unidirectional! \
                     This is potentially a bug in the logic or the Gossiper's configuration.
-                    """, metadata: [
+                    """,
+                    metadata: [
                         "gossip/identity": "\(identifier.gossipIdentifier)",
                         "gossip/origin": "\(origin.id)",
                         "gossip/ackRef": "\(unexpectedAckRef)",
@@ -144,10 +149,13 @@ internal final class GossipShell<Gossip: Codable, Acknowledgement: Codable> {
     ) {
         let logic = self.getEnsureLogic(context, identifier: identifier)
 
-        context.log.trace("Update (locally) gossip payload [\(identifier.gossipIdentifier)]", metadata: [
-            "gossip/identifier": "\(identifier.gossipIdentifier)",
-            "gossip/payload": "\(pretty: payload)",
-        ])
+        context.log.trace(
+            "Update (locally) gossip payload [\(identifier.gossipIdentifier)]",
+            metadata: [
+                "gossip/identifier": "\(identifier.gossipIdentifier)",
+                "gossip/payload": "\(pretty: payload)",
+            ]
+        )
         logic.receiveLocalGossipUpdate(payload)
     }
 
@@ -167,9 +175,12 @@ internal final class GossipShell<Gossip: Codable, Acknowledgement: Codable> {
         let identifierKey = identifier.asAnyGossipIdentifier
 
         _ = self.gossipLogics.removeValue(forKey: identifierKey)
-        context.log.trace("Removing gossip identified by [\(identifier)]", metadata: [
-            "gossip/identifier": "\(identifier)",
-        ])
+        context.log.trace(
+            "Removing gossip identified by [\(identifier)]",
+            metadata: [
+                "gossip/identifier": "\(identifier)"
+            ]
+        )
 
         // TODO: callback into client or not?
     }
@@ -179,7 +190,7 @@ internal final class GossipShell<Gossip: Codable, Acknowledgement: Codable> {
             self.ensureNextGossipRound(context)
         }
 
-        let allPeers: [_AddressableActorRef] = Array(self.peers).map(\.asAddressable) // TODO: some protocol Addressable so we can avoid this mapping?
+        let allPeers: [_AddressableActorRef] = Array(self.peers).map(\.asAddressable)  // TODO: some protocol Addressable so we can avoid this mapping?
 
         guard !allPeers.isEmpty else {
             // no members to gossip with, skip this round
@@ -187,35 +198,50 @@ internal final class GossipShell<Gossip: Codable, Acknowledgement: Codable> {
         }
 
         for (identifier, logic) in self.gossipLogics {
-            let selectedPeers = logic.selectPeers(allPeers) // TODO: OrderedSet would be the right thing here...
+            let selectedPeers = logic.selectPeers(allPeers)  // TODO: OrderedSet would be the right thing here...
 
-            context.log.trace("New gossip round, selected [\(selectedPeers.count)] peers, from [\(allPeers.count)] peers", metadata: [
-                "gossip/id": "\(identifier.gossipIdentifier)",
-                "gossip/peers/selected": Logger.MetadataValue.array(selectedPeers.map { "\($0)" }),
-            ])
+            context.log.trace(
+                "New gossip round, selected [\(selectedPeers.count)] peers, from [\(allPeers.count)] peers",
+                metadata: [
+                    "gossip/id": "\(identifier.gossipIdentifier)",
+                    "gossip/peers/selected": Logger.MetadataValue.array(selectedPeers.map { "\($0)" }),
+                ]
+            )
 
             for selectedPeer in selectedPeers {
                 guard let gossip: Gossip = logic.makePayload(target: selectedPeer) else {
-                    context.log.trace("Skipping gossip to peer \(selectedPeer)", metadata: [
-                        "gossip/id": "\(identifier.gossipIdentifier)",
-                        "gossip/target": "\(selectedPeer)",
-                    ])
+                    context.log.trace(
+                        "Skipping gossip to peer \(selectedPeer)",
+                        metadata: [
+                            "gossip/id": "\(identifier.gossipIdentifier)",
+                            "gossip/target": "\(selectedPeer)",
+                        ]
+                    )
                     continue
                 }
 
                 // a bit annoying that we have to do this dance, but we don't want to let the logic do the sending,
                 // types would be wrong, and logging and more lost
                 guard let selectedRef = selectedPeer.ref as? PeerRef else {
-                    context.log.trace("Selected peer \(selectedPeer) is not of \(PeerRef.self) type! GossipLogic attempted to gossip to unknown actor?", metadata: [
-                        "gossip/id": "\(identifier.gossipIdentifier)",
-                        "gossip/target": "\(selectedPeer)",
-                    ])
+                    context.log.trace(
+                        "Selected peer \(selectedPeer) is not of \(PeerRef.self) type! GossipLogic attempted to gossip to unknown actor?",
+                        metadata: [
+                            "gossip/id": "\(identifier.gossipIdentifier)",
+                            "gossip/target": "\(selectedPeer)",
+                        ]
+                    )
                     continue
                 }
 
-                self.sendGossip(context, identifier: identifier, gossip, to: selectedRef, onGossipAck: { ack in
-                    logic.receiveAcknowledgement(ack, from: selectedPeer, confirming: gossip)
-                })
+                self.sendGossip(
+                    context,
+                    identifier: identifier,
+                    gossip,
+                    to: selectedRef,
+                    onGossipAck: { ack in
+                        logic.receiveAcknowledgement(ack, from: selectedPeer, confirming: gossip)
+                    }
+                )
             }
 
             // TODO: signal "gossip round complete" perhaps?
@@ -230,11 +256,14 @@ internal final class GossipShell<Gossip: Codable, Acknowledgement: Codable> {
         to target: PeerRef,
         onGossipAck: @escaping (Acknowledgement) -> Void
     ) {
-        context.log.trace("Sending gossip to \(target.id)", metadata: [
-            "gossip/target": "\(target.id)",
-            "gossip/peers/count": "\(self.peers.count)",
-            "actor/message": Logger.MetadataValue.pretty(payload),
-        ])
+        context.log.trace(
+            "Sending gossip to \(target.id)",
+            metadata: [
+                "gossip/target": "\(target.id)",
+                "gossip/peers/count": "\(self.peers.count)",
+                "actor/message": Logger.MetadataValue.pretty(payload),
+            ]
+        )
 
         switch self.settings.style {
         case .unidirectional:
@@ -247,16 +276,22 @@ internal final class GossipShell<Gossip: Codable, Acknowledgement: Codable> {
             context.onResultAsync(of: ack, timeout: .effectivelyInfinite) { res in
                 switch res {
                 case .success(let ack):
-                    context.log.trace("Gossip ACKed", metadata: [
-                        "gossip/ack": "\(ack)",
-                    ])
+                    context.log.trace(
+                        "Gossip ACKed",
+                        metadata: [
+                            "gossip/ack": "\(ack)"
+                        ]
+                    )
                     onGossipAck(ack)
                 case .failure(let error):
-                    context.log.debug("Did not receive ACK for of [\(identifier.gossipIdentifier)] gossip", metadata: [
-                        "payload": "\(payload)",
-                        "target": "\(target)",
-                        "error": "\(error)",
-                    ])
+                    context.log.debug(
+                        "Did not receive ACK for of [\(identifier.gossipIdentifier)] gossip",
+                        metadata: [
+                            "payload": "\(payload)",
+                            "target": "\(target)",
+                            "error": "\(error)",
+                        ]
+                    )
                 }
                 return .same
             }
@@ -265,7 +300,7 @@ internal final class GossipShell<Gossip: Codable, Acknowledgement: Codable> {
 
     private func ensureNextGossipRound(_ context: _ActorContext<Message>) {
         guard !self.peers.isEmpty else {
-            return // no need to schedule gossip ticks if we have no peers
+            return  // no need to schedule gossip ticks if we have no peers
         }
 
         let delay = self.settings.effectiveInterval
@@ -285,16 +320,16 @@ extension GossipShell {
     private func initPeerDiscovery(_ context: _ActorContext<Message>) {
         switch self.settings.peerDiscovery {
         case .manuallyIntroduced:
-            return // nothing to do, peers will be introduced manually
+            return  // nothing to do, peers will be introduced manually
 
         case .onClusterMember(let atLeastStatus, let resolvePeerOn):
             func resolveInsertPeer(_ context: _ActorContext<Message>, member: Cluster.Member) {
                 guard member.node != context.system.cluster.node else {
-                    return // ignore self node
+                    return  // ignore self node
                 }
 
                 guard atLeastStatus <= member.status else {
-                    return // too "early" status of the member
+                    return  // too "early" status of the member
                 }
 
                 let resolved: _AddressableActorRef = resolvePeerOn(member)
@@ -305,11 +340,14 @@ extension GossipShell {
                     context.watch(peer)
 
                     if self.peers.insert(peer).inserted {
-                        context.log.debug("Automatically discovered peer", metadata: [
-                            "gossip/peer": "\(peer)",
-                            "gossip/peerCount": "\(self.peers.count)",
-                            "gossip/peers": "\(self.peers.map(\.id))",
-                        ])
+                        context.log.debug(
+                            "Automatically discovered peer",
+                            metadata: [
+                                "gossip/peer": "\(peer)",
+                                "gossip/peerCount": "\(self.peers.count)",
+                                "gossip/peers": "\(self.peers.map(\.id))",
+                            ]
+                        )
                     }
                 } else {
                     context.log.warning("Resolved reference \(resolved.ref) is not \(PeerRef.self), can not use it as peer for gossip.")
@@ -325,7 +363,7 @@ extension GossipShell {
                 case .membershipChange(let change):
                     resolveInsertPeer(context, member: change.member)
                 case .leadershipChange, .reachabilityChange:
-                    () // ignore
+                    ()  // ignore
                 case ._PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE:
                     context.log.error("Received Cluster.Event [\(event)]. This should not happen, please file an issue.")
                 }
@@ -337,36 +375,45 @@ extension GossipShell {
             context.receptionist.registerMyself(with: key)
             context.log.debug("Registered with receptionist key: \(key)")
 
-            context.receptionist.subscribeMyself(to: key, subReceive: { listing in
-                context.log.trace("Peer listing update via receptionist", metadata: [
-                    "peer/listing": Logger.MetadataValue.array(
-                        listing.refs.map { ref in Logger.MetadataValue.stringConvertible(ref) }
-                    ),
-                ])
-                for peer in listing.refs {
-                    self.onIntroducePeer(context, peer: peer)
+            context.receptionist.subscribeMyself(
+                to: key,
+                subReceive: { listing in
+                    context.log.trace(
+                        "Peer listing update via receptionist",
+                        metadata: [
+                            "peer/listing": Logger.MetadataValue.array(
+                                listing.refs.map { ref in Logger.MetadataValue.stringConvertible(ref) }
+                            )
+                        ]
+                    )
+                    for peer in listing.refs {
+                        self.onIntroducePeer(context, peer: peer)
+                    }
                 }
-            })
+            )
         }
     }
 
     private func onIntroducePeer(_ context: _ActorContext<Message>, peer: PeerRef) {
         guard peer != context.myself else {
-            return // there is never a need to gossip to myself
+            return  // there is never a need to gossip to myself
         }
 
         if self.peers.insert(context.watch(peer)).inserted {
-            context.log.trace("Got introduced to peer [\(peer)]", metadata: [
-                "gossip/peerCount": "\(self.peers.count)",
-                "gossip/peers": "\(self.peers.map(\.id))",
-            ])
+            context.log.trace(
+                "Got introduced to peer [\(peer)]",
+                metadata: [
+                    "gossip/peerCount": "\(self.peers.count)",
+                    "gossip/peers": "\(self.peers.map(\.id))",
+                ]
+            )
 
-//            // TODO: implement this rather as "high priority peer to gossip to"
-//            // TODO: remove this most likely
-//            // TODO: or rather, ask the logic if it wants to eagerly push?
-//            for (key, logic) in self.gossipLogics {
-//                self.sendGossip(context, identifier: key.identifier, logic.payload, to: peer)
-//            }
+            //            // TODO: implement this rather as "high priority peer to gossip to"
+            //            // TODO: remove this most likely
+            //            // TODO: or rather, ask the logic if it wants to eagerly push?
+            //            for (key, logic) in self.gossipLogics {
+            //                self.sendGossip(context, identifier: key.identifier, logic.payload, to: peer)
+            //            }
 
             self.ensureNextGossipRound(context)
         }

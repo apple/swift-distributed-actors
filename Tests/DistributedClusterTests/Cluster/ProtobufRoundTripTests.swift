@@ -6,18 +6,19 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import Foundation
 import NIO
 import SwiftProtobuf
 import XCTest
+
+@testable import DistributedCluster
 
 final class ProtobufRoundTripTests: SingleClusterSystemXCTestCase {
     func check<Value: _ProtobufRepresentable & Equatable>(_ value: Value) throws {

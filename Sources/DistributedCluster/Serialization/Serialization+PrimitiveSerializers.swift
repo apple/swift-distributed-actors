@@ -6,17 +6,16 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
 
+import Foundation  // for Codable
 import NIO
 import NIOFoundationCompat
 import SwiftProtobuf
-
-import Foundation // for Codable
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: String Serializer
@@ -74,7 +73,7 @@ internal class IntegerSerializer<Number: FixedWidthInteger>: Serializer<Number> 
     override func deserialize(from buffer: Serialization.Buffer) throws -> Number {
         switch buffer {
         case .data(let data):
-            return Number(bigEndian: data.withUnsafeBytes { $0.load(as: Number.self) })
+            return Number(bigEndian: data.withUnsafeBytes { $0.loadUnaligned(as: Number.self) })
         case .nioByteBuffer(let buffer):
             guard let i = buffer.getInteger(at: 0, endianness: .big, as: Number.self) else {
                 throw SerializationError(.notAbleToDeserialize(hint: "\(buffer) as \(Number.self)"))

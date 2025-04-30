@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -59,7 +59,7 @@ final class TimersTests: SingleClusterSystemXCTestCase {
         }
 
         try system._spawn(.anonymous, behavior)
-        for _ in 0 ..< 5 {
+        for _ in 0..<5 {
             try p.expectMessage("fromTimer")
         }
         try p.expectNoMessage(for: .milliseconds(10))
@@ -83,7 +83,7 @@ final class TimersTests: SingleClusterSystemXCTestCase {
         }
 
         try system._spawn(.anonymous, behavior)
-        for _ in 0 ..< 5 {
+        for _ in 0..<5 {
             try p.expectMessage("fromTimer")
         }
         try p.expectNoMessage(for: .milliseconds(100))
@@ -98,7 +98,7 @@ final class TimersTests: SingleClusterSystemXCTestCase {
             // Because we cancel the timer in the same run, the message should
             // not be processed and the probe should not receive a message.
             context.timers.startSingle(key: _TimerKey("message"), message: "fromTimer", delay: .nanoseconds(0))
-            DistributedCluster._Thread.sleep(.milliseconds(10)) // FIXME(swift): replace with Task.sleep
+            DistributedCluster._Thread.sleep(.milliseconds(10))  // FIXME(swift): replace with Task.sleep
             context.timers.cancel(for: _TimerKey("message"))
             return .receiveMessage { message in
                 p.tell(message)

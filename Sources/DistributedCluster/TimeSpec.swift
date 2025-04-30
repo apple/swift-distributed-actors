@@ -6,19 +6,19 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+
+import NIO
 
 #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
 import Darwin
 #else
 import Glibc
 #endif
-
-import NIO
 
 // MARK: utilities to convert between Duration and C timespec
 

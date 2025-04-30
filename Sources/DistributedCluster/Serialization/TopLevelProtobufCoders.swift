@@ -6,16 +6,17 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
 
+import NIOFoundationCompat
+
 import struct Foundation.Data
 import struct NIO.ByteBuffer
 import struct NIO.ByteBufferAllocator
-import NIOFoundationCompat
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Top-Level Bytes-Blob Encoder
@@ -196,9 +197,9 @@ class TopLevelProtobufBlobDecoder: _TopLevelBlobDecoder {
         self.buffer = buffer
 
         if let P = type as? _AnyProtobufRepresentable.Type {
-            return try P.init(from: self) as! T // explicit .init() is required here (!)
+            return try P.init(from: self) as! T  // explicit .init() is required here (!)
         } else if let P = type as? _AnyPublicProtobufRepresentable.Type {
-            return try P.init(from: self) as! T // explicit .init() is required here (!)
+            return try P.init(from: self) as! T  // explicit .init() is required here (!)
         } else {
             return fatalErrorBacktrace("\(Self.self) is not able to decode \(T.self) as it isn't a _ProtobufRepresentable type!")
         }
@@ -231,9 +232,12 @@ struct TopLevelProtobufBlobSingleValueDecodingContainer: SingleValueDecodingCont
             return buffer.readData() as! T
 
         default:
-            throw SerializationError(.unableToDeserialize(hint:
-                "Attempted decode \(reflecting: type) from a \(Self.self) which only supports raw bytes (ByteBuffer or Data) \(type is Foundation.Data.Type)"
-            ))
+            throw SerializationError(
+                .unableToDeserialize(
+                    hint:
+                        "Attempted decode \(reflecting: type) from a \(Self.self) which only supports raw bytes (ByteBuffer or Data) \(type is Foundation.Data.Type)"
+                )
+            )
         }
     }
 

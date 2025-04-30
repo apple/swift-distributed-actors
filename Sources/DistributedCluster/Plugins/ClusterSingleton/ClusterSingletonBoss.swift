@@ -6,16 +6,17 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
 
 import Distributed
+import Logging
+
 import struct Foundation.Data
 import struct Foundation.UUID
-import Logging
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Cluster singleton boss
@@ -106,7 +107,7 @@ internal distributed actor ClusterSingletonBoss<Act: ClusterSingleton>: ClusterS
     deinit {
         // FIXME(distributed): actor-isolated instance method 'handOver(to:)' can not be referenced from a non-isolated context; this is an error in Swift 6
         // TODO: perhaps we can figure out where `to` is next and hand over gracefully?
-//        self.handOver(to: nil)
+        //        self.handOver(to: nil)
         self.clusterEventsSubscribeTask?.cancel()
     }
 
@@ -151,7 +152,9 @@ internal distributed actor ClusterSingletonBoss<Act: ClusterSingleton>: ClusterS
         self.log.debug("Take over singleton [\(self.settings.name)] from [\(String(describing: from))]", metadata: self.metadata())
 
         if let existing = self.targetSingleton {
-            self.log.warning("Singleton taking over from \(String(describing: from)), however local active instance already available: \(existing) (\(existing.id)). This is suspicious, we should have only activated the instance once we became active.")
+            self.log.warning(
+                "Singleton taking over from \(String(describing: from)), however local active instance already available: \(existing) (\(existing.id)). This is suspicious, we should have only activated the instance once we became active."
+            )
             return
         }
 
@@ -162,7 +165,7 @@ internal distributed actor ClusterSingletonBoss<Act: ClusterSingleton>: ClusterS
 
     internal func handOver(to: Cluster.Node?) async {
         guard let instance = self.targetSingleton else {
-            return // we're done, we never allocated it at all
+            return  // we're done, we never allocated it at all
         }
 
         self.log.debug("Hand over singleton [\(self.settings.name)] to [\(String(describing: to))]", metadata: self.metadata())
@@ -207,7 +210,7 @@ internal distributed actor ClusterSingletonBoss<Act: ClusterSingleton>: ClusterS
             ).attempt {
                 // confirm tha the boss is hosting the singleton, if not we may have to wait and try again
                 do {
-                    guard ((try? await targetSingletonBoss.hasActiveSingleton()) ?? false) else {
+                    guard (try? await targetSingletonBoss.hasActiveSingleton()) ?? false else {
                         throw SingletonNotFoundNoExpectedNode(id: self.settings.name, node)
                     }
                 } catch {
@@ -258,7 +261,7 @@ internal distributed actor ClusterSingletonBoss<Act: ClusterSingleton>: ClusterS
 
         if !buffer.isEmpty {
             self.log.debug("Flushing \(buffer.count) remote calls to [\(Act.self)] on [\(singleton.id.node)]", metadata: self.metadata())
-            while let (callID, continuation) = self.buffer.take() { // FIXME: the callIDs are not used in the actual call making but could be for better consistency
+            while let (callID, continuation) = self.buffer.take() {  // FIXME: the callIDs are not used in the actual call making but could be for better consistency
                 continuation.resume(returning: singleton)
             }
         }
@@ -280,9 +283,12 @@ internal distributed actor ClusterSingletonBoss<Act: ClusterSingleton>: ClusterS
                 do {
                     let callID = UUID()
                     try self.buffer.stash((callID, continuation))
-                    self.log.debug("Stashed remote call [\(callID)] to [\(target)]", metadata: self.metadata([
-                        "remoteCall/target": "\(target)",
-                    ]))
+                    self.log.debug(
+                        "Stashed remote call [\(callID)] to [\(target)]",
+                        metadata: self.metadata([
+                            "remoteCall/target": "\(target)"
+                        ])
+                    )
                 } catch {
                     switch error {
                     case BufferError.full:
@@ -446,7 +452,8 @@ extension ClusterSingletonBoss {
         throwing: Err.Type,
         returning: Res.Type
     ) async throws -> Res
-        where Err: Error,
+    where
+        Err: Error,
         Res: Codable
     {
         do {
@@ -459,18 +466,18 @@ extension ClusterSingletonBoss {
                 ])
             )
 
-            var invocation = invocation // can't be inout param
+            var invocation = invocation  // can't be inout param
             if targetNode == selfNode,
-               let singleton = self.targetSingleton
+                let singleton = self.targetSingleton
             {
                 assert(
                     singleton.id.node == selfNode,
-                    "Target singleton node and targetNode were not the same! TargetNode: \(targetNode?.debugDescription ?? "UNKNOWN TARGET NODE")," +
-                        " singleton.id.node: \(singleton.id.node)"
+                    "Target singleton node and targetNode were not the same! TargetNode: \(targetNode?.debugDescription ?? "UNKNOWN TARGET NODE")," + " singleton.id.node: \(singleton.id.node)"
                 )
                 return try await singleton.actorSystem.localCall(
                     on: singleton,
-                    target: target, invocation: &invocation,
+                    target: target,
+                    invocation: &invocation,
                     throwing: throwing,
                     returning: returning
                 )
@@ -491,7 +498,7 @@ extension ClusterSingletonBoss {
                     "remoteCall/invocation": "\(invocation)",
                 ]
             )
-            throw error // FIXME: if dead letter then keep stashed?
+            throw error  // FIXME: if dead letter then keep stashed?
         }
     }
 
@@ -511,20 +518,20 @@ extension ClusterSingletonBoss {
             ])
         )
 
-        var invocation = invocation // can't be inout param
+        var invocation = invocation  // can't be inout param
         if targetNode == selfNode,
-           let singleton = self.targetSingleton
+            let singleton = self.targetSingleton
         {
             self.log.trace("ENTER forwardOrStashRemoteCallVoid \(target) -> DIRECT LOCAL CALL")
 
             assert(
                 singleton.id.node == selfNode,
-                "Target singleton node and targetNode were not the same! TargetNode: \(targetNode?.debugDescription ?? "UNKNOWN TARGET NODE")," +
-                    " singleton.id.node: \(singleton.id.node)"
+                "Target singleton node and targetNode were not the same! TargetNode: \(targetNode?.debugDescription ?? "UNKNOWN TARGET NODE")," + " singleton.id.node: \(singleton.id.node)"
             )
             return try await singleton.actorSystem.localCallVoid(
                 on: singleton,
-                target: target, invocation: &invocation,
+                target: target,
+                invocation: &invocation,
                 throwing: throwing
             )
         }
@@ -549,7 +556,8 @@ struct ClusterSingletonRemoteCallInterceptor<Singleton: ClusterSingleton>: Remot
         throwing: Err.Type,
         returning: Res.Type
     ) async throws -> Res
-        where Act: DistributedActor,
+    where
+        Act: DistributedActor,
         Act.ID == ActorID,
         Err: Error,
         Res: Codable
@@ -558,8 +566,8 @@ struct ClusterSingletonRemoteCallInterceptor<Singleton: ClusterSingleton>: Remot
             fatalError("This interceptor expects actor type [\(Singleton.self)] but got [\(Act.self)]")
         }
 
-        let invocation = invocation // can't capture inout param
-        let result = try await self.singletonBoss.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
+        let invocation = invocation  // can't capture inout param
+        let result = try await self.singletonBoss.whenLocal { __secretlyKnownToBeLocal in  // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
             try await __secretlyKnownToBeLocal.forwardOrStashRemoteCall(target: target, invocation: invocation, throwing: throwing, returning: returning)
         }
 
@@ -575,7 +583,8 @@ struct ClusterSingletonRemoteCallInterceptor<Singleton: ClusterSingleton>: Remot
         invocation: inout ClusterSystem.InvocationEncoder,
         throwing: Err.Type
     ) async throws
-        where Act: DistributedActor,
+    where
+        Act: DistributedActor,
         Act.ID == ActorID,
         Err: Error
     {
@@ -583,8 +592,8 @@ struct ClusterSingletonRemoteCallInterceptor<Singleton: ClusterSingleton>: Remot
             fatalError("This interceptor expects actor type [\(Singleton.self)] but got [\(Act.self)]")
         }
 
-        let invocation = invocation // can't capture inout param
-        try await self.singletonBoss.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
+        let invocation = invocation  // can't capture inout param
+        try await self.singletonBoss.whenLocal { __secretlyKnownToBeLocal in  // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
             try await __secretlyKnownToBeLocal.forwardOrStashRemoteCallVoid(target: target, invocation: invocation, throwing: throwing)
         }
     }

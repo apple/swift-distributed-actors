@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -41,7 +41,8 @@ extension LifecycleWatch {
     public func watchTermination<Watchee>(
         of watchee: Watchee,
         @_inheritActorContext whenTerminated: @escaping @Sendable (ID) async -> Void,
-        file: String = #filePath, line: UInt = #line
+        file: String = #filePath,
+        line: UInt = #line
     ) -> Watchee where Watchee: DistributedActor, Watchee.ActorSystem == ClusterSystem {
         guard let watch = self.context.lifecycle else {
             return watchee
@@ -60,19 +61,27 @@ extension LifecycleWatch {
     ///
     /// - Parameters:
     ///   - watchee: the actor to watch
+    ///   - file: the file path
+    ///   - line: the line number
     /// - Returns: the watched actor
     @discardableResult
     public func watchTermination<Watchee>(
         of watchee: Watchee,
-        file: String = #filePath, line: UInt = #line
+        file: String = #filePath,
+        line: UInt = #line
     ) -> Watchee where Watchee: DistributedActor, Watchee.ActorSystem == ClusterSystem {
         guard let watch = self.context.lifecycle else {
             return watchee
         }
 
-        try? watch.termination(of: watchee.id, whenTerminated: { id in
-            await self.terminated(actor: id)
-        }, file: file, line: line)
+        try? watch.termination(
+            of: watchee.id,
+            whenTerminated: { id in
+                await self.terminated(actor: id)
+            },
+            file: file,
+            line: line
+        )
 
         return watchee
     }
@@ -111,15 +120,17 @@ extension LifecycleWatch {
     @discardableResult
     public func unwatch<Watchee: DistributedActor>(
         _ watchee: Watchee,
-        file: String = #filePath, line: UInt = #line
+        file: String = #filePath,
+        line: UInt = #line
     ) -> Watchee where Watchee.ActorSystem == ClusterSystem {
-        return self.unwatchTermination(of: watchee, file: file, line: line)
+        self.unwatchTermination(of: watchee, file: file, line: line)
     }
 
     @discardableResult
     public func unwatchTermination<Watchee: DistributedActor>(
         of watchee: Watchee,
-        file: String = #filePath, line: UInt = #line
+        file: String = #filePath,
+        line: UInt = #line
     ) -> Watchee where Watchee.ActorSystem == ClusterSystem {
         guard let watch = self.context.lifecycle else {
             return watchee

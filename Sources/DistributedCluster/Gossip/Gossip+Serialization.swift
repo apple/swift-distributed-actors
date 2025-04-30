@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -40,7 +40,7 @@ extension GossipShell.Message: Codable {
             let identifierManifest = try container.decode(Serialization.Manifest.self, forKey: .gossip_identifier_manifest)
             let identifierPayload = try container.decode(Data.self, forKey: .gossip_identifier)
             let identifierAny = try context.serialization.deserializeAny(from: .data(identifierPayload), using: identifierManifest)
-            guard let identifier = identifierAny as? GossipIdentifier else { // FIXME: just force GossipIdentifier to be codable, avoid this hacky dance?
+            guard let identifier = identifierAny as? GossipIdentifier else {  // FIXME: just force GossipIdentifier to be codable, avoid this hacky dance?
                 fatalError("Cannot cast to GossipIdentifier, was: \(identifierAny)")
             }
 

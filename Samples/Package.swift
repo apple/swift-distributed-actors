@@ -6,11 +6,11 @@ import PackageDescription
 var globalSwiftSettings: [SwiftSetting]
 
 var globalConcurrencyFlags: [String] = [
-    "-Xfrontend", "-disable-availability-checking", // TODO(distributed): remove this flag
+    "-Xfrontend", "-disable-availability-checking",  // TODO(distributed): remove this flag
 ]
 
 globalSwiftSettings = [
-    SwiftSetting.unsafeFlags(globalConcurrencyFlags),
+    SwiftSetting.unsafeFlags(globalConcurrencyFlags)
 ]
 
 var targets: [PackageDescription.Target] = [
@@ -20,7 +20,7 @@ var targets: [PackageDescription.Target] = [
     .executableTarget(
         name: "SampleDiningPhilosophers",
         dependencies: [
-            .product(name: "DistributedCluster", package: "swift-distributed-actors"),
+            .product(name: "DistributedCluster", package: "swift-distributed-actors")
         ],
         path: "Sources/SampleDiningPhilosophers",
         exclude: [
@@ -29,20 +29,19 @@ var targets: [PackageDescription.Target] = [
         ]
     ),
 
-    /* --- tests --- */
+    // --- tests ---
 
     // no-tests placeholder project to not have `swift test` fail on Samples/
     .testTarget(
         name: "NoopTests",
-        dependencies: [
-        ],
+        dependencies: [],
         path: "Tests/NoopTests"
     ),
 ]
 
 var dependencies: [Package.Dependency] = [
     // ~~~~~~~     parent       ~~~~~~~
-    .package(name: "swift-distributed-actors", path: "../"),
+    .package(name: "swift-distributed-actors", path: "../")
 
     // ~~~~~~~ only for samples ~~~~~~~
 ]
@@ -57,12 +56,12 @@ let package = Package(
         .watchOS(.v9),
     ],
     products: [
-        /* ---  samples --- */
+        // ---  samples ---
 
         .executable(
             name: "SampleDiningPhilosophers",
             targets: ["SampleDiningPhilosophers"]
-        ),
+        )
     ],
 
     dependencies: dependencies,

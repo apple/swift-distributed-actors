@@ -6,26 +6,32 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
+import Logging
 import NIO
 import XCTest
+
+@testable import DistributedCluster
 
 final class ClusterEventStreamTests: SingleClusterSystemXCTestCase, @unchecked Sendable {
     let memberA = Cluster.Member(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "System", host: "1.1.1.1", port: 7337), nid: .random()), status: .up)
     let memberB = Cluster.Member(node: Cluster.Node(endpoint: Cluster.Endpoint(systemName: "System", host: "2.2.2.2", port: 8228), nid: .random()), status: .up)
 
     func test_clusterEventStream_shouldNotCauseDeadLettersOnLocalOnlySystem() throws {
-        _ = try self.system._spawn("anything", of: String.self, .setup { context in
-            context.log.info("Hello there!")
-            return .stop
-        })
+        _ = try self.system._spawn(
+            "anything",
+            of: String.self,
+            .setup { context in
+                context.log.info("Hello there!")
+                return .stop
+            }
+        )
 
         try self.logCapture.awaitLogContaining(self.testKit, text: "Hello there!")
         self.logCapture.grep("Dead letter").shouldBeEmpty()
@@ -37,7 +43,7 @@ final class ClusterEventStreamTests: SingleClusterSystemXCTestCase, @unchecked S
 
         let eventStream = ClusterEventStream(system, customName: "testClusterEvents")
 
-        await eventStream._subscribe(p1.ref) // sub before first -> up was published
+        await eventStream._subscribe(p1.ref)  // sub before first -> up was published
         await eventStream.publish(.membershipChange(.init(member: self.memberA, toStatus: .up)))
         await eventStream._subscribe(p2.ref)
         await eventStream.publish(.membershipChange(.init(member: self.memberB, toStatus: .up)))
@@ -46,7 +52,7 @@ final class ClusterEventStreamTests: SingleClusterSystemXCTestCase, @unchecked S
 
         switch try p1.expectMessage() {
         case .snapshot(.empty):
-            () // ok
+            ()  // ok
         default:
             throw p1.error("Expected a snapshot first")
         }
@@ -68,7 +74,7 @@ final class ClusterEventStreamTests: SingleClusterSystemXCTestCase, @unchecked S
         switch try p2.expectMessage() {
         case .snapshot(let snapshot):
             snapshot.member(self.memberA.node).shouldEqual(self.memberA)
-            () // ok
+            ()  // ok
         default:
             throw p2.error("Expected a snapshot first")
         }

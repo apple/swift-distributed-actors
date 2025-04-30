@@ -6,22 +6,23 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import Foundation
 import XCTest
+
+@testable import DistributedCluster
 
 final class DeathWatchTests: SingleClusterSystemXCTestCase {
     // MARK: Termination watcher
 
     enum TerminationWatcherMessages {
-        case watch(who: _ActorRef<String>, notifyOnDeath: _ActorRef<String>) // TODO: abstracting over this needs type erasure?
+        case watch(who: _ActorRef<String>, notifyOnDeath: _ActorRef<String>)  // TODO: abstracting over this needs type erasure?
     }
 
     // MARK: stopping actors
@@ -62,13 +63,14 @@ final class DeathWatchTests: SingleClusterSystemXCTestCase {
             .setup { context in
                 context.watch(stoppableRef, with: "terminated:\(stoppableRef.id.path)")
                 stoppableRef.tell(.stop)
-                return (_Behavior<String>.receiveMessage { message in
-                    p.tell(message)
-                    return .same
-                }).receiveSpecificSignal(_Signals.Terminated.self) { _, terminated in
-                    p.tell("signal:\(terminated.id.path)") // should not be signalled (!)
-                    return .same
-                }
+                return
+                    (_Behavior<String>.receiveMessage { message in
+                        p.tell(message)
+                        return .same
+                    }).receiveSpecificSignal(_Signals.Terminated.self) { _, terminated in
+                        p.tell("signal:\(terminated.id.path)")  // should not be signalled (!)
+                        return .same
+                    }
             }
         )
 
@@ -92,13 +94,14 @@ final class DeathWatchTests: SingleClusterSystemXCTestCase {
                 context.watch(stoppableRef, with: "terminated-2:\(stoppableRef.id.path)")
                 context.watch(stoppableRef, with: "terminated-3:\(stoppableRef.id.path)")
                 stoppableRef.tell(.stop)
-                return (_Behavior<String>.receiveMessage { message in
-                    p.tell(message)
-                    return .same
-                }).receiveSpecificSignal(_Signals.Terminated.self) { _, terminated in
-                    p.tell("signal:\(terminated)") // should not be signalled (!)
-                    return .same
-                }
+                return
+                    (_Behavior<String>.receiveMessage { message in
+                        p.tell(message)
+                        return .same
+                    }).receiveSpecificSignal(_Signals.Terminated.self) { _, terminated in
+                        p.tell("signal:\(terminated)")  // should not be signalled (!)
+                        return .same
+                    }
             }
         )
 
@@ -122,13 +125,14 @@ final class DeathWatchTests: SingleClusterSystemXCTestCase {
                 context.watch(stoppableRef, with: "terminated-2:\(stoppableRef.id.path)")
                 context.watch(stoppableRef, with: nil)
                 stoppableRef.tell(.stop)
-                return (_Behavior<String>.receiveMessage { message in
-                    p.tell(message) // should NOT be signalled, we're back to Signals
-                    return .same
-                }).receiveSpecificSignal(_Signals.Terminated.self) { _, terminated in
-                    p.tell("signal:\(terminated.id.path)") // should be signalled (!)
-                    return .same
-                }
+                return
+                    (_Behavior<String>.receiveMessage { message in
+                        p.tell(message)  // should NOT be signalled, we're back to Signals
+                        return .same
+                    }).receiveSpecificSignal(_Signals.Terminated.self) { _, terminated in
+                        p.tell("signal:\(terminated.id.path)")  // should be signalled (!)
+                        return .same
+                    }
             }
         )
 
@@ -151,17 +155,17 @@ final class DeathWatchTests: SingleClusterSystemXCTestCase {
         p2.watch(stoppableRef)
 
         stoppableRef.tell(.stop)
-        stoppableRef.tell(.stop) // should result in dead letter
-        stoppableRef.tell(.stop) // should result in dead letter
-        stoppableRef.tell(.stop) // should result in dead letter
+        stoppableRef.tell(.stop)  // should result in dead letter
+        stoppableRef.tell(.stop)  // should result in dead letter
+        stoppableRef.tell(.stop)  // should result in dead letter
 
         try p.expectMessage("I (stopMePlz1) will now stop")
         // since the first message results in the actor becoming .stop
         // it should not be able to forward any new messages after the first one:
         try p.expectNoMessage(for: .milliseconds(100))
 
-//    try p1.expectTerminated(stoppableRef)
-//    try p2.expectTerminated(stoppableRef)
+        //    try p1.expectTerminated(stoppableRef)
+        //    try p2.expectTerminated(stoppableRef)
         _Thread.sleep(.milliseconds(1000))
     }
 
@@ -180,8 +184,8 @@ final class DeathWatchTests: SingleClusterSystemXCTestCase {
         let notActuallyWatching: _ActorRef<String> = try system._spawn(
             "notActuallyWatching",
             .setup { context in
-                context.watch(stoppableRef) // watching...
-                context.unwatch(stoppableRef) // ... not *actually* watching!
+                context.watch(stoppableRef)  // watching...
+                context.unwatch(stoppableRef)  // ... not *actually* watching!
                 return _Behavior<String>.receiveMessage { message in
                     switch message {
                     case "ping":
@@ -209,7 +213,7 @@ final class DeathWatchTests: SingleClusterSystemXCTestCase {
 
         try p1.expectTerminated(stoppableRef)
         try p2.expectTerminated(stoppableRef)
-        try p3_partnerOfNotActuallyWatching.expectNoMessage(for: .milliseconds(1000)) // make su
+        try p3_partnerOfNotActuallyWatching.expectNoMessage(for: .milliseconds(1000))  // make su
     }
 
     func test_minimized_deathPact_shouldTriggerForWatchedActor() throws {
@@ -332,7 +336,7 @@ final class DeathWatchTests: SingleClusterSystemXCTestCase {
                     probe.tell(.done)
                     return .same
                 }
-            } /* NOT handling signal on purpose, we are in a Death Pact */
+            }  // NOT handling signal on purpose, we are in a Death Pact
         )
 
         let juliet = try system._spawn(
@@ -340,7 +344,7 @@ final class DeathWatchTests: SingleClusterSystemXCTestCase {
             _Behavior<JulietMessage>.receiveMessage { message in
                 switch message {
                 case .takePoison:
-                    return .stop // "stop myself"
+                    return .stop  // "stop myself"
                 }
             }
         )
@@ -368,7 +372,7 @@ final class DeathWatchTests: SingleClusterSystemXCTestCase {
                     probe.tell(.done)
                     return .same
                 }
-            } /* NOT handling signal on purpose, we are in a Death Pact */
+            }  // NOT handling signal on purpose, we are in a Death Pact
         )
 
         let juliet = try system._spawn(
@@ -376,7 +380,7 @@ final class DeathWatchTests: SingleClusterSystemXCTestCase {
             _Behavior<JulietMessage>.receiveMessage { message in
                 switch message {
                 case .takePoison:
-                    throw TakePoisonError() // "stop myself"
+                    throw TakePoisonError()  // "stop myself"
                 }
             }
         )
@@ -413,14 +417,15 @@ final class DeathWatchTests: SingleClusterSystemXCTestCase {
             one.tell("stop")
 
             return .same
-        }.receiveSignal { _, signal in switch signal {
-        case let terminated as _Signals.Terminated:
-            p.tell(terminated)
-        default:
-            () // ok
-        }
-        pp.tell("\(signal)")
-        return .same // ignore the child death, remain alive
+        }.receiveSignal { _, signal in
+            switch signal {
+            case let terminated as _Signals.Terminated:
+                p.tell(terminated)
+            default:
+                ()  // ok
+            }
+            pp.tell("\(signal)")
+            return .same  // ignore the child death, remain alive
         }
 
         let _: _ActorRef<String> = try system._spawn("parent", spawnSomeStoppers)
@@ -436,13 +441,13 @@ final class DeathWatchTests: SingleClusterSystemXCTestCase {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Watching dead letters ref
 
-//    // FIXME: Make deadLetters a real thing, currently it is too hacky (i.e. this will crash):
-//    func test_deadLetters_canBeWatchedAndAlwaysImmediatelyRepliesWithTerminated() throws {
-//      let p: ActorTestProbe<Never> = .init(name: "deadLetter-probe", on: system)
-//
-//        p.watch(system.deadLetters)
-//        try p.expectTerminated(system.deadLetters)
-//    }
+    //    // FIXME: Make deadLetters a real thing, currently it is too hacky (i.e. this will crash):
+    //    func test_deadLetters_canBeWatchedAndAlwaysImmediatelyRepliesWithTerminated() throws {
+    //      let p: ActorTestProbe<Never> = .init(name: "deadLetter-probe", on: system)
+    //
+    //        p.watch(system.deadLetters)
+    //        try p.expectTerminated(system.deadLetters)
+    //    }
 
     func test_sendingToStoppedRef_shouldNotCrash() throws {
         let p: ActorTestProbe<String> = self.testKit.makeTestProbe()

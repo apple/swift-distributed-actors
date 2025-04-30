@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -24,8 +24,11 @@ extension ClusterShellState {
     ///
     /// Enabled with `-DSACT_TRACELOG_CLUSTER`
     func tracelog(
-        _ type: TraceLogType, message: Any,
-        file: String = #filePath, function: String = #function, line: UInt = #line
+        _ type: TraceLogType,
+        message: Any,
+        file: String = #filePath,
+        function: String = #function,
+        line: UInt = #line
     ) {
         let level: Logger.Level?
         #if SACT_TRACELOG_CLUSTER
@@ -43,7 +46,9 @@ extension ClusterShellState {
             self.log.log(
                 level: level,
                 "[tracelog:cluster] \(type.description)(\(self.settings.endpoint.port)): \(message)",
-                file: file, function: function, line: line
+                file: file,
+                function: function,
+                line: line
             )
         }
     }
@@ -69,14 +74,20 @@ extension ClusterShellState {
 extension ClusterShell {
     /// Optional "dump all messages" logging.
     func tracelog(
-        _ context: _ActorContext<ClusterShell.Message>, _ type: TraceLogType, message: Any,
-        file: String = #filePath, function: String = #function, line: UInt = #line
+        _ context: _ActorContext<ClusterShell.Message>,
+        _ type: TraceLogType,
+        message: Any,
+        file: String = #filePath,
+        function: String = #function,
+        line: UInt = #line
     ) {
         if let level = context.system.settings.traceLogLevel {
             context.log.log(
                 level: level,
                 "[tracelog:cluster] \(type.description): \(message)",
-                file: file, function: function, line: line
+                file: file,
+                function: function,
+                line: line
             )
         }
     }

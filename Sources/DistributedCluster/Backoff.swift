@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -61,7 +61,7 @@ public enum Backoff {
     ///   - multiplier: multiplier to be applied on each subsequent backoff to the previous backoff interval.
     ///         For example, a value of 1.5 means that each backoff will increase 50% over the previous value.
     ///         MUST be `>= 0`.
-    ///   - maxInterval: interval limit, beyond which intervals should be truncated to this value.
+    ///   - capInterval: interval limit, beyond which intervals should be truncated to this value.
     ///         MUST be `>= initialInterval`.
     ///   - randomFactor: A random factor of `0.5` results in backoffs between 50% below and 50% above the base interval.
     ///         MUST be between: `<0; 1>` (inclusive)
@@ -190,10 +190,10 @@ public struct ExponentialBackoffStrategy: BackoffStrategy {
         defer { self.limitedRemainingAttempts? -= 1 }
         if let remainingAttempts = self.limitedRemainingAttempts, remainingAttempts <= 0 {
             return nil
-        } // else, still attempts remaining, or no limit set
+        }  // else, still attempts remaining, or no limit set
 
         let baseInterval = self.currentBaseInterval
-        let randomizeMultiplier = Double.random(in: (1 - self.randomFactor) ... (1 + self.randomFactor))
+        let randomizeMultiplier = Double.random(in: (1 - self.randomFactor)...(1 + self.randomFactor))
 
         if baseInterval > self.capInterval {
             let randomizedCappedInterval = self.capInterval * randomizeMultiplier

@@ -6,22 +6,23 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
 
 import Atomics
-@testable import CoreMetrics
 import Distributed
-import DistributedActorsConcurrencyHelpers // for TimeSource
+import DistributedActorsConcurrencyHelpers  // for TimeSource
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import Foundation
+import XCTest
+
+@testable import CoreMetrics
+@testable import DistributedCluster
 @testable import Metrics
 @testable import SWIM
-import XCTest
 
 final class SWIMActorClusteredTests: ClusteredActorSystemsXCTestCase {
     var metrics: TestMetrics! = TestMetrics()
@@ -57,7 +58,7 @@ final class SWIMActorClusteredTests: ClusteredActorSystemsXCTestCase {
     // MARK: LHA probe modifications
 
     func test_swim_shouldNotIncreaseProbeInterval_whenLowMultiplier() async throws {
-        let firstNode = await self.setUpFirst() { settings in
+        let firstNode = await self.setUpFirst { settings in
             settings.swim.lifeguard.maxLocalHealthMultiplier = 1
             settings.swim.pingTimeout = .microseconds(1)
             // interval should be configured in a way that multiplied by a low LHA counter it fail wail the test
@@ -81,7 +82,7 @@ final class SWIMActorClusteredTests: ClusteredActorSystemsXCTestCase {
         // are associated. Reset so we get metrics just for the test call.
         (try await self.metrics.getSWIMCounter(second) { $0.messageInboundCount })?.reset()
 
-        _ = await first.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
+        _ = await first.whenLocal { __secretlyKnownToBeLocal in  // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
             __secretlyKnownToBeLocal.handlePeriodicProtocolPeriodTick()
         }
 
@@ -175,7 +176,7 @@ final class SWIMActorClusteredTests: ClusteredActorSystemsXCTestCase {
         (try await self.metrics.getSWIMCounter(second) { $0.messageInboundCount })?.reset()
         (try await self.metrics.getSWIMCounter(third) { $0.messageInboundCount })?.reset()
 
-        _ = await first.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
+        _ = await first.whenLocal { __secretlyKnownToBeLocal in  // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
             __secretlyKnownToBeLocal.handlePeriodicProtocolPeriodTick()
             __secretlyKnownToBeLocal.handlePeriodicProtocolPeriodTick()
         }
@@ -245,7 +246,7 @@ final class SWIMActorClusteredTests: ClusteredActorSystemsXCTestCase {
 
         // FIXME: use a non-responsive test probe instead of faking response
         // Fake a failed ping
-        _ = await first.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
+        _ = await first.whenLocal { __secretlyKnownToBeLocal in  // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
             _ = __secretlyKnownToBeLocal.handlePingResponse(
                 response: .timeout(target: targetPeer, pingRequestOrigin: nil, timeout: .milliseconds(100), sequenceNumber: 13),
                 pingRequestOrigin: nil,
@@ -278,7 +279,7 @@ final class SWIMActorClusteredTests: ClusteredActorSystemsXCTestCase {
 
         // FIXME: use non-response test probes instead of faking responses
         // Fake a failed ping and ping request
-        _ = await first.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
+        _ = await first.whenLocal { __secretlyKnownToBeLocal in  // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
             // `first` got .timeout when pinging `third`, so it sends ping request to `second` for `three`
             _ = __secretlyKnownToBeLocal.handlePingResponse(
                 response: .timeout(target: targetPeer, pingRequestOrigin: nil, timeout: .milliseconds(100), sequenceNumber: 13),
@@ -302,7 +303,7 @@ final class SWIMActorClusteredTests: ClusteredActorSystemsXCTestCase {
         let suspicionTimeoutPeriodsMin = 1
         let timeSource = TestTimeSource()
 
-        let firstNode = await self.setUpFirst() { settings in
+        let firstNode = await self.setUpFirst { settings in
             settings.swim.timeSourceNow = timeSource.now
             settings.swim.lifeguard.suspicionTimeoutMin = .nanoseconds(suspicionTimeoutPeriodsMin)
             settings.swim.lifeguard.suspicionTimeoutMax = .nanoseconds(suspicionTimeoutPeriodsMax)
@@ -331,11 +332,11 @@ final class SWIMActorClusteredTests: ClusteredActorSystemsXCTestCase {
         let originPeer = try SWIMActor.resolve(id: third.id._asRemote, using: secondNode)
         let targetPeer = try SWIMActor.resolve(id: second.id._asRemote, using: firstNode)
 
-        _ = await first.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
+        _ = await first.whenLocal { __secretlyKnownToBeLocal in  // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
             __secretlyKnownToBeLocal.handlePeriodicProtocolPeriodTick()
         }
         // FIXME: use a non-responsive test probe
-//         try self.expectPing(on: probeOnSecond, reply: false)
+        //         try self.expectPing(on: probeOnSecond, reply: false)
         timeSource.tick()
 
         let suspectStatus: SWIM.Status = .suspect(incarnation: 0, suspectedBy: [first.node])
@@ -345,23 +346,23 @@ final class SWIMActorClusteredTests: ClusteredActorSystemsXCTestCase {
         try await self.awaitStatus(suspectStatus, for: targetPeer, on: first, within: .seconds(1))
         timeSource.tick()
 
-//          for _ in 0 ..< suspicionTimeoutPeriodsMin {
-//              _ = await first.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
-//                  __secretlyKnownToBeLocal.handlePeriodicProtocolPeriodTick()
-//              }
-//              // FIXME: use a non-responsive test probe
-//              try self.expectPing(on: probeOnSecond, reply: false)
-//              timeSource.tick()
-//          }
-//
-//          // We need to trigger an additional ping to advance the protocol period
-//          // and have the SWIM actor mark the remote node as dead
-//         _ = await first.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
-//             __secretlyKnownToBeLocal.handlePeriodicProtocolPeriodTick()
-//         }
-//
-//         // FIXME: would second end up with .dead status?
-//         try await self.awaitStatus(.dead, for: targetPeer, on: first, within: .seconds(1))
+        //          for _ in 0 ..< suspicionTimeoutPeriodsMin {
+        //              _ = await first.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
+        //                  __secretlyKnownToBeLocal.handlePeriodicProtocolPeriodTick()
+        //              }
+        //              // FIXME: use a non-responsive test probe
+        //              try self.expectPing(on: probeOnSecond, reply: false)
+        //              timeSource.tick()
+        //          }
+        //
+        //          // We need to trigger an additional ping to advance the protocol period
+        //          // and have the SWIM actor mark the remote node as dead
+        //         _ = await first.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
+        //             __secretlyKnownToBeLocal.handlePeriodicProtocolPeriodTick()
+        //         }
+        //
+        //         // FIXME: would second end up with .dead status?
+        //         try await self.awaitStatus(.dead, for: targetPeer, on: first, within: .seconds(1))
     }
 
     // ==== ----------------------------------------------------------------------------------------------------------------
@@ -425,7 +426,7 @@ final class SWIMActorClusteredTests: ClusteredActorSystemsXCTestCase {
     }
 
     private func configureSWIM(for swimShell: SWIMActor, members: [SWIMActor: SWIM.Status]) async throws {
-        try await swimShell.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
+        try await swimShell.whenLocal { __secretlyKnownToBeLocal in  // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
             try __secretlyKnownToBeLocal._configureSWIM { swim in
                 for (member, status) in members {
                     let member = try SWIMActor.resolve(id: member.id._asRemote, using: swimShell.actorSystem)
@@ -454,18 +455,24 @@ final class SWIMActorClusteredTests: ClusteredActorSystemsXCTestCase {
     }
 
     private func awaitStatus(
-        _ status: SWIM.Status, for peer: SWIMActor,
-        on swimShell: SWIMActor, within timeout: Duration,
-        file: StaticString = #filePath, line: UInt = #line, column: UInt = #column
+        _ status: SWIM.Status,
+        for peer: SWIMActor,
+        on swimShell: SWIMActor,
+        within timeout: Duration,
+        file: StaticString = #filePath,
+        line: UInt = #line,
+        column: UInt = #column
     ) async throws {
         let testKit = self.testKit(swimShell.actorSystem)
 
         try await testKit.eventually(within: timeout, file: file, line: line, column: column) {
-            let membership = await swimShell.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
-                __secretlyKnownToBeLocal._getMembershipState()
-            } ?? []
+            let membership =
+                await swimShell.whenLocal { __secretlyKnownToBeLocal in  // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
+                    __secretlyKnownToBeLocal._getMembershipState()
+                } ?? []
 
-            let otherStatus = membership
+            let otherStatus =
+                membership
                 .first(where: { $0.peer == peer })
                 .map(\.status)
 

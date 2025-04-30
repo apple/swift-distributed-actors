@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -65,7 +65,7 @@ internal actor DistributedNodeDeathWatcher {
                         await self?.membershipChanged(change)
                     }
                 case .leadershipChange, .reachabilityChange:
-                    break // ignore those, they don't affect downing
+                    break  // ignore those, they don't affect downing
                 case ._PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE:
                     self?.log.error("Received Cluster.Event [\(event)]. This should not happen, please file an issue.")
                 }
@@ -107,7 +107,7 @@ internal actor DistributedNodeDeathWatcher {
 
     func membershipChanged(_ change: Cluster.MembershipChange) {
         guard let change = self.membership.applyMembershipChange(change) else {
-            return // no change, nothing to act on
+            return  // no change, nothing to act on
         }
 
         // TODO: make sure we only handle ONCE?

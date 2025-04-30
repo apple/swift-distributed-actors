@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -31,9 +31,7 @@ struct PrettyMultiNodeLogHandler: LogHandler {
         var _metadata: Logger.Metadata = metadata ?? [:]
 
         for excludeGrep in self.settings.excludeGrep {
-            if file.contains(excludeGrep) ||
-                "\(message)".contains(excludeGrep)
-            {
+            if file.contains(excludeGrep) || "\(message)".contains(excludeGrep) {
                 return
             }
         }

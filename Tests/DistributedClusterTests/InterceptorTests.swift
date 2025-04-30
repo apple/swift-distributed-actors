@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -14,9 +14,11 @@
 
 import Distributed
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import Foundation
+import Logging
 import XCTest
+
+@testable import DistributedCluster
 
 final class ShoutingInterceptor: _Interceptor<String> {
     let probe: ActorTestProbe<String>?
@@ -45,9 +47,9 @@ final class TerminatedInterceptor<Message: Codable>: _Interceptor<Message> {
     override func interceptSignal(target: _Behavior<Message>, context: _ActorContext<Message>, signal: _Signal) throws -> _Behavior<Message> {
         switch signal {
         case let terminated as _Signals.Terminated:
-            self.probe.tell(terminated) // we forward all termination signals to someone
+            self.probe.tell(terminated)  // we forward all termination signals to someone
         case is _Signals._PostStop:
-            () // ok
+            ()  // ok
         default:
             fatalError("Other signal: \(signal)")
             ()
@@ -120,11 +122,11 @@ final class InterceptorTests: SingleClusterSystemXCTestCase {
             .intercept(behavior: forwardToProbe, with: interceptor)
         )
 
-        for i in 0 ... 10 {
+        for i in 0...10 {
             ref.tell("hello:\(i)")
         }
 
-        for i in 0 ... 10 {
+        for i in 0...10 {
             try p.expectMessage("hello:\(i)!")
         }
     }
@@ -160,7 +162,7 @@ final class InterceptorTests: SingleClusterSystemXCTestCase {
         ref.tell("hello")
 
         try p.expectMessage("received:hello!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-        for j in 0 ... depth {
+        for j in 0...depth {
             let m = "from-interceptor:hello\(String(repeating: "!", count: j))"
             try i.expectMessage(m)
         }
@@ -262,7 +264,8 @@ private struct GreeterRemoteCallInterceptor: RemoteCallInterceptor {
         throwing: Err.Type,
         returning: Res.Type
     ) async throws -> Res
-        where Act: DistributedActor,
+    where
+        Act: DistributedActor,
         Act.ID == ActorID,
         Err: Error,
         Res: Codable
@@ -279,7 +282,8 @@ private struct GreeterRemoteCallInterceptor: RemoteCallInterceptor {
                 try await self.greeter.actorSystem.executeDistributedTarget(
                     on: greeter,
                     target: target,
-                    invocationDecoder: &directDecoder, handler: directReturnHandler
+                    invocationDecoder: &directDecoder,
+                    handler: directReturnHandler
                 )
             }
         }
@@ -293,7 +297,8 @@ private struct GreeterRemoteCallInterceptor: RemoteCallInterceptor {
         invocation: inout ClusterSystem.InvocationEncoder,
         throwing: Err.Type
     ) async throws
-        where Act: DistributedActor,
+    where
+        Act: DistributedActor,
         Act.ID == ActorID,
         Err: Error
     {
@@ -309,7 +314,8 @@ private struct GreeterRemoteCallInterceptor: RemoteCallInterceptor {
                 try await self.greeter.actorSystem.executeDistributedTarget(
                     on: greeter,
                     target: target,
-                    invocationDecoder: &directDecoder, handler: directReturnHandler
+                    invocationDecoder: &directDecoder,
+                    handler: directReturnHandler
                 )
             }
         }

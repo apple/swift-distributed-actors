@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -37,13 +37,13 @@ enum Gossiper {
         props: _Props = .init(),
         makeLogic: @escaping (Logic.Context) -> Logic
     ) throws -> GossiperControl<Envelope, Acknowledgement>
-        where Logic: GossipLogic, Logic.Gossip == Envelope, Logic.Acknowledgement == Acknowledgement
-    {
+    where Logic: GossipLogic, Logic.Gossip == Envelope, Logic.Acknowledgement == Acknowledgement {
         let ref = try context._spawn(
             naming,
             of: GossipShell<Envelope, Acknowledgement>.Message.self,
             props: props,
-            file: #filePath, line: #line,
+            file: #filePath,
+            line: #line,
             GossipShell<Envelope, Acknowledgement>(settings: settings, makeLogic: makeLogic).behavior
         )
         return GossiperControl(ref)

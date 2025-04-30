@@ -6,16 +6,17 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
 
 import Distributed
+import Logging
+
 import class Foundation.JSONDecoder
 import class Foundation.JSONEncoder
-import Logging
 import struct NIO.ByteBufferAllocator
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -58,7 +59,8 @@ extension Serialization {
         ///
         /// - Returns: the `_ActorRef` for given actor if if exists and is alive in the tree, `nil` otherwise
         public func _resolveActorRef<Message>(
-            _ messageType: Message.Type = Message.self, identifiedBy id: ActorID,
+            _ messageType: Message.Type = Message.self,
+            identifiedBy id: ActorID,
             userInfo: [CodingUserInfoKey: Any] = [:]
         ) -> _ActorRef<Message> where Message: Codable {
             let context = _ResolveContext<Message>(id: id, system: self.system, userInfo: userInfo)

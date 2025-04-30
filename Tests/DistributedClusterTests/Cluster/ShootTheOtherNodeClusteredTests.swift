@@ -6,24 +6,26 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
+import Logging
 import NIO
 import XCTest
+
+@testable import DistributedCluster
 
 final class ShootTheOtherNodeClusteredTests: ClusteredActorSystemsXCTestCase {
     override func configureLogCapture(settings: inout LogCapture.Settings) {
         settings.excludeGrep = [
-            "_TimerKey",
+            "_TimerKey"
         ]
         settings.excludeActorPaths = [
-            "/system/cluster/swim",
+            "/system/cluster/swim"
         ]
         settings.minimumLogLevel = .info
     }

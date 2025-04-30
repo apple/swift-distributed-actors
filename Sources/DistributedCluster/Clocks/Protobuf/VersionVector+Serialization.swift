@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -25,8 +25,8 @@ extension ReplicaID: _ProtobufRepresentable {
         switch self.storage {
         case .actorID(let actorID):
             proto.actorID = try actorID.toProto(context: context)
-//        case .actorIdentity(let actorIdentity):
-//            proto.actorIdentity = try actorIdentity.toProto(context: context)
+        //        case .actorIdentity(let actorIdentity):
+        //            proto.actorIdentity = try actorIdentity.toProto(context: context)
         case .node(let node):
             proto.node = try node.toProto(context: context)
         case .nodeID(let nid):
@@ -44,9 +44,9 @@ extension ReplicaID: _ProtobufRepresentable {
         case .actorID(let protoActorID):
             let actorID = try ActorID(fromProto: protoActorID, context: context)
             self = .actorID(actorID)
-//        case .actorIdentity(let protoIdentity):
-//            let id = try ClusterSystem.ActorID(fromProto: protoIdentity, context: context)
-//            self = .actorIdentity(id)
+        //        case .actorIdentity(let protoIdentity):
+        //            let id = try ClusterSystem.ActorID(fromProto: protoIdentity, context: context)
+        //            self = .actorIdentity(id)
         case .node(let protoNode):
             let node = try Cluster.Node(fromProto: protoNode, context: context)
             self = .node(node)

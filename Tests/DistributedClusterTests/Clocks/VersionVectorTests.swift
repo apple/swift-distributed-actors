@@ -6,15 +6,16 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import XCTest
+
+@testable import DistributedCluster
 
 final class VersionVectorTests: XCTestCase {
     private typealias VV = VersionVector
@@ -34,16 +35,16 @@ final class VersionVectorTests: XCTestCase {
 
         // Add "A"
         vv.increment(at: self.replicaA).shouldEqual(1)
-        vv[self.replicaA].shouldEqual(1) // New replica gets added with version 1
+        vv[self.replicaA].shouldEqual(1)  // New replica gets added with version 1
 
         // Increment "A"
         vv.increment(at: self.replicaA).shouldEqual(2)
-        vv[self.replicaA].shouldEqual(2) // 1 + 1
+        vv[self.replicaA].shouldEqual(2)  // 1 + 1
 
         // Add "B"
         vv.increment(at: self.replicaB).shouldEqual(1)
-        vv[self.replicaA].shouldEqual(2) // No change
-        vv[self.replicaB].shouldEqual(1) // New replica gets added with version 1
+        vv[self.replicaA].shouldEqual(2)  // No change
+        vv[self.replicaB].shouldEqual(1)  // New replica gets added with version 1
     }
 
     func test_VersionVector_init_fromVersionVector_canModify() throws {
@@ -53,16 +54,16 @@ final class VersionVectorTests: XCTestCase {
 
         vv[self.replicaA].shouldEqual(1)
         vv[self.replicaB].shouldEqual(2)
-        vv[self.replicaC].shouldEqual(0) // default
+        vv[self.replicaC].shouldEqual(0)  // default
 
         // Increment "B"
         vv.increment(at: self.replicaB).shouldEqual(3)
-        vv[self.replicaA].shouldEqual(1) // No change
-        vv[self.replicaB].shouldEqual(3) // 2 + 1
+        vv[self.replicaA].shouldEqual(1)  // No change
+        vv[self.replicaB].shouldEqual(3)  // 2 + 1
 
         // Add "C"
         vv.increment(at: self.replicaC).shouldEqual(1)
-        vv[self.replicaC].shouldEqual(1) // New replica gets added with version 1
+        vv[self.replicaC].shouldEqual(1)  // New replica gets added with version 1
     }
 
     func test_VersionVector_init_fromArrayOfReplicaVersionTuples_canModify() throws {
@@ -71,16 +72,16 @@ final class VersionVectorTests: XCTestCase {
 
         vv[self.replicaA].shouldEqual(1)
         vv[self.replicaB].shouldEqual(2)
-        vv[self.replicaC].shouldEqual(0) // default
+        vv[self.replicaC].shouldEqual(0)  // default
 
         // Increment "B"
         vv.increment(at: self.replicaB).shouldEqual(3)
-        vv[self.replicaA].shouldEqual(1) // No change
-        vv[self.replicaB].shouldEqual(3) // 2 + 1
+        vv[self.replicaA].shouldEqual(1)  // No change
+        vv[self.replicaB].shouldEqual(3)  // 2 + 1
 
         // Add "C"
         vv.increment(at: self.replicaC).shouldEqual(1)
-        vv[self.replicaC].shouldEqual(1) // New replica gets added with version 1
+        vv[self.replicaC].shouldEqual(1)  // New replica gets added with version 1
     }
 
     func test_VersionVector_merge_shouldMutate() throws {
@@ -90,9 +91,9 @@ final class VersionVectorTests: XCTestCase {
         // Mutates vv1
         vv1.merge(other: vv2)
 
-        vv1[self.replicaA].shouldEqual(2) // 2 (vv1) > 1 (vv2)
-        vv1[self.replicaB].shouldEqual(4) // 4 (vv2) > 3 (vv1)
-        vv1[self.replicaC].shouldEqual(5) // From vv2
+        vv1[self.replicaA].shouldEqual(2)  // 2 (vv1) > 1 (vv2)
+        vv1[self.replicaB].shouldEqual(4)  // 4 (vv2) > 3 (vv1)
+        vv1[self.replicaC].shouldEqual(5)  // From vv2
 
         // vv2 should remain the same
         vv2[self.replicaA].shouldEqual(1)
@@ -102,16 +103,16 @@ final class VersionVectorTests: XCTestCase {
 
     func test_VersionVector_contains() throws {
         let emptyVV = VV()
-        emptyVV.contains(self.replicaA, 0).shouldBeTrue() // This is no version basically; always included
+        emptyVV.contains(self.replicaA, 0).shouldBeTrue()  // This is no version basically; always included
         emptyVV.contains(self.replicaA, 1).shouldBeFalse()
 
         let vv = VV([(replicaA, V(2)), (replicaB, V(3))])
-        vv.contains(self.replicaA, V(1)).shouldBeTrue() // 2 ≥ 1
-        vv.contains(self.replicaA, V(2)).shouldBeTrue() // 2 ≥ 2
-        vv.contains(self.replicaA, V(3)).shouldBeFalse() // 2 ≱ 3
-        vv.contains(self.replicaB, V(3)).shouldBeTrue() // 3 ≥ 3
-        vv.contains(self.replicaB, V(4)).shouldBeFalse() // 3 ≱ 4
-        vv.contains(self.replicaC, V(2)).shouldBeFalse() // "C" not in vv
+        vv.contains(self.replicaA, V(1)).shouldBeTrue()  // 2 ≥ 1
+        vv.contains(self.replicaA, V(2)).shouldBeTrue()  // 2 ≥ 2
+        vv.contains(self.replicaA, V(3)).shouldBeFalse()  // 2 ≱ 3
+        vv.contains(self.replicaB, V(3)).shouldBeTrue()  // 3 ≥ 3
+        vv.contains(self.replicaB, V(4)).shouldBeFalse()  // 3 ≱ 4
+        vv.contains(self.replicaC, V(2)).shouldBeFalse()  // "C" not in vv
     }
 
     func test_VersionVector_comparisonOperators() throws {
