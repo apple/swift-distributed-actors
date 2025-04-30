@@ -143,7 +143,7 @@ internal distributed actor SWIMActor: SWIMPeer, SWIMAddressablePeer, CustomStrin
                 "swim/timeout": "\(timeout)",
             ])
         )
-        
+
         let pingSentAt = DispatchTime.now()
         self.metrics.shell.messageOutboundCount.increment()
 
@@ -156,7 +156,7 @@ internal distributed actor SWIMActor: SWIMPeer, SWIMAddressablePeer, CustomStrin
                 pingRequestSequenceNumber: pingRequestSequenceNumber
             )
         } catch {
-            
+
             self.log.debug(
                 ".ping resulted in error",
                 metadata: self.swim.metadata([
@@ -165,7 +165,7 @@ internal distributed actor SWIMActor: SWIMPeer, SWIMAddressablePeer, CustomStrin
                     "error": "\(error)",
                 ])
             )
-            
+
             return self.handlePingResponse(
                 response: .timeout(
                     target: target,
@@ -456,11 +456,13 @@ internal distributed actor SWIMActor: SWIMPeer, SWIMAddressablePeer, CustomStrin
         )
         self.metrics.shell.messageInboundCount.increment()
 
-        for directive in (self.swim?.onPing(
-            pingOrigin: origin,
-            payload: payload,
-            sequenceNumber: sequenceNumber
-        ) ?? []) {
+        for directive
+            in (self.swim?.onPing(
+                pingOrigin: origin,
+                payload: payload,
+                sequenceNumber: sequenceNumber
+            ) ?? [])
+        {
             switch directive {
             case .gossipProcessed(let gossipDirective):
                 self.handleGossipPayloadProcessedDirective(gossipDirective)
@@ -508,12 +510,14 @@ internal distributed actor SWIMActor: SWIMPeer, SWIMAddressablePeer, CustomStrin
         )
         self.metrics.shell.messageInboundCount.increment()
 
-        for directive in (self.swim?.onPingRequest(
-            target: target,
-            pingRequestOrigin: pingRequestOrigin,
-            payload: payload,
-            sequenceNumber: pingRequestSequenceNumber
-        ) ?? []) {
+        for directive
+            in (self.swim?.onPingRequest(
+                target: target,
+                pingRequestOrigin: pingRequestOrigin,
+                payload: payload,
+                sequenceNumber: pingRequestSequenceNumber
+            ) ?? [])
+        {
             switch directive {
             case .gossipProcessed(let gossipDirective):
                 self.handleGossipPayloadProcessedDirective(gossipDirective)

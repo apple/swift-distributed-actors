@@ -227,7 +227,7 @@ struct LogCaptureLogHandler: LogHandler {
         else {
             return  // ignore this actor's logs, it was filtered out
         }
-        
+
         guard !self.settings.excludeActorPaths.contains(actorPath) else {
             return  // actor was excluded explicitly
         }

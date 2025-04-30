@@ -365,7 +365,7 @@ internal class ClusterShell {
         .init()
         .supervision(strategy: .escalate)  // always escalate failures, if this actor fails we're in big trouble -> terminate the system
         ._asWellKnown
-    
+
     deinit {
         self.clusterEvents?.clean()
         self._swimShell?.clean()
