@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -32,8 +32,8 @@ distributed actor Philosopher: CustomStringConvertible {
         self.log.info("\(self.name) joined the table!")
 
         Task {
-//            context.watch(self.leftFork)
-//            context.watch(self.rightFork)
+            //            context.watch(self.leftFork)
+            //            context.watch(self.rightFork)
             try await self.think()
         }
     }
@@ -114,7 +114,7 @@ distributed actor Philosopher: CustomStringConvertible {
     }
 
     private func forkTaken(_ fork: Fork) {
-        if self.state == .thinking { // We couldn't get the first fork and have already gone back to thinking.
+        if self.state == .thinking {  // We couldn't get the first fork and have already gone back to thinking.
             Task { try await fork.putBack() }
             return
         }

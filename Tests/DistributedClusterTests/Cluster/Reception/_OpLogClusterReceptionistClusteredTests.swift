@@ -6,15 +6,17 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
+import Logging
 import XCTest
+
+@testable import DistributedCluster
 
 final class _OpLogClusterReceptionistClusteredTests: ClusteredActorSystemsXCTestCase {
     override func configureLogCapture(settings: inout LogCapture.Settings) {
@@ -27,7 +29,7 @@ final class _OpLogClusterReceptionistClusteredTests: ClusteredActorSystemsXCTest
             "/system/cluster/leadership",
         ]
         settings.excludeGrep = [
-            "timer",
+            "timer"
         ]
     }
 
@@ -308,7 +310,7 @@ final class _OpLogClusterReceptionistClusteredTests: ClusteredActorSystemsXCTest
         let firstRef = try first._spawn("onFirst", self.stopOnMessage)
         first._receptionist.register(firstRef, with: key)
 
-        let remotes: [_ActorRef<String>] = try (1 ... 100).map {
+        let remotes: [_ActorRef<String>] = try (1...100).map {
             let ref = try second._spawn("remote-\($0)", self.stopOnMessage)
             second._receptionist.register(ref, with: key)
             return ref
@@ -346,7 +348,7 @@ final class _OpLogClusterReceptionistClusteredTests: ClusteredActorSystemsXCTest
         let key = _Reception.Key(_ActorRef<String>.self, id: "first")
 
         var allRefs: Set<_ActorRef<String>> = []
-        for i in 1 ... (first.settings.receptionist.syncBatchSize * 10) {
+        for i in 1...(first.settings.receptionist.syncBatchSize * 10) {
             let ref = try first._spawn("example-\(i)", self.stopOnMessage)
             first._receptionist.register(ref, with: key)
             _ = allRefs.insert(ref)

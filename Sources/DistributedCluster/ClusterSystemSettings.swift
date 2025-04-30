@@ -6,18 +6,19 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
 
-import class Foundation.ProcessInfo
 import Logging
 import NIO
 import NIOSSL
-import ServiceDiscovery
 import SWIM
+import ServiceDiscovery
+
+import class Foundation.ProcessInfo
 
 /// Settings used to configure a `ClusterSystem`.
 public struct ClusterSystemSettings {
@@ -198,7 +199,7 @@ public struct ClusterSystemSettings {
     /// Unless the `eventLoopGroup` property is set, this function is used to create a new event loop group
     /// for the underlying NIO pipelines.
     public func makeDefaultEventLoopGroup() -> EventLoopGroup {
-        MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount) // TODO: share pool with others
+        MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)  // TODO: share pool with others
     }
 
     /// Allocator to be used for allocating byte buffers for coding/decoding messages.
@@ -314,7 +315,7 @@ public struct LoggingSettings {
     }
 
     internal var customizedLogger: Bool = false
-    internal var _logger = Logger(label: "ClusterSystem-initializing") // replaced by specific system name during startup
+    internal var _logger = Logger(label: "ClusterSystem-initializing")  // replaced by specific system name during startup
 
     internal var useBuiltInFormatter: Bool = true
 
@@ -406,7 +407,9 @@ public struct ServiceDiscoverySettings {
     let implementation: ServiceDiscoveryImplementation
 
     public init<Discovery, S>(_ implementation: Discovery, service: S)
-        where Discovery: ServiceDiscovery, Discovery.Instance == Cluster.Endpoint,
+    where
+        Discovery: ServiceDiscovery,
+        Discovery.Instance == Cluster.Endpoint,
         S == Discovery.Service
     {
         self.implementation = .dynamic(
@@ -418,7 +421,8 @@ public struct ServiceDiscoverySettings {
     }
 
     public init<Discovery, S>(_ implementation: Discovery, service: S, mapInstanceToNode transformer: @escaping (Discovery.Instance) throws -> Cluster.Endpoint)
-        where Discovery: ServiceDiscovery,
+    where
+        Discovery: ServiceDiscovery,
         S == Discovery.Service
     {
         let mappedDiscovery: MapInstanceServiceDiscovery<Discovery, Cluster.Endpoint> = implementation.mapInstance(transformer)

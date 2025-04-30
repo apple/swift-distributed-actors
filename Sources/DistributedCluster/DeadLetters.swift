@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -190,7 +190,7 @@ public final class DeadLetterOffice {
             // thus, it is impossible to resolve a remote address into a dead ref; however keeping this path in case we manually make such mistake
             // somewhere in internals, and can spot it then easily
             if recipient.path.starts(with: ._system), self.isShuttingDown() {
-                return // do not log dead letters to /system actors while shutting down
+                return  // do not log dead letters to /system actors while shutting down
             }
 
             metadata["actor/path"] = Logger.MetadataValue.stringConvertible(deadID.path)
@@ -200,7 +200,7 @@ public final class DeadLetterOffice {
         }
 
         if let systemMessage = deadLetter.message as? _SystemMessage, self.specialHandled(systemMessage, recipient: deadLetter.recipient) {
-            return // system message was special handled; no need to log it anymore
+            return  // system message was special handled; no need to log it anymore
         }
 
         // in all other cases, we want to log the dead letter:
@@ -229,7 +229,7 @@ public final class DeadLetterOffice {
         case .tombstone:
             // FIXME: this should never happen; tombstone must always be taken in by the actor as last message
             traceLog_Mailbox(self.id.path, "Tombstone arrived in dead letters. TODO: make sure these dont happen")
-            return true // TODO: would be better to avoid them ending up here at all, this means that likely a double dead letter was sent
+            return true  // TODO: would be better to avoid them ending up here at all, this means that likely a double dead letter was sent
         case .watch(let watchee, let watcher):
             // if a watch message arrived here it either:
             //   - was sent to an actor which has terminated and arrived after the .tombstone, thus was drained to deadLetters

@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -26,7 +26,7 @@ extension Cluster {
     /// ### Replacement (Unique)Nodes
     /// A node (or member) is referred to as a "replacement" if it shares _the same_ protocol+host+address (i.e. ``Cluster/Endpoint``),
     /// with another member; It MAY join "over" an existing node and will immediately cause the previous node to be marked ``Cluster/MemberStatus/down``
-    /// upon such transition. Such situations can take place when an actor system node is killed and started on the same host+port immediately,
+    /// upon such transition. Such situations can take place when an actor system node is terminated and started on the same host+port immediately,
     /// and attempts to connect to the same cluster as its previous "incarnation". Such situation is called a replacement, and by the assumption
     /// of that it should not be possible to run many nodes on exact same host+port the previous node is immediately ejected and marked down.
     ///
@@ -118,7 +118,7 @@ extension Cluster {
         ///
         ///
         /// - Parameters:
-        ///   - statuses: statuses for which to check the members for
+        ///   - status: status for which to check the members for
         ///   - reachability: optional reachability that is the members will be filtered by
         /// - Returns: array of members matching those checks. Can be empty.
         public func members(withStatus status: Cluster.MemberStatus, reachability: Cluster.MemberReachability? = nil) -> [Cluster.Member] {
@@ -145,7 +145,7 @@ extension Cluster {
         /// the passed in `status` passed in and `reachability` status. See ``Cluster/MemberStatus`` to learn more about the meaning of "at least".
         ///
         /// - Parameters:
-        ///   - statuses: statuses for which to check the members for
+        ///   - status: status for which to check the members for
         ///   - reachability: optional reachability that is the members will be filtered by
         /// - Returns: array of members matching those checks. Can be empty.
         public func members(atLeast status: Cluster.MemberStatus, reachability: Cluster.MemberReachability? = nil) -> [Cluster.Member] {
@@ -280,9 +280,7 @@ extension Cluster.Membership: Hashable {
         }
         for (lNode, lMember) in lhs._members {
             if let rMember = rhs._members[lNode],
-               lMember.node != rMember.node ||
-               lMember.status != rMember.status ||
-               lMember.reachability != rMember.reachability
+                lMember.node != rMember.node || lMember.status != rMember.status || lMember.reachability != rMember.reachability
             {
                 return false
             }
@@ -346,7 +344,7 @@ extension Cluster.Membership {
             if previousMember.status < .down {
                 _ = self.mark(previousMember.node, as: .down)
             } else {
-                _ = self.removeCompletely(previousMember.node) // the replacement event will handle the down notifications
+                _ = self.removeCompletely(previousMember.node)  // the replacement event will handle the down notifications
             }
             self._members[change.node] = change.member
 
@@ -388,7 +386,7 @@ extension Cluster.Membership {
         }
 
         if self.leader == wannabeLeader {
-            return nil // no change was made
+            return nil  // no change was made
         } else {
             // in other cases, nil or not, we change the leader
             let oldLeader = self.leader
@@ -503,7 +501,7 @@ extension Cluster.Membership {
             self._members.removeValue(forKey: node)
             return .init(member: member, toStatus: .removed)
         } else {
-            return nil // no member to remove
+            return nil  // no member to remove
         }
     }
 
@@ -571,7 +569,7 @@ extension Cluster.Membership {
                 self._members[incomingMember.node] = incomingMember
 
                 var change = Cluster.MembershipChange(member: incomingMember)
-                change.previousStatus = nil // since "new"
+                change.previousStatus = nil  // since "new"
                 changes.append(change)
                 continue
             }
@@ -636,7 +634,7 @@ extension Cluster.Membership {
             _ = self.applyReachabilityChange(change)
 
         case ._PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE:
-            () // do nothing
+            ()  // do nothing
         }
     }
 }

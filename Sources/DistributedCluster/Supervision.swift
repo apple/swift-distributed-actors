@@ -6,11 +6,13 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+
+import Logging
 
 /// Properties configuring supervision for given actor.
 internal struct _SupervisionProps {
@@ -188,7 +190,7 @@ internal enum _SupervisionStrategy {
     ///   - `backoff` strategy to be used for suspending the failed actor for a given (backoff) amount of time before completing the restart.
     ///     The actor's mailbox remains untouched by default, and it would continue processing it from where it left off before the crash;
     ///     the message which caused a failure is NOT processed again. For retrying processing of such higher level mechanisms should be used.
-    case restart(atMost: Int, within: Duration?, backoff: BackoffStrategy?) // TODO: would like to remove the `?` and model more properly
+    case restart(atMost: Int, within: Duration?, backoff: BackoffStrategy?)  // TODO: would like to remove the `?` and model more properly
 
     /// WARNING: Purposefully ESCALATES the failure to the parent of the spawned actor, even if it has not watched the child.
     ///
@@ -386,7 +388,7 @@ internal enum ProcessingAction<Message: Codable> {
     case message(Message)
     case signal(_Signal)
     case closure(ActorClosureCarry)
-    case continuation(() throws -> _Behavior<Message>) // TODO: make it a Carry type for better debugging
+    case continuation(() throws -> _Behavior<Message>)  // TODO: make it a Carry type for better debugging
     case subMessage(SubMessageCarry)
 }
 
@@ -433,14 +435,17 @@ internal class Supervisor<Message: Codable> {
     internal final func interpretSupervised(target: _Behavior<Message>, context: _ActorContext<Message>, closure: @escaping () throws -> _Behavior<Message>) throws -> _Behavior<Message> {
         traceLog_Supervision("CALLING CLOSURE: \(target)")
         return try self.interpretSupervised0(
-            target: target, context: context, processingAction: .continuation(closure)
+            target: target,
+            context: context,
+            processingAction: .continuation(closure)
         )
     }
 
     internal final func startSupervised(target: _Behavior<Message>, context: _ActorContext<Message>) throws -> _Behavior<Message> {
         traceLog_Supervision("CALLING START")
         return try self.interpretSupervised0(
-            target: target, context: context,
+            target: target,
+            context: context,
             processingAction: .start
         )
     }
@@ -449,9 +454,11 @@ internal class Supervisor<Message: Codable> {
     @inline(__always)
     final func interpretSupervised0(target: _Behavior<Message>, context: _ActorContext<Message>, processingAction: ProcessingAction<Message>) throws -> _Behavior<Message> {
         try self.interpretSupervised0(
-            target: target, context: context,
-            processingAction: processingAction, nFoldFailureDepth: 1
-        ) // 1 since we already have "one failure"
+            target: target,
+            context: context,
+            processingAction: processingAction,
+            nFoldFailureDepth: 1
+        )  // 1 since we already have "one failure"
     }
 
     @inline(__always)
@@ -535,10 +542,10 @@ internal class Supervisor<Message: Codable> {
                     return SupervisionRestartDelayedBehavior.after(delay: delay, with: replacement)
                 }
             } catch {
-                errorToHandle = error // the error captured from restarting is now the reason why we are failing, and should be passed to the supervisor
-                continue // by now supervising the errorToHandle which has just occurred
+                errorToHandle = error  // the error captured from restarting is now the reason why we are failing, and should be passed to the supervisor
+                continue  // by now supervising the errorToHandle which has just occurred
             }
-        } while true // the only way to break out of here is succeeding to interpret `directive` OR supervisor giving up (e.g. max nr of restarts being exhausted)
+        } while true  // the only way to break out of here is succeeding to interpret `directive` OR supervisor giving up (e.g. max nr of restarts being exhausted)
     }
 
     // MARK: Internal Supervisor API
@@ -686,7 +693,7 @@ internal enum SupervisionDirective<Message: Codable> {
 
 internal enum SupervisionDecision {
     case restartImmediately
-    case restartBackoff(delay: Duration) // could also configure "drop messages while restarting" etc
+    case restartBackoff(delay: Duration)  // could also configure "drop messages while restarting" etc
     case escalate
     case stop
 }

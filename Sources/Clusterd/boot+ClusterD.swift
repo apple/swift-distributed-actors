@@ -14,6 +14,7 @@
 
 import ArgumentParser
 import DistributedCluster
+import Logging
 
 @main
 struct ClusterDBoot: AsyncParsableCommand {

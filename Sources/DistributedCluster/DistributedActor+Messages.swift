@@ -6,13 +6,14 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
 
 import Distributed
+
 import struct Foundation.Data
 
 // FIXME(distributed): we need to get rid of this all of this... probably means having to remove the entire Ref based infrastructure

@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -39,19 +39,22 @@ final class DiscoveryShell {
             // Try to initialise clusterd if needed
             self.settings.initializeClusterd(context.system)
             context.log.info("Initializing discovery, done.")
-
-            self.subscription = self.settings.subscribe(onNext: { result in
-                switch result {
-                case .success(let instances):
-                    context.myself.tell(.listing(Set(instances)))
-                case .failure(let error):
-                    context.log.debug("Service discovery failed: \(error)")
+            
+            self.subscription = self.settings.subscribe(
+                onNext: { result in
+                    switch result {
+                    case .success(let instances):
+                        context.myself.tell(.listing(Set(instances)))
+                    case .failure(let error):
+                        context.log.debug("Service discovery failed: \(error)")
+                    }
+                },
+                onComplete: { reason in
+                    // if for some reason the subscription completes, we also terminate the discovery actor
+                    // TODO: would there be cases where we want to reconnect the discovery mechanism instead? (we could handle it here)
+                    context.myself.tell(.stop(reason))
                 }
-            }, onComplete: { reason in
-                // if for some reason the subscription completes, we also kill the discovery actor
-                // TODO: would there be cases where we want to reconnect the discovery mechanism instead? (we could handle it here)
-                context.myself.tell(.stop(reason))
-            })
+            )
 
             return self.ready
         }
@@ -73,16 +76,26 @@ final class DiscoveryShell {
     }
 
     private func onUpdatedListing(discoveredEndpoints: Set<Cluster.Endpoint>, context: _ActorContext<Message>) {
-        context.log.trace("Service discovery updated listing", metadata: [
-            "listing": Logger.MetadataValue.array(Array(discoveredEndpoints.map {
-                "\($0)"
-            })),
-        ])
+        context.log.trace(
+            "Service discovery updated listing",
+            metadata: [
+                "listing": Logger.MetadataValue.array(
+                    Array(
+                        discoveredEndpoints.map {
+                            "\($0)"
+                        }
+                    )
+                )
+            ]
+        )
         for newNode in discoveredEndpoints.subtracting(self.previouslyDiscoveredNodes) {
-            context.log.trace("Discovered new node, initiating join", metadata: [
-                "node": "\(newNode)",
-                "discovery/implementation": "\(self.settings.implementation)",
-            ])
+            context.log.trace(
+                "Discovered new node, initiating join",
+                metadata: [
+                    "node": "\(newNode)",
+                    "discovery/implementation": "\(self.settings.implementation)",
+                ]
+            )
             self.cluster.tell(.command(.handshakeWith(newNode)))
         }
         self.previouslyDiscoveredNodes = discoveredEndpoints

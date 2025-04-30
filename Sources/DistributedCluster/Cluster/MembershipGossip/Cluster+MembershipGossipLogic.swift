@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -80,7 +80,7 @@ final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
             if !changed.removed.isEmpty {
                 let removedPeers = Set(changed.removed)
                 self.peers = self.peers.filter { !removedPeers.contains($0) }
-                changed.removed.forEach { removedPeer in
+                for removedPeer in changed.removed {
                     _ = self.lastGossipFrom.removeValue(forKey: removedPeer)
                 }
             }
@@ -93,7 +93,7 @@ final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
                 // and also likely receive multiple pings within a very short time frame.
                 //
                 // This is adopted from the SWIM membership implementation and related papers.
-                let insertIndex = Int.random(in: self.peers.startIndex ... self.peers.endIndex)
+                let insertIndex = Int.random(in: self.peers.startIndex...self.peers.endIndex)
                 self.peers.insert(peer, at: insertIndex)
             }
         }

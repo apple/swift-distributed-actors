@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -80,7 +80,7 @@ internal final class NodeDeathWatcherInstance: NodeDeathWatcher {
         }
 
         var existingWatchers = self.remoteWatchers[remoteNode] ?? []
-        existingWatchers.insert(watcher) // FIXME: we have to remove it once it terminates...
+        existingWatchers.insert(watcher)  // FIXME: we have to remove it once it terminates...
 
         self.remoteWatchers[remoteNode] = existingWatchers
     }
@@ -117,7 +117,7 @@ internal final class NodeDeathWatcherInstance: NodeDeathWatcher {
 
     func onMembershipChanged(_ change: Cluster.MembershipChange) {
         guard let change = self.membership.applyMembershipChange(change) else {
-            return // no change, nothing to act on
+            return  // no change, nothing to act on
         }
 
         // TODO: make sure we only handle ONCE?
@@ -203,18 +203,24 @@ enum NodeDeathWatcherShell {
                     }
 
                 case .membershipChange(let change) where change.isAtLeast(.down):
-                    context.log.trace("Node down: \(change)!", metadata: [
-                        "node": "\(reflecting: change.node)",
-                    ])
+                    context.log.trace(
+                        "Node down: \(change)!",
+                        metadata: [
+                            "node": "\(reflecting: change.node)"
+                        ]
+                    )
                     instance.handleAddressDown(change)
                 case .membershipChange(let change):
-                    context.log.trace("Node change: \(change)!", metadata: [
-                        "node": "\(reflecting: change.node)",
-                    ])
+                    context.log.trace(
+                        "Node change: \(change)!",
+                        metadata: [
+                            "node": "\(reflecting: change.node)"
+                        ]
+                    )
                     instance.onMembershipChanged(change)
 
                 default:
-                    () // ignore other changes, we only need to react on nodes becoming DOWN
+                    ()  // ignore other changes, we only need to react on nodes becoming DOWN
                 }
             }
             context.system.cluster.events.subscribe(onClusterEventRef)
@@ -228,7 +234,7 @@ enum NodeDeathWatcherShell {
             context.log.debug("Received: \(message)")
             switch message {
             case .remoteActorWatched(let watcher, let remoteNode):
-                instance.onActorWatched(by: watcher, remoteNode: remoteNode) // TODO: return and interpret directives
+                instance.onActorWatched(by: watcher, remoteNode: remoteNode)  // TODO: return and interpret directives
 
             case .remoteDistributedActorWatched(let remoteNode, let watcherID, let nodeTerminatedFn):
                 instance.onActorWatched(on: remoteNode, by: watcherID, whenTerminated: nodeTerminatedFn)
@@ -240,11 +246,11 @@ enum NodeDeathWatcherShell {
                 let diff = Cluster.Membership._diff(from: .empty, to: membership)
 
                 for change in diff.changes {
-                    instance.onMembershipChanged(change) // TODO: return and interpret directives
+                    instance.onMembershipChanged(change)  // TODO: return and interpret directives
                 }
 
             case .membershipChange(let change):
-                instance.onMembershipChanged(change) // TODO: return and interpret directives
+                instance.onMembershipChanged(change)  // TODO: return and interpret directives
             }
             return .same
         }

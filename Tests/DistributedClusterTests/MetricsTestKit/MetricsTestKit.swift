@@ -1,12 +1,26 @@
 //===----------------------------------------------------------------------===//
 //
+// This source file is part of the Swift Distributed Actors open source project
+//
+// Copyright (c) 2020-2024 Apple Inc. and the Swift Distributed Actors project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE.txt for license information
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
+
+//===----------------------------------------------------------------------===//
+//
 // This source file is part of the Swift Cluster Membership open source project
 //
 // Copyright (c) 2020-2022 Apple Inc. and the Swift Cluster Membership project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Cluster Membership project authors
+// See CONTRIBUTORS.txt for the list of Swift Cluster Membership project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -28,8 +42,9 @@
 
 import CoreMetrics
 import DistributedCluster
-@testable import Metrics
 import XCTest
+
+@testable import Metrics
 
 /// Taken directly from swift-metrics's own test package.
 ///
@@ -106,15 +121,14 @@ public final class TestMetrics: MetricsFactory {
 extension TestMetrics.FullKey: Hashable {
     public func hash(into hasher: inout Hasher) {
         self.label.hash(into: &hasher)
-        self.dimensions.forEach { dim in
+        for dim in self.dimensions {
             dim.0.hash(into: &hasher)
             dim.1.hash(into: &hasher)
         }
     }
 
     public static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.label == rhs.label &&
-            Dictionary(uniqueKeysWithValues: lhs.dimensions) == Dictionary(uniqueKeysWithValues: rhs.dimensions)
+        lhs.label == rhs.label && Dictionary(uniqueKeysWithValues: lhs.dimensions) == Dictionary(uniqueKeysWithValues: rhs.dimensions)
     }
 }
 

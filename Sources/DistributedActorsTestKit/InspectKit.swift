@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -181,14 +181,14 @@ extension [Substring: InspectKit.ActorStats] {}
 extension Process {
     var binaryPath: String? {
         get {
-            if #available(macOS 10.13, /* Linux */ *) {
+            if #available(macOS 10.13, *) {  // '*' covers Linux
                 return self.executableURL?.path
             } else {
                 return self.launchPath
             }
         }
         set {
-            if #available(macOS 10.13, /* Linux */ *) {
+            if #available(macOS 10.13, *) {  // '*' covers Linux
                 self.executableURL = newValue.map { URL(fileURLWithPath: $0) }
             } else {
                 self.launchPath = newValue

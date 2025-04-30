@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -37,7 +37,7 @@ extension Cluster {
     public struct Endpoint: Hashable, Sendable {
         // TODO: collapse into one String and index into it?
         public var `protocol`: String
-        public var systemName: String // TODO: some other name, to signify "this is just for humans"?
+        public var systemName: String  // TODO: some other name, to signify "this is just for humans"?
         public var host: String
         public var port: Int
 

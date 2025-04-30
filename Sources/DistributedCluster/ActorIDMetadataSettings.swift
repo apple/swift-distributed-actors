@@ -6,23 +6,24 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
 
-import class Foundation.ProcessInfo
 import Logging
 import NIO
 import NIOSSL
-import ServiceDiscovery
 import SWIM
+import ServiceDiscovery
+
+import class Foundation.ProcessInfo
 
 /// Configures default actor id metadta behavior, like which metadata should be propagated cross process and which not.
 internal struct ActorIDMetadataSettings {
     public static var `default`: ActorIDMetadataSettings {
-        return .init()
+        .init()
     }
 
     /// Configures metadata which should be

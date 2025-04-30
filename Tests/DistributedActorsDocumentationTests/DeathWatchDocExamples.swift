@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -113,12 +113,12 @@ class DeathWatchDocExamples {
         // tag::simple_death_watch[]
         func gameUnit(player: _ActorRef<Player.Command>) -> _Behavior<GameUnit.Command> {
             .setup { context in
-                context.watch(player) // <1>
+                context.watch(player)  // <1>
 
-                return .receiveMessage { _ in // <2>
+                return .receiveMessage { _ in  // <2>
                     // perform some game logic...
                     .same
-                } // <3>
+                }  // <3>
             }
         }
         // end::simple_death_watch[]

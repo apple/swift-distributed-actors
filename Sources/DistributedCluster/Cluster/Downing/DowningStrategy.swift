@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -104,7 +104,7 @@ internal distributed actor DowningStrategyShell {
     deinit {
         print("\(Self.self) DEINIT")
         self.eventsListeningTask?.cancel()
-//        self.eventsListeningTask = nil
+        //        self.eventsListeningTask = nil
     }
 
     func receiveClusterEvent(_ event: Cluster.Event) throws {
@@ -136,14 +136,15 @@ internal distributed actor DowningStrategyShell {
             }
 
         case .none:
-            () // nothing to be done
+            ()  // nothing to be done
         }
     }
 
     func markAsDown(members: Set<Cluster.Member>) {
         for member in members {
             self.log.info(
-                "Decide to [.down] member [\(member)]!", metadata: self.metadata([
+                "Decide to [.down] member [\(member)]!",
+                metadata: self.metadata([
                     "downing/node": "\(reflecting: member.node)",
                     "member/status/previous": "\(member.status)",
                 ])

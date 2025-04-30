@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -23,7 +23,7 @@ class ActorSingletonDocExamples {
     func example_ref() throws {
         // tag::configure-system[]
         let system = ClusterSystem("Sample") { settings in
-            settings += ActorSingletonPlugin() // <1>
+            settings += ActorSingletonPlugin()  // <1>
         }
         // end::configure-system[]
 
@@ -33,13 +33,13 @@ class ActorSingletonDocExamples {
         }
 
         // tag::host-ref[]
-        let singletonRef = try system.singleton.host(String.self, name: "SampleSingleton", singletonBehavior) // <1>
-        singletonRef.tell("Jane Doe") // <2>
+        let singletonRef = try system.singleton.host(String.self, name: "SampleSingleton", singletonBehavior)  // <1>
+        singletonRef.tell("Jane Doe")  // <2>
         // end::host-ref[]
 
         // tag::proxy-ref[]
         let singletonProxyRef = try system.singleton.ref(of: String.self, name: "SampleSingleton")
-        singletonProxyRef.tell("Jane Doe") // <1>
+        singletonProxyRef.tell("Jane Doe")  // <1>
         // end::proxy-ref[]
     }
 }

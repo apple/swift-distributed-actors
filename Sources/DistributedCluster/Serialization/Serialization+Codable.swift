@@ -6,16 +6,16 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
 
+import Foundation  // JSON and PList coders
 import NIO
 import NIOFoundationCompat
 
-import Foundation // JSON and PList coders
 import struct Foundation.Data
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -28,8 +28,7 @@ extension Decodable {
     }
 
     static func _decode<C>(from container: inout C, forKey key: C.Key, using decoder: Decoder) throws -> Self
-        where C: KeyedDecodingContainerProtocol
-    {
+    where C: KeyedDecodingContainerProtocol {
         try container.decode(Self.self, forKey: key)
     }
 }
