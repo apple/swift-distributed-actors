@@ -65,9 +65,9 @@ extension _ActorNaming {
 }
 
 /// Used while spawning actors to identify how its name should be created.
-public struct _ActorNaming: ExpressibleByStringLiteral, ExpressibleByStringInterpolation {
+public struct _ActorNaming: ExpressibleByStringLiteral, ExpressibleByStringInterpolation, Hashable {
     // We keep an internal enum, but do not expose it as we may want to add more naming strategies in the future?
-    internal enum _Naming {
+    internal enum _Naming: Hashable {
         case unique(String)
         // case uniqueNumeric(NumberingScheme)
         case prefixed(prefix: String, suffixScheme: SuffixScheme)
