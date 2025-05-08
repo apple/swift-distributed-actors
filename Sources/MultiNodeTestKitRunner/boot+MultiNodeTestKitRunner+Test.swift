@@ -20,11 +20,12 @@ import NIOPosix
 import OrderedCollections
 
 import struct Foundation.Date
+import class Foundation.ProcessInfo
+import struct Foundation.URL
+
 #if canImport(Foundation.Process)
 import class Foundation.Process
 #endif
-import class Foundation.ProcessInfo
-import struct Foundation.URL
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Code executing on each specific process/node

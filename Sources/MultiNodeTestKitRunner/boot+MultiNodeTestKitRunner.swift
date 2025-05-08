@@ -21,10 +21,11 @@ import OrderedCollections
 
 import struct Foundation.Date
 import class Foundation.FileHandle
+import struct Foundation.URL
+
 #if canImport(Foundation.Process)
 import class Foundation.Process
 #endif
-import struct Foundation.URL
 
 @main
 struct MultiNodeTestKitRunnerBoot {
