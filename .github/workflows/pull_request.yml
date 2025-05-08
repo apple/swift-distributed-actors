@@ -18,24 +18,58 @@ jobs:
       linux_5_9_enabled: false
       linux_5_10_arguments_override: "--explicit-target-dependency-import-check error"
       linux_6_0_arguments_override: "--explicit-target-dependency-import-check error -Xswiftc -require-explicit-sendable"
+      linux_6_1_arguments_override: "--explicit-target-dependency-import-check error -Xswiftc -require-explicit-sendable"
       linux_nightly_6_1_arguments_override: "--explicit-target-dependency-import-check error -Xswiftc -require-explicit-sendable"
       linux_nightly_main_arguments_override: "--explicit-target-dependency-import-check error -Xswiftc -require-explicit-sendable"
 
+  construct-integration-tests-matrix:
+    name: Construct integration matrix
+    runs-on: ubuntu-latest
+    outputs:
+      integration-tests-matrix: '${{ steps.generate-matrix.outputs.integration-tests-matrix }}'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - id: generate-matrix
+        run: echo "integration-tests-matrix=$(curl -s https://raw.githubusercontent.com/apple/swift-nio/main/scripts/generate_matrix.sh | bash)" >> "$GITHUB_OUTPUT"
+        env:
+          MATRIX_LINUX_COMMAND: swift package --disable-sandbox multi-node test
+          MATRIX_LINUX_5_9_ENABLED: false
+
   integration-tests:
     name: Integration tests
-    uses: apple/swift-nio/.github/workflows/swift_matrix.yml@main
+    needs: construct-integration-tests-matrix
+    uses: apple/swift-nio/.github/workflows/swift_test_matrix.yml@main
     with:
       name: "Integration tests"
-      matrix_linux_5_9_enabled: false
-      matrix_linux_command: "swift package --disable-sandbox multi-node test"
+      matrix_string: '${{ needs.construct-integration-tests-matrix.outputs.integration-tests-matrix }}'
 
-  sample-philosophers:
+  construct-dining-philosophers-matrix:
+    name: Construct dining philosophers matrix
+    runs-on: ubuntu-latest
+    outputs:
+      dining-philosophers-matrix: '${{ steps.generate-matrix.outputs.dining-philosophers-matrix }}'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - id: generate-matrix
+        run: echo "dining-philosophers-matrix=$(curl -s https://raw.githubusercontent.com/apple/swift-nio/main/scripts/generate_matrix.sh | bash)" >> "$GITHUB_OUTPUT"
+        env:
+          MATRIX_LINUX_SETUP_COMMAND: apt-get update -y && apt-get install -yq jq && git config --global --add safe.directory /swift-openapi-runtime
+          MATRIX_LINUX_COMMAND: swift run --package-path Samples SampleDiningPhilosophers
+          MATRIX_LINUX_5_9_ENABLED: false
+
+  dining-philosophers:
     name: Sample dining philosophers
-    uses: apple/swift-nio/.github/workflows/swift_matrix.yml@main
+    needs: construct-dining-philosophers-matrix
+    uses: apple/swift-nio/.github/workflows/swift_test_matrix.yml@main
     with:
       name: "Sample dining philosophers"
-      matrix_linux_5_9_enabled: false
-      matrix_linux_command: "swift run --package-path Samples SampleDiningPhilosophers"
+      matrix_string: '${{ needs.construct-dining-philosophers-matrix.outputs.dining-philosophers-matrix }}'
 
   cxx-interop:
     name: Cxx interop
