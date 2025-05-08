@@ -93,7 +93,7 @@ var targets: [PackageDescription.Target] = [
             // permissions: needs full network access
         ),
         dependencies: [
-            "MultiNodeTestKitRunner",
+            "MultiNodeTestKitRunner"
         ]
     ),
     .target(
