@@ -20,8 +20,9 @@ import NIOPosix
 import OrderedCollections
 
 import struct Foundation.Date
-import class Foundation.FileHandle
+#if canImport(Foundation.Process)
 import class Foundation.Process
+#endif
 import class Foundation.ProcessInfo
 import struct Foundation.URL
 
@@ -115,6 +116,10 @@ extension MultiNodeTestKitRunnerBoot {
     }
 
     func runMultiNodeTest(suite: String, testName: String, binary: String) async throws -> InterpretedRunResult {
+        #if !canImport(Foundation.Process)
+        struct UnsupportedPlatform: Error {}
+        throw UnsupportedPlatform()
+        #else
         let elg = MultiThreadedEventLoopGroup(numberOfThreads: 1)
         defer {
             try! elg.syncShutdownGracefully()
@@ -218,8 +223,10 @@ extension MultiNodeTestKitRunnerBoot {
 
         // all nodes passed okey
         return .passedAsExpected
+        #endif
     }
 
+    #if canImport(Foundation.Process)
     private func startTestTimeoutReaperTask(nodeName: String, process: Process, settings: MultiNodeTestSettings) -> Task<Void, Never> {
         Task.detached {
             try? await Task.sleep(until: .now + settings.execRunHardTimeout, clock: .continuous)
@@ -235,6 +242,7 @@ extension MultiNodeTestKitRunnerBoot {
             process.terminate()
         }
     }
+    #endif
 }
 
 struct NodeInterpretedRunResult {

@@ -21,13 +21,20 @@ import OrderedCollections
 
 import struct Foundation.Date
 import class Foundation.FileHandle
+#if canImport(Foundation.Process)
 import class Foundation.Process
+#endif
 import struct Foundation.URL
 
 @main
 struct MultiNodeTestKitRunnerBoot {
     static func main() async throws {
+        #if !canImport(Foundation.Process)
+        print("Platform does not support multi-node tests")
+        throw ExitCode.failure
+        #else
         try await Self().run()
+        #endif
     }
 
     struct TestFilter {

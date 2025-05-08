@@ -18,9 +18,12 @@ import NIOCore
 import NIOPosix
 
 import class Foundation.FileHandle
+#if canImport(Foundation.Process)
 import class Foundation.Process
+#endif
 import struct Foundation.URL
 
+#if canImport(Foundation.Process)
 // Compatible with Swift on all macOS versions as well as Linux
 extension Process {
     var binaryPath: String? {
@@ -48,3 +51,4 @@ extension Process {
         }
     }
 }
+#endif
