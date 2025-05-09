@@ -26,7 +26,7 @@ public struct ClusterInvocationEncoder: DistributedTargetInvocationEncoder {
     var genericSubstitutions: [String] = []
     var throwing: Bool = false
 
-    let system: ClusterSystem
+    weak var system: ClusterSystem?
 
     init(system: ClusterSystem) {
         self.system = system
@@ -44,9 +44,10 @@ public struct ClusterInvocationEncoder: DistributedTargetInvocationEncoder {
     }
 
     public mutating func recordArgument<Value: Codable>(_ argument: RemoteCallArgument<Value>) throws {
-        let serialized = try self.system.serialization.serialize(argument.value)
-        let data = serialized.buffer.readData()
-        self.arguments.append(data)
+        let serialized = try self.system?.serialization.serialize(argument.value)
+        if let data = serialized?.buffer.readData() {
+            self.arguments.append(data)
+        }
     }
 
     public mutating func recordReturnType<Success: Codable>(_ returnType: Success.Type) throws {}
@@ -63,7 +64,7 @@ public struct ClusterInvocationEncoder: DistributedTargetInvocationEncoder {
 public struct ClusterInvocationDecoder: DistributedTargetInvocationDecoder {
     public typealias SerializationRequirement = any Codable
 
-    let system: ClusterSystem
+    weak var system: ClusterSystem?
     let state: _State
     enum _State {
         case remoteCall(message: InvocationMessage)
@@ -101,6 +102,10 @@ public struct ClusterInvocationDecoder: DistributedTargetInvocationDecoder {
     }
 
     public mutating func decodeNextArgument<Argument: Codable>() throws -> Argument {
+        guard let system else {
+            throw SerializationError(.notAbleToDeserialize(hint: "System is nil"))
+        }
+
         let argumentData: Data
 
         switch self.state {
@@ -132,13 +137,13 @@ public struct ClusterInvocationDecoder: DistributedTargetInvocationDecoder {
         }
 
         // FIXME: make incoming manifest
-        let manifest = try self.system.serialization.outboundManifest(Argument.self)
+        let manifest = try system.serialization.outboundManifest(Argument.self)
 
         let serialized = Serialization.Serialized(
             manifest: manifest,
             buffer: Serialization.Buffer.data(argumentData)
         )
-        let argument = try self.system.serialization.deserialize(as: Argument.self, from: serialized)
+        let argument = try system.serialization.deserialize(as: Argument.self, from: serialized)
         return argument
     }
 
