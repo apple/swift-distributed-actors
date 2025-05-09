@@ -92,7 +92,9 @@ var targets: [PackageDescription.Target] = [
             intent: .custom(verb: "multi-node", description: "Run MultiNodeTestKit based tests across multiple processes or physical compute nodes")
             // permissions: needs full network access
         ),
-        dependencies: []
+        dependencies: [
+            "MultiNodeTestKitRunner"
+        ]
     ),
     .target(
         name: "MultiNodeTestKit",

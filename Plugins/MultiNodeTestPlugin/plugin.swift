@@ -39,8 +39,11 @@ final class MultiNodeTestPlugin: CommandPlugin {
             }
         }
 
+        // Find the executable dependency frome the plugin context.
+        let tool = try context.tool(named: "MultiNodeTestKitRunner")
+
         // Terminate all previous runners
-        Process.killall(name: "MultiNodeTestKitRunner")
+        Process.killall(name: tool.name)
 
         switch self.buildConfiguration {
         case .debug:
@@ -71,14 +74,14 @@ final class MultiNodeTestPlugin: CommandPlugin {
         log("Detected multi-node test runner: \(multiNodeRunner.path.lastComponent)")
 
         let process = Process()
-        process.binaryPath = "/usr/bin/swift"
-        process.arguments = ["run", "MultiNodeTestKitRunner"]
+        process.binaryPath = tool.path.string
+        process.arguments = []
         for arg in arguments {
             process.arguments?.append(arg)
         }
 
         do {
-            log("> swift \(process.arguments?.joined(separator: " ") ?? "")")
+            log("> \(tool.name) \(process.arguments?.joined(separator: " ") ?? "")")
             try process.runProcess()
             process.waitUntilExit()
         } catch {
@@ -144,7 +147,7 @@ extension Process {
     static func killall(name: String) {
         let killAllRunners = Process()
         killAllRunners.binaryPath = "/usr/bin/killall"
-        killAllRunners.arguments = ["-9", "MultiNodeTestKitRunner"]
+        killAllRunners.arguments = ["-9", name]
         try? killAllRunners.runProcess()
         killAllRunners.waitUntilExit()
     }
