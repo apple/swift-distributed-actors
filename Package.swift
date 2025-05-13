@@ -93,7 +93,10 @@ var targets: [PackageDescription.Target] = [
             // permissions: needs full network access
         ),
         dependencies: [
-            "MultiNodeTestKitRunner"
+            /// NOTE: Usually a Swift package plugin would declare any internal executable targets it depends on here
+            ///       and make use of them from the context passed in by SwiftPM. However, this causes issues when
+            ///       running the API breakage checker on this package, for unrelated reasons. So this command plugin is
+            ///       building the package itself as part of its run.
         ]
     ),
     .target(
