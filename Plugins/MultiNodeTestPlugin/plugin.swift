@@ -39,11 +39,10 @@ final class MultiNodeTestPlugin: CommandPlugin {
             }
         }
 
-        // Find the executable dependency frome the plugin context.
-        let tool = try context.tool(named: "MultiNodeTestKitRunner")
+        let toolName = "MultiNodeTestKitRunner"
 
         // Terminate all previous runners
-        Process.killall(name: tool.name)
+        Process.killall(name: toolName)
 
         switch self.buildConfiguration {
         case .debug:
@@ -66,7 +65,7 @@ final class MultiNodeTestPlugin: CommandPlugin {
 
         let multiNodeRunner = buildResult.builtArtifacts
             .filter { $0.kind == .executable }
-            .first { $0.path.lastComponent.starts(with: "MultiNodeTestKitRunner") }
+            .first { $0.path.lastComponent.starts(with: toolName) }
         guard let multiNodeRunner = multiNodeRunner else {
             throw MultiNodeTestPluginError(message: "Failed")
         }
@@ -74,14 +73,11 @@ final class MultiNodeTestPlugin: CommandPlugin {
         log("Detected multi-node test runner: \(multiNodeRunner.path.lastComponent)")
 
         let process = Process()
-        process.binaryPath = tool.path.string
-        process.arguments = []
-        for arg in arguments {
-            process.arguments?.append(arg)
-        }
+        process.binaryPath = multiNodeRunner.path.string
+        process.arguments = arguments
 
         do {
-            log("> \(tool.name) \(process.arguments?.joined(separator: " ") ?? "")")
+            log("> \(toolName) \(process.arguments?.joined(separator: " ") ?? "")")
             try process.runProcess()
             process.waitUntilExit()
         } catch {
