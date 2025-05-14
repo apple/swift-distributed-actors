@@ -6,17 +6,19 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsConcurrencyHelpers
-@testable import DistributedCluster
-import struct Foundation.Date
-@testable import Logging
 import XCTest
+
+import struct Foundation.Date
+
+@testable import DistributedCluster
+@testable import Logging
 
 /// Testing only utility: Captures all log statements for later inspection.
 ///
@@ -64,9 +66,11 @@ public final class LogCapture {
     /// Throws: an ``EventuallyError`` when the deadline is exceeded without matching a log message.
     @discardableResult
     public func awaitLogContaining(
-        _ testKit: ActorTestKit, text: String,
+        _ testKit: ActorTestKit,
+        text: String,
         within: Duration = .seconds(3),
-        file: StaticString = #filePath, line: UInt = #line
+        file: StaticString = #filePath,
+        line: UInt = #line
     ) throws -> CapturedLogMessage {
         try testKit.eventually(within: within, file: file, line: line) {
             let logs = self.logs
@@ -93,7 +97,7 @@ extension LogCapture {
         public var grep: Set<String> = []
 
         public var ignoredMetadata: Set<String> = [
-            "cluster/node",
+            "cluster/node"
         ]
 
         public init() {}
@@ -119,13 +123,13 @@ extension LogCapture {
             if var metadata = log.metadata {
                 if let id = metadata.removeValue(forKey: "actor/id") {
                     actorIdentifier = "[\(id)]"
-                    _ = metadata.removeValue(forKey: "actor/path") // discard it
+                    _ = metadata.removeValue(forKey: "actor/path")  // discard it
                 } else if let path = metadata.removeValue(forKey: "actor/path") {
                     actorIdentifier = "[\(path)]"
                 }
 
                 metadata.removeValue(forKey: "label")
-                self.settings.ignoredMetadata.forEach { ignoreKey in
+                for ignoreKey in self.settings.ignoredMetadata {
                     metadata.removeValue(forKey: ignoreKey)
                 }
                 if !metadata.isEmpty {
@@ -207,23 +211,25 @@ struct LogCaptureLogHandler: LogHandler {
     public func log(level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata?, file: String, function: String, line: UInt) {
         let actorPath = self.metadata["actor/path"].map { "\($0)" } ?? ""
 
-        guard self.capture.settings.filterActorPaths.contains(where: { path in
-            if (path == "") { // TODO(swift): rdar://98691039 String.starts(with:) has a bug when given an empty string, so we have to avoid it
-                return true
-            }
+        guard
+            self.capture.settings.filterActorPaths.contains(where: { path in
+                if path == "" {  // TODO(swift): rdar://98691039 String.starts(with:) has a bug when given an empty string, so we have to avoid it
+                    return true
+                }
 
-            return actorPath.starts(with: path)
-        }) else {
-            return // ignore this actor's logs, it was filtered out
+                return actorPath.starts(with: path)
+            })
+        else {
+            return  // ignore this actor's logs, it was filtered out
         }
         guard !self.capture.settings.excludeActorPaths.contains(actorPath) else {
-            return // actor was excluded explicitly
+            return  // actor was excluded explicitly
         }
         guard self.capture.settings.grep.isEmpty || self.capture.settings.grep.contains(where: { "\(message)".contains($0) }) else {
-            return // log was included explicitly
+            return  // log was included explicitly
         }
         guard !self.capture.settings.excludeGrep.contains(where: { "\(message)".contains($0) }) else {
-            return // log was excluded explicitly
+            return  // log was excluded explicitly
         }
 
         let date = Date()
@@ -271,7 +277,9 @@ extension LogCapture {
         expectedFile: String? = nil,
         expectedLine: Int = -1,
         failTest: Bool = true,
-        file: StaticString = #filePath, line: UInt = #line, column: UInt = #column
+        file: StaticString = #filePath,
+        line: UInt = #line,
+        column: UInt = #column
     ) throws -> CapturedLogMessage {
         precondition(prefix != nil || message != nil || grep != nil || level != nil || level != nil || expectedFile != nil, "At least one query parameter must be not `nil`!")
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
@@ -333,10 +341,10 @@ extension LogCapture {
                 .joined(separator: ", ")
 
             let message = """
-            Did not find expected log, matching query: 
-                [\(query)]
-            in captured logs at \(file):\(line)
-            """
+                Did not find expected log, matching query: 
+                    [\(query)]
+                in captured logs at \(file):\(line)
+                """
             let callSiteError = callSite.error(message)
             if failTest {
                 XCTFail(message, file: callSite.file, line: callSite.line)
@@ -362,7 +370,7 @@ extension LogCapture {
                     if queryValue != "\(value)" {
                         // mismatch, exclude it
                         return false
-                    } // ok, continue checking other keys
+                    }  // ok, continue checking other keys
                 } else {
                     // key did not exist
                     return false

@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -44,7 +44,7 @@ public final class ClusterSingletonAllocationByLeadership: ClusterSingletonAlloc
         case .snapshot(let membership):
             self._node = membership.leader?.node
         default:
-            () // ignore other events
+            ()  // ignore other events
         }
         return self._node
     }

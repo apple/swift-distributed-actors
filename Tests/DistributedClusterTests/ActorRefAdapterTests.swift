@@ -6,16 +6,17 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import Foundation
 import XCTest
+
+@testable import DistributedCluster
 
 class _ActorRefAdapterTests: SingleClusterSystemXCTestCase {
     func test_adaptedRef_shouldConvertMessages() throws {
@@ -34,11 +35,11 @@ class _ActorRefAdapterTests: SingleClusterSystemXCTestCase {
 
         let adapted = try refProbe.expectMessage()
 
-        for i in 0 ... 10 {
+        for i in 0...10 {
             adapted.tell(i)
         }
 
-        for i in 0 ... 10 {
+        for i in 0...10 {
             try probe.expectMessage("\(i)")
         }
     }
@@ -75,11 +76,11 @@ class _ActorRefAdapterTests: SingleClusterSystemXCTestCase {
 
         let adapted: _ActorRef<Int> = try refProbe.expectMessage()
 
-        for i in 0 ... 10 {
+        for i in 0...10 {
             adapted.tell(i)
         }
 
-        for i in 0 ... 10 {
+        for i in 0...10 {
             try probe.expectMessage("\(i)")
         }
     }
@@ -111,13 +112,15 @@ class _ActorRefAdapterTests: SingleClusterSystemXCTestCase {
         let pAdapted = self.testKit.makeTestProbe(expecting: Int.self)
 
         let behavior: _Behavior<Int> = .setup { context in
-            probe.tell(context.messageAdapter { message in
-                if message.contains("drop") {
-                    return nil
-                } else {
-                    return message.count
+            probe.tell(
+                context.messageAdapter { message in
+                    if message.contains("drop") {
+                        return nil
+                    } else {
+                        return message.count
+                    }
                 }
-            })
+            )
             return .receiveMessage { stringLength in
                 pAdapted.tell(stringLength)
                 return .same

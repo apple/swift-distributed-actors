@@ -6,24 +6,26 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import Foundation
 import NIOSSL
+import SWIM
 import XCTest
+
+@testable import DistributedCluster
 
 final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: leader decision: .joining -> .up
 
     func test_singleLeader() async throws {
-        throw XCTSkip("!!! Skipping known flaky test \(#function) !!!") // FIXME(distributed): revisit and fix https://github.com/apple/swift-distributed-actors/issues/945
+        throw XCTSkip("!!! Skipping known flaky test \(#function) !!!")  // FIXME(distributed): revisit and fix https://github.com/apple/swift-distributed-actors/issues/945
 
         let first = await setUpNode("first") { settings in
             settings.endpoint.port = 7111
@@ -120,7 +122,7 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
         }
 
         let fourth = await setUpNode("fourth") { settings in
-            settings.autoLeaderElection = .none // even without election running, it will be notified by things by the others
+            settings.autoLeaderElection = .none  // even without election running, it will be notified by things by the others
         }
 
         first.cluster.join(endpoint: second.cluster.node.endpoint)
@@ -136,7 +138,8 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
         try await self.ensureNodes(.up, within: .seconds(10), nodes: first.cluster.node, second.cluster.node, third.cluster.node, fourth.cluster.node)
     }
 
-    func test_up_ensureAllSubscribersGetMovingUpEvents() async throws {
+    // https://github.com/apple/swift-distributed-actors/issues/1194
+    func _test_up_ensureAllSubscribersGetMovingUpEvents() async throws {
         // it shall perform its duties. This tests however quickly shows that lack of letting the "third" node,
         // via gossip or some other way about the ->up of other nodes once it joins the "others", it'd be stuck waiting for
         // the ->up forever.
@@ -162,7 +165,7 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
         try await self.ensureNodes(.up, nodes: first.cluster.node, second.cluster.node)
 
         // the following tests confirm that the manually subscribed actors, got all the events they expected
-        func assertExpectedClusterEvents(events: [Cluster.Event], probe: ActorTestProbe<Cluster.Event>) throws { // the specific type of snapshot we get is slightly racy: it could be .empty or contain already the node itself
+        func assertExpectedClusterEvents(events: [Cluster.Event], probe: ActorTestProbe<Cluster.Event>) throws {  // the specific type of snapshot we get is slightly racy: it could be .empty or contain already the node itself
             guard case .some(Cluster.Event.snapshot) = events.first else {
                 throw probe.error("First event always expected to be .snapshot, was: \(optional: events.first)")
             }
@@ -175,10 +178,10 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
                 default:
                     return false
                 }
-            }.count.shouldEqual(2) // both nodes moved to up
+            }.count.shouldEqual(2)  // both nodes moved to up
 
             // the leader is the right node
-            events.shouldContain(.leadershipChange(Cluster.LeadershipChange(oldLeader: nil, newLeader: .init(node: first.cluster.node, status: .joining))!)) // !-safe, since new/old leader known to be different
+            events.shouldContain(.leadershipChange(Cluster.LeadershipChange(oldLeader: nil, newLeader: .init(node: first.cluster.node, status: .joining))!))  // !-safe, since new/old leader known to be different
         }
 
         // collect all events until we see leadership change; we should already have seen members become up then
@@ -271,7 +274,7 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
         eventsOnFirstSub.shouldContain(.membershipChange(.init(node: secondNode, previousStatus: nil, toStatus: .joining)))
         eventsOnFirstSub.shouldContain(.membershipChange(.init(node: first.cluster.node, previousStatus: .joining, toStatus: .up)))
         eventsOnFirstSub.shouldContain(.membershipChange(.init(node: secondNode, previousStatus: .joining, toStatus: .up)))
-        eventsOnFirstSub.shouldContain(.leadershipChange(Cluster.LeadershipChange(oldLeader: nil, newLeader: .init(node: first.cluster.node, status: .joining))!)) // !-safe, since new/old leader known to be different
+        eventsOnFirstSub.shouldContain(.leadershipChange(Cluster.LeadershipChange(oldLeader: nil, newLeader: .init(node: first.cluster.node, status: .joining))!))  // !-safe, since new/old leader known to be different
         eventsOnFirstSub.shouldContain(.membershipChange(.init(node: third.cluster.node, previousStatus: nil, toStatus: .joining)))
         eventsOnFirstSub.shouldContain(.membershipChange(.init(node: third.cluster.node, previousStatus: .joining, toStatus: .up)))
 

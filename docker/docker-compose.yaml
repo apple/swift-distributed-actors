@@ -24,7 +24,7 @@ services:
     environment:
       - MAX_ALLOCS_ALLOWED_001_actor_address=5
       - MAX_ALLOCS_ALLOWED_002_actor_spawn=56
-      - SWIFTPM_ENABLE_PLUGINS=1 # temp while feature is experimental
+      - SWIFTPM_ENABLE_PLUGINS=1  # temp while feature is experimental
 
   soundness:
     <<: *common

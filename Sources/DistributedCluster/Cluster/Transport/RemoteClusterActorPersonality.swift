@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -27,7 +27,7 @@ public final class _RemoteClusterActorPersonality<Message: Codable> {
     let id: ActorID
 
     let clusterShell: ClusterShell
-    let system: ClusterSystem // TODO: maybe don't need to store it and access via clusterShell?
+    let system: ClusterSystem  // TODO: maybe don't need to store it and access via clusterShell?
 
     var deadLetters: _ActorRef<Message> {
         self.system.personalDeadLetters(recipient: self.id)

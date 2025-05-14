@@ -15,9 +15,9 @@ let package = Package(
         .plugin(
             name: "FishyDocsPlugin",
             targets: [
-                "FishyDocsPlugin",
+                "FishyDocsPlugin"
             ]
-        ),
+        )
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-markdown.git", branch: "main"),
@@ -26,10 +26,10 @@ let package = Package(
     targets: [
         .plugin(
             name: "FishyDocsPlugin",
-//            capability: .command(intent: .custom(verb: "fishy-docs", description: "Extracts source snippets from fishy-docs annotated docc documentation files")),
+            //            capability: .command(intent: .custom(verb: "fishy-docs", description: "Extracts source snippets from fishy-docs annotated docc documentation files")),
             capability: .buildTool(),
             dependencies: [
-                "FishyDocs",
+                "FishyDocs"
             ]
         ),
         .executableTarget(
@@ -42,7 +42,7 @@ let package = Package(
         .testTarget(
             name: "FishyDocsTests",
             dependencies: [
-                "FishyDocs",
+                "FishyDocs"
             ]
         ),
     ]

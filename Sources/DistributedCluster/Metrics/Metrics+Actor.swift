@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -38,7 +38,7 @@ enum ActiveMetricID: Int, Hashable {
 @usableFromInline
 struct ActiveActorMetrics {
     @usableFromInline
-    typealias AnyActiveMetric = Any // since there is no `Metric` protocol
+    typealias AnyActiveMetric = Any  // since there is no `Metric` protocol
 
     // Cheaper to check if a metric is enabled than the dictionary?
     @usableFromInline

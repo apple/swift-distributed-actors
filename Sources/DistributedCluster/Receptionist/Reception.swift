@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -138,8 +138,7 @@ extension _Reception.Listing where Guest: _ReceivesMessages {
     /// Special handling is applied to message adapters (e.g. `/uses/example/two/$messageAdapter` in which case the last segment is ignored).
     public func first(named name: String) -> _ActorRef<Guest.Message>? {
         self.underlying.first {
-            $0.path.name == name ||
-                ($0.path.segments.last?.value == "$messageAdapter" && $0.path.segments.dropLast(1).last?.value == name)
+            $0.path.name == name || ($0.path.segments.last?.value == "$messageAdapter" && $0.path.segments.dropLast(1).last?.value == name)
         }.map {
             self.key._unsafeAsActorRef($0)
         }
@@ -202,6 +201,6 @@ extension _Reception.Registered where Guest: DistributedActor, Guest.ActorSystem
     public var actor: Guest {
         let system = self._guest.actorSystem
 
-        return try! Guest.resolve(id: self._guest._ref.id, using: system) // FIXME: cleanup these APIs, should never need throws, resolve earlier
+        return try! Guest.resolve(id: self._guest._ref.id, using: system)  // FIXME: cleanup these APIs, should never need throws, resolve earlier
     }
 }

@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -35,7 +35,7 @@ internal final class AffinityThreadPool {
         self.workerCount = workerCount
         self.stopped = .init(false)
 
-        for _ in 0 ..< workerCount {
+        for _ in 0..<workerCount {
             workers.append(try Worker(stopped: self.stopped))
         }
 
@@ -43,7 +43,7 @@ internal final class AffinityThreadPool {
     }
 
     deinit {
-//        self.stopped.destroy()
+        //        self.stopped.destroy()
     }
 
     /// Executes `task` on the specified worker thread.

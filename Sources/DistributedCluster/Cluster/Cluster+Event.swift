@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -59,13 +59,13 @@ extension Cluster {
 
         init(member: Member, toStatus: MemberStatus? = nil) {
             // FIXME: enable these assertions
-//            assertBacktrace(
-//                toStatus == nil || !(toStatus == .removed && member.status != .down),
-//                """
-//                Only legal and expected -> [.removed] transitions are from [.down], \
-//                yet attempted to move \(member) to \(toStatus, orElse: "nil")
-//                """
-//            )
+            //            assertBacktrace(
+            //                toStatus == nil || !(toStatus == .removed && member.status != .down),
+            //                """
+            //                Only legal and expected -> [.removed] transitions are from [.down], \
+            //                yet attempted to move \(member) to \(toStatus, orElse: "nil")
+            //                """
+            //            )
             self.replaced = nil
             if let to = toStatus {
                 var m = member
@@ -82,13 +82,13 @@ extension Cluster {
 
         init(node: Cluster.Node, previousStatus: MemberStatus?, toStatus: MemberStatus) {
             // FIXME: enable these assertions
-//          assertBacktrace(
-//                !(toStatus == .removed && fromStatus != .down),
-//                """
-//                Only legal and expected -> [.removed] transitions are from [.down], \
-//                yet attempted to move \(node) from \(fromStatus, orElse: "nil") to \(toStatus)
-//                """
-//            )
+            //          assertBacktrace(
+            //                !(toStatus == .removed && fromStatus != .down),
+            //                """
+            //                Only legal and expected -> [.removed] transitions are from [.down], \
+            //                yet attempted to move \(node) from \(fromStatus, orElse: "nil") to \(toStatus)
+            //                """
+            //            )
             self.member = .init(node: node, status: toStatus)
             self.replaced = nil
             self.previousStatus = previousStatus
@@ -112,10 +112,7 @@ extension Cluster {
         }
 
         public static func == (lhs: MembershipChange, rhs: MembershipChange) -> Bool {
-            lhs.member == rhs.member &&
-                lhs.replaced == rhs.replaced &&
-                lhs.previousStatus == rhs.previousStatus &&
-                lhs.status == rhs.status
+            lhs.member == rhs.member && lhs.replaced == rhs.replaced && lhs.previousStatus == rhs.previousStatus && lhs.status == rhs.status
         }
     }
 }
@@ -162,11 +159,7 @@ extension Cluster.MembershipChange: CustomStringConvertible {
         } else {
             base = "\(reflecting: self.node)"
         }
-        return base +
-            " :: " +
-            "[\(self.previousStatus?.rawValue ?? "unknown", leftPadTo: Cluster.MemberStatus.maxStrLen)]" +
-            " -> " +
-            "[\(self.status.rawValue, leftPadTo: Cluster.MemberStatus.maxStrLen)]"
+        return base + " :: " + "[\(self.previousStatus?.rawValue ?? "unknown", leftPadTo: Cluster.MemberStatus.maxStrLen)]" + " -> " + "[\(self.status.rawValue, leftPadTo: Cluster.MemberStatus.maxStrLen)]"
     }
 }
 

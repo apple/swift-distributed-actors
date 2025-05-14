@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -84,7 +84,7 @@ extension SWIM.GossipPayload: _ProtobufRepresentable {
             let members: [SWIM.Member<SWIMActor>] = try proto.member.map { proto in
                 try .init(fromProto: proto, context: context)
             }
-            self = .membership(members as! [SWIM.Member<Peer>]) // as!-safe, since Peer always is SWIMActor in this implementation
+            self = .membership(members as! [SWIM.Member<Peer>])  // as!-safe, since Peer always is SWIMActor in this implementation
         }
     }
 }
@@ -109,7 +109,7 @@ extension SWIM.Member: _ProtobufRepresentable {
         let peer = try SWIMActor.resolve(id: id, using: context.system)
         let status = try SWIM.Status(fromProto: proto.status, context: context)
         let protocolPeriod = proto.protocolPeriod
-        self.init(peer: peer as! Peer, status: status, protocolPeriod: protocolPeriod) // as!-safe since we only deal with Actor impls
+        self.init(peer: peer as! Peer, status: status, protocolPeriod: protocolPeriod)  // as!-safe since we only deal with Actor impls
     }
 }
 
@@ -152,7 +152,7 @@ extension SWIM.PingResponse: _ProtobufRepresentable {
         case .ack(let ack):
             let targetID = try ActorID(fromProto: ack.target, context: context)
             let target = try SWIMActor.resolve(id: targetID, using: context.system)
-            let targetPeer = target as! Peer // as!-safe, since we only ever deal with Actor
+            let targetPeer = target as! Peer  // as!-safe, since we only ever deal with Actor
             let payload = try SWIM.GossipPayload<Peer>(fromProto: ack.payload, context: context)
             let sequenceNumber = ack.sequenceNumber
             self = .ack(target: targetPeer, incarnation: ack.incarnation, payload: payload, sequenceNumber: sequenceNumber)
@@ -160,7 +160,7 @@ extension SWIM.PingResponse: _ProtobufRepresentable {
         case .nack(let nack):
             let targetID = try ActorID(fromProto: nack.target, context: context)
             let target = try SWIMActor.resolve(id: targetID, using: context.system)
-            let targetPeer = target as! Peer // as!-safe, since we only ever deal with Actor impls
+            let targetPeer = target as! Peer  // as!-safe, since we only ever deal with Actor impls
             let sequenceNumber = nack.sequenceNumber
             self = .nack(target: targetPeer, sequenceNumber: sequenceNumber)
         }

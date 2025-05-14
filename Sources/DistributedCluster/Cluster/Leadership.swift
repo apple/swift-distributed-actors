@@ -6,14 +6,14 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
 
 import Logging
-import NIO // Future
+import NIO  // Future
 
 /// Leader election allows for determining a "leader" node among members.
 ///
@@ -101,7 +101,7 @@ extension Leadership {
     final class Shell {
         static let naming: _ActorNaming = "leadership"
 
-        private var membership: Cluster.Membership // FIXME: we need to ensure the membership is always up to date -- we need the initial snapshot or a diff from a zero state etc.
+        private var membership: Cluster.Membership  // FIXME: we need to ensure the membership is always up to date -- we need the initial snapshot or a diff from a zero state etc.
         private var election: LeaderElection
 
         init(_ election: LeaderElection) {
@@ -129,7 +129,7 @@ extension Leadership {
 
                 case .membershipChange(let change):
                     guard self.membership.applyMembershipChange(change) != nil else {
-                        return .same // nothing changed, no need to select anew
+                        return .same  // nothing changed, no need to select anew
                     }
 
                     return self.runElection(context)
@@ -140,7 +140,7 @@ extension Leadership {
                     return self.runElection(context)
 
                 case .leadershipChange:
-                    return .same // we are the source of such events!
+                    return .same  // we are the source of such events!
 
                 case ._PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE:
                     context.log.error("Received Cluster.Event [\(event)]. This should not happen, please file an issue.")
@@ -258,7 +258,7 @@ extension Leadership {
 
             if let currentLeader = membership.leader {
                 // Clear current leader and trigger `Cluster.LeadershipChange`
-                let change = try! membership.applyLeadershipChange(to: nil) // try!-safe, because changing leader to nil is safe
+                let change = try! membership.applyLeadershipChange(to: nil)  // try!-safe, because changing leader to nil is safe
                 context.log.trace("Removing leader [\(currentLeader)]")
                 return .init(context.loop.next().makeSucceededFuture(change))
             } else {
@@ -276,12 +276,12 @@ extension Leadership {
         internal mutating func belowMinMembersTryKeepStableLeader(context: LeaderElectionContext, membership: inout Cluster.Membership) -> LeaderElectionResult {
             guard let currentLeader = membership.leader else {
                 // there was no leader previously, and now we are below `minimumNumberOfMembersToDecide` thus cannot select a new one
-                return .init(context.loop.next().makeSucceededFuture(nil)) // no change
+                return .init(context.loop.next().makeSucceededFuture(nil))  // no change
             }
 
             guard currentLeader.status <= .up else {
                 // the leader is not up anymore, and we have to remove it (cannot keep trusting it)
-                let change = try! membership.applyLeadershipChange(to: nil) // try!-safe, because changing leader to nil is safe
+                let change = try! membership.applyLeadershipChange(to: nil)  // try!-safe, because changing leader to nil is safe
                 context.log.trace("Removing leader [\(currentLeader)], not enough members to elect new leader.")
                 return .init(context.loop.next().makeSucceededFuture(change))
             }
@@ -295,20 +295,21 @@ extension Leadership {
             let oldLeader = membership.leader
 
             // select the leader, by lowest address
-            let leader = membersToSelectAmong
+            let leader =
+                membersToSelectAmong
                 .sorted(by: Cluster.Member.lowestAddressOrdering)
                 .first
 
-            if let change = try! membership.applyLeadershipChange(to: leader) { // try! safe, as we KNOW this member is part of membership
+            if let change = try! membership.applyLeadershipChange(to: leader) {  // try! safe, as we KNOW this member is part of membership
                 context.log.debug(
                     "Selected new leader: [\(oldLeader, orElse: "nil") -> \(leader, orElse: "nil")]",
                     metadata: [
-                        "membership": "\(membership)",
+                        "membership": "\(membership)"
                     ]
                 )
                 return .init(context.loop.next().makeSucceededFuture(change))
             } else {
-                return .init(context.loop.next().makeSucceededFuture(nil)) // no change, e.g. the new/old leader are the same
+                return .init(context.loop.next().makeSucceededFuture(nil))  // no change, e.g. the new/old leader are the same
             }
         }
     }

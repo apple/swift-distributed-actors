@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -37,7 +37,7 @@ internal final class FaultyNetworkSimulatingHandler: ChannelDuplexHandler {
         let settings: FaultyNetworkSimulationSettings
 
         func decide() -> GremlinDirective {
-            let randomNumber = Double.random(in: 0.0 ... 1.0)
+            let randomNumber = Double.random(in: 0.0...1.0)
 
             switch self.settings.mode {
             case .drop(let p):
@@ -46,7 +46,7 @@ internal final class FaultyNetworkSimulatingHandler: ChannelDuplexHandler {
         }
 
         enum GremlinDirective {
-            case drop // also known as 'eat' the message
+            case drop  // also known as 'eat' the message
             case passThrough
         }
     }

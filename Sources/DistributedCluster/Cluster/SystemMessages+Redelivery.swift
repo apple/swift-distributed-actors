@@ -6,14 +6,16 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
 
+import CoreMetrics
 import Foundation
 import Logging
+
 import struct NIO.CircularBuffer
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -124,7 +126,7 @@ internal final class OutboundSystemMessageRedelivery {
     let metrics: ClusterSystemMetrics?
 
     // highest ACK we got back from the receiving end
-    var highestAcknowledgedSeqNr: SequenceNr = 0 // 0 == no ACKs at all so far.
+    var highestAcknowledgedSeqNr: SequenceNr = 0  // 0 == no ACKs at all so far.
 
     // what is the highest SeqNr we have sent?
     var outgoingSequenceNr: SequenceNr = 0

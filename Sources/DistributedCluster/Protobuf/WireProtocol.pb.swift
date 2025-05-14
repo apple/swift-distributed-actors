@@ -14,7 +14,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -28,287 +28,287 @@ import SwiftProtobuf
 // incompatible with the version of SwiftProtobuf to which you are linking.
 // Please ensure that your are building against the same version of the API
 // that was used to generate this file.
-fileprivate struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAPIVersionCheck {
-  struct _2: SwiftProtobuf.ProtobufAPIVersion_2 {}
-  typealias Version = _2
+private struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAPIVersionCheck {
+    struct _2: SwiftProtobuf.ProtobufAPIVersion_2 {}
+    typealias Version = _2
 }
 
 struct _ProtoHandshakeOffer {
-  // SwiftProtobuf.Message conformance is added in an extension below. See the
-  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
-  // methods supported on all messages.
+    // SwiftProtobuf.Message conformance is added in an extension below. See the
+    // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+    // methods supported on all messages.
 
-  var version: _ProtoProtocolVersion {
-    get {return _storage._version ?? _ProtoProtocolVersion()}
-    set {_uniqueStorage()._version = newValue}
-  }
-  /// Returns true if `version` has been explicitly set.
-  var hasVersion: Bool {return _storage._version != nil}
-  /// Clears the value of `version`. Subsequent reads from it will return its default value.
-  mutating func clearVersion() {_uniqueStorage()._version = nil}
+    var version: _ProtoProtocolVersion {
+        get { _storage._version ?? _ProtoProtocolVersion() }
+        set { _uniqueStorage()._version = newValue }
+    }
+    /// Returns true if `version` has been explicitly set.
+    var hasVersion: Bool { _storage._version != nil }
+    /// Clears the value of `version`. Subsequent reads from it will return its default value.
+    mutating func clearVersion() { _uniqueStorage()._version = nil }
 
-  var originNode: _ProtoClusterNode {
-    get {return _storage._originNode ?? _ProtoClusterNode()}
-    set {_uniqueStorage()._originNode = newValue}
-  }
-  /// Returns true if `originNode` has been explicitly set.
-  var hasOriginNode: Bool {return _storage._originNode != nil}
-  /// Clears the value of `originNode`. Subsequent reads from it will return its default value.
-  mutating func clearOriginNode() {_uniqueStorage()._originNode = nil}
+    var originNode: _ProtoClusterNode {
+        get { _storage._originNode ?? _ProtoClusterNode() }
+        set { _uniqueStorage()._originNode = newValue }
+    }
+    /// Returns true if `originNode` has been explicitly set.
+    var hasOriginNode: Bool { _storage._originNode != nil }
+    /// Clears the value of `originNode`. Subsequent reads from it will return its default value.
+    mutating func clearOriginNode() { _uniqueStorage()._originNode = nil }
 
-  /// In the future we may want to add additional information
-  /// about certain capabilities here. E.g. when a node supports
-  /// faster transport like InfiniBand and the likes, so we can
-  /// upgrade the connection in case both nodes support the fast
-  /// transport.
-  var targetEndpoint: _ProtoClusterEndpoint {
-    get {return _storage._targetEndpoint ?? _ProtoClusterEndpoint()}
-    set {_uniqueStorage()._targetEndpoint = newValue}
-  }
-  /// Returns true if `targetEndpoint` has been explicitly set.
-  var hasTargetEndpoint: Bool {return _storage._targetEndpoint != nil}
-  /// Clears the value of `targetEndpoint`. Subsequent reads from it will return its default value.
-  mutating func clearTargetEndpoint() {_uniqueStorage()._targetEndpoint = nil}
+    /// In the future we may want to add additional information
+    /// about certain capabilities here. E.g. when a node supports
+    /// faster transport like InfiniBand and the likes, so we can
+    /// upgrade the connection in case both nodes support the fast
+    /// transport.
+    var targetEndpoint: _ProtoClusterEndpoint {
+        get { _storage._targetEndpoint ?? _ProtoClusterEndpoint() }
+        set { _uniqueStorage()._targetEndpoint = newValue }
+    }
+    /// Returns true if `targetEndpoint` has been explicitly set.
+    var hasTargetEndpoint: Bool { _storage._targetEndpoint != nil }
+    /// Clears the value of `targetEndpoint`. Subsequent reads from it will return its default value.
+    mutating func clearTargetEndpoint() { _uniqueStorage()._targetEndpoint = nil }
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+    var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+    init() {}
 
-  fileprivate var _storage = _StorageClass.defaultInstance
+    fileprivate var _storage = _StorageClass.defaultInstance
 }
 
 struct _ProtoHandshakeResponse {
-  // SwiftProtobuf.Message conformance is added in an extension below. See the
-  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
-  // methods supported on all messages.
+    // SwiftProtobuf.Message conformance is added in an extension below. See the
+    // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+    // methods supported on all messages.
 
-  var status: OneOf_Status? {
-    get {return _storage._status}
-    set {_uniqueStorage()._status = newValue}
-  }
-
-  var accept: _ProtoHandshakeAccept {
-    get {
-      if case .accept(let v)? = _storage._status {return v}
-      return _ProtoHandshakeAccept()
+    var status: OneOf_Status? {
+        get { _storage._status }
+        set { _uniqueStorage()._status = newValue }
     }
-    set {_uniqueStorage()._status = .accept(newValue)}
-  }
 
-  var reject: _ProtoHandshakeReject {
-    get {
-      if case .reject(let v)? = _storage._status {return v}
-      return _ProtoHandshakeReject()
+    var accept: _ProtoHandshakeAccept {
+        get {
+            if case .accept(let v)? = _storage._status { return v }
+            return _ProtoHandshakeAccept()
+        }
+        set { _uniqueStorage()._status = .accept(newValue) }
     }
-    set {_uniqueStorage()._status = .reject(newValue)}
-  }
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
-
-  enum OneOf_Status: Equatable {
-    case accept(_ProtoHandshakeAccept)
-    case reject(_ProtoHandshakeReject)
-
-  #if !swift(>=4.1)
-    static func ==(lhs: _ProtoHandshakeResponse.OneOf_Status, rhs: _ProtoHandshakeResponse.OneOf_Status) -> Bool {
-      switch (lhs, rhs) {
-      case (.accept(let l), .accept(let r)): return l == r
-      case (.reject(let l), .reject(let r)): return l == r
-      default: return false
-      }
+    var reject: _ProtoHandshakeReject {
+        get {
+            if case .reject(let v)? = _storage._status { return v }
+            return _ProtoHandshakeReject()
+        }
+        set { _uniqueStorage()._status = .reject(newValue) }
     }
-  #endif
-  }
 
-  init() {}
+    var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  fileprivate var _storage = _StorageClass.defaultInstance
+    enum OneOf_Status: Equatable {
+        case accept(_ProtoHandshakeAccept)
+        case reject(_ProtoHandshakeReject)
+
+        #if !swift(>=4.1)
+        static func == (lhs: _ProtoHandshakeResponse.OneOf_Status, rhs: _ProtoHandshakeResponse.OneOf_Status) -> Bool {
+            switch (lhs, rhs) {
+            case (.accept(let l), .accept(let r)): return l == r
+            case (.reject(let l), .reject(let r)): return l == r
+            default: return false
+            }
+        }
+        #endif
+    }
+
+    init() {}
+
+    fileprivate var _storage = _StorageClass.defaultInstance
 }
 
 struct _ProtoHandshakeAccept {
-  // SwiftProtobuf.Message conformance is added in an extension below. See the
-  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
-  // methods supported on all messages.
+    // SwiftProtobuf.Message conformance is added in an extension below. See the
+    // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+    // methods supported on all messages.
 
-  var version: _ProtoProtocolVersion {
-    get {return _storage._version ?? _ProtoProtocolVersion()}
-    set {_uniqueStorage()._version = newValue}
-  }
-  /// Returns true if `version` has been explicitly set.
-  var hasVersion: Bool {return _storage._version != nil}
-  /// Clears the value of `version`. Subsequent reads from it will return its default value.
-  mutating func clearVersion() {_uniqueStorage()._version = nil}
+    var version: _ProtoProtocolVersion {
+        get { _storage._version ?? _ProtoProtocolVersion() }
+        set { _uniqueStorage()._version = newValue }
+    }
+    /// Returns true if `version` has been explicitly set.
+    var hasVersion: Bool { _storage._version != nil }
+    /// Clears the value of `version`. Subsequent reads from it will return its default value.
+    mutating func clearVersion() { _uniqueStorage()._version = nil }
 
-  var originNode: _ProtoClusterNode {
-    get {return _storage._originNode ?? _ProtoClusterNode()}
-    set {_uniqueStorage()._originNode = newValue}
-  }
-  /// Returns true if `originNode` has been explicitly set.
-  var hasOriginNode: Bool {return _storage._originNode != nil}
-  /// Clears the value of `originNode`. Subsequent reads from it will return its default value.
-  mutating func clearOriginNode() {_uniqueStorage()._originNode = nil}
+    var originNode: _ProtoClusterNode {
+        get { _storage._originNode ?? _ProtoClusterNode() }
+        set { _uniqueStorage()._originNode = newValue }
+    }
+    /// Returns true if `originNode` has been explicitly set.
+    var hasOriginNode: Bool { _storage._originNode != nil }
+    /// Clears the value of `originNode`. Subsequent reads from it will return its default value.
+    mutating func clearOriginNode() { _uniqueStorage()._originNode = nil }
 
-  var targetNode: _ProtoClusterNode {
-    get {return _storage._targetNode ?? _ProtoClusterNode()}
-    set {_uniqueStorage()._targetNode = newValue}
-  }
-  /// Returns true if `targetNode` has been explicitly set.
-  var hasTargetNode: Bool {return _storage._targetNode != nil}
-  /// Clears the value of `targetNode`. Subsequent reads from it will return its default value.
-  mutating func clearTargetNode() {_uniqueStorage()._targetNode = nil}
+    var targetNode: _ProtoClusterNode {
+        get { _storage._targetNode ?? _ProtoClusterNode() }
+        set { _uniqueStorage()._targetNode = newValue }
+    }
+    /// Returns true if `targetNode` has been explicitly set.
+    var hasTargetNode: Bool { _storage._targetNode != nil }
+    /// Clears the value of `targetNode`. Subsequent reads from it will return its default value.
+    mutating func clearTargetNode() { _uniqueStorage()._targetNode = nil }
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+    var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+    init() {}
 
-  fileprivate var _storage = _StorageClass.defaultInstance
+    fileprivate var _storage = _StorageClass.defaultInstance
 }
 
 struct _ProtoHandshakeReject {
-  // SwiftProtobuf.Message conformance is added in an extension below. See the
-  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
-  // methods supported on all messages.
+    // SwiftProtobuf.Message conformance is added in an extension below. See the
+    // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+    // methods supported on all messages.
 
-  var version: _ProtoProtocolVersion {
-    get {return _storage._version ?? _ProtoProtocolVersion()}
-    set {_uniqueStorage()._version = newValue}
-  }
-  /// Returns true if `version` has been explicitly set.
-  var hasVersion: Bool {return _storage._version != nil}
-  /// Clears the value of `version`. Subsequent reads from it will return its default value.
-  mutating func clearVersion() {_uniqueStorage()._version = nil}
+    var version: _ProtoProtocolVersion {
+        get { _storage._version ?? _ProtoProtocolVersion() }
+        set { _uniqueStorage()._version = newValue }
+    }
+    /// Returns true if `version` has been explicitly set.
+    var hasVersion: Bool { _storage._version != nil }
+    /// Clears the value of `version`. Subsequent reads from it will return its default value.
+    mutating func clearVersion() { _uniqueStorage()._version = nil }
 
-  var originNode: _ProtoClusterNode {
-    get {return _storage._originNode ?? _ProtoClusterNode()}
-    set {_uniqueStorage()._originNode = newValue}
-  }
-  /// Returns true if `originNode` has been explicitly set.
-  var hasOriginNode: Bool {return _storage._originNode != nil}
-  /// Clears the value of `originNode`. Subsequent reads from it will return its default value.
-  mutating func clearOriginNode() {_uniqueStorage()._originNode = nil}
+    var originNode: _ProtoClusterNode {
+        get { _storage._originNode ?? _ProtoClusterNode() }
+        set { _uniqueStorage()._originNode = newValue }
+    }
+    /// Returns true if `originNode` has been explicitly set.
+    var hasOriginNode: Bool { _storage._originNode != nil }
+    /// Clears the value of `originNode`. Subsequent reads from it will return its default value.
+    mutating func clearOriginNode() { _uniqueStorage()._originNode = nil }
 
-  var targetNode: _ProtoClusterNode {
-    get {return _storage._targetNode ?? _ProtoClusterNode()}
-    set {_uniqueStorage()._targetNode = newValue}
-  }
-  /// Returns true if `targetNode` has been explicitly set.
-  var hasTargetNode: Bool {return _storage._targetNode != nil}
-  /// Clears the value of `targetNode`. Subsequent reads from it will return its default value.
-  mutating func clearTargetNode() {_uniqueStorage()._targetNode = nil}
+    var targetNode: _ProtoClusterNode {
+        get { _storage._targetNode ?? _ProtoClusterNode() }
+        set { _uniqueStorage()._targetNode = newValue }
+    }
+    /// Returns true if `targetNode` has been explicitly set.
+    var hasTargetNode: Bool { _storage._targetNode != nil }
+    /// Clears the value of `targetNode`. Subsequent reads from it will return its default value.
+    mutating func clearTargetNode() { _uniqueStorage()._targetNode = nil }
 
-  var reason: String {
-    get {return _storage._reason}
-    set {_uniqueStorage()._reason = newValue}
-  }
+    var reason: String {
+        get { _storage._reason }
+        set { _uniqueStorage()._reason = newValue }
+    }
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+    var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+    init() {}
 
-  fileprivate var _storage = _StorageClass.defaultInstance
+    fileprivate var _storage = _StorageClass.defaultInstance
 }
 
 struct _ProtoEnvelope {
-  // SwiftProtobuf.Message conformance is added in an extension below. See the
-  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
-  // methods supported on all messages.
+    // SwiftProtobuf.Message conformance is added in an extension below. See the
+    // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+    // methods supported on all messages.
 
-  var recipient: _ProtoActorID {
-    get {return _storage._recipient ?? _ProtoActorID()}
-    set {_uniqueStorage()._recipient = newValue}
-  }
-  /// Returns true if `recipient` has been explicitly set.
-  var hasRecipient: Bool {return _storage._recipient != nil}
-  /// Clears the value of `recipient`. Subsequent reads from it will return its default value.
-  mutating func clearRecipient() {_uniqueStorage()._recipient = nil}
+    var recipient: _ProtoActorID {
+        get { _storage._recipient ?? _ProtoActorID() }
+        set { _uniqueStorage()._recipient = newValue }
+    }
+    /// Returns true if `recipient` has been explicitly set.
+    var hasRecipient: Bool { _storage._recipient != nil }
+    /// Clears the value of `recipient`. Subsequent reads from it will return its default value.
+    mutating func clearRecipient() { _uniqueStorage()._recipient = nil }
 
-  var manifest: _ProtoManifest {
-    get {return _storage._manifest ?? _ProtoManifest()}
-    set {_uniqueStorage()._manifest = newValue}
-  }
-  /// Returns true if `manifest` has been explicitly set.
-  var hasManifest: Bool {return _storage._manifest != nil}
-  /// Clears the value of `manifest`. Subsequent reads from it will return its default value.
-  mutating func clearManifest() {_uniqueStorage()._manifest = nil}
+    var manifest: _ProtoManifest {
+        get { _storage._manifest ?? _ProtoManifest() }
+        set { _uniqueStorage()._manifest = newValue }
+    }
+    /// Returns true if `manifest` has been explicitly set.
+    var hasManifest: Bool { _storage._manifest != nil }
+    /// Clears the value of `manifest`. Subsequent reads from it will return its default value.
+    mutating func clearManifest() { _uniqueStorage()._manifest = nil }
 
-  var payload: Data {
-    get {return _storage._payload}
-    set {_uniqueStorage()._payload = newValue}
-  }
+    var payload: Data {
+        get { _storage._payload }
+        set { _uniqueStorage()._payload = newValue }
+    }
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+    var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+    init() {}
 
-  fileprivate var _storage = _StorageClass.defaultInstance
+    fileprivate var _storage = _StorageClass.defaultInstance
 }
 
 /// System messages have to be reliable, therefore they need to be acknowledged
 /// by the receiving node.
 struct _ProtoSystemEnvelope {
-  // SwiftProtobuf.Message conformance is added in an extension below. See the
-  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
-  // methods supported on all messages.
+    // SwiftProtobuf.Message conformance is added in an extension below. See the
+    // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+    // methods supported on all messages.
 
-  var sequenceNr: UInt64 {
-    get {return _storage._sequenceNr}
-    set {_uniqueStorage()._sequenceNr = newValue}
-  }
+    var sequenceNr: UInt64 {
+        get { _storage._sequenceNr }
+        set { _uniqueStorage()._sequenceNr = newValue }
+    }
 
-  var from: _ProtoClusterNode {
-    get {return _storage._from ?? _ProtoClusterNode()}
-    set {_uniqueStorage()._from = newValue}
-  }
-  /// Returns true if `from` has been explicitly set.
-  var hasFrom: Bool {return _storage._from != nil}
-  /// Clears the value of `from`. Subsequent reads from it will return its default value.
-  mutating func clearFrom() {_uniqueStorage()._from = nil}
+    var from: _ProtoClusterNode {
+        get { _storage._from ?? _ProtoClusterNode() }
+        set { _uniqueStorage()._from = newValue }
+    }
+    /// Returns true if `from` has been explicitly set.
+    var hasFrom: Bool { _storage._from != nil }
+    /// Clears the value of `from`. Subsequent reads from it will return its default value.
+    mutating func clearFrom() { _uniqueStorage()._from = nil }
 
-  var manifest: _ProtoManifest {
-    get {return _storage._manifest ?? _ProtoManifest()}
-    set {_uniqueStorage()._manifest = newValue}
-  }
-  /// Returns true if `manifest` has been explicitly set.
-  var hasManifest: Bool {return _storage._manifest != nil}
-  /// Clears the value of `manifest`. Subsequent reads from it will return its default value.
-  mutating func clearManifest() {_uniqueStorage()._manifest = nil}
+    var manifest: _ProtoManifest {
+        get { _storage._manifest ?? _ProtoManifest() }
+        set { _uniqueStorage()._manifest = newValue }
+    }
+    /// Returns true if `manifest` has been explicitly set.
+    var hasManifest: Bool { _storage._manifest != nil }
+    /// Clears the value of `manifest`. Subsequent reads from it will return its default value.
+    mutating func clearManifest() { _uniqueStorage()._manifest = nil }
 
-  var payload: Data {
-    get {return _storage._payload}
-    set {_uniqueStorage()._payload = newValue}
-  }
+    var payload: Data {
+        get { _storage._payload }
+        set { _uniqueStorage()._payload = newValue }
+    }
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+    var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+    init() {}
 
-  fileprivate var _storage = _StorageClass.defaultInstance
+    fileprivate var _storage = _StorageClass.defaultInstance
 }
 
 struct _ProtoSystemAck {
-  // SwiftProtobuf.Message conformance is added in an extension below. See the
-  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
-  // methods supported on all messages.
+    // SwiftProtobuf.Message conformance is added in an extension below. See the
+    // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+    // methods supported on all messages.
 
-  var sequenceNr: UInt64 {
-    get {return _storage._sequenceNr}
-    set {_uniqueStorage()._sequenceNr = newValue}
-  }
+    var sequenceNr: UInt64 {
+        get { _storage._sequenceNr }
+        set { _uniqueStorage()._sequenceNr = newValue }
+    }
 
-  var from: _ProtoClusterNode {
-    get {return _storage._from ?? _ProtoClusterNode()}
-    set {_uniqueStorage()._from = newValue}
-  }
-  /// Returns true if `from` has been explicitly set.
-  var hasFrom: Bool {return _storage._from != nil}
-  /// Clears the value of `from`. Subsequent reads from it will return its default value.
-  mutating func clearFrom() {_uniqueStorage()._from = nil}
+    var from: _ProtoClusterNode {
+        get { _storage._from ?? _ProtoClusterNode() }
+        set { _uniqueStorage()._from = newValue }
+    }
+    /// Returns true if `from` has been explicitly set.
+    var hasFrom: Bool { _storage._from != nil }
+    /// Clears the value of `from`. Subsequent reads from it will return its default value.
+    mutating func clearFrom() { _uniqueStorage()._from = nil }
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+    var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+    init() {}
 
-  fileprivate var _storage = _StorageClass.defaultInstance
+    fileprivate var _storage = _StorageClass.defaultInstance
 }
 
 /// The version is represented as 4 bytes:
@@ -320,620 +320,620 @@ struct _ProtoSystemAck {
 /// encode all values in a single uint32 and provide an extension to
 /// retrieve the specific values.
 struct _ProtoProtocolVersion {
-  // SwiftProtobuf.Message conformance is added in an extension below. See the
-  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
-  // methods supported on all messages.
+    // SwiftProtobuf.Message conformance is added in an extension below. See the
+    // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+    // methods supported on all messages.
 
-  /// TODO: wasteful representation, keeping for now to iterate on handshake -- ktoso
-  var reserved: UInt32 = 0
+    /// TODO: wasteful representation, keeping for now to iterate on handshake -- ktoso
+    var reserved: UInt32 = 0
 
-  var major: UInt32 = 0
+    var major: UInt32 = 0
 
-  var minor: UInt32 = 0
+    var minor: UInt32 = 0
 
-  var patch: UInt32 = 0
+    var patch: UInt32 = 0
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+    var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+    init() {}
 }
 
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 extension _ProtoHandshakeOffer: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = "HandshakeOffer"
-  static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
-    1: .same(proto: "version"),
-    2: .same(proto: "originNode"),
-    3: .same(proto: "targetEndpoint"),
-  ]
+    static let protoMessageName: String = "HandshakeOffer"
+    static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+        1: .same(proto: "version"),
+        2: .same(proto: "originNode"),
+        3: .same(proto: "targetEndpoint"),
+    ]
 
-  fileprivate class _StorageClass {
-    var _version: _ProtoProtocolVersion? = nil
-    var _originNode: _ProtoClusterNode? = nil
-    var _targetEndpoint: _ProtoClusterEndpoint? = nil
+    fileprivate class _StorageClass {
+        var _version: _ProtoProtocolVersion? = nil
+        var _originNode: _ProtoClusterNode? = nil
+        var _targetEndpoint: _ProtoClusterEndpoint? = nil
 
-    static let defaultInstance = _StorageClass()
+        static let defaultInstance = _StorageClass()
 
-    private init() {}
+        private init() {}
 
-    init(copying source: _StorageClass) {
-      _version = source._version
-      _originNode = source._originNode
-      _targetEndpoint = source._targetEndpoint
-    }
-  }
-
-  fileprivate mutating func _uniqueStorage() -> _StorageClass {
-    if !isKnownUniquelyReferenced(&_storage) {
-      _storage = _StorageClass(copying: _storage)
-    }
-    return _storage
-  }
-
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    _ = _uniqueStorage()
-    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
-      while let fieldNumber = try decoder.nextFieldNumber() {
-        switch fieldNumber {
-        case 1: try decoder.decodeSingularMessageField(value: &_storage._version)
-        case 2: try decoder.decodeSingularMessageField(value: &_storage._originNode)
-        case 3: try decoder.decodeSingularMessageField(value: &_storage._targetEndpoint)
-        default: break
+        init(copying source: _StorageClass) {
+            _version = source._version
+            _originNode = source._originNode
+            _targetEndpoint = source._targetEndpoint
         }
-      }
     }
-  }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
-      if let v = _storage._version {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
-      }
-      if let v = _storage._originNode {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
-      }
-      if let v = _storage._targetEndpoint {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
-      }
+    fileprivate mutating func _uniqueStorage() -> _StorageClass {
+        if !isKnownUniquelyReferenced(&_storage) {
+            _storage = _StorageClass(copying: _storage)
+        }
+        return _storage
     }
-    try unknownFields.traverse(visitor: &visitor)
-  }
 
-  static func ==(lhs: _ProtoHandshakeOffer, rhs: _ProtoHandshakeOffer) -> Bool {
-    if lhs._storage !== rhs._storage {
-      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
-        let _storage = _args.0
-        let rhs_storage = _args.1
-        if _storage._version != rhs_storage._version {return false}
-        if _storage._originNode != rhs_storage._originNode {return false}
-        if _storage._targetEndpoint != rhs_storage._targetEndpoint {return false}
+    mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+        _ = _uniqueStorage()
+        try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+            while let fieldNumber = try decoder.nextFieldNumber() {
+                switch fieldNumber {
+                case 1: try decoder.decodeSingularMessageField(value: &_storage._version)
+                case 2: try decoder.decodeSingularMessageField(value: &_storage._originNode)
+                case 3: try decoder.decodeSingularMessageField(value: &_storage._targetEndpoint)
+                default: break
+                }
+            }
+        }
+    }
+
+    func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+        try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+            if let v = _storage._version {
+                try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+            }
+            if let v = _storage._originNode {
+                try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+            }
+            if let v = _storage._targetEndpoint {
+                try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
+            }
+        }
+        try unknownFields.traverse(visitor: &visitor)
+    }
+
+    static func == (lhs: _ProtoHandshakeOffer, rhs: _ProtoHandshakeOffer) -> Bool {
+        if lhs._storage !== rhs._storage {
+            let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+                let _storage = _args.0
+                let rhs_storage = _args.1
+                if _storage._version != rhs_storage._version { return false }
+                if _storage._originNode != rhs_storage._originNode { return false }
+                if _storage._targetEndpoint != rhs_storage._targetEndpoint { return false }
+                return true
+            }
+            if !storagesAreEqual { return false }
+        }
+        if lhs.unknownFields != rhs.unknownFields { return false }
         return true
-      }
-      if !storagesAreEqual {return false}
     }
-    if lhs.unknownFields != rhs.unknownFields {return false}
-    return true
-  }
 }
 
 extension _ProtoHandshakeResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = "HandshakeResponse"
-  static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
-    1: .same(proto: "accept"),
-    2: .same(proto: "reject"),
-  ]
+    static let protoMessageName: String = "HandshakeResponse"
+    static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+        1: .same(proto: "accept"),
+        2: .same(proto: "reject"),
+    ]
 
-  fileprivate class _StorageClass {
-    var _status: _ProtoHandshakeResponse.OneOf_Status?
+    fileprivate class _StorageClass {
+        var _status: _ProtoHandshakeResponse.OneOf_Status?
 
-    static let defaultInstance = _StorageClass()
+        static let defaultInstance = _StorageClass()
 
-    private init() {}
+        private init() {}
 
-    init(copying source: _StorageClass) {
-      _status = source._status
-    }
-  }
-
-  fileprivate mutating func _uniqueStorage() -> _StorageClass {
-    if !isKnownUniquelyReferenced(&_storage) {
-      _storage = _StorageClass(copying: _storage)
-    }
-    return _storage
-  }
-
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    _ = _uniqueStorage()
-    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
-      while let fieldNumber = try decoder.nextFieldNumber() {
-        switch fieldNumber {
-        case 1:
-          var v: _ProtoHandshakeAccept?
-          if let current = _storage._status {
-            try decoder.handleConflictingOneOf()
-            if case .accept(let m) = current {v = m}
-          }
-          try decoder.decodeSingularMessageField(value: &v)
-          if let v = v {_storage._status = .accept(v)}
-        case 2:
-          var v: _ProtoHandshakeReject?
-          if let current = _storage._status {
-            try decoder.handleConflictingOneOf()
-            if case .reject(let m) = current {v = m}
-          }
-          try decoder.decodeSingularMessageField(value: &v)
-          if let v = v {_storage._status = .reject(v)}
-        default: break
+        init(copying source: _StorageClass) {
+            _status = source._status
         }
-      }
     }
-  }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
-      switch _storage._status {
-      case .accept(let v)?:
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
-      case .reject(let v)?:
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
-      case nil: break
-      }
+    fileprivate mutating func _uniqueStorage() -> _StorageClass {
+        if !isKnownUniquelyReferenced(&_storage) {
+            _storage = _StorageClass(copying: _storage)
+        }
+        return _storage
     }
-    try unknownFields.traverse(visitor: &visitor)
-  }
 
-  static func ==(lhs: _ProtoHandshakeResponse, rhs: _ProtoHandshakeResponse) -> Bool {
-    if lhs._storage !== rhs._storage {
-      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
-        let _storage = _args.0
-        let rhs_storage = _args.1
-        if _storage._status != rhs_storage._status {return false}
+    mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+        _ = _uniqueStorage()
+        try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+            while let fieldNumber = try decoder.nextFieldNumber() {
+                switch fieldNumber {
+                case 1:
+                    var v: _ProtoHandshakeAccept?
+                    if let current = _storage._status {
+                        try decoder.handleConflictingOneOf()
+                        if case .accept(let m) = current { v = m }
+                    }
+                    try decoder.decodeSingularMessageField(value: &v)
+                    if let v = v { _storage._status = .accept(v) }
+                case 2:
+                    var v: _ProtoHandshakeReject?
+                    if let current = _storage._status {
+                        try decoder.handleConflictingOneOf()
+                        if case .reject(let m) = current { v = m }
+                    }
+                    try decoder.decodeSingularMessageField(value: &v)
+                    if let v = v { _storage._status = .reject(v) }
+                default: break
+                }
+            }
+        }
+    }
+
+    func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+        try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+            switch _storage._status {
+            case .accept(let v)?:
+                try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+            case .reject(let v)?:
+                try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+            case nil: break
+            }
+        }
+        try unknownFields.traverse(visitor: &visitor)
+    }
+
+    static func == (lhs: _ProtoHandshakeResponse, rhs: _ProtoHandshakeResponse) -> Bool {
+        if lhs._storage !== rhs._storage {
+            let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+                let _storage = _args.0
+                let rhs_storage = _args.1
+                if _storage._status != rhs_storage._status { return false }
+                return true
+            }
+            if !storagesAreEqual { return false }
+        }
+        if lhs.unknownFields != rhs.unknownFields { return false }
         return true
-      }
-      if !storagesAreEqual {return false}
     }
-    if lhs.unknownFields != rhs.unknownFields {return false}
-    return true
-  }
 }
 
 extension _ProtoHandshakeAccept: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = "HandshakeAccept"
-  static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
-    1: .same(proto: "version"),
-    2: .same(proto: "originNode"),
-    3: .same(proto: "targetNode"),
-  ]
+    static let protoMessageName: String = "HandshakeAccept"
+    static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+        1: .same(proto: "version"),
+        2: .same(proto: "originNode"),
+        3: .same(proto: "targetNode"),
+    ]
 
-  fileprivate class _StorageClass {
-    var _version: _ProtoProtocolVersion? = nil
-    var _originNode: _ProtoClusterNode? = nil
-    var _targetNode: _ProtoClusterNode? = nil
+    fileprivate class _StorageClass {
+        var _version: _ProtoProtocolVersion? = nil
+        var _originNode: _ProtoClusterNode? = nil
+        var _targetNode: _ProtoClusterNode? = nil
 
-    static let defaultInstance = _StorageClass()
+        static let defaultInstance = _StorageClass()
 
-    private init() {}
+        private init() {}
 
-    init(copying source: _StorageClass) {
-      _version = source._version
-      _originNode = source._originNode
-      _targetNode = source._targetNode
-    }
-  }
-
-  fileprivate mutating func _uniqueStorage() -> _StorageClass {
-    if !isKnownUniquelyReferenced(&_storage) {
-      _storage = _StorageClass(copying: _storage)
-    }
-    return _storage
-  }
-
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    _ = _uniqueStorage()
-    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
-      while let fieldNumber = try decoder.nextFieldNumber() {
-        switch fieldNumber {
-        case 1: try decoder.decodeSingularMessageField(value: &_storage._version)
-        case 2: try decoder.decodeSingularMessageField(value: &_storage._originNode)
-        case 3: try decoder.decodeSingularMessageField(value: &_storage._targetNode)
-        default: break
+        init(copying source: _StorageClass) {
+            _version = source._version
+            _originNode = source._originNode
+            _targetNode = source._targetNode
         }
-      }
     }
-  }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
-      if let v = _storage._version {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
-      }
-      if let v = _storage._originNode {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
-      }
-      if let v = _storage._targetNode {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
-      }
+    fileprivate mutating func _uniqueStorage() -> _StorageClass {
+        if !isKnownUniquelyReferenced(&_storage) {
+            _storage = _StorageClass(copying: _storage)
+        }
+        return _storage
     }
-    try unknownFields.traverse(visitor: &visitor)
-  }
 
-  static func ==(lhs: _ProtoHandshakeAccept, rhs: _ProtoHandshakeAccept) -> Bool {
-    if lhs._storage !== rhs._storage {
-      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
-        let _storage = _args.0
-        let rhs_storage = _args.1
-        if _storage._version != rhs_storage._version {return false}
-        if _storage._originNode != rhs_storage._originNode {return false}
-        if _storage._targetNode != rhs_storage._targetNode {return false}
+    mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+        _ = _uniqueStorage()
+        try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+            while let fieldNumber = try decoder.nextFieldNumber() {
+                switch fieldNumber {
+                case 1: try decoder.decodeSingularMessageField(value: &_storage._version)
+                case 2: try decoder.decodeSingularMessageField(value: &_storage._originNode)
+                case 3: try decoder.decodeSingularMessageField(value: &_storage._targetNode)
+                default: break
+                }
+            }
+        }
+    }
+
+    func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+        try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+            if let v = _storage._version {
+                try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+            }
+            if let v = _storage._originNode {
+                try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+            }
+            if let v = _storage._targetNode {
+                try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
+            }
+        }
+        try unknownFields.traverse(visitor: &visitor)
+    }
+
+    static func == (lhs: _ProtoHandshakeAccept, rhs: _ProtoHandshakeAccept) -> Bool {
+        if lhs._storage !== rhs._storage {
+            let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+                let _storage = _args.0
+                let rhs_storage = _args.1
+                if _storage._version != rhs_storage._version { return false }
+                if _storage._originNode != rhs_storage._originNode { return false }
+                if _storage._targetNode != rhs_storage._targetNode { return false }
+                return true
+            }
+            if !storagesAreEqual { return false }
+        }
+        if lhs.unknownFields != rhs.unknownFields { return false }
         return true
-      }
-      if !storagesAreEqual {return false}
     }
-    if lhs.unknownFields != rhs.unknownFields {return false}
-    return true
-  }
 }
 
 extension _ProtoHandshakeReject: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = "HandshakeReject"
-  static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
-    1: .same(proto: "version"),
-    2: .same(proto: "originNode"),
-    3: .same(proto: "targetNode"),
-    4: .same(proto: "reason"),
-  ]
+    static let protoMessageName: String = "HandshakeReject"
+    static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+        1: .same(proto: "version"),
+        2: .same(proto: "originNode"),
+        3: .same(proto: "targetNode"),
+        4: .same(proto: "reason"),
+    ]
 
-  fileprivate class _StorageClass {
-    var _version: _ProtoProtocolVersion? = nil
-    var _originNode: _ProtoClusterNode? = nil
-    var _targetNode: _ProtoClusterNode? = nil
-    var _reason: String = String()
+    fileprivate class _StorageClass {
+        var _version: _ProtoProtocolVersion? = nil
+        var _originNode: _ProtoClusterNode? = nil
+        var _targetNode: _ProtoClusterNode? = nil
+        var _reason: String = String()
 
-    static let defaultInstance = _StorageClass()
+        static let defaultInstance = _StorageClass()
 
-    private init() {}
+        private init() {}
 
-    init(copying source: _StorageClass) {
-      _version = source._version
-      _originNode = source._originNode
-      _targetNode = source._targetNode
-      _reason = source._reason
-    }
-  }
-
-  fileprivate mutating func _uniqueStorage() -> _StorageClass {
-    if !isKnownUniquelyReferenced(&_storage) {
-      _storage = _StorageClass(copying: _storage)
-    }
-    return _storage
-  }
-
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    _ = _uniqueStorage()
-    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
-      while let fieldNumber = try decoder.nextFieldNumber() {
-        switch fieldNumber {
-        case 1: try decoder.decodeSingularMessageField(value: &_storage._version)
-        case 2: try decoder.decodeSingularMessageField(value: &_storage._originNode)
-        case 3: try decoder.decodeSingularMessageField(value: &_storage._targetNode)
-        case 4: try decoder.decodeSingularStringField(value: &_storage._reason)
-        default: break
+        init(copying source: _StorageClass) {
+            _version = source._version
+            _originNode = source._originNode
+            _targetNode = source._targetNode
+            _reason = source._reason
         }
-      }
     }
-  }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
-      if let v = _storage._version {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
-      }
-      if let v = _storage._originNode {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
-      }
-      if let v = _storage._targetNode {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
-      }
-      if !_storage._reason.isEmpty {
-        try visitor.visitSingularStringField(value: _storage._reason, fieldNumber: 4)
-      }
+    fileprivate mutating func _uniqueStorage() -> _StorageClass {
+        if !isKnownUniquelyReferenced(&_storage) {
+            _storage = _StorageClass(copying: _storage)
+        }
+        return _storage
     }
-    try unknownFields.traverse(visitor: &visitor)
-  }
 
-  static func ==(lhs: _ProtoHandshakeReject, rhs: _ProtoHandshakeReject) -> Bool {
-    if lhs._storage !== rhs._storage {
-      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
-        let _storage = _args.0
-        let rhs_storage = _args.1
-        if _storage._version != rhs_storage._version {return false}
-        if _storage._originNode != rhs_storage._originNode {return false}
-        if _storage._targetNode != rhs_storage._targetNode {return false}
-        if _storage._reason != rhs_storage._reason {return false}
+    mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+        _ = _uniqueStorage()
+        try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+            while let fieldNumber = try decoder.nextFieldNumber() {
+                switch fieldNumber {
+                case 1: try decoder.decodeSingularMessageField(value: &_storage._version)
+                case 2: try decoder.decodeSingularMessageField(value: &_storage._originNode)
+                case 3: try decoder.decodeSingularMessageField(value: &_storage._targetNode)
+                case 4: try decoder.decodeSingularStringField(value: &_storage._reason)
+                default: break
+                }
+            }
+        }
+    }
+
+    func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+        try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+            if let v = _storage._version {
+                try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+            }
+            if let v = _storage._originNode {
+                try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+            }
+            if let v = _storage._targetNode {
+                try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
+            }
+            if !_storage._reason.isEmpty {
+                try visitor.visitSingularStringField(value: _storage._reason, fieldNumber: 4)
+            }
+        }
+        try unknownFields.traverse(visitor: &visitor)
+    }
+
+    static func == (lhs: _ProtoHandshakeReject, rhs: _ProtoHandshakeReject) -> Bool {
+        if lhs._storage !== rhs._storage {
+            let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+                let _storage = _args.0
+                let rhs_storage = _args.1
+                if _storage._version != rhs_storage._version { return false }
+                if _storage._originNode != rhs_storage._originNode { return false }
+                if _storage._targetNode != rhs_storage._targetNode { return false }
+                if _storage._reason != rhs_storage._reason { return false }
+                return true
+            }
+            if !storagesAreEqual { return false }
+        }
+        if lhs.unknownFields != rhs.unknownFields { return false }
         return true
-      }
-      if !storagesAreEqual {return false}
     }
-    if lhs.unknownFields != rhs.unknownFields {return false}
-    return true
-  }
 }
 
 extension _ProtoEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = "Envelope"
-  static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
-    1: .same(proto: "recipient"),
-    2: .same(proto: "manifest"),
-    3: .same(proto: "payload"),
-  ]
+    static let protoMessageName: String = "Envelope"
+    static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+        1: .same(proto: "recipient"),
+        2: .same(proto: "manifest"),
+        3: .same(proto: "payload"),
+    ]
 
-  fileprivate class _StorageClass {
-    var _recipient: _ProtoActorID? = nil
-    var _manifest: _ProtoManifest? = nil
-    var _payload: Data = SwiftProtobuf.Internal.emptyData
+    fileprivate class _StorageClass {
+        var _recipient: _ProtoActorID? = nil
+        var _manifest: _ProtoManifest? = nil
+        var _payload: Data = SwiftProtobuf.Internal.emptyData
 
-    static let defaultInstance = _StorageClass()
+        static let defaultInstance = _StorageClass()
 
-    private init() {}
+        private init() {}
 
-    init(copying source: _StorageClass) {
-      _recipient = source._recipient
-      _manifest = source._manifest
-      _payload = source._payload
-    }
-  }
-
-  fileprivate mutating func _uniqueStorage() -> _StorageClass {
-    if !isKnownUniquelyReferenced(&_storage) {
-      _storage = _StorageClass(copying: _storage)
-    }
-    return _storage
-  }
-
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    _ = _uniqueStorage()
-    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
-      while let fieldNumber = try decoder.nextFieldNumber() {
-        switch fieldNumber {
-        case 1: try decoder.decodeSingularMessageField(value: &_storage._recipient)
-        case 2: try decoder.decodeSingularMessageField(value: &_storage._manifest)
-        case 3: try decoder.decodeSingularBytesField(value: &_storage._payload)
-        default: break
+        init(copying source: _StorageClass) {
+            _recipient = source._recipient
+            _manifest = source._manifest
+            _payload = source._payload
         }
-      }
     }
-  }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
-      if let v = _storage._recipient {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
-      }
-      if let v = _storage._manifest {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
-      }
-      if !_storage._payload.isEmpty {
-        try visitor.visitSingularBytesField(value: _storage._payload, fieldNumber: 3)
-      }
+    fileprivate mutating func _uniqueStorage() -> _StorageClass {
+        if !isKnownUniquelyReferenced(&_storage) {
+            _storage = _StorageClass(copying: _storage)
+        }
+        return _storage
     }
-    try unknownFields.traverse(visitor: &visitor)
-  }
 
-  static func ==(lhs: _ProtoEnvelope, rhs: _ProtoEnvelope) -> Bool {
-    if lhs._storage !== rhs._storage {
-      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
-        let _storage = _args.0
-        let rhs_storage = _args.1
-        if _storage._recipient != rhs_storage._recipient {return false}
-        if _storage._manifest != rhs_storage._manifest {return false}
-        if _storage._payload != rhs_storage._payload {return false}
+    mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+        _ = _uniqueStorage()
+        try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+            while let fieldNumber = try decoder.nextFieldNumber() {
+                switch fieldNumber {
+                case 1: try decoder.decodeSingularMessageField(value: &_storage._recipient)
+                case 2: try decoder.decodeSingularMessageField(value: &_storage._manifest)
+                case 3: try decoder.decodeSingularBytesField(value: &_storage._payload)
+                default: break
+                }
+            }
+        }
+    }
+
+    func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+        try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+            if let v = _storage._recipient {
+                try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+            }
+            if let v = _storage._manifest {
+                try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+            }
+            if !_storage._payload.isEmpty {
+                try visitor.visitSingularBytesField(value: _storage._payload, fieldNumber: 3)
+            }
+        }
+        try unknownFields.traverse(visitor: &visitor)
+    }
+
+    static func == (lhs: _ProtoEnvelope, rhs: _ProtoEnvelope) -> Bool {
+        if lhs._storage !== rhs._storage {
+            let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+                let _storage = _args.0
+                let rhs_storage = _args.1
+                if _storage._recipient != rhs_storage._recipient { return false }
+                if _storage._manifest != rhs_storage._manifest { return false }
+                if _storage._payload != rhs_storage._payload { return false }
+                return true
+            }
+            if !storagesAreEqual { return false }
+        }
+        if lhs.unknownFields != rhs.unknownFields { return false }
         return true
-      }
-      if !storagesAreEqual {return false}
     }
-    if lhs.unknownFields != rhs.unknownFields {return false}
-    return true
-  }
 }
 
 extension _ProtoSystemEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = "SystemEnvelope"
-  static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
-    1: .same(proto: "sequenceNr"),
-    2: .same(proto: "from"),
-    3: .same(proto: "manifest"),
-    4: .same(proto: "payload"),
-  ]
+    static let protoMessageName: String = "SystemEnvelope"
+    static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+        1: .same(proto: "sequenceNr"),
+        2: .same(proto: "from"),
+        3: .same(proto: "manifest"),
+        4: .same(proto: "payload"),
+    ]
 
-  fileprivate class _StorageClass {
-    var _sequenceNr: UInt64 = 0
-    var _from: _ProtoClusterNode? = nil
-    var _manifest: _ProtoManifest? = nil
-    var _payload: Data = SwiftProtobuf.Internal.emptyData
+    fileprivate class _StorageClass {
+        var _sequenceNr: UInt64 = 0
+        var _from: _ProtoClusterNode? = nil
+        var _manifest: _ProtoManifest? = nil
+        var _payload: Data = SwiftProtobuf.Internal.emptyData
 
-    static let defaultInstance = _StorageClass()
+        static let defaultInstance = _StorageClass()
 
-    private init() {}
+        private init() {}
 
-    init(copying source: _StorageClass) {
-      _sequenceNr = source._sequenceNr
-      _from = source._from
-      _manifest = source._manifest
-      _payload = source._payload
-    }
-  }
-
-  fileprivate mutating func _uniqueStorage() -> _StorageClass {
-    if !isKnownUniquelyReferenced(&_storage) {
-      _storage = _StorageClass(copying: _storage)
-    }
-    return _storage
-  }
-
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    _ = _uniqueStorage()
-    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
-      while let fieldNumber = try decoder.nextFieldNumber() {
-        switch fieldNumber {
-        case 1: try decoder.decodeSingularUInt64Field(value: &_storage._sequenceNr)
-        case 2: try decoder.decodeSingularMessageField(value: &_storage._from)
-        case 3: try decoder.decodeSingularMessageField(value: &_storage._manifest)
-        case 4: try decoder.decodeSingularBytesField(value: &_storage._payload)
-        default: break
+        init(copying source: _StorageClass) {
+            _sequenceNr = source._sequenceNr
+            _from = source._from
+            _manifest = source._manifest
+            _payload = source._payload
         }
-      }
     }
-  }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
-      if _storage._sequenceNr != 0 {
-        try visitor.visitSingularUInt64Field(value: _storage._sequenceNr, fieldNumber: 1)
-      }
-      if let v = _storage._from {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
-      }
-      if let v = _storage._manifest {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
-      }
-      if !_storage._payload.isEmpty {
-        try visitor.visitSingularBytesField(value: _storage._payload, fieldNumber: 4)
-      }
+    fileprivate mutating func _uniqueStorage() -> _StorageClass {
+        if !isKnownUniquelyReferenced(&_storage) {
+            _storage = _StorageClass(copying: _storage)
+        }
+        return _storage
     }
-    try unknownFields.traverse(visitor: &visitor)
-  }
 
-  static func ==(lhs: _ProtoSystemEnvelope, rhs: _ProtoSystemEnvelope) -> Bool {
-    if lhs._storage !== rhs._storage {
-      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
-        let _storage = _args.0
-        let rhs_storage = _args.1
-        if _storage._sequenceNr != rhs_storage._sequenceNr {return false}
-        if _storage._from != rhs_storage._from {return false}
-        if _storage._manifest != rhs_storage._manifest {return false}
-        if _storage._payload != rhs_storage._payload {return false}
+    mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+        _ = _uniqueStorage()
+        try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+            while let fieldNumber = try decoder.nextFieldNumber() {
+                switch fieldNumber {
+                case 1: try decoder.decodeSingularUInt64Field(value: &_storage._sequenceNr)
+                case 2: try decoder.decodeSingularMessageField(value: &_storage._from)
+                case 3: try decoder.decodeSingularMessageField(value: &_storage._manifest)
+                case 4: try decoder.decodeSingularBytesField(value: &_storage._payload)
+                default: break
+                }
+            }
+        }
+    }
+
+    func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+        try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+            if _storage._sequenceNr != 0 {
+                try visitor.visitSingularUInt64Field(value: _storage._sequenceNr, fieldNumber: 1)
+            }
+            if let v = _storage._from {
+                try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+            }
+            if let v = _storage._manifest {
+                try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
+            }
+            if !_storage._payload.isEmpty {
+                try visitor.visitSingularBytesField(value: _storage._payload, fieldNumber: 4)
+            }
+        }
+        try unknownFields.traverse(visitor: &visitor)
+    }
+
+    static func == (lhs: _ProtoSystemEnvelope, rhs: _ProtoSystemEnvelope) -> Bool {
+        if lhs._storage !== rhs._storage {
+            let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+                let _storage = _args.0
+                let rhs_storage = _args.1
+                if _storage._sequenceNr != rhs_storage._sequenceNr { return false }
+                if _storage._from != rhs_storage._from { return false }
+                if _storage._manifest != rhs_storage._manifest { return false }
+                if _storage._payload != rhs_storage._payload { return false }
+                return true
+            }
+            if !storagesAreEqual { return false }
+        }
+        if lhs.unknownFields != rhs.unknownFields { return false }
         return true
-      }
-      if !storagesAreEqual {return false}
     }
-    if lhs.unknownFields != rhs.unknownFields {return false}
-    return true
-  }
 }
 
 extension _ProtoSystemAck: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = "SystemAck"
-  static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
-    1: .same(proto: "sequenceNr"),
-    2: .same(proto: "from"),
-  ]
+    static let protoMessageName: String = "SystemAck"
+    static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+        1: .same(proto: "sequenceNr"),
+        2: .same(proto: "from"),
+    ]
 
-  fileprivate class _StorageClass {
-    var _sequenceNr: UInt64 = 0
-    var _from: _ProtoClusterNode? = nil
+    fileprivate class _StorageClass {
+        var _sequenceNr: UInt64 = 0
+        var _from: _ProtoClusterNode? = nil
 
-    static let defaultInstance = _StorageClass()
+        static let defaultInstance = _StorageClass()
 
-    private init() {}
+        private init() {}
 
-    init(copying source: _StorageClass) {
-      _sequenceNr = source._sequenceNr
-      _from = source._from
-    }
-  }
-
-  fileprivate mutating func _uniqueStorage() -> _StorageClass {
-    if !isKnownUniquelyReferenced(&_storage) {
-      _storage = _StorageClass(copying: _storage)
-    }
-    return _storage
-  }
-
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    _ = _uniqueStorage()
-    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
-      while let fieldNumber = try decoder.nextFieldNumber() {
-        switch fieldNumber {
-        case 1: try decoder.decodeSingularUInt64Field(value: &_storage._sequenceNr)
-        case 2: try decoder.decodeSingularMessageField(value: &_storage._from)
-        default: break
+        init(copying source: _StorageClass) {
+            _sequenceNr = source._sequenceNr
+            _from = source._from
         }
-      }
     }
-  }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
-      if _storage._sequenceNr != 0 {
-        try visitor.visitSingularUInt64Field(value: _storage._sequenceNr, fieldNumber: 1)
-      }
-      if let v = _storage._from {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
-      }
+    fileprivate mutating func _uniqueStorage() -> _StorageClass {
+        if !isKnownUniquelyReferenced(&_storage) {
+            _storage = _StorageClass(copying: _storage)
+        }
+        return _storage
     }
-    try unknownFields.traverse(visitor: &visitor)
-  }
 
-  static func ==(lhs: _ProtoSystemAck, rhs: _ProtoSystemAck) -> Bool {
-    if lhs._storage !== rhs._storage {
-      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
-        let _storage = _args.0
-        let rhs_storage = _args.1
-        if _storage._sequenceNr != rhs_storage._sequenceNr {return false}
-        if _storage._from != rhs_storage._from {return false}
+    mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+        _ = _uniqueStorage()
+        try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+            while let fieldNumber = try decoder.nextFieldNumber() {
+                switch fieldNumber {
+                case 1: try decoder.decodeSingularUInt64Field(value: &_storage._sequenceNr)
+                case 2: try decoder.decodeSingularMessageField(value: &_storage._from)
+                default: break
+                }
+            }
+        }
+    }
+
+    func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+        try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+            if _storage._sequenceNr != 0 {
+                try visitor.visitSingularUInt64Field(value: _storage._sequenceNr, fieldNumber: 1)
+            }
+            if let v = _storage._from {
+                try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+            }
+        }
+        try unknownFields.traverse(visitor: &visitor)
+    }
+
+    static func == (lhs: _ProtoSystemAck, rhs: _ProtoSystemAck) -> Bool {
+        if lhs._storage !== rhs._storage {
+            let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+                let _storage = _args.0
+                let rhs_storage = _args.1
+                if _storage._sequenceNr != rhs_storage._sequenceNr { return false }
+                if _storage._from != rhs_storage._from { return false }
+                return true
+            }
+            if !storagesAreEqual { return false }
+        }
+        if lhs.unknownFields != rhs.unknownFields { return false }
         return true
-      }
-      if !storagesAreEqual {return false}
     }
-    if lhs.unknownFields != rhs.unknownFields {return false}
-    return true
-  }
 }
 
 extension _ProtoProtocolVersion: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = "ProtocolVersion"
-  static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
-    1: .same(proto: "reserved"),
-    2: .same(proto: "major"),
-    3: .same(proto: "minor"),
-    4: .same(proto: "patch"),
-  ]
+    static let protoMessageName: String = "ProtocolVersion"
+    static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+        1: .same(proto: "reserved"),
+        2: .same(proto: "major"),
+        3: .same(proto: "minor"),
+        4: .same(proto: "patch"),
+    ]
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      switch fieldNumber {
-      case 1: try decoder.decodeSingularUInt32Field(value: &self.reserved)
-      case 2: try decoder.decodeSingularUInt32Field(value: &self.major)
-      case 3: try decoder.decodeSingularUInt32Field(value: &self.minor)
-      case 4: try decoder.decodeSingularUInt32Field(value: &self.patch)
-      default: break
-      }
+    mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+        while let fieldNumber = try decoder.nextFieldNumber() {
+            switch fieldNumber {
+            case 1: try decoder.decodeSingularUInt32Field(value: &self.reserved)
+            case 2: try decoder.decodeSingularUInt32Field(value: &self.major)
+            case 3: try decoder.decodeSingularUInt32Field(value: &self.minor)
+            case 4: try decoder.decodeSingularUInt32Field(value: &self.patch)
+            default: break
+            }
+        }
     }
-  }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    if self.reserved != 0 {
-      try visitor.visitSingularUInt32Field(value: self.reserved, fieldNumber: 1)
+    func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+        if self.reserved != 0 {
+            try visitor.visitSingularUInt32Field(value: self.reserved, fieldNumber: 1)
+        }
+        if self.major != 0 {
+            try visitor.visitSingularUInt32Field(value: self.major, fieldNumber: 2)
+        }
+        if self.minor != 0 {
+            try visitor.visitSingularUInt32Field(value: self.minor, fieldNumber: 3)
+        }
+        if self.patch != 0 {
+            try visitor.visitSingularUInt32Field(value: self.patch, fieldNumber: 4)
+        }
+        try unknownFields.traverse(visitor: &visitor)
     }
-    if self.major != 0 {
-      try visitor.visitSingularUInt32Field(value: self.major, fieldNumber: 2)
-    }
-    if self.minor != 0 {
-      try visitor.visitSingularUInt32Field(value: self.minor, fieldNumber: 3)
-    }
-    if self.patch != 0 {
-      try visitor.visitSingularUInt32Field(value: self.patch, fieldNumber: 4)
-    }
-    try unknownFields.traverse(visitor: &visitor)
-  }
 
-  static func ==(lhs: _ProtoProtocolVersion, rhs: _ProtoProtocolVersion) -> Bool {
-    if lhs.reserved != rhs.reserved {return false}
-    if lhs.major != rhs.major {return false}
-    if lhs.minor != rhs.minor {return false}
-    if lhs.patch != rhs.patch {return false}
-    if lhs.unknownFields != rhs.unknownFields {return false}
-    return true
-  }
+    static func == (lhs: _ProtoProtocolVersion, rhs: _ProtoProtocolVersion) -> Bool {
+        if lhs.reserved != rhs.reserved { return false }
+        if lhs.major != rhs.major { return false }
+        if lhs.minor != rhs.minor { return false }
+        if lhs.patch != rhs.patch { return false }
+        if lhs.unknownFields != rhs.unknownFields { return false }
+        return true
+    }
 }

@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -39,8 +39,10 @@ final class MultiNodeTestPlugin: CommandPlugin {
             }
         }
 
-        // Kill all previous runners
-        Process.killall(name: "MultiNodeTestKitRunner")
+        let toolName = "MultiNodeTestKitRunner"
+
+        // Terminate all previous runners
+        Process.killall(name: toolName)
 
         switch self.buildConfiguration {
         case .debug:
@@ -63,7 +65,7 @@ final class MultiNodeTestPlugin: CommandPlugin {
 
         let multiNodeRunner = buildResult.builtArtifacts
             .filter { $0.kind == .executable }
-            .first { $0.path.lastComponent.starts(with: "MultiNodeTestKitRunner") }
+            .first { $0.path.lastComponent.starts(with: toolName) }
         guard let multiNodeRunner = multiNodeRunner else {
             throw MultiNodeTestPluginError(message: "Failed")
         }
@@ -71,14 +73,11 @@ final class MultiNodeTestPlugin: CommandPlugin {
         log("Detected multi-node test runner: \(multiNodeRunner.path.lastComponent)")
 
         let process = Process()
-        process.binaryPath = "/usr/bin/swift"
-        process.arguments = ["run", "MultiNodeTestKitRunner"]
-        for arg in arguments {
-            process.arguments?.append(arg)
-        }
+        process.binaryPath = multiNodeRunner.path.string
+        process.arguments = arguments
 
         do {
-            log("> swift \(process.arguments?.joined(separator: " ") ?? "")")
+            log("> \(toolName) \(process.arguments?.joined(separator: " ") ?? "")")
             try process.runProcess()
             process.waitUntilExit()
         } catch {
@@ -87,18 +86,20 @@ final class MultiNodeTestPlugin: CommandPlugin {
     }
 
     func usage(arguments: [String]) throws -> Never {
-        throw UsageError(message: """
-        ILLEGAL INVOCATION: \(arguments)
-        USAGE:
-        > swift package --disable-sandbox multi-node [OPTIONS] COMMAND
+        throw UsageError(
+            message: """
+                ILLEGAL INVOCATION: \(arguments)
+                USAGE:
+                > swift package --disable-sandbox multi-node [OPTIONS] COMMAND
 
-        OPTIONS:
-            -c release/debug  - to build in release or debug mode (default: \(self.buildConfiguration))
+                OPTIONS:
+                    -c release/debug  - to build in release or debug mode (default: \(self.buildConfiguration))
 
-        COMMAND:
-            test - run multi-node tests
-            _exec
-        """)
+                COMMAND:
+                    test - run multi-node tests
+                    _exec
+                """
+        )
     }
 }
 
@@ -114,14 +115,14 @@ struct UsageError: Error, CustomStringConvertible {
 extension Process {
     var binaryPath: String? {
         get {
-            if #available(macOS 10.13, /* Linux */ *) {
+            if #available(macOS 10.13, *) {  // '*' covers Linux
                 return self.executableURL?.path
             } else {
                 return self.launchPath
             }
         }
         set {
-            if #available(macOS 10.13, /* Linux */ *) {
+            if #available(macOS 10.13, *) {  // '*' covers Linux
                 self.executableURL = newValue.map { URL(fileURLWithPath: $0) }
             } else {
                 self.launchPath = newValue
@@ -142,7 +143,7 @@ extension Process {
     static func killall(name: String) {
         let killAllRunners = Process()
         killAllRunners.binaryPath = "/usr/bin/killall"
-        killAllRunners.arguments = ["-9", "MultiNodeTestKitRunner"]
+        killAllRunners.arguments = ["-9", name]
         try? killAllRunners.runProcess()
         killAllRunners.waitUntilExit()
     }

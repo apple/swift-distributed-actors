@@ -6,16 +6,18 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import Foundation
+import Logging
 import XCTest
+
+@testable import DistributedCluster
 
 final class ActorLoggingTests: SingleClusterSystemXCTestCase {
     var exampleSenderPath: ActorPath!
@@ -74,7 +76,7 @@ final class ActorLoggingTests: SingleClusterSystemXCTestCase {
 
                 return .receiveMessage { message in
                     context.log.logLevel = .warning
-                    context.log.info("I got \(message)") // thus should not render any metadata
+                    context.log.info("I got \(message)")  // thus should not render any metadata
 
                     p.ref.tell("Got: \(message)")
                     return .same

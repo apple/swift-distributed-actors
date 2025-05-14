@@ -6,15 +6,16 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import XCTest
+
+@testable import DistributedCluster
 
 class BackoffStrategyTests: XCTestCase {
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -91,6 +92,6 @@ class BackoffStrategyTests: XCTestCase {
     }
 
     func test_exponentialBackoff_withLargeInitial_shouldAdjustCap() {
-        _ = Backoff.exponential(initialInterval: .seconds(60)) // cap used to be hardcoded which would cause this to precondition crash
+        _ = Backoff.exponential(initialInterval: .seconds(60))  // cap used to be hardcoded which would cause this to precondition crash
     }
 }

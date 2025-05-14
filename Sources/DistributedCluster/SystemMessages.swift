@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -27,14 +27,14 @@
 /// System messages enjoy preferential treatment over normal ("user") messages due to their importance
 /// on overall system correctness, and thus are: buffered, acknowledged and redelivered upon lack of acknowledgement
 /// to their destination nodes. They are also guaranteed to be emitted on the remote system in the exact same order
-/// as they have been sent into the transport pipelines on the sending side, which may matter for `watch -> unwatch -> kill`
+/// as they have been sent into the transport pipelines on the sending side, which may matter for `watch -> unwatch -> stop`
 /// or similar message patterns.
 ///
 /// ## Implications of importance to system availability
 /// If system messages are not able to be delivered over a long period of time and the redelivery buffer is about to
-/// overflow; the system will forcefully and *undeniably* kill the association (connection) with the offending node.
+/// overflow; the system will forcefully and *undeniably* terminate the association (connection) with the offending node.
 /// This is because system correctness with regards to deathwatches will no longer be able to be guaranteed with missing
-/// system messages, thus the only safe option is to kill the entire connection and mark the offending node as `.down`
+/// system messages, thus the only safe option is to terminate the entire connection and mark the offending node as `.down`
 /// in the cluster membership.
 ///
 /// - SeeAlso: `OutboundSystemMessageRedeliverySettings` to configure the `redeliveryBufferLimit`
@@ -56,7 +56,7 @@ internal enum _SystemMessage: Equatable {
     ///   - existenceConfirmed: true if the `terminated` message is sent as response to a watched actor terminating,
     ///     and `false` if the existence of the actor could not be proven (e.g. message ended up being routed to deadLetters,
     ///     or the node hosting the actor has been downed, thus we assumed the actor has died as well, but we cannot prove it did).
-    case terminated(ref: _AddressableActorRef, existenceConfirmed: Bool, idTerminated: Bool) // TODO: more additional info? // TODO: send terminated PATH, not ref, sending to it does not make sense after all
+    case terminated(ref: _AddressableActorRef, existenceConfirmed: Bool, idTerminated: Bool)  // TODO: more additional info? // TODO: send terminated PATH, not ref, sending to it does not make sense after all
 
     /// Extension point for transports or other plugins which may need to send custom signals to actors.
     /// The carried signal will be delivered as-is to the recipient actor.
@@ -69,7 +69,7 @@ internal enum _SystemMessage: Equatable {
     /// Node has terminated, and all actors of this node shall be considered as terminated.
     /// This system message does _not_ have a direct counter part as `Signal`, and instead results in the sending of multiple
     /// `Signals.Terminated` messages, for every watched actor which was residing on the (now terminated) node.
-    case nodeTerminated(Cluster.Node) // TODO: more additional info?
+    case nodeTerminated(Cluster.Node)  // TODO: more additional info?
 
     /// Sent by parent to child actor to stop it
     case stop
@@ -138,7 +138,7 @@ extension _SystemMessage {
             return lRef.id == rRef.id && lExisted == rExisted && lNodeTerminated == rNodeTerminated
 
         case (.childTerminated(let lRef, _), .childTerminated(let rRef, _)):
-            return lRef.id == rRef.id // enough since address is an unique identifier
+            return lRef.id == rRef.id  // enough since address is an unique identifier
 
         case (.nodeTerminated(let lAddress), .nodeTerminated(let rAddress)):
             return lAddress == rAddress
@@ -148,15 +148,15 @@ extension _SystemMessage {
 
         // listing cases rather than a full-on `default` to get an error when we add a new system message
         case (.start, _),
-             (.watch, _),
-             (.unwatch, _),
-             (.carrySignal, _),
-             (.tombstone, _),
-             (.terminated, _),
-             (.childTerminated, _),
-             (.stop, _),
-             (.resume, _),
-             (.nodeTerminated, _):
+            (.watch, _),
+            (.unwatch, _),
+            (.carrySignal, _),
+            (.tombstone, _),
+            (.terminated, _),
+            (.childTerminated, _),
+            (.stop, _),
+            (.resume, _),
+            (.nodeTerminated, _):
             return false
         }
     }

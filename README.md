@@ -41,7 +41,7 @@ You can refer to the `Samples/` directory to view a number of more realistic sam
 
 The most "classical" example of distributed actors is the [`SampleDiningPhilosophers`](Samples/Sources/SampleDiningPhilosophers/DistributedDiningPhilosophers.swift).
 
-You can run it all in a single node (`run --package-path Samples/ SampleDiningPhilosophers`), or in 3 cluster nodes hosted on the same physical machine: `run --package-path Samples/ SampleDiningPhilosophers distributed`. Notice how one does not need to change implementation of the distributed actors to run them in either "local" or "distributed" mode.
+You can run it all in a single node (`swift run --package-path Samples/ SampleDiningPhilosophers`), or in 3 cluster nodes hosted on the same physical machine: `swift run --package-path Samples/ SampleDiningPhilosophers distributed`. Notice how one does not need to change implementation of the distributed actors to run them in either "local" or "distributed" mode.
 
 ## Documentation
 
@@ -126,7 +126,7 @@ Starting Local Preview Server
 
 ## Integration tests
 
-Integration tests include running actual multiple nodes of a cluster and e.g. killing them off to test the recovery mechanisms of the cluster.
+Integration tests include running actual multiple nodes of a cluster and e.g. terminating them to test the recovery mechanisms of the cluster.
 
 Requirements:
 - macOS: `brew install coreutils` to install `stdbuf`

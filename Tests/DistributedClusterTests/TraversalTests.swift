@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -14,11 +14,12 @@
 //
 
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import Foundation
 import NIO
 import NIOFoundationCompat
 import XCTest
+
+@testable import DistributedCluster
 
 final class TraversalTests: SingleClusterSystemXCTestCase {
     struct ActorReady: Codable {
@@ -58,7 +59,7 @@ final class TraversalTests: SingleClusterSystemXCTestCase {
 
         // once we get all ready messages here, we know the tree is "ready" and the tests which perform assertions on it can run
         _ = try! probe.expectMessages(count: 6)
-        probe.stop() // stopping a probe however is still asynchronous...
+        probe.stop()  // stopping a probe however is still asynchronous...
         // thus we make use of the fact we know probe internals and that the expectNoMessage still will work in this situation
         try! probe.expectNoMessage(for: .milliseconds(300))
     }

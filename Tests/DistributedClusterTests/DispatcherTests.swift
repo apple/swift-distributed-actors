@@ -6,7 +6,7 @@
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+// See CONTRIBUTORS.txt for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -14,10 +14,12 @@
 
 import Dispatch
 import DistributedActorsTestKit
-@testable import DistributedCluster
 import Foundation
+import Logging
 import NIO
 import XCTest
+
+@testable import DistributedCluster
 
 final class DispatcherTests: SingleClusterSystemXCTestCase {
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -92,10 +94,10 @@ final class DispatcherTests: SingleClusterSystemXCTestCase {
         try p.expectMessage("World")
         try expectWasOnDispatchQueue(p: p)
 
-        for i in 1 ... 100 {
+        for i in 1...100 {
             w.tell("\(i)")
         }
-        for i in 1 ... 100 {
+        for i in 1...100 {
             try p.expectMessage("\(i)")
             try expectWasOnDispatchQueue(p: p)
         }
