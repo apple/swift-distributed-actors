@@ -118,7 +118,7 @@ extension Cluster {
         ///
         ///
         /// - Parameters:
-        ///   - statuses: statuses for which to check the members for
+        ///   - status: status for which to check the members for
         ///   - reachability: optional reachability that is the members will be filtered by
         /// - Returns: array of members matching those checks. Can be empty.
         public func members(withStatus status: Cluster.MemberStatus, reachability: Cluster.MemberReachability? = nil) -> [Cluster.Member] {
@@ -145,7 +145,7 @@ extension Cluster {
         /// the passed in `status` passed in and `reachability` status. See ``Cluster/MemberStatus`` to learn more about the meaning of "at least".
         ///
         /// - Parameters:
-        ///   - statuses: statuses for which to check the members for
+        ///   - status: status for which to check the members for
         ///   - reachability: optional reachability that is the members will be filtered by
         /// - Returns: array of members matching those checks. Can be empty.
         public func members(atLeast status: Cluster.MemberStatus, reachability: Cluster.MemberReachability? = nil) -> [Cluster.Member] {

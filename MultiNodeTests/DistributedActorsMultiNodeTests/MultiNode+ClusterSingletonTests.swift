@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedCluster
+import Logging
 import MultiNodeTestKit
 
 public final class MultiNodeClusterSingletonTests: MultiNodeTestSuite {

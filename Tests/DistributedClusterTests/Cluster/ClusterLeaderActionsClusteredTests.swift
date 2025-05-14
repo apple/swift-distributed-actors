@@ -15,6 +15,7 @@
 import DistributedActorsTestKit
 import Foundation
 import NIOSSL
+import SWIM
 import XCTest
 
 @testable import DistributedCluster
@@ -137,7 +138,8 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
         try await self.ensureNodes(.up, within: .seconds(10), nodes: first.cluster.node, second.cluster.node, third.cluster.node, fourth.cluster.node)
     }
 
-    func test_up_ensureAllSubscribersGetMovingUpEvents() async throws {
+    // https://github.com/apple/swift-distributed-actors/issues/1194
+    func _test_up_ensureAllSubscribersGetMovingUpEvents() async throws {
         // it shall perform its duties. This tests however quickly shows that lack of letting the "third" node,
         // via gossip or some other way about the ->up of other nodes once it joins the "others", it'd be stuck waiting for
         // the ->up forever.

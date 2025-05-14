@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsTestKit
+import Logging
 import NIO
 import XCTest
 

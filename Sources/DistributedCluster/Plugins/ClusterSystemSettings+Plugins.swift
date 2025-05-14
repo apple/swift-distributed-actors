@@ -12,6 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Logging
+
 /// Settings for `ClusterSystem` plugins.
 ///
 /// Use to enable additional plugins that are started and stopped along with the cluster system.

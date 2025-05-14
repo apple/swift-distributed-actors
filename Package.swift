@@ -36,6 +36,7 @@ var targets: [PackageDescription.Target] = [
             .product(name: "Atomics", package: "swift-atomics"),
             .product(name: "SWIM", package: "swift-cluster-membership"),
             .product(name: "NIO", package: "swift-nio"),
+            .product(name: "NIOPosix", package: "swift-nio"),
             .product(name: "NIOFoundationCompat", package: "swift-nio"),
             .product(name: "NIOSSL", package: "swift-nio-ssl"),
             .product(name: "NIOExtras", package: "swift-nio-extras"),
@@ -91,7 +92,12 @@ var targets: [PackageDescription.Target] = [
             intent: .custom(verb: "multi-node", description: "Run MultiNodeTestKit based tests across multiple processes or physical compute nodes")
             // permissions: needs full network access
         ),
-        dependencies: []
+        dependencies: [
+            /// NOTE: Usually a Swift package plugin would declare any internal executable targets it depends on here
+            ///       and make use of them from the context passed in by SwiftPM. However, this causes issues when
+            ///       running the API breakage checker on this package, for unrelated reasons. So this command plugin is
+            ///       building the package itself as part of its run.
+        ]
     ),
     .target(
         name: "MultiNodeTestKit",
