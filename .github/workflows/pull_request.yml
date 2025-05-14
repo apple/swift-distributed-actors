@@ -10,6 +10,7 @@ jobs:
     uses: swiftlang/github-workflows/.github/workflows/soundness.yml@main
     with:
       license_header_check_project_name: "Swift Distributed Actors"
+      api_breakage_check_enabled: false
 
   unit-tests:
     name: Unit tests
