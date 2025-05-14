@@ -1,8 +1,6 @@
 # ``DistributedCluster/ClusterSystemSettings/LeadershipSelectionSettings``
 
-@Metadata {
-   @DocumentationExtension(mergeBehavior: append)
-}
+Configure leadership election using which the cluster leader should be decided.
 
 ## Topics
 

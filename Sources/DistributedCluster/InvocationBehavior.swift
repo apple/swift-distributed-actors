@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import Distributed
+import Logging
 
 import struct Foundation.Data
 

@@ -61,7 +61,7 @@ public enum Backoff {
     ///   - multiplier: multiplier to be applied on each subsequent backoff to the previous backoff interval.
     ///         For example, a value of 1.5 means that each backoff will increase 50% over the previous value.
     ///         MUST be `>= 0`.
-    ///   - maxInterval: interval limit, beyond which intervals should be truncated to this value.
+    ///   - capInterval: interval limit, beyond which intervals should be truncated to this value.
     ///         MUST be `>= initialInterval`.
     ///   - randomFactor: A random factor of `0.5` results in backoffs between 50% below and 50% above the base interval.
     ///         MUST be between: `<0; 1>` (inclusive)

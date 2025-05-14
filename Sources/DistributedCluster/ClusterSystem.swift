@@ -21,6 +21,7 @@ import DistributedActorsConcurrencyHelpers
 import Foundation  // for UUID
 import Logging
 import NIO
+import NIOPosix
 
 /// A `ClusterSystem` is a confined space which runs and manages Actors.
 ///

@@ -13,7 +13,9 @@
 //===----------------------------------------------------------------------===//
 
 import Atomics
+import CoreMetrics
 import DistributedActorsConcurrencyHelpers
+import Logging
 
 // FIXME(swift) the entire Mailbox infrastructure is now superseded with Swift's built-in runtime; this will be removed shortly
 
