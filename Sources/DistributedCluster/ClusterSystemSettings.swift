@@ -405,7 +405,6 @@ protocol ClusterSystemInstrumentationProvider {
 /// all the nodes of an existing cluster.
 public struct ServiceDiscoverySettings {
     let implementation: ServiceDiscoveryImplementation
-    private let _subscribe: (@escaping (Result<[Cluster.Endpoint], Error>) -> Void, @escaping (CompletionReason) -> Void) -> CancellationToken?
 
     public init<Discovery, S>(_ implementation: Discovery, service: S)
     where
@@ -413,10 +412,12 @@ public struct ServiceDiscoverySettings {
         Discovery.Instance == Cluster.Endpoint,
         S == Discovery.Service
     {
-        self.implementation = .dynamic(AnyServiceDiscovery(implementation))
-        self._subscribe = { onNext, onComplete in
-            implementation.subscribe(to: service, onNext: onNext, onComplete: onComplete)
-        }
+        self.implementation = .dynamic(
+            serviceDiscovery: AnyServiceDiscovery(implementation),
+            subscribe: { onNext, onComplete in
+                implementation.subscribe(to: service, onNext: onNext, onComplete: onComplete)
+            }
+        )
     }
 
     public init<Discovery, S>(_ implementation: Discovery, service: S, mapInstanceToNode transformer: @escaping (Discovery.Instance) throws -> Cluster.Endpoint)
@@ -425,33 +426,78 @@ public struct ServiceDiscoverySettings {
         S == Discovery.Service
     {
         let mappedDiscovery: MapInstanceServiceDiscovery<Discovery, Cluster.Endpoint> = implementation.mapInstance(transformer)
-        self.implementation = .dynamic(AnyServiceDiscovery(mappedDiscovery))
-        self._subscribe = { onNext, onComplete in
-            mappedDiscovery.subscribe(to: service, onNext: onNext, onComplete: onComplete)
+        self.implementation = .dynamic(
+            serviceDiscovery: AnyServiceDiscovery(mappedDiscovery),
+            subscribe: { onNext, onComplete in
+                mappedDiscovery.subscribe(to: service, onNext: onNext, onComplete: onComplete)
+            }
+        )
+    }
+
+    init(clusterdEndpoint: Cluster.Endpoint) {
+        self.implementation = .clusterDaemon(
+            endpoint: clusterdEndpoint,
+            initialize: { system in
+                system.log.info("Joining [clusterd] at \(clusterdEndpoint)")
+                system.cluster.join(endpoint: clusterdEndpoint)
+            }
+        )
+    }
+
+    /// Locate the default `ClusterD` process and use it for discovering cluster nodes.
+    public static var clusterd: Self {
+        get {
+            Self.clusterd(endpoint: nil)
         }
     }
 
-    public init(static nodes: Set<Cluster.Endpoint>) {
-        self.implementation = .static(nodes)
-        self._subscribe = { onNext, _ in
-            // Call onNext once and never again since the list of nodes doesn't change
-            onNext(.success(Array(nodes)))
-            // Ignore onComplete because static service discovery never terminates
+    public static func clusterd(endpoint: Cluster.Endpoint?) -> Self {
+        ServiceDiscoverySettings(clusterdEndpoint: endpoint ?? ClusterDaemon.defaultEndpoint)
+    }
 
-            // No cancellation token
-            return nil
-        }
+    public static func seed(nodes: Set<Cluster.Endpoint>) -> Self {
+        .init(static: nodes)
+    }
+
+    public init(static nodes: Set<Cluster.Endpoint>) {
+        self.implementation = .static(
+            endpoints: nodes,
+            subscribe: { onNext, _ in
+                // Call onNext once and never again since the list of nodes doesn't change
+                onNext(.success(Array(nodes)))
+                // Ignore onComplete because static service discovery never terminates
+
+                // No cancellation token
+                return nil
+            }
+        )
     }
 
     /// Similar to `ServiceDiscovery.subscribe` however it allows the handling of the listings to be generic and handled by the cluster system.
     /// This function is only intended for internal use by the `DiscoveryShell`.
     func subscribe(onNext nextResultHandler: @escaping (Result<[Cluster.Endpoint], Error>) -> Void, onComplete completionHandler: @escaping (CompletionReason) -> Void) -> CancellationToken? {
-        self._subscribe(nextResultHandler, completionHandler)
+        switch self.implementation {
+        case .static(_, let subscribe),
+            .dynamic(_, let subscribe):
+            subscribe(nextResultHandler, completionHandler)
+        case .clusterDaemon:
+            .none
+        }
+    }
+
+    func initializeClusterd(_ system: ClusterSystem) {
+        switch self.implementation {
+        case .clusterDaemon(_, let initialize):
+            initialize(system)
+        default:
+            break
+        }
     }
 
     enum ServiceDiscoveryImplementation {
-        case `static`(Set<Cluster.Endpoint>)
-        case dynamic(AnyServiceDiscovery)
+        case `static`(endpoints: Set<Cluster.Endpoint>, subscribe: (@escaping (Result<[Cluster.Endpoint], Error>) -> Void, @escaping (CompletionReason) -> Void) -> CancellationToken?)
+        case dynamic(serviceDiscovery: AnyServiceDiscovery, subscribe: (@escaping (Result<[Cluster.Endpoint], Error>) -> Void, @escaping (CompletionReason) -> Void) -> CancellationToken?)
+        case clusterDaemon(endpoint: Cluster.Endpoint, initialize: (ClusterSystem) -> Void)
     }
 }
 
