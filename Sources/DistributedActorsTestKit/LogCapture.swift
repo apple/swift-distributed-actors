@@ -37,7 +37,10 @@ public final class LogCapture {
 
     public func logger(label: String) -> Logger {
         self.captureLabel = label
-        return Logger(label: "LogCapture(\(label))", LogCaptureLogHandler(label: label, self))
+        let handler = LogCaptureLogHandler(label: label, settings: self.settings) { [weak self] log in
+            self?.append(log)
+        }
+        return Logger(label: "LogCapture(\(label))", handler)
     }
 
     func append(_ log: CapturedLogMessage) {
@@ -201,18 +204,20 @@ public struct CapturedLogMessage {
 
 struct LogCaptureLogHandler: LogHandler {
     let label: String
-    let capture: LogCapture
+    let settings: LogCapture.Settings
+    let append: (CapturedLogMessage) -> Void
 
-    init(label: String, _ capture: LogCapture) {
+    init(label: String, settings: LogCapture.Settings, append: @escaping (CapturedLogMessage) -> Void) {
         self.label = label
-        self.capture = capture
+        self.settings = settings
+        self.append = append
     }
 
     public func log(level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata?, file: String, function: String, line: UInt) {
         let actorPath = self.metadata["actor/path"].map { "\($0)" } ?? ""
 
         guard
-            self.capture.settings.filterActorPaths.contains(where: { path in
+            self.settings.filterActorPaths.contains(where: { path in
                 if path == "" {  // TODO(swift): rdar://98691039 String.starts(with:) has a bug when given an empty string, so we have to avoid it
                     return true
                 }
@@ -222,13 +227,14 @@ struct LogCaptureLogHandler: LogHandler {
         else {
             return  // ignore this actor's logs, it was filtered out
         }
-        guard !self.capture.settings.excludeActorPaths.contains(actorPath) else {
+
+        guard !self.settings.excludeActorPaths.contains(actorPath) else {
             return  // actor was excluded explicitly
         }
-        guard self.capture.settings.grep.isEmpty || self.capture.settings.grep.contains(where: { "\(message)".contains($0) }) else {
+        guard self.settings.grep.isEmpty || self.settings.grep.contains(where: { "\(message)".contains($0) }) else {
             return  // log was included explicitly
         }
-        guard !self.capture.settings.excludeGrep.contains(where: { "\(message)".contains($0) }) else {
+        guard !self.settings.excludeGrep.contains(where: { "\(message)".contains($0) }) else {
             return  // log was excluded explicitly
         }
 
@@ -237,7 +243,7 @@ struct LogCaptureLogHandler: LogHandler {
         _metadata.merge(metadata ?? [:], uniquingKeysWith: { _, r in r })
         _metadata["label"] = "\(self.label)"
 
-        self.capture.append(CapturedLogMessage(date: date, level: level, message: message, metadata: _metadata, file: file, function: function, line: line))
+        self.append(CapturedLogMessage(date: date, level: level, message: message, metadata: _metadata, file: file, function: function, line: line))
     }
 
     public subscript(metadataKey metadataKey: String) -> Logger.Metadata.Value? {
@@ -253,7 +259,7 @@ struct LogCaptureLogHandler: LogHandler {
 
     public var logLevel: Logger.Level {
         get {
-            self.capture.settings.minimumLogLevel
+            self.settings.minimumLogLevel
         }
         set {
             // ignore, we always collect all logs
