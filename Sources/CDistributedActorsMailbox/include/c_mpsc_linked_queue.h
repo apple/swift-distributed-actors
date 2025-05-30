@@ -18,6 +18,10 @@
 #include <stdatomic.h>
 #include <stdlib.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct Node {
     void* item;
     _Atomic (struct Node*) next;
@@ -38,5 +42,9 @@ void c_sact_mpsc_linked_queue_destroy(CSActMPSCLinkedQueue* q);
 void c_sact_mpsc_linked_queue_enqueue(CSActMPSCLinkedQueue* q, void* item);
 
 void* c_sact_mpsc_linked_queue_dequeue(CSActMPSCLinkedQueue* q);
+
+#if defined(__cplusplus)
+}  // extern "C"
+#endif
 
 #endif /* CMPSCLinkedQueue_h */
