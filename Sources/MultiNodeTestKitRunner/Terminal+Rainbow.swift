@@ -21,7 +21,6 @@ import OrderedCollections
 
 import struct Foundation.Date
 import class Foundation.FileHandle
-import class Foundation.Process
 import struct Foundation.URL
 
 enum Rainbow: String {
