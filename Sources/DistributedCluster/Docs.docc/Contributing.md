@@ -16,7 +16,7 @@ Multi node test infrastructure is still in development and may be lacking some f
 
 ### Testing logging (LogCapture)
 
-As the cluster performs operations "in the background", such as keeping the membership and health information of the cluster up to date, it is very important that log statements it emits in such mode are useful and actionable, byt not overwhelming.
+As the cluster performs operations "in the background", such as keeping the membership and health information of the cluster up to date, it is very important that log statements it emits in such mode are useful and actionable, but not overwhelming.
 
 > Note: Almost all tests spanning multiple actor systems use a form of log capture, in order to keep the test output clean. Only some tests actually assert on logged information.
 
