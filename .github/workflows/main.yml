@@ -77,8 +77,9 @@ jobs:
     name: macOS tests
     uses: apple/swift-nio/.github/workflows/macos_tests.yml@main
     with:
+      runner_pool: nightly
+      build_scheme: swift-distributed-actors-Package
 
   static-sdk:
     name: Static SDK
-    # Workaround https://github.com/nektos/act/issues/1875
     uses: apple/swift-nio/.github/workflows/static_sdk.yml@main
