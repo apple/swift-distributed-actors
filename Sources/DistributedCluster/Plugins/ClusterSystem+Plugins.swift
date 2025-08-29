@@ -60,7 +60,7 @@ internal struct BoxedPlugin: AnyPlugin {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Plugin key
 
-public struct PluginKey<P: Plugin>: CustomStringConvertible, ExpressibleByStringLiteral {
+public struct PluginKey<P: Plugin>: CustomStringConvertible, ExpressibleByStringLiteral, Sendable {
     public let plugin: String
     public let sub: String?
 
@@ -95,7 +95,7 @@ public struct PluginKey<P: Plugin>: CustomStringConvertible, ExpressibleByString
     }
 }
 
-internal struct AnyPluginKey: Hashable, CustomStringConvertible {
+internal struct AnyPluginKey: Hashable, CustomStringConvertible, Sendable {
     let pluginTypeId: ObjectIdentifier
     let plugin: String
     let sub: String?
