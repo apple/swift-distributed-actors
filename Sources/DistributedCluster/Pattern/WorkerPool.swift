@@ -238,7 +238,7 @@ extension WorkerPool {
     public struct Selector {
         enum _Selector {
             case dynamic(DistributedReception.Key<Worker>)
-            /// Array should contain WeakLocalRers not to create strong references to local actors
+            /// Should be array of WeakLocalRefs not to create strong references to local actors
             case `static`([WeakLocalRef<Worker>])
         }
 
