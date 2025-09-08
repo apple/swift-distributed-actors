@@ -107,7 +107,7 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
         case .static(let workers):
             self.workers.reserveCapacity(workers.count)
             self.workers = .init(workers)
-            workers.compactMap(\.actor).forEach { actor in
+            for actor in workers.compactMap(\.actor) {
                 watchTermination(of: actor)
             }
         }
