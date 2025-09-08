@@ -122,7 +122,7 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
             level: self.logLevel,
             "Incoming work, selecting worker",
             metadata: [
-                "workers/count": "\(self.size)",
+                "workers/count": "\(self.size())",
                 "worker/item": "\(work)",
             ]
         )
@@ -132,13 +132,14 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
             "Selected worker, submitting [\(work)] to [\(worker)]",
             metadata: [
                 "worker": "\(worker.id)",
-                "workers/count": "\(self.size)",
+                "workers/count": "\(self.size())",
             ]
         )
         return try await worker.submit(work: work)
     }
 
-    distributed var size: Int {
+    // FIXME: there is an issue in latest Swift (6.2 nightlies) with Cxx interop, change back to computed properties when fixed.
+    internal distributed func size() -> Int {
         self.workers.count
     }
 
@@ -198,11 +199,11 @@ public distributed actor WorkerPool<Worker: DistributedWorker>: DistributedWorke
         case .random:
             return self.workers.shuffled().first
         case .simpleRoundRobin:
-            if self.roundRobinPos >= self.size {
+            if self.roundRobinPos >= self.size() {
                 self.roundRobinPos = 0  // loop around from zero
             }
             let selected = self.workers[self.roundRobinPos]
-            self.roundRobinPos = self.workers.index(after: self.roundRobinPos) % self.size
+            self.roundRobinPos = self.workers.index(after: self.roundRobinPos) % self.size()
             return selected
         }
     }
