@@ -36,3 +36,6 @@ Package.resolved
 
 # d files
 *.d
+
+# Visual Studio Code
+/.vscode
