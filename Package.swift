@@ -178,7 +178,7 @@ var targets: [PackageDescription.Target] = [
         name: "DistributedActorsConcurrencyHelpers",
         dependencies: [],
         exclude: [
-            "README.md",
+            "README.md"
         ],
         swiftSettings: [.swiftLanguageMode(.v5)]
     ),
