@@ -1070,7 +1070,7 @@ extension ClusterSystem {
         }
 
         // Spawn a behavior actor for it:
-        let behavior = InvocationBehavior.behavior(instance: Weak(actor))
+        let behavior = InvocationBehavior.behavior(instance: WeakLocalRef(actor))
         let ref = self._spawnDistributedActor(behavior, identifiedBy: actor.id)
 
         // Store references
