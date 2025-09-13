@@ -151,8 +151,8 @@ final class ActorMetricsSWIMActorPeerMetricsTests: ClusteredActorSystemsXCTestCa
 
 extension TestMetrics {
     func getSWIMTimer(_ swimShell: SWIMActor, _ body: (SWIM.Metrics.ShellMetrics) -> Timer) async throws -> TestTimer? {
-        let timer = await swimShell.whenLocal { __secretlyKnownToBeLocal in  // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
-            body(__secretlyKnownToBeLocal.metrics.shell)
+        let timer: Timer? = await swimShell.whenLocal { myself in
+            body(myself.metrics.shell)
         }
 
         guard let timer = timer else {
@@ -163,8 +163,8 @@ extension TestMetrics {
     }
 
     func getSWIMCounter(_ swimShell: SWIMActor, _ body: (SWIM.Metrics.ShellMetrics) -> Counter) async throws -> TestCounter? {
-        let counter = await swimShell.whenLocal { __secretlyKnownToBeLocal in  // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
-            body(__secretlyKnownToBeLocal.metrics.shell)
+        let counter: Counter? = await swimShell.whenLocal { myself -> Counter in
+            body(myself.metrics.shell)
         }
 
         guard let counter = counter else {
