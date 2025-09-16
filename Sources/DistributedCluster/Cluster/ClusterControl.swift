@@ -29,7 +29,7 @@ public struct ClusterControl {
     ///
     /// This sequence begins with a snapshot of the current cluster state and continues with events representing changes
     /// since the snapshot.
-    public let events: ClusterEventStream
+    public var events: ClusterEventStream
 
     /// Offers a snapshot of membership, which may be used to perform ad-hoc tests against the membership.
     /// Note that this view may be immediately outdated after checking if, if e.g. a membership change is just being processed.
@@ -67,7 +67,7 @@ public struct ClusterControl {
         }
     }
 
-    private let cluster: ClusterShell?
+    private weak var cluster: ClusterShell?
     internal let ref: ClusterShell.Ref
 
     init(_ settings: ClusterSystemSettings, cluster: ClusterShell?, clusterRef: ClusterShell.Ref, eventStream: ClusterEventStream) {
