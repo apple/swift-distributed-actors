@@ -64,6 +64,7 @@ jobs:
           MATRIX_LINUX_SETUP_COMMAND: apt-get update -y && apt-get install -yq jq && git config --global --add safe.directory /swift-openapi-runtime
           MATRIX_LINUX_COMMAND: swift run --package-path Samples SampleDiningPhilosophers
           MATRIX_LINUX_5_9_ENABLED: false
+          MATRIX_LINUX_5_10_ENABLED: false
 
   dining-philosophers:
     name: Sample dining philosophers
@@ -78,6 +79,7 @@ jobs:
     uses: apple/swift-nio/.github/workflows/cxx_interop.yml@main
     with:
       linux_5_9_enabled: false
+      linux_5_10_enabled: false
 
   macos-tests:
     name: macOS tests
