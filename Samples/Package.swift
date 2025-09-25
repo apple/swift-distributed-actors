@@ -1,4 +1,4 @@
-// swift-tools-version:5.9
+// swift-tools-version:6.0
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
@@ -26,6 +26,9 @@ var targets: [PackageDescription.Target] = [
         exclude: [
             "dining-philosopher-fsm.graffle",
             "dining-philosopher-fsm.svg",
+        ],
+        swiftSettings: [
+            .swiftLanguageMode(.v5)
         ]
     ),
 
@@ -50,10 +53,10 @@ let package = Package(
     name: "swift-distributed-actors-samples",
     platforms: [
         // we require the 'distributed actor' language and runtime feature:
-        .iOS(.v16),
-        .macOS(.v14),
-        .tvOS(.v16),
-        .watchOS(.v9),
+        .iOS(.v17),
+        .macOS(.v15),
+        .tvOS(.v17),
+        .watchOS(.v10),
     ],
     products: [
         // ---  samples ---

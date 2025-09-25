@@ -23,7 +23,7 @@ import Logging
 import NIO
 
 extension ClusterSystem {
-    public static func startClusterDaemon(configuredWith configureSettings: (inout ClusterSystemSettings) -> Void = { _ in () }) async -> ClusterDaemon {
+    public static func startClusterDaemon(configuredWith configureSettings: sending (inout ClusterSystemSettings) -> Void = { _ in () }) async -> ClusterDaemon {
         let system = await ClusterSystem("clusterd") { settings in
             settings.endpoint = ClusterDaemon.defaultEndpoint
             configureSettings(&settings)
