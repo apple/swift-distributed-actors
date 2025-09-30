@@ -58,4 +58,4 @@ if args.count >= 3 {
     system.cluster.join(endpoint: Cluster.Endpoint(systemName: "System", host: host, port: port))
 }
 
-_Thread.sleep(.seconds(120))
+try await Task.sleep(for: .milliseconds(120))

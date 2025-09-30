@@ -38,6 +38,6 @@ final class DiningPhilosophers {
             Philosopher(name: "Erik", leftFork: fork4, rightFork: fork5, actorSystem: system),
         ]
 
-        _Thread.sleep(duration)
+        try await Task.sleep(for: duration)
     }
 }

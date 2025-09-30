@@ -51,4 +51,4 @@ if args.count >= 4, let joinPort = Int(args[3]) {
     system.cluster.join(host: joinHost, port: joinPort)
 }
 
-Thread.sleep(.seconds(120))
+try await Task.sleep(for: .seconds(120))
