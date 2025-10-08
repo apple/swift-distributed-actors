@@ -111,7 +111,7 @@ final class SerializationPoolTests: XCTestCase {
         try! await self.system.shutdown().wait()
         self.system = nil
         self.testKit = nil
-        try! self.elg.syncShutdownGracefully()
+        try! await self.elg.shutdownGracefully()
         self.el = nil
         self.elg = nil
     }
