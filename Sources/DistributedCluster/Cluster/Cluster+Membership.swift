@@ -23,7 +23,7 @@ extension Cluster {
     /// Membership changes are driven by nodes joining and leaving the cluster.
     /// Leaving the cluster may be graceful or triggered by a failure detector.
     ///
-    /// ### Replacement (Unique)Nodes
+    /// ### Replacement (Unique) Nodes
     /// A node (or member) is referred to as a "replacement" if it shares _the same_ protocol+host+address (i.e. ``Cluster/Endpoint``),
     /// with another member; It MAY join "over" an existing node and will immediately cause the previous node to be marked ``Cluster/MemberStatus/down``
     /// upon such transition. Such situations can take place when an actor system node is terminated and started on the same host+port immediately,

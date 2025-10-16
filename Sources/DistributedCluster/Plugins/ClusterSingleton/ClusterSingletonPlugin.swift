@@ -34,7 +34,7 @@ public actor ClusterSingletonPlugin {
     private var actorSystem: ClusterSystem!
 
     public init() {
-        self.actorSystem = nil  // 'actorSystem' is filled in later on in _Plugin.start()
+        self.actorSystem = nil  // 'actorSystem' is filled in later on in Plugin.start()
     }
 
     public func proxy<Act>(
@@ -101,7 +101,7 @@ public actor ClusterSingletonPlugin {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Plugin protocol conformance
 
-extension ClusterSingletonPlugin: _Plugin {
+extension ClusterSingletonPlugin: Plugin {
     static let pluginKey: Key = "$clusterSingleton"
 
     public nonisolated var key: Key {

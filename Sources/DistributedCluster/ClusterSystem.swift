@@ -209,7 +209,7 @@ public class ClusterSystem: DistributedActorSystem, @unchecked Sendable {
     /// The name is useful for debugging cross system communication.
     ///
     /// - Faults: when configuration closure performs very illegal action, e.g. reusing a serializer identifier
-    public convenience init(_ name: String, configuredWith configureSettings: (inout ClusterSystemSettings) -> Void = { _ in () }) async {
+    public convenience init(_ name: String, configuredWith configureSettings: sending (inout ClusterSystemSettings) -> Void = { _ in () }) async {
         var settings = ClusterSystemSettings(name: name)
         configureSettings(&settings)
 
@@ -1070,7 +1070,7 @@ extension ClusterSystem {
         }
 
         // Spawn a behavior actor for it:
-        let behavior = InvocationBehavior.behavior(instance: Weak(actor))
+        let behavior = InvocationBehavior.behavior(instance: WeakLocalRef(actor))
         let ref = self._spawnDistributedActor(behavior, identifiedBy: actor.id)
 
         // Store references
@@ -1079,6 +1079,9 @@ extension ClusterSystem {
 
         if let wellKnownName = actor.id.metadata.wellKnown {
             self._managedWellKnownDistributedActors[wellKnownName] = actor
+        }
+        for hook in self.settings.plugins.actorLifecycleHooks {
+            hook.onActorReady(actor)
         }
     }
 
@@ -1124,6 +1127,9 @@ extension ClusterSystem {
             _ = self._managedDistributedActors.removeActor(identifiedBy: id)
 
             // Well-known actors are held strongly and should be released using `releaseWellKnownActorID`
+        }
+        for hook in self.settings.plugins.actorLifecycleHooks {
+            hook.onResignID(id)
         }
     }
 

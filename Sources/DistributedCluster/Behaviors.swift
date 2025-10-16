@@ -131,10 +131,11 @@ extension _Behavior {
     func receiveSignalAsync(
         context: _ActorContext<Message>,
         signal: _Signal,
-        handleSignal: @escaping @Sendable (
-            _ActorContext<Message>,
-            _Signal
-        ) async throws -> _Behavior<Message>
+        handleSignal:
+            @escaping @Sendable (
+                _ActorContext<Message>,
+                _Signal
+            ) async throws -> _Behavior<Message>
     ) -> _Behavior<Message> {
         .setup { context in
             receiveSignalAsync0(handleSignal, context: context, signal: signal)

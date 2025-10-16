@@ -619,7 +619,7 @@ extension _PathRelationships {
     ///       to confirm whether or not a specific actor is the child of another another (identified by another unique path).
     ///       Such relationships must be confirmed by using the `_ActorContext.children.hasChild(:UniqueActorPath)` method. TODO: this does not exist yet
     ///
-    /// - Parameter path: The path that is suspected to be the parent of `self`
+    /// - Parameter maybeParentPath: The path that is suspected to be the parent of `self`
     /// - Returns: `true` if this [ActorPath] is a direct descendant of `maybeParentPath`, `false` otherwise
     public func isChildPathOf(_ maybeParentPath: _PathRelationships) -> Bool {
         Array(self.segments.dropLast()) == maybeParentPath.segments  // TODO: more efficient impl, without the copying
@@ -631,7 +631,7 @@ extension _PathRelationships {
     ///       to confirm whether or not a specific actor is the child of another another (identified by another unique path).
     ///       Such relationships must be confirmed by using the `_ActorContext.children.hasChild(:UniqueActorPath)` method. TODO: this does not exist yet
     ///
-    /// - Parameter path: The path that is suspected to be a child of `self`
+    /// - Parameter maybeChildPath: The path that is suspected to be a child of `self`
     /// - Returns: `true` if this [ActorPath] is a direct ancestor of `maybeChildPath`, `false` otherwise
     public func isParentOf(_ maybeChildPath: _PathRelationships) -> Bool {
         maybeChildPath.isChildPathOf(self)
