@@ -88,3 +88,7 @@ jobs:
     with:
       runner_pool: general
       build_scheme: swift-distributed-actors-Package
+
+  static-sdk:
+    name: Static SDK
+    uses: apple/swift-nio/.github/workflows/static_sdk.yml@main
