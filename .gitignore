@@ -3,6 +3,7 @@
 
 *.orig
 *.app
+.history
 
 Instruments/ActorInstruments/ActorInstruments.xcodeproj/xcuserdata
 Instruments/ActorInstruments/build/
