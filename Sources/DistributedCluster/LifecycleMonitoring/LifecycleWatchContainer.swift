@@ -30,9 +30,9 @@ final class LifecycleWatchContainer {
     private let _lock = DispatchSemaphore(value: 1)
 
     internal let watcherID: ClusterSystem.ActorID
-    private let system: ClusterSystem
+    private weak var system: ClusterSystem?
     private var nodeDeathWatcher: NodeDeathWatcherShell.Ref? {
-        self.system._nodeDeathWatcher
+        self.system?._nodeDeathWatcher
     }
 
     typealias OnTerminatedFn = @Sendable (ClusterSystem.ActorID) async -> Void
@@ -76,7 +76,10 @@ extension LifecycleWatchContainer {
         @_implicitSelfCapture whenTerminated: @escaping @Sendable (ClusterSystem.ActorID) async -> Void,
         file: String = #filePath,
         line: UInt = #line
-    ) {
+    ) throws {
+        guard let system = self.system else {
+            throw ClusterSystemError(.shuttingDown("system shut down"))
+        }
         self._lock.wait()
         defer {
             self._lock.signal()
@@ -91,8 +94,8 @@ extension LifecycleWatchContainer {
             return
         }
 
-        let addressableWatchee = self.system._resolveUntyped(context: .init(id: watcheeID, system: self.system))
-        let addressableWatcher = self.system._resolveUntyped(context: .init(id: watcherID, system: self.system))
+        let addressableWatchee = system._resolveUntyped(context: .init(id: watcheeID, system: system))
+        let addressableWatcher = system._resolveUntyped(context: .init(id: watcherID, system: system))
 
         if self.isWatching0(watcheeID) {
             // While we bail out early here, we DO override whichever value was set as the customized termination message.
