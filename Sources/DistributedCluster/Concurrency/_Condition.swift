@@ -14,7 +14,7 @@
 
 import NIO
 
-#if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
+#if os(macOS) || os(iOS) || os(tvOS) || os(watchOS) || os(visionOS)
 import Darwin
 #else
 import Glibc
@@ -58,7 +58,7 @@ public final class _Condition {
 
     @inlinable
     public func wait(_ mutex: _Mutex, atMost duration: Duration) -> Bool {
-        #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
+        #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS) || os(visionOS)
         let time = TimeSpec.from(duration: duration)
         #else
         var now = timespec()
@@ -66,7 +66,7 @@ public final class _Condition {
         let time = now + TimeSpec.from(duration: duration)
         #endif
         let error = withUnsafePointer(to: time) { p -> Int32 in
-            #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
+            #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS) || os(visionOS)
             return pthread_cond_timedwait_relative_np(&condition, &mutex.mutex, p)
             #else
             return pthread_cond_timedwait(&condition, &mutex.mutex, p)
