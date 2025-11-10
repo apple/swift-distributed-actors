@@ -30,6 +30,8 @@
 
 #if os(macOS) || os(iOS) || os(watchOS) || os(tvOS) || os(visionOS)
 import Darwin
+#elseif canImport(Musl)
+import Musl
 #else
 import Glibc
 #endif

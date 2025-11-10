@@ -16,6 +16,8 @@ import NIO
 
 #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS) || os(visionOS)
 import Darwin
+#elseif canImport(Musl)
+import Musl
 #else
 import Glibc
 #endif
