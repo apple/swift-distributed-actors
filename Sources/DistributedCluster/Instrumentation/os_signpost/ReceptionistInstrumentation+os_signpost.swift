@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#if os(macOS) || os(tvOS) || os(iOS) || os(watchOS)
+#if os(macOS) || os(tvOS) || os(iOS) || os(watchOS) || os(visionOS)
 import Foundation
 import os.log
 import os.signpost

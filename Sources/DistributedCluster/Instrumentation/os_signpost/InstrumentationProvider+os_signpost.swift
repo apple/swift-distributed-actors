@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#if os(macOS) || os(tvOS) || os(iOS) || os(watchOS)
+#if os(macOS) || os(tvOS) || os(iOS) || os(watchOS) || os(visionOS)
 /// Provider of Instrumentation instances which use `os_signpost`.
 internal struct OSSignpostInstrumentationProvider: ClusterSystemInstrumentationProvider {
     init() {}

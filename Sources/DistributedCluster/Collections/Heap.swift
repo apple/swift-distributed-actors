@@ -28,7 +28,7 @@
 
 // Based on https://raw.githubusercontent.com/apple/swift-nio/bf2598d19359e43b4cfaffaff250986ebe677721/Sources/NIO/Heap.swift
 
-#if os(macOS) || os(iOS) || os(watchOS) || os(tvOS)
+#if os(macOS) || os(iOS) || os(watchOS) || os(tvOS) || os(visionOS)
 import Darwin
 #else
 import Glibc
