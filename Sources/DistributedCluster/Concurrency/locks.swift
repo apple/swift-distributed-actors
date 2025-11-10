@@ -12,12 +12,12 @@
 //
 //===----------------------------------------------------------------------===//
 
-#if os(macOS) || os(iOS) || os(tvOS) || os(watchOS) || os(visionOS)
+#if canImport(Darwin)
 import Darwin
+#elseif canImport(Glibc)
+import Glibc
 #elseif canImport(Musl)
 import Musl
-#else
-import Glibc
 #endif
 
 /// Not intended to be used by end users.

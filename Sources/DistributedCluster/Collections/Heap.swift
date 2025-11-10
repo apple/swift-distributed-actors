@@ -28,12 +28,12 @@
 
 // Based on https://raw.githubusercontent.com/apple/swift-nio/bf2598d19359e43b4cfaffaff250986ebe677721/Sources/NIO/Heap.swift
 
-#if os(macOS) || os(iOS) || os(watchOS) || os(tvOS) || os(visionOS)
+#if canImport(Darwin)
 import Darwin
+#elseif canImport(Glibc)
+import Glibc
 #elseif canImport(Musl)
 import Musl
-#else
-import Glibc
 #endif
 
 internal enum HeapType {
