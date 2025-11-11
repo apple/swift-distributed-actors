@@ -20,8 +20,6 @@ import NIO
 import Darwin
 #elseif canImport(Glibc)
 import Glibc
-#elseif canImport(Musl)
-import Musl
 #endif
 
 /// Not intended for general use.

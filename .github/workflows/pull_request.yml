@@ -12,6 +12,7 @@ jobs:
     name: Soundness
     uses: swiftlang/github-workflows/.github/workflows/soundness.yml@main
     with:
+      # https://github.com/apple/swift-distributed-actors/issues/1225
       api_breakage_check_enabled: false
       license_header_check_project_name: "Swift Distributed Actors"
 
@@ -85,6 +86,8 @@ jobs:
       runner_pool: general
       build_scheme: swift-distributed-actors-Package
 
-  static-sdk:
-    name: Static SDK
-    uses: apple/swift-nio/.github/workflows/static_sdk.yml@main
+  # Removed for now as static sdk builds are not working
+  # https://github.com/apple/swift-distributed-actors/issues/1229
+  # static-sdk:
+  #   name: Static SDK
+  #   uses: apple/swift-nio/.github/workflows/static_sdk.yml@main
