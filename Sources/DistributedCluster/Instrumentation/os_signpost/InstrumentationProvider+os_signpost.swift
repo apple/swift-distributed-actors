@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#if os(macOS) || os(tvOS) || os(iOS) || os(watchOS) || os(visionOS)
+#if canImport(Darwin)
 /// Provider of Instrumentation instances which use `os_signpost`.
 internal struct OSSignpostInstrumentationProvider: ClusterSystemInstrumentationProvider {
     init() {}

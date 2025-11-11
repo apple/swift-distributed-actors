@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#if os(macOS) || os(tvOS) || os(iOS) || os(watchOS) || os(visionOS)
+#if canImport(Darwin)
 import Foundation
 import os.log
 import os.signpost
