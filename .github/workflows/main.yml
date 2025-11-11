@@ -80,8 +80,8 @@ jobs:
       runner_pool: nightly
       build_scheme: swift-distributed-actors-Package
 
-  # Removed for now as static sdk builds are not working
-  # https://github.com/apple/swift-distributed-actors/issues/1229
-  # static-sdk:
-  #   name: Static SDK
-  #   uses: apple/swift-nio/.github/workflows/static_sdk.yml@main
+# Removed for now as static sdk builds are not working
+# https://github.com/apple/swift-distributed-actors/issues/1229
+# static-sdk:
+#   name: Static SDK
+#   uses: apple/swift-nio/.github/workflows/static_sdk.yml@main
