@@ -15,7 +15,7 @@
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Instrumentation
 
-#if os(macOS) || os(tvOS) || os(iOS) || os(watchOS)
+#if canImport(Darwin)
 import Foundation
 import os.log
 import os.signpost
