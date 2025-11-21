@@ -58,7 +58,7 @@ public final class _ActorShell<Message: Codable>: _ActorContext<Message>, Abstra
     internal let _dispatcher: MessageDispatcher
 
     @usableFromInline
-    internal var _system: ClusterSystem?
+    internal weak var _system: ClusterSystem?
 
     override public var system: ClusterSystem {
         if let system = self._system {
