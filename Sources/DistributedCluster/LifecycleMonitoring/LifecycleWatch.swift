@@ -48,7 +48,7 @@ extension LifecycleWatch {
             return watchee
         }
 
-        watch.termination(of: watchee.id, whenTerminated: whenTerminated, file: file, line: line)
+        try? watch.termination(of: watchee.id, whenTerminated: whenTerminated, file: file, line: line)
         return watchee
     }
 
@@ -74,7 +74,7 @@ extension LifecycleWatch {
             return watchee
         }
 
-        watch.termination(
+        try? watch.termination(
             of: watchee.id,
             whenTerminated: { id in
                 await self.terminated(actor: id)
