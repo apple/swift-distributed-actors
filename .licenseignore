@@ -6,7 +6,6 @@
 .mailfilter
 .mailmap
 .spi.yml
-.swiftformat
 .swift-format
 .swiftformatignore
 .editorconfig

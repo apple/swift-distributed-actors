@@ -1,9 +1,5 @@
 # ``DistributedCluster/ClusterSingleton``
 
-@Metadata {
-    @DocumentationExtension(mergeBehavior: append)
-}
-
 Allows for hosting a _single unique instance_ of a distributed actor within the entire distributed actor system, 
 including automatic fail-over when the node hosting the instance becomes down. 
 
@@ -155,7 +151,7 @@ The allocated singleton instance will get the ``activateSingleton()-9fbad`` meth
 
 Conversely, when the allocation strategy decides that this cluster member is no longer hosting the singleton the ``passivateSingleton()-31z1s`` method will be invoked and the actor will be released. Make sure to not retain the actor or make it perform any decisions which require single-point-of-truth after it has had passivate called on it, as it no longer is guaranteed to be the unique singleton instance anymore.
 
-## Glossary
+### Glossary
 
 - **cluster singleton** - the conceptual "singleton". Regardless on which node it is located we can generally speak in terms of contacting the cluster singleton, by which we mean contacting a concrete active instance, wherever it is currently allocated.
 - singleton **instance** - a concrete instance of a distributed actor, allocated as a singleton. In contrast to "cluster singleton", a "cluster singleton instance" refers to a concrete unique instance on a concrete unique member in the cluster. 

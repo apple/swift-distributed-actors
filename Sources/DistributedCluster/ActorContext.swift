@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Foundation
 import Logging
 
 /// The `_ActorContext` exposes an actors details and capabilities, such as names and timers.

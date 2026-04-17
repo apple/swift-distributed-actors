@@ -1,1 +1,1 @@
-FROM swiftlang/swift:nightly-5.7-focal
+FROM swiftlang/swift:nightly-5.10-focal

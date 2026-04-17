@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedCluster
+import Logging
 import MultiNodeTestKit
 
 /// Tests of the ``MultiNodeTestConductor`` itself.

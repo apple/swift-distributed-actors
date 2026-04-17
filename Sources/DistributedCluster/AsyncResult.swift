@@ -43,7 +43,7 @@ internal protocol _AsyncResult {
     /// be removed, so the lesser of the two timeouts will be the effective timeout
     /// value for the returned `_AsyncResult`.
     ///
-    /// - parameter after: defines a timeout after which the result should be considered failed.
+    /// - parameter timeout: defines a timeout after which the result should be considered failed.
     func withTimeout(after timeout: Duration) -> Self
 }
 

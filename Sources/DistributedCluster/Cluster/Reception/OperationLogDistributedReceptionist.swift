@@ -13,8 +13,10 @@
 //===----------------------------------------------------------------------===//
 
 import AsyncAlgorithms
+import CoreMetrics
 import Distributed
 import Logging
+import OrderedCollections
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Cluster (OpLog) Receptionist

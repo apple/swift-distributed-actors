@@ -31,8 +31,7 @@ public protocol DistributedReceptionist: DistributedActor {
     ///
     /// - Parameters:
     ///   - guest: the actor to register with the receptionist.
-    ///   - id: id used for the key identifier. E.g. when aiming to register all instances of "Sensor" in the same group,
-    ///         the recommended id is "all/sensors".
+    ///   - key: key identifier. E.g. when aiming to register all instances of "Sensor" in the same group, the recommended id is "all/sensors".
     func checkIn<Guest>(
         _ guest: Guest,
         with key: DistributedReception.Key<Guest>

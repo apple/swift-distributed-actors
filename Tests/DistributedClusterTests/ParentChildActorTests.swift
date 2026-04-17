@@ -14,6 +14,7 @@
 
 import DistributedActorsTestKit
 import Foundation
+import Logging
 import XCTest
 
 @testable import DistributedCluster

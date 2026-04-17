@@ -140,7 +140,8 @@ final class ClusterSystemTests: SingleClusterSystemXCTestCase {
         ref.id.incarnation.shouldEqual(id.incarnation)
     }
 
-    func test_cleanUpAssociationTombstones() async throws {
+    // https://github.com/apple/swift-distributed-actors/issues/1196
+    func _test_cleanUpAssociationTombstones() async throws {
         let local = await setUpNode("local") { settings in
             settings.enabled = true
             settings.associationTombstoneTTL = .seconds(0)

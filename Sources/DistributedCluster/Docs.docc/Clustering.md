@@ -6,7 +6,7 @@ Clustering multiple actor system instances into a single Distributed Actor Syste
 
 In this article, we'll learn how to configure and use multiple ``ClusterSystem`` instances to form a distributed system.
 
-## Initializing a ClusterSystem
+### Initializing a ClusterSystem
 
 In this section, we will discuss initializing and using a distributed cluster system.
 
@@ -49,7 +49,7 @@ Declaring a distributed actor is similar to declaring a plain `actor`. We do thi
 
 TODO: documentation of TLS config
 
-## Forming clusters
+### Forming clusters
 
 Forming a cluster is the first step towards making use of distributed clusters across multiple nodes.
 
@@ -57,7 +57,7 @@ Once a node joins at least one other node of an already established cluster, it 
 which participate in this cluster. This is why often it is not necessary to give all nodes the information about all other nodes in a cluster,
 but only attempt to join one or a few of them. The first join "wins" and the cluster welcome the new node into the ``Cluster/Membership``.
 
-### Joining existing nodes
+#### Joining existing nodes
 
 In the simplest scenario we already know about some existing node that we can join to form a cluster, or become part of a cluster that node already is in.
 
@@ -83,7 +83,7 @@ There is also convenience APIs available on ``ClusterControl`` (`system.cluster`
 - ``ClusterControl/joined(endpoint:within:)`` which allows you to suspend until a specific node becomes ``Cluster/MemberStatus/joining`` in the cluster membership, or
 - ``ClusterControl/waitFor(_:_:within:)-2aq7r`` which allows you to suspend until a node reaches a specific ``Cluster/MemberStatus``. 
 
-### Automatic Node Discovery
+#### Automatic Node Discovery
 
 The cluster system uses [swift-service-discovery](https://github.com/apple/swift-service-discovery) to discover nearby nodes it can connect to. This discovery step is only necessary to find IPs and ports on which we are expecting other cluster actor system instances to be running, the actual joining of the nodes is performed by the cluster itself. It can negotiate, and authenticate the other peer before establishing a connection with it (see also TODO: SECURITY).
 
@@ -106,7 +106,7 @@ Similarly, you can implement the [ServiceDiscovery](https://github.com/apple/swi
 and this will then enable the cluster to locate nodes to contact and join automatically. It also benefits all other uses of service discovery in such new environment,
 so we encourage publishing your implementations if you're able to!
 
-## Cluster Events
+### Cluster Events
 
 Cluster events are events emitted by the cluster as changes happen to the lifecycle of members of the cluster.
 
@@ -186,7 +186,7 @@ The ``Cluster/Membership`` also offers a number of useful APIs to inspect the me
 
 > A new async/await API might be offered that automates such "await for some node to reach some state" in the future, refer to [#948](https://github.com/apple/swift-distributed-actors/issues/948) for more details.
 
-## Cluster Leadership
+### Cluster Leadership
 
 The cluster has a few operations which must be performed in a consistent fashion, such as moving a joining member to the ``Cluster/MemberStatus/up`` state. Other member status changes such as becoming `joining` or `down` do not require such strict decision-making and are disseminated throughout the cluster even without a leader.
 
@@ -197,7 +197,7 @@ For details, refer to the ``Leadership/LowestReachableMember`` documentation.
 
 You can configure leader election by changing the ``ClusterSystemSettings/autoLeaderElection`` setting while initializing your ``ClusterSystem``.
 
-## Customizing Remote Calls
+### Customizing Remote Calls
 
 Remote calls are at the heart of what makes distributed actors actually distributed.
 
@@ -226,7 +226,7 @@ try await RemoteCall.with(timeout: .seconds(5)) {
 }
 ```
 
-### Remote call errors
+#### Remote call errors
 
 By default, if a remote call results in an error that is `Codable`, the error is returned as-is. Non-`Codable` errors are 
 converted to ``GenericRemoteCallError``.

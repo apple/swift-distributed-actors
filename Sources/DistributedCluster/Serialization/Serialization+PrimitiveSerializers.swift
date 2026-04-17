@@ -73,7 +73,7 @@ internal class IntegerSerializer<Number: FixedWidthInteger>: Serializer<Number> 
     override func deserialize(from buffer: Serialization.Buffer) throws -> Number {
         switch buffer {
         case .data(let data):
-            return Number(bigEndian: data.withUnsafeBytes { $0.load(as: Number.self) })
+            return Number(bigEndian: data.withUnsafeBytes { $0.loadUnaligned(as: Number.self) })
         case .nioByteBuffer(let buffer):
             guard let i = buffer.getInteger(at: 0, endianness: .big, as: Number.self) else {
                 throw SerializationError(.notAbleToDeserialize(hint: "\(buffer) as \(Number.self)"))

@@ -15,6 +15,10 @@
 #ifndef SACT_BACKTRACE_SUPPORT_H
 #define SACT_BACKTRACE_SUPPORT_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Prints a stack backtrace directly to `stderr`.
  * Use only internally, mostly for 
@@ -25,5 +29,9 @@
 void sact_dump_backtrace(void);
 
 int sact_get_backtrace(char*** strs);
+
+#if defined(__cplusplus)
+}  // extern "C"
+#endif
 
 #endif

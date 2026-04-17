@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Atomics
 import CDistributedActorsMailbox
 import Logging
 import Metrics

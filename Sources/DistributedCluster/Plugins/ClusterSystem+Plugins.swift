@@ -15,7 +15,7 @@
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Plugin protocol
 
-public protocol _AnyPlugin {
+public protocol AnyPlugin {
     /// Starts the plugin.
     func start(_ system: ClusterSystem) async throws
 
@@ -24,24 +24,24 @@ public protocol _AnyPlugin {
 }
 
 /// A plugin provides specific features and capabilities (e.g., singleton) to a `ClusterSystem`.
-public protocol _Plugin: _AnyPlugin {
-    typealias Key = _PluginKey<Self>
+public protocol Plugin: AnyPlugin {
+    typealias Key = PluginKey<Self>
 
     /// The plugin's unique identifier
     var key: Key { get }
 }
 
-internal struct BoxedPlugin: _AnyPlugin {
-    private let underlying: _AnyPlugin
+internal struct BoxedPlugin: AnyPlugin {
+    private let underlying: AnyPlugin
 
     let key: AnyPluginKey
 
-    init<P: _Plugin>(_ plugin: P) {
+    init<P: Plugin>(_ plugin: P) {
         self.underlying = plugin
         self.key = AnyPluginKey(plugin.key)
     }
 
-    func unsafeUnwrapAs<P: _Plugin>(_: P.Type) -> P {
+    func unsafeUnwrapAs<P: Plugin>(_: P.Type) -> P {
         guard let unwrapped = self.underlying as? P else {
             fatalError("Type mismatch, expected: [\(String(reflecting: P.self))] got [\(self.underlying)]")
         }
@@ -60,7 +60,7 @@ internal struct BoxedPlugin: _AnyPlugin {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Plugin key
 
-public struct _PluginKey<P: _Plugin>: CustomStringConvertible, ExpressibleByStringLiteral {
+public struct PluginKey<P: Plugin>: CustomStringConvertible, ExpressibleByStringLiteral, Sendable {
     public let plugin: String
     public let sub: String?
 
@@ -81,7 +81,7 @@ public struct _PluginKey<P: _Plugin>: CustomStringConvertible, ExpressibleByStri
         self.sub = sub
     }
 
-    public func makeSub(_ sub: String) -> _PluginKey {
+    public func makeSub(_ sub: String) -> PluginKey {
         precondition(self.sub == nil, "Cannot make a sub plugin key from \(self) (sub MUST be nil)")
         return .init(plugin: self.plugin, sub: sub)
     }
@@ -95,12 +95,12 @@ public struct _PluginKey<P: _Plugin>: CustomStringConvertible, ExpressibleByStri
     }
 }
 
-internal struct AnyPluginKey: Hashable, CustomStringConvertible {
+internal struct AnyPluginKey: Hashable, CustomStringConvertible, Sendable {
     let pluginTypeId: ObjectIdentifier
     let plugin: String
     let sub: String?
 
-    init<P: _Plugin>(_ key: _PluginKey<P>) {
+    init<P: Plugin>(_ key: PluginKey<P>) {
         self.pluginTypeId = ObjectIdentifier(P.self)
         self.plugin = key.plugin
         self.sub = key.sub
@@ -113,4 +113,15 @@ internal struct AnyPluginKey: Hashable, CustomStringConvertible {
             return "AnyPluginKey(\(self.plugin))"
         }
     }
+}
+
+/// Kind of `ClusterSystem` plugin which will be invoked during an actor's `actorReady`
+/// and `resignID` lifecycle hooks.
+///
+/// The ready hook is allowed to modify the ID, e.g. by adding additional metadata to it.
+/// The plugin should carefully manage retaining actors and document if it does have strong references to them,
+/// and how end-users should go about releasing them.
+public protocol ActorLifecyclePlugin: Plugin {
+    func onActorReady<Act: DistributedActor>(_ actor: Act) where Act: DistributedActor, Act.ID == ClusterSystem.ActorID
+    func onResignID(_ id: ClusterSystem.ActorID)
 }

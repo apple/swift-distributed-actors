@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import Dispatch
+import Logging
 import NIO
 
 internal enum Child {

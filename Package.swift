@@ -1,4 +1,4 @@
-// swift-tools-version:5.10
+// swift-tools-version:6.0
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
@@ -36,6 +36,7 @@ var targets: [PackageDescription.Target] = [
             .product(name: "Atomics", package: "swift-atomics"),
             .product(name: "SWIM", package: "swift-cluster-membership"),
             .product(name: "NIO", package: "swift-nio"),
+            .product(name: "NIOPosix", package: "swift-nio"),
             .product(name: "NIOFoundationCompat", package: "swift-nio"),
             .product(name: "NIOSSL", package: "swift-nio-ssl"),
             .product(name: "NIOExtras", package: "swift-nio-extras"),
@@ -45,7 +46,8 @@ var targets: [PackageDescription.Target] = [
             .product(name: "ServiceDiscovery", package: "swift-service-discovery"),
             .product(name: "Backtrace", package: "swift-backtrace"),
             .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
-        ]
+        ],
+        swiftSettings: [.swiftLanguageMode(.v5)]
     ),
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -58,7 +60,8 @@ var targets: [PackageDescription.Target] = [
             "DistributedCluster",
             "DistributedActorsConcurrencyHelpers",
             .product(name: "Atomics", package: "swift-atomics"),
-        ]
+        ],
+        swiftSettings: [.swiftLanguageMode(.v5)]
     ),
 
     // ==== ----------------------------------------------------------------------------------------------------------------
@@ -70,7 +73,8 @@ var targets: [PackageDescription.Target] = [
             "DistributedCluster",
             "DistributedActorsTestKit",
             .product(name: "Atomics", package: "swift-atomics"),
-        ]
+        ],
+        swiftSettings: [.swiftLanguageMode(.v5)]
     ),
 
     .testTarget(
@@ -78,7 +82,8 @@ var targets: [PackageDescription.Target] = [
         dependencies: [
             "DistributedCluster",
             "DistributedActorsTestKit",
-        ]
+        ],
+        swiftSettings: [.swiftLanguageMode(.v5)]
     ),
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -91,7 +96,12 @@ var targets: [PackageDescription.Target] = [
             intent: .custom(verb: "multi-node", description: "Run MultiNodeTestKit based tests across multiple processes or physical compute nodes")
             // permissions: needs full network access
         ),
-        dependencies: []
+        dependencies: [
+            /// NOTE: Usually a Swift package plugin would declare any internal executable targets it depends on here
+            ///       and make use of them from the context passed in by SwiftPM. However, this causes issues when
+            ///       running the API breakage checker on this package, for unrelated reasons. So this command plugin is
+            ///       building the package itself as part of its run.
+        ]
     ),
     .target(
         name: "MultiNodeTestKit",
@@ -102,7 +112,8 @@ var targets: [PackageDescription.Target] = [
             .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
             .product(name: "Atomics", package: "swift-atomics"),
             .product(name: "OrderedCollections", package: "swift-collections"),
-        ]
+        ],
+        swiftSettings: [.swiftLanguageMode(.v5)]
     ),
     .executableTarget(
         name: "MultiNodeTestKitRunner",
@@ -113,9 +124,17 @@ var targets: [PackageDescription.Target] = [
             // Dependencies:
             "MultiNodeTestKit",
             .product(name: "ArgumentParser", package: "swift-argument-parser"),
-        ]
+        ],
+        swiftSettings: [.swiftLanguageMode(.v5)]
     ),
-
+    .executableTarget(
+        name: "swift-clusterd",
+        dependencies: [
+            "DistributedCluster",
+            .product(name: "ArgumentParser", package: "swift-argument-parser"),
+        ],
+        path: "Sources/Clusterd"
+    ),
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Multi Node Tests
 
@@ -125,7 +144,8 @@ var targets: [PackageDescription.Target] = [
         dependencies: [
             "MultiNodeTestKit"
         ],
-        path: "MultiNodeTests/DistributedActorsMultiNodeTests"
+        path: "MultiNodeTests/DistributedActorsMultiNodeTests",
+        swiftSettings: [.swiftLanguageMode(.v5)]
     ),
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -137,7 +157,8 @@ var targets: [PackageDescription.Target] = [
         dependencies: [
             "DistributedCluster"
         ],
-        path: "IntegrationTests/tests_01_cluster/it_Clustered_swim_suspension_reachability"
+        path: "IntegrationTests/tests_01_cluster/it_Clustered_swim_suspension_reachability",
+        swiftSettings: [.swiftLanguageMode(.v5)]
     ),
 
     // ==== ----------------------------------------------------------------------------------------------------------------
@@ -149,7 +170,8 @@ var targets: [PackageDescription.Target] = [
 
     .target(
         name: "CDistributedActorsMailbox",
-        dependencies: []
+        dependencies: [],
+        swiftSettings: [.swiftLanguageMode(.v5)]
     ),
 
     .target(
@@ -157,7 +179,8 @@ var targets: [PackageDescription.Target] = [
         dependencies: [],
         exclude: [
             "README.md"
-        ]
+        ],
+        swiftSettings: [.swiftLanguageMode(.v5)]
     ),
 ]
 
@@ -180,7 +203,7 @@ var dependencies: [Package.Dependency] = [
 
     // ~~~ Swift libraries ~~~
     .package(url: "https://github.com/apple/swift-async-algorithms", from: "1.0.0-beta"),
-    .package(url: "https://github.com/apple/swift-collections", from: "1.0.5"),
+    .package(url: "https://github.com/apple/swift-collections", from: "1.1.0"),
 
     // ~~~ Observability ~~~
     .package(url: "https://github.com/apple/swift-log", from: "1.0.0"),
@@ -227,10 +250,10 @@ platforms = nil
 #else
 platforms = [
     // we require the 'distributed actor' language and runtime feature:
-    .iOS(.v16),
-    .macOS(.v14),
-    .tvOS(.v16),
-    .watchOS(.v9),
+    .iOS(.v18),
+    .macOS(.v15),
+    .tvOS(.v18),
+    .watchOS(.v11),
 ]
 #endif
 
@@ -257,11 +280,16 @@ var package = Package(
 
 // ---    STANDARD CROSS-REPO SETTINGS DO NOT EDIT   --- //
 for target in package.targets {
-    if target.type != .plugin {
+    switch target.type {
+    case .regular, .test, .executable:
         var settings = target.swiftSettings ?? []
         // https://github.com/swiftlang/swift-evolution/blob/main/proposals/0444-member-import-visibility.md
         settings.append(.enableUpcomingFeature("MemberImportVisibility"))
         target.swiftSettings = settings
+    case .macro, .plugin, .system, .binary:
+        ()  // not applicable
+    @unknown default:
+        ()  // we don't know what to do here, do nothing
     }
 }
 // --- END: STANDARD CROSS-REPO SETTINGS DO NOT EDIT --- //

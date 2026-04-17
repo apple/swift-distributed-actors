@@ -13,6 +13,8 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedCluster
+import Logging
+import SWIM
 
 print("Getting args")
 

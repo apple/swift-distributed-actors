@@ -12,6 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
+import NIOCore
+import NIOPosix
+
 /// A `_Behavior` is what executes when an `Actor` handles messages.
 ///
 /// The most important behavior is `_Behavior.receive` since it allows handling incoming messages with a simple block.
@@ -128,10 +131,11 @@ extension _Behavior {
     func receiveSignalAsync(
         context: _ActorContext<Message>,
         signal: _Signal,
-        handleSignal: @escaping @Sendable (
-            _ActorContext<Message>,
-            _Signal
-        ) async throws -> _Behavior<Message>
+        handleSignal:
+            @escaping @Sendable (
+                _ActorContext<Message>,
+                _Signal
+            ) async throws -> _Behavior<Message>
     ) -> _Behavior<Message> {
         .setup { context in
             receiveSignalAsync0(handleSignal, context: context, signal: signal)

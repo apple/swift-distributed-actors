@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import CoreMetrics
 import DistributedActorsConcurrencyHelpers
 import Logging
 import NIO

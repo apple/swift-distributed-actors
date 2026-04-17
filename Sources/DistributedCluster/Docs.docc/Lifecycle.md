@@ -9,7 +9,7 @@ Monitoring distributed actor lifecycles enables you to react to their terminatio
 This is crucial for building robust actor systems which are able to automatically remote e.g. remote worker references as they are confirmed to have terminated.
 This can happen if the remote actor is just deinitialized, or if the remote host is determined to be ``Cluster/MemberStatus/down``.
 
-## Lifecycle Watch
+### Lifecycle Watch
 
 A distributed actor is able to monitor other distributed actors by making use of the ``LifecycleWatch`` protocol.
 

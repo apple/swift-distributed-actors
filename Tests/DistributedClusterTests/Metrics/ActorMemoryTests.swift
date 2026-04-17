@@ -24,9 +24,9 @@ final class ActorMemoryTests: XCTestCase {
     // TODO: we could use malloc hooking to get an idea about this in allocation tests; more interesting since over time as well based on ops
 
     func test_osx_actorShell_instanceSize() {
-        #if os(OSX)
-        class_getInstanceSize(_ActorShell<Int>.self).shouldEqual(624)
-        class_getInstanceSize(_ActorShell<String>.self).shouldEqual(624)
+        #if os(macOS)
+        class_getInstanceSize(_ActorShell<Int>.self).shouldEqual(576)
+        class_getInstanceSize(_ActorShell<String>.self).shouldEqual(576)
         #else
         print("Skipping test_osx_actorShell_instanceSize as requires Objective-C runtime")
         #endif

@@ -15,6 +15,8 @@
 import Distributed
 import Logging
 
+import struct Foundation.Date
+
 @testable import DistributedCluster
 
 #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
@@ -129,18 +131,7 @@ struct SamplePrettyLogHandler: LogHandler {
     }
 
     private func timestamp() -> String {
-        var buffer = [Int8](repeating: 0, count: 255)
-        var timestamp = time(nil)
-        let localTime = localtime(&timestamp)
-        // This format is pleasant to read in local sample apps:
-        strftime(&buffer, buffer.count, "%H:%M:%S", localTime)
-        // The usual full format is:
-        // strftime(&buffer, buffer.count, "%Y-%m-%dT%H:%M:%S%z", localTime)
-        return buffer.withUnsafeBufferPointer {
-            $0.withMemoryRebound(to: CChar.self) {
-                String(cString: $0.baseAddress!)
-            }
-        }
+        Date.now.formatted(date: .omitted, time: .standard)
     }
 }
 

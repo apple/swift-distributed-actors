@@ -12,6 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Logging
+
 /// Properties configuring supervision for given actor.
 internal struct _SupervisionProps {
     // internal var supervisionMappings: [ErrorTypeIdentifier: _SupervisionStrategy]

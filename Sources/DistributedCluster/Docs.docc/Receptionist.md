@@ -7,7 +7,7 @@ and communicate with them.
     fishy-docs:enable
 }
 
-## Receptionist
+### Receptionist
 
 Discovering actors is an important aspect of distributed programming, as it is _the_ primary way we can discover actors on other nodes,
 and communicate with them.
@@ -55,7 +55,7 @@ Other actors which discover the actor, and want to be informed once the actor ha
 > Warning: `DistributedReception.Key`s are likely to be collapsed with ``ClusterSystem/ActorID/Metadata-swift.struct`` during the beta releases.
 > See [Make use of ActorTag rather than separate keys infra for reception #950](https://github.com/apple/swift-distributed-actors/issues/950)
 
-### Receptionist: Listings
+#### Receptionist: Listings
 
 The opposite of using a receptionist is obtaining a ``DistributedReceptionist/listing(of:file:line:)`` of actors registered with a specific key.
 
@@ -101,7 +101,7 @@ distributed actor Boss: LifecycleWatch {
 }
 ```
 
-### Checking-out from receptionist listings
+#### Checking-out from receptionist listings
 
 Checking out of the receptionist is performed automatically when a previously checked-in actor is terminated,
 be it by the node that it was located on terminating, or the actor itself being deallocated.

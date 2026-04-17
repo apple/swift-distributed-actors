@@ -11,7 +11,7 @@ Configuring security aspects of your cluster system.
 Securing your cluster system mostly centers around two concepts: making sure you trust your peers and systems which are able to call into the cluster,
 and ensuring that messages exchanged are of trusted types.
 
-## Transport Security: TLS
+### Transport Security: TLS
 
 > Note: **TODO:** explain configuring TLS
 
@@ -48,7 +48,7 @@ let tlsExampleSystem = await ClusterSystem("tls-example") { settings in
 }
 ```
 
-## Message Security
+### Message Security
 
 The other layer of security is about messages which are allowed to be sent to actors.
 
@@ -56,10 +56,10 @@ In general, you can audit your distributed API surface by searching your codebas
 
 The cluster also requires all types invokved in remote calls to conform to `Codable` and will utilize `Encoder` and `Decoder` types to deserialize them. As such, the typical attack of "accidentally deserialize an arbitrary sub-class of a type" is prevented by the `Codable` type itself.
 
-### Trusting message types
+#### Trusting message types
 
 
-### Trusting error types
+#### Trusting error types
 
 Error types may be transported back to a remote caller if they are trusted.
 
@@ -77,8 +77,7 @@ struct GreeterCodableError: Error, Codable {}
 struct AnotherGreeterCodableError: Error, Codable {}
 ```
 
-
-### Topics
+## Topics
 
 - ``Serialization/Settings``
 - ``ClusterSystemSettings/tls``

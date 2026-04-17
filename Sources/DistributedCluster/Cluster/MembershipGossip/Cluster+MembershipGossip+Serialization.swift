@@ -12,6 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Logging
+
 extension Cluster.MembershipGossip: _ProtobufRepresentable {
     typealias ProtobufRepresentation = _ProtoClusterMembershipGossip
 
