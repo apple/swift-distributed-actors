@@ -140,7 +140,7 @@ public enum _Signals {
     ///         you may choose to handle all `Terminated` signals the same way.
     ///
     /// - SeeAlso: `Terminated` which is sent when a watched actor terminates.
-    final class _ChildTerminated: Terminated {
+    final class _ChildTerminated: Terminated, @unchecked Sendable {
         /// Filled with the error that caused the child actor to terminate.
         /// This kind of information is only known to the parent, which may decide to perform
         /// some action based on the error, i.e. proactively stop other children or spawn another worker
