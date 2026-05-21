@@ -484,19 +484,19 @@ final class SWIMActorClusteredTests: ClusteredActorSystemsXCTestCase {
 }
 
 class TestTimeSource {
-    private var instant: ContinuousClock.Instant
+    private var currentTime: ContinuousClock.Instant
 
     /// starting from 1 to ensure .distantPast is already expired
     init(currentTime: ContinuousClock.Instant = (.now - .nanoseconds(1))) {
-        self.instant = currentTime
+        self.currentTime = currentTime
     }
 
     @Sendable
     func now() -> ContinuousClock.Instant {
-        self.instant
+        self.currentTime
     }
 
     func tick(by duration: Duration = .nanoseconds(100)) {
-        self.instant += duration
+        self.currentTime += duration
     }
 }
