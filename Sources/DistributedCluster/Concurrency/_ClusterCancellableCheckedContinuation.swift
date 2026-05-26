@@ -46,7 +46,7 @@ internal final class ClusterCancellableCheckedContinuation<Success>: Hashable, @
     /// Register a cancellation handler, or call it immediately if the continuation was already cancelled.
     @Sendable
     func onCancel(handler: @Sendable @escaping (ClusterCancellableCheckedContinuation<Success>) -> Void) {
-        var alreadyCancelled: Bool = self.state.withLockedValue { state in
+        let alreadyCancelled: Bool = self.state.withLockedValue { state in
             if state.cancelled {
                 return true
             }
