@@ -76,7 +76,7 @@ jobs:
     with:
       runner_pool: nightly
       build_scheme: swift-distributed-actors-Package
-      swift_test_enabled: false  # tests often hang
+      swift_test_enabled: false  # tests often stop and never return
 
 # Removed for now as static sdk builds are not working
 # https://github.com/apple/swift-distributed-actors/issues/1229
