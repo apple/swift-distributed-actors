@@ -206,7 +206,7 @@ enum NodeDeathWatcherShell {
                     context.log.trace(
                         "Node down: \(change)!",
                         metadata: [
-                            "node": "\(reflecting: change.node)"
+                            "node": .string("\(reflecting: change.node)")
                         ]
                     )
                     instance.handleAddressDown(change)
@@ -214,7 +214,7 @@ enum NodeDeathWatcherShell {
                     context.log.trace(
                         "Node change: \(change)!",
                         metadata: [
-                            "node": "\(reflecting: change.node)"
+                            "node": .string("\(reflecting: change.node)")
                         ]
                     )
                     instance.onMembershipChanged(change)

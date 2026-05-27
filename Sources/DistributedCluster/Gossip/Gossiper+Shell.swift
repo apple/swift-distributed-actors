@@ -153,7 +153,7 @@ internal final class GossipShell<Gossip: Codable, Acknowledgement: Codable> {
             "Update (locally) gossip payload [\(identifier.gossipIdentifier)]",
             metadata: [
                 "gossip/identifier": "\(identifier.gossipIdentifier)",
-                "gossip/payload": "\(pretty: payload)",
+                "gossip/payload": .string("\(pretty: payload)"),
             ]
         )
         logic.receiveLocalGossipUpdate(payload)
