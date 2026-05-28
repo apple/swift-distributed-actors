@@ -144,10 +144,12 @@ internal distributed actor DowningStrategyShell {
         for member in members {
             self.log.info(
                 "Decide to [.down] member [\(member)]!",
-                metadata: self.metadata([
-                    "downing/node": "\(reflecting: member.node)",
-                    "member/status/previous": "\(member.status)",
-                ])
+                metadata: self.metadata(
+                    [
+                        "downing/node": .string("\(reflecting: member.node)"),
+                        "member/status/previous": "\(member.status)",
+                    ]
+                )
             )
             self.actorSystem.cluster.down(member: member)
         }
