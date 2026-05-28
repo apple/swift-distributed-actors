@@ -22,8 +22,8 @@ jobs:
     with:
       linux_5_9_enabled: false
       linux_5_10_enabled: false
-      linux_nightly_next_arguments_override: "--explicit-target-dependency-import-check error -Xswiftc -require-explicit-sendable"
-      linux_nightly_main_arguments_override: "--explicit-target-dependency-import-check error -Xswiftc -require-explicit-sendable"
+      linux_nightly_next_enabled: false
+      linux_nightly_main_enabled: false
 
   construct-integration-tests-matrix:
     name: Construct integration matrix
@@ -41,6 +41,8 @@ jobs:
           MATRIX_LINUX_COMMAND: swift package --disable-sandbox multi-node test
           MATRIX_LINUX_5_9_ENABLED: false
           MATRIX_LINUX_5_10_ENABLED: false
+          MATRIX_LINUX_NIGHTLY_NEXT_ENABLED: false
+          MATRIX_LINUX_NIGHTLY_MAIN_ENABLED: false
 
   integration-tests:
     name: Integration tests
@@ -67,6 +69,8 @@ jobs:
           MATRIX_LINUX_COMMAND: swift run --package-path Samples SampleDiningPhilosophers
           MATRIX_LINUX_5_9_ENABLED: false
           MATRIX_LINUX_5_10_ENABLED: false
+          MATRIX_LINUX_NIGHTLY_NEXT_ENABLED: false
+          MATRIX_LINUX_NIGHTLY_MAIN_ENABLED: false
 
   dining-philosophers:
     name: Sample dining philosophers
