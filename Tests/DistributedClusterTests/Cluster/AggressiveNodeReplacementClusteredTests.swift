@@ -46,7 +46,7 @@ final class AggressiveNodeReplacementClusteredTests: ClusteredActorSystemsXCTest
                 settings.endpoint.port = main.cluster.endpoint.port - 100  // we want the this node to be the leader -- lowest address
             }
 
-            _ = await ServiceActor(actorSystem: second)
+            let service = await ServiceActor(actorSystem: second)
 
             main.log.notice("Joining [\(second.cluster.endpoint)] to stable main: [\(main.cluster.endpoint)]")
 
