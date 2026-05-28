@@ -22,7 +22,7 @@ import XCTest
 
 final class ProtobufRoundTripTests: SingleClusterSystemXCTestCase {
     func check<Value: _ProtobufRepresentable & Equatable>(_ value: Value) throws {
-        let context = Serialization.Context(log: self.system.log, system: self.system, allocator: self.system.serialization.allocator)
+        let context = try Serialization.Context(log: self.system.log, system: self.system, allocator: self.system.serialization.allocator)
         let proto = try value.toProto(context: context)
         let back = try Value(fromProto: proto, context: context)
         back.shouldEqual(value)

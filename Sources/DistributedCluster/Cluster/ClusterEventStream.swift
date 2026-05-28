@@ -23,7 +23,7 @@ import Logging
 public struct ClusterEventStream: AsyncSequence {
     public typealias Element = Cluster.Event
 
-    private let actor: ClusterEventStreamActor?
+    private var actor: ClusterEventStreamActor?
 
     internal init(_ system: ClusterSystem, customName: String? = nil) {
         let props = ClusterEventStreamActor.props(customName: customName)
@@ -34,6 +34,10 @@ public struct ClusterEventStream: AsyncSequence {
 
     // For testing only
     internal init() {
+        self.actor = nil
+    }
+
+    internal mutating func clean() {
         self.actor = nil
     }
 

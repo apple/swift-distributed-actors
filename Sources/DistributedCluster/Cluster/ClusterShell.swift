@@ -120,7 +120,7 @@ internal class ClusterShell {
 
         // 2) Ensure the failure detector knows about this node
         Task {
-            await self._swimShell.whenLocal { __secretlyKnownToBeLocal in  // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
+            await self._swimShell?.whenLocal { __secretlyKnownToBeLocal in  // TODO(distributed): rename once https://github.com/apple/swift/pull/42098 is implemented
                 __secretlyKnownToBeLocal.monitor(node: associated.handshake.remoteNode)
             }
         }
@@ -154,7 +154,7 @@ internal class ClusterShell {
         // it's gossip will also propagate the information through the cluster
         traceLog_Remote(system.cluster.node, "Finish terminate association [\(remoteNode)]: Notifying SWIM, .confirmDead")
         system.log.warning("Confirm .dead to underlying SWIM, node: \(reflecting: remoteNode)")
-        self._swimShell.confirmDead(node: remoteNode)
+        self._swimShell?.confirmDead(node: remoteNode)
 
         // it is important that we first check the contains; as otherwise we'd re-add a .down member for what was already removed (!)
         if state.membership.contains(remoteNode) {
@@ -245,9 +245,9 @@ internal class ClusterShell {
         return pool
     }
 
-    internal private(set) var _swimShell: SWIMActor!
+    internal private(set) var _swimShell: SWIMActor?
 
-    private var clusterEvents: ClusterEventStream!
+    private var clusterEvents: ClusterEventStream?
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Cluster Shell, reference used for issuing commands to the cluster
@@ -365,6 +365,10 @@ internal class ClusterShell {
         .init()
         .supervision(strategy: .escalate)  // always escalate failures, if this actor fails we're in big trouble -> terminate the system
         ._asWellKnown
+
+    deinit {
+        self.clusterEvents?.clean()
+    }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -433,10 +437,14 @@ extension ClusterShell {
                     }
                 )
 
+                guard let events = self.clusterEvents else {
+                    throw ClusterSystemError(.shuttingDown(""))
+                }
+
                 var state = ClusterShellState(
                     settings: self.settings,
                     channel: chan,
-                    events: self.clusterEvents,
+                    events: events,
                     gossiperControl: gossiperControl,
                     log: context.log
                 )
@@ -456,7 +464,7 @@ extension ClusterShell {
     }
 
     private func publish(_ event: Cluster.Event) {
-        self.publish(event, to: self.clusterEvents)
+        self.clusterEvents.map { self.publish(event, to: $0) }
     }
 
     private func publish(_ event: Cluster.Event, to eventStream: ClusterEventStream) {
@@ -639,7 +647,7 @@ extension ClusterShell {
 
             Task { [eventsToPublish] in
                 for event in eventsToPublish {
-                    await self.clusterEvents.publish(event)
+                    await self.clusterEvents?.publish(event)
                 }
             }
 
@@ -669,7 +677,7 @@ extension ClusterShell {
 
     func tryConfirmDeadToSWIM(_ context: _ActorContext<Message>, _ state: ClusterShellState, change: Cluster.MembershipChange) {
         if change.status.isAtLeast(.down) {
-            self._swimShell.confirmDead(node: change.member.node)
+            self._swimShell?.confirmDead(node: change.member.node)
         }
     }
 
@@ -1326,7 +1334,7 @@ extension ClusterShell {
         }
 
         // whenever we down a node we must ensure to confirm it to swim, so it won't keep monitoring it forever needlessly
-        self._swimShell.confirmDead(node: memberToDown.node)
+        self._swimShell?.confirmDead(node: memberToDown.node)
 
         if memberToDown.node == state.selfNode {
             // ==== ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
