@@ -483,20 +483,20 @@ final class SWIMActorClusteredTests: ClusteredActorSystemsXCTestCase {
     }
 }
 
-final class TestTimeSource: @unchecked Sendable {
-    let baseInstant: ContinuousClock.Instant = .now
-    let currentTicks: UnsafeAtomic<UInt64>
+class TestTimeSource {
+    private var currentTime: ContinuousClock.Instant
 
     /// starting from 1 to ensure .distantPast is already expired
-    init(currentTicks: UInt64 = 1) {
-        self.currentTicks = .create(currentTicks)
+    init(currentTime: ContinuousClock.Instant = (.now - .nanoseconds(1))) {
+        self.currentTime = currentTime
     }
 
+    @Sendable
     func now() -> ContinuousClock.Instant {
-        self.baseInstant.advanced(by: .nanoseconds(Int(self.currentTicks.load(ordering: .relaxed))))
+        self.currentTime
     }
 
-    func tick() {
-        _ = self.currentTicks.loadThenWrappingIncrement(by: 100, ordering: .relaxed)
+    func tick(by duration: Duration = .nanoseconds(100)) {
+        self.currentTime += duration
     }
 }
