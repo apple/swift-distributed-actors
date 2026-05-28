@@ -23,7 +23,7 @@ extension Never: _NotActuallyCodableMessage {}
 // MARK: Common utility messages
 
 // FIXME: we should not add Codable conformance onto a stdlib type, but rather fix this in stdlib
-extension Result: Codable where Success: Codable, Failure: Codable {
+extension Result: @retroactive Codable where Success: Codable, Failure: Codable {
     enum DiscriminatorKeys: String, Codable {
         case success
         case failure

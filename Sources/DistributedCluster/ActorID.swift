@@ -459,7 +459,7 @@ extension ActorID: Comparable {
     }
 }
 
-extension Optional: Comparable where Wrapped == Cluster.Node {
+extension Optional: @retroactive Comparable where Wrapped == Cluster.Node {
     public static func < (lhs: Cluster.Node?, rhs: Cluster.Node?) -> Bool {
         switch (lhs, rhs) {
         case (.some, .none):

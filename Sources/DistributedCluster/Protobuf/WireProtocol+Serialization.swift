@@ -167,7 +167,7 @@ extension _ProtoHandshakeOffer {
 
     init(serializedData data: Data) throws {
         var proto = _ProtoHandshakeOffer()
-        try proto.merge(serializedData: data)
+        try proto.merge(serializedBytes: data)
 
         guard proto.hasVersion else {
             throw SerializationError(.missingField("version", type: String(reflecting: Wire.HandshakeOffer.self)))

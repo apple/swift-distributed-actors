@@ -55,7 +55,7 @@ extension _ProtobufRepresentable {
         let container = try decoder.singleValueContainer()
 
         let data: Data = try container.decode(Data.self)
-        let proto = try ProtobufRepresentation(serializedData: data)
+        let proto = try ProtobufRepresentation(serializedBytes: data)
 
         try self.init(fromProto: proto, context: context)
     }
@@ -100,7 +100,7 @@ extension _InternalProtobufRepresentable {
         let container = try decoder.singleValueContainer()
 
         let data: Data = try container.decode(Data.self)
-        let proto = try ProtobufRepresentation(serializedData: data)
+        let proto = try ProtobufRepresentation(serializedBytes: data)
 
         try self.init(fromProto: proto, context: context)
     }
@@ -124,7 +124,7 @@ extension _InternalProtobufRepresentable {
 
 extension _InternalProtobufRepresentable {
     init(context: Serialization.Context, from buffer: Serialization.Buffer, using manifest: Serialization.Manifest) throws {
-        let proto = try ProtobufRepresentation(serializedData: buffer.readData())
+        let proto = try ProtobufRepresentation(serializedBytes: buffer.readData())
         try self.init(fromProto: proto, context: context)
     }
 
@@ -135,7 +135,7 @@ extension _InternalProtobufRepresentable {
 
 extension _ProtobufRepresentable {
     public init(context: Serialization.Context, from buffer: Serialization.Buffer, using manifest: Serialization.Manifest) throws {
-        let proto = try ProtobufRepresentation(serializedData: buffer.readData())
+        let proto = try ProtobufRepresentation(serializedBytes: buffer.readData())
         try self.init(fromProto: proto, context: context)
     }
 

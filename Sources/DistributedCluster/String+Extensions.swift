@@ -210,5 +210,3 @@ extension String.StringInterpolation {
         self.appendLiteral("[\(ref.id.path)]")
     }
 }
-
-

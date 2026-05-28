@@ -65,15 +65,15 @@ final class MultiNodeTestPlugin: CommandPlugin {
 
         let multiNodeRunner = buildResult.builtArtifacts
             .filter { $0.kind == .executable }
-            .first { $0.path.lastComponent.starts(with: toolName) }
+            .first { $0.url.lastPathComponent.starts(with: toolName) }
         guard let multiNodeRunner = multiNodeRunner else {
             throw MultiNodeTestPluginError(message: "Failed")
         }
 
-        log("Detected multi-node test runner: \(multiNodeRunner.path.lastComponent)")
+        log("Detected multi-node test runner: \(multiNodeRunner.url.lastPathComponent)")
 
         let process = Process()
-        process.binaryPath = multiNodeRunner.path.string
+        process.binaryPath = multiNodeRunner.url.path
         process.arguments = arguments
 
         do {

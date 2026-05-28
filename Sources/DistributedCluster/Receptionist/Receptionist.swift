@@ -36,7 +36,7 @@ public struct Receptionist {
 
     /// INTERNAL API
     /// When sent to receptionist will register the specified `_ActorRef` under the given `_Reception.Key`
-    public class Register<Guest: _ReceptionistGuest>: _AnyRegister {
+    public class Register<Guest: _ReceptionistGuest>: _AnyRegister, @unchecked Sendable {
         public let guest: Guest
         public let key: _Reception.Key<Guest>
         public let replyTo: _ActorRef<_Reception.Registered<Guest>>?
@@ -71,7 +71,7 @@ public struct Receptionist {
 
     /// INTERNAL API
     /// Used to lookup `_ActorRef`s for the given `_Reception.Key`
-    public class Lookup<Guest: _ReceptionistGuest>: _Lookup, ListingRequest, CustomStringConvertible {
+    public class Lookup<Guest: _ReceptionistGuest>: _Lookup, ListingRequest, CustomStringConvertible, @unchecked Sendable {
         public let key: _Reception.Key<Guest>
         public let subscriber: _ActorRef<_Reception.Listing<Guest>>
 
@@ -96,7 +96,7 @@ public struct Receptionist {
 
     /// INTERNAL API
     /// Subscribe to periodic updates of the specified key
-    public class Subscribe<Guest: _ReceptionistGuest>: _Subscribe, ListingRequest, CustomStringConvertible {
+    public class Subscribe<Guest: _ReceptionistGuest>: _Subscribe, ListingRequest, CustomStringConvertible, @unchecked Sendable {
         public let key: _Reception.Key<Guest>
         public let subscriber: _ActorRef<_Reception.Listing<Guest>>
 
@@ -367,7 +367,7 @@ public class _ReceptionistMessage: Codable, @unchecked Sendable {}
 internal typealias FullyQualifiedTypeName = String
 
 /// INTERNAL API
-public class _AnyRegister: _ReceptionistMessage, _NotActuallyCodableMessage, CustomStringConvertible {
+public class _AnyRegister: _ReceptionistMessage, _NotActuallyCodableMessage, CustomStringConvertible, @unchecked Sendable {
     var _addressableActorRef: _AddressableActorRef { _undefined() }
     var _key: AnyReceptionKey { _undefined() }
 
@@ -380,7 +380,7 @@ public class _AnyRegister: _ReceptionistMessage, _NotActuallyCodableMessage, Cus
     }
 }
 
-public class _Lookup: _ReceptionistMessage, _NotActuallyCodableMessage {
+public class _Lookup: _ReceptionistMessage, _NotActuallyCodableMessage, @unchecked Sendable {
     let _key: AnyReceptionKey
 
     init(_key: AnyReceptionKey) {
@@ -486,7 +486,7 @@ public struct AnyReceptionKey: ReceptionKeyProtocol, Sendable, Codable, Hashable
     }
 }
 
-public class _Subscribe: _ReceptionistMessage, _NotActuallyCodableMessage {
+public class _Subscribe: _ReceptionistMessage, _NotActuallyCodableMessage, @unchecked Sendable {
     var _key: AnyReceptionKey {
         fatalErrorBacktrace("failed \(#function)")
     }
@@ -546,7 +546,7 @@ internal protocol ListingRequest {
     func replyWith(_ refs: Set<_AddressableActorRef>)
 }
 
-internal final class _ReceptionistDelayedListingFlushTick: _ReceptionistMessage, _NotActuallyCodableMessage {
+internal final class _ReceptionistDelayedListingFlushTick: _ReceptionistMessage, _NotActuallyCodableMessage, @unchecked Sendable {
     let key: AnyReceptionKey
 
     init(key: AnyReceptionKey) {

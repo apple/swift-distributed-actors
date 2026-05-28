@@ -19,7 +19,7 @@ import SWIM
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Serialization
 
-extension SWIM.Status: _ProtobufRepresentable {
+extension SWIM.Status: @retroactive Decodable, @retroactive Encodable, _ProtobufRepresentable {
     public typealias ProtobufRepresentation = _ProtoSWIMStatus
 
     public func toProto(context: Serialization.Context) throws -> _ProtoSWIMStatus {
@@ -62,7 +62,7 @@ extension SWIM.Status: _ProtobufRepresentable {
     }
 }
 
-extension SWIM.GossipPayload: _ProtobufRepresentable {
+extension SWIM.GossipPayload: @retroactive Decodable, @retroactive Encodable, _ProtobufRepresentable {
     public typealias ProtobufRepresentation = _ProtoSWIMGossipPayload
 
     public func toProto(context: Serialization.Context) throws -> _ProtoSWIMGossipPayload {
@@ -89,7 +89,7 @@ extension SWIM.GossipPayload: _ProtobufRepresentable {
     }
 }
 
-extension SWIM.Member: _ProtobufRepresentable {
+extension SWIM.Member: @retroactive Decodable, @retroactive Encodable, _ProtobufRepresentable {
     public typealias ProtobufRepresentation = _ProtoSWIMMember
 
     public func toProto(context: Serialization.Context) throws -> _ProtoSWIMMember {
@@ -113,7 +113,7 @@ extension SWIM.Member: _ProtobufRepresentable {
     }
 }
 
-extension SWIM.PingResponse: _ProtobufRepresentable {
+extension SWIM.PingResponse: @retroactive Decodable, @retroactive Encodable, _ProtobufRepresentable {
     public typealias ProtobufRepresentation = _ProtoSWIMPingResponse
 
     public func toProto(context: Serialization.Context) throws -> _ProtoSWIMPingResponse {
@@ -167,7 +167,7 @@ extension SWIM.PingResponse: _ProtobufRepresentable {
     }
 }
 
-extension ClusterMembership.Node: _ProtobufRepresentable {
+extension ClusterMembership.Node: @retroactive Decodable, @retroactive Encodable, _ProtobufRepresentable {
     public typealias ProtobufRepresentation = _ProtoClusterNode
 
     public func toProto(context: Serialization.Context) throws -> ProtobufRepresentation {

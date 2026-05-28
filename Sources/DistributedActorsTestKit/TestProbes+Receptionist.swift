@@ -34,7 +34,7 @@ extension ActorTestProbe where Message == _Reception.Listing<_ActorRef<String>> 
         do {
             let listing = try self.fishForMessages(within: timeout, file: file, line: line) {
                 if verbose {
-                    pinfo("Received listing: \($0.refs.count)", file: file, line: line)
+                    pinfo("Received listing: \($0.refs.count)", file: (file), line: line)
                 }
 
                 if $0.refs.count == expected.count { return .catchComplete } else { return .ignore }

@@ -260,7 +260,7 @@ internal distributed actor ClusterSingletonBoss<Act: ClusterSingleton>: ClusterS
 
         if !buffer.isEmpty {
             self.log.debug("Flushing \(buffer.count) remote calls to [\(Act.self)] on [\(singleton.id.node)]", metadata: self.metadata())
-            while let (callID, continuation) = self.buffer.take() {  // FIXME: the callIDs are not used in the actual call making but could be for better consistency
+            while let (_, continuation) = self.buffer.take() {  // FIXME: the callIDs are not used in the actual call making but could be for better consistency
                 continuation.resume(returning: singleton)
             }
         }
@@ -567,7 +567,7 @@ struct ClusterSingletonRemoteCallInterceptor<Singleton: ClusterSingleton>: Remot
 
         let invocation = invocation  // can't capture inout param
         let result = try await self.singletonBoss.whenLocal { __secretlyKnownToBeLocal in  // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
-            try await __secretlyKnownToBeLocal.forwardOrStashRemoteCall(target: target, invocation: invocation, throwing: throwing, returning: returning)
+            try await __secretlyKnownToBeLocal.forwardOrStashRemoteCall(target: target, invocation: invocation, throwing: Err.self, returning: Res.self)
         }
 
         guard let result = result else {
