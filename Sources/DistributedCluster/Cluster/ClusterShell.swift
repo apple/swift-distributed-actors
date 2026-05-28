@@ -164,7 +164,7 @@ internal class ClusterShell {
                 state.log.trace(
                     "Terminate association with \(reflecting: remoteNode), yet node not in membership already?",
                     metadata: [
-                        "cluster/membership": "\(pretty: state.membership)"
+                        "cluster/membership": .string("\(pretty: state.membership)")
                     ]
                 )
             }  // else: Note that we CANNOT remove() just yet, as we only want to do this when all nodes have seen the down/leaving
@@ -616,9 +616,9 @@ extension ClusterShell {
                             Logger.MetadataValue.stringConvertible($0)
                         }
                     ),
-                    "gossip/incoming": "\(pretty: gossip)",
-                    "gossip/before": "\(pretty: beforeGossipMerge)",
-                    "gossip/now": "\(pretty: state.latestGossip)",
+                    "gossip/incoming": .string("\(pretty: gossip)"),
+                    "gossip/before": .string("\(pretty: beforeGossipMerge)"),
+                    "gossip/now": .string("\(pretty: state.latestGossip)"),
                 ]
             )
 
@@ -880,7 +880,7 @@ extension ClusterShell {
                     state.log.trace(
                         "Associated with: \(reflecting: handshakeCompleted.remoteNode)",
                         metadata: [
-                            "membership/change": "\(optional: directive.membershipChange)",
+                            "membership/change": .string("\(optional: directive.membershipChange)"),
                             "membership": "\(state.membership)",
                         ]
                     )
@@ -888,7 +888,7 @@ extension ClusterShell {
                     state.log.warning(
                         "Error while trying to complete association with: \(reflecting: handshakeCompleted.remoteNode), error: \(error)",
                         metadata: [
-                            "membership/change": "\(optional: directive.membershipChange)",
+                            "membership/change": .string("\(optional: directive.membershipChange)"),
                             "membership": "\(state.membership)",
                             "association/error": "\(error)",
                         ]
@@ -1059,7 +1059,7 @@ extension ClusterShell {
             state.log.trace(
                 "Associated with: \(reflecting: handshakeCompleted.remoteNode)",
                 metadata: [
-                    "membership/change": "\(optional: directive.membershipChange)",
+                    "membership/change": .string("\(optional: directive.membershipChange)"),
                     "membership": "\(state.membership)",
                 ]
             )
@@ -1067,7 +1067,7 @@ extension ClusterShell {
             state.log.warning(
                 "Error while trying to complete association with: \(reflecting: handshakeCompleted.remoteNode), error: \(error)",
                 metadata: [
-                    "membership/change": "\(optional: directive.membershipChange)",
+                    "membership/change": .string("\(optional: directive.membershipChange)"),
                     "membership": "\(state.membership)",
                     "association/error": "\(error)",
                 ]

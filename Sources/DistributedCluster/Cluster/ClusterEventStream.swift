@@ -191,7 +191,7 @@ internal distributed actor ClusterEventStreamActor: LifecycleWatch {
             self.log.trace(
                 "Published event \(event) to \(self.subscribers.count) subscribers and \(self.asyncSubscribers.count) async subscribers",
                 metadata: [
-                    "eventStream/event": "\(reflecting: event)",
+                    "eventStream/event": .string("\(reflecting: event)"),
                     "eventStream/subscribers": Logger.MetadataValue.array(
                         self.subscribers.map {
                             Logger.MetadataValue.stringConvertible($0.key)
