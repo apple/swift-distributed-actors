@@ -339,7 +339,7 @@ final class OutboundSerializationHandler: ChannelOutboundHandler {
                     "Serialization of outgoing message failed: \(error)",
                     metadata: [
                         "message": "\(transportEnvelope.underlyingMessage)",
-                        "message/type": "\(reflecting: type(of: transportEnvelope.underlyingMessage as Any))",
+                        "message/type": .string("\(reflecting: type(of: transportEnvelope.underlyingMessage as Any))"),
                         "recipient": "\(transportEnvelope.recipient)",
                     ]
                 )
