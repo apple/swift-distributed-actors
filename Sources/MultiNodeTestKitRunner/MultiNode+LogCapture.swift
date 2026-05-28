@@ -27,7 +27,7 @@ struct PrettyMultiNodeLogHandler: LogHandler {
         self.settings = settings
     }
 
-    public func log(level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata?, file: String, function: String, line: UInt) {
+    public func log(level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata?, source: String, file: String, function: String, line: UInt) {
         var _metadata: Logger.Metadata = metadata ?? [:]
 
         for excludeGrep in self.settings.excludeGrep {

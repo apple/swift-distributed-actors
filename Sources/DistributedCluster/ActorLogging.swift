@@ -145,7 +145,7 @@ struct ActorOriginLogHandler: LogHandler {
         )
     }
 
-    func log(level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata?, file: String, function: String, line: UInt) {
+    func log(level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata?, source: String, file: String, function: String, line: UInt) {
         // TODO: this actually would be dispatching to the logging infra (has ticket)
 
         let logMessage = LogMessage(
@@ -365,7 +365,7 @@ extension Logger {
         level: Logger.Level?,
         _ message: @autoclosure () -> Logger.Message,
         metadata: @autoclosure () -> Logger.Metadata? = nil,
-        file: String = #filePath,
+        file: String = #fileID,
         function: String = #function,
         line: UInt = #line
     ) {

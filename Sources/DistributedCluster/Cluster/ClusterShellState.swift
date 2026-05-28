@@ -394,7 +394,7 @@ extension ClusterShellState {
         _ clusterShell: ClusterShell,
         _ handshake: HandshakeStateMachine.CompletedState,
         channel: Channel,
-        file: String = #filePath,
+        file: String = #fileID,
         line: UInt = #line
     ) -> AssociatedDirective {
         guard self._handshakes.removeValue(forKey: handshake.remoteNode.endpoint) != nil else {

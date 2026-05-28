@@ -208,7 +208,7 @@ struct LogCaptureLogHandler: LogHandler {
         self.capture = capture
     }
 
-    public func log(level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata?, file: String, function: String, line: UInt) {
+    public func log(level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata?, source: String, file: String, function: String, line: UInt) {
         let actorPath = self.metadata["actor/path"].map { "\($0)" } ?? ""
 
         guard

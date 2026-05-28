@@ -39,7 +39,7 @@ open class _Base_ProtobufSerializer<Message, ProtobufMessage: SwiftProtobuf.Mess
     }
 
     override open func deserialize(from buffer: Serialization.Buffer) throws -> Message {
-        let proto = try ProtobufMessage(serializedData: buffer.readData())
+        let proto = try ProtobufMessage(serializedBytes: buffer.readData())
         return try self.fromProto(proto, context: self.serializationContext)
     }
 

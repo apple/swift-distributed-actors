@@ -103,7 +103,7 @@ private final class InitiatingHandshakeHandler: ChannelInboundHandler, Removable
         guard let data = bytes.readData(length: bytes.readableBytes) else {
             throw WireFormatError.notEnoughBytes(expectedAtLeastBytes: bytes.readableBytes, hint: "handshake accept")
         }
-        let proto = try _ProtoHandshakeResponse(serializedData: data)
+        let proto = try _ProtoHandshakeResponse(serializedBytes: data)
         return try Wire.HandshakeResponse(proto)
     }
 }
@@ -170,7 +170,7 @@ final class ReceivingHandshakeHandler: ChannelInboundHandler, RemovableChannelHa
         guard let data = bytes.readData(length: bytes.readableBytes) else {
             throw WireFormatError.notEnoughBytes(expectedAtLeastBytes: bytes.readableBytes, hint: "handshake offer")
         }
-        let proto = try _ProtoHandshakeOffer(serializedData: data)
+        let proto = try _ProtoHandshakeOffer(serializedBytes: data)
         return try Wire.HandshakeOffer(fromProto: proto)
     }
 
@@ -583,7 +583,7 @@ extension SystemMessageRedeliveryHandler {
     private func tracelog(
         _ type: TraceLogType,
         message: Any,
-        file: String = #filePath,
+        file: String = #fileID,
         function: String = #function,
         line: UInt = #line
     ) {

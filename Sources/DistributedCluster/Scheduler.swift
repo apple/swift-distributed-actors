@@ -63,7 +63,7 @@ extension DispatchWorkItem: Cancelable {
 }
 
 // TODO: this is mostly only a placeholder impl; we'd need a proper wheel timer most likely
-extension DispatchQueue: Scheduler, @unchecked Sendable {
+extension DispatchQueue: Scheduler {
     func scheduleOnce(delay: Duration, _ f: @escaping () -> Void) -> Cancelable {
         let workItem = DispatchWorkItem(block: f)
         self.asyncAfter(deadline: .init(nowDelayedBy: delay), execute: workItem)

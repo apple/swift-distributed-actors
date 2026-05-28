@@ -35,7 +35,6 @@ extension DistributedActor where ActorSystem == ClusterSystem {
     static func makeBehavior(instance: Self) -> _Behavior<Message> {
         .receive { _, message in
             fatalError("EXECUTE: \(message)")
-            return .same
         }
     }
 

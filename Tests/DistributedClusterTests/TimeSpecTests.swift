@@ -71,7 +71,7 @@ class TimeSpecTests: XCTestCase {
     }
 }
 
-extension TimeSpec: Comparable {
+extension TimeSpec: @retroactive Comparable {
     public static func < (lhs: TimeSpec, rhs: TimeSpec) -> Bool {
         lhs.tv_sec < rhs.tv_sec || (lhs.tv_sec == rhs.tv_sec && lhs.tv_nsec < rhs.tv_nsec)
     }

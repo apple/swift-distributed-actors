@@ -602,7 +602,7 @@ public struct CallSiteError: Error, CustomStringConvertible {
         }
 
         var s = ""
-        let lines = try! String(contentsOfFile: "\(self.callSite.file)")
+        let lines = try! String(contentsOfFile: "\(self.callSite.file)", encoding: .utf8)
             .components(separatedBy: .newlines)
         let failingLine =
             lines

@@ -26,7 +26,7 @@ extension ClusterShellState {
     func tracelog(
         _ type: TraceLogType,
         message: Any,
-        file: String = #filePath,
+        file: String = #fileID,
         function: String = #function,
         line: UInt = #line
     ) {
@@ -77,7 +77,7 @@ extension ClusterShell {
         _ context: _ActorContext<ClusterShell.Message>,
         _ type: TraceLogType,
         message: Any,
-        file: String = #filePath,
+        file: String = #fileID,
         function: String = #function,
         line: UInt = #line
     ) {
