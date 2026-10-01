@@ -26,7 +26,10 @@ extension Cluster.MembershipGossip {
     static func parse(_ dsl: String, owner: Cluster.Node, nodes: [Cluster.Node]) -> Cluster.MembershipGossip {
         let dslLines = dsl.split(separator: "\n")
         var gossip = Cluster.MembershipGossip(ownerNode: owner)
-        gossip.membership = Cluster.Membership.parse(String(dslLines.first!), nodes: nodes)
+        guard let firstLine = dslLines.first else {
+            return gossip
+        }
+        gossip.membership = Cluster.Membership.parse(String(firstLine), nodes: nodes)
         gossip.seen = Cluster.MembershipGossip.SeenTable.parse(dslLines.dropFirst().joined(separator: "\n"), nodes: nodes)
         return gossip
     }
@@ -49,18 +52,22 @@ extension Cluster.MembershipGossip.SeenTable {
 
         for line in lines {
             let elements = line.split(separator: " ")
-            let id = elements.first!.dropLast(1)
+            guard let firstElement = elements.first else {
+                continue
+            }
+            let id = firstElement.dropLast(1)
             let on = nodeById(id: id)
 
             var vv = VersionVector.empty
             for dslVersion in elements.dropFirst() {
                 let parts = dslVersion.split { c in "@:".contains(c) }
 
-                let atId = parts.first!
+                guard let atId = parts.first,
+                      let versionString = parts.dropFirst().first,
+                      let atVersion = UInt64(versionString) else {
+                    fatalError("Could not parse version from [\(dslVersion)] in seen table: \(dslString)", file: file, line: line)
+                }
                 let atNode = nodeById(id: atId)
-
-                let versionString = parts.dropFirst().first!
-                let atVersion = UInt64(versionString)!
 
                 vv.state[.node(atNode)] = atVersion
             }
@@ -84,7 +91,12 @@ extension VersionVector {
 
         let replicaVersions: [VersionVector.ReplicaVersion] = dslString.split(separator: " ").map { segment in
             let v = segment.split { c in ":@".contains(c) }
-            return (.node(nodeById(id: v.first!)), VersionVector.Version(v.dropFirst().first!)!)
+            guard let id = v.first,
+                  let versionString = v.dropFirst().first,
+                  let versionNumber = VersionVector.Version(versionString) else {
+                fatalError("Could not parse replica version from [\(segment)] in version vector DSL: \(dslString)", file: file, line: line)
+            }
+            return (.node(nodeById(id: id)), versionNumber)
         }
         return VersionVector(replicaVersions)
     }
@@ -111,18 +123,26 @@ extension Cluster.Membership {
 
         for nodeDsl in dslString.split(separator: " ") {
             let elements = nodeDsl.split { c in ".:".contains(c) }
-            let nodeId = elements.first!
+            guard let nodeId = elements.first else {
+                continue
+            }
             if nodeId == "[leader" {
                 // this is hacky, but good enough for our testing tools
-                let actualNodeId = elements.dropFirst().first!
+                guard let actualNodeId = elements.dropFirst().first else {
+                    fatalError("Missing leader node ID in: \(nodeDsl), for membership: \(dslString)", file: file, line: line)
+                }
                 let leaderNode = nodeById(id: actualNodeId.dropLast(1))
-                let leaderMember = membership.member(leaderNode)!
+                guard let leaderMember = membership.member(leaderNode) else {
+                    fatalError("Leader node [\(leaderNode)] is not a member in membership: \(dslString)", file: file, line: line)
+                }
                 membership.leader = leaderMember
             } else {
                 let node = nodeById(id: nodeId)
 
-                let statusString = String(elements.dropFirst().first!)
-                let status = Cluster.MemberStatus.parse(statusString)!
+                guard let statusElement = elements.dropFirst().first,
+                      let status = Cluster.MemberStatus.parse(String(statusElement)) else {
+                    fatalError("Could not parse member status from [\(nodeDsl)], for membership: \(dslString)", file: file, line: line)
+                }
 
                 membership._members[node] = Cluster.Member(node: node, status: status)
             }
