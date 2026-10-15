@@ -15,6 +15,7 @@
 import DistributedActorsConcurrencyHelpers
 import DistributedActorsTestKit
 import Foundation
+import MetricsTestKit
 import NIO
 import XCTest
 

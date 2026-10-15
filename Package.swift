@@ -73,6 +73,7 @@ var targets: [PackageDescription.Target] = [
             "DistributedCluster",
             "DistributedActorsTestKit",
             .product(name: "Atomics", package: "swift-atomics"),
+            .product(name: "MetricsTestKit", package: "swift-metrics"),
         ],
         swiftSettings: [.swiftLanguageMode(.v5)]
     ),
@@ -205,8 +206,8 @@ var dependencies: [Package.Dependency] = [
 
     // ~~~ Observability ~~~
     .package(url: "https://github.com/apple/swift-log", from: "1.0.0"),
-    // swift-metrics 1.x and 2.x are almost API compatible, so most clients should use
-    .package(url: "https://github.com/apple/swift-metrics", "1.0.0"..<"3.0.0"),
+    // 2.10.0 matches swift-cluster-membership's requirement, and ships the MetricsTestKit product
+    .package(url: "https://github.com/apple/swift-metrics", "2.10.0"..<"3.0.0"),
     .package(url: "https://github.com/apple/swift-service-discovery", from: "1.3.0"),
 
     // ~~~ SwiftPM Plugins ~~~
