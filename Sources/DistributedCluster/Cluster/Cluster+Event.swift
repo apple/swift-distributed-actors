@@ -19,6 +19,23 @@ extension Cluster {
     /// Represents cluster events, most notably regarding membership and reachability of other members of the cluster.
     ///
     /// Inspect them directly, or `apply` to a `Membership` copy in order to be able to react to membership state of the cluster.
+    ///
+    /// - Note: `Cluster.Event` is an open enum. Always include a `default:` case when switching over `Cluster.Event` to ensure forward compatibility:
+    ///   ```swift
+    ///   switch event {
+    ///   case .snapshot(let membership):
+    ///       // ...
+    ///   case .membershipChange(let change):
+    ///       // ...
+    ///   case .reachabilityChange(let change):
+    ///       // ...
+    ///   case .leadershipChange(let change):
+    ///       // ...
+    ///   default:
+    ///       // Ignore future unknown event cases
+    ///       break
+    ///   }
+    ///   ```
     public enum Event: Codable, Equatable {
         case snapshot(Membership)
         case membershipChange(MembershipChange)
