@@ -1411,12 +1411,18 @@ extension ClusterSystem {
                 var directDecoder = ClusterInvocationDecoder(system: self, invocation: invocation)
                 let directReturnHandler = ClusterInvocationResultHandler(directReturnContinuation: cc)
 
-                try await executeDistributedTarget(
-                    on: actor,
-                    target: target,
-                    invocationDecoder: &directDecoder,
-                    handler: directReturnHandler
-                )
+                // Throws only before the handler sees the call (e.g. the target can't be decoded),
+                // so the continuation is still unresumed here.
+                do {
+                    try await executeDistributedTarget(
+                        on: actor,
+                        target: target,
+                        invocationDecoder: &directDecoder,
+                        handler: directReturnHandler
+                    )
+                } catch {
+                    cc.resume(throwing: error)
+                }
             }
         }
 
@@ -1461,12 +1467,18 @@ extension ClusterSystem {
                 var directDecoder = ClusterInvocationDecoder(system: self, invocation: invocation)
                 let directReturnHandler = ClusterInvocationResultHandler(directReturnContinuation: cc)
 
-                try await executeDistributedTarget(
-                    on: actor,
-                    target: target,
-                    invocationDecoder: &directDecoder,
-                    handler: directReturnHandler
-                )
+                // Throws only before the handler sees the call (e.g. the target can't be decoded),
+                // so the continuation is still unresumed here.
+                do {
+                    try await executeDistributedTarget(
+                        on: actor,
+                        target: target,
+                        invocationDecoder: &directDecoder,
+                        handler: directReturnHandler
+                    )
+                } catch {
+                    cc.resume(throwing: error)
+                }
             }
         }
     }
