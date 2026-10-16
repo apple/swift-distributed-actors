@@ -18,6 +18,7 @@ import Distributed
 import DistributedActorsConcurrencyHelpers  // for TimeSource
 import DistributedActorsTestKit
 import Foundation
+import MetricsTestKit
 import XCTest
 
 @testable import CoreMetrics

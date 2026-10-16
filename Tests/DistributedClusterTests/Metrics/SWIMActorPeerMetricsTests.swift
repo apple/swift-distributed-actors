@@ -14,6 +14,7 @@
 
 import DistributedActorsConcurrencyHelpers
 import DistributedActorsTestKit
+import MetricsTestKit
 import NIO
 import XCTest
 
@@ -58,7 +59,8 @@ final class ActorMetricsSWIMActorPeerMetricsTests: ClusteredActorSystemsXCTestCa
 
         // SWIMActor's sendFirstRemotePing might have been triggered when the nodes
         // are associated. Reset so we get metrics just for our sendPing call.
-        (try await self.metrics.getSWIMTimer(origin) { $0.pingResponseTime })?.reset()
+        // TestTimer has no reset(), so remember how many timings were recorded so far instead
+        let timerValuesBefore = (try await self.metrics.getSWIMTimer(origin) { $0.pingResponseTime })?.values.count ?? 0
         (try await self.metrics.getSWIMCounter(origin) { $0.messageOutboundCount })?.reset()
 
         let targetPeer = try SWIMActor.resolve(id: target.id._asRemote, using: originNode)
@@ -79,6 +81,7 @@ final class ActorMetricsSWIMActorPeerMetricsTests: ClusteredActorSystemsXCTestCa
         }
         pinfo("Recorded \(timer): \(String(reflecting: timer.lastValue.map { Duration.nanoseconds($0).prettyDescription }))")
         timer.label.shouldEqual("origin.cluster.swim.roundTripTime.ping")
+        timer.values.count.shouldBeGreaterThan(timerValuesBefore)
         timer.lastValue!.shouldBeGreaterThan(0)
 
         guard let counter = try await self.metrics.getSWIMCounter(origin, { $0.messageOutboundCount }) else {
