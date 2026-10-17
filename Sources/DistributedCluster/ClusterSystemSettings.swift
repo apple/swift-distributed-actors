@@ -545,3 +545,27 @@ extension ClusterSystemSettings {
         }
     }
 }
+
+extension ClusterSystemSettings {
+    /// Makes the metadata stored under `key` travel with actor IDs to other nodes.
+    ///
+    /// Only metadata known to the cluster system, such as ``ActorMetadataKeys/wellKnown``, travels by
+    /// default. Every node that should receive the metadata declares it too.
+    public mutating func propagateMetadata<Value>(_ key: KeyPath<ActorMetadataKeys, ActorMetadataKeys.Key<Value>>) {
+        let id = ActorMetadataKeys.__instance[keyPath: key].id
+        let encodeOther = self.actorMetadata.encodeCustomMetadata
+        let decodeOther = self.actorMetadata.decodeCustomMetadata
+        self.actorMetadata.encodeCustomMetadata = { metadata, container in
+            try encodeOther(metadata, &container)
+            if let value = metadata[id] as? Value {
+                try container.encode(value, forKey: .custom(id))
+            }
+        }
+        self.actorMetadata.decodeCustomMetadata = { container, metadata in
+            try decodeOther(container, metadata)
+            if let value = try container.decodeIfPresent(Value.self, forKey: .custom(id)) {
+                metadata[id] = value
+            }
+        }
+    }
+}

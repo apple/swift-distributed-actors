@@ -1150,7 +1150,14 @@ extension ClusterSystem {
 // MARK: Intercepting calls
 
 extension ClusterSystem {
-    internal func interceptCalls<Act, Interceptor>(
+    /// A reference to an `Act` whose calls go to `interceptor` instead of to an actor.
+    ///
+    /// - Parameters:
+    ///   - metadata: Metadata for the reference's ``ActorID``. Metadata declared with
+    ///     ``ClusterSystemSettings/propagateMetadata(_:)`` travels with the ID to other nodes, where an
+    ///     ``ActorLifecyclePlugin`` can intercept the reference's calls again.
+    ///   - interceptor: Receives the reference's calls on this node.
+    public func interceptCalls<Act, Interceptor>(
         to actorType: Act.Type,
         metadata: ActorMetadata,
         interceptor: Interceptor
@@ -1161,7 +1168,7 @@ extension ClusterSystem {
         Interceptor: RemoteCallInterceptor
     {
         /// Prepare a distributed actor context base, such that the reserved ID will contain the interceptor in the context.
-        let baseContext = DistributedActorContext(lifecycle: nil, remoteCallInterceptor: interceptor)
+        let baseContext = DistributedActorContext(lifecycle: nil, remoteCallInterceptor: interceptor, metadata: metadata)
         var id = self._assignID(Act.self, baseContext: baseContext)
         assert(id.context.remoteCallInterceptor != nil)
         id = id._asRemote  // Not strictly necessary?
@@ -1170,6 +1177,48 @@ extension ClusterSystem {
         props._designatedActorID = id
 
         return try Act.resolve(id: id, using: self)
+    }
+}
+
+extension ClusterSystem {
+    /// Delivers an intercepted call to the actor with `id`, on this node or another.
+    ///
+    /// A ``RemoteCallInterceptor`` uses this to pass a call on to the actor that should receive it.
+    /// The call goes to the actor itself: an interceptor of `id`, if any, isn't involved.
+    public func forwardCall<Err, Res>(
+        to id: ActorID,
+        target: RemoteCallTarget,
+        invocation: inout InvocationEncoder,
+        throwing: Err.Type,
+        returning: Res.Type
+    ) async throws -> Res
+    where Err: Error, Res: Codable {
+        guard id.node == self.cluster.node else {
+            return try await self.sendRemoteCall(to: id, target: target, invocation: invocation, returning: returning)
+        }
+        guard let actor = self.resolveLocalAnyDistributedActor(id: id) else {
+            throw DeadLetterError(recipient: id)
+        }
+        return try await self.localCall(on: actor, id: id, target: target, invocation: &invocation, throwing: throwing, returning: returning)
+    }
+
+    /// Delivers an intercepted call that returns nothing to the actor with `id`, on this node or another.
+    ///
+    /// - SeeAlso: ``forwardCall(to:target:invocation:throwing:returning:)``
+    public func forwardCallVoid<Err>(
+        to id: ActorID,
+        target: RemoteCallTarget,
+        invocation: inout InvocationEncoder,
+        throwing: Err.Type
+    ) async throws
+    where Err: Error {
+        guard id.node == self.cluster.node else {
+            return try await self.sendRemoteCallVoid(to: id, target: target, invocation: invocation)
+        }
+        guard let actor = self.resolveLocalAnyDistributedActor(id: id) else {
+            throw DeadLetterError(recipient: id)
+        }
+        try await self.localCallVoid(on: actor, id: id, target: target, invocation: &invocation, throwing: throwing)
     }
 }
 
@@ -1205,21 +1254,32 @@ extension ClusterSystem {
             return try await self.localCall(on: actor, target: target, invocation: &invocation, throwing: throwing, returning: returning)
         }
 
+        return try await self.sendRemoteCall(to: actor.id, target: target, invocation: invocation, returning: returning)
+    }
+
+    /// Sends a call to the actor with `id` on another node, and waits for its reply.
+    private func sendRemoteCall<Res>(
+        to id: ActorID,
+        target: RemoteCallTarget,
+        invocation: InvocationEncoder,
+        returning: Res.Type
+    ) async throws -> Res
+    where Res: Codable {
         guard let clusterShell = _cluster else {
             throw RemoteCallError(
                 .clusterAlreadyShutDown,
-                on: actor.id,
+                on: id,
                 target: target
             )
         }
         guard self.shutdownFlag.load(ordering: .relaxed) == 0 else {
-            throw RemoteCallError(.clusterAlreadyShutDown, on: actor.id, target: target)
+            throw RemoteCallError(.clusterAlreadyShutDown, on: id, target: target)
         }
 
-        let recipient = _RemoteClusterActorPersonality<InvocationMessage>(shell: clusterShell, id: actor.id._asRemote, system: self)
+        let recipient = _RemoteClusterActorPersonality<InvocationMessage>(shell: clusterShell, id: id._asRemote, system: self)
         let arguments = invocation.arguments
 
-        let reply: RemoteCallReply<Res> = try await self.withCallID(on: actor.id, target: target) { callID in
+        let reply: RemoteCallReply<Res> = try await self.withCallID(on: id, target: target) { callID in
             let invocation = InvocationMessage(
                 callID: callID,
                 targetIdentifier: target.identifier,
@@ -1236,7 +1296,7 @@ extension ClusterSystem {
         guard let value = reply.value else {
             throw RemoteCallError(
                 .invalidReply(reply.callID),
-                on: actor.id,
+                on: id,
                 target: target
             )
         }
@@ -1265,25 +1325,34 @@ extension ClusterSystem {
             return try await self.localCallVoid(on: actor, target: target, invocation: &invocation, throwing: throwing)
         }
 
+        try await self.sendRemoteCallVoid(to: actor.id, target: target, invocation: invocation)
+    }
+
+    /// Sends a call that returns nothing to the actor with `id` on another node, and waits for it to finish.
+    private func sendRemoteCallVoid(
+        to id: ActorID,
+        target: RemoteCallTarget,
+        invocation: InvocationEncoder
+    ) async throws {
         guard let clusterShell = self._cluster else {
             throw RemoteCallError(
                 .clusterAlreadyShutDown,
-                on: actor.id,
+                on: id,
                 target: target
             )
         }
         guard self.shutdownFlag.load(ordering: .relaxed) == 0 else {
             throw RemoteCallError(
                 .clusterAlreadyShutDown,
-                on: actor.id,
+                on: id,
                 target: target
             )
         }
 
-        let recipient = _RemoteClusterActorPersonality<InvocationMessage>(shell: clusterShell, id: actor.id._asRemote, system: self)
+        let recipient = _RemoteClusterActorPersonality<InvocationMessage>(shell: clusterShell, id: id._asRemote, system: self)
         let arguments = invocation.arguments
 
-        let reply: RemoteCallReply<_Done> = try await self.withCallID(on: actor.id, target: target) { callID in
+        let reply: RemoteCallReply<_Done> = try await self.withCallID(on: id, target: target) { callID in
             let invocation = InvocationMessage(
                 callID: callID,
                 targetIdentifier: target.identifier,
@@ -1394,14 +1463,32 @@ extension ClusterSystem {
         Err: Error,
         Res: Codable
     {
+        try await self.localCall(on: actor, id: actor.id, target: target, invocation: &invocation, throwing: throwing, returning: returning)
+    }
+
+    /// A local call on an actor whose ID type isn't known statically, such as one resolved as
+    /// `any DistributedActor`; `id` is its ID.
+    internal func localCall<Act, Err, Res>(
+        on actor: Act,
+        id: ActorID,
+        target: RemoteCallTarget,
+        invocation: inout InvocationEncoder,
+        throwing: Err.Type,
+        returning: Res.Type
+    ) async throws -> Res
+    where
+        Act: DistributedActor,
+        Err: Error,
+        Res: Codable
+    {
         precondition(
-            self.cluster.node == actor.id.node,
-            "Attempted to localCall an actor whose ID was a different node: [\(actor.id)], current node: \(self.cluster.node)"
+            self.cluster.node == id.node,
+            "Attempted to localCall an actor whose ID was a different node: [\(id)], current node: \(self.cluster.node)"
         )
         self.log.trace(
             "Execute local call",
             metadata: [
-                "actor/id": "\(actor.id.fullDescription)",
+                "actor/id": "\(id.fullDescription)",
                 "target": "\(target)",
             ]
         )
@@ -1423,7 +1510,7 @@ extension ClusterSystem {
         guard let wellTypedReturn = anyReturn as? Res else {
             throw RemoteCallError(
                 .illegalReplyType(UUID(), expected: Res.self, got: type(of: anyReturn)),
-                on: actor.id,
+                on: id,
                 target: target
             )
         }
@@ -1444,14 +1531,29 @@ extension ClusterSystem {
         Act.ID == ActorID,
         Err: Error
     {
+        try await self.localCallVoid(on: actor, id: actor.id, target: target, invocation: &invocation, throwing: throwing)
+    }
+
+    /// A local void call on an actor whose ID type isn't known statically; `id` is its ID.
+    internal func localCallVoid<Act, Err>(
+        on actor: Act,
+        id: ActorID,
+        target: RemoteCallTarget,
+        invocation: inout InvocationEncoder,
+        throwing: Err.Type
+    ) async throws
+    where
+        Act: DistributedActor,
+        Err: Error
+    {
         precondition(
-            self.cluster.node == actor.id.node,
-            "Attempted to localCall an actor whose ID was a different node: [\(actor.id)], current node: \(self.cluster.node)"
+            self.cluster.node == id.node,
+            "Attempted to localCall an actor whose ID was a different node: [\(id)], current node: \(self.cluster.node)"
         )
         self.log.trace(
             "Execute local void call",
             metadata: [
-                "actor/id": "\(actor.id.fullDescription)",
+                "actor/id": "\(id.fullDescription)",
                 "target": "\(target)",
             ]
         )

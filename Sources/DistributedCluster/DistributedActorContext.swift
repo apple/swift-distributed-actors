@@ -45,7 +45,13 @@ public final class DistributedActorContext {
     }
 }
 
-internal protocol RemoteCallInterceptor {
+/// Receives the calls made on an actor reference instead of the actor system sending them to the
+/// reference's ``ActorID``.
+///
+/// ``ClusterSystem/interceptCalls(to:metadata:interceptor:)`` makes such a reference, as the cluster
+/// singleton plugin does for its proxies. To deliver a call to an actor, an interceptor can use
+/// ``ClusterSystem/forwardCall(to:target:invocation:throwing:returning:)``.
+public protocol RemoteCallInterceptor {
     func interceptRemoteCall<Act, Err, Res>(
         on actor: Act,
         target: RemoteCallTarget,
