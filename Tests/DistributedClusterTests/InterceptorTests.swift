@@ -274,19 +274,15 @@ private struct GreeterRemoteCallInterceptor: RemoteCallInterceptor {
             throw GreeterRemoteCallInterceptorError()
         }
 
-        let anyReturn = try await withCheckedThrowingContinuation { (cc: CheckedContinuation<Any, Error>) in
-            Task { [invocation] in
-                var directDecoder = ClusterInvocationDecoder(system: actor.actorSystem as! ClusterSystem, invocation: invocation)
-                let directReturnHandler = ClusterInvocationResultHandler(directReturnContinuation: cc)
-
-                try await self.greeter.actorSystem.executeDistributedTarget(
-                    on: greeter,
-                    target: target,
-                    invocationDecoder: &directDecoder,
-                    handler: directReturnHandler
-                )
-            }
-        }
+        var directDecoder = ClusterInvocationDecoder(system: actor.actorSystem as! ClusterSystem, invocation: invocation)
+        let directReturn = LocalCallResult()
+        try await self.greeter.actorSystem.executeDistributedTarget(
+            on: greeter,
+            target: target,
+            invocationDecoder: &directDecoder,
+            handler: ClusterInvocationResultHandler(directReturn: directReturn)
+        )
+        let anyReturn = try directReturn.result!.get()
 
         return anyReturn as! Res
     }
@@ -306,19 +302,15 @@ private struct GreeterRemoteCallInterceptor: RemoteCallInterceptor {
             throw GreeterRemoteCallInterceptorError()
         }
 
-        _ = try await withCheckedThrowingContinuation { (cc: CheckedContinuation<Any, Error>) in
-            Task { [invocation] in
-                var directDecoder = ClusterInvocationDecoder(system: actor.actorSystem as! ClusterSystem, invocation: invocation)
-                let directReturnHandler = ClusterInvocationResultHandler(directReturnContinuation: cc)
-
-                try await self.greeter.actorSystem.executeDistributedTarget(
-                    on: greeter,
-                    target: target,
-                    invocationDecoder: &directDecoder,
-                    handler: directReturnHandler
-                )
-            }
-        }
+        var directDecoder = ClusterInvocationDecoder(system: actor.actorSystem as! ClusterSystem, invocation: invocation)
+        let directReturn = LocalCallResult()
+        try await self.greeter.actorSystem.executeDistributedTarget(
+            on: greeter,
+            target: target,
+            invocationDecoder: &directDecoder,
+            handler: ClusterInvocationResultHandler(directReturn: directReturn)
+        )
+        _ = try directReturn.result!.get()
     }
 }
 
