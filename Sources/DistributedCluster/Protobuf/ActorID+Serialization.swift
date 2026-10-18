@@ -80,7 +80,7 @@ extension ActorID: Codable {
 
             if let context = decoder.actorSerializationContext {
                 let decodeCustomMetadata = context.system.settings.actorMetadata.decodeCustomMetadata
-                try decodeCustomMetadata(metadataContainer, self.metadata)
+                try decodeCustomMetadata(metadataContainer, metadata)
 
                 //                for (key, value) in try decodeCustomMetadata(metadataContainer) {
                 //                    func store(_: K.Type) {
@@ -93,6 +93,11 @@ extension ActorID: Codable {
             }
 
             self.context = .init(lifecycle: nil, remoteCallInterceptor: nil, metadata: metadata)
+        }
+
+        // Let an installed plugin intercept calls to this ID, e.g. one made with `interceptCalls` on another node.
+        if let interceptor = decoder.actorSerializationContext?.system.settings.plugins.interceptor(for: self) {
+            self.context = .init(lifecycle: nil, remoteCallInterceptor: interceptor, metadata: self.metadata)
         }
     }
 }

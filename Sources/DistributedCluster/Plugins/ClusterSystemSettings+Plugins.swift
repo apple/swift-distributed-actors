@@ -99,3 +99,15 @@ extension ClusterSystemSettings {
         settings.plugins.install(plugin: plugin)
     }
 }
+
+extension PluginsSettings {
+    /// The first interceptor an installed ``ActorLifecyclePlugin`` offers for calls to `id`.
+    internal func interceptor(for id: ActorID) -> (any RemoteCallInterceptor)? {
+        for hook in self.actorLifecycleHooks {
+            if let interceptor = hook.interceptor(for: id) {
+                return interceptor
+            }
+        }
+        return nil
+    }
+}

@@ -208,6 +208,24 @@ final class ActorIDTests: ClusteredActorSystemsXCTestCase {
         serializedJson.shouldContain(#""node":["sact","one","127.0.0.1",1234,11111]"#)
         serializedJson.shouldContain(#""path":{"path":["user","a"]}"#)
         serializedJson.shouldContain("\"\(ActorMetadataKeys.__instance.test.id)\":\"\(a.metadata.test!)\"")
+
+        let back = try system.serialization.deserialize(as: ActorID.self, from: serialized)
+        back.metadata.test.shouldEqual("test-value")
+    }
+
+    func test_serializing_ActorAddress_propagateMetadata() async throws {
+        let node = Cluster.Node(systemName: "one", host: "127.0.0.1", port: 1234, nid: Cluster.Node.ID(11111))
+        let a = try ActorPath._user.appending("a").makeRemoteID(on: node, incarnation: 1)
+        a.metadata.test = "test-value"
+
+        let system = await self.setUpNode("test_serializing_ActorAddress_propagateMetadata") { settings in
+            settings.bindPort = 1234
+            settings.propagateMetadata(\.test)
+        }
+
+        let serialized = try system.serialization.serialize(a)
+        let back = try system.serialization.deserialize(as: ActorID.self, from: serialized)
+        back.metadata.test.shouldEqual("test-value")
     }
 }
 

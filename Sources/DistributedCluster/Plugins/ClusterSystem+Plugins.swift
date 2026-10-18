@@ -116,7 +116,7 @@ internal struct AnyPluginKey: Hashable, CustomStringConvertible, Sendable {
 }
 
 /// Kind of `ClusterSystem` plugin which will be invoked during an actor's `actorReady`
-/// and `resignID` lifecycle hooks.
+/// and `resignID` lifecycle hooks, and when an actor's ID is decoded on this node.
 ///
 /// The ready hook is allowed to modify the ID, e.g. by adding additional metadata to it.
 /// The plugin should carefully manage retaining actors and document if it does have strong references to them,
@@ -124,4 +124,19 @@ internal struct AnyPluginKey: Hashable, CustomStringConvertible, Sendable {
 public protocol ActorLifecyclePlugin: Plugin {
     func onActorReady<Act: DistributedActor>(_ actor: Act) where Act: DistributedActor, Act.ID == ClusterSystem.ActorID
     func onResignID(_ id: ClusterSystem.ActorID)
+
+    /// The interceptor for calls to `id`, an ID just decoded on this node, e.g. received as an
+    /// argument of a distributed call; or `nil` to leave its calls alone.
+    ///
+    /// A reference made with ``ClusterSystem/interceptCalls(to:metadata:interceptor:)`` is intercepted
+    /// only on the node that made it; this lets a plugin intercept it on other nodes too, recognizing
+    /// it by metadata declared with ``ClusterSystemSettings/propagateMetadata(_:)``.
+    /// Called for every decoded ID, so it must be cheap and must not block.
+    func interceptor(for id: ClusterSystem.ActorID) -> (any RemoteCallInterceptor)?
+}
+
+extension ActorLifecyclePlugin {
+    public func interceptor(for id: ClusterSystem.ActorID) -> (any RemoteCallInterceptor)? {
+        nil
+    }
 }
