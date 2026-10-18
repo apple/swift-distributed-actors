@@ -971,8 +971,14 @@ extension ClusterSystem {
         }
 
         guard let resolved = managed as? Act else {
+            // A `@Resolvable` protocol's stub is never the actor's own type: it resolves as a
+            // reference, whose calls reach the actor through the protocol. Any other type is the
+            // wrong one, and a call through it would run that type's method on this actor.
+            guard Self.isStub(Act.self) else {
+                throw ResolveError(.typeMismatch(id, expected: "\(Act.self)", found: "\(type(of: managed))"))
+            }
             self.log.trace(
-                "Resolved actor identity, however did not match expected type: \(Act.self)",
+                "Resolved actor identity as a stub of the actor's protocol: \(Act.self)",
                 metadata: [
                     "actor/id": "\(id)",
                     "actor/type": "\(type(of: managed))",
@@ -1223,6 +1229,7 @@ extension ClusterSystem {
             let invocation = InvocationMessage(
                 callID: callID,
                 targetIdentifier: target.identifier,
+                recipient: Self.recipient(Act.self),
                 genericSubstitutions: invocation.genericSubstitutions,
                 arguments: arguments
             )
@@ -1287,6 +1294,7 @@ extension ClusterSystem {
             let invocation = InvocationMessage(
                 callID: callID,
                 targetIdentifier: target.identifier,
+                recipient: Self.recipient(Act.self),
                 genericSubstitutions: invocation.genericSubstitutions,
                 arguments: arguments
             )
@@ -1406,13 +1414,14 @@ extension ClusterSystem {
             ]
         )
 
+        let recipient = try self.localCallRecipient(for: actor)
         let anyReturn = try await withCheckedThrowingContinuation { cc in
             Task { [invocation] in  // FIXME: make an async stream here since we lost ordering guarantees here
                 var directDecoder = ClusterInvocationDecoder(system: self, invocation: invocation)
                 let directReturnHandler = ClusterInvocationResultHandler(directReturnContinuation: cc)
 
                 try await executeDistributedTarget(
-                    on: actor,
+                    on: recipient,
                     target: target,
                     invocationDecoder: &directDecoder,
                     handler: directReturnHandler
@@ -1429,6 +1438,22 @@ extension ClusterSystem {
         }
 
         return wellTypedReturn
+    }
+
+    /// The actor a local call executes on. The given reference may be a stub (e.g. from `@Resolvable`)
+    /// that would re-enter `remoteCall`, so:
+    /// - a live local actor receives the call;
+    /// - a reference to a remote actor forwards the call to its node;
+    /// - a local actor that is no longer alive is a dead letter.
+    private func localCallRecipient<Act>(for actor: Act) throws -> any DistributedActor
+    where Act: DistributedActor, Act.ID == ActorID {
+        if let local = self.resolveLocalAnyDistributedActor(id: actor.id) {
+            return local
+        }
+        guard actor.id.node == self.cluster.node else {
+            return actor
+        }
+        throw DeadLetterError(recipient: actor.id)
     }
 
     /// Able to direct a `remoteCallVoid` initiated call, right into a local invocation.
@@ -1456,13 +1481,14 @@ extension ClusterSystem {
             ]
         )
 
+        let recipient = try self.localCallRecipient(for: actor)
         _ = try await withCheckedThrowingContinuation { (cc: CheckedContinuation<Any, Error>) in
             Task { [invocation] in
                 var directDecoder = ClusterInvocationDecoder(system: self, invocation: invocation)
                 let directReturnHandler = ClusterInvocationResultHandler(directReturnContinuation: cc)
 
                 try await executeDistributedTarget(
-                    on: actor,
+                    on: recipient,
                     target: target,
                     invocationDecoder: &directDecoder,
                     handler: directReturnHandler
@@ -1506,6 +1532,9 @@ extension ClusterSystem {
                     self.deadLetters.tell(DeadLetter(invocation, recipient: recipient))
                     throw DeadLetterError(recipient: recipient)
                 }
+                if let made = invocation.recipient {
+                    try self.checkRecipient(actor, id: recipient, as: made)
+                }
 
                 try await executeDistributedTarget(
                     on: actor,
@@ -1522,6 +1551,33 @@ extension ClusterSystem {
                 }
             }
         }
+    }
+
+    /// A call runs only as what it was made through: on an actor of that type, or, through a
+    /// protocol's stub, on an actor of the protocol. Run on any other actor, its target would be
+    /// another type's method.
+    private func checkRecipient(_ actor: any DistributedActor, id: ActorID, as made: InvocationMessage.Recipient) throws {
+        guard case .actor(let expected) = made else { return }
+        let found = Self.typeName(type(of: actor))
+        guard found == expected else {
+            throw ResolveError(.typeMismatch(id, expected: expected, found: found))
+        }
+    }
+
+    /// What a call made through `type` says it was made through.
+    static func recipient(_ type: Any.Type) -> InvocationMessage.Recipient {
+        Self.isStub(type) ? .protocolStub : .actor(type: Self.typeName(type))
+    }
+
+    /// A type's name as both ends of a call give it: its mangled name, which tells apart types
+    /// that read the same, such as two `private` ones.
+    static func typeName(_ type: Any.Type) -> String {
+        _mangledTypeName(type) ?? _typeName(type, qualified: true)
+    }
+
+    /// Whether `type` is a protocol's stub, from `@Resolvable`, or the cluster's own.
+    static func isStub(_ type: Any.Type) -> Bool {
+        type is any _DistributedActorStub.Type || type is StubDistributedActor.Type
     }
 
     func receiveRemoteCallReply(_ reply: any AnyRemoteCallReply) {
@@ -1823,6 +1879,8 @@ public struct ClusterSystemError: DistributedActorSystemError, CustomStringConve
 public struct ResolveError: DistributedActorSystemError, CustomStringConvertible {
     internal enum _ResolveError {
         case illegalIdentity(ClusterSystem.ActorID)
+        /// The actor with this ID is of another type than the one it was resolved or called as.
+        case typeMismatch(ClusterSystem.ActorID, expected: String, found: String)
     }
 
     internal class _Storage {

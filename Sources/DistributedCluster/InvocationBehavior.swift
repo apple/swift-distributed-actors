@@ -22,8 +22,35 @@ import struct Foundation.Data
 public struct InvocationMessage: Sendable, Codable, CustomStringConvertible {
     let callID: ClusterSystem.CallID
     let targetIdentifier: String
+    /// What the call was made through: the recipient runs it only as that.
+    ///
+    /// `nil` only for a call from a node that doesn't send it yet, which runs as before, unchecked.
+    let recipient: Recipient?
     let genericSubstitutions: [String]
     let arguments: [Data]
+
+    init(
+        callID: ClusterSystem.CallID,
+        targetIdentifier: String,
+        recipient: Recipient,
+        genericSubstitutions: [String],
+        arguments: [Data]
+    ) {
+        self.callID = callID
+        self.targetIdentifier = targetIdentifier
+        self.recipient = recipient
+        self.genericSubstitutions = genericSubstitutions
+        self.arguments = arguments
+    }
+
+    /// What a call was made through, which decides which actors may run it.
+    enum Recipient: Sendable, Codable, Equatable {
+        /// An actor of this type, by its name, as ``ClusterSystem/typeName(_:)`` gives it.
+        case actor(type: String)
+        /// Any actor conforming to the protocol of a `@Resolvable` stub: its target goes through
+        /// the protocol, which the actor's own type witnesses.
+        case protocolStub
+    }
 
     var target: RemoteCallTarget {
         RemoteCallTarget(targetIdentifier)
