@@ -163,6 +163,8 @@ extension Cluster.Member: Codable {
 
 extension Cluster {
     /// Describes the status of a member within the clusters lifecycle.
+    ///
+    /// - Note: `Cluster.MemberStatus` is an open enum. Always include a `default:` case when switching over member statuses to ensure forward compatibility with future lifecycle states.
     public enum MemberStatus: String, CaseIterable, Comparable {
         public static var allCases: [MemberStatus] {
             [.joining, .up, .leaving, .down, .removed]
@@ -295,6 +297,7 @@ extension Cluster {
     /// Unlike `MemberStatus` (which may only move "forward"), reachability may flip back and forth between `.reachable`
     /// and `.unreachable` states multiple times during the lifetime of a member.
     ///
+    /// - Note: `Cluster.MemberReachability` is an open enum. Always include a `default:` case when switching over reachability to ensure forward compatibility with future additions.
     /// - SeeAlso: `SWIM` for a distributed failure detector implementation which may issue unreachable events.
     public enum MemberReachability: String, Equatable {
         /// The member is reachable and responding to failure detector probing properly.

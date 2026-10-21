@@ -140,9 +140,16 @@ for await event in system.cluster.events {
     case .leadershipChange(let change):
         // a new cluster leader has been detected
         break
+    default:
+        // Cluster.Event is an open enum; always include a default: case
+        // so new cases added in future releases do not break pattern matches.
+        break
     }
 }
 ```
+
+> Note: `Cluster.Event` is an open enum designed to be non-exhaustively matched with a `default:` case. This ensures forward compatibility so future versions of the library can introduce new event types without breaking existing code.
+
 
 You can refer to the specific events in their API documentation:
 - ``Cluster/Membership``
