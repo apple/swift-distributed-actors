@@ -51,13 +51,11 @@ Please refer to the rendered docc [reference documentation](https://apple.github
 
 ## Development
 
-This library requires **beta** releases of Swift (5.7+) and Xcode to function property as the `distributed actor` feature is part of that Swift release.
+This library requires **Swift 6.1 or later** (the package declares `swift-tools-version: 6.1`) and a compatible Swift/Xcode toolchain for the `distributed actor` language feature.
 
-When developing on macOS, please also make sure to update to the latest beta of macOS, as some parts of the Swift runtime necessary for distributed actors to work are part of the Swift runtime library which is shipped _with_ the OS. 
+On Apple platforms, use an OS version supported by the package manifest; some distributed-actor runtime support is supplied by the OS. Distributed actors are not back-deployed.
 
-Distributed actors are not back-deployed and require the latest versions of iOS, macOS, watchOS etc.
-
-When developing on **Linux** systems, you can download the [latest Swift 5.7 toolchains from swift.org/downloads](https://www.swift.org/download/#swift-57-development), and use it to try out or run the library like this:
+When developing on **Linux** systems, install a Swift 6.1-or-newer toolchain from [swift.org](https://www.swift.org/install/linux/) and use it to try out or run the library like this:
 
 ```
 $ export TOOLCHAIN=/path/to/toolchain
@@ -67,7 +65,7 @@ $ $TOOLCHAIN/usr/bin/swift run --package-path Samples/ SampleDiningPhilosophers 
 
 ### IDE Support: Xcode
 
-Latest (beta) Xcode releases include complete support for the `distributed` language syntax (`distributed actor`, `distributed func`), so please use the latest Beta Xcode available to edit the project and any projects using distributed actors.
+Use an Xcode release with a Swift 6.1-or-newer toolchain and support for the `distributed` language syntax (`distributed actor`, `distributed func`).
 
 ### IDE Support: Other IDEs
 
@@ -133,4 +131,4 @@ Requirements:
 
 ## Supported Versions
 
-This project requires **Swift 5.7+**.
+This project requires **Swift 6.1+**, as declared by `Package.swift`'s `swift-tools-version`.
