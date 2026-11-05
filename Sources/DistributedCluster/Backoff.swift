@@ -46,8 +46,14 @@ public enum Backoff {
     /// Backoff each time using the same, constant, time amount.
     ///
     /// See `ConstantBackoffStrategy` for details
-    public static func constant(_ backoff: Duration) -> ConstantBackoffStrategy {
-        .init(duration: backoff)
+    ///
+    /// - Parameters:
+    ///   - backoff: the base time amount to back off by each time.
+    ///   - randomFactor: A random factor of `0.5` results in backoffs between 50% below and 50% above the base interval.
+    ///         Defaults to `0`, which always yields exactly `backoff`.
+    ///         MUST be between: `<0; 1>` (inclusive)
+    public static func constant(_ backoff: Duration, randomFactor: Double = 0) -> ConstantBackoffStrategy {
+        .init(duration: backoff, randomFactor: randomFactor)
     }
 
     /// Creates a strategy implementing the exponential backoff pattern.
@@ -89,6 +95,11 @@ public enum Backoff {
 
 /// Simple strategy, always yielding the same backoff interval.
 ///
+/// Optionally, random "noise" can be applied to the backoff value by setting a `randomFactor`, in order to avoid
+/// multiple actors or nodes re-trying at the same exact rate (the "thundering herd" problem).
+/// The effective backoff time amount is then calculated as the base interval multiplied by a random value within the range:
+/// `(1 - randomFactor)...(1 + randomFactor)`.
+///
 /// - SeeAlso: `ExponentialBackoffStrategy` for a most commonly used exponentially-increasing strategy
 ///
 /// - SeeAlso: Also used to configure `_SupervisionStrategy`.
@@ -96,12 +107,21 @@ public struct ConstantBackoffStrategy: BackoffStrategy {
     /// The constant time amount to back-off by each time.
     internal let duration: Duration
 
-    public init(duration: Duration) {
+    /// The random factor applied to `duration`; `0` means no randomization.
+    internal let randomFactor: Double
+
+    public init(duration: Duration, randomFactor: Double = 0) {
+        precondition(randomFactor >= 0.0 && randomFactor <= 1.0, "randomFactor MUST be within between 0 and 1, was: [\(randomFactor)]")
         self.duration = duration
+        self.randomFactor = randomFactor
     }
 
     public func next() -> Duration? {
-        self.duration
+        guard self.randomFactor > 0 else {
+            return self.duration
+        }
+        let randomizeMultiplier = Double.random(in: (1 - self.randomFactor)...(1 + self.randomFactor))
+        return self.duration * randomizeMultiplier
     }
 
     public func reset() {
