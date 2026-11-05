@@ -526,10 +526,12 @@ extension OpLogDistributedReceptionist {
             return  // ok, no-one to notify
         }
 
-        // Sort registrations by version from oldest to newest so that they are processed in order.
-        // Otherwise, if we process a newer version (i.e., with bigger sequence number) first, older
-        // versions will be dropped because they are considered "seen".
-        let registrations = (self.storage.registrations(forKey: key) ?? []).sorted { l, r in l.version < r.version }  // FIXME: use ordered set or Deque now that we have them
+        // Registrations must be processed from oldest to newest version. Otherwise, if we process a newer
+        // version (i.e., with bigger sequence number) first, older versions will be dropped because they are
+        // considered "seen". The storage keeps registrations in insertion order, and registrations from a
+        // given node are always inserted in increasing sequence number order (local ones as they are appended
+        // to our op log, remote ones as their ops are applied in order), so no sorting is needed here.
+        let registrations = self.storage.registrations(forKey: key) ?? []
         self.log.notice(
             "Registrations to flush: \(registrations.count)",
             metadata: [
