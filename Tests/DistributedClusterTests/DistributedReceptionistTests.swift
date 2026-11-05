@@ -85,6 +85,35 @@ final class DistributedReceptionistTests: SingleClusterSystemXCTestCase {
         ])
     }
 
+    func test_receptionist_listing_shouldEmitAllRegistrationsFromSameNode() async throws {
+        let receptionist = system.receptionist
+        let probe: ActorTestProbe<String> = self.testKit.makeTestProbe()
+
+        // All of these are registered on the same node, so their versions only differ by sequence number.
+        // They are checked in while a subscription is active, so they get flushed to it in one batch;
+        // if that flush offered them out of order, the older ones would be considered "seen" and dropped.
+        let count = 20
+        let forwarders = (0..<count).map { n in Forwarder(probe: probe, name: "\(n)", actorSystem: system) }
+
+        let listingTask = Task {
+            for await forwarder in await receptionist.listing(of: .forwarders) {
+                try await forwarder.forward(message: "test")
+            }
+        }
+        defer { listingTask.cancel() }
+
+        // Wait for the first one so we know the subscription is in place before the rest are checked in.
+        await receptionist.checkIn(forwarders[0], with: .forwarders)
+        try probe.expectMessage("\(forwarders[0].id) 0 forwarded: test")
+
+        for forwarder in forwarders.dropFirst() {
+            await receptionist.checkIn(forwarder, with: .forwarders)
+        }
+        try probe.expectMessagesInAnyOrder(
+            forwarders.enumerated().dropFirst().map { n, forwarder in "\(forwarder.id) \(n) forwarded: test" }
+        )
+    }
+
     func test_receptionist_listing_shouldEndAfterTaskIsCancelled() async throws {
         let receptionist = self.system.receptionist
         let probeA: ActorTestProbe<String> = self.testKit.makeTestProbe()
