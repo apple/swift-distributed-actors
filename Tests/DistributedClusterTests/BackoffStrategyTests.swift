@@ -37,6 +37,26 @@ class BackoffStrategyTests: XCTestCase {
         backoff.next()?.shouldEqual(.milliseconds(100))
     }
 
+    func test_constantBackoff_withRandomFactor_shouldYieldDurationsWithinRandomizedRange() {
+        let backoff = Backoff.constant(.milliseconds(100), randomFactor: 0.25)
+        var distinct: Set<Duration> = []
+        for _ in 0..<100 {
+            let b: Duration = backoff.next()!
+            b.shouldBeGreaterThanOrEqual(Duration.milliseconds(75))
+            b.shouldBeLessThanOrEqual(Duration.milliseconds(125))
+            distinct.insert(b)
+        }
+        // with 100 samples it is practically impossible for all of them to be the same
+        distinct.count.shouldBeGreaterThan(1)
+    }
+
+    func test_constantBackoff_withZeroRandomFactor_shouldAlwaysYieldSameDuration() {
+        let backoff = Backoff.constant(.milliseconds(100), randomFactor: 0)
+        backoff.next()?.shouldEqual(.milliseconds(100))
+        backoff.next()?.shouldEqual(.milliseconds(100))
+        backoff.next()?.shouldEqual(.milliseconds(100))
+    }
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Exponential backoff
 
