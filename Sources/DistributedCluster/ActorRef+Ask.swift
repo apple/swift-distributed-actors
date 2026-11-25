@@ -264,12 +264,14 @@ internal enum AskActor {
                 let timeoutSub = context.subReceive(Event.self) { event in
                     switch event {
                     case .timeout:
-                        let errorMessage = """
-                            No response received for ask to [\(ref.id)] within timeout [\(timeout.prettyDescription)]. \
-                            Ask was initiated from function [\(function)] in [\(file):\(line)] and \
-                            expected response of type [\(String(reflecting: ResponseType.self))].
-                            """
-                        completable.fail(RemoteCallError(.timedOut(UUID(), TimeoutError(message: errorMessage, timeout: timeout))))
+                        completable.fail(
+                            RemoteCallError(
+                                .timedOut(
+                                    UUID(),
+                                    TimeoutError(askTarget: ref.id, timeout: timeout, function: function, file: file, line: line, responseType: ResponseType.self)
+                                )
+                            )
+                        )
 
                         // FIXME: Hack to stop from subReceive. Should we allow this somehow?
                         //        Maybe add a SubReceiveContext or similar?

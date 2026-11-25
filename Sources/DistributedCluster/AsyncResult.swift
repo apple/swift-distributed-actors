@@ -72,11 +72,43 @@ extension EventLoopFuture: _AsyncResult {
 
 /// Error that signals that an operation timed out.
 public struct TimeoutError: Error {
-    let message: String
+    /// The human readable description. For asks it is only rendered when it is read, since timeouts can be frequent.
     let timeout: Duration
 
     init(message: String, timeout: Duration) {
-        self.message = message
+        self.storage = .message(message)
         self.timeout = timeout
+    }
+
+    /// Timeout of an ask. The text of `message` is built on first access instead of when the timeout fires.
+    init(askTarget: ActorID, timeout: Duration, function: String, file: String, line: UInt, responseType: Any.Type) {
+        self.storage = .ask(target: askTarget, function: function, file: file, line: line, responseType: responseType)
+        self.timeout = timeout
+    }
+
+    enum Storage: Sendable {
+        case message(String)
+        case ask(target: ActorID, function: String, file: String, line: UInt, responseType: Any.Type)
+    }
+
+    let storage: Storage
+
+    var message: String {
+        switch self.storage {
+        case .message(let message):
+            return message
+        case .ask(let target, let function, let file, let line, let responseType):
+            return """
+                No response received for ask to [\(target)] within timeout [\(self.timeout.prettyDescription)]. \
+                Ask was initiated from function [\(function)] in [\(file):\(line)] and \
+                expected response of type [\(String(reflecting: responseType))].
+                """
+        }
+    }
+}
+
+extension TimeoutError: CustomDebugStringConvertible {
+    public var debugDescription: String {
+        "\(String(reflecting: TimeoutError.self))(message: \(String(reflecting: self.message)), timeout: \(String(reflecting: self.timeout)))"
     }
 }
