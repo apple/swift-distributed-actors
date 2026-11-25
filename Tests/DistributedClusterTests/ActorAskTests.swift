@@ -202,6 +202,29 @@ final class ActorAskTests: SingleClusterSystemXCTestCase {
         }
     }
 
+    func test_ask_timeout_shouldCarryDetailsAndRenderMessageOnDemand() async throws {
+        let ref = try system._spawn(.anonymous, _Behavior<TestMessage>.receiveMessage { _ in .same })
+
+        let result = ref.ask(for: String.self, timeout: .milliseconds(50)) { TestMessage(replyTo: $0) }
+        let error = try await shouldThrow {
+            try await result.value
+        }
+
+        guard let remoteCallError = error as? RemoteCallError, case .timedOut(_, let timeoutError) = remoteCallError.underlying.error else {
+            throw testKit.fail("Expected RemoteCallError.timedOut, got \(error)")
+        }
+
+        // The message is not rendered eagerly; the error carries what is needed to render it later.
+        guard case .ask(let target, _, _, _, let responseType) = timeoutError.storage else {
+            throw testKit.fail("Expected the ask timeout details to be carried, got \(timeoutError.storage)")
+        }
+        target.shouldEqual(ref.id)
+        XCTAssertTrue(responseType == String.self)
+
+        timeoutError.message.shouldContain("No response received for ask to [\(ref.id)] within timeout [50ms]")
+        timeoutError.message.shouldContain("expected response of type [Swift.String]")
+    }
+
     func test_ask_withTerminatedSystem_shouldNotCauseCrash() async throws {
         let system = await self.setUpNode("AskCrashSystem")
 
