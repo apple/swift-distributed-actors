@@ -271,7 +271,6 @@ extension Cluster.MembershipGossip {
 
             for (key, version) in self.underlying where version.contains(replicaToPrune, 0) {
                 self.underlying[key] = version.pruneReplica(replicaToPrune)
-                // TODO: test removing non existing member
             }
         }
     }
