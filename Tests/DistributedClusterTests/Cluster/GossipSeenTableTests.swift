@@ -238,4 +238,21 @@ final class GossipSeenTableTests: XCTestCase {
         table.version(at: self.nodeB).shouldEqual(VersionVector.parse("B:1 A:1", nodes: self.allNodes))
         table.version(at: self.nodeC).shouldBeNil()
     }
+
+    func test_prune_nonExistingNode_shouldDoNothing() {
+        var table = Cluster.MembershipGossip.SeenTable(myselfNode: self.nodeA, version: .init())
+        table.incrementVersion(owner: self.nodeA, at: self.nodeA)
+        table.incrementVersion(owner: self.nodeB, at: self.nodeB)
+        table.incrementVersion(owner: self.nodeB, at: self.nodeA)
+
+        let before = table
+
+        // nodeC was never part of the table, neither as an owner nor inside another node's version vector
+        table.prune(self.nodeC)
+
+        table.version(at: self.nodeA).shouldEqual(VersionVector.parse("A:1", nodes: self.allNodes))
+        table.version(at: self.nodeB).shouldEqual(VersionVector.parse("B:1 A:1", nodes: self.allNodes))
+        table.version(at: self.nodeC).shouldBeNil()
+        table.underlying.shouldEqual(before.underlying)
+    }
 }
