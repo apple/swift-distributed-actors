@@ -37,6 +37,24 @@ final class ClusterEventStreamTests: SingleClusterSystemXCTestCase, @unchecked S
         self.logCapture.grep("Dead letter").shouldBeEmpty()
     }
 
+    func test_clusterEventStream_publishLogShouldIncludeSubscriberSourceLocations() async throws {
+        let probe = self.testKit.makeTestProbe(expecting: Cluster.Event.self)
+
+        let eventStream = ClusterEventStream(system, customName: "testClusterEventsLocations")
+
+        let expectedLine = #line + 1
+        await eventStream._subscribe(probe.ref)
+        await eventStream.publish(.membershipChange(.init(member: self.memberA, toStatus: .up)))
+
+        let published = try self.logCapture.awaitLogContaining(self.testKit, text: "Published event")
+        let subscribers = try XCTUnwrap(published.metadata?["eventStream/subscribers"], "Expected subscribers metadata")
+        let rendered = "\(subscribers)"
+        XCTAssertTrue(
+            rendered.contains("ClusterEventStreamTests.swift:\(expectedLine)"),
+            "Expected subscriber source location in metadata, got: \(rendered)"
+        )
+    }
+
     func test_clusterEventStream_shouldCollapseEventsAndOfferASnapshotToLateSubscribers() async throws {
         let p1 = self.testKit.makeTestProbe(expecting: Cluster.Event.self)
         let p2 = self.testKit.makeTestProbe(expecting: Cluster.Event.self)

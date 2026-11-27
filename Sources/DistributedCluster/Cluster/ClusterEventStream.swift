@@ -47,7 +47,7 @@ public struct ClusterEventStream: AsyncSequence {
         guard let actor = self.actor else { return }
 
         await actor.whenLocal { __secretlyKnownToBeLocal in  // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
-            __secretlyKnownToBeLocal.subscribe(ref)
+            __secretlyKnownToBeLocal.subscribe(ref, file: file, line: line)
         }
     }
 
@@ -141,6 +141,8 @@ internal distributed actor ClusterEventStreamActor: LifecycleWatch {
     private var snapshot = Cluster.Membership.empty
 
     private var subscribers: [ActorID: _ActorRef<Cluster.Event>] = [:]
+    /// Source locations (`file:line`) at which the ``subscribers`` subscribed; surfaced in debug metadata.
+    private var subscriberLocations: [ActorID: String] = [:]
     private var asyncSubscribers: [ObjectIdentifier: (Cluster.Event) -> Void] = [:]
 
     private lazy var log = Logger(actor: self)
@@ -149,13 +151,15 @@ internal distributed actor ClusterEventStreamActor: LifecycleWatch {
         self.actorSystem = actorSystem
     }
 
-    func subscribe(_ ref: _ActorRef<Cluster.Event>) {
+    func subscribe(_ ref: _ActorRef<Cluster.Event>, file: String = #filePath, line: UInt = #line) {
         self.subscribers[ref.id] = ref
+        self.subscriberLocations[ref.id] = "\(file):\(line)"
         self.log.trace("Successfully subscribed [\(ref)], offering membership snapshot")
         ref.tell(.snapshot(self.snapshot))
     }
 
     func unsubscribe(_ ref: _ActorRef<Cluster.Event>) {
+        self.subscriberLocations.removeValue(forKey: ref.id)
         if self.subscribers.removeValue(forKey: ref.id) != nil {
             self.log.trace("Successfully unsubscribed [\(ref)]")
         } else {
@@ -194,7 +198,7 @@ internal distributed actor ClusterEventStreamActor: LifecycleWatch {
                     "eventStream/event": .string("\(reflecting: event)"),
                     "eventStream/subscribers": Logger.MetadataValue.array(
                         self.subscribers.map {
-                            Logger.MetadataValue.stringConvertible($0.key)
+                            Logger.MetadataValue.string("\($0.key) (subscribed at \(self.subscriberLocations[$0.key] ?? "unknown location"))")
                         }
                     ),
                     "eventStream/asyncSubscribers": Logger.MetadataValue.array(
@@ -210,6 +214,7 @@ internal distributed actor ClusterEventStreamActor: LifecycleWatch {
     }
 
     func terminated(actor id: ActorID) {
+        self.subscriberLocations.removeValue(forKey: id)
         if self.subscribers.removeValue(forKey: id) != nil {
             self.log.trace("Removed subscriber [\(id)], because it terminated")
         }
